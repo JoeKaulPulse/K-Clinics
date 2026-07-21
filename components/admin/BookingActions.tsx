@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from 'react';
 import { chargeBookingAction, refundBookingAction, setBookingStatus, cancelBookingAction, rescheduleBookingAction } from '@/app/admin/bookings/actions';
+import { clinicLocalToUTC } from '@/lib/clinic-time';
 
 const money = (p: number) => `£${(p / 100).toFixed(2)}`;
 
@@ -15,6 +16,8 @@ export function BookingActions({
   refundableUntil = null,
   canManage = true,
   canCharge = true,
+  prepaid = false,
+  pointsRedeemedPence = 0,
 }: {
   bookingId: string;
   status: string;
@@ -25,10 +28,17 @@ export function BookingActions({
   refundableUntil?: string | null;
   canManage?: boolean;
   canCharge?: boolean;
+  // BLD-399: a course pre-paid upfront via BNPL (Klarna/Clearpay). When true the
+  // card-on-file charge UI is suppressed — the course is already paid in full.
+  prepaid?: boolean;
+  // BLD-733: money off already redeemed against this booking via loyalty points.
+  // Nets out of the pre-filled charge amount so staff don't bill the pre-discount price.
+  pointsRedeemedPence?: number | null;
 }) {
   const [pending, start] = useTransition();
   const [msg, setMsg] = useState('');
-  const [amount, setAmount] = useState((pricePence / 100).toFixed(2));
+  const netPricePence = Math.max(0, pricePence - (pointsRedeemedPence ?? 0));
+  const [amount, setAmount] = useState((netPricePence / 100).toFixed(2));
   const [waive, setWaive] = useState(false);
   const [reason, setReason] = useState('');
   const [confirmCancel, setConfirmCancel] = useState(false);
@@ -90,7 +100,7 @@ export function BookingActions({
               className="w-28 rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-bone)] px-3 py-2 text-sm outline-none focus:border-[var(--color-gold)]" />
             {!confirmCharge ? (
               <button disabled={pending || !(parseFloat(amount) > 0)} onClick={() => setConfirmCharge(true)}
-                className="rounded-full bg-[var(--color-gold)] px-5 py-2 text-sm text-white disabled:opacity-60">Charge now…</button>
+                className="rounded-full bg-[var(--color-gold-deep)] px-5 py-2 text-sm text-white disabled:opacity-60">Charge now…</button>
             ) : (
               <span className="flex items-center gap-2">
                 <button disabled={pending} onClick={() => start(async () => {
@@ -105,7 +115,13 @@ export function BookingActions({
               </span>
             )}
           </div>
-          <p className="mt-2 text-xs text-[var(--color-stone)]">{pricePence > 0 ? `Booked price ${money(pricePence)}. Adjust for add-ons or discounts.` : 'On-consultation booking — set the assessed amount.'}</p>
+          <p className="mt-2 text-xs text-[var(--color-stone)]">
+            {pricePence > 0
+              ? (pointsRedeemedPence ?? 0) > 0
+                ? `Booked price ${money(pricePence)}, less ${money(pointsRedeemedPence ?? 0)} redeemed loyalty points = ${money(netPricePence)}. Adjust for add-ons or discounts.`
+                : `Booked price ${money(pricePence)}. Adjust for add-ons or discounts.`
+              : 'On-consultation booking — set the assessed amount.'}
+          </p>
         </div>
       )}
 
@@ -144,7 +160,7 @@ export function BookingActions({
               <p className="mt-2 text-xs text-[var(--color-stone)]">Up to {money(remainingRefund)} refundable · until {new Date(refundableUntil!).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}. Goes back to the card used.</p>
             </div>
           )}
-          {remainingRefund > 0 && !windowOpen && <p className="mt-2 text-xs text-[var(--color-stone-soft)]">The refund window for this payment has passed — refund in Stripe directly if still possible.</p>}
+          {remainingRefund > 0 && !windowOpen && <p className="mt-2 text-xs text-[var(--color-stone)]">The refund window for this payment has passed — refund in Stripe directly if still possible.</p>}
         </div>
       )}
 
@@ -156,7 +172,10 @@ export function BookingActions({
             <input type="datetime-local" value={newWhen} onChange={(e) => setNewWhen(e.target.value)}
               className="rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-porcelain)] px-3 py-2 text-sm outline-none focus:border-[var(--color-gold)]" />
             <button disabled={pending || !newWhen} onClick={() => start(async () => {
-              const r = await rescheduleBookingAction(bookingId, new Date(newWhen).toISOString());
+              // datetime-local gives "YYYY-MM-DDTHH:MM" — staff mean CLINIC wall-clock
+              // time, so convert via Europe/London, not the device's ambient timezone.
+              const [dPart, tPart] = newWhen.split('T');
+              const r = await rescheduleBookingAction(bookingId, clinicLocalToUTC(dPart, tPart || '00:00').toISOString());
               setMsg(r.ok ? 'Rescheduled — the client has been emailed the new time.' : r.error || 'Could not reschedule.');
               if (r.ok) setNewWhen('');
             })} className="rounded-full bg-[var(--color-ink)] px-4 py-2 text-sm text-[var(--color-porcelain)] disabled:opacity-60">{pending ? 'Moving…' : 'Reschedule'}</button>

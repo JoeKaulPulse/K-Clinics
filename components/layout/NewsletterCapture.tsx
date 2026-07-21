@@ -2,7 +2,7 @@ import { NewsletterForm } from '@/components/layout/NewsletterForm';
 import { Aurora } from '@/components/ui/Aurora';
 import { Reveal } from '@/components/motion/Reveal';
 
-export function NewsletterCapture() {
+export function NewsletterCapture({ source }: { source?: string } = {}) {
   return (
     <section className="surface-ink grain relative overflow-hidden">
       <Aurora />
@@ -17,7 +17,7 @@ export function NewsletterCapture() {
               New treatments, seasonal edits and expert skin advice — straight to your inbox. No noise, just what matters.
             </p>
             <div className="mt-8">
-              <NewsletterForm />
+              <NewsletterForm source={source} />
             </div>
           </div>
         </Reveal>

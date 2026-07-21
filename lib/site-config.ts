@@ -41,6 +41,7 @@ export type SiteConfig = {
   booking: { path: string; phoneCta: string };
   social: Record<string, string>;
   dentistryLive: boolean;
+  shopLive: boolean; // PRJ-939.14: computed from the active product count — the Shop nav link and sitemap entry render only when there is something to sell
   announcement: AnnouncementConfig;
   nav: { primary: NavGroup[]; footer: FooterColumn[] };
 };
@@ -48,7 +49,8 @@ export type SiteConfig = {
 const clone = <T,>(v: T): T => JSON.parse(JSON.stringify(v));
 
 export const DEFAULT_CONFIG: SiteConfig = {
-  ...(clone(site) as unknown as Omit<SiteConfig, 'social' | 'announcement' | 'nav'>),
+  ...(clone(site) as unknown as Omit<SiteConfig, 'social' | 'announcement' | 'nav' | 'shopLive'>),
+  shopLive: false,
   social: clone(site.social) as Record<string, string>,
   announcement: { enabled: false, message: '', linkLabel: '', linkHref: '', startAt: null, endAt: null },
   nav: { primary: clone(primaryNav), footer: clone(footerNav) as FooterColumn[] },
@@ -78,7 +80,11 @@ export const SITE_CONFIG_TAG = 'site-config';
 async function load(): Promise<SiteConfig> {
   try {
     const row = await db.siteConfig.findUnique({ where: { id: 'singleton' }, select: { data: true } });
-    return mergeConfig(DEFAULT_CONFIG, (row?.data as Partial<SiteConfig> | undefined) ?? null);
+    const cfg = mergeConfig(DEFAULT_CONFIG, (row?.data as Partial<SiteConfig> | undefined) ?? null);
+    // PRJ-939.14: the Shop nav link was a sitewide dead end to a 'coming soon'
+    // page. It appears (cached ~1h) as soon as a product actually goes live.
+    cfg.shopLive = (await db.product.count({ where: { status: 'ACTIVE' } }).catch(() => 0)) > 0;
+    return cfg;
   } catch {
     // Table not migrated yet, or DB unavailable → safe static defaults.
     return DEFAULT_CONFIG;

@@ -18,6 +18,7 @@ import { TreatmentCard } from '@/components/ui/TreatmentCard';
 import { Reveal, Stagger, StaggerItem } from '@/components/motion/Reveal';
 import { BookingButtons } from '@/components/booking/BookingButtons';
 import { pageMeta, JsonLd, breadcrumbLd } from '@/lib/seo';
+import { ViewItemTracker } from '@/components/marketing/ViewItemTracker';
 
 export const dynamicParams = false;
 // ISR: refresh hourly so live "from" prices on the related-treatment cards stay current.
@@ -52,6 +53,7 @@ export default async function PackagePage({ params }: { params: Promise<{ slug: 
           { name: p.name, path: `/packages/${p.slug}` },
         ])}
       />
+      <ViewItemTracker id={`package-${p.slug}`} name={p.name} category="package" />
       <PageHero eyebrow={p.subtitle} title={p.name} lede={p.description} gradient={p.gradient}>
         <BookingButtons />
       </PageHero>
@@ -70,7 +72,7 @@ export default async function PackagePage({ params }: { params: Promise<{ slug: 
                     </svg>
                   </span>
                   {href ? (
-                    <Link href={href} className="text-lg underline decoration-[var(--color-gold)]/40 underline-offset-4 transition-colors hover:text-[var(--color-gold)]">
+                    <Link href={href} className="text-lg underline decoration-[var(--color-gold)]/40 underline-offset-4 transition-colors hover:text-[var(--color-gold-deep)]">
                       {item}
                     </Link>
                   ) : (

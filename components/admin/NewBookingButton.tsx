@@ -4,6 +4,8 @@ import { useEffect, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { AnimatePresence, motion } from 'motion/react';
 import { createManualBooking, searchClientsForBooking, logCallNote, resendBookingConfirmation } from '@/app/admin/bookings/create-action';
+import { clinicLocalToUTC, CLINIC_TZ } from '@/lib/clinic-time';
+import { useDialogBehaviours } from '@/components/ui/Dialog';
 
 type Variant = { id: string; name: string; durationMin: number; pricePence: number };
 type Treatment = { slug: string; title: string; group: string; variants?: Variant[] };
@@ -13,7 +15,7 @@ type Result = { bookingId: string; manageToken?: string; hasCard?: boolean; clie
 const f = 'w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-3 py-2.5 text-sm outline-none focus:border-[var(--color-gold)]';
 const priceLabel = (p: number) => (p > 0 ? `£${(p / 100).toLocaleString('en-GB', { minimumFractionDigits: p % 100 ? 2 : 0 })}` : 'On consultation');
 
-export function NewBookingButton({ treatments }: { treatments: Treatment[] }) {
+export function NewBookingButton({ treatments, isAdmin = false }: { treatments: Treatment[]; isAdmin?: boolean }) {
   const [open, setOpen] = useState(false);
   return (
     <>
@@ -23,17 +25,19 @@ export function NewBookingButton({ treatments }: { treatments: Treatment[] }) {
         </svg>
         New phone booking
       </button>
-      <AnimatePresence>{open && <Modal treatments={treatments} onClose={() => setOpen(false)} />}</AnimatePresence>
+      <AnimatePresence>{open && <Modal treatments={treatments} isAdmin={isAdmin} onClose={() => setOpen(false)} />}</AnimatePresence>
     </>
   );
 }
 
-function Modal({ treatments, onClose }: { treatments: Treatment[]; onClose: () => void }) {
+function Modal({ treatments, isAdmin, onClose }: { treatments: Treatment[]; isAdmin: boolean; onClose: () => void }) {
   const router = useRouter();
   const [pending, start] = useTransition();
   const [error, setError] = useState('');
   const [clash, setClash] = useState(false);
   const [result, setResult] = useState<Result | null>(null);
+  // Modal behaviours (focus-in, Tab trap, Escape, focus restore) — shared Dialog primitive (BLD-849/BLD-803).
+  const { panelRef, onKeyDown } = useDialogBehaviours(onClose);
 
   // Group treatments by their group field for the two-step dropdown.
   const groups = Array.from(new Set(treatments.map((t) => t.group)));
@@ -46,7 +50,7 @@ function Modal({ treatments, onClose }: { treatments: Treatment[]; onClose: () =
   const [matches, setMatches] = useState<Found[]>([]);
   const [selected, setSelected] = useState<Found | null>(null);
   const [selectedGroup, setSelectedGroup] = useState(firstGroup);
-  const [d, setD] = useState({ firstName: '', lastName: '', email: '', phone: '', treatmentSlug: firstSlug, variantId: treatments.find((t) => t.slug === firstSlug)?.variants?.[0]?.id ?? '', asConsultation: false, sessions: 1, date: '', time: '10:00', notes: '' });
+  const [d, setD] = useState({ firstName: '', lastName: '', email: '', phone: '', treatmentSlug: firstSlug, variantId: treatments.find((t) => t.slug === firstSlug)?.variants?.[0]?.id ?? '', asConsultation: false, sessions: 1, date: '', time: '10:00', notes: '', overridePrice: false, overridePriceValue: '' });
   const set = <K extends keyof typeof d>(k: K, v: (typeof d)[K]) => setD((p) => ({ ...p, [k]: v }));
   // The standalone "Consultation" category is already a consultation; the toggle
   // is for booking a *real* treatment category as a consultation (BLD-208).
@@ -73,14 +77,20 @@ function Modal({ treatments, onClose }: { treatments: Treatment[]; onClose: () =
   const baseTitle = treatments.find((t) => t.slug === d.treatmentSlug)?.title || 'your treatment';
   const variantName = variants.find((v) => v.id === d.variantId)?.name;
   const treatmentTitle = (d.asConsultation && !isConsultationCat) ? `${baseTitle} — Consultation` : variantName ? `${baseTitle} — ${variantName}` : baseTitle;
-  const whenLabel = d.date ? new Date(`${d.date}T${d.time}`).toLocaleString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' }) : '—';
+  // Staff type the CLINIC's wall-clock time — convert via Europe/London, never the
+  // device timezone (a roaming/misconfigured device would silently shift the booking).
+  const whenLabel = d.date ? clinicLocalToUTC(d.date, d.time).toLocaleString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit', timeZone: CLINIC_TZ }) : '—';
 
   function submit(override = false) {
     setError('');
     if (tab === 'existing' && !selected) return setError('Find and select the client, or switch to “New client”.');
     if (tab === 'new' && (!d.firstName.trim() || !/\S+@\S+\.\S+/.test(d.email))) return setError('New client needs a first name and a valid email.');
     if (!d.date) return setError('Choose a date.');
-    const startISO = new Date(`${d.date}T${d.time}`).toISOString();
+    if (isAdmin && d.overridePrice && (d.overridePriceValue.trim() === '' || Number(d.overridePriceValue) < 0 || !Number.isFinite(Number(d.overridePriceValue)))) {
+      return setError('Enter a valid override price.');
+    }
+    const startISO = clinicLocalToUTC(d.date, d.time).toISOString();
+    const overridePricePence = isAdmin && d.overridePrice ? Math.round(Number(d.overridePriceValue) * 100) : undefined;
     start(async () => {
       const r = await createManualBooking({
         clientId: selected?.id,
@@ -88,7 +98,7 @@ function Modal({ treatments, onClose }: { treatments: Treatment[]; onClose: () =
         lastName: selected?.lastName || d.lastName,
         email: selected?.email || d.email,
         phone: selected?.phone || d.phone,
-        treatmentSlug: d.treatmentSlug, variantId: d.asConsultation ? undefined : (d.variantId || undefined), asConsultation: d.asConsultation, sessions: d.sessions, startISO, notes: d.notes, override,
+        treatmentSlug: d.treatmentSlug, variantId: d.asConsultation ? undefined : (d.variantId || undefined), asConsultation: d.asConsultation, sessions: d.sessions, startISO, notes: d.notes, override, overridePricePence,
       });
       if (r.ok) setResult(r as Result);
       else { setError(r.error || 'Could not create booking.'); setClash(Boolean(r.clash)); }
@@ -96,11 +106,11 @@ function Modal({ treatments, onClose }: { treatments: Treatment[]; onClose: () =
   }
 
   return (
-    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 p-0 sm:items-center sm:p-6">
-      <motion.div initial={{ y: 30, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 30, opacity: 0 }} transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onKeyDown={onKeyDown} className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 p-0 sm:items-center sm:p-6">
+      <motion.div ref={panelRef} role="dialog" aria-modal="true" aria-labelledby="new-booking-title" tabIndex={-1} initial={{ y: 30, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 30, opacity: 0 }} transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
         className="max-h-[92vh] w-full max-w-lg overflow-y-auto rounded-t-[var(--radius-xl)] bg-[var(--color-porcelain)] p-6 shadow-[var(--shadow-lift)] sm:rounded-[var(--radius-xl)] md:p-8">
         <div className="mb-5 flex items-center justify-between">
-          <h2 className="font-[family-name:var(--font-display)] text-2xl">{result ? 'Call walkthrough' : 'New phone booking'}</h2>
+          <h2 id="new-booking-title" className="font-[family-name:var(--font-display)] text-2xl">{result ? 'Call walkthrough' : 'New phone booking'}</h2>
           <button onClick={onClose} aria-label="Close" className="text-[var(--color-stone)] hover:text-[var(--color-ink)]"><span aria-hidden="true">✕</span></button>
         </div>
 
@@ -128,7 +138,7 @@ function Modal({ treatments, onClose }: { treatments: Treatment[]; onClose: () =
                     <div className="mt-1 overflow-hidden rounded-[var(--radius-sm)] border border-[var(--color-line)]">
                       {matches.map((c) => (
                         <button key={c.id} onClick={() => { setSelected(c); setQ(''); }} className="flex w-full items-center justify-between px-3 py-2 text-left text-sm hover:bg-[var(--color-bone)]">
-                          <span>{c.firstName} {c.lastName ?? ''} <span className="text-[var(--color-stone-soft)]">· {c.email}{c.phone ? ` · ${c.phone}` : ''}</span></span>
+                          <span>{c.firstName} {c.lastName ?? ''} <span className="text-[var(--color-stone)]">· {c.email}{c.phone ? ` · ${c.phone}` : ''}</span></span>
                           {c.hasCard && <span className="rounded-full bg-[var(--color-jade)]/15 px-2 py-0.5 text-[0.6rem] text-[var(--color-jade)]">card</span>}
                         </button>
                       ))}
@@ -165,7 +175,7 @@ function Modal({ treatments, onClose }: { treatments: Treatment[]; onClose: () =
             {!isConsultationCat && (
               <label className="flex items-center gap-2 text-sm text-[var(--color-stone)]">
                 <input type="checkbox" checked={d.asConsultation} onChange={(e) => set('asConsultation', e.target.checked)} />
-                Book as a consultation <span className="text-[var(--color-stone-soft)]">(15 min · on consultation)</span>
+                Book as a consultation <span className="text-[var(--color-stone)]">(15 min · on consultation)</span>
               </label>
             )}
             {/* BLD-409: book a course of N sessions in one go. */}
@@ -179,13 +189,27 @@ function Modal({ treatments, onClose }: { treatments: Treatment[]; onClose: () =
               <input className={f} type="date" value={d.date} onChange={(e) => set('date', e.target.value)} />
               <input className={f} type="time" value={d.time} onChange={(e) => set('time', e.target.value)} />
             </div>
+            {/* BLD-812: admin-only custom price for this specific appointment
+                (promotions, special agreed rates) — never shown to non-admin staff. */}
+            {isAdmin && (
+              <div className="space-y-2 rounded-[var(--radius-sm)] border border-dashed border-[var(--color-line)] p-3">
+                <label className="flex items-center gap-2 text-sm text-[var(--color-stone)]">
+                  <input type="checkbox" checked={d.overridePrice} onChange={(e) => set('overridePrice', e.target.checked)} />
+                  Override price for this booking (admin only)
+                </label>
+                {d.overridePrice && (
+                  <input className={f} type="number" min={0} step="0.01" inputMode="decimal" placeholder="Custom total price (£)"
+                    value={d.overridePriceValue} onChange={(e) => set('overridePriceValue', e.target.value)} />
+                )}
+              </div>
+            )}
             <textarea className={f} rows={2} placeholder="Notes (optional)" value={d.notes} onChange={(e) => set('notes', e.target.value)} />
 
-            {error && <p className="rounded-[var(--radius-sm)] bg-[var(--color-blush)]/25 px-4 py-2.5 text-sm">{error}</p>}
+            {error && <p role="alert" aria-live="assertive" className="rounded-[var(--radius-sm)] bg-[var(--color-blush)]/25 px-4 py-2.5 text-sm">{error}</p>}
             <div className="flex justify-end gap-3">
               <button onClick={onClose} className="px-4 py-2.5 text-sm text-[var(--color-stone)]">Cancel</button>
               {clash && <button onClick={() => submit(true)} disabled={pending} className="rounded-full border border-[var(--color-line)] px-5 py-2.5 text-sm font-medium hover:border-[var(--color-gold)] disabled:opacity-60">Book anyway</button>}
-              <button onClick={() => submit(false)} disabled={pending} className="rounded-full bg-[var(--color-gold)] px-6 py-2.5 text-sm font-medium text-white hover:bg-[var(--color-ink)] disabled:opacity-60">{pending ? 'Creating…' : 'Create & send card link'}</button>
+              <button onClick={() => submit(false)} disabled={pending} className="rounded-full bg-[var(--color-gold-deep)] px-6 py-2.5 text-sm font-medium text-white hover:bg-[var(--color-ink)] disabled:opacity-60">{pending ? 'Creating…' : 'Create & send card link'}</button>
             </div>
             <p className="text-xs text-[var(--color-stone)]">No card is taken over the phone — the client gets a secure link to save one and confirm. Read the script on the next step.</p>
           </div>
@@ -215,10 +239,13 @@ function DoneView({ result, treatmentTitle, whenLabel, onClose, router }: { resu
 
   // ① Create-your-account + card link (passwordless clients get the magic link).
   const [linkState, setLinkState] = useState<'idle' | 'sending' | 'sent' | 'error'>('idle');
+  const [linkError, setLinkError] = useState('');
   async function sendLink() {
     setLinkState('sending');
+    setLinkError('');
     const r = await fetch('/api/admin/bookings/request-card', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ bookingId: result.bookingId, channel: 'email' }) }).then((x) => x.json()).catch(() => ({ ok: false }));
     setLinkState(r.ok ? 'sent' : 'error');
+    if (!r.ok) setLinkError(r.error || '');
   }
   // Auto-send the account + card link once on open, when there's no card on file.
   useEffect(() => { if (canSendLink) sendLink(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, []);
@@ -279,7 +306,7 @@ function DoneView({ result, treatmentTitle, whenLabel, onClose, router }: { resu
                 : !canEmail ? 'No email on file — add one on the booking page.'
                 : linkState === 'sending' ? 'Sending…'
                 : linkState === 'sent' ? `Sent to ${result.clientEmail}`
-                : linkState === 'error' ? 'Send failed.' : 'Ready to send.'}
+                : linkState === 'error' ? (linkError ? `Send failed: ${linkError}` : 'Send failed.') : 'Ready to send.'}
             </span>
           </span>
           {result.hasCard

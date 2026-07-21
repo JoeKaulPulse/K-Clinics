@@ -26,6 +26,7 @@ export function CheckoutForm() {
   const estTotal = subtotalPence + shipping;
 
   async function startCheckout() {
+    if (!f.name.trim() || !f.email.trim()) { setError('Please enter your name and email.'); return; }
     setError(''); setBusy(true);
     const res = await fetch('/api/shop/checkout', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -39,7 +40,7 @@ export function CheckoutForm() {
   }
 
   if (items.length === 0 && stage !== 'done') {
-    return <p className="text-[var(--color-stone)]">Your bag is empty. <Link href="/shop" className="text-[var(--color-gold)] underline">Browse the shop →</Link></p>;
+    return <p className="text-[var(--color-stone)]">Your bag is empty. <Link href="/shop" className="text-[var(--color-gold-deep)] underline">Browse the shop →</Link></p>;
   }
 
   if (stage === 'done') {
@@ -47,7 +48,7 @@ export function CheckoutForm() {
       <div className="rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-8 text-center">
         <p className="font-[family-name:var(--font-display)] text-2xl">Thank you — order {orderNo} confirmed ✓</p>
         <p className="mt-2 text-[var(--color-stone)]">A confirmation email is on its way. {f.method === 'collect' ? 'We’ll let you know when it’s ready to collect.' : 'We’ll dispatch it shortly.'}</p>
-        <Link href="/shop" className="mt-5 inline-flex items-center gap-1 text-[var(--color-gold)] hover:underline">Continue shopping <ArrowIcon /></Link>
+        <Link href="/shop" className="mt-5 inline-flex items-center gap-1 text-[var(--color-gold-deep)] hover:underline">Continue shopping <ArrowIcon /></Link>
       </div>
     );
   }
@@ -70,7 +71,7 @@ export function CheckoutForm() {
               <h2 className="mb-3 font-[family-name:var(--font-display)] text-lg">Delivery</h2>
               <div className="flex gap-2">
                 {(['ship', 'collect'] as const).map((m) => (
-                  <button key={m} onClick={() => set('method', m)} className={`rounded-full border px-4 py-1.5 text-sm ${f.method === m ? 'border-[var(--color-gold)] bg-[var(--color-gold)] text-white' : 'border-[var(--color-line)]'}`}>{m === 'ship' ? 'Ship to me' : 'Collect in clinic'}</button>
+                  <button key={m} onClick={() => set('method', m)} className={`rounded-full border px-4 py-1.5 text-sm ${f.method === m ? 'border-[var(--color-gold)] bg-[var(--color-gold-deep)] text-white' : 'border-[var(--color-line)]'}`}>{m === 'ship' ? 'Ship to me' : 'Collect in clinic'}</button>
                 ))}
               </div>
               {f.method === 'ship' && (
@@ -96,8 +97,8 @@ export function CheckoutForm() {
               <label className="text-xs text-[var(--color-stone)]">Gift card code (optional)<input value={f.giftCardCode} onChange={(e) => set('giftCardCode', e.target.value)} placeholder="KC-XXXX-XXXX" className={`${field} font-mono`} /></label>
             </section>
 
-            {error && <p className="text-sm text-[var(--color-blush)]">{error}</p>}
-            <Button onClick={() => !busy && f.name && f.email && startCheckout()} variant="gold" size="lg">{busy ? 'Please wait…' : 'Continue to payment'} <ArrowIcon /></Button>
+            {error && <p role="alert" aria-live="assertive" className="text-sm text-[var(--color-blush-deep)]">{error}</p>}
+            <Button onClick={() => !busy && startCheckout()} disabled={busy || !f.name || !f.email} variant="gold" size="lg">{busy ? 'Please wait…' : 'Continue to payment'} <ArrowIcon /></Button>
           </>
         ) : (
           <section className="rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-5">
@@ -132,7 +133,7 @@ function PayStep({ orderId, onDone }: { orderId: string; onDone: (no: string) =>
   return (
     <div>
       <PaymentElement />
-      {err && <p className="mt-3 text-sm text-[var(--color-blush)]">{err}</p>}
+      {err && <p role="alert" aria-live="assertive" className="mt-3 text-sm text-[var(--color-blush-deep)]">{err}</p>}
       <Button onClick={() => !busy && pay()} variant="gold" size="lg" className="mt-4 w-full">{busy ? 'Processing…' : 'Pay now'}</Button>
     </div>
   );

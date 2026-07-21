@@ -59,20 +59,21 @@ export function SiteSearch({ light }: { light?: boolean }) {
           <form onSubmit={submit} className="border-b border-[var(--color-line)] p-2">
             <input
               ref={inputRef} value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search treatments, articles…"
-              className="w-full rounded-[var(--radius-sm)] bg-[var(--color-bone)] px-3 py-2 text-sm text-[var(--color-ink)] outline-none"
+              role="combobox" aria-label="Search site" aria-expanded={hits.length > 0} aria-autocomplete="list" aria-controls="site-search-listbox"
+              className="w-full rounded-[var(--radius-sm)] bg-[var(--color-bone)] px-3 py-2 text-sm text-[var(--color-ink)] outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-gold)]"
             />
           </form>
           {hits.length > 0 ? (
-            <ul className="max-h-80 overflow-y-auto">
+            <ul id="site-search-listbox" role="listbox" className="max-h-80 overflow-y-auto">
               {hits.map((h) => (
-                <li key={`${h.type}-${h.href}`}>
+                <li key={`${h.type}-${h.href}`} role="option" aria-selected={false}>
                   <Link href={h.href} onClick={() => setOpen(false)} className="flex items-center justify-between gap-3 px-3 py-2.5 text-sm hover:bg-[var(--color-bone)]">
                     <span className="min-w-0 truncate text-[var(--color-ink)]">{h.title}</span>
                     <span className="shrink-0 text-[0.6rem] uppercase tracking-wide text-[var(--color-stone)]">{h.type}</span>
                   </Link>
                 </li>
               ))}
-              <li><button onClick={submit} className="w-full px-3 py-2.5 text-left text-xs font-medium text-[var(--color-gold)] hover:bg-[var(--color-bone)]">See all results →</button></li>
+              <li role="option" aria-selected={false}><button onClick={submit} className="w-full px-3 py-2.5 text-left text-xs font-medium text-[var(--color-gold-deep)] hover:bg-[var(--color-bone)]">See all results →</button></li>
             </ul>
           ) : q.trim().length >= 2 ? (
             <p className="px-3 py-4 text-sm text-[var(--color-stone)]">No quick matches — press Enter to search.</p>

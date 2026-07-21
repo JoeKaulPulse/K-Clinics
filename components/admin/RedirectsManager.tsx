@@ -17,9 +17,9 @@ export function RedirectsManager({ rows }: { rows: RedirectRow[] }) {
     <div className="space-y-8">
       <CreatePanel />
       <BulkPanel />
-      <section className="overflow-hidden rounded-[var(--radius-lg)] border border-[var(--color-line)]">
+      <section className="overflow-x-auto rounded-[var(--radius-lg)] border border-[var(--color-line)]">
         <table className="w-full text-sm">
-          <thead><tr className="bg-[var(--color-bone)] text-left text-xs uppercase tracking-wide text-[var(--color-stone-soft)]">
+          <thead><tr className="bg-[var(--color-bone)] text-left text-xs uppercase tracking-wide text-[var(--color-stone)]">
             <th scope="col" className="p-3">From</th><th scope="col" className="p-3">To</th><th scope="col" className="p-3">Type</th><th scope="col" className="p-3"></th>
           </tr></thead>
           <tbody>
@@ -57,7 +57,7 @@ function CreatePanel() {
           </select>
         </label>
         <button onClick={create} className="rounded-full bg-[var(--color-ink)] px-4 py-1.5 text-sm text-[var(--color-porcelain)]">Add</button>
-        {msg && <span className="text-sm text-[var(--color-blush)]">{msg}</span>}
+        {msg && <span className="text-sm text-[var(--color-blush-deep)]">{msg}</span>}
       </div>
     </section>
   );
@@ -104,9 +104,9 @@ function Row({ r }: { r: RedirectRow }) {
       <td className="p-3 text-xs text-[var(--color-stone)]">{r.code}</td>
       <td className="p-3 text-right">
         <span className="flex items-center justify-end gap-3">
-          {dirty ? <button onClick={save} className="rounded-full bg-[var(--color-gold)] px-3 py-1 text-xs text-white">Save</button> : saved ? <span className="text-xs text-green-700">Saved ✓</span> : null}
+          {dirty ? <button onClick={save} className="rounded-full bg-[var(--color-gold-deep)] px-3 py-1 text-xs text-white">Save</button> : saved ? <span className="text-xs text-green-700">Saved ✓</span> : null}
           <button onClick={toggle} className="text-xs text-[var(--color-stone)] hover:underline">{r.active ? 'Disable' : 'Enable'}</button>
-          <button onClick={remove} className="text-xs text-[var(--color-blush)] hover:underline">Delete</button>
+          <button onClick={remove} className="text-xs text-[var(--color-blush-deep)] hover:underline">Delete</button>
         </span>
       </td>
     </tr>

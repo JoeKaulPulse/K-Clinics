@@ -8,6 +8,7 @@
 
 import type { KioskThemeKey } from '@/lib/kiosk-themes';
 import type { ReactNode } from 'react';
+import { KMark, ClinicsWordmark } from '@/components/brand/marks';
 
 type ThemeCopy = {
   tagline: string;
@@ -23,12 +24,12 @@ const DEFAULT_LINES: ReactNode[] = [
 
 const THEME_COPY: Record<KioskThemeKey, ThemeCopy> = {
   default: {
-    tagline: 'K Clinics — Skin & Smile',
+    tagline: 'Skin & Smile',
     lines: DEFAULT_LINES,
     cta: 'Point your camera at the code — it takes about a minute.',
   },
   christmas: {
-    tagline: 'K Clinics — Festive Glow',
+    tagline: 'Festive Glow',
     lines: [
       <>Glow into the <span className="text-gold-shimmer">festive season</span></>,
       <>Your most radiant <span className="text-gold-shimmer">Christmas yet</span></>,
@@ -37,7 +38,7 @@ const THEME_COPY: Record<KioskThemeKey, ThemeCopy> = {
     cta: 'Point your camera at the code — a little festive magic takes a minute.',
   },
   valentines: {
-    tagline: 'K Clinics — Love Your Skin',
+    tagline: 'Love Your Skin',
     lines: [
       <>A little love for <span className="text-gold-shimmer">your skin</span></>,
       <>Your glow, <span className="text-gold-shimmer">your gift</span></>,
@@ -46,7 +47,7 @@ const THEME_COPY: Record<KioskThemeKey, ThemeCopy> = {
     cta: 'Point your camera at the code — it takes about a minute.',
   },
   summer: {
-    tagline: 'K Clinics — Summer Skin',
+    tagline: 'Summer Skin',
     lines: [
       <>Summer skin <span className="text-gold-shimmer">starts here</span></>,
       <>Your brightest <span className="text-gold-shimmer">summer yet</span></>,
@@ -65,9 +66,18 @@ export function AttractScene({ svg, remainingMs, theme = 'default' }: { svg: str
     <div className="kd-attract">
       {/* Copy block */}
       <div className="flex w-full max-w-[88vmin] flex-col gap-[2.5vmin] portrait:items-center landscape:items-start landscape:max-w-none landscape:self-center">
-        <p className="font-[family-name:var(--font-display)] text-[clamp(1rem,2vmin,1.6rem)] uppercase tracking-[0.4em] text-[var(--color-gold-soft)]">
-          {copy.tagline}
-        </p>
+        {/* Brand rule: the supplied logo mark stands as the identity — the
+            seasonal descriptor follows it as text, never the brand name. */}
+        <div className="flex items-center gap-[1.6vmin] text-[var(--color-gold-soft)] portrait:justify-center">
+          <span className="inline-flex items-center gap-[1vmin]" aria-label="KClinics">
+            <span className="block h-[4vmin] w-[2.2vmin]"><KMark /></span>
+            <span className="block h-[1.6vmin] w-[16vmin]"><ClinicsWordmark /></span>
+          </span>
+          <span aria-hidden className="text-[clamp(1rem,1.7vmin,1.4rem)] opacity-50">·</span>
+          <span className="font-[family-name:var(--font-display)] text-[clamp(1rem,2vmin,1.6rem)] uppercase tracking-[0.4em]">
+            {copy.tagline}
+          </span>
+        </div>
         <div className="kd-lines h-[34vmin] landscape:h-[36vmin]">
           {copy.lines.map((line, i) => (
             <h1

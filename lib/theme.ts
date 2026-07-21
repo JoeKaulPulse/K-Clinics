@@ -37,7 +37,7 @@ export const defaultTheme: ThemeTokens = {
   porcelain: '#f6ece3',
   bone: '#efe3d7',
   sand: '#e3d3c4',
-  stone: '#91766e',
+  stone: '#7d6259', // body text — AA on porcelain (4.79:1). Was #91766e (3.59:1, fails WCAG AA); the lighter taupe is the logo/accent colour, not body text.
   stoneSoft: '#b7a294',
   gold: '#a98a6d',
   goldSoft: '#c2a589',
@@ -64,7 +64,7 @@ const cssVar: Record<keyof ThemeTokens, string> = {
 };
 
 /** The active theme. (Palette is built-in; edit defaultTheme to change brand colours.) */
-export async function getTheme(): Promise<ThemeTokens> {
+export function getTheme(): ThemeTokens {
   return defaultTheme;
 }
 

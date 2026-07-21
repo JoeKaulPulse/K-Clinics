@@ -5,6 +5,7 @@ import { Reveal } from '@/components/motion/Reveal';
 import { Button, ArrowIcon } from '@/components/ui/Button';
 import { pageMeta, JsonLd, breadcrumbLd } from '@/lib/seo';
 import { ACCREDITATION_LABELS, formatFee } from '@/lib/academy';
+import { getActivePromo } from '@/lib/academy-utils';
 import { site } from '@/lib/site';
 
 export const generateMetadata = (): Promise<Metadata> => pageMeta({
@@ -12,7 +13,7 @@ export const generateMetadata = (): Promise<Metadata> => pageMeta({
   description:
     'Train as an aesthetics practitioner at K Academy, Islington. Ofqual-regulated, VTCT and CPD-accredited courses from Level 2 to Level 7 — blended Thinkific theory, hands-on practical days and in-house exams. Finance available with Clearpay.',
   path: '/academy',
-  keywords: ['aesthetics training London', 'Level 4 aesthetics course', 'VTCT aesthetics qualification', 'botox filler training', 'accredited aesthetics academy'],
+  keywords: ['aesthetics training London', 'Level 4 aesthetics course', 'VTCT aesthetics qualification', 'anti-wrinkle and filler training', 'accredited aesthetics academy'],
 });
 
 export const revalidate = 3600;
@@ -24,8 +25,15 @@ const PILLARS = [
 ];
 
 export default async function AcademyPage() {
-  const { listCourses } = await import('@/lib/academy');
-  const courses = await listCourses().catch(() => []);
+  const { listCourses, listBundles } = await import('@/lib/academy');
+  const [courses, bundles] = await Promise.all([listCourses().catch(() => []), listBundles().catch(() => [])]);
+
+  // Find the lowest active promo price across all courses (for the banner).
+  const lowestPromo = courses.reduce<number | null>((best, c) => {
+    const p = getActivePromo(c);
+    if (p == null) return best;
+    return best == null || p < best ? p : best;
+  }, null);
 
   return (
     <>
@@ -42,6 +50,20 @@ export default async function AcademyPage() {
           <Button href="/academy/portal" variant="outline">Trainee login</Button>
         </div>
       </PageHero>
+
+      {/* Promo banner — shown only when at least one course has an active promo */}
+      {lowestPromo != null && (
+        <div className="bg-[var(--color-gold-deep)] text-[var(--color-porcelain)]">
+          <div className="container-lux flex flex-wrap items-center justify-between gap-3 py-3">
+            <p className="text-sm font-medium">
+              Special offer: courses from {formatFee(lowestPromo)} — limited time.
+            </p>
+            <a href="#courses" className="shrink-0 text-sm underline underline-offset-2 hover:no-underline">
+              See courses
+            </a>
+          </div>
+        </div>
+      )}
 
       {/* Accreditation badges */}
       <section className="container-lux pt-12">
@@ -79,23 +101,59 @@ export default async function AcademyPage() {
           <p className="mt-8 text-[var(--color-stone)]">Our course schedule is being finalised — <Link href="/academy/portal" className="link-underline">register your interest</Link> and we’ll be in touch.</p>
         ) : (
           <div className="mt-10 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-            {courses.map((c) => (
-              <Reveal key={c.id}>
-                <Link href={`/academy/${c.slug}`} className="group flex h-full flex-col rounded-[var(--radius-xl)] border border-[var(--color-line)] bg-[var(--color-bone)] p-6 transition-colors hover:border-[var(--color-gold)]">
-                  {c.level && <span className="text-xs uppercase tracking-[0.16em] text-[var(--color-gold)]">{c.level}</span>}
-                  <h3 className="mt-1 font-[family-name:var(--font-display)] text-xl leading-tight">{c.title}</h3>
-                  {c.summary && <p className="mt-2 flex-1 text-sm text-[var(--color-ink-soft)]">{c.summary}</p>}
+            {courses.map((c) => {
+              const promo = getActivePromo(c);
+              return (
+                <Reveal key={c.id}>
+                  <Link href={`/academy/${c.slug}`} className="group flex h-full flex-col rounded-[var(--radius-xl)] border border-[var(--color-line)] bg-[var(--color-bone)] p-6 transition-colors hover:border-[var(--color-gold)]">
+                    {c.level && <span className="text-xs uppercase tracking-[0.16em] text-[var(--color-gold-deep)]">{c.level}</span>}
+                    <h3 className="mt-1 font-[family-name:var(--font-display)] text-xl leading-tight">{c.title}</h3>
+                    {c.summary && <p className="mt-2 flex-1 text-sm text-[var(--color-ink-soft)]">{c.summary}</p>}
+                    <div className="mt-4 flex items-center justify-between">
+                      {promo ? (
+                        <span className="flex items-baseline gap-1.5">
+                          <span className="text-sm font-medium text-[var(--color-gold-deep)]">{formatFee(promo)}</span>
+                          <span className="text-xs text-[var(--color-stone)] line-through">{formatFee(c.pricePence)}</span>
+                        </span>
+                      ) : (
+                        <span className="text-sm font-medium text-[var(--color-ink)]">{formatFee(c.pricePence)}</span>
+                      )}
+                      <span className="text-sm text-[var(--color-gold-deep)] group-hover:underline">View course →</span>
+                    </div>
+                    {c.accreditations.length > 0 && <p className="mt-2 text-[0.7rem] uppercase tracking-wide text-[var(--color-stone)]">{c.accreditations.map((a) => ACCREDITATION_LABELS[a] ?? a).join(' · ')}</p>}
+                  </Link>
+                </Reveal>
+              );
+            })}
+          </div>
+        )}
+      </section>
+
+      {/* Learning pathways (bundles) */}
+      {bundles.length > 0 && (
+        <section className="container-lux section">
+          <Reveal>
+            <p className="eyebrow mb-3">Learning pathways</p>
+            <h2 className="text-title">Not sure where to start? Follow a route.</h2>
+            <p className="mt-3 max-w-2xl text-[var(--color-ink-soft)]">Each pathway sequences several courses so you progress in the right order — foundation first, then on to advanced.</p>
+          </Reveal>
+          <div className="mt-10 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+            {bundles.map((b) => (
+              <Reveal key={b.id}>
+                <Link href={`/academy/bundles/${b.slug}`} className="group flex h-full flex-col rounded-[var(--radius-xl)] border border-[var(--color-line)] bg-[var(--color-ink)] p-6 text-[var(--color-porcelain)] transition-colors hover:border-[var(--color-gold)]">
+                  <span className="text-xs uppercase tracking-[0.16em] text-[var(--color-gold-soft)]">{b.courses.length} course{b.courses.length === 1 ? '' : 's'} · pathway</span>
+                  <h3 className="mt-1 font-[family-name:var(--font-display)] text-xl leading-tight">{b.title}</h3>
+                  {b.summary && <p className="mt-2 flex-1 text-sm text-[var(--color-porcelain)]/75">{b.summary}</p>}
                   <div className="mt-4 flex items-center justify-between">
-                    <span className="text-sm font-medium text-[var(--color-ink)]">{formatFee(c.pricePence)}</span>
-                    <span className="text-sm text-[var(--color-gold)] group-hover:underline">View course →</span>
+                    <span className="text-sm font-medium">{b.pricePence != null ? formatFee(b.pricePence) : 'On enquiry'}</span>
+                    <span className="text-sm text-[var(--color-gold-soft)] group-hover:underline">View pathway →</span>
                   </div>
-                  {c.accreditations.length > 0 && <p className="mt-2 text-[0.7rem] uppercase tracking-wide text-[var(--color-stone)]">{c.accreditations.map((a) => ACCREDITATION_LABELS[a] ?? a).join(' · ')}</p>}
                 </Link>
               </Reveal>
             ))}
           </div>
-        )}
-      </section>
+        </section>
+      )}
 
       {/* Funding */}
       <section className="container-lux section">

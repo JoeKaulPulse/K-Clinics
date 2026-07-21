@@ -17,11 +17,16 @@ type Variant = { id: string; name: string; durationMin: number; pricePence: numb
 type Service = { id: string; slug: string; treatmentSlug: string; name: string; category: string; audience: string; variants: Variant[] };
 type ClientInfo = { signedIn: boolean; firstName: string; email: string; gender: string | null; smsReminders: boolean; hasPhone: boolean; welcomeEligible: boolean };
 
-const field = 'w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-porcelain)] px-4 py-3 text-[var(--color-ink)] outline-none transition-colors placeholder:text-[var(--color-stone-soft)] focus:border-[var(--color-gold)]';
+const field = 'w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-porcelain)] px-4 py-3 text-[var(--color-ink)] outline-none transition-colors placeholder:text-[var(--color-stone)] focus:border-[var(--color-gold)]';
 const label = 'mb-1.5 block text-xs uppercase tracking-[0.16em] text-[var(--color-stone)]';
 const money = (p: number) => (p <= 0 ? 'On consultation' : `£${(p / 100).toLocaleString('en-GB', { minimumFractionDigits: p % 100 ? 2 : 0 })}`);
 
 const UPSELL_PCT = 20;
+
+// BLD-853: versioned key for browser resume. Bump the suffix if the persisted
+// shape changes so stale blobs are ignored rather than mis-restored.
+const PROGRESS_KEY = 'kc-booking-progress-v1';
+const PROGRESS_TTL_MS = 7 * 864e5; // only resume selections saved within 7 days
 
 // Gender suitability (inclusive): undisclosed / non-binary / other see everything.
 function suitable(audience: string, gender: string | null): boolean {
@@ -43,7 +48,10 @@ export function BookingFlow({ catalogue, client, preselect = null, preselectDate
   // Deep-link preselect (e.g. from K Vision "Book →"): jump straight to the
   // variant step for that service when the client is already signed in.
   const validPreselect = preselect && catalogue.some((s) => s.id === preselect) ? preselect : '';
-  const [stage, setStage] = useState<Stage>(client.signedIn ? (validPreselect ? 'variant' : 'service') : 'account');
+  // BLD-634: everyone browses treatment → option → time → enhance first; the
+  // account/guest step is deferred to just before payment (highest intent), so
+  // first-time visitors are no longer gated behind sign-up to see the menu.
+  const [stage, setStage] = useState<Stage>(validPreselect ? 'variant' : 'service');
   const [serviceId, setServiceId] = useState(validPreselect);
   const [variantId, setVariantId] = useState('');
   const [sessions, setSessions] = useState(1);
@@ -69,6 +77,9 @@ export function BookingFlow({ catalogue, client, preselect = null, preselectDate
   const [requested, setRequested] = useState(false);
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  // BLD-853: true once selections were restored from a previous visit in this
+  // browser — surfaces the dismissible "picked up where you left off" line.
+  const [resumed, setResumed] = useState(false);
 
   const service = catalogue.find((s) => s.id === serviceId);
   const variant = service?.variants.find((v) => v.id === variantId);
@@ -123,6 +134,48 @@ export function BookingFlow({ catalogue, client, preselect = null, preselectDate
       .then((r) => r.json()).then((j) => setPopularDays(j.days || [])).catch(() => setPopularDays([]));
   }, [stage, service, variant, totalDuration]);
 
+  // BLD-853 — Browser resume. On mount only, and only for an organic entry (no
+  // deep-link preselect, no waitlist date — those carry their own intent),
+  // restore a fresh set of selections from this browser and jump back to the
+  // right stage. Capped at `time` (never account/card/done), and slots are
+  // re-fetched by the time-step effect above. SSR-safe (typeof window guard) and
+  // private-mode-safe (try/catch): a storage failure never breaks the funnel.
+  useEffect(() => {
+    if (validPreselect || preselectDate) return;
+    if (typeof window === 'undefined') return;
+    try {
+      const raw = window.localStorage.getItem(PROGRESS_KEY);
+      if (!raw) return;
+      const s = JSON.parse(raw) as { serviceId?: string; variantId?: string; sessions?: number; addOns?: string[]; date?: string; slot?: string; stage?: Stage; savedAt?: number };
+      if (!s || typeof s.savedAt !== 'number' || Date.now() - s.savedAt > PROGRESS_TTL_MS) return;
+      const svc = s.serviceId ? catalogue.find((x) => x.id === s.serviceId) : null;
+      if (!svc) return; // the saved treatment no longer exists — start clean
+      setServiceId(svc.id);
+      const v = svc.variants.find((x) => x.id === s.variantId);
+      if (v) setVariantId(v.id);
+      if (v && typeof s.sessions === 'number' && (s.sessions === 1 || v.courses.some((c) => c.sessions === s.sessions))) setSessions(s.sessions);
+      if (Array.isArray(s.addOns)) setAddOns(new Set(s.addOns.filter((id) => catalogue.some((x) => x.variants.some((vv) => vv.id === id)))));
+      if (typeof s.date === 'string') setDate(s.date);
+      // Slot is intentionally NOT restored — availability is re-fetched fresh.
+      // Cap the restored stage at `time`; anything at/after it resumes on `time`,
+      // anything earlier (or a variant that vanished) resumes on `variant`.
+      const past = s.stage === 'time' || s.stage === 'upsell' || s.stage === 'card' || s.stage === 'account' || s.stage === 'done';
+      setStage(v && past ? 'time' : 'variant');
+      setResumed(true);
+    } catch { /* private mode / quota / bad JSON — ignore, funnel unaffected */ }
+  }, []);
+
+  // BLD-853 — persist selections whenever they change so the visitor can resume.
+  // Terminal `done` clears the store (a completed booking shouldn't resume).
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    try {
+      if (stage === 'done') { window.localStorage.removeItem(PROGRESS_KEY); return; }
+      if (!serviceId) return; // nothing worth saving until a treatment is chosen
+      window.localStorage.setItem(PROGRESS_KEY, JSON.stringify({ serviceId, variantId, sessions, addOns: [...addOns], date, slot, stage, savedAt: Date.now() }));
+    } catch { /* private mode / quota — ignore */ }
+  }, [serviceId, variantId, sessions, addOns, date, slot, stage]);
+
   // Today is selectable: same-day appointments go through as a request that staff
   // confirm. Future dates book as normal. Clinic-local (UK) date.
   const minDate = useMemo(() => new Date().toLocaleDateString('en-CA'), []);
@@ -166,19 +219,26 @@ export function BookingFlow({ catalogue, client, preselect = null, preselectDate
   }
 
   const steps: { key: Stage; label: string }[] = [
-    ...(authed ? [] : [{ key: 'account' as Stage, label: 'Account' }]),
     { key: 'service', label: 'Treatment' }, { key: 'variant', label: 'Option' },
-    { key: 'time', label: 'Time' }, { key: 'upsell', label: 'Enhance' }, { key: 'card', label: 'Confirm' },
+    { key: 'time', label: 'Time' }, { key: 'upsell', label: 'Enhance' },
+    ...(authed ? [] : [{ key: 'account' as Stage, label: 'Your details' }]),
+    { key: 'card', label: 'Confirm' },
   ];
   const stepIndex = Math.max(0, steps.findIndex((s) => s.key === stage));
 
   if (stage === 'done') return requested
-    ? <RequestReceived firstName={firstName} treatment={service?.name} slot={slot} />
+    ? <RequestReceived firstName={firstName} treatment={service?.name} slot={slot} orderTotal={orderTotal} variantId={variantId} category={service?.category} bookingId={bookingId} />
     : <Done firstName={firstName} treatment={service?.name} slot={slot} orderTotal={orderTotal} variantId={variantId} category={service?.category} bookingId={bookingId} />;
 
   return (
     <div className="rounded-[var(--radius-2xl)] border border-[var(--color-line)] bg-[var(--color-bone)] p-6 md:p-10">
-      <div className="mb-8 flex items-center gap-2">
+      {resumed && (
+        <div className="mb-6 flex items-center justify-between gap-3 rounded-[var(--radius-sm)] bg-[var(--color-porcelain)] px-4 py-2.5 text-sm text-[var(--color-stone)]">
+          <span>Picked up where you left off.</span>
+          <button type="button" onClick={startOver} className="shrink-0 font-medium text-[var(--color-ink)] underline-offset-4 hover:underline">Start over</button>
+        </div>
+      )}
+      <div role="progressbar" aria-valuenow={stepIndex + 1} aria-valuemin={1} aria-valuemax={steps.length} aria-label={`Step ${stepIndex + 1} of ${steps.length}: ${steps[stepIndex]?.label ?? ''}`} className="mb-8 flex items-center gap-2">
         {steps.map((s, i) => (
           <div key={s.key} className="flex flex-1 flex-col gap-2">
             <div className="h-1 overflow-hidden rounded-full bg-[var(--color-sand)]">
@@ -191,12 +251,24 @@ export function BookingFlow({ catalogue, client, preselect = null, preselectDate
 
       <AnimatePresence mode="wait">
         <motion.div key={stage} initial={{ opacity: 0, x: 16 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -16 }} transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}>
-          {stage === 'account' && (
+          {stage === 'account' && (authed ? (
+            // Identity captured — the booking is being created (submitBooking moves
+            // us to the card step). Stays here on a transient error so they can retry.
+            <div className="py-8 text-center">
+              <h3 className="font-[family-name:var(--font-display)] text-2xl">{error ? 'That didn’t go through' : 'Securing your booking…'}</h3>
+              {error && (
+                <div className="mt-5 flex items-center justify-center gap-4">
+                  <button type="button" onClick={() => { setError(''); setStage('upsell'); }} className="text-sm font-medium text-[var(--color-stone)] hover:text-[var(--color-ink)]">← Change time or details</button>
+                  <Button onClick={() => { if (!submitting) submitBooking(); }} variant="gold">Try again <ArrowIcon /></Button>
+                </div>
+              )}
+            </div>
+          ) : (
             <AccountStep
-              onAuthed={(info) => { setAuthed(true); setFirstName(info.firstName); setGender(info.gender); setWelcome(info.welcome); setSmsPref(info.sms); setStage('service'); }}
+              onAuthed={(info) => { setAuthed(true); setFirstName(info.firstName); setGender(info.gender); setWelcome(info.welcome); setSmsPref(info.sms); setError(''); submitBooking(); }}
               setError={setError}
             />
-          )}
+          ))}
 
           {stage === 'service' && (
             <div>
@@ -204,7 +276,7 @@ export function BookingFlow({ catalogue, client, preselect = null, preselectDate
               {welcome && <p className="mt-2 text-sm text-[var(--color-gold-deep)]">✦ Your 15% welcome offer will be applied automatically.</p>}
               <div className="mt-6 grid max-h-[26rem] gap-2 overflow-y-auto pr-1 sm:grid-cols-2">
                 {catalogue.map((s) => (
-                  <button key={s.id} type="button" onClick={() => { setServiceId(s.id); setVariantId(''); setSessions(1); setAddOns(new Set()); setStage('variant'); }}
+                  <button key={s.id} type="button" aria-pressed={serviceId === s.id} onClick={() => { setServiceId(s.id); setVariantId(''); setSessions(1); setAddOns(new Set()); setStage('variant'); }}
                     className={`flex items-center justify-between gap-3 rounded-[var(--radius-md)] border p-4 text-left transition-all ${serviceId === s.id ? 'border-[var(--color-gold)] bg-[var(--color-porcelain)]' : 'border-[var(--color-line)] hover:border-[var(--color-stone-soft)]'}`}>
                     <span>
                       <span className="block font-[family-name:var(--font-display)] text-base leading-tight">{s.name}</span>
@@ -231,7 +303,7 @@ export function BookingFlow({ catalogue, client, preselect = null, preselectDate
                 {service.variants.map((v) => {
                   const pp = primaryPrice(v);
                   return (
-                    <button key={v.id} type="button" onClick={() => { setVariantId(v.id); setSessions(1); }}
+                    <button key={v.id} type="button" aria-pressed={variantId === v.id} onClick={() => { setVariantId(v.id); setSessions(1); }}
                       className={`flex items-center justify-between gap-3 rounded-[var(--radius-md)] border p-4 text-left transition-all ${variantId === v.id ? 'border-[var(--color-gold)] bg-[var(--color-porcelain)]' : 'border-[var(--color-line)] hover:border-[var(--color-stone-soft)]'}`}>
                       <span>
                         <span className="block text-sm font-medium">{v.name}</span>
@@ -249,9 +321,9 @@ export function BookingFlow({ catalogue, client, preselect = null, preselectDate
                 <div className="mt-5">
                   <p className={label}>Single session or a course?</p>
                   <div className="flex flex-wrap gap-2">
-                    <button onClick={() => setSessions(1)} className={`rounded-full border px-4 py-2 text-sm ${sessions === 1 ? 'border-[var(--color-gold)] bg-[var(--color-gold)] text-white' : 'border-[var(--color-line)]'}`}>Single · {money(primaryPrice(variant).price)}</button>
+                    <button onClick={() => setSessions(1)} aria-pressed={sessions === 1} className={`rounded-full border px-4 py-2 text-sm ${sessions === 1 ? 'border-[var(--color-gold)] bg-[var(--color-gold-deep)] text-white' : 'border-[var(--color-line)]'}`}>Single · {money(primaryPrice(variant).price)}</button>
                     {variant.courses.map((c) => (
-                      <button key={c.sessions} onClick={() => setSessions(c.sessions)} className={`rounded-full border px-4 py-2 text-sm ${sessions === c.sessions ? 'border-[var(--color-gold)] bg-[var(--color-gold)] text-white' : 'border-[var(--color-line)]'}`}>
+                      <button key={c.sessions} onClick={() => setSessions(c.sessions)} aria-pressed={sessions === c.sessions} className={`rounded-full border px-4 py-2 text-sm ${sessions === c.sessions ? 'border-[var(--color-gold)] bg-[var(--color-gold-deep)] text-white' : 'border-[var(--color-line)]'}`}>
                         Course of {c.sessions} · {money(c.totalPence)}
                       </button>
                     ))}
@@ -273,7 +345,7 @@ export function BookingFlow({ catalogue, client, preselect = null, preselectDate
                     <p className="mb-1.5 text-xs text-[var(--color-stone)]"><span className="text-[var(--color-gold)]">★</span> Popular days — you’ll likely be seen sooner</p>
                     <div className="flex flex-wrap gap-2">
                       {popularDays.map((d) => (
-                        <button key={d} type="button" onClick={() => setDate(d)} className={`rounded-full border px-3 py-2.5 text-sm transition-all ${date === d ? 'border-[var(--color-gold)] bg-[var(--color-gold)] text-white' : 'border-[var(--color-gold)] bg-[var(--color-gold)]/10 hover:bg-[var(--color-gold)]/20'}`}>
+                        <button key={d} type="button" aria-pressed={date === d} onClick={() => setDate(d)} className={`rounded-full border px-3 py-2.5 text-sm transition-all ${date === d ? 'border-[var(--color-gold)] bg-[var(--color-gold-deep)] text-white' : 'border-[var(--color-gold)] bg-[var(--color-gold)]/10 hover:bg-[var(--color-gold)]/20'}`}>
                           {new Date(d + 'T00:00:00').toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' })}
                         </button>
                       ))}
@@ -304,9 +376,9 @@ export function BookingFlow({ catalogue, client, preselect = null, preselectDate
                             const isPref = preferred.includes(s);
                             const selected = slot === s;
                             return (
-                              <button key={s} type="button" onClick={() => setSlot(s)} title={isPref ? 'Sooner-seen slot — fits neatly with the day’s other appointments' : undefined} className={`relative rounded-full border px-4 py-2.5 text-sm transition-all ${selected ? 'border-[var(--color-gold)] bg-[var(--color-gold)] text-white' : isPref ? 'border-[var(--color-gold)] bg-[var(--color-gold)]/10 hover:bg-[var(--color-gold)]/20' : 'border-[var(--color-line)] hover:border-[var(--color-stone-soft)]'}`}>
+                              <button key={s} type="button" aria-pressed={selected} onClick={() => setSlot(s)} title={isPref ? 'Sooner-seen slot — fits neatly with the day’s other appointments' : undefined} className={`relative rounded-full border px-4 py-2.5 text-sm transition-all ${selected ? 'border-[var(--color-gold)] bg-[var(--color-gold-deep)] text-white' : isPref ? 'border-[var(--color-gold)] bg-[var(--color-gold)]/10 hover:bg-[var(--color-gold)]/20' : 'border-[var(--color-line)] hover:border-[var(--color-stone-soft)]'}`}>
                                 {!selected && isPref && <span aria-hidden className="mr-1 text-[var(--color-gold)]">★</span>}
-                                {new Date(s).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}
+                                {new Date(s).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/London' })}
                               </button>
                             );
                           })}
@@ -316,6 +388,9 @@ export function BookingFlow({ catalogue, client, preselect = null, preselectDate
                     )}
                 </div>
               )}
+              {/* BLD-838: optional email capture — anonymous visitors only (signed-in
+                  clients are already recoverable). Never blocks progress. */}
+              {!client.email && <SaveProgress treatmentSlug={service.treatmentSlug} variantLabel={variant.name} />}
             </div>
           )}
 
@@ -330,13 +405,13 @@ export function BookingFlow({ catalogue, client, preselect = null, preselectDate
                   {recommendations.map(({ service: s, variant: v }) => {
                     const ap = addOnPrice(v); const on = addOns.has(v.id);
                     return (
-                      <button key={v.id} type="button" onClick={() => setAddOns((prev) => { const n = new Set(prev); n.has(v.id) ? n.delete(v.id) : n.add(v.id); return n; })}
+                      <button key={v.id} type="button" aria-pressed={on} onClick={() => setAddOns((prev) => { const n = new Set(prev); n.has(v.id) ? n.delete(v.id) : n.add(v.id); return n; })}
                         className={`flex items-center justify-between gap-3 rounded-[var(--radius-md)] border p-4 text-left transition-all ${on ? 'border-[var(--color-gold)] bg-[var(--color-porcelain)]' : 'border-[var(--color-line)] hover:border-[var(--color-stone-soft)]'}`}>
                         <span>
                           <span className="block text-sm font-medium">{s.name} — {v.name}</span>
                           <span className="text-xs text-[var(--color-stone)]">+{v.durationMin} min · save {money(ap.saved)}</span>
                         </span>
-                        <span className="shrink-0 text-right text-sm font-medium text-[var(--color-gold)]">
+                        <span className="shrink-0 text-right text-sm font-medium text-[var(--color-gold-deep)]">
                           <span className="mr-1 text-xs text-[var(--color-stone)] line-through">{money(v.pricePence)}</span>{money(ap.price)}
                         </span>
                       </button>
@@ -355,8 +430,8 @@ export function BookingFlow({ catalogue, client, preselect = null, preselectDate
                         {g.items.map((it) => {
                           const on = refreshments.has(it.id);
                           return (
-                            <button key={it.id} type="button" onClick={() => setRefreshments((p) => { const n = new Set(p); n.has(it.id) ? n.delete(it.id) : n.add(it.id); return n; })}
-                              className={`rounded-full border px-3.5 py-1.5 text-sm transition-all ${on ? 'border-[var(--color-gold)] bg-[var(--color-gold)] text-white' : 'border-[var(--color-line)] hover:border-[var(--color-stone-soft)]'}`}>
+                            <button key={it.id} type="button" aria-pressed={on} onClick={() => setRefreshments((p) => { const n = new Set(p); n.has(it.id) ? n.delete(it.id) : n.add(it.id); return n; })}
+                              className={`rounded-full border px-3.5 py-1.5 text-sm transition-all ${on ? 'border-[var(--color-gold)] bg-[var(--color-gold-deep)] text-white' : 'border-[var(--color-line)] hover:border-[var(--color-stone-soft)]'}`}>
                               {it.label}
                             </button>
                           );
@@ -373,14 +448,14 @@ export function BookingFlow({ catalogue, client, preselect = null, preselectDate
 
               {/* Promo code */}
               <div className="mt-6">
-                <label className={label}>Promo code (optional)</label>
+                <label htmlFor="bpromo" className={label}>Promo code (optional)</label>
                 <div className="mt-1 flex gap-2">
-                  <input value={promoInput} onChange={(e) => { setPromoInput(e.target.value.toUpperCase()); setPromo(null); }} placeholder="e.g. K10SUMMERREADY" className={`${field} uppercase`} />
+                  <input id="bpromo" value={promoInput} onChange={(e) => { setPromoInput(e.target.value.toUpperCase()); setPromo(null); }} placeholder="e.g. K10SUMMERREADY" className={`${field} uppercase`} />
                   <button type="button" onClick={applyPromo} disabled={promoBusy || !promoInput.trim()} className="shrink-0 rounded-[var(--radius-sm)] border border-[var(--color-line)] px-4 text-sm font-medium hover:border-[var(--color-gold)] disabled:opacity-50">{promoBusy ? '…' : 'Apply'}</button>
                 </div>
                 {promo && (promo.ok
                   ? <p className="mt-1.5 text-sm text-[var(--color-jade,#3f7a5a)]">✓ {promo.label || 'Code applied'} — you save {money(promo.discountPence || 0)} on this treatment.</p>
-                  : <p className="mt-1.5 text-sm text-[var(--color-blush)]">{promo.error || 'That code isn’t valid.'}</p>)}
+                  : <p className="mt-1.5 text-sm text-[var(--color-blush-deep)]">{promo.error || "That code isn’t valid."}</p>)}
               </div>
 
               <div className="mt-4 rounded-[var(--radius-sm)] bg-[var(--color-porcelain)] p-4 text-sm">
@@ -403,16 +478,29 @@ export function BookingFlow({ catalogue, client, preselect = null, preselectDate
             </div>
           )}
 
+          {stage === 'card' && !isDemo && !clientSecret && (
+            <div>
+              <h3 className="font-[family-name:var(--font-display)] text-2xl">Something went wrong</h3>
+              <p className="mt-3 text-sm text-[var(--color-stone)]">We couldn&apos;t load the payment form. Please go back and try again.</p>
+              <button
+                onClick={() => { setStage('upsell'); setError(''); }}
+                className="mt-4 rounded-full border border-[var(--color-line)] px-5 py-2.5 text-sm font-medium transition-colors hover:border-[var(--color-gold)] hover:text-[var(--color-gold-deep)]"
+              >
+                Go back
+              </button>
+            </div>
+          )}
+
           {stage === 'card' && (isDemo || clientSecret) && (
             <div>
               <h3 className="font-[family-name:var(--font-display)] text-2xl">Secure your booking</h3>
               <div className="mt-2 rounded-[var(--radius-sm)] bg-[var(--color-porcelain)] p-4 text-sm text-[var(--color-stone)]">
-                <p><strong className="text-[var(--color-ink)]">{service?.name}</strong> · {slot && new Date(slot).toLocaleString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}</p>
+                <p><strong className="text-[var(--color-ink)]">{service?.name}</strong> · {slot && new Date(slot).toLocaleString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', timeZone: 'Europe/London' })}</p>
                 <p className="mt-1">We securely save your card now — <strong>no payment is taken</strong> until your treatment is delivered. Free cancellation up to 24 hours before; within 24 hours the full fee applies.</p>
               </div>
               <div className="mt-5">
                 {isDemo ? <DemoCard onDone={() => setStage('done')} onError={setError} />
-                  : <ElementsWrapper clientSecret={clientSecret}><CardStep bookingId={bookingId} onDone={() => setStage('done')} onError={setError} /></ElementsWrapper>}
+                  : <ElementsWrapper clientSecret={clientSecret}><CardStep bookingId={bookingId} clientSecret={clientSecret} onDone={() => setStage('done')} onError={setError} /></ElementsWrapper>}
               </div>
             </div>
           )}
@@ -421,22 +509,31 @@ export function BookingFlow({ catalogue, client, preselect = null, preselectDate
 
       {error && <p role="alert" aria-live="assertive" className="mt-4 rounded-[var(--radius-sm)] bg-[var(--color-blush)]/25 px-4 py-3 text-sm text-[var(--color-ink)]">{error}</p>}
 
-      {stage !== 'card' && stage !== 'account' && (
+      {stage !== 'card' && !(stage === 'account' && authed) && (
         <div className="mt-8 flex items-center justify-between gap-4">
           <button type="button" onClick={() => goBack()} className="text-sm font-medium text-[var(--color-stone)] hover:text-[var(--color-ink)]">← Back</button>
           {stage === 'variant' && <Button onClick={() => variant && setStage('time')} variant={variant ? 'gold' : 'outline'} disabled={!variant}>Continue <ArrowIcon /></Button>}
           {stage === 'time' && <Button onClick={() => { if (!slot) return; setStage('upsell'); try { (window as Window & { gtag?: (...a: unknown[]) => void }).gtag?.('event', 'begin_checkout', { currency: 'GBP', value: orderTotal / 100, items: [{ item_id: variantId, item_name: service?.name, item_category: service?.category }] }); } catch { /* analytics best-effort */ } }} variant={slot ? 'gold' : 'outline'} disabled={!slot}>Continue <ArrowIcon /></Button>}
-          {stage === 'upsell' && <Button onClick={() => { if (!aftercareAck) { setError('Please confirm you’ve read and agree to the aftercare instructions.'); return; } if (!ageDeclare) { setError('Please confirm you are 18 or over.'); return; } if (!submitting) submitBooking(); }} variant={aftercareAck && ageDeclare ? 'gold' : 'outline'}>{submitting ? 'Securing…' : isSameDay ? 'Request appointment' : 'Continue to confirm'} <ArrowIcon /></Button>}
-          {stage === 'service' && <span />}
+          {stage === 'upsell' && <Button onClick={() => { if (!aftercareAck) { setError('Please confirm you’ve read and agree to the aftercare instructions.'); return; } if (!ageDeclare) { setError('Please confirm you are 18 or over.'); return; } setError(''); if (!authed) { setStage('account'); return; } if (!submitting) submitBooking(); }} variant={aftercareAck && ageDeclare ? 'gold' : 'outline'}>{submitting ? 'Securing…' : !authed ? 'Continue' : isSameDay ? 'Request appointment' : 'Continue to confirm'} <ArrowIcon /></Button>}
+          {(stage === 'service' || stage === 'account') && <span />}
         </div>
       )}
     </div>
   );
 
   function goBack() {
-    const order: Stage[] = authed ? ['service', 'variant', 'time', 'upsell'] : ['account', 'service', 'variant', 'time', 'upsell'];
+    const order: Stage[] = authed ? ['service', 'variant', 'time', 'upsell'] : ['service', 'variant', 'time', 'upsell', 'account'];
     const i = order.indexOf(stage);
     if (i > 0) setStage(order[i - 1]);
+  }
+
+  // BLD-853 — dismiss the resume and start fresh: clear the saved store and reset
+  // every selection back to the first stage.
+  function startOver() {
+    try { if (typeof window !== 'undefined') window.localStorage.removeItem(PROGRESS_KEY); } catch { /* ignore */ }
+    setResumed(false);
+    setServiceId(''); setVariantId(''); setSessions(1); setAddOns(new Set()); setDate(''); setSlot(''); setSlots([]);
+    setStage('service');
   }
 }
 
@@ -448,7 +545,7 @@ function courseAsVariant(v: Variant, sessions: number): Variant {
 // ── Account step (signup / login) ───────────────────────────────────────────
 function AccountStep({ onAuthed, setError }: { onAuthed: (i: { firstName: string; gender: string | null; welcome: boolean; sms: boolean }) => void; setError: (e: string) => void }) {
   const [mode, setMode] = useState<'signup' | 'login'>('signup');
-  const [f, setF] = useState({ firstName: '', lastName: '', email: '', phone: '', dob: '', password: '', gender: '', marketingOptIn: true, sms: false, consent: false, company: '' });
+  const [f, setF] = useState({ firstName: '', lastName: '', email: '', phone: '', dob: '', password: '', gender: '', marketingOptIn: false, sms: false, consent: false, company: '' });
   const [busy, setBusy] = useState(false);
 
   async function signup() {
@@ -472,7 +569,26 @@ function AccountStep({ onAuthed, setError }: { onAuthed: (i: { firstName: string
       const res = await fetch('/api/account/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email: f.email, password: f.password }) });
       const j = await res.json();
       if (!j.ok) { setError(j.error || 'Invalid email or password.'); setBusy(false); return; }
-      window.location.reload(); // re-render server-side with the signed-in client
+      // Finish in place — a reload here would wipe the treatment/time the visitor
+      // already chose (the account step now comes last, BLD-634).
+      onAuthed({ firstName: j.firstName || '', gender: j.gender ?? null, welcome: false, sms: false });
+    } catch { setError('Network error. Please try again.'); setBusy(false); }
+  }
+  // Guest booking (BLD-550): same identity + consent, no password. Creates a
+  // passwordless account + session so the rest of the flow works; they get an
+  // email to set a password later.
+  async function guest() {
+    const digits = (f.phone.match(/\d/g) || []).length;
+    if (!f.firstName || !f.lastName.trim() || !/\S+@\S+\.\S+/.test(f.email) || digits < 7 || !f.dob || !f.consent) {
+      setError('Please complete all required fields (surname, a valid mobile, date of birth) and accept the terms.'); return;
+    }
+    setBusy(true); setError('');
+    try {
+      const res = await fetch('/api/booking/guest', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ firstName: f.firstName, lastName: f.lastName, email: f.email, phone: f.phone, dob: f.dob, gender: f.gender || undefined, marketingOptIn: f.marketingOptIn, consent: f.consent, locale: 'en', company: f.company }) });
+      const j = await res.json();
+      if (!j.ok) { setError(j.error || 'Could not continue as a guest.'); setBusy(false); return; }
+      if (f.sms && f.phone) { fetch('/api/account/profile', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ smsReminders: true }) }).catch(() => {}); }
+      onAuthed({ firstName: f.firstName, gender: f.gender || null, welcome: !!j.discount?.granted, sms: f.sms && !!f.phone });
     } catch { setError('Network error. Please try again.'); setBusy(false); }
   }
 
@@ -492,7 +608,7 @@ function AccountStep({ onAuthed, setError }: { onAuthed: (i: { firstName: string
           <div className="sm:col-span-2"><label htmlFor="bf-email" className={label}>Email *</label><input id="bf-email" type="email" autoComplete="email" className={field} value={f.email} onChange={(e) => setF({ ...f, email: e.target.value })} /></div>
           <div><label htmlFor="bf-phone" className={label}>Mobile *</label><input id="bf-phone" type="tel" autoComplete="tel" className={field} value={f.phone} onChange={(e) => setF({ ...f, phone: e.target.value })} /></div>
           <div><label htmlFor="bf-dob" className={label}>Date of birth *</label><input id="bf-dob" type="date" autoComplete="bday" className={field} value={f.dob} onChange={(e) => setF({ ...f, dob: e.target.value })} /></div>
-          <div className="sm:col-span-2"><label htmlFor="bf-password" className={label}>Password * (8+)</label><input id="bf-password" type="password" autoComplete="new-password" className={field} value={f.password} onChange={(e) => setF({ ...f, password: e.target.value })} /></div>
+          <div className="sm:col-span-2"><label htmlFor="bf-password" className={label}>Password (8+) <span className="font-normal text-[var(--color-stone)]">— optional; or continue as a guest below</span></label><input id="bf-password" type="password" autoComplete="new-password" className={field} value={f.password} onChange={(e) => setF({ ...f, password: e.target.value })} /></div>
           <div className="sm:col-span-2"><label htmlFor="bf-gender" className={label}>Gender (optional — tailors recommendations)</label>
             <select id="bf-gender" className={field} value={f.gender} onChange={(e) => setF({ ...f, gender: e.target.value })}>
               <option value="">Prefer not to say</option>
@@ -502,7 +618,7 @@ function AccountStep({ onAuthed, setError }: { onAuthed: (i: { firstName: string
           </div>
           <input type="text" tabIndex={-1} autoComplete="off" value={f.company} onChange={(e) => setF({ ...f, company: e.target.value })} className="absolute -left-[9999px] h-0 w-0" aria-hidden />
           <label className="flex items-start gap-3 text-sm text-[var(--color-stone)] sm:col-span-2"><input type="checkbox" checked={f.sms} onChange={(e) => setF({ ...f, sms: e.target.checked })} className="mt-1 h-4 w-4 accent-[var(--color-gold)]" />Text me appointment confirmations &amp; reminders.</label>
-          <label className="flex items-start gap-3 text-sm text-[var(--color-stone)] sm:col-span-2"><input type="checkbox" checked={f.marketingOptIn} onChange={(e) => setF({ ...f, marketingOptIn: e.target.checked })} className="mt-1 h-4 w-4 accent-[var(--color-gold)]" />Keep me updated with offers and skincare tips.</label>
+          <label className="flex items-start gap-3 text-sm text-[var(--color-stone)] sm:col-span-2"><input type="checkbox" checked={f.marketingOptIn} onChange={(e) => setF({ ...f, marketingOptIn: e.target.checked })} className="mt-1 h-4 w-4 accent-[var(--color-gold)]" />Keep me updated with offers and skincare tips. We may also use your contact details, in hashed form, to show you our offers on social media — see our Privacy Policy.</label>
           <label className="flex items-start gap-3 text-sm text-[var(--color-stone)] sm:col-span-2"><input type="checkbox" checked={f.consent} onChange={(e) => setF({ ...f, consent: e.target.checked })} className="mt-1 h-4 w-4 accent-[var(--color-gold)]" />I agree to the booking terms: my card is saved but not charged now; I’ll be charged when the service is delivered; cancellations within 24 hours are charged in full. *</label>
         </div>
       ) : (
@@ -512,25 +628,42 @@ function AccountStep({ onAuthed, setError }: { onAuthed: (i: { firstName: string
         </div>
       )}
 
-      <div className="mt-8 flex items-center justify-between gap-4">
+      <div className="mt-8 flex flex-wrap items-center justify-between gap-4">
         <button type="button" onClick={() => setMode(mode === 'signup' ? 'login' : 'signup')} className="text-sm font-medium text-[var(--color-stone)] hover:text-[var(--color-ink)]">
           {mode === 'signup' ? 'Already have an account? Sign in' : 'New here? Create an account'}
         </button>
-        <Button onClick={() => !busy && (mode === 'signup' ? signup() : login())} variant="gold">{busy ? 'Please wait…' : mode === 'signup' ? 'Create account & continue' : 'Sign in'} <ArrowIcon /></Button>
+        <div className="flex flex-wrap items-center gap-3">
+          {mode === 'signup' && (
+            <button type="button" onClick={() => !busy && guest()} disabled={busy} className="text-sm font-medium text-[var(--color-stone)] underline-offset-4 hover:text-[var(--color-ink)] hover:underline disabled:opacity-50">
+              Continue as a guest
+            </button>
+          )}
+          <Button onClick={() => !busy && (mode === 'signup' ? signup() : login())} variant="gold">{busy ? 'Please wait…' : mode === 'signup' ? 'Create account & continue' : 'Sign in'} <ArrowIcon /></Button>
+        </div>
       </div>
     </div>
   );
 }
 
-function RequestReceived({ firstName, treatment, slot }: { firstName: string; treatment?: string; slot: string }) {
+function RequestReceived({ firstName, treatment, slot, orderTotal, variantId, category, bookingId }: { firstName: string; treatment?: string; slot: string; orderTotal: number; variantId: string; category?: string; bookingId?: string }) {
+  useEffect(() => {
+    // BLD-873: a same-day request is a placed booking pending approval — fire
+    // the same browser conversion Done does, deduped with the server CAPI
+    // Schedule via the booking id (previously this outcome tracked nothing).
+    trackPurchase({
+      valuePence: orderTotal,
+      eventId: bookingId || undefined,
+      detail: { items: [{ item_id: variantId, item_name: treatment, item_category: category }] },
+    });
+  }, []);
   return (
     <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} className="rounded-[var(--radius-2xl)] border border-[var(--color-line)] bg-[var(--color-bone)] p-10 text-center md:p-16">
-      <div className="mx-auto mb-6 grid h-16 w-16 place-items-center rounded-full bg-[var(--color-gold)] text-white">
+      <div className="mx-auto mb-6 grid h-16 w-16 place-items-center rounded-full bg-[var(--color-gold-deep)] text-white">
         <svg viewBox="0 0 24 24" className="h-7 w-7" fill="none"><path d="M12 7v5l3 2M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" /></svg>
       </div>
       <h2 className="text-title">Request received{firstName ? `, ${firstName}` : ''}.</h2>
       <p className="mx-auto mt-4 max-w-md text-[var(--color-stone)]">
-        We&rsquo;ve asked the team to confirm {treatment || 'your appointment'}{slot ? ` for ${new Date(slot).toLocaleString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' })}` : ''}. We&rsquo;ll be in touch shortly. Nothing is charged until we confirm. You can see this request in <a href="/account" className="link-underline font-medium text-[var(--color-ink)]">your account</a>.
+        We&rsquo;ve asked the team to confirm {treatment || 'your appointment'}{slot ? ` for ${new Date(slot).toLocaleString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit', timeZone: 'Europe/London' })}` : ''}. We&rsquo;ll be in touch shortly. Nothing is charged until we confirm. You can see this request in <a href="/account" className="link-underline font-medium text-[var(--color-ink)]">your account</a>.
       </p>
     </motion.div>
   );
@@ -553,7 +686,7 @@ function Done({ firstName, treatment, slot, orderTotal, variantId, category, boo
       </div>
       <h2 className="text-title">You’re booked in{firstName ? `, ${firstName}` : ''}.</h2>
       <p className="mx-auto mt-4 max-w-md text-[var(--color-stone)]">
-        {treatment}{slot ? ` · ${new Date(slot).toLocaleString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' })}` : ''}.
+        {treatment}{slot ? ` · ${new Date(slot).toLocaleString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit', timeZone: 'Europe/London' })}` : ''}.
         {' '}Your card is securely saved — no payment is taken until your treatment is delivered. We’ve emailed your confirmation.
       </p>
       <p className="mx-auto mt-4 max-w-md text-sm text-[var(--color-stone)]">
@@ -563,7 +696,7 @@ function Done({ firstName, treatment, slot, orderTotal, variantId, category, boo
       <div className="mx-auto mt-8 max-w-sm rounded-[var(--radius-lg)] border border-[var(--color-gold)]/40 bg-[var(--color-porcelain)] p-6 text-left">
         <p className="text-sm font-medium text-[var(--color-ink)]">Know someone who'd love KClinics?</p>
         <p className="mt-1 text-sm text-[var(--color-stone)]">Refer a friend — you both receive <strong className="font-semibold text-[var(--color-ink)]">£25 credit</strong> towards any treatment, and your Beauty Points for today&apos;s booking have been credited to <a href="/account" className="link-underline font-medium text-[var(--color-ink)]">your account</a>.</p>
-        <a href="/refer-a-friend" className="mt-4 inline-block rounded-full bg-[var(--color-gold)] px-5 py-2 text-sm font-medium text-white">Share your referral link →</a>
+        <a href="/refer-a-friend" className="mt-4 inline-block rounded-full bg-[var(--color-gold-deep)] px-5 py-2 text-sm font-medium text-white">Share your referral link →</a>
       </div>
     </motion.div>
   );
@@ -577,7 +710,7 @@ function ElementsWrapper({ clientSecret, children }: { clientSecret: string; chi
   );
 }
 
-function CardStep({ bookingId, onDone, onError }: { bookingId: string; onDone: () => void; onError: (e: string) => void }) {
+function CardStep({ bookingId, clientSecret, onDone, onError }: { bookingId: string; clientSecret: string; onDone: () => void; onError: (e: string) => void }) {
   const stripe = useStripe();
   const elements = useElements();
   const [submitting, setSubmitting] = useState(false);
@@ -590,7 +723,8 @@ function CardStep({ bookingId, onDone, onError }: { bookingId: string; onDone: (
     // returns the same success), so a transient failure here is safe to surface
     // for retry without double-booking — and must not leave the button hung.
     try {
-      const res = await fetch('/api/booking/confirm', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ bookingId }) });
+      // BLD-700: the client secret proves this browser ran the Elements flow.
+      const res = await fetch('/api/booking/confirm', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ bookingId, clientSecret }) });
       const j = await res.json().catch(() => null);
       if (j?.ok) { onDone(); return; }
       onError(j?.error || 'Your card was saved, but we couldn’t finish confirming. Please tap Confirm again — you won’t be booked or charged twice.');
@@ -603,7 +737,46 @@ function CardStep({ bookingId, onDone, onError }: { bookingId: string; onDone: (
   return (
     <div>
       <PaymentElement />
-      <div className="mt-6 flex justify-end"><Button onClick={submit} variant="gold" size="lg">{submitting ? 'Confirming…' : 'Confirm booking'} <ArrowIcon /></Button></div>
+      <div className="mt-6 flex justify-end"><Button onClick={submit} disabled={submitting} variant="gold" size="lg">{submitting ? 'Confirming…' : 'Confirm booking'} <ArrowIcon /></Button></div>
+    </div>
+  );
+}
+
+// BLD-838 — optional "email me my selection" capture on the time step. Gives a
+// follow-up route for anonymous visitors who drop off before the deferred
+// account step (BLD-634). Fire-and-forget: it never blocks funnel progress and
+// never surfaces a blocking error — the capture is a bonus, not a gate. This is
+// a specific-treatment follow-up under legitimate interest, not a marketing
+// opt-in (see app/api/booking/intent).
+function SaveProgress({ treatmentSlug, variantLabel }: { treatmentSlug: string; variantLabel?: string }) {
+  const [email, setEmail] = useState('');
+  const [status, setStatus] = useState<'' | 'saving' | 'saved'>('');
+  const [company, setCompany] = useState(''); // honeypot
+  const valid = /\S+@\S+\.\S+/.test(email.trim());
+
+  async function save() {
+    if (!valid || status === 'saving') return;
+    setStatus('saving');
+    try {
+      await fetch('/api/booking/intent', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: email.trim(), treatmentSlug, variantLabel, company }),
+      });
+    } catch { /* never block or alarm — the capture is a bonus, not a gate */ }
+    setStatus('saved');
+  }
+
+  return (
+    <div className="mt-8 rounded-[var(--radius-md)] border border-[var(--color-line)] bg-[var(--color-bone)]/50 p-4">
+      <label htmlFor="bintent" className={label}>Email me my selection so I can finish later (optional)</label>
+      <div className="mt-1 flex flex-wrap items-center gap-2">
+        <input id="bintent" type="email" autoComplete="email" value={email} onChange={(e) => { setEmail(e.target.value); if (status === 'saved') setStatus(''); }} onBlur={save} placeholder="you@email.com" aria-label="Email me my selection" className="min-w-0 flex-1 rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-3 py-2 text-sm outline-none focus:border-[var(--color-gold)]" />
+        <input type="text" tabIndex={-1} autoComplete="off" value={company} onChange={(e) => setCompany(e.target.value)} className="absolute -left-[9999px] h-0 w-0" aria-hidden />
+        <button type="button" onClick={save} disabled={status === 'saving' || !valid} className="shrink-0 rounded-full border border-[var(--color-line)] px-4 py-2 text-sm font-medium hover:border-[var(--color-gold)] disabled:opacity-50">{status === 'saving' ? '…' : 'Save'}</button>
+      </div>
+      {status === 'saved'
+        ? <p className="mt-1.5 text-sm text-[var(--color-jade,#3f7a5a)]">Saved ✓ We’ll email you a link to pick up where you left off — for this treatment only, no marketing.</p>
+        : <p className="mt-1.5 text-xs text-[var(--color-stone)]">We’ll only use this to send you back to this selection — you’re not signed up to anything.</p>}
     </div>
   );
 }
@@ -637,9 +810,9 @@ function WaitlistCTA({ treatmentSlug, treatmentTitle, date, client }: { treatmen
       <div className="mt-2 flex flex-wrap items-center gap-2">
         <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Your name" aria-label="Your name" className={inp} />
         <input value={email} onChange={(e) => setEmail(e.target.value)} type="email" placeholder="Email" aria-label="Email" className={inp} />
-        <button type="button" onClick={join} disabled={busy} className="rounded-full bg-[var(--color-gold)] px-4 py-2 text-sm font-medium text-white disabled:opacity-50">{busy ? 'Joining…' : 'Join waitlist'}</button>
+        <button type="button" onClick={join} disabled={busy} className="rounded-full bg-[var(--color-gold-deep)] px-4 py-2 text-sm font-medium text-white disabled:opacity-50">{busy ? 'Joining…' : 'Join waitlist'}</button>
       </div>
-      {err && <p className="mt-1 text-xs text-[var(--color-blush-deep)]">{err}</p>}
+      {err && <p role="alert" aria-live="assertive" className="mt-1 text-xs text-[var(--color-blush-deep)]">{err}</p>}
     </div>
   );
 }

@@ -41,11 +41,19 @@ export async function runClinicalEncryptionBackfill(): Promise<{ encrypted: Reco
   const bookings = await db.booking.findMany({ where: { allergyNote: { not: null } }, select: { id: true, allergyNote: true } });
   await backfill('booking.allergyNote', bookings.map((b) => ({ id: b.id, val: b.allergyNote })), (id, enc) => db.booking.update({ where: { id }, data: { allergyNote: enc } }));
 
+  // ConsultationNote.body (BLD-913) — staff team notes, plaintext until then.
+  const cNotes = await db.consultationNote.findMany({ select: { id: true, body: true } });
+  await backfill('consultationNote.body', cNotes.map((n) => ({ id: n.id, val: n.body })), (id, enc) => db.consultationNote.update({ where: { id }, data: { body: enc } }));
+
   const total = Object.values(counts).reduce((s, n) => s + n, 0);
   return { encrypted: counts, total };
 }
 
-const DONE_KEY = 'clinical_backfill_complete';
+// BLD-913: key bumped to v2 so the sweep re-runs for the newly-encrypted
+// ConsultationNote.body — the v1 flag was already set in production, which
+// would have skipped the new field forever. Old fields no-op (isPlaintext
+// is false for their existing ciphertext), so the re-scan is one cheap pass.
+const DONE_KEY = 'clinical_backfill_complete_v2';
 
 /**
  * Self-healing daily pass (BLD-248): runs the backfill automatically until one

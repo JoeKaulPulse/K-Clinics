@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { AnimatePresence, motion } from 'motion/react';
 
@@ -35,11 +35,15 @@ function save(v: ConsentValue) {
   window.dispatchEvent(new CustomEvent('kc-consent', { detail: v }));
 }
 
+const FOCUSABLE = 'button:not([disabled]), [href], input:not([disabled]), [tabindex]:not([tabindex="-1"])';
+
 export function CookieConsent() {
   const [show, setShow] = useState(false);
   const [customise, setCustomise] = useState(false);
   const [analytics, setAnalytics] = useState(false);
   const [marketing, setMarketing] = useState(false);
+  const dialogRef = useRef<HTMLDivElement>(null);
+  const prevFocusRef = useRef<HTMLElement | null>(null);
 
   useEffect(() => {
     if (!getConsent()) setShow(true);
@@ -48,6 +52,23 @@ export function CookieConsent() {
     window.addEventListener('kc-open-consent', open);
     return () => window.removeEventListener('kc-open-consent', open);
   }, []);
+
+  // Auto-focus first button on open; restore prior focus on close. The banner
+  // is deliberately NON-modal (PRJ-939.11): it has no backdrop and the page
+  // behind stays scrollable and clickable, so it must not claim aria-modal or
+  // trap Tab — keyboard users can browse the page and come back to it, exactly
+  // as mouse users can.
+  useEffect(() => {
+    if (show) {
+      prevFocusRef.current = document.activeElement as HTMLElement;
+      requestAnimationFrame(() => {
+        dialogRef.current?.querySelector<HTMLElement>(FOCUSABLE)?.focus();
+      });
+    } else if (prevFocusRef.current) {
+      prevFocusRef.current.focus();
+      prevFocusRef.current = null;
+    }
+  }, [show]);
 
   function decide(a: boolean, m: boolean) {
     save({ necessary: true, analytics: a, marketing: m, ts: Date.now() });
@@ -58,17 +79,18 @@ export function CookieConsent() {
     <AnimatePresence>
       {show && (
         <motion.div
+          ref={dialogRef}
           initial={{ y: 24, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
           exit={{ y: 24, opacity: 0 }}
           transition={{ duration: 0.45, ease: [0.16, 1, 0.3, 1] }}
-          role="dialog"
+          role="region"
           aria-label="Cookie consent"
-          className="fixed inset-x-3 bottom-3 z-[80] mx-auto max-w-2xl rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-5 shadow-[var(--shadow-lift)] md:inset-x-auto md:left-6 md:bottom-6 md:p-6"
+          className="fixed inset-x-3 bottom-3 z-[80] mx-auto max-h-[38vh] max-w-2xl overflow-y-auto rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-5 shadow-[var(--shadow-lift)] md:inset-x-auto md:left-6 md:bottom-6 md:max-h-none md:overflow-visible md:p-6"
         >
           <p className="font-[family-name:var(--font-display)] text-lg">Your privacy, your choice</p>
           <p className="mt-2 text-sm leading-relaxed text-[var(--color-stone)]">
-            We use essential cookies to make our site work. With your consent, we’d also like to use analytics and
+            We use essential cookies to make our site work. With your consent, we&apos;d also like to use analytics and
             marketing cookies to improve your experience. You can change your mind anytime. See our{' '}
             <Link href="/info/privacy-policy" className="underline">Privacy Policy</Link>.
           </p>
@@ -82,7 +104,7 @@ export function CookieConsent() {
           )}
 
           <div className="mt-4 flex flex-wrap gap-2.5">
-            <button onClick={() => decide(true, true)} className="rounded-full bg-[var(--color-gold)] px-5 py-2.5 text-sm font-medium text-white hover:bg-[var(--color-ink)]">
+            <button onClick={() => decide(true, true)} className="rounded-full bg-[var(--color-gold-deep)] px-5 py-2.5 text-sm font-medium text-white hover:bg-[var(--color-ink)]">
               Accept all
             </button>
             <button onClick={() => decide(false, false)} className="rounded-full border border-[var(--color-line)] px-5 py-2.5 text-sm font-medium hover:bg-[var(--color-bone)]">

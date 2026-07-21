@@ -82,7 +82,7 @@ export function AccountMenu({ light }: { light: boolean }) {
               {i.label}
             </Link>
           ))}
-          <button onClick={signOut} role="menuitem" className="mt-1 block w-full border-t border-[var(--color-line)] px-4 py-2 text-left text-sm text-[var(--color-stone)] hover:bg-[var(--color-bone)] hover:text-[var(--color-blush)]">
+          <button onClick={signOut} role="menuitem" className="mt-1 block w-full border-t border-[var(--color-line)] px-4 py-2 text-left text-sm text-[var(--color-stone)] hover:bg-[var(--color-bone)] hover:text-[var(--color-blush-deep)]">
             Sign out
           </button>
         </div>

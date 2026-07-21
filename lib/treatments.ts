@@ -3,6 +3,7 @@
 // app/[slug]/page.tsx. Copy is written to read as "ultra-premium clinic".
 // ─────────────────────────────────────────────────────────────────────────────
 import { importedTreatments } from './treatments-imported';
+import { POM_BRAND_SLUGS } from './compliance';
 
 export type Faq = { q: string; a: string };
 export type Benefit = { title: string; text: string };
@@ -41,6 +42,10 @@ export type Treatment = {
    *  is closed (e.g. the machine isn't in yet — "coming soon"). The page shows an
    *  enquiry CTA instead of Book, and the booking API rejects it. */
   onRequest?: boolean;
+  /** CSS object-position for the card photo (e.g. "70% 50%"), for source images
+   *  whose subject isn't centred and gets cropped onto plain background at the
+   *  card's aspect ratio. Defaults to centred. */
+  imagePosition?: string;
 };
 
 /** Audiences to hide from a client's *recommendations* given their gender.
@@ -165,7 +170,7 @@ export const treatments: Treatment[] = [
     faqs: [
       { q: 'Can you shape my beard line without removing the beard?', a: 'Absolutely — we define the neck and cheek lines precisely while preserving the beard you want to keep.' },
       { q: 'Is back and shoulder hair treatable in one go?', a: 'Yes. These larger areas are typically completed within a single, efficient appointment.' },
-      { q: 'Will it stop ingrown hairs?', a: 'Reducing the hair at the follicle dramatically reduces — and often eliminates — ingrown hairs and razor irritation.' },
+      { q: 'Will it stop ingrown hairs?', a: 'Reducing the hair at the follicle dramatically reduces ingrown hairs and razor irritation.' },
     ],
     facts: [
       { label: 'Course', value: '6–8 sessions' },
@@ -230,7 +235,7 @@ export const treatments: Treatment[] = [
       { title: 'Deep, structural lift', text: 'Targets the SMAS support layer for genuine lifting — not just surface tightening.' },
       { title: 'Jawline & neck', text: 'Beautifully redefines the jaw, jowl and neck contour.' },
       { title: 'Collagen renewal', text: 'Triggers months of natural collagen production for results that build.' },
-      { title: 'Zero downtime', text: 'Return to life immediately — the lift reveals itself gradually.' },
+      { title: 'Minimal downtime', text: 'Return to life immediately — the lift reveals itself gradually.' },
     ],
     process: [
       { title: 'Mapping', text: 'We map treatment depths to your facial anatomy and goals.' },
@@ -249,6 +254,9 @@ export const treatments: Treatment[] = [
     ],
     related: ['rf-lifting', 'cosmetic-injections', 'hydraglow-facial'],
     gradient: ['#a98a6d', '#2a2420'],
+    // BLD-834: the model is framed right-of-centre in the source photo — a
+    // centred crop clips her face and shows plain background on the right.
+    imagePosition: '72% 50%',
   },
   {
     slug: 'rf-lifting',
@@ -303,13 +311,13 @@ export const treatments: Treatment[] = [
       'A multi-step ritual that cleanses, gently resurfaces, extracts and then floods the skin with serums of antioxidants, peptides and hyaluronic acid. Non-invasive and deeply restorative, the HydraGlow leaves skin plump, dewy and radiant — the perfect reset before an event, or a monthly indulgence that keeps skin in its best form. Choose from three tiers — Signature Express, Full Face Deluxe and Platinum — each adding deeper resurfacing and more targeted boosters.',
     benefits: [
       { title: 'Instant hydration', text: 'Skin drinks in serums for a plump, dewy, luminous finish.' },
-      { title: 'Painless extraction', text: 'Gentle vortex suction clears congestion without the pinch.' },
+      { title: 'Comfortable extraction', text: 'Gentle vortex suction helps clear congestion.' },
       { title: 'Tailored serums', text: 'Boosters chosen for your concern — brightening, calming or firming.' },
       { title: 'Every skin type', text: 'Gentle enough for sensitive skin, effective for all.' },
     ],
     process: [
       { title: 'Cleanse & resurface', text: 'Lift away dead cells to reveal fresh skin beneath.' },
-      { title: 'Extract & hydrate', text: 'Painless extraction paired with deep serum infusion.' },
+      { title: 'Extract & hydrate', text: 'Gentle extraction paired with deep serum infusion.' },
       { title: 'Infuse & glow', text: 'Antioxidants and hyaluronic acid seal in the luminosity.' },
     ],
     faqs: [
@@ -324,6 +332,9 @@ export const treatments: Treatment[] = [
     ],
     related: ['face-treatments', 'cosmetic-injections'],
     gradient: ['#cdb4a3', '#c2a589'],
+    // BLD-834: the model is framed left-of-centre in the source photo — a
+    // centred crop leaves too much plain background on the right.
+    imagePosition: '42% 50%',
   },
   {
     slug: 'face-treatments',
@@ -379,7 +390,7 @@ export const treatments: Treatment[] = [
     benefits: [
       { title: 'Smooths cellulite', text: 'Targets the structure of cellulite for visibly smoother skin.' },
       { title: 'Firms & tightens', text: 'Collagen stimulation tightens lax skin across the body.' },
-      { title: 'Drains & detoxifies', text: 'Improves lymphatic drainage and microcirculation.' },
+      { title: 'Drains & de-puffs', text: 'Supports lymphatic drainage and microcirculation.' },
       { title: 'Defines contours', text: 'Sculpts more harmonious shape across abdomen, thighs and arms.' },
     ],
     process: [
@@ -410,7 +421,7 @@ export const treatments: Treatment[] = [
     metaTitle: 'Anti-Wrinkle & Dermal Filler Injections London | KClinics',
     metaDescription:
       'Expert cosmetic injectables in Islington, London — anti-wrinkle treatment, dermal filler and fat-dissolving — delivered with a natural, refined aesthetic at KClinics.',
-    keywords: ['Botox London', 'dermal filler London', 'anti-wrinkle injections Islington', 'lip filler London'],
+    keywords: ['anti-wrinkle injections London', 'dermal filler London', 'anti-wrinkle injections Islington', 'lip filler London'],
     eyebrow: 'Body & Injectables',
     intro:
       'Injectables, done with restraint and artistry. Anti-wrinkle treatment softens the lines of expression; dermal filler restores volume and sculpts subtle definition; targeted fat-dissolving refines the profile. Our clinicians work to a single principle — enhancing your features so the result is simply a rested, refreshed version of you.',
@@ -573,7 +584,7 @@ export const treatments: Treatment[] = [
     ],
     process: [
       { title: 'Design', text: 'We plan shape and shade to complement your smile.' },
-      { title: 'Sculpting', text: 'Composite is layered, shaped and cured directly on the tooth.' },
+      { title: 'Sculpting', text: 'Composite is layered, shaped and hardened directly on the tooth.' },
       { title: 'Polish', text: 'A final polish brings a natural, light-catching finish.' },
     ],
     faqs: [
@@ -777,7 +788,10 @@ export const treatments: Treatment[] = [
     gradient: ['#c2a589', '#7b6a5d'],
   },
   // Treatments imported from the existing kclinics.co.uk site (real copy).
-  ...importedTreatments,
+  // POM-brand pages are filtered out (see lib/compliance.ts) so the public
+  // catalogue, /[slug] pages and sitemap never advertise a prescription-only
+  // medicine by brand.
+  ...importedTreatments.filter((t) => !POM_BRAND_SLUGS.has(t.slug)),
 ];
 
 // ── Booking config ───────────────────────────────────────────────────────────
@@ -819,9 +833,7 @@ export const bookingConfig: Record<string, BookingCfg> = {
   'prp-therapy':                 { durationMin: 60 },
   'chemical-peels':              { durationMin: 30 },
   'microdermabrasion':           { durationMin: 45 },
-  'botox':                       { durationMin: 30 },
   'dermal-fillers':              { durationMin: 45 },
-  'kybella':                     { durationMin: 45 },
   'anti-cellulite-programs':     { durationMin: 60 },
   'vacuum-massage':              { durationMin: 50 },
   'hip-dip-filler':              { durationMin: 45 },

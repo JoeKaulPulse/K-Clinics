@@ -90,8 +90,8 @@ export function PracticeRunner({ courses }: { courses: Course[] }) {
             ))}
           </div>
         </div>
-        {err && <p className="mt-4 text-sm text-[var(--color-blush)]">{err}</p>}
-        <button onClick={start} disabled={busy || !courseId} className="mt-6 rounded-full bg-[var(--color-gold)] px-7 py-3 text-sm font-semibold text-white hover:bg-[var(--color-ink)] disabled:opacity-60">{busy ? 'Loading…' : 'Start practice →'}</button>
+        {err && <p role="alert" aria-live="assertive" className="mt-4 text-sm text-[var(--color-blush-deep)]">{err}</p>}
+        <button onClick={start} disabled={busy || !courseId} className="mt-6 rounded-full bg-[var(--color-gold-deep)] px-7 py-3 text-sm font-semibold text-white hover:bg-[var(--color-ink)] disabled:opacity-60">{busy ? 'Loading…' : 'Start practice →'}</button>
       </div>
     );
   }
@@ -106,7 +106,7 @@ export function PracticeRunner({ courses }: { courses: Course[] }) {
           <p className="mt-1 text-sm text-[var(--color-stone)]">You got {correctCount} of {questions.length} right.</p>
           <div className="mt-6 flex justify-center gap-3">
             <button onClick={() => setPhase('pick')} className="rounded-full border border-[var(--color-line)] px-6 py-2.5 text-sm font-medium hover:border-[var(--color-gold)]">Choose another set</button>
-            <button onClick={start} className="rounded-full bg-[var(--color-gold)] px-6 py-2.5 text-sm font-semibold text-white hover:bg-[var(--color-ink)]">Practise again</button>
+            <button onClick={start} className="rounded-full bg-[var(--color-gold-deep)] px-6 py-2.5 text-sm font-semibold text-white hover:bg-[var(--color-ink)]">Practise again</button>
           </div>
         </div>
         <AnimatePresence>
@@ -138,7 +138,7 @@ export function PracticeRunner({ courses }: { courses: Course[] }) {
             <button key={oi} onClick={() => toggle(oi)} disabled={!!checked} className={`flex w-full items-center gap-3 rounded-[var(--radius-md)] border px-4 py-3 text-left text-sm transition-colors ${cls}`}>
               <span className={`grid h-5 w-5 shrink-0 place-items-center ${multi ? 'rounded-[4px]' : 'rounded-full'} border text-[0.7rem] ${chosen ? 'border-[var(--color-ink)] bg-[var(--color-ink)] text-white' : 'border-[var(--color-stone-soft)]'}`}>{chosen ? '✓' : ''}</span>
               <span className="flex-1">{opt}</span>
-              {checked && isC && <span className="text-xs font-medium text-[var(--color-gold)]">✓</span>}
+              {checked && isC && <span className="text-xs font-medium text-[var(--color-gold-deep)]">✓</span>}
             </button>
           );
         })}
@@ -146,7 +146,7 @@ export function PracticeRunner({ courses }: { courses: Course[] }) {
 
       {q.tip && !checked && (
         <div className="mt-3">
-          {showTip ? <p className="rounded-[var(--radius-md)] border border-[var(--color-gold)]/25 bg-[var(--color-gold)]/8 px-4 py-2.5 text-sm text-[var(--color-ink-soft)]">💡 {q.tip}</p> : <button onClick={() => setShowTip(true)} className="text-sm font-medium text-[var(--color-gold)] hover:underline">Need a hint?</button>}
+          {showTip ? <p className="rounded-[var(--radius-md)] border border-[var(--color-gold)]/25 bg-[var(--color-gold)]/8 px-4 py-2.5 text-sm text-[var(--color-ink-soft)]">💡 {q.tip}</p> : <button onClick={() => setShowTip(true)} className="text-sm font-medium text-[var(--color-gold-deep)] hover:underline">Need a hint?</button>}
         </div>
       )}
 
@@ -159,7 +159,7 @@ export function PracticeRunner({ courses }: { courses: Course[] }) {
 
       <div className="mt-6 flex justify-end">
         {checked ? (
-          <button onClick={next} disabled={busy} className="rounded-full bg-[var(--color-gold)] px-7 py-2.5 text-sm font-semibold text-white hover:bg-[var(--color-ink)] disabled:opacity-60">{busy ? '…' : last ? 'See score →' : 'Next →'}</button>
+          <button onClick={next} disabled={busy} className="rounded-full bg-[var(--color-gold-deep)] px-7 py-2.5 text-sm font-semibold text-white hover:bg-[var(--color-ink)] disabled:opacity-60">{busy ? '…' : last ? 'See score →' : 'Next →'}</button>
         ) : (
           <button onClick={check} disabled={!selected.length || busy} className="rounded-full bg-[var(--color-ink)] px-7 py-2.5 text-sm font-semibold text-[var(--color-porcelain)] disabled:opacity-50">{busy ? 'Checking…' : 'Check'}</button>
         )}

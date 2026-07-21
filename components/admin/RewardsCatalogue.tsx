@@ -46,7 +46,7 @@ export function RewardsCatalogue({
       <div className="flex flex-wrap items-end justify-between gap-3">
         <h2 className="font-[family-name:var(--font-display)] text-xl">{L('Rewards catalogue', 'Каталог винагород')}</h2>
         <p className="text-sm text-[var(--color-stone)]">
-          {L('Your balance', 'Ваш баланс')}: <span className="font-medium text-[var(--color-gold)]">{balance} {L('pts', 'балів')}</span>
+          {L('Your balance', 'Ваш баланс')}: <span className="font-medium text-[var(--color-gold-deep)]">{balance} {L('pts', 'балів')}</span>
         </p>
       </div>
       {msg && <p className="mt-2 text-sm text-rose-600">{msg}</p>}
@@ -68,8 +68,8 @@ export function RewardsCatalogue({
                   </div>
                 </div>
                 <div className="mt-4 flex items-center justify-between gap-2 pt-3">
-                  <span className="font-[family-name:var(--font-display)] text-lg text-[var(--color-gold)]">{r.costPoints} <span className="text-xs text-[var(--color-stone)]">{L('pts', 'балів')}</span></span>
-                  {r.stock != null && <span className="text-[0.7rem] text-[var(--color-stone-soft)]">{out ? L('Out of stock', 'Немає в наявності') : `${r.stock} ${L('left', 'залишилось')}`}</span>}
+                  <span className="font-[family-name:var(--font-display)] text-lg text-[var(--color-gold-deep)]">{r.costPoints} <span className="text-xs text-[var(--color-stone)]">{L('pts', 'балів')}</span></span>
+                  {r.stock != null && <span className="text-[0.7rem] text-[var(--color-stone)]">{out ? L('Out of stock', 'Немає в наявності') : `${r.stock} ${L('left', 'залишилось')}`}</span>}
                 </div>
                 <button
                   onClick={() => redeem(r.id)}

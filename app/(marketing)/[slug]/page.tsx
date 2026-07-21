@@ -7,7 +7,7 @@ import { getPublishedPage, pageMetaFromSections } from '@/lib/pages';
 import { TreatmentTemplate } from '@/components/treatment/TreatmentTemplate';
 import { SectionRenderer } from '@/components/cms/SectionRenderer';
 import { pageMeta, JsonLd, serviceLd, faqLd, breadcrumbLd } from '@/lib/seo';
-import { site } from '@/lib/site';
+import { ViewItemTracker } from '@/components/marketing/ViewItemTracker';
 
 // Single-segment routes: treatment pages (static) + any admin-built CMS page
 // published at /<slug>. Folder routes (/about, /contact, …) take precedence.
@@ -23,7 +23,9 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   const { slug } = await params;
   const t = await getMergedTreatment(slug);
   if (t) {
-    return pageMeta({ title: t.metaTitle, description: t.metaDescription, path: `/${t.slug}`, keywords: t.keywords, ownOgImage: true, noindex: t.category === 'dentistry' && !site.dentistryLive });
+    const { getSiteConfig } = await import('@/lib/site-config');
+    const { dentistryLive } = await getSiteConfig(); // BLD-515: live, admin-toggleable flag
+    return pageMeta({ title: t.metaTitle, description: t.metaDescription, path: `/${t.slug}`, keywords: t.keywords, ownOgImage: true, noindex: t.category === 'dentistry' && !dentistryLive });
   }
   const cms = await getPublishedPage(`/${slug}`);
   if (cms) { const m = pageMetaFromSections(cms); return pageMeta({ title: m.title || slug, description: m.description, path: `/${slug}` }); }
@@ -47,6 +49,7 @@ export default async function TreatmentPage({ params }: { params: Promise<{ slug
             breadcrumbLd([{ name: 'Home', path: '/' }, { name: categoryLabel, path: categoryHref }, { name: t.title, path: `/${t.slug}` }]),
           ]}
         />
+        <ViewItemTracker id={t.slug} name={t.title} category={t.category} valuePence={fromPence ?? 0} />
         <TreatmentTemplate t={t} />
       </>
     );

@@ -1,8 +1,9 @@
 import 'server-only';
 import { db } from '@/lib/db';
 import { site } from '@/lib/site';
+import { CLINIC_TZ } from '@/lib/clinic-time';
 
-const clinicEmail = () => process.env.CLINIC_NOTIFY_EMAIL || 'info@kclinics.co.uk';
+const clinicEmail = () => process.env.CLINIC_NOTIFY_EMAIL || 'support@kclinics.co.uk';
 const baseUrl = () => process.env.NEXT_PUBLIC_SITE_URL || site.url;
 const money = (p: number) => (p > 0 ? `£${(p / 100).toLocaleString('en-GB', { minimumFractionDigits: p % 100 ? 2 : 0 })}` : 'On consultation');
 
@@ -42,7 +43,7 @@ export async function notifyAftercare(bookingId: string): Promise<void> {
 /**
  * Send booking-confirmation comms once a booking is CONFIRMED: client email
  * (with line items, forms prompt and an arrive-early note for first visits),
- * a clinic notification to info@kclinics.co.uk, and an SMS confirmation when the
+ * a clinic notification to support@kclinics.co.uk, and an SMS confirmation when the
  * client has opted into text reminders. Safe to call once per confirmation.
  *
  * Guaranteed never to throw: the booking is already CONFIRMED before this runs,
@@ -101,7 +102,7 @@ async function sendBookingConfirmation(bookingId: string): Promise<void> {
     const { recommendedNext, formatInterval } = await import('@/lib/treatment-intervals');
     const completed = await db.booking.count({ where: { clientId: c.id, treatmentSlug: booking.treatmentSlug, status: 'COMPLETED' } });
     const rec = recommendedNext(booking.treatmentSlug, completed + 1, booking.startAt);
-    if (rec) nextNote = `For best results, we recommend your next ${booking.treatmentTitle} session ${formatInterval(rec.weeks)} after this one — around ${rec.date.toLocaleDateString('en-GB', { day: 'numeric', month: 'long' })}.`;
+    if (rec) nextNote = `For best results, we recommend your next ${booking.treatmentTitle} session ${formatInterval(rec.weeks)} after this one — around ${rec.date.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', timeZone: CLINIC_TZ })}.`;
   } catch { /* recommendation is best-effort */ }
 
   const { sendEmail, tmplBookingConfirmation, tmplBookingNotify, bookingIcs } = await import('@/lib/email');

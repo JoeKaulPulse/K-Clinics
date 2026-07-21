@@ -4,7 +4,7 @@ const ICON: Record<string, string> = { ok: '✓', needed: '!', na: '–' };
 const CLS: Record<string, string> = {
   ok: 'bg-[var(--color-jade)]/15 text-[var(--color-jade)]',
   needed: 'bg-amber-100 text-amber-800',
-  na: 'bg-[var(--color-bone)] text-[var(--color-stone-soft)]',
+  na: 'bg-[var(--color-bone)] text-[var(--color-stone)]',
 };
 
 // Proactive pre-treatment checklist. Green when ready; amber items must be
@@ -22,7 +22,7 @@ export function ReadinessPanel({ items, ready, neededCount, started }: { items: 
         {items.map((it) => (
           <li key={it.key} className="flex items-start gap-2.5 text-sm">
             <span className={`mt-0.5 grid h-5 w-5 shrink-0 place-items-center rounded-full text-[0.7rem] font-bold ${CLS[it.status]}`}>{ICON[it.status]}</span>
-            <span className={it.status === 'na' ? 'text-[var(--color-stone-soft)]' : 'text-[var(--color-ink)]'}>
+            <span className={it.status === 'na' ? 'text-[var(--color-stone)]' : 'text-[var(--color-ink)]'}>
               {it.label}
               {it.status === 'needed' && it.detail && <span className="block text-xs font-normal text-amber-800">{it.detail}</span>}
             </span>

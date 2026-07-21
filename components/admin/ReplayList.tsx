@@ -14,16 +14,16 @@ export function ReplayList({ rows }: { rows: ReplayRow[] }) {
       {rows.length === 0 ? (
         <p className="text-sm text-[var(--color-stone)]">No replays captured yet.</p>
       ) : (
-        <div className="overflow-hidden rounded-[var(--radius-md)] border border-[var(--color-line)]">
+        <div className="overflow-x-auto rounded-[var(--radius-md)] border border-[var(--color-line)]">
           <table className="w-full text-sm">
-            <thead><tr className="bg-[var(--color-bone)] text-left text-xs uppercase tracking-wide text-[var(--color-stone-soft)]"><th scope="col" className="p-2">When</th><th scope="col" className="p-2">Entry</th><th scope="col" className="p-2">Device</th><th scope="col" className="p-2">Length</th><th scope="col" className="p-2"></th></tr></thead>
+            <thead><tr className="bg-[var(--color-bone)] text-left text-xs uppercase tracking-wide text-[var(--color-stone)]"><th scope="col" className="p-2">When</th><th scope="col" className="p-2">Entry</th><th scope="col" className="p-2">Device</th><th scope="col" className="p-2">Length</th><th scope="col" className="p-2"></th></tr></thead>
             <tbody>
               {rows.map((r) => (
                 <tr key={r.id} className="border-t border-[var(--color-line)]">
                   <td className="p-2">{new Date(r.startedAt).toLocaleString('en-GB')}</td>
                   <td className="p-2 font-mono text-xs">{r.path}</td>
                   <td className="p-2">{r.device ?? '—'}</td>
-                  <td className="p-2">{Math.round(r.durationMs / 1000)}s · {r.eventCount} ev</td>
+                  <td className="p-2 tabular-nums">{Math.round(r.durationMs / 1000)}s · {r.eventCount} ev</td>
                   <td className="p-2 text-right"><button onClick={() => setOpenId(r.id)} disabled={r.eventCount < 2} className="rounded-full bg-[var(--color-ink)] px-3 py-1 text-xs text-[var(--color-porcelain)] disabled:opacity-40">Play</button></td>
                 </tr>
               ))}

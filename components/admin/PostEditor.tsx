@@ -54,7 +54,7 @@ export function PostEditor({ initial }: { initial: Initial }) {
   return (
     <div>
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <Link href="/admin/journal" className="text-sm text-[var(--color-gold)] hover:underline">← Journal</Link>
+        <Link href="/admin/journal" className="text-sm text-[var(--color-gold-deep)] hover:underline">← Journal</Link>
         <span className="text-xs text-[var(--color-stone)]">{words.toLocaleString('en-GB')} words · ~{f.readMinutes || estRead} min read</span>
       </div>
       <h1 className="mt-3 font-[family-name:var(--font-display)] text-3xl">{initial ? 'Edit post' : 'New post'}</h1>
@@ -81,7 +81,7 @@ export function PostEditor({ initial }: { initial: Initial }) {
               <option value="DRAFT">Draft (hidden)</option>
               <option value="PUBLISHED">Published (live)</option>
             </select>
-            {err && <p className="mt-3 text-sm text-[#c0392b]">{err}</p>}
+            {err && <p role="alert" aria-live="assertive" className="mt-3 text-sm text-[#c0392b]">{err}</p>}
             <div className="mt-4 flex flex-wrap gap-2">
               <button disabled={busy} onClick={() => save(f.status)} className="rounded-full bg-[var(--color-ink)] px-5 py-2.5 text-sm text-[var(--color-porcelain)] disabled:opacity-50">{busy ? 'Saving…' : 'Save'}</button>
               {f.status !== 'PUBLISHED' && <button disabled={busy} onClick={() => save('PUBLISHED')} className="rounded-full border border-[var(--color-gold)] px-5 py-2.5 text-sm text-[var(--color-ink)] disabled:opacity-50">Save &amp; publish</button>}
@@ -90,14 +90,14 @@ export function PostEditor({ initial }: { initial: Initial }) {
           </div>
 
           <div className="rounded-[var(--radius-md)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-4 space-y-4">
-            <div><label className={label}>URL slug <span className="normal-case text-[var(--color-stone-soft)]">(blank = auto)</span></label><input className={field} value={f.slug} onChange={(e) => set('slug', e.target.value)} placeholder="my-article" /></div>
+            <div><label className={label}>URL slug <span className="normal-case text-[var(--color-stone)]">(blank = auto)</span></label><input className={field} value={f.slug} onChange={(e) => set('slug', e.target.value)} placeholder="my-article" /></div>
             <div><label className={label}>Category</label><select className={field} value={f.category} onChange={(e) => set('category', e.target.value)}>{CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}</select></div>
             <div>
-              <label className={label}>Excerpt <span className="normal-case text-[var(--color-stone-soft)]">(card + intro)</span></label>
+              <label className={label}>Excerpt <span className="normal-case text-[var(--color-stone)]">(card + intro)</span></label>
               <textarea className={`${field} min-h-[70px]`} value={f.excerpt} onChange={(e) => set('excerpt', e.target.value)} placeholder="Short summary — blank to auto-generate from the first paragraph." />
             </div>
             <div>
-              <label className={label}>Read time <span className="normal-case text-[var(--color-stone-soft)]">(0 = auto: {estRead} min)</span></label>
+              <label className={label}>Read time <span className="normal-case text-[var(--color-stone)]">(0 = auto: {estRead} min)</span></label>
               <input type="number" min={0} max={90} className={field} value={f.readMinutes} onChange={(e) => set('readMinutes', Number(e.target.value))} />
             </div>
           </div>
@@ -106,11 +106,11 @@ export function PostEditor({ initial }: { initial: Initial }) {
             <p className="text-xs font-medium uppercase tracking-[0.12em] text-[var(--color-stone)]">SEO &amp; links</p>
             <MediaField label="Cover image" value={f.coverImage} onChange={(v) => set('coverImage', v)} />
             <div><label className={label}>Meta description</label><textarea className={`${field} min-h-[60px]`} value={f.metaDescription} onChange={(e) => set('metaDescription', e.target.value)} /></div>
-            <div><label className={label}>Keywords <span className="normal-case text-[var(--color-stone-soft)]">(comma-separated)</span></label><input className={field} value={f.keywords} onChange={(e) => set('keywords', e.target.value)} /></div>
-            <div><label className={label}>Related treatment slugs <span className="normal-case text-[var(--color-stone-soft)]">(comma-separated)</span></label><input className={field} value={f.related} onChange={(e) => set('related', e.target.value)} placeholder="laser-hair-removal, hydraglow-facial" /></div>
+            <div><label className={label}>Keywords <span className="normal-case text-[var(--color-stone)]">(comma-separated)</span></label><input className={field} value={f.keywords} onChange={(e) => set('keywords', e.target.value)} /></div>
+            <div><label className={label}>Related treatment slugs <span className="normal-case text-[var(--color-stone)]">(comma-separated)</span></label><input className={field} value={f.related} onChange={(e) => set('related', e.target.value)} placeholder="laser-hair-removal, hydraglow-facial" /></div>
           </div>
 
-          {initial && <Link href={`/journal/${f.slug}`} target="_blank" className="block text-center text-sm text-[var(--color-gold)] hover:underline">View on site ↗</Link>}
+          {initial && <Link href={`/journal/${f.slug}`} target="_blank" className="block text-center text-sm text-[var(--color-gold-deep)] hover:underline">View on site ↗</Link>}
         </div>
       </div>
     </div>

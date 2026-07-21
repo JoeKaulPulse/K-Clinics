@@ -48,13 +48,13 @@ export function CoreQuestionEditor({ formKey, version, questions }: { formKey: s
         {list.map((q, i) => (
           <li key={q.id} className="rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white p-3">
             <div className="flex items-start gap-2">
-              <span className="mt-2 text-xs tabular-nums text-[var(--color-stone-soft)]">{i + 1}</span>
+              <span className="mt-2 text-xs tabular-nums text-[var(--color-stone)]">{i + 1}</span>
               <div className="min-w-0 flex-1">
                 <textarea value={q.prompt} onChange={(e) => edit(i, { prompt: e.target.value })} rows={2} className="w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] px-2 py-1.5 text-sm outline-none focus:border-[var(--color-gold)]" />
                 <div className="mt-1 flex flex-wrap items-center gap-3 text-xs text-[var(--color-stone)]">
                   <span className="rounded-full bg-[var(--color-bone)] px-2 py-0.5">{q.type}</span>
                   <label className="flex items-center gap-1"><input type="checkbox" checked={!!q.required} onChange={(e) => edit(i, { required: e.target.checked })} /> required</label>
-                  {q.showIf ? <span className="text-[var(--color-stone-soft)]">conditional</span> : null}
+                  {q.showIf ? <span className="text-[var(--color-stone)]">conditional</span> : null}
                 </div>
               </div>
               <div className="flex shrink-0 flex-col gap-1">
@@ -72,7 +72,7 @@ export function CoreQuestionEditor({ formKey, version, questions }: { formKey: s
         <button onClick={reset} className="text-xs text-[var(--color-stone)] hover:text-[var(--color-ink)]">Reset</button>
         <button onClick={() => setOpen(false)} className="text-xs text-[var(--color-stone)] hover:text-[var(--color-ink)]">Cancel</button>
       </div>
-      <p className="mt-2 text-[11px] text-[var(--color-stone-soft)]">To add brand-new questions, use “Your extra questions” below. Conditional/branching logic is preserved from the current version.</p>
+      <p className="mt-2 text-[11px] text-[var(--color-stone)]">To add brand-new questions, use “Your extra questions” below. Conditional/branching logic is preserved from the current version.</p>
     </div>
   );
 }

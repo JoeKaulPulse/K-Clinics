@@ -25,6 +25,7 @@ import { packages } from '@/lib/packages';
 import { site } from '@/lib/site';
 import { JsonLd, breadcrumbLd, aggregateRatingLd } from '@/lib/seo';
 import { NewsletterCapture } from '@/components/layout/NewsletterCapture';
+import { OffersStrip } from '@/components/marketing/OffersStrip';
 
 // ISR: refresh hourly so live "from" prices on the featured cards stay current.
 export const revalidate = 3600;
@@ -33,7 +34,9 @@ export const revalidate = 3600;
 // (it otherwise inherits only the layout defaults, with no social tags).
 export const generateMetadata = () => pageMeta({
   title: `${site.name} — ${site.tagline} | Islington, London`,
-  description: site.description,
+  // Dedicated ~155-char meta description: site.description is 182 chars and gets
+  // truncated in search results (BLD-559). Keeps the key terms + location.
+  description: 'Advanced laser, skin aesthetics and aesthetic dentistry in Islington, London. Precision treatments from qualified clinicians, in a calm, design-led clinic.',
   path: '/',
 });
 
@@ -42,13 +45,15 @@ const featured = ['laser-hair-removal', 'smas-hifu-lifting', 'hydraglow-facial',
   .filter(Boolean) as typeof treatments;
 
 const pillars = [
-  { stat: '2', label: 'Disciplines, one roof', text: 'Advanced aesthetics and aesthetic dentistry, side by side.' },
-  { stat: '40+', label: 'Advanced treatments', text: 'One address for face, body, skin and smile.' },
-  { stat: 'Level 7', label: 'Qualified, prescriber-led', text: 'Injectables led by a Level 7–qualified practitioner, with a prescriber on hand.' },
-  { stat: '100%', label: 'Bespoke plans', text: 'Every protocol designed around one person — you.' },
+  { stat: '2', label: 'Disciplines, one roof', text: 'Advanced aesthetics and aesthetic dentistry, side by side.', countable: false },
+  { stat: '40+', label: 'Advanced treatments', text: 'One address for face, body, skin and smile.', countable: true },
+  { stat: 'Level 7', label: 'Qualified, prescriber-led', text: 'Injectables led by a Level 7–qualified practitioner, with a prescriber on hand.', countable: false },
+  { stat: '100%', label: 'Bespoke plans', text: 'Every protocol designed around one person — you.', countable: true },
 ];
 
 export default async function HomePage() {
+  const { getSiteConfig } = await import('@/lib/site-config');
+  const { dentistryLive } = await getSiteConfig(); // BLD-515: live, admin-toggleable flag
   const { getReviewAggregate } = await import('@/lib/reviews-aggregate');
   const aggregate = await getReviewAggregate();
   const rating = aggregate ? { average: aggregate.average, count: aggregate.count } : null;
@@ -127,7 +132,6 @@ export default async function HomePage() {
                   to={c.grad[1]}
                   seed={idx * 2}
                   alt={c.title}
-                  priority
                   sizes="(max-width: 1024px) 100vw, 50vw"
                   className="absolute inset-0 -z-0 transition-transform duration-[1.6s] [transition-timing-function:var(--ease-lux)] group-hover:scale-105"
                 />
@@ -135,7 +139,7 @@ export default async function HomePage() {
                 <div className="relative">
                   <p className="eyebrow mb-4 flex items-center gap-2.5 text-[var(--color-gold-soft)]">
                     {c.tag}
-                    {c.tag === 'Dentistry' && !site.dentistryLive && <span className="rounded-full bg-[var(--color-gold-soft)] px-2.5 py-0.5 text-[0.58rem] font-semibold uppercase tracking-[0.12em] text-[var(--color-ink)]">Opening soon</span>}
+                    {c.tag === 'Dentistry' && !dentistryLive && <span className="rounded-full bg-[var(--color-gold-soft)] px-2.5 py-0.5 text-[0.58rem] font-semibold uppercase tracking-[0.12em] text-[var(--color-ink)]">Opening soon</span>}
                   </p>
                   <h3 className="font-[family-name:var(--font-display)] text-[clamp(2rem,1.4rem+2vw,3.25rem)] leading-[1.05]">{c.title}</h3>
                   <p className="mt-5 max-w-md leading-relaxed text-[color-mix(in_oklab,var(--color-porcelain)_84%,transparent)]">{c.text}</p>
@@ -165,8 +169,9 @@ export default async function HomePage() {
           <Stagger className="grid gap-px overflow-hidden rounded-[var(--radius-xl)] border border-[var(--color-line)] bg-[var(--color-line)] sm:grid-cols-2">
             {pillars.map((p) => (
               <StaggerItem key={p.label} className="bg-[var(--color-porcelain)] p-9 md:p-10">
-                <CountUp value={p.stat} className="block font-[family-name:var(--font-display)] text-[clamp(3rem,2rem+2vw,4.5rem)] leading-none text-gold-gradient" />
-                <span className="sr-only">{p.stat}</span>
+                {p.countable
+                  ? <CountUp value={p.stat} className="block font-[family-name:var(--font-display)] text-[clamp(3rem,2rem+2vw,4.5rem)] leading-none text-gold-gradient" />
+                  : <span className="block font-[family-name:var(--font-display)] text-[clamp(3rem,2rem+2vw,4.5rem)] leading-none text-gold-gradient">{p.stat}</span>}
                 <p className="mt-4 font-medium">{p.label}</p>
                 <p className="mt-2 text-sm leading-relaxed text-[var(--color-stone)]">{p.text}</p>
               </StaggerItem>
@@ -230,8 +235,12 @@ export default async function HomePage() {
         </section>
       )}
 
+      {/* BLD-771: live discounts visible to first-time visitors — the strip
+          renders nothing when no offers are on, so the page is unchanged then. */}
+      <section className="container-lux section-sm"><OffersStrip /></section>
+
       {/* BLD-353: mid-page newsletter capture */}
-      <NewsletterCapture />
+      <NewsletterCapture source="home" />
 
       {/* Offer / membership */}
       <section className="section container-lux">
@@ -285,20 +294,20 @@ export default async function HomePage() {
             <p className="mt-6 text-lede leading-relaxed text-[var(--color-stone)]">
               Moments from Farringdon and Barbican, our Islington clinic is a calm, private sanctuary designed for one purpose — to make you feel extraordinary.
             </p>
-            <dl className="mt-9 space-y-5 text-[var(--color-ink-soft)]">
-              <div>
+            {/* Each direct child is a <div> wrapping one dt/dd pair — the valid
+                HTML5 grouping for <dl> (no div-in-div, which axe flags). */}
+            <dl className="mt-9 grid max-w-md grid-cols-2 gap-x-12 gap-y-5 text-[var(--color-ink-soft)]">
+              <div className="col-span-2">
                 <dt className="eyebrow mb-1.5">Address</dt>
                 <dd>{site.address.street}, {site.address.locality}, {site.address.region} {site.address.postalCode}</dd>
               </div>
-              <div className="flex gap-12">
-                <div>
-                  <dt className="eyebrow mb-1.5">Call</dt>
-                  <dd><a href={site.phoneHref} className="link-underline">{site.phone}</a></dd>
-                </div>
-                <div>
-                  <dt className="eyebrow mb-1.5">Email</dt>
-                  <dd><a href={site.emailHref} className="link-underline">{site.email}</a></dd>
-                </div>
+              <div>
+                <dt className="eyebrow mb-1.5">Call</dt>
+                <dd><a href={site.phoneHref} className="link-underline">{site.phone}</a></dd>
+              </div>
+              <div>
+                <dt className="eyebrow mb-1.5">Email</dt>
+                <dd><a href={site.emailHref} className="link-underline">{site.email}</a></dd>
               </div>
             </dl>
             <div className="mt-9">

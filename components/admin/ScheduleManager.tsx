@@ -115,7 +115,7 @@ function Editor({ staff, treatments, googleConfigured, locations, multiLocation 
                 const on = comp.has(t.slug);
                 return (
                   <button key={t.slug} type="button" onClick={() => { const n = new Set(comp); on ? n.delete(t.slug) : n.add(t.slug); setComp(n); }}
-                    className={`rounded-full border px-3 py-1.5 text-xs transition-colors ${on ? 'border-[var(--color-gold)] bg-[var(--color-gold)] text-white' : 'border-[var(--color-line)] hover:border-[var(--color-stone-soft)]'}`}>
+                    className={`rounded-full border px-3 py-1.5 text-xs transition-colors ${on ? 'border-[var(--color-gold)] bg-[var(--color-gold-deep)] text-white' : 'border-[var(--color-line)] hover:border-[var(--color-stone-soft)]'}`}>
                     {t.title}
                   </button>
                 );
@@ -136,7 +136,7 @@ function Editor({ staff, treatments, googleConfigured, locations, multiLocation 
               const on = locs.has(l.id);
               return (
                 <button key={l.id} type="button" onClick={() => { const n = new Set(locs); on ? n.delete(l.id) : n.add(l.id); setLocs(n); }}
-                  className={`flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs transition-colors ${on ? 'border-[var(--color-gold)] bg-[var(--color-gold)] text-white' : 'border-[var(--color-line)] hover:border-[var(--color-stone-soft)]'}`}>
+                  className={`flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs transition-colors ${on ? 'border-[var(--color-gold)] bg-[var(--color-gold-deep)] text-white' : 'border-[var(--color-line)] hover:border-[var(--color-stone-soft)]'}`}>
                   <span className="h-2 w-2 rounded-full" style={{ background: on ? 'white' : (l.color || 'var(--color-gold)') }} />
                   {l.name}
                 </button>
@@ -160,7 +160,7 @@ function Editor({ staff, treatments, googleConfigured, locations, multiLocation 
               <input type="time" value={r.start} disabled={!r.on} onChange={(e) => setRows((s) => s.map((x, i) => i === d ? { ...x, start: e.target.value } : x))} className="rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-2 py-1.5 text-sm disabled:opacity-40" />
               <span className="text-[var(--color-stone)]">–</span>
               <input type="time" value={r.end} disabled={!r.on} onChange={(e) => setRows((s) => s.map((x, i) => i === d ? { ...x, end: e.target.value } : x))} className="rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-2 py-1.5 text-sm disabled:opacity-40" />
-              <span className="ml-2 hidden text-xs text-[var(--color-stone-soft)] sm:inline">break</span>
+              <span className="ml-2 hidden text-xs text-[var(--color-stone)] sm:inline">break</span>
               <input type="time" value={r.breakStart} disabled={!r.on} title="Break start (optional)" onChange={(e) => setRows((s) => s.map((x, i) => i === d ? { ...x, breakStart: e.target.value } : x))} className="rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-2 py-1.5 text-sm disabled:opacity-40" />
               <span className="text-[var(--color-stone)]">–</span>
               <input type="time" value={r.breakEnd} disabled={!r.on} title="Break end (optional)" onChange={(e) => setRows((s) => s.map((x, i) => i === d ? { ...x, breakEnd: e.target.value } : x))} className="rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-2 py-1.5 text-sm disabled:opacity-40" />
@@ -173,8 +173,8 @@ function Editor({ staff, treatments, googleConfigured, locations, multiLocation 
             </div>
           ))}
         </div>
-        <p className="mt-2 text-xs text-[var(--color-stone-soft)]">Set an optional daily break (e.g. lunch) — no bookings will be offered during it.</p>
-        <button onClick={saveSchedule} className="mt-4 rounded-full bg-[var(--color-gold)] px-5 py-2 text-sm font-medium text-white hover:bg-[var(--color-ink)]">Save hours</button>
+        <p className="mt-2 text-xs text-[var(--color-stone)]">Set an optional daily break (e.g. lunch) — no bookings will be offered during it.</p>
+        <button onClick={saveSchedule} className="mt-4 rounded-full bg-[var(--color-gold-deep)] px-5 py-2 text-sm font-medium text-white hover:bg-[var(--color-ink)]">Save hours</button>
         {msg && <span className="ml-3 text-sm text-[var(--color-stone)]">{msg}</span>}
       </section>
 
@@ -228,7 +228,7 @@ function GoogleCalendar({ staff, configured }: { staff: Staff; configured: boole
           {msg && <span className="text-sm text-[var(--color-stone)]">{msg}</span>}
         </div>
       ) : (
-        <a href={`/api/admin/gcal/connect?staffId=${staff.id}`} className="inline-block rounded-full bg-[var(--color-gold)] px-5 py-2 text-sm font-medium text-white hover:bg-[var(--color-ink)]">
+        <a href={`/api/admin/gcal/connect?staffId=${staff.id}`} className="inline-block rounded-full bg-[var(--color-gold-deep)] px-5 py-2 text-sm font-medium text-white hover:bg-[var(--color-ink)]">
           Connect Google Calendar
         </a>
       )}
@@ -272,7 +272,7 @@ function TimeOff({ staff, onChange }: { staff: Staff; onChange: () => void }) {
         <input placeholder="Reason (optional)" value={reason} onChange={(e) => setReason(e.target.value)} className={`${f} flex-1`} />
         <button disabled={busy} onClick={add} className="rounded-full bg-[var(--color-ink)] px-4 py-2 text-sm text-[var(--color-porcelain)] disabled:opacity-60">Add</button>
       </div>
-      {msg && <p className="mt-2 text-sm text-[var(--color-blush)]">{msg}</p>}
+      {msg && <p className="mt-2 text-sm text-[var(--color-blush-deep)]">{msg}</p>}
       <ul className="mt-4 divide-y divide-[var(--color-line)]">
         {staff.timeOff.length === 0 && <li className="py-2 text-sm text-[var(--color-stone)]">None scheduled.</li>}
         {staff.timeOff.map((t) => (
@@ -282,7 +282,7 @@ function TimeOff({ staff, onChange }: { staff: Staff; onChange: () => void }) {
               {new Date(t.startAt).toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', timeZone: 'Europe/London' })} – {new Date(t.endAt).toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', timeZone: 'Europe/London' })}
               {t.reason ? ` · ${t.reason}` : ''}
             </span>
-            <button disabled={busy} onClick={() => remove(t.id)} className="text-xs text-[var(--color-stone)] hover:text-[var(--color-blush)] disabled:opacity-50">Remove</button>
+            <button disabled={busy} onClick={() => remove(t.id)} className="text-xs text-[var(--color-stone)] hover:text-[var(--color-blush-deep)] disabled:opacity-50">Remove</button>
           </li>
         ))}
       </ul>

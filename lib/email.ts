@@ -260,6 +260,42 @@ export function tmplPasswordReset(firstName: string, resetUrl: string) {
   });
 }
 
+// BLD-527: staff-issued passwordless login link for a client who has no password
+// yet (e.g. created manually by the clinic). Clicking it opens their account; they
+// can set a password later from their profile if they want one.
+export function tmplPortalInvite(firstName: string, activateUrl: string) {
+  return emailShell({
+    preheader: 'Your KClinics account is ready — open it with this secure link',
+    body: `${heroBand('secure')}
+    <h1 style="font-size:24px;margin:0 0 16px;color:#2a2420;">Open your KClinics account</h1>
+    <p>Hello ${escape(firstName)},</p>
+    <p>Your KClinics account is ready. Tap below to open it — no password needed. You can manage your appointments, save a card and set a password for next time if you’d like one.</p>
+    <p style="margin:28px 0;">${btn(activateUrl, 'Open my account')}</p>
+    <p style="color:#91766e;font-size:14px;">This is a private link just for you — please don’t share it. It’s valid for 7 days.</p>
+    <p style="margin-top:24px;">With warmth,<br>The KClinics team</p>`,
+  });
+}
+
+// BLD-751: sent when an admin creates a new staff account, so credentials no
+// longer have to be relayed out-of-band. The temporary password is shown once,
+// with a strong prompt to change it after first login.
+export function tmplStaffWelcome(o: { name: string; email: string; tempPassword: string; loginUrl: string }) {
+  return emailShell({
+    preheader: 'Your K Clinics staff account is ready',
+    body: `${heroBand('secure')}
+    <h1 style="font-size:24px;margin:0 0 16px;color:#2a2420;">Your K Clinics staff account</h1>
+    <p>Hello ${escape(o.name)},</p>
+    <p>An account has been set up for you on the K Clinics admin. Here are your sign-in details:</p>
+    <table style="font-family:Helvetica,Arial,sans-serif;font-size:14px;color:#3d352f;line-height:1.8;margin:16px 0;">
+      <tr><td style="color:#91766e;padding-right:16px;">Email</td><td><strong>${escape(o.email)}</strong></td></tr>
+      <tr><td style="color:#91766e;padding-right:16px;">Temporary password</td><td><strong>${escape(o.tempPassword)}</strong></td></tr>
+    </table>
+    <p style="margin:28px 0;">${btn(o.loginUrl, 'Sign in')}</p>
+    <p style="color:#91766e;font-size:14px;">Please sign in and change this password from your profile as soon as possible.</p>
+    <p style="margin-top:24px;">With warmth,<br>The K Clinics team</p>`,
+  });
+}
+
 export function tmplClinicNotify(data: {
   name: string; email: string; phone?: string; category: string; treatments: string[]; message?: string;
 }) {
@@ -300,7 +336,8 @@ export function tmplFollowUp(firstName: string, treatment: string, unsubUrl: str
     <p>It was a pleasure to welcome you for your ${escape(treatment)}. We wanted to check in and make sure you are delighted with your results.</p>
     <p>If you have any questions about aftercare, just reply — we are always here. When you are ready, we would love to see you again.</p>
     <p style="margin:28px 0;">${btn(site.url + site.booking.path, 'Book your next visit')}</p>
-    <p>With warmth,<br>The KClinics team</p>`,
+    <p>With warmth,<br>The KClinics team</p>
+    <p style="margin-top:20px;padding-top:16px;border-top:1px solid #e8ddd4;font-size:13px;color:#6b6461;">Know someone who would love KClinics? <a href="${site.url}/refer-a-friend" style="color:#a98a6d;text-decoration:underline;">Refer a friend</a> — you both receive <strong>£25 credit</strong> towards any treatment.</p>`,
   });
 }
 
@@ -309,10 +346,11 @@ export function tmplFollowUpQuestionnaire(o: { firstName: string; treatment: str
     preheader: `How is your skin a week after your ${o.treatment}?`,
     body: `${heroBand('followup')}
     <h1 style="font-size:24px;margin:0 0 16px;">How are you getting on, ${escape(o.firstName)}?</h1>
-    <p>It's been about a week since your <strong>${escape(o.treatment)}</strong>. We'd love a quick update on how you're feeling — it takes less than a minute, and lets us step in early if anything needs attention.</p>
+    <p>It’s been about a week since your <strong>${escape(o.treatment)}</strong>. We’d love a quick update on how you’re feeling — it takes less than a minute, and lets us step in early if anything needs attention.</p>
     <p style="margin:28px 0;">${btn(o.url, 'Share how you’re doing')}</p>
     <p>If you have any concerns at all, this goes straight to our clinical team.</p>
-    <p>With warmth,<br>The KClinics team</p>`,
+    <p>With warmth,<br>The KClinics team</p>
+    <p style="margin-top:20px;padding-top:16px;border-top:1px solid #e8ddd4;font-size:13px;color:#6b6461;">Know someone who would love KClinics? <a href="${site.url}/refer-a-friend" style="color:#a98a6d;text-decoration:underline;">Refer a friend</a> — you both receive <strong>£25 credit</strong> towards any treatment.</p>`,
   });
 }
 
@@ -447,6 +485,66 @@ export function tmplAccountInvite(o: { firstName: string; treatment: string; sta
   });
 }
 
+// ── K Academy: offer + payment (BLD-528) ────────────────────────────────────
+// Sent when staff make an offer. One-click link signs the trainee in and lands
+// them on the pay page (full or deposit). No password needed.
+export function tmplAcademyOffer(o: { firstName: string; courseTitle: string; pricePence: number; depositPence?: number | null; acceptUrl: string; expiresAt?: Date | null }) {
+  const fee = `£${(o.pricePence / 100).toLocaleString('en-GB')}`;
+  const dep = o.depositPence ? `£${(o.depositPence / 100).toLocaleString('en-GB')}` : null;
+  return emailShell({
+    preheader: `You've been offered a place on ${o.courseTitle} at K Academy`,
+    body: `<h1 style="font-size:24px;margin:0 0 16px;">Congratulations, ${escape(o.firstName)} — your place is ready.</h1>
+    <p>We're delighted to offer you a place on <strong>${escape(o.courseTitle)}</strong> at K Academy. To secure it, accept your offer and pay below.</p>
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="margin:18px 0;background:#efe3d7;border-radius:10px;">
+      <tr><td style="padding:16px 18px;font-size:15px;">
+        <div style="font-weight:600;color:#2a2420;">${escape(o.courseTitle)}</div>
+        <div style="color:#7d6259;margin-top:4px;">Course fee: ${fee}${dep ? ` · or pay a ${dep} deposit to reserve your place` : ''}</div>
+      </td></tr>
+    </table>
+    <p>You can pay in full or${dep ? ' by deposit,' : ''} by card or Klarna/Clearpay, or ask us about a payment plan or funding. The link below signs you straight into your trainee portal — no password needed.</p>
+    <p style="margin:28px 0;">${btn(o.acceptUrl, 'Accept &amp; pay')}</p>
+    ${o.expiresAt ? `<p style="font-size:14px;color:#91766e;">Please respond by ${fmtWhen(o.expiresAt)}.</p>` : ''}
+    <p style="font-size:14px;color:#91766e;">This is a private link just for you — please don't share it.</p>
+    <p style="margin-top:20px;">With warmth,<br>The K Academy team</p>`,
+  });
+}
+
+// BLD-741: funding application decision — staff previously updated
+// FundingApplication.status with no notification, leaving applicants to chase
+// the outcome themselves.
+const FUNDING_DECISION_COPY: Record<string, { headline: string; body: string }> = {
+  APPROVED: { headline: 'Your funding application has been approved.', body: "Great news — we've reviewed your application and confirmed your funding. We'll be in touch shortly to arrange your place." },
+  DECLINED: { headline: 'An update on your funding application.', body: "We've reviewed your application and, unfortunately, aren't able to offer funding on this route. This doesn't affect your ability to book a course — get in touch and we'll talk through the options, including payment plans." },
+  FUNDED: { headline: 'Your course is now fully funded.', body: 'Your funding has been confirmed and applied to your course. No further payment is needed on the funded portion — welcome aboard.' },
+  REFERRED: { headline: 'Your funding application has moved forward.', body: "We've referred your application to the funding provider for the next stage. We'll email you again as soon as we hear back." },
+};
+export function tmplFundingDecision(o: { name: string; status: string; courseTitle?: string | null; portalUrl?: string | null }) {
+  const copy = FUNDING_DECISION_COPY[o.status] ?? { headline: 'An update on your funding application.', body: "We've updated the status of your funding application." };
+  return emailShell({
+    preheader: copy.headline,
+    body: `<h1 style="font-size:24px;margin:0 0 16px;">${escape(copy.headline)}</h1>
+    <p>Hi ${escape(o.name)},</p>
+    <p>${copy.body}</p>
+    ${o.courseTitle ? `<p style="font-size:14px;color:#91766e;">Course: ${escape(o.courseTitle)}</p>` : ''}
+    ${o.portalUrl ? `<p style="margin:28px 0;">${btn(o.portalUrl, 'View in my portal')}</p>` : ''}
+    <p style="margin-top:20px;">With warmth,<br>The K Academy team</p>`,
+  });
+}
+
+// Payment confirmation / receipt for a course payment.
+export function tmplAcademyPaymentReceipt(o: { firstName: string; courseTitle: string; amountPence: number; outstandingPence: number; portalUrl: string }) {
+  const paid = `£${(o.amountPence / 100).toLocaleString('en-GB')}`;
+  const owing = o.outstandingPence > 0 ? `£${(o.outstandingPence / 100).toLocaleString('en-GB')}` : null;
+  return emailShell({
+    preheader: `Payment received — ${o.courseTitle}`,
+    body: `<h1 style="font-size:24px;margin:0 0 16px;">Thank you, ${escape(o.firstName)} — payment received.</h1>
+    <p>We've received your payment of <strong>${paid}</strong> for <strong>${escape(o.courseTitle)}</strong>. Your place is secured and your online theory is now unlocked in your portal.</p>
+    ${owing ? `<p style="background:#efe3d7;padding:14px 16px;border-radius:10px;font-size:14px;">Outstanding balance: <strong>${owing}</strong>. We'll be in touch about the remaining payment${''}, or you can settle it any time from your portal.</p>` : ''}
+    <p style="margin:28px 0;">${btn(o.portalUrl, 'Open my portal')}</p>
+    <p style="margin-top:20px;">With warmth,<br>The K Academy team</p>`,
+  });
+}
+
 // Security notice sent whenever an account password changes — so the owner of
 // the inbox is alerted even if they didn't make the change.
 export function tmplPasswordChanged(firstName: string) {
@@ -458,6 +556,22 @@ export function tmplPasswordChanged(firstName: string) {
     <p style="background:#efe3d7;padding:14px 16px;border-radius:10px;font-size:14px;">If this <strong>wasn’t you</strong>, please reset your password again right away and contact us at <a href="mailto:${site.email}" style="color:#8a6e54;">${site.email}</a> or <a href="${site.phoneHref}" style="color:#8a6e54;">${site.phone}</a> so we can secure your account.</p>
     <p style="margin:24px 0;">${btn(site.url + '/account/login', 'Go to my account')}</p>
     <p>With warmth,<br>The KClinics team</p>`,
+  });
+}
+
+// PRJ-939.4: a colleague with staff.manage can silently strip another staff
+// member's 2FA or change their password — this notifies the affected staff
+// member so they'd notice if it wasn't them.
+export function tmplStaffSecurityChange(o: { name: string; change: 'password' | '2fa'; loginUrl: string }) {
+  const label = o.change === 'password' ? 'password was changed' : 'two-factor authentication was reset';
+  return emailShell({
+    preheader: `Your KClinics staff account ${label}`,
+    body: `<h1 style="font-size:24px;margin:0 0 16px;color:#2a2420;">Your staff account ${label}</h1>
+    <p>Hello ${escape(o.name)},</p>
+    <p>This is a confirmation that your K Clinics staff account's ${label}, carried out by another team member with account-management access.</p>
+    <p style="background:#efe3d7;padding:14px 16px;border-radius:10px;font-size:14px;">If you weren’t expecting this, please contact an owner or admin right away so we can secure your account.</p>
+    <p style="margin:24px 0;">${btn(o.loginUrl, 'Sign in')}</p>
+    <p>With warmth,<br>The K Clinics team</p>`,
   });
 }
 
@@ -676,9 +790,11 @@ export function tmplBookingNotify(o: { name: string; email: string; phone?: stri
   });
 }
 
-export function tmplBookingCancelled(o: { firstName: string; treatment: string; start: Date; feeCharged?: number }) {
+export function tmplBookingCancelled(o: { firstName: string; treatment: string; start: Date; feeCharged?: number; feeDeclined?: number }) {
   const fee = o.feeCharged
     ? `<p style="background:#efe3d7;padding:14px 16px;border-radius:10px;font-size:14px;">As this cancellation was within 24 hours of your appointment, a late-cancellation fee of <strong>${fmtMoney(o.feeCharged)}</strong> has been charged to your card on file.</p>`
+    : o.feeDeclined
+    ? `<p style="background:#efe3d7;padding:14px 16px;border-radius:10px;font-size:14px;">As this cancellation was within 24 hours of your appointment, a late-cancellation fee of <strong>${fmtMoney(o.feeDeclined)}</strong> is due, but the card on file declined the charge. We'll be in touch to arrange collection — no further action is needed from you right now.</p>`
     : `<p>No charge has been taken. We hope to welcome you another time.</p>`;
   return emailShell({
     preheader: `Your ${o.treatment} booking has been cancelled`,
@@ -908,6 +1024,20 @@ export function tmplAppointmentReminder(o: { firstName: string; treatment: strin
     <p style="margin:24px 0;">${btn(o.manageUrl, 'Manage your appointment')}</p>
     <p style="font-size:14px;color:#91766e;">Need to reschedule? You can do so free of charge up to 24 hours before. We look forward to welcoming you.</p>
     <p>With warmth,<br>The KClinics team</p>`,
+  });
+}
+
+// Consent signing link sent directly to the client (BLD-505): staff issue a
+// consent form from the appointment and email the private signing link.
+export function tmplConsentRequest(o: { firstName: string; formTitle: string; url: string }) {
+  return emailShell({
+    preheader: 'Please read and sign your consent form before your treatment',
+    body: `${heroBand('forms')}
+    <h1 style="font-size:24px;margin:0 0 16px;">One quick step before your treatment, ${escape(o.firstName)}.</h1>
+    <p>Before your appointment at KClinics, please read and sign your consent form: <strong>${escape(o.formTitle)}</strong>. It takes less than a minute and can be done on your phone.</p>
+    <p style="margin:28px 0;">${btn(o.url, 'Read &amp; sign my consent form')}</p>
+    <p style="font-size:14px;color:#91766e;">This is a private link just for you — please don't share it. Your signed form is stored securely and sealed to your record.</p>
+    <p style="margin-top:20px;">With warmth,<br>The KClinics team</p>`,
   });
 }
 

@@ -19,7 +19,16 @@ export async function GET(req: Request) {
   if (!crmEnabled) return NextResponse.json({ ok: false, error: 'CRM disabled' }, { status: 503 });
 
   const { runDailyAutomations } = await import('@/lib/automations');
-  const result = await runDailyAutomations();
+  // BLD-801: unlike every step below, this one had no try/catch — a throw here
+  // used to skip every remaining cron job for the day and never reach the
+  // failure-summary alert. Same fallback-and-continue pattern as the rest of the file.
+  let result: Awaited<ReturnType<typeof runDailyAutomations>>;
+  try {
+    result = await runDailyAutomations();
+  } catch (e) {
+    console.error('[cron] daily automations failed (continuing):', (e as Error)?.message);
+    result = { birthdays: 0, followUps: 0, winBacks: 0, reviews: 0, reminders: 0, formReminders: 0, treatmentFollowUps: 0, giftVouchers: 0, tierNudges: 0, anniversaries: 0, abandonedBookings: 0, bookingIntents: 0, membershipRenewals: 0, staffDigests: 0, staffNudges: 0, reencrypted: 0, aftercare: 0, satisfaction: 0, rebookNudges: 0, npsPromoters: 0, npsDetractors: 0, errors: 1 };
+  }
   // BLD-153: count failures so the cron doesn't silently return 200 when work
   // failed. Vercel Cron / the status page key off the HTTP status + ok flag.
   let failures = result.errors;
@@ -66,20 +75,32 @@ export async function GET(req: Request) {
 
   // Refresh Google Calendar busy-times for connected clinicians (no-op if Google
   // isn't configured / nobody connected).
-  let gcal = { ok: false, staff: 0, imported: 0 };
+  // PRJ-918.8: sync failures are counted (driving the existing Sentry/webhook/
+  // 500 alerting) instead of silently reading as success — the cron still
+  // continues either way.
+  let gcal = { ok: false, staff: 0, imported: 0, failed: 0 };
   try {
-    const { googleEnabled, syncAllCalendars } = await import('@/lib/google-calendar');
-    if (googleEnabled()) gcal = await syncAllCalendars(); // parked while on Hostinger
-  } catch {
-    /* never fail the cron on a calendar sync issue */
+    const { googleEnabled, syncAllCalendars, redactFutureClinicianEvents } = await import('@/lib/google-calendar');
+    if (googleEnabled()) {
+      gcal = await syncAllCalendars(); // parked while on Hostinger
+      if (gcal.failed > 0) { failures++; console.error(`[cron] gcal sync: ${gcal.failed} clinician calendar(s) failed`); }
+      // One-time: strip clinical titles/contact details from already-pushed
+      // future events (PRJ-939.6). Self-disables via a Settings key.
+      await redactFutureClinicianEvents();
+    }
+  } catch (e) {
+    failures++; console.error('[cron] gcal sync failed (continuing):', (e as Error)?.message);
   }
   // Import the latest Google Business reviews (no-op until connected).
   let gbiz = { ok: false, imported: 0 };
   try {
     const { googleBusinessConnected, syncGoogleReviews } = await import('@/lib/google-business');
-    if (await googleBusinessConnected()) gbiz = await syncGoogleReviews();
-  } catch {
-    /* never fail the cron on a review sync issue */
+    if (await googleBusinessConnected()) {
+      gbiz = await syncGoogleReviews();
+      if (!gbiz.ok) { failures++; console.error('[cron] google reviews sync reported failure'); }
+    }
+  } catch (e) {
+    failures++; console.error('[cron] google reviews sync failed (continuing):', (e as Error)?.message);
   }
   // Behaviour-analytics retention: prune old session replays (90d) and heatmap
   // points (180d) so storage stays bounded and we hold data no longer than needed.
@@ -109,6 +130,12 @@ export async function GET(req: Request) {
     ]);
     // GDPR: SecurityEvent rows hold IP + email + UA — no need beyond 90 days.
     await db.securityEvent.deleteMany({ where: { createdAt: { lt: secEventCutoff } } }).catch(() => {});
+    // BLD-837: anonymous chat threads (no client account) hold visitor name,
+    // email and free-text messages with no erasure path and were retained
+    // forever. 12 months after the last activity they are deleted outright
+    // (messages cascade) — account-linked threads are covered by erasure.
+    const anonChatCutoff = new Date(Date.now() - 365 * 24 * 60 * 60 * 1000);
+    await db.chatConversation.deleteMany({ where: { clientId: null, updatedAt: { lt: anonChatCutoff } } }).catch((e: Error) => { console.error('[cron] anon chat retention failed (continuing):', e?.message); });
     retention = { replays: r.count, heatmap: h.count, calls: calls.count };
   } catch (e) {
     failures++; console.error('[cron] analytics retention failed (continuing):', (e as Error)?.message);
@@ -157,6 +184,18 @@ export async function GET(req: Request) {
     clinicalBackfill = await backfillClinicalEncryptionIfNeeded();
   } catch (e) {
     failures++; console.error('[cron] clinical-encryption backfill failed (continuing):', (e as Error)?.message);
+  }
+
+  // BLD-740: one-time re-home of legacy PUBLIC portfolio photos into the
+  // private blob store (bounded per run; self-disables via a Settings key once
+  // a pass finds nothing left). Failures count so the alerting fires.
+  let portfolioMigration = { ran: false, migrated: 0, failed: 0, complete: false };
+  try {
+    const { migratePortfolioPhotosIfNeeded } = await import('@/lib/portfolio-blob');
+    portfolioMigration = await migratePortfolioPhotosIfNeeded();
+    if (portfolioMigration.failed > 0) { failures++; console.error(`[cron] portfolio photo migration: ${portfolioMigration.failed} photo(s) failed`); }
+  } catch (e) {
+    failures++; console.error('[cron] portfolio photo migration failed (continuing):', (e as Error)?.message);
   }
 
   // (ClinicOS Ring 0 academy-tenant backfill retired in Ring 1c — tenantId is now
@@ -235,6 +274,22 @@ export async function GET(req: Request) {
     }
   } catch { /* non-fatal */ }
 
+  // BLD-587: compliance & renewals reminders — alert staff who can view compliance
+  // when an item crosses a 90/60/30-day threshold (or expires).
+  try {
+    const { runRenewalReminders } = await import('@/lib/renewals');
+    await runRenewalReminders();
+  } catch (e) { failures++; console.error('[cron] renewal reminders failed (continuing):', (e as Error)?.message); } // BLD-907: counted so the existing Sentry/webhook/500 alerting fires
+
+  // BLD-537: daily community digest to staff (new threads, replies, unanswered).
+  let communityDigest = { sent: false, threads: 0, posts: 0 };
+  try {
+    const { sendCommunityDigest } = await import('@/lib/forum');
+    communityDigest = await sendCommunityDigest();
+  } catch (e) {
+    failures++; console.error('[cron] community digest failed (continuing):', (e as Error)?.message);
+  }
+
   // Record the run so the status page can show job freshness.
   try {
     const { db } = await import('@/lib/db');
@@ -262,7 +317,7 @@ export async function GET(req: Request) {
 
   // BLD-153: surface failure to the scheduler — non-200 when anything failed.
   return NextResponse.json(
-    { ok: failures === 0, failures, durationMs: cronDurationMs, ...result, loyalty, membership, gcal, gbiz, retention, gdprSweep, scheduledEmail, adSpend, board, clinicalBackfill, examBank, gamification, authored, courseContent },
+    { ok: failures === 0, failures, durationMs: cronDurationMs, ...result, loyalty, membership, gcal, gbiz, retention, gdprSweep, scheduledEmail, adSpend, board, clinicalBackfill, portfolioMigration, examBank, gamification, authored, courseContent, communityDigest },
     { status: failures === 0 ? 200 : 500 },
   );
 }

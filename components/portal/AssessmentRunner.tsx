@@ -82,7 +82,7 @@ export function AssessmentRunner({ q, locale = 'en' }: { q: Questionnaire; local
           <p className="mx-auto mt-3 max-w-sm text-[var(--color-stone)]">
             {t('assess.doneBody', { form: q.title.toLowerCase() })}
           </p>
-          <Link href="/account" className="mt-7 inline-block rounded-full bg-[var(--color-gold)] px-6 py-3 font-medium text-white hover:bg-[var(--color-ink)]">
+          <Link href="/account" className="mt-7 inline-block rounded-full bg-[var(--color-gold-deep)] px-6 py-3 font-medium text-white hover:bg-[var(--color-ink)]">
             {t('assess.backToPortal')}
           </Link>
         </motion.div>
@@ -95,7 +95,18 @@ export function AssessmentRunner({ q, locale = 'en' }: { q: Questionnaire; local
       {/* Top bar: progress + exit */}
       <div className="sticky top-0 z-10 bg-[var(--color-porcelain)]/90 backdrop-blur-sm">
         <div className="mx-auto flex max-w-2xl items-center gap-4 px-6 py-4">
-          <Link href="/account" aria-label="Save & exit" className="text-sm text-[var(--color-stone)] hover:text-[var(--color-ink)]">✕</Link>
+          {/* BLD-840: this was aria-labelled "Save & exit" but saved nothing — a
+              plain link that silently discarded every answer. Until a draft
+              lane exists, be honest: label it Exit and confirm the discard
+              whenever any answer has been given. */}
+          <button
+            type="button"
+            aria-label="Exit assessment"
+            onClick={() => {
+              if (Object.keys(answers).length === 0 || confirm(t('assess.exitConfirm'))) router.push('/account');
+            }}
+            className="text-sm text-[var(--color-stone)] hover:text-[var(--color-ink)]"
+          >✕</button>
           <div className="h-1 flex-1 overflow-hidden rounded-full bg-[var(--color-sand)]">
             <motion.div className="h-full bg-[var(--color-gold)]" initial={false} animate={{ width: `${progress}%` }} transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }} />
           </div>
@@ -114,7 +125,7 @@ export function AssessmentRunner({ q, locale = 'en' }: { q: Questionnaire; local
                 <svg viewBox="0 0 24 24" className="h-5 w-5 shrink-0 text-[var(--color-gold)]" fill="none"><path d="M12 3l7 3v5c0 4.5-3 7.6-7 9-4-1.4-7-4.5-7-9V6l7-3z" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round" /></svg>
                 {t('assess.encrypted')}
               </div>
-              <button onClick={() => go(1)} className="mt-9 rounded-full bg-[var(--color-gold)] px-7 py-3.5 font-medium text-white shadow-[var(--shadow-gold)] hover:bg-[var(--color-ink)]">
+              <button onClick={() => go(1)} className="mt-9 rounded-full bg-[var(--color-gold-deep)] px-7 py-3.5 font-medium text-white shadow-[var(--shadow-gold)] hover:bg-[var(--color-ink)]">
                 {t('assess.begin')}
               </button>
             </motion.div>
@@ -135,8 +146,8 @@ export function AssessmentRunner({ q, locale = 'en' }: { q: Questionnaire; local
               <p className="mt-4 max-w-lg text-[var(--color-stone)]">
                 {t('assess.submitIntro')}
               </p>
-              {error && <p className="mt-5 rounded-[var(--radius-sm)] bg-[var(--color-blush)]/25 px-4 py-2.5 text-sm text-[var(--color-ink)]">{error}</p>}
-              <button onClick={submit} disabled={status === 'saving'} className="mt-8 rounded-full bg-[var(--color-gold)] px-7 py-3.5 font-medium text-white shadow-[var(--shadow-gold)] hover:bg-[var(--color-ink)] disabled:opacity-60">
+              {error && <p role="alert" aria-live="assertive" className="mt-5 rounded-[var(--radius-sm)] bg-[var(--color-blush)]/25 px-4 py-2.5 text-sm text-[var(--color-ink)]">{error}</p>}
+              <button onClick={submit} disabled={status === 'saving'} className="mt-8 rounded-full bg-[var(--color-gold-deep)] px-7 py-3.5 font-medium text-white shadow-[var(--shadow-gold)] hover:bg-[var(--color-ink)] disabled:opacity-60">
                 {status === 'saving' ? t('assess.saving') : t('assess.submit')}
               </button>
             </motion.div>
@@ -189,7 +200,7 @@ function Field({ q, value, set, pick }: { q: Question; value: unknown; set: (id:
             >
               <span className="flex items-center justify-between">
                 {o.label}
-                <span className={`grid h-5 w-5 place-items-center rounded-full border ${on ? 'border-[var(--color-gold)] bg-[var(--color-gold)] text-white' : 'border-[var(--color-stone-soft)]'}`}>
+                <span className={`grid h-5 w-5 place-items-center rounded-full border ${on ? 'border-[var(--color-gold)] bg-[var(--color-gold-deep)] text-white' : 'border-[var(--color-stone-soft)]'}`}>
                   {on && <svg viewBox="0 0 24 24" className="h-3 w-3" fill="none"><path d="M5 13l4 4L19 7" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" /></svg>}
                 </span>
               </span>
@@ -219,7 +230,7 @@ function Field({ q, value, set, pick }: { q: Question; value: unknown; set: (id:
               key={o.value}
               type="button"
               onClick={() => toggle(o.value)}
-              className={`rounded-full border px-5 py-2.5 transition-all ${on ? 'border-[var(--color-gold)] bg-[var(--color-gold)] text-white' : 'border-[var(--color-line)] text-[var(--color-ink-soft)] hover:border-[var(--color-stone-soft)]'}`}
+              className={`rounded-full border px-5 py-2.5 transition-all ${on ? 'border-[var(--color-gold)] bg-[var(--color-gold-deep)] text-white' : 'border-[var(--color-line)] text-[var(--color-ink-soft)] hover:border-[var(--color-stone-soft)]'}`}
             >
               {o.label}
             </button>

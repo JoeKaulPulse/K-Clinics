@@ -77,7 +77,7 @@ export function SiteConfigEditor({ initial, revisions }: { initial: SiteConfig; 
               <div><label className={label}>Company number</label><input className={field} value={c.companyNumber} onChange={(e) => top('companyNumber', e.target.value)} placeholder="17101088" /></div>
             </div>
             <div className="mt-4"><label className={label}>Tagline</label><input className={field} value={c.tagline} onChange={(e) => top('tagline', e.target.value)} /></div>
-            <div className="mt-4"><label className={label}>Description <span className="normal-case text-[var(--color-stone-soft)]">(SEO / meta default)</span></label><textarea className={`${field} min-h-[80px]`} value={c.description} onChange={(e) => top('description', e.target.value)} /></div>
+            <div className="mt-4"><label className={label}>Description <span className="normal-case text-[var(--color-stone)]">(SEO / meta default)</span></label><textarea className={`${field} min-h-[80px]`} value={c.description} onChange={(e) => top('description', e.target.value)} /></div>
           </section>
 
           {/* Announcement bar */}
@@ -91,12 +91,12 @@ export function SiteConfigEditor({ initial, revisions }: { initial: SiteConfig; 
             </div>
             <div><label className={label}>Message</label><input className={field} value={c.announcement.message} placeholder="e.g. 15% off your first visit this month" onChange={(e) => nest('announcement', { message: e.target.value })} /></div>
             <div className="mt-4 grid gap-4 sm:grid-cols-2">
-              <div><label className={label}>Link text <span className="normal-case text-[var(--color-stone-soft)]">(optional)</span></label><input className={field} value={c.announcement.linkLabel || ''} onChange={(e) => nest('announcement', { linkLabel: e.target.value })} /></div>
+              <div><label className={label}>Link text <span className="normal-case text-[var(--color-stone)]">(optional)</span></label><input className={field} value={c.announcement.linkLabel || ''} onChange={(e) => nest('announcement', { linkLabel: e.target.value })} /></div>
               <div><label className={label}>Link URL</label><input className={field} value={c.announcement.linkHref || ''} placeholder="/offers" onChange={(e) => nest('announcement', { linkHref: e.target.value })} /></div>
             </div>
             <div className="mt-4 grid gap-4 sm:grid-cols-2">
-              <div><label className={label}>Start date <span className="normal-case text-[var(--color-stone-soft)]">(optional)</span></label><input type="date" className={field} value={c.announcement.startAt?.slice(0, 10) || ''} onChange={(e) => nest('announcement', { startAt: e.target.value || null })} /></div>
-              <div><label className={label}>End date <span className="normal-case text-[var(--color-stone-soft)]">(optional)</span></label><input type="date" className={field} value={c.announcement.endAt?.slice(0, 10) || ''} onChange={(e) => nest('announcement', { endAt: e.target.value || null })} /></div>
+              <div><label className={label}>Start date <span className="normal-case text-[var(--color-stone)]">(optional)</span></label><input type="date" className={field} value={c.announcement.startAt?.slice(0, 10) || ''} onChange={(e) => nest('announcement', { startAt: e.target.value || null })} /></div>
+              <div><label className={label}>End date <span className="normal-case text-[var(--color-stone)]">(optional)</span></label><input type="date" className={field} value={c.announcement.endAt?.slice(0, 10) || ''} onChange={(e) => nest('announcement', { endAt: e.target.value || null })} /></div>
             </div>
           </section>
 
@@ -105,10 +105,10 @@ export function SiteConfigEditor({ initial, revisions }: { initial: SiteConfig; 
             <h2 className="mb-4 font-[family-name:var(--font-display)] text-xl">Contact</h2>
             <div className="grid gap-4 sm:grid-cols-2">
               <div><label className={label}>Phone (display)</label><input className={field} value={c.phone} onChange={(e) => top('phone', e.target.value)} /></div>
-              <div><label className={label}>Phone link <span className="normal-case text-[var(--color-stone-soft)]">(tel:)</span></label><input className={field} value={c.phoneHref} onChange={(e) => top('phoneHref', e.target.value)} /></div>
+              <div><label className={label}>Phone link <span className="normal-case text-[var(--color-stone)]">(tel:)</span></label><input className={field} value={c.phoneHref} onChange={(e) => top('phoneHref', e.target.value)} /></div>
               <div><label className={label}>Email (display)</label><input className={field} value={c.email} onChange={(e) => top('email', e.target.value)} /></div>
-              <div><label className={label}>Email link <span className="normal-case text-[var(--color-stone-soft)]">(mailto:)</span></label><input className={field} value={c.emailHref} onChange={(e) => top('emailHref', e.target.value)} /></div>
-              <div><label className={label}>WhatsApp <span className="normal-case text-[var(--color-stone-soft)]">(digits, intl)</span></label><input className={field} value={c.whatsapp} onChange={(e) => top('whatsapp', e.target.value)} /></div>
+              <div><label className={label}>Email link <span className="normal-case text-[var(--color-stone)]">(mailto:)</span></label><input className={field} value={c.emailHref} onChange={(e) => top('emailHref', e.target.value)} /></div>
+              <div><label className={label}>WhatsApp <span className="normal-case text-[var(--color-stone)]">(digits, intl)</span></label><input className={field} value={c.whatsapp} onChange={(e) => top('whatsapp', e.target.value)} /></div>
             </div>
           </section>
 
@@ -122,7 +122,7 @@ export function SiteConfigEditor({ initial, revisions }: { initial: SiteConfig; 
               <div><label className={label}>Postcode</label><input className={field} value={c.address.postalCode} onChange={(e) => nest('address', { postalCode: e.target.value })} /></div>
               <div><label className={label}>Country</label><input className={field} value={c.address.countryName} onChange={(e) => nest('address', { countryName: e.target.value })} /></div>
             </div>
-            <div className="mt-4"><label className={label}>Map link <span className="normal-case text-[var(--color-stone-soft)]">(Google Maps share URL)</span></label><input className={field} value={c.mapLink} onChange={(e) => top('mapLink', e.target.value)} /></div>
+            <div className="mt-4"><label className={label}>Map link <span className="normal-case text-[var(--color-stone)]">(Google Maps share URL)</span></label><input className={field} value={c.mapLink} onChange={(e) => top('mapLink', e.target.value)} /></div>
             <div className="mt-4"><label className={label}>Map embed URL</label><input className={field} value={c.mapEmbed} onChange={(e) => top('mapEmbed', e.target.value)} /></div>
           </section>
 
@@ -148,12 +148,12 @@ export function SiteConfigEditor({ initial, revisions }: { initial: SiteConfig; 
                 <div key={i} className="grid grid-cols-[8rem_1fr_2rem] items-center gap-3">
                   <input className={field} value={k} placeholder="platform" onChange={(e) => { const rows = socialRows.map((r) => [...r] as [string, string]); rows[i][0] = e.target.value.toLowerCase(); setSocial(rows); }} />
                   <input className={field} value={v} placeholder="https://…" onChange={(e) => { const rows = socialRows.map((r) => [...r] as [string, string]); rows[i][1] = e.target.value; setSocial(rows); }} />
-                  <button className="text-[var(--color-stone-soft)] hover:text-[#c0392b]" onClick={() => setSocial(socialRows.filter((_, j) => j !== i) as [string, string][])} aria-label="Remove">✕</button>
+                  <button className="text-[var(--color-stone)] hover:text-[#c0392b]" onClick={() => setSocial(socialRows.filter((_, j) => j !== i) as [string, string][])} aria-label="Remove">✕</button>
                 </div>
               ))}
             </div>
-            <button className="mt-3 text-sm text-[var(--color-gold)] hover:underline" onClick={() => setSocial([...socialRows as [string, string][], ['', '']])}>+ Add social link</button>
-            <p className="mt-2 text-xs text-[var(--color-stone-soft)]">Known platforms (instagram, facebook, tiktok) get branded icons; others show an initial.</p>
+            <button className="mt-3 text-sm text-[var(--color-gold-deep)] hover:underline" onClick={() => setSocial([...socialRows as [string, string][], ['', '']])}>+ Add social link</button>
+            <p className="mt-2 text-xs text-[var(--color-stone)]">Known platforms (instagram, facebook, tiktok) get branded icons; others show an initial.</p>
           </section>
 
           {/* Booking + service flags */}
@@ -165,11 +165,11 @@ export function SiteConfigEditor({ initial, revisions }: { initial: SiteConfig; 
             </div>
             <label className="mt-4 flex items-center gap-2 text-sm">
               <input type="checkbox" checked={c.dentistryLive} onChange={(e) => top('dentistryLive', e.target.checked)} />
-              Dentistry is live <span className="text-[var(--color-stone-soft)]">(off = “opening soon” + register interest)</span>
+              Dentistry is live <span className="text-[var(--color-stone)]">(off = “opening soon” + register interest)</span>
             </label>
           </section>
 
-          <p className="text-xs text-[var(--color-stone-soft)]">The media library and page builder arrive in the next update.</p>
+          <p className="text-xs text-[var(--color-stone)]">The media library and page builder arrive in the next update.</p>
           </>
           )}
         </div>
@@ -179,20 +179,20 @@ export function SiteConfigEditor({ initial, revisions }: { initial: SiteConfig; 
           <div className={card}>
             <button disabled={busy} onClick={save} className="w-full rounded-full bg-[var(--color-ink)] px-5 py-3 text-sm text-[var(--color-porcelain)] disabled:opacity-50">{busy ? 'Saving…' : 'Save changes'}</button>
             {msg && <p className={`mt-3 text-sm ${msg.kind === 'ok' ? 'text-[var(--color-jade)]' : 'text-[#c0392b]'}`}>{msg.text}</p>}
-            <p className="mt-3 text-xs text-[var(--color-stone-soft)]">Saved changes publish immediately across the live site.</p>
+            <p className="mt-3 text-xs text-[var(--color-stone)]">Saved changes publish immediately across the live site.</p>
           </div>
 
           <div className={card}>
             <h3 className="mb-3 text-xs font-medium uppercase tracking-[0.12em] text-[var(--color-stone)]">Version history</h3>
-            {revisions.length === 0 && <p className="text-sm text-[var(--color-stone-soft)]">No previous versions yet. Each save creates a restore point.</p>}
+            {revisions.length === 0 && <p className="text-sm text-[var(--color-stone)]">No previous versions yet. Each save creates a restore point.</p>}
             <ul className="space-y-2">
               {revisions.map((r) => (
                 <li key={r.id} className="flex items-center justify-between gap-2 border-b border-[var(--color-line)] pb-2 text-sm last:border-0">
                   <span>
                     <span className="block">{new Date(r.createdAt).toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}</span>
-                    {(r.label || r.createdBy) && <span className="text-xs text-[var(--color-stone-soft)]">{r.label || r.createdBy}</span>}
+                    {(r.label || r.createdBy) && <span className="text-xs text-[var(--color-stone)]">{r.label || r.createdBy}</span>}
                   </span>
-                  <button disabled={busy} onClick={() => rollback(r.id)} className="shrink-0 rounded-full border border-[var(--color-line)] px-3 py-1 text-xs hover:border-[var(--color-gold)] hover:text-[var(--color-gold)] disabled:opacity-50">Restore</button>
+                  <button disabled={busy} onClick={() => rollback(r.id)} className="shrink-0 rounded-full border border-[var(--color-line)] px-3 py-1 text-xs hover:border-[var(--color-gold)] hover:text-[var(--color-gold-deep)] disabled:opacity-50">Restore</button>
                 </li>
               ))}
             </ul>

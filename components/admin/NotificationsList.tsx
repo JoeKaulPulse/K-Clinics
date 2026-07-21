@@ -61,28 +61,28 @@ export function NotificationsList() {
       <div className="mb-4 flex flex-wrap items-center gap-2">
         {tab(null, 'All')}
         {CATEGORIES.map((c) => tab(c, CATEGORY_LABEL[c], byCategory[c]))}
-        <button onClick={markAll} className="ml-auto text-sm text-[var(--color-gold)] hover:underline">Mark all read</button>
+        <button onClick={markAll} className="ml-auto text-sm text-[var(--color-gold-deep)] hover:underline">Mark all read</button>
       </div>
 
       <div className="overflow-hidden rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-porcelain)]">
         {loading ? (
           <p className="px-4 py-8 text-center text-sm text-[var(--color-stone)]">Loading…</p>
         ) : items.length === 0 ? (
-          <p className="px-4 py-10 text-center text-sm text-[var(--color-stone-soft)]">Nothing here.</p>
+          <p className="px-4 py-10 text-center text-sm text-[var(--color-stone)]">Nothing here.</p>
         ) : items.map((n) => (
           <button key={n.id} onClick={() => go(n)} className={`flex w-full items-start gap-3 border-b border-[var(--color-line)] px-4 py-3 text-left last:border-0 hover:bg-[var(--color-bone)] ${PRIORITY_ACCENT[n.priority || 'normal'] || ''} ${n.readAt ? '' : 'bg-[var(--color-gold)]/5'}`}>
             <span className={`mt-1.5 h-2 w-2 shrink-0 rounded-full ${PRIORITY_DOT[n.priority || 'normal'] || PRIORITY_DOT.normal}`} aria-hidden />
             <span className="min-w-0 flex-1">
               <span className="block text-sm font-medium text-[var(--color-ink)]">{n.title}</span>
               {n.body && <span className="mt-0.5 block text-xs text-[var(--color-stone)]">{n.body}</span>}
-              <span className="mt-1 flex items-center gap-2 text-[0.65rem] text-[var(--color-stone-soft)]">
+              <span className="mt-1 flex items-center gap-2 text-[0.65rem] text-[var(--color-stone)]">
                 {n.category && <span className="rounded-full bg-[var(--color-bone)] px-1.5 py-0.5">{CATEGORY_LABEL[n.category] || n.category}</span>}
                 {n.priority && n.priority !== 'normal' && <span className="uppercase tracking-wide">{n.priority}</span>}
                 <span>{ago(n.createdAt)}</span>
-                {!n.readAt && <span className="text-[var(--color-gold)]">• new</span>}
+                {!n.readAt && <span className="text-[var(--color-gold-deep)]">• new</span>}
               </span>
             </span>
-            {n.href && <span aria-hidden className="mt-1 text-[var(--color-stone-soft)]">→</span>}
+            {n.href && <span aria-hidden className="mt-1 text-[var(--color-stone)]">→</span>}
           </button>
         ))}
       </div>

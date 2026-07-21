@@ -73,7 +73,7 @@ export default async function AssessmentsPage() {
               </div>
               <Link
                 href={`/account/assessments/${q.key}`}
-                className={`shrink-0 rounded-full px-5 py-2.5 text-sm font-medium transition-colors ${done ? 'border border-[var(--color-line)] text-[var(--color-ink-soft)] hover:border-[var(--color-gold)] hover:text-[var(--color-gold)]' : 'bg-[var(--color-gold)] text-white shadow-[var(--shadow-gold)] hover:bg-[var(--color-ink)]'}`}
+                className={`shrink-0 rounded-full px-5 py-2.5 text-sm font-medium transition-colors ${done ? 'border border-[var(--color-line)] text-[var(--color-ink-soft)] hover:border-[var(--color-gold)] hover:text-[var(--color-gold-deep)]' : 'bg-[var(--color-gold-deep)] text-white shadow-[var(--shadow-gold)] hover:bg-[var(--color-ink)]'}`}
               >
                 {done ? t('asmt.update') : t('asmt.start')}
               </Link>

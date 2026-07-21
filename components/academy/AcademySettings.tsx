@@ -1,19 +1,46 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type FormEvent } from 'react';
 import { useRouter } from 'next/navigation';
 import { isMascotMuted, setMascotMuted, mascotBlip } from '@/components/academy/mascotVoice';
 
 type Passkey = { id: string; name: string; createdAt: string; lastUsedAt: string | null };
 const fmt = (iso: string | null) => (iso ? new Date(iso).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : '—');
 
-export function AcademySettings({ passkeys: initial }: { passkeys: Passkey[] }) {
+export function AcademySettings({ passkeys: initial, hasPassword }: { passkeys: Passkey[]; hasPassword: boolean }) {
   const router = useRouter();
   const [muted, setMuted] = useState(false);
   const [passkeys, setPasskeys] = useState(initial);
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState('');
+  // Password change (BLD-547). An account created from an activation link has no
+  // password yet, so we ask for the current one only when there is one to verify.
+  const [pwCurrent, setPwCurrent] = useState('');
+  const [pwNew, setPwNew] = useState('');
+  const [pwConfirm, setPwConfirm] = useState('');
+  const [pwBusy, setPwBusy] = useState(false);
+  const [pwMsg, setPwMsg] = useState<{ tone: 'ok' | 'err'; text: string } | null>(null);
   useEffect(() => setMuted(isMascotMuted()), []);
+
+  async function changePassword(e: FormEvent) {
+    e.preventDefault();
+    setPwMsg(null);
+    if (pwNew.length < 8) { setPwMsg({ tone: 'err', text: 'Your new password must be at least 8 characters.' }); return; }
+    if (pwNew !== pwConfirm) { setPwMsg({ tone: 'err', text: 'The two new passwords don’t match.' }); return; }
+    setPwBusy(true);
+    try {
+      const r = await fetch('/api/academy/password', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ currentPassword: pwCurrent, newPassword: pwNew }),
+      }).then((res) => res.json());
+      if (r.ok) {
+        setPwMsg({ tone: 'ok', text: 'Password updated. We’ve signed you out of other devices.' });
+        setPwCurrent(''); setPwNew(''); setPwConfirm('');
+        router.refresh();
+      } else setPwMsg({ tone: 'err', text: r.error || 'Could not change your password.' });
+    } catch { setPwMsg({ tone: 'err', text: 'Something went wrong. Please try again.' }); }
+    finally { setPwBusy(false); }
+  }
 
   function toggleVoice() {
     const m = !muted;
@@ -69,7 +96,7 @@ export function AcademySettings({ passkeys: initial }: { passkeys: Passkey[] }) 
             {passkeys.map((p) => (
               <li key={p.id} className="flex items-center justify-between gap-3 rounded-[var(--radius-md)] border border-[var(--color-line)] bg-white px-4 py-2.5 text-sm">
                 <span>{p.name}<span className="block text-xs text-[var(--color-stone)]">Added {fmt(p.createdAt)}{p.lastUsedAt ? ` · last used ${fmt(p.lastUsedAt)}` : ''}</span></span>
-                <button onClick={() => remove(p.id)} className="text-xs text-[var(--color-blush)] hover:underline">Remove</button>
+                <button onClick={() => remove(p.id)} className="text-xs text-[var(--color-blush-deep)] hover:underline">Remove</button>
               </li>
             ))}
           </ul>
@@ -79,6 +106,35 @@ export function AcademySettings({ passkeys: initial }: { passkeys: Passkey[] }) 
         </button>
         {msg && <p className="mt-3 text-sm text-[var(--color-stone)]">{msg}</p>}
       </div>
+
+      {/* Password */}
+      <form onSubmit={changePassword} className="rounded-[var(--radius-xl)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-5 sm:p-6">
+        <p className="font-[family-name:var(--font-display)] text-lg">{hasPassword ? 'Change your password' : 'Set a password'}</p>
+        <p className="mt-0.5 text-sm text-[var(--color-stone)]">{hasPassword ? 'Use at least 8 characters. Changing it signs you out of any other devices.' : 'You don’t have a password yet — set one so you can sign in without the email link.'}</p>
+        <div className="mt-4 space-y-3">
+          {hasPassword && (
+            <div>
+              <label htmlFor="pw-current" className="block text-sm text-[var(--color-stone)]">Current password</label>
+              <input id="pw-current" type="password" autoComplete="current-password" value={pwCurrent} onChange={(e) => setPwCurrent(e.target.value)} required
+                className="mt-1 w-full rounded-[var(--radius-md)] border border-[var(--color-line)] bg-white px-4 py-2.5 text-sm outline-none focus:border-[var(--color-gold)]" />
+            </div>
+          )}
+          <div>
+            <label htmlFor="pw-new" className="block text-sm text-[var(--color-stone)]">New password</label>
+            <input id="pw-new" type="password" autoComplete="new-password" minLength={8} value={pwNew} onChange={(e) => setPwNew(e.target.value)} required
+              className="mt-1 w-full rounded-[var(--radius-md)] border border-[var(--color-line)] bg-white px-4 py-2.5 text-sm outline-none focus:border-[var(--color-gold)]" />
+          </div>
+          <div>
+            <label htmlFor="pw-confirm" className="block text-sm text-[var(--color-stone)]">Confirm new password</label>
+            <input id="pw-confirm" type="password" autoComplete="new-password" minLength={8} value={pwConfirm} onChange={(e) => setPwConfirm(e.target.value)} required
+              className="mt-1 w-full rounded-[var(--radius-md)] border border-[var(--color-line)] bg-white px-4 py-2.5 text-sm outline-none focus:border-[var(--color-gold)]" />
+          </div>
+        </div>
+        <button type="submit" disabled={pwBusy} className="mt-4 inline-flex items-center gap-2 rounded-full bg-[var(--color-ink)] px-5 py-2.5 text-sm font-medium text-[var(--color-porcelain)] transition-colors hover:bg-[var(--color-espresso)] disabled:opacity-60">
+          {pwBusy ? 'Saving…' : hasPassword ? 'Update password' : 'Set password'}
+        </button>
+        {pwMsg && <p className={`mt-3 text-sm ${pwMsg.tone === 'ok' ? 'text-[var(--color-jade)]' : 'text-[var(--color-blush-deep)]'}`}>{pwMsg.text}</p>}
+      </form>
     </div>
   );
 }

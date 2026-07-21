@@ -46,7 +46,7 @@ export function FranchiseEnquiryForm() {
     }
   }
 
-  const field = 'w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-porcelain)] px-4 py-3 text-[var(--color-ink)] outline-none transition-colors placeholder:text-[var(--color-stone-soft)] focus:border-[var(--color-gold)]';
+  const field = 'w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-porcelain)] px-4 py-3 text-[var(--color-ink)] outline-none transition-colors placeholder:text-[var(--color-stone)] focus:border-[var(--color-gold)]';
   const label = 'mb-1.5 block text-xs uppercase tracking-[0.16em] text-[var(--color-stone)]';
 
   if (status === 'sent') {
@@ -82,7 +82,7 @@ export function FranchiseEnquiryForm() {
         <p className="text-sm text-[var(--color-stone)]">Or call <a href={site.phoneHref} className="link-underline font-medium text-[var(--color-ink)]">{site.phone}</a></p>
       </div>
       {status === 'error' && <p className="mt-4 rounded-[var(--radius-sm)] bg-[var(--color-blush)]/25 px-4 py-3 text-sm text-[var(--color-ink)]">Something went wrong — please call us or email {site.email}.</p>}
-      <p className="mt-4 text-xs leading-relaxed text-[var(--color-stone-soft)]">By submitting, you agree to be contacted about your enquiry. We never share your details.</p>
+      <p className="mt-4 text-xs leading-relaxed text-[var(--color-stone)]">By submitting, you agree to be contacted about your enquiry. We never share your details.</p>
     </form>
   );
 }

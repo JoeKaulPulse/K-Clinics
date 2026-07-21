@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useTransition } from 'react';
-import { addNote, togglePinNote, setConsultStatus, sendManualEmail } from '@/app/admin/actions';
+import { addNote, togglePinNote, setConsultStatus, sendManualEmail, sendPortalInvite } from '@/app/admin/actions';
 
 const STATUSES = ['NEW', 'CONTACTED', 'BOOKED', 'COMPLETED', 'CLOSED'];
 const fieldCls = 'w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-porcelain)] px-3 py-2 text-sm outline-none focus:border-[var(--color-gold)]';
@@ -90,10 +90,35 @@ export function PinToggle({ noteId, clientId, pinned }: { noteId: string; client
       disabled={pending}
       onClick={() => start(() => togglePinNote(noteId, clientId, !pinned))}
       title={pinned ? 'Unpin' : 'Pin to top'}
-      className={`text-xs transition-colors disabled:opacity-50 ${pinned ? 'text-[var(--color-gold)]' : 'text-[var(--color-stone-soft)] hover:text-[var(--color-ink)]'}`}
+      className={`text-xs transition-colors disabled:opacity-50 ${pinned ? 'text-[var(--color-gold-deep)]' : 'text-[var(--color-stone)] hover:text-[var(--color-ink)]'}`}
     >
       {pinned ? '★ Pinned' : '☆ Pin'}
     </button>
+  );
+}
+
+// BLD-527: email the client a passwordless login/activation link. The label and
+// hint adapt to whether they already have a password, so staff know what it does.
+export function SendPortalInvite({ clientId, hasPassword }: { clientId: string; hasPassword: boolean }) {
+  const [msg, setMsg] = useState('');
+  const [pending, start] = useTransition();
+  const label = hasPassword ? 'Email login link' : 'Send login link';
+  return (
+    <span className="inline-flex items-center gap-2">
+      <button
+        disabled={pending}
+        title={hasPassword ? 'Email this client a one-time link that signs them in.' : 'This client has no password. Email them a secure link to open their account (they can set a password later).'}
+        onClick={() => start(async () => {
+          setMsg('');
+          const r = await sendPortalInvite(clientId);
+          setMsg(r?.ok ? 'Login link sent ✓' : (r?.error || 'Could not send.'));
+        })}
+        className="rounded-full border border-[var(--color-line)] px-4 py-2 text-sm hover:bg-[var(--color-bone)] disabled:opacity-60"
+      >
+        {pending ? 'Sending…' : label}
+      </button>
+      {msg && <span className="text-xs text-[var(--color-stone)]">{msg}</span>}
+    </span>
   );
 }
 
@@ -119,7 +144,7 @@ export function SendEmail({ clientId, email }: { clientId: string; email: string
             const r = await sendManualEmail(clientId, email, subject, body);
             if (r?.ok) { setMsg('Sent ✓'); setSubject(''); setBody(''); } else setMsg(r?.error || 'Failed');
           })}
-          className="rounded-[var(--radius-sm)] bg-[var(--color-gold)] px-4 py-2 text-sm text-white disabled:opacity-60"
+          className="rounded-[var(--radius-sm)] bg-[var(--color-gold-deep)] px-4 py-2 text-sm text-white disabled:opacity-60"
         >
           {pending ? 'Sending…' : 'Send'}
         </button>

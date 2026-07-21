@@ -35,9 +35,36 @@ node scripts/visual-qa.mjs
 Drives headless Chromium through key journeys against `BASE_URL`, screenshots
 every step, captures console errors + failed requests, and writes
 `qa-output/report.md` + `report.json` + PNGs. It tags and cleans up the kiosk
-sessions it creates (needs `QA_TOKEN`). Optional: `QA_SELFIE=/path/to/photo.jpg`
-exercises the kiosk AI happy path. Playwright Chromium is installed by the
-session-start hook.
+sessions it creates (needs `QA_TOKEN`). The kiosk flow exercises the real AI
+happy path by default (uploads a bundled clinic face photo → ANALYZED → result
+card); `QA_SELFIE=/path/to/photo.jpg` overrides the photo, and `QA_SELFIE=none`
+forces the 1×1px placeholder to check the graceful-failure path. On full-network
+sessions the browser bypasses the agent proxy automatically (`QA_BROWSER_DIRECT=1/0`
+overrides). Playwright Chromium is installed by the session-start hook.
+
+**You CAN do visual assessments — do not skip visual/CSS/layout bugs as
+"needs a human eye".** The credentials and tooling are provisioned:
+
+- **Public journeys + kiosk:** `node scripts/visual-qa.mjs` (above). Screenshots
+  land in `qa-output/`; read the PNGs back with the Read tool to actually *see*
+  the page, and surface them to the user with the file tool.
+- **Authenticated pages:** the env has `QA_ADMIN_EMAIL` / `QA_ADMIN_PASSWORD`
+  (admin) and `QA_ACADEMY_LOGIN` / `QA_ACADEMY_PASSWORD` (student). Drive a
+  Playwright script that signs in (admin: POST `/api/admin/login`, or fill
+  `/admin/login` `#email`/`#password`) and screenshots `/admin/...` routes.
+- **Ad-hoc check** (one page, e.g. a footer/overlap bug): a short Playwright
+  script — `chromium.launch()`, `newContext({ viewport, ignoreHTTPSErrors: true })`,
+  `goto(BASE_URL + path)`, `screenshot()` — then Read the PNG.
+
+**Network requirement (important):** the browser must be able to reach
+`BASE_URL`. This works in a **full-network** (or transparent TLS-gateway)
+environment — the standard Visual QA setup. In a **strict explicit-proxy**
+session the browser cannot egress to the live site (Chromium's TLS to the site
+is closed by the gateway even though `curl`/Node work via `HTTPS_PROXY`), and the
+local dev server is unusable for pages because DB queries from the sandbox run
+in minutes. If `goto` fails with `ERR_CONNECTION_CLOSED` / `ERR_TUNNEL_*`,
+that's this case: say so and ask the owner to run the session in a full-network
+environment rather than silently skipping the visual check.
 
 ## Task reference IDs (tracing & search)
 

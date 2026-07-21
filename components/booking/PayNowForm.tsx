@@ -47,7 +47,7 @@ export function PayNowForm({ treatment, pricePence, clientSecret }: { treatment:
       <p className="mt-4 rounded-[var(--radius-md)] bg-[var(--color-porcelain)] px-4 py-3 text-sm text-[var(--color-ink)]">
         Your bank needs you to confirm this payment of <strong>{money(pricePence)}</strong>. Tap below and approve it with your bank when prompted — your card is already on file, so there’s nothing to re-enter.
       </p>
-      {error && <p className="mt-3 rounded-[var(--radius-sm)] bg-[var(--color-blush)]/25 px-4 py-3 text-sm text-[var(--color-ink)]">{error}</p>}
+      {error && <p role="alert" aria-live="assertive" className="mt-3 rounded-[var(--radius-sm)] bg-[var(--color-blush)]/25 px-4 py-3 text-sm text-[var(--color-ink)]">{error}</p>}
       <div className="mt-6 flex justify-end">
         <Button onClick={pay} variant="gold" size="lg" disabled={busy}>{busy ? 'Confirming…' : `Confirm & pay ${money(pricePence)}`}</Button>
       </div>

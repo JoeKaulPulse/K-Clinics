@@ -55,6 +55,9 @@ export type LoginGate = { blocked: boolean; requireCaptcha: boolean; retryAfterS
 /** Decide whether this login attempt may proceed, before checking the password. */
 export async function loginGate(identifier: string, req: Request): Promise<LoginGate> {
   const ip = clientIp(req);
+  // Manually-blocked IPs are denied login outright (admin deny-list, cached).
+  const { isIpBlocked } = await import('@/lib/security/ip-activity');
+  if (await isIpBlocked(ip)) return { blocked: true, requireCaptcha: true, retryAfterSec: WINDOW_SEC };
   // Per-IP burst limit (fast path via Redis when configured): 30 / minute.
   const burst = await rateLimit(`login:${ip}`, 30, 60);
   const [acct, ipFails] = await Promise.all([
@@ -85,6 +88,12 @@ export async function unlock(opts: { identifier?: string; ip?: string }, portal:
  *  Records a RATE_LIMITED event when the limit is hit. */
 export async function enforceRateLimit(req: Request, scope: string, limit: number, windowSec: number, portal: Portal = 'client'): Promise<boolean> {
   const ip = clientIp(req);
+  // A blocked IP fails every rate-limited endpoint (admin deny-list, cached).
+  const { isIpBlocked } = await import('@/lib/security/ip-activity');
+  if (await isIpBlocked(ip)) {
+    await recordSecurity('RATE_LIMITED', portal, null, req, { scope, blocked: true });
+    return false;
+  }
   const r = await rateLimit(`${scope}:${ip}`, limit, windowSec);
   if (!r.allowed) await recordSecurity('RATE_LIMITED', portal, null, req, { scope });
   return r.allowed;
@@ -106,10 +115,14 @@ export async function verifyTurnstile(token: string | undefined, req: Request): 
   if (!token) return false;
   try {
     const body = new URLSearchParams({ secret: process.env.TURNSTILE_SECRET_KEY!, response: token, remoteip: clientIp(req) });
-    const res = await fetch('https://challenges.cloudflare.com/turnstile/v0/siteverify', { method: 'POST', body });
+    // PRJ-939.12: cap the Cloudflare round-trip — a hung verify used to stall
+    // every gated form for the whole request budget, silently.
+    const res = await fetch('https://challenges.cloudflare.com/turnstile/v0/siteverify', { method: 'POST', body, signal: AbortSignal.timeout(8_000) });
     const j = await res.json();
     return Boolean(j.success);
-  } catch {
+  } catch (e) {
+    console.error('[turnstile] verify failed:', (e as Error)?.message);
+    try { const Sentry = await import('@sentry/nextjs'); Sentry.captureMessage('[turnstile] verify failed', { level: 'warning', tags: { area: 'turnstile' } }); } catch { /* best-effort */ }
     return false;
   }
 }

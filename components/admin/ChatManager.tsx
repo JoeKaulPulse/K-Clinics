@@ -94,7 +94,7 @@ export function ChatManager() {
     <div className="grid h-[70vh] gap-4 lg:grid-cols-[20rem_1fr]">
       {/* Conversation list */}
       <div className="overflow-y-auto rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-porcelain)]">
-        {convos.length === 0 && <p className="p-4 text-sm text-[var(--color-stone-soft)]">No conversations yet.</p>}
+        {convos.length === 0 && <p className="p-4 text-sm text-[var(--color-stone)]">No conversations yet.</p>}
         {convos.map((c) => (
           <button key={c.id} onClick={() => open(c.id)} className={`block w-full border-b border-[var(--color-line)] px-4 py-3 text-left last:border-0 ${activeId === c.id ? 'bg-[var(--color-bone)]' : 'hover:bg-[var(--color-bone)]'}`}>
             <div className="flex items-center justify-between gap-2">
@@ -102,8 +102,8 @@ export function ChatManager() {
               {c.staffUnread > 0 && <span className="rounded-full bg-amber-400 px-1.5 py-0.5 text-[0.6rem] font-semibold text-amber-950">{c.staffUnread}</span>}
             </div>
             <p className="mt-0.5 truncate text-xs text-[var(--color-stone)]">{c.preview}</p>
-            <p className="mt-0.5 flex items-center gap-1.5 text-[0.6rem] uppercase tracking-wide text-[var(--color-stone-soft)]">
-              <span className={`rounded px-1 py-px font-semibold not-italic ${c.mode === 'AI' ? 'bg-[var(--color-bone)] text-[var(--color-gold)]' : 'bg-[var(--color-ink)] text-[var(--color-porcelain)]'}`}>{c.mode === 'AI' ? 'AI' : 'Staff'}</span>
+            <p className="mt-0.5 flex items-center gap-1.5 text-[0.6rem] uppercase tracking-wide text-[var(--color-stone)]">
+              <span className={`rounded px-1 py-px font-semibold not-italic ${c.mode === 'AI' ? 'bg-[var(--color-bone)] text-[var(--color-gold-deep)]' : 'bg-[var(--color-ink)] text-[var(--color-porcelain)]'}`}>{c.mode === 'AI' ? 'AI' : 'Staff'}</span>
               <span>{c.status === 'CLOSED' ? 'Closed' : 'Open'} · {fmt(c.lastMessageAt)}</span>
             </p>
           </button>
@@ -113,13 +113,13 @@ export function ChatManager() {
       {/* Thread */}
       <div className="flex flex-col overflow-hidden rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-porcelain)]">
         {!activeId ? (
-          <div className="grid flex-1 place-items-center text-sm text-[var(--color-stone-soft)]">Select a conversation.</div>
+          <div className="grid flex-1 place-items-center text-sm text-[var(--color-stone)]">Select a conversation.</div>
         ) : (
           <>
             <div className="flex items-center justify-between border-b border-[var(--color-line)] px-4 py-3">
               <div>
                 <p className="font-medium">{headerName || 'Visitor'}{headerEmail ? ` · ${headerEmail}` : ''}</p>
-                <p className="text-xs text-[var(--color-stone-soft)]">
+                <p className="text-xs text-[var(--color-stone)]">
                   {meta?.mode === 'AI' ? 'AI assistant is handling this chat' : 'You are handling this chat'}
                   {meta?.page ? ` · from ${meta.page}` : ''}
                 </p>
@@ -127,9 +127,9 @@ export function ChatManager() {
               <div className="flex items-center gap-3 text-xs">
                 {headerEmail && <button onClick={emailTranscript} disabled={busy} title={`Email the chat to ${headerEmail}`} className="font-medium text-[var(--color-gold-deep)] hover:underline disabled:opacity-50">✉ Email chat</button>}
                 {meta?.mode === 'AI'
-                  ? <button onClick={() => setMode('STAFF')} className="font-medium text-[var(--color-gold)] hover:underline">Take over</button>
-                  : <button onClick={() => setMode('AI')} className="font-medium text-[var(--color-gold)] hover:underline">Resume AI</button>}
-                <button onClick={close} className="text-[var(--color-stone)] hover:text-[var(--color-blush)]">Close chat</button>
+                  ? <button onClick={() => setMode('STAFF')} className="font-medium text-[var(--color-gold-deep)] hover:underline">Take over</button>
+                  : <button onClick={() => setMode('AI')} className="font-medium text-[var(--color-gold-deep)] hover:underline">Resume AI</button>}
+                <button onClick={close} className="text-[var(--color-stone)] hover:text-[var(--color-blush-deep)]">Close chat</button>
               </div>
             </div>
             {emails.length > 0 && (
@@ -141,7 +141,7 @@ export function ChatManager() {
               </div>
             )}
             <div ref={scroller} className="flex-1 space-y-2 overflow-y-auto p-4">
-              {msgs.length === 0 && loading && <p className="grid h-full place-items-center text-sm text-[var(--color-stone-soft)]">Loading conversation…</p>}
+              {msgs.length === 0 && loading && <p className="grid h-full place-items-center text-sm text-[var(--color-stone)]">Loading conversation…</p>}
               {msgs.length === 0 && !loading && threadError && (
                 <div className="grid h-full place-items-center text-center text-sm text-[var(--color-stone)]">
                   <div>
@@ -150,7 +150,7 @@ export function ChatManager() {
                   </div>
                 </div>
               )}
-              {msgs.length === 0 && !loading && !threadError && <p className="grid h-full place-items-center text-sm text-[var(--color-stone-soft)]">No messages in this conversation yet.</p>}
+              {msgs.length === 0 && !loading && !threadError && <p className="grid h-full place-items-center text-sm text-[var(--color-stone)]">No messages in this conversation yet.</p>}
               {msgs.map((m) => {
                 const mine = m.sender !== 'VISITOR'; // staff + AI on the right
                 const tone = m.sender === 'AI' ? 'ml-auto bg-[color-mix(in_oklab,var(--color-gold)_16%,var(--color-porcelain))] text-[var(--color-ink)]'
@@ -167,7 +167,7 @@ export function ChatManager() {
             </div>
             <div className="flex gap-2 border-t border-[var(--color-line)] p-3">
               <input value={draft} onChange={(e) => setDraft(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); reply(); } }} placeholder="Type your reply…" className="min-w-0 flex-1 rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-3 py-2 text-sm outline-none focus:border-[var(--color-gold)]" />
-              <button onClick={() => reply(false)} disabled={busy || !draft.trim()} className="rounded-[var(--radius-sm)] bg-[var(--color-gold)] px-4 text-sm font-medium text-white disabled:opacity-50">Send</button>
+              <button onClick={() => reply(false)} disabled={busy || !draft.trim()} className="rounded-[var(--radius-sm)] bg-[var(--color-gold-deep)] px-4 text-sm font-medium text-white disabled:opacity-50">Send</button>
               {headerEmail && (
                 <button onClick={() => reply(true)} disabled={busy || !draft.trim()} title={`Send and email ${headerEmail}`} className="rounded-[var(--radius-sm)] border border-[var(--color-gold)] px-3 text-xs font-medium text-[var(--color-gold-deep)] disabled:opacity-50">Send + email</button>
               )}

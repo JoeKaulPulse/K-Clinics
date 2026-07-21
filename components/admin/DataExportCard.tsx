@@ -84,13 +84,13 @@ export function DataExportCard() {
           </button>
         </div>
         {!loaded ? (
-          <p className="mt-2 text-xs text-[var(--color-stone-soft)]">Loading…</p>
+          <p className="mt-2 text-xs text-[var(--color-stone)]">Loading…</p>
         ) : hasPasskey ? (
           <ul className="mt-2 divide-y divide-[var(--color-line)]">
             {passkeys.map((p) => (
               <li key={p.id} className="flex items-center justify-between py-2 text-sm">
-                <span>{p.deviceName || 'Passkey'}<span className="ml-2 text-xs text-[var(--color-stone-soft)]">added {new Date(p.createdAt).toLocaleDateString('en-GB')}{p.lastUsedAt ? ` · last used ${new Date(p.lastUsedAt).toLocaleDateString('en-GB')}` : ''}</span></span>
-                <button onClick={() => removePasskey(p.id)} className="text-xs text-[var(--color-blush)] hover:underline">Remove</button>
+                <span>{p.deviceName || 'Passkey'}<span className="ml-2 text-xs text-[var(--color-stone)]">added {new Date(p.createdAt).toLocaleDateString('en-GB')}{p.lastUsedAt ? ` · last used ${new Date(p.lastUsedAt).toLocaleDateString('en-GB')}` : ''}</span></span>
+                <button onClick={() => removePasskey(p.id)} className="text-xs text-[var(--color-blush-deep)] hover:underline">Remove</button>
               </li>
             ))}
           </ul>
@@ -99,7 +99,7 @@ export function DataExportCard() {
         )}
       </div>
 
-      <ul className="mt-3 list-disc space-y-1 pl-5 text-xs text-[var(--color-stone-soft)]">
+      <ul className="mt-3 list-disc space-y-1 pl-5 text-xs text-[var(--color-stone)]">
         <li>Restores into a PostgreSQL database built from the same schema.</li>
         <li>Encrypted fields export as ciphertext — migrate the encryption keys (env vars) too.</li>
         <li>Uploaded media live in Vercel Blob; this export includes their URLs — copy the Blob store separately.</li>

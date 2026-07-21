@@ -24,6 +24,7 @@ export async function GET(req: Request) {
   const ci = { contains: q, mode: 'insensitive' as const };
   const nameOr = { OR: [{ firstName: ci }, { lastName: ci }] };
   const can = (p: string) => sessionCan(session, p);
+  const canClinical = can('clients.clinical.view');
   const safe = async (allowed: boolean, fn: () => Promise<Hit[]>): Promise<Hit[]> => (allowed ? fn().catch(() => []) : []);
   const fullName = (a?: string | null, b?: string | null, fallback = '') => [a, b].filter(Boolean).join(' ') || fallback;
   const snip = (s?: string | null, n = 60) => (s ? (s.length > n ? `${s.slice(0, n)}…` : s) : undefined);
@@ -31,15 +32,15 @@ export async function GET(req: Request) {
   const [clients, bookings, consultations, reviews, vouchers, discounts, staff, students, courses, services, stock, vacancies, applications, products, suppliers, posts, tasks, buildItems, pages] = await Promise.all([
     safe(can('clients.view'), async () =>
       (await db.client.findMany({ where: { OR: [{ firstName: ci }, { lastName: ci }, { email: ci }, { phone: { contains: q } }] }, orderBy: { updatedAt: 'desc' }, take: 12, select: { id: true, firstName: true, lastName: true, email: true, medicalFlag: true } }))
-        .map((c) => ({ id: c.id, title: fullName(c.firstName, c.lastName, c.email) + (c.medicalFlag ? ' ⚠' : ''), sub: c.email, href: `/admin/clients/${c.id}` }))),
+        .map((c) => ({ id: c.id, title: fullName(c.firstName, c.lastName, c.email) + (canClinical && c.medicalFlag ? ' ⚠' : ''), sub: c.email, href: `/admin/clients/${c.id}` }))),
     safe(can('bookings.view'), async () =>
       (await db.booking.findMany({ where: { OR: [{ treatmentTitle: ci }, { client: nameOr }, { client: { email: ci } }] }, orderBy: { startAt: 'desc' }, take: 12, select: { id: true, treatmentTitle: true, startAt: true, status: true, client: { select: { firstName: true, lastName: true } } } }))
-        .map((b) => ({ id: b.id, title: b.treatmentTitle, sub: `${fullName(b.client.firstName, b.client.lastName)} · ${b.startAt.toLocaleDateString('en-GB')} · ${b.status.toLowerCase()}`, href: `/admin/bookings/${b.id}` }))),
+        .map((b) => ({ id: b.id, title: b.treatmentTitle, sub: `${fullName(b.client.firstName, b.client.lastName)} · ${b.startAt.toLocaleDateString('en-GB', { timeZone: 'Europe/London' })} · ${b.status.toLowerCase()}`, href: `/admin/bookings/${b.id}` }))),
     safe(can('consultations.view'), async () =>
       // NB: concerns/message are encrypted at rest, so they can't be matched by a
       // SQL `contains` filter — consultations are searched by client name only.
       (await db.consultation.findMany({ where: { client: nameOr }, orderBy: { createdAt: 'desc' }, take: 5, select: { id: true, concerns: true, client: { select: { firstName: true, lastName: true } } } }))
-        .map((c) => ({ id: c.id, title: fullName(c.client.firstName, c.client.lastName, 'Consultation'), sub: snip(decClinical(c.concerns)), href: `/admin/consultations` }))),
+        .map((c) => ({ id: c.id, title: fullName(c.client.firstName, c.client.lastName, 'Consultation'), sub: canClinical ? snip(decClinical(c.concerns)) : undefined, href: `/admin/consultations` }))),
     safe(can('reviews.manage'), async () =>
       (await db.review.findMany({ where: { OR: [{ title: ci }, { body: ci }, { client: nameOr }] }, orderBy: { updatedAt: 'desc' }, take: 5, select: { id: true, rating: true, body: true, client: { select: { firstName: true, lastName: true } } } }))
         .map((r) => ({ id: r.id, title: `${fullName(r.client.firstName, r.client.lastName, 'Review')}${r.rating ? ` · ${r.rating}★` : ''}`, sub: snip(r.body), href: `/admin/reviews` }))),

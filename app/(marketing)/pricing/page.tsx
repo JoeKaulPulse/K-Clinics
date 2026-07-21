@@ -7,11 +7,13 @@ import { Button, ArrowIcon } from '@/components/ui/Button';
 import { listServices, liveOffers, bestOffer, effectiveStatus, statusLabel, formatPence, type ServiceStatus } from '@/lib/services';
 import { getTreatment } from '@/lib/treatments';
 import { crmEnabled } from '@/lib/crm';
+import { getVatNote } from '@/lib/vat';
 
 type PricedRow = { id: string; name: string; courses: { sessions: number; totalPence: number }[]; status: ServiceStatus; pricePence: number; offerPence: number | null; offerName: string | null };
 type PricedService = { id: string; name: string; treatmentSlug: string; rows: PricedRow[] };
 import { OffersStrip } from '@/components/marketing/OffersStrip';
 import { pageMeta, JsonLd, breadcrumbLd, offerCatalogLd } from '@/lib/seo';
+import { NewsletterCapture } from '@/components/layout/NewsletterCapture';
 
 // ISR: refresh hourly so admin price edits go live without a redeploy.
 export const revalidate = 3600;
@@ -29,6 +31,7 @@ export default async function PricingPage() {
   // Safe (empty) when the CRM/DB isn't available, e.g. the static demo build.
   const groups = new Map<string, PricedService[]>();
   let offerItems: { name: string; price: number }[] = [];
+  const vatNote = await getVatNote();
   if (crmEnabled) {
     try {
       const [services, offers] = await Promise.all([listServices(false), liveOffers(false)]);
@@ -91,7 +94,8 @@ export default async function PricingPage() {
                                     <span className="mt-1 block space-y-0.5 text-sm text-[var(--color-stone)]">
                                       {v.courses.map((c) => {
                                         const per = Math.round(c.totalPence / c.sessions);
-                                        const save = v.pricePence > 0 ? Math.round((1 - per / v.pricePence) * 100) : 0;
+                                        const effectiveSingle = v.offerPence ?? v.pricePence;
+                                        const save = effectiveSingle > 0 && per < effectiveSingle ? Math.round((1 - per / effectiveSingle) * 100) : 0;
                                         return (
                                           <span key={c.sessions} className="block">
                                             Course of {c.sessions} — <span className="font-medium text-[var(--color-ink)]">{formatPence(c.totalPence)}</span>
@@ -166,10 +170,11 @@ export default async function PricingPage() {
 
         <Reveal>
           <p className="mt-10 text-center text-sm text-[var(--color-stone)]">
-            All prices in GBP. Course prices show the total for the package. Your full, fixed quote is always agreed before treatment begins.
-          </p>
+            All prices in GBP. Course prices show the total for the package. Your full, fixed quote is always agreed before treatment begins.{vatNote ? ` ${vatNote}` : ''}
+</p>
         </Reveal>
       </section>
+      <NewsletterCapture source="pricing" />
     </>
   );
 }

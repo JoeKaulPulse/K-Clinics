@@ -31,6 +31,7 @@ export async function TreatmentCard({ t, index = 0 }: { t: Treatment; index?: nu
             alt={t.title}
             sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
             className="h-full w-full transition-transform duration-[1.6s] [transition-timing-function:var(--ease-lux)] group-hover:scale-[1.08]"
+            objectPosition={t.imagePosition}
           />
           <span className="absolute left-4 top-4 rounded-full bg-black/25 px-3 py-1 text-[0.68rem] font-medium uppercase tracking-[0.18em] text-white/90 backdrop-blur-sm">
             {t.group}
@@ -45,8 +46,8 @@ export async function TreatmentCard({ t, index = 0 }: { t: Treatment; index?: nu
             </span>
           ) : fromOfferPence != null && fromPence != null ? (
             <span className="absolute bottom-4 right-4 flex items-center gap-1.5 rounded-full bg-[var(--color-porcelain)]/92 px-3 py-1 text-xs font-medium text-[var(--color-ink)] backdrop-blur-sm">
-              <span className="rounded-full bg-[var(--color-gold)] px-1.5 py-0.5 text-[0.6rem] font-semibold uppercase tracking-wide text-white">Offer</span>
-              <span className="text-[var(--color-stone-soft)] line-through">{formatPence(fromPence)}</span>
+              <span className="rounded-full bg-[var(--color-gold-deep)] px-1.5 py-0.5 text-[0.6rem] font-semibold uppercase tracking-wide text-white">Offer</span>
+              <span className="text-[var(--color-stone)] line-through">{formatPence(fromPence)}</span>
               <span>from {formatPence(fromOfferPence)}</span>
             </span>
           ) : fromPence != null ? (
@@ -60,7 +61,7 @@ export async function TreatmentCard({ t, index = 0 }: { t: Treatment; index?: nu
             {t.title}
           </h3>
           <p className="mt-2.5 flex-1 text-sm leading-relaxed text-[var(--color-stone)]">{t.tagline}</p>
-          <span className="mt-6 inline-flex items-center gap-1.5 text-sm font-medium text-[var(--color-gold)]">
+          <span className="mt-6 inline-flex items-center gap-1.5 text-sm font-medium text-[var(--color-gold-deep)]">
             <span className="relative">
               Discover
               <span className="absolute -bottom-0.5 left-0 h-px w-full origin-right scale-x-0 bg-current transition-transform duration-500 [transition-timing-function:var(--ease-lux)] group-hover:origin-left group-hover:scale-x-100" />

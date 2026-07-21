@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { portalTranslator, type Locale } from '@/lib/i18n-portal';
+import { IS_STATIC_DEMO } from '@/lib/static-demo';
 
 const GENDERS = ['FEMALE', 'MALE', 'NON_BINARY', 'OTHER', 'PREFER_NOT_TO_SAY'] as const;
 
@@ -29,12 +30,14 @@ export function ProfileForm({ initial, locale = 'en' }: { initial: Initial; loca
           marketingOptIn: d.marketingOptIn, smsReminders: d.smsReminders, newPassword: d.newPassword || undefined,
         }),
       });
-      if (res.status === 404 || res.status === 503) { setMsg(t('profile.saved')); return; }
-      const json = await res.json();
+      // Only the static demo may pretend a save succeeded. On the live site a
+      // 404/503 means the change was NOT saved — surface it rather than lying.
+      if ((res.status === 404 || res.status === 503) && IS_STATIC_DEMO) { setMsg(t('profile.saved')); return; }
+      const json = await res.json().catch(() => ({ ok: false }));
       setMsg(json.ok ? t('profile.saved') : json.error || t('profile.couldNotSave'));
       if (json.ok) { set('newPassword', ''); router.refresh(); }
     } catch {
-      setMsg('Saved (preview).');
+      setMsg(IS_STATIC_DEMO ? 'Saved (preview).' : t('profile.couldNotSave'));
     } finally {
       setSaving(false);
     }
@@ -56,7 +59,7 @@ export function ProfileForm({ initial, locale = 'en' }: { initial: Initial; loca
           <option value="">{t('gender.unset')}</option>
           {GENDERS.map((g) => <option key={g} value={g}>{t(`gender.${g}`)}</option>)}
         </select>
-        <span className="mt-1 block text-xs normal-case tracking-normal text-[var(--color-stone-soft)]">{t('gender.help')}</span>
+        <span className="mt-1 block text-xs normal-case tracking-normal text-[var(--color-stone)]">{t('gender.help')}</span>
       </Field>
       {d.gender === 'OTHER' && (
         <Field label={t('gender.selfDescribe')}><input className={f} maxLength={60} value={d.genderSelfDescribe} onChange={(e) => set('genderSelfDescribe', e.target.value)} /></Field>
@@ -70,8 +73,8 @@ export function ProfileForm({ initial, locale = 'en' }: { initial: Initial; loca
         <input type="checkbox" checked={d.smsReminders} onChange={(e) => set('smsReminders', e.target.checked)} className="h-4 w-4 accent-[var(--color-gold)]" />
         Text me appointment confirmations &amp; reminders
       </label>
-      {msg && <p className="text-sm text-[var(--color-gold)]">{msg}</p>}
-      <button type="submit" disabled={saving} className="rounded-full bg-[var(--color-gold)] px-6 py-3 font-medium text-white hover:bg-[var(--color-ink)] disabled:opacity-60">
+      {msg && <p className="text-sm text-[var(--color-gold-deep)]">{msg}</p>}
+      <button type="submit" disabled={saving} className="rounded-full bg-[var(--color-gold-deep)] px-6 py-3 font-medium text-white hover:bg-[var(--color-ink)] disabled:opacity-60">
         {saving ? t('profile.saving') : t('profile.save')}
       </button>
     </form>

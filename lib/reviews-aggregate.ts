@@ -1,4 +1,5 @@
 import 'server-only';
+import { unstable_cache } from 'next/cache';
 import { db } from '@/lib/db';
 import { getSecret } from '@/lib/secrets';
 
@@ -131,7 +132,7 @@ async function googlePlacesSource(): Promise<SourceResult> {
 /** Combined, truthful aggregate. Returns null when no real reviews exist.
  *  Google source = the imported review history if any has been imported,
  *  otherwise the live Places API (so the two are never double-counted). */
-export async function getReviewAggregate(): Promise<ReviewAggregate | null> {
+async function _getReviewAggregate(): Promise<ReviewAggregate | null> {
   const [internal, imported] = await Promise.all([internalSource(), googleImportedSource()]);
   const google = imported ?? (await googlePlacesSource());
   const present = [
@@ -152,3 +153,6 @@ export async function getReviewAggregate(): Promise<ReviewAggregate | null> {
 
   return { average, count, sources: present.map(([name]) => name), cards };
 }
+
+// BLD-573: cache for 1h, co-located with the homepage revalidate=3600 interval.
+export const getReviewAggregate = unstable_cache(_getReviewAggregate, ['review-aggregate'], { revalidate: 3600 });

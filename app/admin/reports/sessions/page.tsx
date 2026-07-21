@@ -39,7 +39,7 @@ export default async function SessionInsightsPage({ searchParams }: { searchPara
     <AdminShell user={session?.email} can={can} locale={locale}>
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="min-w-0">
-          <p className="text-[0.7rem] font-semibold uppercase tracking-[0.18em] text-[var(--color-stone-soft)]">Reports · {rangeLabel}</p>
+          <p className="text-[0.7rem] font-semibold uppercase tracking-[0.18em] text-[var(--color-stone)]">Reports · {rangeLabel}</p>
           <h1 className="mt-1 font-[family-name:var(--font-display)] text-3xl">Session insights</h1>
         </div>
         <div className="flex gap-1 rounded-full border border-[var(--color-line)] bg-[var(--color-porcelain)] p-1 text-sm">
@@ -68,10 +68,10 @@ export default async function SessionInsightsPage({ searchParams }: { searchPara
           </div>
 
           {/* Per-step breakdown */}
-          <section className="mt-8 overflow-hidden rounded-[var(--radius-lg)] border border-[var(--color-line)]">
+          <section className="mt-8 overflow-x-auto rounded-[var(--radius-lg)] border border-[var(--color-line)]">
             <table className="w-full text-sm">
               <thead>
-                <tr className="bg-[var(--color-bone)] text-left text-xs uppercase tracking-wide text-[var(--color-stone-soft)]">
+                <tr className="bg-[var(--color-bone)] text-left text-xs uppercase tracking-wide text-[var(--color-stone)]">
                   <th className="p-3">Section</th>
                   <th className="p-3">Avg time</th>
                   <th className="p-3 hidden sm:table-cell">Median</th>
@@ -93,8 +93,8 @@ export default async function SessionInsightsPage({ searchParams }: { searchPara
                       </div>
                     </td>
                     <td className="p-3 hidden sm:table-cell tabular-nums text-[var(--color-stone)]">{fmtDuration(s.medianSeconds)}</td>
-                    <td className="p-3 tabular-nums">{s.revisitRate > 0 ? <span className={s.revisitRate >= 0.25 ? 'text-[var(--color-gold-deep)]' : ''}>{pct(s.revisitRate)}</span> : <span className="text-[var(--color-stone-soft)]">—</span>}</td>
-                    <td className="p-3 tabular-nums">{s.skipRate > 0 ? <span className={s.skipRate >= 0.25 ? 'text-[#b23b3b]' : ''}>{pct(s.skipRate)}</span> : <span className="text-[var(--color-stone-soft)]">—</span>}</td>
+                    <td className="p-3 tabular-nums">{s.revisitRate > 0 ? <span className={s.revisitRate >= 0.25 ? 'text-[var(--color-gold-deep)]' : ''}>{pct(s.revisitRate)}</span> : <span className="text-[var(--color-stone)]">—</span>}</td>
+                    <td className="p-3 tabular-nums">{s.skipRate > 0 ? <span className={s.skipRate >= 0.25 ? 'text-[#b23b3b]' : ''}>{pct(s.skipRate)}</span> : <span className="text-[var(--color-stone)]">—</span>}</td>
                     <td className="p-3 hidden sm:table-cell tabular-nums text-[var(--color-stone)]">{s.sessions}</td>
                   </tr>
                 ))}
@@ -108,10 +108,10 @@ export default async function SessionInsightsPage({ searchParams }: { searchPara
             <section className="mt-9">
               <h2 className="mb-1 font-[family-name:var(--font-display)] text-xl">By clinician</h2>
               <p className="mb-3 text-sm text-[var(--color-stone)]">How long each clinician’s sessions run, and where their time goes — busiest first.</p>
-              <div className="overflow-hidden rounded-[var(--radius-lg)] border border-[var(--color-line)]">
+              <div className="overflow-x-auto rounded-[var(--radius-lg)] border border-[var(--color-line)]">
                 <table className="w-full text-sm">
                   <thead>
-                    <tr className="bg-[var(--color-bone)] text-left text-xs uppercase tracking-wide text-[var(--color-stone-soft)]">
+                    <tr className="bg-[var(--color-bone)] text-left text-xs uppercase tracking-wide text-[var(--color-stone)]">
                       <th className="p-3">Clinician</th>
                       <th className="p-3">Sessions</th>
                       <th className="p-3">Avg length</th>
@@ -146,7 +146,7 @@ export default async function SessionInsightsPage({ searchParams }: { searchPara
 function Kpi({ label, value, sub }: { label: string; value: string; sub?: string }) {
   return (
     <div className="rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-6">
-      <p className="text-xs uppercase tracking-wide text-[var(--color-stone-soft)]">{label}</p>
+      <p className="text-xs uppercase tracking-wide text-[var(--color-stone)]">{label}</p>
       <p className="mt-2 font-[family-name:var(--font-display)] text-2xl text-[var(--color-ink)]">{value}</p>
       {sub && <p className="mt-0.5 text-xs text-[var(--color-stone)]">{sub}</p>}
     </div>

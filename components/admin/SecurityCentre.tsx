@@ -15,7 +15,7 @@ type Threats = {
 const ROLES = ['OWNER', 'ADMIN', 'PRACTITIONER', 'FRONT_DESK', 'STAFF'];
 
 const dot: Record<Severity, string> = { ok: 'bg-emerald-500', info: 'bg-sky-400', warn: 'bg-amber-400', critical: 'bg-[var(--color-blush)]' };
-const chip: Record<Severity, string> = { ok: 'text-emerald-700', info: 'text-sky-700', warn: 'text-amber-700', critical: 'text-[var(--color-blush)]' };
+const chip: Record<Severity, string> = { ok: 'text-emerald-700', info: 'text-sky-700', warn: 'text-amber-700', critical: 'text-[var(--color-blush-deep)]' };
 
 async function post(payload: object) {
   const r = await fetch('/api/admin/security', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
@@ -60,15 +60,15 @@ export function SecurityCentre({ score, checks, policy, threats }: { score: numb
   }
   function toggleRole(role: string) { setRoles((rs) => (rs.includes(role) ? rs.filter((x) => x !== role) : [...rs, role])); }
 
-  const scoreColor = score >= 85 ? 'text-emerald-600' : score >= 60 ? 'text-amber-600' : 'text-[var(--color-blush)]';
+  const scoreColor = score >= 85 ? 'text-emerald-600' : score >= 60 ? 'text-amber-600' : 'text-[var(--color-blush-deep)]';
 
   return (
     <div className="space-y-8">
       {/* Score + threat stats */}
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-6">
         <div className="rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-4 lg:col-span-1">
-          <p className="text-xs uppercase tracking-wide text-[var(--color-stone-soft)]">Posture</p>
-          <p className={`font-[family-name:var(--font-display)] text-3xl ${scoreColor}`}>{score}<span className="text-base text-[var(--color-stone-soft)]">/100</span></p>
+          <p className="text-xs uppercase tracking-wide text-[var(--color-stone)]">Posture</p>
+          <p className={`font-[family-name:var(--font-display)] text-3xl tabular-nums ${scoreColor}`}>{score}<span className="text-base text-[var(--color-stone)]">/100</span></p>
         </div>
         {[
           { l: 'Failed logins (24h)', v: threats.failed24h, warn: threats.failed24h > 20 },
@@ -78,8 +78,8 @@ export function SecurityCentre({ score, checks, policy, threats }: { score: numb
           { l: 'CAPTCHA fails (24h)', v: threats.captchaFails24h, warn: false },
         ].map((s) => (
           <div key={s.l} className="rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-4">
-            <p className="text-xs uppercase tracking-wide text-[var(--color-stone-soft)]">{s.l}</p>
-            <p className={`font-[family-name:var(--font-display)] text-2xl ${s.warn ? 'text-amber-600' : ''}`}>{s.v}</p>
+            <p className="text-xs uppercase tracking-wide text-[var(--color-stone)]">{s.l}</p>
+            <p className={`font-[family-name:var(--font-display)] text-2xl tabular-nums ${s.warn ? 'text-amber-600' : ''}`}>{s.v}</p>
           </div>
         ))}
       </div>
@@ -106,8 +106,8 @@ export function SecurityCentre({ score, checks, policy, threats }: { score: numb
             <ul className="divide-y divide-[var(--color-line)]">
               {threats.lockedNow.map((l) => (
                 <li key={l.identifier} className="flex items-center justify-between gap-3 py-2 text-sm">
-                  <span className="min-w-0 truncate">{l.identifier} <span className="text-xs text-[var(--color-stone-soft)]">· {l.fails} fails</span></span>
-                  <button disabled={busy} onClick={() => act({ op: 'unlock', identifier: l.identifier })} className="shrink-0 text-xs font-medium text-[var(--color-gold)] hover:underline">Unlock</button>
+                  <span className="min-w-0 truncate">{l.identifier} <span className="text-xs text-[var(--color-stone)]">· {l.fails} fails</span></span>
+                  <button disabled={busy} onClick={() => act({ op: 'unlock', identifier: l.identifier })} className="shrink-0 text-xs font-medium text-[var(--color-gold-deep)] hover:underline">Unlock</button>
                 </li>
               ))}
             </ul>
@@ -118,8 +118,8 @@ export function SecurityCentre({ score, checks, policy, threats }: { score: numb
             <ul className="divide-y divide-[var(--color-line)]">
               {threats.topIps.map((i) => (
                 <li key={i.ip} className="flex items-center justify-between gap-3 py-2 text-sm">
-                  <span className="min-w-0 truncate font-[family-name:var(--font-mono,monospace)]">{i.ip} <span className="text-xs text-[var(--color-stone-soft)]">· {i.fails} fails</span></span>
-                  <button disabled={busy} onClick={() => act({ op: 'unlock', ip: i.ip })} className="shrink-0 text-xs font-medium text-[var(--color-gold)] hover:underline">Clear</button>
+                  <span className="min-w-0 truncate font-[family-name:var(--font-mono,monospace)]">{i.ip} <span className="text-xs text-[var(--color-stone)]">· {i.fails} fails</span></span>
+                  <button disabled={busy} onClick={() => act({ op: 'unlock', ip: i.ip })} className="shrink-0 text-xs font-medium text-[var(--color-gold-deep)] hover:underline">Clear</button>
                 </li>
               ))}
             </ul>
@@ -162,7 +162,7 @@ export function SecurityCentre({ score, checks, policy, threats }: { score: numb
           <button disabled={busy} onClick={genSecret} className="mt-3 rounded-full border border-[var(--color-line)] px-4 py-1.5 text-xs hover:border-[var(--color-gold)]">Generate a new secret</button>
           {secret && <code className="mt-2 block break-all rounded-[var(--radius-sm)] bg-[var(--color-bone)] px-3 py-2 text-xs">{secret}</code>}
           <button disabled={busy} onClick={runReencrypt} className="mt-3 block rounded-full border border-[var(--color-line)] px-4 py-1.5 text-xs hover:border-[var(--color-gold)]">Run key re-encryption batch</button>
-          <p className="mt-2 text-xs text-[var(--color-stone-soft)]">Re-encryption touches all stored personal data, so it asks for your passkey (Face ID / Touch ID) first.</p>
+          <p className="mt-2 text-xs text-[var(--color-stone)]">Re-encryption touches all stored personal data, so it asks for your passkey (Face ID / Touch ID) first.</p>
         </Panel>
       </div>
 
@@ -172,8 +172,8 @@ export function SecurityCentre({ score, checks, policy, threats }: { score: numb
           <ul className="divide-y divide-[var(--color-line)] text-sm">
             {threats.recent.map((e) => (
               <li key={e.id} className="flex flex-wrap items-center justify-between gap-2 py-2">
-                <span><span className="rounded-full bg-[var(--color-bone)] px-2 py-0.5 text-[0.62rem] font-medium uppercase tracking-wide text-[var(--color-stone)]">{e.type}</span> <span className="text-[var(--color-ink-soft)]">{e.identifier || e.ip || '—'}</span> <span className="text-xs text-[var(--color-stone-soft)]">· {e.portal}</span></span>
-                <span className="text-xs text-[var(--color-stone-soft)]">{fmt(e.createdAt)}</span>
+                <span><span className="rounded-full bg-[var(--color-bone)] px-2 py-0.5 text-[0.62rem] font-medium uppercase tracking-wide text-[var(--color-stone)]">{e.type}</span> <span className="text-[var(--color-ink-soft)]">{e.identifier || e.ip || '—'}</span> <span className="text-xs text-[var(--color-stone)]">· {e.portal}</span></span>
+                <span className="text-xs text-[var(--color-stone)]">{fmt(e.createdAt)}</span>
               </li>
             ))}
           </ul>
@@ -192,5 +192,5 @@ function Panel({ title, children }: { title: string; children: React.ReactNode }
   );
 }
 function Empty({ children }: { children: React.ReactNode }) {
-  return <p className="text-sm text-[var(--color-stone-soft)]">{children}</p>;
+  return <p className="text-sm text-[var(--color-stone)]">{children}</p>;
 }

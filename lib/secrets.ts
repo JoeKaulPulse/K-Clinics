@@ -106,6 +106,50 @@ export async function hasSecret(name: string): Promise<boolean> {
   return Boolean(await getSecret(name));
 }
 
+// ── Per-tenant secrets (R15 groundwork, BLD-302) ─────────────────────────────
+// Multi-tenant ClinicOS will need the same key (e.g. a JWT signing secret) to
+// hold a DIFFERENT value per tenant. Rather than a destructive composite-PK
+// change, a tenant-scoped value is stored under a namespaced key while global
+// values keep the bare name — so `name @id` still enforces uniqueness. (No
+// tenantId column: that would pull ManagedSecret into the tenant-isolation
+// auto-scope and hide the global no-tenant rows — see the schema comment.)
+//
+// NOTE: nothing in the auth-verify hot path uses this yet — token verification
+// still reads process.env in lib/auth-edge.ts (edge runtime can't query the DB).
+// These resolvers exist so the per-tenant store is ready when that path moves
+// off the edge. Resolution order: tenant-scoped value → global managed/env value.
+const TENANT_PREFIX = 't:';
+const scopedName = (tenantId: string, name: string) => `${TENANT_PREFIX}${tenantId}:${name}`;
+
+/** Resolve a secret for a tenant: the tenant-scoped value if set, else the
+ *  global value (managed → env → default), exactly as getSecret resolves it. */
+export async function getTenantSecret(name: string, tenantId: string | null | undefined): Promise<string | undefined> {
+  if (tenantId) {
+    const v = (await loadAll()).get(scopedName(tenantId, name));
+    if (v) return v;
+  }
+  return getSecret(name);
+}
+
+/** Set a tenant-scoped secret (server-only; encrypted at rest). */
+export async function setTenantSecret(name: string, value: string, tenantId: string, actor: string): Promise<void> {
+  if (!tenantId) throw new Error('tenantId is required for a tenant-scoped secret.');
+  const valueEnc = encryptJson(value); // throws if no encryption key configured
+  const key = scopedName(tenantId, name);
+  await db.managedSecret.upsert({
+    where: { name: key },
+    update: { valueEnc, updatedBy: actor },
+    create: { name: key, valueEnc, updatedBy: actor },
+  });
+  invalidateSecretCache();
+}
+
+/** Remove a tenant-scoped secret (falls back to the global value thereafter). */
+export async function clearTenantSecret(name: string, tenantId: string): Promise<void> {
+  await db.managedSecret.deleteMany({ where: { name: scopedName(tenantId, name) } });
+  invalidateSecretCache();
+}
+
 export async function setSecret(name: string, value: string, actor: string): Promise<void> {
   if (!MANAGEABLE.has(name)) throw new Error('This key is managed in hosting and cannot be set here.');
   const valueEnc = encryptJson(value); // throws if no encryption key configured

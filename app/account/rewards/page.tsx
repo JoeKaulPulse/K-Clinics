@@ -91,7 +91,7 @@ export default async function RewardsPage() {
               </li>
             ))}
           </ul>
-          <p className="mt-4 border-t border-[var(--color-line)] pt-3 text-xs text-[var(--color-stone-soft)]">{t('rw.redeemNote')}</p>
+          <p className="mt-4 border-t border-[var(--color-line)] pt-3 text-xs text-[var(--color-stone)]">{t('rw.redeemNote')}</p>
         </div>
       </div>
       </Reveal>
@@ -120,7 +120,7 @@ export default async function RewardsPage() {
             <li key={row.id} className="flex items-center justify-between gap-3 px-5 py-3 text-sm">
               <span className="min-w-0">
                 <span className="block truncate">{row.reason}</span>
-                <span className="text-xs text-[var(--color-stone-soft)]">
+                <span className="text-xs text-[var(--color-stone)]">
                   {row.createdAt.toLocaleDateString(lc, { day: 'numeric', month: 'short', year: 'numeric' })} · {CAT_LABEL[row.category]?.[locale] || row.category}
                 </span>
               </span>
@@ -129,7 +129,7 @@ export default async function RewardsPage() {
           ))}
         </ul>
       ) : (
-        <p className="text-[var(--color-stone)]">{t('rw.noActivity')} <Link href="/book" className="font-medium text-[var(--color-gold)]">{t('appt.bookNow')} →</Link></p>
+        <p className="text-[var(--color-stone)]">{t('rw.noActivity')} <Link href="/book" className="font-medium text-[var(--color-gold-deep)]">{t('appt.bookNow')} →</Link></p>
       )}
     </PortalShell>
   );

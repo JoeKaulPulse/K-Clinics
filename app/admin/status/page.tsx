@@ -48,7 +48,7 @@ export default async function StatusPage() {
         <div className="flex items-center gap-3 rounded-full border border-[var(--color-line)] bg-[var(--color-porcelain)] px-4 py-2 text-sm">
           <span className={`h-3 w-3 rounded-full ${DOT[status.overall]}`} />
           <span className="font-medium">{LABEL[status.overall]}</span>
-          <span className="text-[var(--color-stone-soft)]">· {status.env} · {status.commit}</span>
+          <span className="text-[var(--color-stone)]">· {status.env} · {status.commit}</span>
         </div>
       </div>
 
@@ -86,7 +86,7 @@ export default async function StatusPage() {
                   <span className={`h-3 w-3 rounded-full ${DOT[groupLight]}`} />
                   <h2 className="font-[family-name:var(--font-display)] text-lg">{g.label}</h2>
                 </div>
-                {g.blurb && <span className="hidden text-xs text-[var(--color-stone-soft)] sm:block">{g.blurb}</span>}
+                {g.blurb && <span className="hidden text-xs text-[var(--color-stone)] sm:block">{g.blurb}</span>}
               </div>
               <ul className="divide-y divide-[var(--color-line)]">
                 {g.items.map((i) => (
@@ -101,7 +101,7 @@ export default async function StatusPage() {
                         {i.info && i.info.length > 0 && (
                           <ul className="mt-1 space-y-0.5">
                             {i.info.map((line, k) => (
-                              <li key={k} className="text-xs text-[var(--color-stone-soft)]">{line}</li>
+                              <li key={k} className="text-xs text-[var(--color-stone)]">{line}</li>
                             ))}
                           </ul>
                         )}
@@ -115,7 +115,7 @@ export default async function StatusPage() {
         })}
       </div>
 
-      <p className="mt-6 text-xs text-[var(--color-stone-soft)]">Generated {new Date(status.generatedAt).toLocaleString('en-GB')} · refresh to re-check. No secrets are ever shown — only whether each control is healthy and what it still needs.</p>
+      <p className="mt-6 text-xs text-[var(--color-stone)]">Generated {new Date(status.generatedAt).toLocaleString('en-GB')} · refresh to re-check. No secrets are ever shown — only whether each control is healthy and what it still needs.</p>
     </AdminShell>
   );
 }

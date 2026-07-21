@@ -55,6 +55,13 @@ export async function eraseClientData(clientId: string) {
         phone: null, dob: null, notes: null, allergies: null, medicalFlag: null, medicalFlagSetBy: null, medicalFlagAt: null,
         marketingOptIn: false, unsubscribed: true, portalActive: false, passwordHash: null,
         resetTokenHash: null, resetTokenExp: null,
+        // BLD-912: leaderboardOptIn:true clients are queried onto the public
+        // /membership leaderboard by photo+name, and concerns/genderSelfDescribe
+        // are free-text special-category-adjacent fields — none had a retention
+        // basis and none were reset by the fields above, so an erased client's
+        // real photo/name stayed live publicly and their free-text answers on file.
+        leaderboardOptIn: false, leaderboardPhotoUrl: null, leaderboardDisplayName: null,
+        concerns: [], genderSelfDescribe: null,
       },
     }),
     // Retain bookings/consultations (financial/clinical-audit basis) but strip the
@@ -68,6 +75,11 @@ export async function eraseClientData(clientId: string) {
     db.consultationNote.deleteMany({ where: { consultation: { clientId } } }),
     // Hard-delete the records that exist only to serve the data subject.
     db.interaction.deleteMany({ where: { clientId } }),
+    // PRJ-918.6: Task rows auto-created from a follow-up concern (lib/followup.ts)
+    // embed the client's real name in the title and a quoted clinical concern in
+    // detail, linked directly via clientId — no retention basis once erased. Same
+    // treatment as ConsultationNote/Interaction above: hard-delete.
+    db.task.deleteMany({ where: { clientId } }),
     db.healthAssessment.deleteMany({ where: { clientId } }),
     db.beforePhoto.deleteMany({ where: { clientId } }),
     db.aiAnalysis.deleteMany({ where: { clientId } }),
@@ -90,8 +102,11 @@ export async function eraseClientData(clientId: string) {
     // the captured email so the referrer's record becomes non-identifying.
     db.referral.updateMany({ where: { referredId: clientId }, data: { referredId: null, referredEmail: null } }),
     // Chat conversations initiated by this client (free text, contact details).
-    // ChatMessage rows cascade on ChatConversation delete.
-    db.chatConversation.deleteMany({ where: { clientId } }),
+    // ChatMessage rows cascade on ChatConversation delete. BLD-837: also match
+    // anonymous threads by the visitor email — the person may have chatted
+    // before creating an account (mirrors the PromoRedemption/GiftVoucher
+    // email-matched erasure above).
+    db.chatConversation.deleteMany({ where: { OR: [{ clientId }, { visitorEmail: { equals: client.email, mode: 'insensitive' } }] } }),
     // Waitlist entries (treatment window, contact details) — no retention basis.
     db.waitlistEntry.deleteMany({ where: { clientId } }),
     // Legacy Appointment model (pre-Booking era) — status/schedule data only,
@@ -114,8 +129,25 @@ export async function eraseClientData(clientId: string) {
     // unauthenticated redemption by this person is erased too (BLD-366).
     db.promoRedemption.updateMany({ where: { clientId }, data: { email: null } }),
     db.promoRedemption.updateMany({ where: { email: client.email.toLowerCase() }, data: { email: null } }),
+    // BLD-671: remove NewsletterSubscriber rows by email — no retention basis post-erasure.
+    db.newsletterSubscriber.deleteMany({ where: { email: client.email.toLowerCase() } }),
   ]);
-  await logAudit({ action: 'CLIENT_ERASED', actor: session.email, actorRole: session.role, clientId, summary: 'Client personal + special-category data erased across all records (GDPR right-to-erasure)' });
+  // BLD-799: synced calendar events carry the client's name/contact details and
+  // booking notes into clinicians' Google Calendars and the shared clinic CalDAV
+  // calendar — outside the CRM, so the erasure above never reached them. Remove
+  // every event for this client's bookings. Runs AFTER the transaction (never
+  // touch external data if the DB erasure failed); failures are logged + reach
+  // Sentry inside the helpers and are counted in the audit record.
+  let calendarFailures = 0;
+  try {
+    const synced = await db.booking.findMany({ where: { clientId, googleEventId: { not: null } }, select: { id: true } });
+    const { removeBookingFromClinician } = await import('@/lib/google-calendar');
+    for (const b of synced) { const r = await removeBookingFromClinician(b.id).catch(() => ({ ok: false })); if (!r.ok) calendarFailures++; }
+    const all = await db.booking.findMany({ where: { clientId }, select: { id: true } });
+    const { removeBooking } = await import('@/lib/hostinger-calendar');
+    for (const b of all) { await removeBooking(b.id).catch(() => {}); }
+  } catch (e) { console.error('[erase] calendar cleanup failed (recorded in audit):', (e as Error)?.message); calendarFailures++; }
+  await logAudit({ action: 'CLIENT_ERASED', actor: session.email, actorRole: session.role, clientId, summary: `Client personal + special-category data erased across all records (GDPR right-to-erasure)${calendarFailures ? ` — ${calendarFailures} synced calendar event(s) could not be removed, follow up manually` : ''}`, meta: calendarFailures ? { calendarFailures } : undefined });
   try {
     const { notifyStaffByPermission } = await import('@/lib/notifications');
     await notifyStaffByPermission('settings.manage', { kind: 'status', category: 'system', priority: 'high', title: 'Client data erased (GDPR)', body: `Right-to-erasure completed by ${session.email.split('@')[0]}`, href: '/admin/clients' }, session.email);
@@ -139,6 +171,21 @@ export async function deleteClient(clientId: string, confirm: string) {
   const c = await db.client.findUnique({ where: { id: clientId }, select: { firstName: true, lastName: true, email: true } });
   if (!c) return { ok: false, error: 'Client not found.' };
 
+  // BLD-799: remove the client's synced calendar events BEFORE the cascade
+  // deletes the bookings that hold the event ids — after deletion the events
+  // in clinicians' Google Calendars (name/contact/notes) become unreachable.
+  // Deletion still proceeds on a calendar failure (the data subject's right
+  // isn't blocked by a third-party API hiccup) but the failure is recorded.
+  let calendarFailures = 0;
+  try {
+    const synced = await db.booking.findMany({ where: { clientId, googleEventId: { not: null } }, select: { id: true } });
+    const { removeBookingFromClinician } = await import('@/lib/google-calendar');
+    for (const b of synced) { const r = await removeBookingFromClinician(b.id).catch(() => ({ ok: false })); if (!r.ok) calendarFailures++; }
+    const all = await db.booking.findMany({ where: { clientId }, select: { id: true } });
+    const { removeBooking } = await import('@/lib/hostinger-calendar');
+    for (const b of all) { await removeBooking(b.id).catch(() => {}); }
+  } catch (e) { console.error('[delete] calendar cleanup failed (recorded in audit):', (e as Error)?.message); calendarFailures++; }
+
   try {
     // Cascades to the client's bookings, assessments, points, reviews, etc.
     await db.client.delete({ where: { id: clientId } });
@@ -152,8 +199,8 @@ export async function deleteClient(clientId: string, confirm: string) {
     actor: session.email,
     actorRole: session.role,
     clientId,
-    summary: 'Client permanently deleted (right to erasure)',
-    meta: { email: c.email },
+    summary: `Client permanently deleted (right to erasure)${calendarFailures ? ` — ${calendarFailures} synced calendar event(s) could not be removed, follow up manually` : ''}`,
+    meta: { email: c.email, ...(calendarFailures ? { calendarFailures } : {}) },
   });
   revalidatePath('/admin/clients');
   return { ok: true };
@@ -182,6 +229,13 @@ export async function eraseStudentData(studentId: string) {
     }),
     // Remove authentication credentials — no retention basis.
     db.studentPasskey.deleteMany({ where: { studentId } }),
+    // Redact denormalised name copies that survive on public-facing content —
+    // these are separate columns from AcademyStudent and were previously missed
+    // by this erasure action.
+    db.courseReview.updateMany({ where: { studentId }, data: { authorName: 'Erased' } }),
+    db.forumThread.updateMany({ where: { authorStudentId: studentId }, data: { authorName: 'Erased' } }),
+    db.forumPost.updateMany({ where: { authorStudentId: studentId }, data: { authorName: 'Erased' } }),
+    db.lessonComment.updateMany({ where: { authorStudentId: studentId }, data: { authorName: 'Erased' } }),
   ]);
   await logAudit({ action: 'NOTE_ADDED', actor: session.email, actorRole: session.role, summary: `Academy student ${student.email} data erased (GDPR Art.17)` });
   revalidatePath('/admin/academy');
@@ -237,6 +291,39 @@ export async function sendManualEmail(clientId: string, to: string, subject: str
   }
   revalidatePath(`/admin/clients/${clientId}`);
   return res.ok ? { ok: true } : { ok: false, error: res.error };
+}
+
+// BLD-527: email a client a passwordless login link. Manually-created clients
+// have no password, so they can neither sign in nor use "forgot password" (which
+// only emails accounts that already have one). This issues an activation token and
+// emails the /account/activate link, which signs them in and lets them set a
+// password later. Works for password-holders too (a magic sign-in link).
+export async function sendPortalInvite(clientId: string) {
+  if (!crmEnabled) return { ok: false, error: 'CRM disabled' };
+  const session = await getSession();
+  if (!session || !sessionCan(session, 'clients.edit')) return { ok: false, error: 'You don’t have permission to manage client accounts.' };
+  const { db } = await import('@/lib/db');
+  const client = await db.client.findUnique({ where: { id: clientId }, select: { id: true, email: true, firstName: true } });
+  if (!client) return { ok: false, error: 'Client not found.' };
+  if (!client.email) return { ok: false, error: 'This client has no email address on file.' };
+
+  const { createAccountInvite } = await import('@/lib/client-auth');
+  const token = await createAccountInvite(clientId);
+  if (!token) return { ok: false, error: 'Could not create the login link. Please try again.' };
+  const base = process.env.NEXT_PUBLIC_SITE_URL || '';
+  const url = `${base}/account/activate?token=${token}&id=${clientId}`;
+
+  const { sendEmail, tmplPortalInvite } = await import('@/lib/email');
+  const subject = 'Open your KClinics account';
+  const res = await sendEmail({ to: client.email, subject, html: tmplPortalInvite(client.firstName, url) });
+  await db.emailEvent.create({
+    data: { clientId, kind: 'MANUAL', to: client.email, subject, status: res.ok ? 'SENT' : 'FAILED', providerId: res.id, error: res.error },
+  });
+  if (res.ok) {
+    await db.interaction.create({ data: { clientId, type: 'EMAIL', summary: 'Portal login link sent', author: session.email } });
+  }
+  revalidatePath(`/admin/clients/${clientId}`);
+  return res.ok ? { ok: true } : { ok: false, error: res.error || 'The email could not be sent (check the email provider is configured).' };
 }
 
 export async function toggleMarketing(clientId: string, optIn: boolean) {

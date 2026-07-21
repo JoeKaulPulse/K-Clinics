@@ -15,7 +15,7 @@ const URGENCY_CLS: Record<string, string> = {
   P0: 'bg-[color-mix(in_oklab,#c0392b_16%,transparent)] text-[#b23b3b]',
   P1: 'bg-amber-100 text-amber-800',
   P2: 'bg-[var(--color-bone)] text-[var(--color-stone)]',
-  P3: 'bg-[var(--color-bone)] text-[var(--color-stone-soft)]',
+  P3: 'bg-[var(--color-bone)] text-[var(--color-stone)]',
 };
 
 // Developer My Day: the items assigned to THIS developer (by email), most-urgent
@@ -45,7 +45,7 @@ export async function DeveloperMyDay({ session }: { session: Session }) {
       <DashWidget
         title="My focus today"
         eyebrow={`${mine.length} item${mine.length === 1 ? '' : 's'} assigned to you`}
-        action={<Link href="/admin/build" className="text-sm text-[var(--color-gold)] hover:underline">Open board →</Link>}
+        action={<Link href="/admin/build" className="text-sm text-[var(--color-gold-deep)] hover:underline">Open board →</Link>}
       >
         <TimelineList items={items} empty="Nothing assigned to you right now — pick up an item from the board." />
       </DashWidget>

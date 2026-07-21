@@ -1,6 +1,7 @@
 import 'server-only';
 import { db } from './db';
 import { sendEmail, emailShell, tmplBirthday, tmplFollowUp, tmplWinBack, tmplReviewRequest, tmplAppointmentReminder, tmplFormReminder, tmplAbandonedBooking, tmplAftercare, tmplSatisfaction, tmplRebook } from './email';
+import { ensureReviewRequest, reviewLink, googleReviewLink } from './review-system';
 import { site } from './site';
 import { escapeHtml } from './sanitize';
 import { marketableClientWhere } from './consent';
@@ -20,13 +21,13 @@ const WIN_BACK_MONTHS = 6;
 const TIER_NUDGE_PENCE = 20000;   // nudge clients within £200 of the next tier
 const ANNIVERSARY_POINTS = 1000;  // bonus points on a membership anniversary
 
-type Tally = { birthdays: number; followUps: number; winBacks: number; reviews: number; reminders: number; formReminders: number; treatmentFollowUps: number; giftVouchers: number; tierNudges: number; anniversaries: number; abandonedBookings: number; membershipRenewals: number; staffDigests: number; staffNudges: number; reencrypted: number; aftercare: number; satisfaction: number; rebookNudges: number; errors: number };
+type Tally = { birthdays: number; followUps: number; winBacks: number; reviews: number; reminders: number; formReminders: number; treatmentFollowUps: number; giftVouchers: number; tierNudges: number; anniversaries: number; abandonedBookings: number; bookingIntents: number; membershipRenewals: number; staffDigests: number; staffNudges: number; reencrypted: number; aftercare: number; satisfaction: number; rebookNudges: number; npsPromoters: number; npsDetractors: number; errors: number };
 
 export async function runDailyAutomations(): Promise<Tally> {
-  const t: Tally = { birthdays: 0, followUps: 0, winBacks: 0, reviews: 0, reminders: 0, formReminders: 0, treatmentFollowUps: 0, giftVouchers: 0, tierNudges: 0, anniversaries: 0, abandonedBookings: 0, membershipRenewals: 0, staffDigests: 0, staffNudges: 0, reencrypted: 0, aftercare: 0, satisfaction: 0, rebookNudges: 0, errors: 0 };
+  const t: Tally = { birthdays: 0, followUps: 0, winBacks: 0, reviews: 0, reminders: 0, formReminders: 0, treatmentFollowUps: 0, giftVouchers: 0, tierNudges: 0, anniversaries: 0, abandonedBookings: 0, bookingIntents: 0, membershipRenewals: 0, staffDigests: 0, staffNudges: 0, reencrypted: 0, aftercare: 0, satisfaction: 0, rebookNudges: 0, npsPromoters: 0, npsDetractors: 0, errors: 0 };
   const { staffWeeklyDigest, staffReengagement } = await import('@/lib/staff-emails');
   // BLD-120: allSettled so one failing automation can't abort the rest.
-  const results = await Promise.allSettled([birthdays(t), followUps(t), reviews(t), winBacks(t), reminders(t), formReminders(t), treatmentFollowUps(t), scheduledGiftVouchers(t), tierNudges(t), anniversaries(t), abandonedBookings(t), membershipRenewal(t), staffWeeklyDigest(t), staffReengagement(t), keyReencryption(t), aftercare(t), satisfaction(t), rebookNudge(t)]);
+  const results = await Promise.allSettled([birthdays(t), followUps(t), reviews(t), winBacks(t), reminders(t), formReminders(t), treatmentFollowUps(t), scheduledGiftVouchers(t), tierNudges(t), anniversaries(t), abandonedBookings(t), bookingIntentRecovery(t), membershipRenewal(t), staffWeeklyDigest(t), staffReengagement(t), keyReencryption(t), aftercare(t), satisfaction(t), rebookNudge(t), promoterFollowUp(t), detractorFollowUp(t)]);
   for (const r of results) {
     if (r.status === 'rejected') { t.errors++; console.error('[automations] unhandled automation failure:', r.reason); }
   }
@@ -165,6 +166,69 @@ async function abandonedBookings(t: Tally) {
   } catch (e) { t.errors++; console.error('[automations] abandoned bookings failed:', (e as Error)?.message); }
 }
 
+// ── Booking-funnel intent recovery (opt-in) ──
+// BLD-838 / BLD-853: a one-time nudge to visitors who left their email in the
+// public funnel ("email me my selection") but never completed a booking. The
+// rows are anonymous — we match to a Client by email only to honour a hard
+// unsubscribe; there is NO marketing enrolment. A single transactional "finish
+// your booking" message under legitimate interest, gated behind
+// booking_intent_recovery, sent 2–72h after capture, at most once per row.
+async function bookingIntentRecovery(t: Tally) {
+  try {
+    const { getSetting } = await import('@/lib/settings');
+    if (!(await getSetting('booking_intent_recovery'))) return;
+    const base = (SITE_URL || '').replace(/\/$/, '');
+    const now = Date.now();
+    const rows = await db.bookingIntent.findMany({
+      where: {
+        emailedAt: null,
+        recoveredAt: null,
+        createdAt: { gte: new Date(now - 72 * 3600e3), lte: new Date(now - 2 * 3600e3) },
+      },
+      orderBy: { createdAt: 'asc' },
+      take: 500,
+    });
+    for (const intent of rows) {
+      // Best-effort: if this email already has a live/booked booking for this
+      // treatment, they've re-engaged — don't nudge. Stamp recoveredAt so the row
+      // drops out of future scans.
+      const already = await db.booking.findFirst({
+        where: {
+          treatmentSlug: intent.treatmentSlug,
+          status: { in: ['REQUESTED', 'PENDING', 'CONFIRMED', 'COMPLETED'] },
+          client: { email: { equals: intent.email, mode: 'insensitive' } },
+        },
+        select: { id: true },
+      }).catch(() => null);
+      if (already) {
+        await db.bookingIntent.update({ where: { id: intent.id }, data: { recoveredAt: new Date() } }).catch(() => {});
+        continue;
+      }
+      // Consent: honour a hard unsubscribe if the email maps to a known client.
+      const client = await db.client.findFirst({
+        where: { email: { equals: intent.email, mode: 'insensitive' } },
+        select: { id: true, email: true, firstName: true, unsubscribed: true },
+      }).catch(() => null);
+      if (client && !canEmailCare(client)) {
+        // Suppressed for a hard unsubscribe — stamp so we don't re-check every run.
+        await db.bookingIntent.update({ where: { id: intent.id }, data: { emailedAt: new Date() } }).catch(() => {});
+        continue;
+      }
+      // Belt-and-braces dedup alongside the emailedAt stamp (mirrors the
+      // abandoned-booking pattern): one BOOKING_INTENT EmailEvent per row.
+      const dup = await db.emailEvent.findFirst({ where: { kind: 'BOOKING_INTENT', to: intent.email, meta: { path: ['intentId'], equals: intent.id } } });
+      if (dup) { await db.bookingIntent.update({ where: { id: intent.id }, data: { emailedAt: new Date() } }).catch(() => {}); continue; }
+      const resumeUrl = `${base}/book?treatment=${encodeURIComponent(intent.treatmentSlug)}`;
+      const res = await sendEmail({ to: intent.email, subject: `Finish booking your ${intent.treatmentTitle}`, html: tmplAbandonedBooking({ firstName: client?.firstName || 'there', treatment: intent.treatmentTitle, resumeUrl }) });
+      await db.emailEvent.create({ data: { clientId: client?.id ?? null, kind: 'BOOKING_INTENT', to: intent.email, subject: `Finish your ${intent.treatmentTitle} booking`, status: res.ok ? 'SENT' : 'FAILED', providerId: res.id, error: res.error, meta: { intentId: intent.id } } }).catch(() => {});
+      // At-most-once: stamp emailedAt on every resolved attempt (success or fail),
+      // so a soft revenue nudge is never sent twice or hammered on a bad address.
+      await db.bookingIntent.update({ where: { id: intent.id }, data: { emailedAt: new Date() } }).catch(() => {});
+      res.ok ? t.bookingIntents++ : t.errors++;
+    }
+  } catch (e) { t.errors++; console.error('[automations] booking-intent recovery failed:', (e as Error)?.message); }
+}
+
 // Deliver any scheduled gift vouchers whose chosen delivery date has arrived.
 async function scheduledGiftVouchers(t: Tally) {
   try {
@@ -233,6 +297,7 @@ async function reviews(t: Tally) {
   const target = new Date(Date.now() - REVIEW_DAYS * 864e5);
   const start = new Date(target); start.setHours(0, 0, 0, 0);
   const end = new Date(target); end.setHours(23, 59, 59, 999);
+  const googleUrl = await googleReviewLink();
   // Deduplicate via emailEvent (Booking has no reviewSent flag; Appointment is the legacy model).
   const bookings = await db.booking.findMany({
     where: { status: 'COMPLETED', startAt: { gte: start, lte: end } },
@@ -242,7 +307,9 @@ async function reviews(t: Tally) {
     if (!canEmail(a.client)) continue;
     const already = await db.emailEvent.findFirst({ where: { clientId: a.clientId, kind: 'REVIEW_REQUEST', status: 'SENT', createdAt: { gte: start } } });
     if (already) continue;
-    const res = await sendEmail({ to: a.client.email, subject: "We'd love your thoughts", html: tmplReviewRequest(a.client.firstName, unsub(a.client.unsubToken)) });
+    const review = await ensureReviewRequest(a.id);
+    if (!review) continue;
+    const res = await sendEmail({ to: a.client.email, subject: "We'd love your thoughts", html: tmplReviewRequest(a.client.firstName, reviewLink(review.token), a.treatmentTitle || undefined, googleUrl || undefined) });
     await logEvent(a.clientId, 'REVIEW_REQUEST', a.client.email, 'Review request', res);
     res.ok ? t.reviews++ : t.errors++;
   }
@@ -416,6 +483,75 @@ async function formReminders(t: Tally) {
     await logEvent(c.id, 'FORM_REMINDER', c.email, 'Pre-treatment form reminder', res);
     res.ok ? t.formReminders++ : t.errors++;
   }
+}
+
+// BLD-653: NPS promoters (score 9-10) get a thank-you email ~24h after responding,
+// inviting them to leave a Google review and/or rebook. Gated on nps_survey setting
+// and marketing consent (same gate as the weekly review-request automation).
+async function promoterFollowUp(t: Tally) {
+  try {
+    const { getSetting } = await import('@/lib/settings');
+    if (!(await getSetting('nps_survey'))) return;
+    const now = Date.now();
+    // 3-day overlapping lookback. The per-npsId dedup prevents double-send;
+    // the generous window ensures a late or skipped cron run doesn't permanently
+    // miss a promoter (unlike a tight [now-2d, now-1d] window that has no recovery).
+    const from = new Date(now - 3 * 864e5);
+    const responses = await db.npsResponse.findMany({
+      where: { score: { gte: 9 }, respondedAt: { gte: from, lte: new Date(now) }, clientId: { not: null } },
+      include: { client: { select: { id: true, email: true, firstName: true, unsubscribed: true, marketingOptIn: true, marketingConsentAt: true, unsubToken: true } } },
+      take: 200,
+    });
+    const googleUrl = await googleReviewLink();
+    const base = (SITE_URL || '').replace(/\/$/, '');
+    for (const r of responses) {
+      const c = r.client;
+      if (!c || !canEmail(c)) continue;
+      const dup = await db.emailEvent.findFirst({ where: { clientId: c.id, kind: 'NPS_PROMOTER', status: 'SENT', meta: { path: ['npsId'], equals: r.id } } });
+      if (dup) continue;
+      const googleCta = googleUrl
+        ? `<p style="margin:6px 0 10px;"><a href="${googleUrl}" style="display:inline-block;background:#a98a6d;color:#fff;text-decoration:none;padding:12px 24px;border-radius:999px;font-size:14px;">Leave a Google review</a></p>`
+        : '';
+      const body = `
+        <h1 style="margin:0 0 12px;font-size:25px;">Thank you, ${escapeHtml(c.firstName || 'there')} — you've made our day</h1>
+        <p style="margin:0 0 14px;">We're so glad to hear you had a great experience with us. Reviews like yours help other people find us — if you have a moment, we'd love you to share your thoughts.</p>
+        ${googleCta}
+        <p style="margin:14px 0 6px;font-size:14px;color:#91766e;">Or, <a href="${base}/book" style="color:#a98a6d;">book your next visit</a> whenever you're ready — we look forward to seeing you again.</p>`;
+      const res = await sendEmail({ to: c.email, subject: `Thank you, ${c.firstName || 'there'} — you've made our day`, html: emailShell({ body, preheader: `We'd love you to share your experience.`, unsubUrl: unsub(c.unsubToken) }) });
+      await db.emailEvent.create({ data: { clientId: c.id, kind: 'NPS_PROMOTER', to: c.email, subject: 'NPS promoter follow-up', status: res.ok ? 'SENT' : 'FAILED', providerId: res.id, error: res.error, meta: { npsId: r.id } } }).catch(() => {});
+      res.ok ? t.npsPromoters++ : t.errors++;
+    }
+  } catch (e) { t.errors++; console.error('[automations] NPS promoter follow-up failed:', (e as Error)?.message); }
+}
+
+// BLD-800: NPS detractors (score 0-6) get a same-tone service-recovery email ~24h
+// after responding — an apology and a direct way to reach the clinic, mirroring the
+// care shown to promoters but with no review/rebook ask. Care-class (canEmailCare),
+// not gated on marketing consent — this is service recovery, not marketing.
+async function detractorFollowUp(t: Tally) {
+  try {
+    const { getSetting } = await import('@/lib/settings');
+    if (!(await getSetting('nps_survey'))) return;
+    const now = Date.now();
+    const from = new Date(now - 3 * 864e5);
+    const responses = await db.npsResponse.findMany({
+      where: { score: { lte: 6 }, respondedAt: { gte: from, lte: new Date(now) }, clientId: { not: null } },
+      include: { client: { select: { id: true, email: true, firstName: true, unsubscribed: true } } },
+      take: 200,
+    });
+    for (const r of responses) {
+      const c = r.client;
+      if (!c || !canEmailCare(c)) continue;
+      const dup = await db.emailEvent.findFirst({ where: { clientId: c.id, kind: 'NPS_DETRACTOR', status: 'SENT', meta: { path: ['npsId'], equals: r.id } } });
+      if (dup) continue;
+      const body = `
+        <h1 style="margin:0 0 12px;font-size:25px;">${escapeHtml(c.firstName || 'Hello')}, we&rsquo;re sorry we fell short</h1>
+        <p style="margin:0 0 14px;">Thank you for the honest feedback — it matters, and we&rsquo;d like the chance to put things right. Please reply to this email or call us on 020 8050 0750 and we&rsquo;ll do everything we can to help.</p>`;
+      const res = await sendEmail({ to: c.email, subject: `${c.firstName || 'Hello'}, we'd like to make this right`, html: emailShell({ body, preheader: `We'd like the chance to put things right.` }) });
+      await db.emailEvent.create({ data: { clientId: c.id, kind: 'NPS_DETRACTOR', to: c.email, subject: 'NPS detractor follow-up', status: res.ok ? 'SENT' : 'FAILED', providerId: res.id, error: res.error, meta: { npsId: r.id } } }).catch(() => {});
+      res.ok ? t.npsDetractors++ : t.errors++;
+    }
+  } catch (e) { t.errors++; console.error('[automations] NPS detractor follow-up failed:', (e as Error)?.message); }
 }
 
 async function logEvent(clientId: string, kind: 'BIRTHDAY' | 'FOLLOW_UP' | 'WIN_BACK' | 'REVIEW_REQUEST' | 'APPOINTMENT_REMINDER' | 'FORM_REMINDER', to: string, subject: string, res: { ok: boolean; id?: string; error?: string }) {

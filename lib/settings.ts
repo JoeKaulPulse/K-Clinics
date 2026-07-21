@@ -19,6 +19,7 @@ export type SettingKey =
   | 'require_consent'            // signed treatment consent required before starting
   | 'require_before_photo'       // laser: before-photo (or signed opt-out) required before starting
   | 'abandoned_booking_recovery' // email a nudge to finish an unpaid/incomplete booking
+  | 'booking_intent_recovery'    // email a nudge to a funnel visitor who left their email but never booked
   | 'no_show_notice'             // email a warm rebooking note when an appointment is marked no-show
   | 'membership_renewal_nudge'   // email lapsing K Circle members to keep their tier
   | 'nps_survey'                 // send an NPS (0–10 recommend) survey after a completed visit
@@ -47,6 +48,7 @@ export const SETTING_DEFAULTS: Record<SettingKey, boolean> = {
   require_consent: false,
   require_before_photo: true,
   abandoned_booking_recovery: true, // BLD-131: enabled (owner-approved revenue automation)
+  booking_intent_recovery: true, // BLD-838: enabled (owner-approved revenue automation)
   no_show_notice: false,
   membership_renewal_nudge: true, // BLD-131: enabled (owner-approved revenue automation)
   nps_survey: false,
@@ -114,6 +116,10 @@ export const SETTING_META: Record<SettingKey, { label: string; description: stri
   abandoned_booking_recovery: {
     label: 'Abandoned-booking recovery emails',
     description: 'Email a gentle, one-time nudge to clients who started a booking but didn’t save a card to finish it (sent 2–72h later). Off by default — turn on to recover incomplete bookings.',
+  },
+  booking_intent_recovery: {
+    label: 'Booking-funnel email recovery',
+    description: 'Email a gentle, one-time nudge to visitors who left their email in the booking flow (“email me my selection”) but never finished. Sent 2–72h after they left, only if they haven’t since booked that treatment, and never to anyone who has unsubscribed. A single “finish your booking” message — not marketing.',
   },
   no_show_notice: {
     label: 'No-show rebooking email',

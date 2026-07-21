@@ -4,9 +4,11 @@ import { useEffect, useState } from 'react';
 import { usePathname } from 'next/navigation';
 import { Tour } from '@/components/guide/Tour';
 import { TOURS, tourForPath } from '@/lib/tours';
+import { getConsent } from '@/components/legal/CookieConsent';
 
 // Mounts the context-aware Help launcher + guided tour. Auto-runs once per area
 // for new users, then is available on demand from the Help (?) button.
+// Deferred until cookie consent is resolved so the two overlays never stack.
 export function GuideHost() {
   const pathname = usePathname();
   const tourId = tourForPath(pathname || '');
@@ -15,14 +17,29 @@ export function GuideHost() {
   useEffect(() => {
     if (!tourId) return;
     try {
-      if (!localStorage.getItem(`kc_tour_${tourId}_seen`)) {
-        const t = setTimeout(() => setOpen(true), 900);
-        return () => clearTimeout(t);
+      if (localStorage.getItem(`kc_tour_${tourId}_seen`)) return;
+
+      let t: ReturnType<typeof setTimeout> | undefined;
+      const launch = () => { t = setTimeout(() => setOpen(true), 900); };
+
+      if (getConsent() !== null) {
+        // Consent already resolved — start the tour after a short delay.
+        launch();
+      } else {
+        // Wait for the visitor to dismiss the cookie banner first.
+        window.addEventListener('kc-consent', launch, { once: true });
       }
+
+      return () => {
+        window.removeEventListener('kc-consent', launch);
+        if (t !== undefined) clearTimeout(t);
+      };
     } catch { /* ignore */ }
   }, [tourId]);
 
-  if (!tourId) return null;
+  // Hide on the full-screen messages view so the Help button doesn't overlap the
+  // chat composer's send button in the bottom-right.
+  if (!tourId || (pathname || '').startsWith('/admin/messages')) return null;
   const tour = TOURS[tourId];
 
   function close() {

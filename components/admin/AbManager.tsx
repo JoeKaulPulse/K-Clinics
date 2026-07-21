@@ -47,14 +47,14 @@ function TestCard({ t, canManage }: { t: AbTestRow; canManage: boolean }) {
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h2 className="font-[family-name:var(--font-display)] text-lg">{t.name}</h2>
-          <p className="text-xs text-[var(--color-stone-soft)]">code: <span className="font-mono">{t.slug}</span></p>
+          <p className="text-xs text-[var(--color-stone)]">code: <span className="font-mono">{t.slug}</span></p>
         </div>
         {canManage && (
           <div className="flex items-center gap-2">
             <select value={t.status} onChange={(e) => act({ op: 'updateTest', id: t.id, status: e.target.value })} className={field}>
               <option value="DRAFT">Draft</option><option value="RUNNING">Running</option><option value="STOPPED">Stopped</option>
             </select>
-            <button onClick={() => { if (confirm('Delete this test?')) act({ op: 'removeTest', id: t.id }); }} className="text-xs text-[var(--color-blush)] hover:underline">Delete</button>
+            <button onClick={() => { if (confirm('Delete this test?')) act({ op: 'removeTest', id: t.id }); }} className="text-xs text-[var(--color-blush-deep)] hover:underline">Delete</button>
           </div>
         )}
       </div>
@@ -67,7 +67,7 @@ function TestCard({ t, canManage }: { t: AbTestRow; canManage: boolean }) {
             <div key={v.id} className={`rounded-[var(--radius-md)] border p-3 ${isBest ? 'border-[var(--color-gold)] bg-[var(--color-gold)]/5' : 'border-[var(--color-line)] bg-white'}`}>
               <div className="flex flex-wrap items-center gap-3">
                 <span className="grid h-7 w-7 place-items-center rounded-full bg-[var(--color-ink)] text-xs font-semibold text-[var(--color-porcelain)]">{v.key}</span>
-                <span className="text-sm font-medium">{v.label}{isBest && <span className="ml-2 text-xs text-[var(--color-gold)]">★ leading</span>}</span>
+                <span className="text-sm font-medium">{v.label}{isBest && <span className="ml-2 text-xs text-[var(--color-gold-deep)]">★ leading</span>}</span>
                 <span className="ml-auto text-xs text-[var(--color-stone)]">{v.exposures} views · {v.conversions} clicks · <strong className="text-[var(--color-ink)]">{r.toFixed(1)}%</strong></span>
               </div>
               {canManage && (
@@ -78,7 +78,7 @@ function TestCard({ t, canManage }: { t: AbTestRow; canManage: boolean }) {
                   <input defaultValue={v.ctaHref} onBlur={(e) => e.target.value !== v.ctaHref && act({ op: 'updateVariant', id: v.id, ctaHref: e.target.value })} placeholder="CTA link (/book)" className={field} />
                 </div>
               )}
-              {canManage && t.variants.length > 2 && <button onClick={() => act({ op: 'removeVariant', id: v.id })} className="mt-2 text-xs text-[var(--color-blush)] hover:underline">Remove variant</button>}
+              {canManage && t.variants.length > 2 && <button onClick={() => act({ op: 'removeVariant', id: v.id })} className="mt-2 text-xs text-[var(--color-blush-deep)] hover:underline">Remove variant</button>}
             </div>
           );
         })}

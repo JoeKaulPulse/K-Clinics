@@ -43,7 +43,7 @@ export default async function ArticlePage({ params }: { params: Promise<{ slug: 
       <section className="container-narrow pt-[calc(var(--header-h,5.25rem)+2.5rem)]">
         <Reveal>
           <nav className="mb-6 flex items-center gap-2 text-sm text-[var(--color-stone)]" aria-label="Breadcrumb">
-            <Link href="/journal" className="hover:text-[var(--color-gold)]">Journal</Link>
+            <Link href="/journal" className="hover:text-[var(--color-gold-deep)]">Journal</Link>
             <span>/</span>
             <span>{a.category}</span>
           </nav>
@@ -78,7 +78,7 @@ export default async function ArticlePage({ params }: { params: Promise<{ slug: 
             <p className="eyebrow mb-4">Treatments mentioned</p>
             <div className="flex flex-wrap gap-3">
               {related.map((t) => t && (
-                <Link key={t.slug} href={`/${t.slug}`} className="rounded-full border border-[var(--color-line)] bg-[var(--color-porcelain)] px-5 py-2.5 text-sm font-medium transition-colors hover:border-[var(--color-gold)] hover:text-[var(--color-gold)]">
+                <Link key={t.slug} href={`/${t.slug}`} className="rounded-full border border-[var(--color-line)] bg-[var(--color-porcelain)] px-5 py-2.5 text-sm font-medium transition-colors hover:border-[var(--color-gold)] hover:text-[var(--color-gold-deep)]">
                   {t.title}
                 </Link>
               ))}
@@ -130,7 +130,7 @@ const JOURNAL_PROSE_CSS = `
 .journal-prose blockquote{border-left:3px solid var(--color-gold);padding-left:1rem;margin:1.5rem 0;color:var(--color-stone);font-style:italic;}
 .journal-prose figure{margin:1.5rem 0;}
 .journal-prose figcaption{margin-top:0.5rem;font-size:0.85rem;color:var(--color-stone);text-align:center;}
-.journal-prose blockquote cite{display:block;margin-top:0.5rem;font-style:normal;font-size:0.85rem;color:var(--color-stone-soft);}
+.journal-prose blockquote cite{display:block;margin-top:0.5rem;font-style:normal;font-size:0.85rem;color:var(--color-stone);}
 .journal-prose hr{border:0;height:1px;background:linear-gradient(90deg,transparent,var(--color-line),transparent);margin:2.5rem 0;}
 .journal-prose .journal-callout{display:block;background:var(--color-bone);border:1px solid var(--color-line);border-left:3px solid var(--color-gold);border-radius:var(--radius-md);padding:1.1rem 1.3rem;margin:1.6rem 0;color:var(--color-ink-soft);}
 .journal-prose .journal-cta{margin:1.8rem 0;}

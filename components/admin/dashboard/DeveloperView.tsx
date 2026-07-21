@@ -17,7 +17,7 @@ const URGENCY_CLS: Record<string, string> = {
   P0: 'bg-[color-mix(in_oklab,#c0392b_16%,transparent)] text-[#b23b3b]',
   P1: 'bg-amber-100 text-amber-800',
   P2: 'bg-[var(--color-bone)] text-[var(--color-stone)]',
-  P3: 'bg-[var(--color-bone)] text-[var(--color-stone-soft)]',
+  P3: 'bg-[var(--color-bone)] text-[var(--color-stone)]',
 };
 
 export async function DeveloperView({ session }: { session: Session }) {
@@ -79,7 +79,7 @@ export async function DeveloperView({ session }: { session: Session }) {
 
       <div className="grid gap-6 lg:grid-cols-[1.4fr_1fr] [&>*]:min-w-0">
         {/* Top open items */}
-        <DashWidget title="Top open items" action={<Link href="/admin/build" className="text-sm text-[var(--color-gold)] hover:underline">Open board →</Link>}>
+        <DashWidget title="Top open items" action={<Link href="/admin/build" className="text-sm text-[var(--color-gold-deep)] hover:underline">Open board →</Link>}>
           <TimelineList items={topItems.map(toItem)} empty="Nothing open — the board is clear." />
         </DashWidget>
 
@@ -94,7 +94,7 @@ export async function DeveloperView({ session }: { session: Session }) {
                 className="flex items-center justify-between gap-2 rounded-[var(--radius-sm)] border border-[var(--color-line)] px-4 py-3 text-sm text-[var(--color-ink-soft)] transition-colors duration-150 ease-out hover:bg-[var(--color-bone)] hover:text-[var(--color-ink)] active:bg-[var(--color-sand)]"
               >
                 <span>{l.label}</span>
-                <span aria-hidden className="text-[var(--color-stone-soft)]">{l.external ? '↗' : '→'}</span>
+                <span aria-hidden className="text-[var(--color-stone)]">{l.external ? '↗' : '→'}</span>
               </Link>
             ))}
           </div>
@@ -102,7 +102,7 @@ export async function DeveloperView({ session }: { session: Session }) {
       </div>
 
       {/* Error reports */}
-      <DashWidget title="Error reports" eyebrow="Newest first" action={<Link href="/admin/build" className="text-sm text-[var(--color-gold)] hover:underline">All issues →</Link>}>
+      <DashWidget title="Error reports" eyebrow="Newest first" action={<Link href="/admin/build" className="text-sm text-[var(--color-gold-deep)] hover:underline">All issues →</Link>}>
         <TimelineList
           items={errors.map((e) => ({
             id: e.id,

@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import * as Sentry from '@sentry/nextjs';
 import { crmEnabled } from '@/lib/crm';
 import { stripeEnabled } from '@/lib/stripe';
 
@@ -26,7 +27,17 @@ export async function POST(req: Request) {
   const bookingId = pi.metadata?.bookingId;
   if (!bookingId) return NextResponse.json({ ok: false, error: 'Not a booking payment' }, { status: 400 });
 
+  // BLD-508: record only the amount actually captured (amount_received), never the
+  // requested amount (pi.amount). If nothing was captured, do not finalise.
+  const receivedPence = pi.amount_received ?? 0;
+  if (receivedPence <= 0) return NextResponse.json({ ok: false, error: 'Payment not captured' }, { status: 409 });
   const { finalizeBookingCharge } = await import('@/lib/booking-actions');
-  await finalizeBookingCharge(bookingId, pi.id, pi.amount_received ?? pi.amount, { late: pi.metadata?.late === 'true' });
+  try {
+    await finalizeBookingCharge(bookingId, pi.id, receivedPence, { late: pi.metadata?.late === 'true' });
+  } catch (err) {
+    console.error('[pay-confirm] finalize failed for booking', bookingId, err);
+    Sentry.captureException(err, { tags: { route: 'booking/pay-confirm' }, extra: { bookingId } });
+    return NextResponse.json({ ok: false, error: 'Booking could not be confirmed. Payment was taken — please contact us to confirm your appointment.' }, { status: 503 });
+  }
   return NextResponse.json({ ok: true });
 }

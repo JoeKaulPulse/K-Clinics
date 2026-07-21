@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import Image from 'next/image';
 import type { Section } from '@/lib/sections';
 import { blocksToHtml, slugifyHeading, type Block } from '@/lib/blocks';
 import { PageHero } from '@/components/ui/PageHero';
@@ -38,7 +39,7 @@ function TocSection({ data, headings }: { data: Record<string, unknown>; heading
         <ul className="space-y-1.5">
           {headings.map((h, i) => (
             <li key={i} className={h.level === 3 ? 'pl-4' : ''}>
-              <a href={`#${h.slug}`} className="text-sm text-[var(--color-ink-soft)] transition-colors hover:text-[var(--color-gold)]">{h.text.replace(/[*_`]/g, '')}</a>
+              <a href={`#${h.slug}`} className="text-sm text-[var(--color-ink-soft)] transition-colors hover:text-[var(--color-gold-deep)]">{h.text.replace(/[*_`]/g, '')}</a>
             </li>
           ))}
         </ul>
@@ -124,10 +125,9 @@ function SectionView({ section: { type, data } }: { section: Section }) {
       const img = str(data.image);
       return (
         <section className="container-lux grid items-center gap-12 py-20 md:grid-cols-2 md:py-28">
-          <MaskReveal className={`aspect-[4/5] overflow-hidden rounded-[var(--radius-2xl)] shadow-[var(--shadow-lift)] ${right ? 'md:order-2' : ''}`}>
+          <MaskReveal className={`relative aspect-[4/5] overflow-hidden rounded-[var(--radius-2xl)] shadow-[var(--shadow-lift)] ${right ? 'md:order-2' : ''}`}>
             {img
-              // eslint-disable-next-line @next/next/no-img-element
-              ? <img src={img} alt={str(data.heading)} className="h-full w-full object-cover" style={{ objectPosition: str(data.focal, '50% 50%') }} />
+              ? <Image src={img} alt={str(data.heading)} fill sizes="(max-width: 768px) 100vw, 50vw" className="object-cover" style={{ objectPosition: str(data.focal, '50% 50%') }} />
               : <MediaArt src="" from="#a98a6d" to="#7b6a5d" alt={str(data.heading)} className="h-full w-full" />}
           </MaskReveal>
           <Reveal delay={0.1}>
@@ -291,7 +291,7 @@ function SectionView({ section: { type, data } }: { section: Section }) {
           <div className="overflow-hidden rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-porcelain)]">
             {arr<{ name: string; price: string; note: string }>(data.items).map((it, i) => (
               <div key={i} className="flex items-baseline justify-between gap-4 border-b border-[var(--color-line)] px-6 py-4 last:border-0">
-                <span><span className="font-medium">{it.name}</span>{it.note && <span className="ml-2 text-sm text-[var(--color-stone-soft)]">{it.note}</span>}</span>
+                <span><span className="font-medium">{it.name}</span>{it.note && <span className="ml-2 text-sm text-[var(--color-stone)]">{it.note}</span>}</span>
                 <span className="font-[family-name:var(--font-display)] text-lg text-[var(--color-ink)]">{it.price}</span>
               </div>
             ))}
@@ -306,8 +306,7 @@ function SectionView({ section: { type, data } }: { section: Section }) {
           <div className="flex flex-wrap items-center justify-center gap-x-12 gap-y-6">
             {arr<{ label: string; image: string }>(data.items).map((it, i) => (
               it.image
-                // eslint-disable-next-line @next/next/no-img-element
-                ? <img key={i} src={it.image} alt={it.label || ''} className="h-9 w-auto opacity-70 grayscale transition hover:opacity-100 hover:grayscale-0" />
+                ? <Image key={i} src={it.image} alt={it.label || ''} width={160} height={36} className="h-9 w-auto object-contain opacity-70 grayscale transition hover:opacity-100 hover:grayscale-0" />
                 : <span key={i} className="font-[family-name:var(--font-display)] text-xl text-[var(--color-stone)]">{it.label}</span>
             ))}
           </div>
@@ -338,7 +337,7 @@ function SectionView({ section: { type, data } }: { section: Section }) {
               <div key={i} className="rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-6">
                 <h3 className="font-[family-name:var(--font-display)] text-lg">{it.title}</h3>
                 {it.text && <p className="mt-2 text-sm text-[var(--color-stone)]">{it.text}</p>}
-                {it.linkLabel && it.linkHref && <Link href={it.linkHref} className="mt-3 inline-block text-sm font-medium text-[var(--color-gold)] hover:underline">{it.linkLabel} →</Link>}
+                {it.linkLabel && it.linkHref && <Link href={it.linkHref} className="mt-3 inline-block text-sm font-medium text-[var(--color-gold-deep)] hover:underline">{it.linkLabel} →</Link>}
               </div>
             ))}
           </div>
@@ -398,7 +397,7 @@ async function ContactInfoSection({ data }: { data: Record<string, unknown> }) {
         <div>
           <p className="eyebrow mb-3">Address</p>
           <p className="font-[family-name:var(--font-display)] text-2xl leading-snug">{c.address.street}<br />{c.address.locality}<br />{c.address.region} {c.address.postalCode}</p>
-          <a href={c.mapLink} target="_blank" rel="noopener noreferrer" className="link-underline mt-3 inline-block text-sm font-medium text-[var(--color-gold)]">Get directions →</a>
+          <a href={c.mapLink} target="_blank" rel="noopener noreferrer" className="link-underline mt-3 inline-block text-sm font-medium text-[var(--color-gold-deep)]">Get directions →</a>
         </div>
         <div className="grid grid-cols-2 gap-8">
           <div><p className="eyebrow mb-2">Call</p><a href={c.phoneHref} className="link-underline text-lg">{c.phone}</a></div>

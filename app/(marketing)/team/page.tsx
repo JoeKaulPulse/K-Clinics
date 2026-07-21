@@ -1,5 +1,6 @@
 import { notFound } from 'next/navigation';
 import type { Metadata } from 'next';
+import Image from 'next/image';
 import { PageHero } from '@/components/ui/PageHero';
 import { Reveal, Stagger, StaggerItem } from '@/components/motion/Reveal';
 import { BookingButtons } from '@/components/booking/BookingButtons';
@@ -87,7 +88,7 @@ export default async function TeamPage() {
               <StaggerItem key={p.slug}>
                 <div className="h-full rounded-[var(--radius-2xl)] border border-[var(--color-line)] bg-[var(--color-bone)] p-7">
                   <h3 className="font-[family-name:var(--font-display)] text-2xl">{p.name}</h3>
-                  <p className="mt-1 text-sm uppercase tracking-[0.14em] text-[var(--color-gold)]">{p.role}</p>
+                  <p className="mt-1 text-sm uppercase tracking-[0.14em] text-[var(--color-gold-deep)]">{p.role}</p>
                   <p className="mt-4 text-[var(--color-ink-soft)]">{p.bio}</p>
                   {p.focus.length > 0 && <div className="mt-4 flex flex-wrap gap-1.5">{p.focus.map((f) => <span key={f} className="rounded-full bg-[var(--color-porcelain)] px-2.5 py-1 text-xs text-[var(--color-stone)]">{f}</span>)}</div>}
                 </div>
@@ -116,14 +117,13 @@ function Card({ m }: { m: TeamMember }) {
     <div id={`m-${m.id}`} className="flex h-full scroll-mt-28 flex-col rounded-[var(--radius-2xl)] border border-[var(--color-line)] bg-[var(--color-bone)] p-6">
       <div className="flex items-center gap-4">
         {m.photoUrl ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img src={m.photoUrl} alt={`${m.name}${m.title ? `, ${m.title}` : ''} — KClinics`} width={80} height={80} loading="lazy" decoding="async" className="h-20 w-20 shrink-0 rounded-full object-cover" />
+          <Image src={m.photoUrl} alt={`${m.name}${m.title ? `, ${m.title}` : ''} — KClinics`} width={80} height={80} className="h-20 w-20 shrink-0 rounded-full object-cover" />
         ) : (
           <span className="grid h-20 w-20 shrink-0 place-items-center rounded-full bg-[var(--color-ink)] font-[family-name:var(--font-display)] text-2xl text-[var(--color-gold-soft)]">{initials}</span>
         )}
         <div>
           <h3 className="font-[family-name:var(--font-display)] text-xl leading-tight">{m.name}</h3>
-          {m.title && <p className="text-sm uppercase tracking-[0.12em] text-[var(--color-gold)]">{m.title}</p>}
+          {m.title && <p className="text-sm uppercase tracking-[0.12em] text-[var(--color-gold-deep)]">{m.title}</p>}
           {m.yearsExperience ? <p className="mt-0.5 text-xs text-[var(--color-stone)]">{m.yearsExperience}+ years’ experience</p> : null}
         </div>
       </div>
@@ -138,10 +138,9 @@ function Card({ m }: { m: TeamMember }) {
         </div>
       )}
 
-      {(m.email || m.phone) && (
-        <div className="mt-5 flex flex-wrap gap-x-5 gap-y-1 border-t border-[var(--color-line)] pt-4 text-sm">
-          {m.email && <a href={`mailto:${m.email}`} className="text-[var(--color-ink)] hover:text-[var(--color-gold)]">✉ {m.email}</a>}
-          {m.phone && <a href={`tel:${m.phone.replace(/\s/g, '')}`} className="text-[var(--color-ink)] hover:text-[var(--color-gold)]">☏ {m.phone}</a>}
+      {m.phone && (
+        <div className="mt-5 border-t border-[var(--color-line)] pt-4 text-sm">
+          <a href={`tel:${m.phone.replace(/\s/g, '')}`} className="text-[var(--color-ink)] hover:text-[var(--color-gold-deep)]">☏ {m.phone}</a>
         </div>
       )}
     </div>

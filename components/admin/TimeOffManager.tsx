@@ -103,11 +103,11 @@ function RequestForm({ requiresApproval, canApprove }: { requiresApproval: boole
           </div>
         </div>
         <div>
-          <label className="mb-1 block text-xs uppercase tracking-[0.14em] text-[var(--color-stone)]">{t('common.reason')} <span className="normal-case text-[var(--color-stone-soft)]">({t('common.optional')})</span></label>
+          <label className="mb-1 block text-xs uppercase tracking-[0.14em] text-[var(--color-stone)]">{t('common.reason')} <span className="normal-case text-[var(--color-stone)]">({t('common.optional')})</span></label>
           <input value={reason} onChange={(e) => setReason(e.target.value)} className={field} />
         </div>
         <div className="flex items-center gap-3">
-          <button onClick={submit} disabled={busy} className="rounded-full bg-[var(--color-gold)] px-5 py-2 text-sm font-medium text-white hover:bg-[var(--color-ink)] disabled:opacity-60">
+          <button onClick={submit} disabled={busy} className="rounded-full bg-[var(--color-gold-deep)] px-5 py-2 text-sm font-medium text-white hover:bg-[var(--color-ink)] disabled:opacity-60">
             {busy ? t('timeoff.submitting') : requiresApproval && !canApprove ? t('timeoff.request') : t('timeoff.book')}
           </button>
           {msg && <span className="text-sm text-[var(--color-stone)]">{msg}</span>}
@@ -150,11 +150,11 @@ function MyTimeOff({ mine }: { mine: Mine[] }) {
                   <StatusPill status={item.status} />
                 </div>
                 <p className="mt-0.5 text-sm text-[var(--color-stone)]">{fmtRange(item.startAt, item.endAt, item.allDay)}</p>
-                {item.reason && <p className="mt-0.5 text-xs text-[var(--color-stone-soft)]">{item.reason}</p>}
-                {item.status === 'DECLINED' && item.reviewNote && <p className="mt-0.5 text-xs text-[var(--color-blush)]">{t('status.DECLINED')}: {item.reviewNote}</p>}
+                {item.reason && <p className="mt-0.5 text-xs text-[var(--color-stone)]">{item.reason}</p>}
+                {item.status === 'DECLINED' && item.reviewNote && <p className="mt-0.5 text-xs text-[var(--color-blush-deep)]">{t('status.DECLINED')}: {item.reviewNote}</p>}
               </div>
               {active && (
-                <button onClick={() => cancel(item.id)} disabled={busyId === item.id} className="shrink-0 text-xs text-[var(--color-stone)] hover:text-[var(--color-blush)] disabled:opacity-50">
+                <button onClick={() => cancel(item.id)} disabled={busyId === item.id} className="shrink-0 text-xs text-[var(--color-stone)] hover:text-[var(--color-blush-deep)] disabled:opacity-50">
                   {busyId === item.id ? '…' : t('common.cancel')}
                 </button>
               )}
@@ -198,10 +198,10 @@ function Approvals({ pending }: { pending: Pending[] }) {
               <span className="text-xs text-[var(--color-stone)]">{t(`kind.${item.kind}`)}</span>
             </div>
             <p className="mt-0.5 text-sm text-[var(--color-stone)]">{fmtRange(item.startAt, item.endAt, item.allDay)}</p>
-            {item.reason && <p className="mt-0.5 text-xs text-[var(--color-stone-soft)]">{item.reason}</p>}
+            {item.reason && <p className="mt-0.5 text-xs text-[var(--color-stone)]">{item.reason}</p>}
             <div className="mt-2 flex gap-2">
               <button onClick={() => decide(item.id, 'approve')} disabled={busyId === item.id} className="rounded-full bg-[var(--color-ink)] px-4 py-1.5 text-xs text-[var(--color-porcelain)] disabled:opacity-50">{t('timeoff.approve')}</button>
-              <button onClick={() => decide(item.id, 'decline')} disabled={busyId === item.id} className="rounded-full border border-[var(--color-line)] px-4 py-1.5 text-xs hover:border-[var(--color-blush)] hover:text-[var(--color-blush)] disabled:opacity-50">{t('timeoff.decline')}</button>
+              <button onClick={() => decide(item.id, 'decline')} disabled={busyId === item.id} className="rounded-full border border-[var(--color-line)] px-4 py-1.5 text-xs hover:border-[var(--color-blush)] hover:text-[var(--color-blush-deep)] disabled:opacity-50">{t('timeoff.decline')}</button>
             </div>
           </li>
         ))}

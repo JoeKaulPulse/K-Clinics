@@ -1,9 +1,11 @@
 import { NextResponse } from 'next/server';
+import * as Sentry from '@sentry/nextjs';
 import { bookingStartSchema } from '@/lib/validation';
 import { crmEnabled } from '@/lib/crm';
 import { stripeEnabled } from '@/lib/stripe';
 import { bookingFor } from '@/lib/treatments';
 import { encClinical, decClinical } from '@/lib/clinical-crypto';
+import { CLINIC_TZ } from '@/lib/clinic-time';
 
 export const runtime = 'nodejs';
 
@@ -104,7 +106,11 @@ export async function POST(req: Request) {
   // ── Validate the slot against the live availability engine ──
   const { isSlotFree, pickPractitioner, assignResources } = await import('@/lib/availability');
   const treatmentSlug = primary.service.treatmentSlug;
-  if (!(await withDbRetry(() => isSlotFree(d.startISO, totalDuration, treatmentSlug)))) {
+  // A waitlist claim link may offer a same-day slot inside the public 2h lead;
+  // relax the lead only for that genuine, still-live offer (BLD-336).
+  const { claimLeadOpts } = await import('@/lib/waitlist');
+  const leadOpts = await claimLeadOpts(d.waitlistToken, d.startISO);
+  if (!(await withDbRetry(() => isSlotFree(d.startISO, totalDuration, treatmentSlug, null, leadOpts)))) {
     return NextResponse.json({ ok: false, error: 'That time was just taken. Please choose another slot.' }, { status: 409 });
   }
   const { getSetting } = await import('@/lib/settings');
@@ -201,15 +207,26 @@ export async function POST(req: Request) {
   // a member of staff approves first. Notify the team and return a "requested" state.
   if (sameDayRequest) {
     const { logAudit } = await import('@/lib/audit');
-    await logAudit({ action: 'BOOKING_CREATED', actor: 'client', clientId: client.id, bookingId: booking.id, summary: `Same-day appointment requested: ${title} on ${start.toLocaleString('en-GB')}`, meta: { totalPence: totalPrice, sameDayRequest: true } });
+    await logAudit({ action: 'BOOKING_CREATED', actor: 'client', clientId: client.id, bookingId: booking.id, summary: `Same-day appointment requested: ${title} on ${start.toLocaleString('en-GB', { timeZone: CLINIC_TZ })}`, meta: { totalPence: totalPrice, sameDayRequest: true } });
     try {
       const { notifyStaffByPermission } = await import('@/lib/notifications');
       await notifyStaffByPermission('bookings.manage', {
         kind: 'status',
         title: 'Same-day appointment request',
-        body: `${client.firstName || 'A client'} requested ${title} today at ${start.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}. Approve or decline.`,
+        // Clinic-local time — the server runs in UTC, so an implicit-timezone render
+        // here told staff the wrong request time during BST (BLD-795).
+        body: `${client.firstName || 'A client'} requested ${title} today at ${start.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', timeZone: CLINIC_TZ })}. Approve or decline.`,
         href: `/admin/bookings/${booking.id}`,
       });
+    } catch { /* best-effort */ }
+    // BLD-873: a same-day request is still a placed booking (PENDING approval)
+    // with a real value — fire the same Schedule conversion the standard path
+    // sends below, deduped with the browser pixel via the booking id. Without
+    // this the early return skipped tracking entirely and ad platforms never
+    // saw same-day conversions.
+    try {
+      const { sendSchedule } = await import('@/lib/conversions');
+      await sendSchedule({ bookingId: booking.id, valuePence: totalPrice, clientId: client.id, email: dobRow?.marketingOptIn ? client.email : null, campaign: booking.attribCampaign });
     } catch { /* best-effort */ }
     return NextResponse.json({ ok: true, requested: true, bookingId: booking.id, manageToken: booking.manageToken });
   }
@@ -225,7 +242,7 @@ export async function POST(req: Request) {
   }
 
   const { logAudit } = await import('@/lib/audit');
-  await logAudit({ action: 'BOOKING_CREATED', actor: 'client', clientId: client.id, bookingId: booking.id, summary: `Booking created: ${title}${sessions > 1 ? ` (course of ${sessions})` : ''} on ${start.toLocaleString('en-GB')}`, meta: { totalPence: totalPrice, items: items.length, sessions } });
+  await logAudit({ action: 'BOOKING_CREATED', actor: 'client', clientId: client.id, bookingId: booking.id, summary: `Booking created: ${title}${sessions > 1 ? ` (course of ${sessions})` : ''} on ${start.toLocaleString('en-GB', { timeZone: CLINIC_TZ })}`, meta: { totalPence: totalPrice, items: items.length, sessions } });
 
   // Server-side Schedule conversion (GA4 begin_checkout + Meta CAPI Schedule),
   // deduped with the browser pixel via the booking id. The Purchase event fires
@@ -262,7 +279,10 @@ export async function POST(req: Request) {
         customerId = fresh.id;
         await db.client.update({ where: { id: client.id }, data: { stripeCustomerId: fresh.id } }).catch(() => {});
         await db.booking.update({ where: { id: booking.id }, data: { stripeCustomerId: fresh.id } }).catch(() => {});
-      } catch (e2) { console.error('[booking-start] customer recreate failed for', booking.id, e2); }
+      } catch (e2) {
+        console.error('[booking-start] customer recreate failed for', booking.id, e2);
+        Sentry.captureException(e2, { tags: { area: 'booking/start', stage: 'customer-recreate' } });
+      }
     }
     // Any other retrieve error: fall through; the SetupIntent guard below handles it.
   }
@@ -291,6 +311,9 @@ export async function POST(req: Request) {
     // (no server-log access needed to diagnose, e.g. a bad key vs a missing customer).
     const se = e as { message?: string; code?: string; type?: string };
     const reason = [se.type, se.code, se.message].filter(Boolean).join(' · ').slice(0, 300) || 'unknown error';
+    // BLD-852: a Stripe outage here auto-cancels every card-protected booking
+    // sitewide — the audit log alone is invisible until someone goes looking.
+    Sentry.captureException(e, { tags: { route: 'booking/start', stage: 'setup-intent' } });
     // Release the held slot (CANCELLED is excluded from the held-slot checks) so a
     // failed attempt doesn't block the time, then return a clean, actionable error.
     await db.booking.update({ where: { id: booking.id }, data: { status: 'CANCELLED' } }).catch(() => {});

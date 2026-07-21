@@ -3,6 +3,7 @@ import { PageHero } from '@/components/ui/PageHero';
 import { Reveal } from '@/components/motion/Reveal';
 import { BookingFlow } from '@/components/booking/BookingFlow';
 import { site } from '@/lib/site';
+import { getSiteConfig } from '@/lib/site-config';
 import { pageMeta, JsonLd, breadcrumbLd } from '@/lib/seo';
 
 export const generateMetadata = (): Promise<Metadata> => pageMeta({
@@ -48,7 +49,7 @@ export default async function BookPage({ searchParams }: { searchParams: Promise
     // including dental consultations. Exclude the whole dentistry category (not
     // just known dentistry treatment slugs) so a stray dental consultation
     // service can't be booked directly; it routes to "register interest".
-    catalogue = site.dentistryLive ? catalogueAll : await (async () => {
+    catalogue = (await getSiteConfig()).dentistryLive ? catalogueAll : await (async () => {
       const { dentistry } = await import('@/lib/treatments');
       const dentistrySlugs = new Set(dentistry.map((t) => t.slug));
       return catalogueAll.filter((s) => s.category !== 'dentistry' && !dentistrySlugs.has(s.treatmentSlug));
@@ -88,7 +89,7 @@ export default async function BookPage({ searchParams }: { searchParams: Promise
       <PageHero
         eyebrow="Booking"
         title="Reserve your appointment."
-        lede="Create your account, choose your treatment and a time that suits you. You won’t pay a penny until your treatment is delivered."
+        lede="Choose your treatment and a time that suits you — sign in or add your details when you’re ready to confirm. You won’t pay a penny until your treatment is delivered."
         gradient={['#7b6a5d', '#2a2420']}
       />
 
@@ -109,7 +110,7 @@ export default async function BookPage({ searchParams }: { searchParams: Promise
             </ul>
             {promoted.length > 0 && (
               <div className="mt-8 rounded-[var(--radius-md)] border border-[var(--color-gold)]/30 bg-[var(--color-gold)]/8 p-4">
-                <p className="text-xs uppercase tracking-[0.16em] text-[var(--color-gold)]">On now</p>
+                <p className="text-xs uppercase tracking-[0.16em] text-[var(--color-gold-deep)]">On now</p>
                 <ul className="mt-2 space-y-1 text-sm text-[var(--color-ink-soft)]">
                   {promoted.slice(0, 4).map((o) => (
                     <li key={o.id}>✦ {o.name}{o.percentOff ? ` — ${o.percentOff}% off` : ''}</li>

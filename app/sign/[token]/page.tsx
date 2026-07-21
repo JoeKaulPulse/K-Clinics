@@ -25,7 +25,7 @@ function SecureBadge() {
 function StateCard({ tone, title, body }: { tone: 'done' | 'gone'; title: string; body: string }) {
   return (
     <div className="rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-10 text-center shadow-[var(--shadow-soft)]">
-      <span aria-hidden className={`mx-auto grid h-14 w-14 place-items-center rounded-full ${tone === 'done' ? 'bg-[var(--color-gold)] text-white' : 'bg-[var(--color-bone)] text-[var(--color-stone)]'}`}>
+      <span aria-hidden className={`mx-auto grid h-14 w-14 place-items-center rounded-full ${tone === 'done' ? 'bg-[var(--color-gold-deep)] text-white' : 'bg-[var(--color-bone)] text-[var(--color-stone)]'}`}>
         {tone === 'done' ? (
           <svg width="24" height="24" viewBox="0 0 12 12" fill="none"><path d="M2 6.2 4.8 9 10 3.4" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" /></svg>
         ) : (
@@ -82,7 +82,7 @@ export default async function SignPage({ params }: { params: Promise<{ token: st
           />
         )}
 
-        <footer className="mt-10 border-t border-[var(--color-line)] pt-6 text-center text-xs leading-relaxed text-[var(--color-stone-soft)]">
+        <footer className="mt-10 border-t border-[var(--color-line)] pt-6 text-center text-xs leading-relaxed text-[var(--color-stone)]">
           <p className="text-[var(--color-stone)]">{site.name} · {site.address.locality}, {site.address.region}</p>
           <p className="mt-1">Your information is encrypted in transit and at rest. Questions? Call <a href={site.phoneHref} className="underline decoration-[var(--color-line)] underline-offset-2 hover:text-[var(--color-ink)]">{site.phone}</a>.</p>
         </footer>

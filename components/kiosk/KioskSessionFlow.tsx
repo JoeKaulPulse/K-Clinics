@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
+import { Logo } from '@/components/brand/Logo';
 import { ResultCard, type KioskResultView } from './ResultCard';
 import { ClaimReward } from './ClaimReward';
 import { CameraCapture, type CapturedPhoto } from './capture/CameraCapture';
@@ -53,6 +54,7 @@ export function KioskSessionFlow({
   const [retakePose, setRetakePose] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<KioskResultView | null>(null);
+  const [hasShared, setHasShared] = useState(false);
   const [analyzingLine, setAnalyzingLine] = useState(0);
 
   // Fallback (file-input) path state — reuses the classic single-photo flow.
@@ -223,14 +225,14 @@ export function KioskSessionFlow({
       {/* WELCOME */}
       {step === 'welcome' && (
         <motion.div initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} className="w-full max-w-sm text-center">
-          <p className="font-[family-name:var(--font-display)] text-xs uppercase tracking-[0.3em] text-[var(--color-gold-soft)]">KClinics</p>
+          <div className="flex justify-center"><Logo mono /></div>
           <h1 className="mt-4 font-[family-name:var(--font-display)] text-4xl leading-tight">
             Discover your <span className="text-[var(--color-gold-bright)]">Skin &amp; Smile</span> Score
           </h1>
           <p className="mt-4 text-[var(--color-blush)]">
             Strike three poses on the big screen, and our AI rates your skin &amp; smile and personalises treatments just for you.
           </p>
-          <p className="mt-3 text-sm text-[var(--color-stone-soft)]">Takes about 60 seconds.</p>
+          <p className="mt-3 text-sm text-[var(--color-stone)]">Takes about 60 seconds.</p>
           <button
             onClick={() => setStep('consent')}
             className="mt-8 w-full rounded-[var(--radius-md)] bg-[var(--color-gold)] px-6 py-4 text-lg font-medium text-[var(--color-ink)] transition hover:opacity-90"
@@ -258,13 +260,15 @@ export function KioskSessionFlow({
               className="mt-1 h-5 w-5 accent-[var(--color-gold)]"
             />
             <span className="text-sm">
-              I agree to share my photo for AI analysis and consent to my result being shown on this device.
+              I agree to share my photo for AI analysis and consent to my result being shown on this device. My photo is
+              sent to our AI provider Anthropic (processed on servers in the US) to generate the result, and is deleted
+              within 30 days.
             </span>
           </label>
-          <p className="mt-4 text-center text-xs text-[var(--color-stone-soft)]">
+          <p className="mt-4 text-center text-xs text-[var(--color-stone)]">
             This experience is for adults only.
           </p>
-          {error && <p className="mt-3 text-center text-sm text-[var(--color-blush)]">{error}</p>}
+          {error && <p role="alert" aria-live="assertive" className="mt-3 text-center text-sm text-[var(--color-blush)]">{error}</p>}
           <button
             disabled={!consent || consentBusy}
             onClick={declareAgeAndContinue}
@@ -308,7 +312,7 @@ export function KioskSessionFlow({
                   alt={POSES[s.poseIdx]?.title ?? `Pose ${s.poseIdx + 1}`}
                   className="aspect-[3/4] w-full rounded-[var(--radius-md)] object-cover"
                 />
-                <figcaption className="mt-1.5 text-[0.65rem] uppercase tracking-wide text-[var(--color-stone-soft)]">
+                <figcaption className="mt-1.5 text-[0.65rem] uppercase tracking-wide text-[var(--color-stone)]">
                   {POSES[s.poseIdx]?.title ?? `Pose ${s.poseIdx + 1}`}
                 </figcaption>
                 {uploads < MAX_UPLOADS && (
@@ -323,7 +327,7 @@ export function KioskSessionFlow({
             ))}
           </div>
 
-          {error && <p className="mt-4 text-sm text-[var(--color-blush)]">{error}</p>}
+          {error && <p role="alert" aria-live="assertive" className="mt-4 text-sm text-[var(--color-blush)]">{error}</p>}
 
           <button
             onClick={analyze}
@@ -360,8 +364,8 @@ export function KioskSessionFlow({
       {/* RESULT + share-to-claim reward */}
       {step === 'result' && result && (
         <motion.div initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} className="w-full">
-          <ResultCard result={result} />
-          {result.id && <ClaimReward resultId={result.id} />}
+          <ResultCard result={result} onShared={() => setHasShared(true)} />
+          {result.id && <ClaimReward resultId={result.id} hasShared={hasShared} />}
         </motion.div>
       )}
       {step === 'result' && !result && (
@@ -374,7 +378,7 @@ export function KioskSessionFlow({
       {/* DECLINED — AI age backstop couldn't confirm 18+ */}
       {step === 'declined' && (
         <motion.div initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} className="w-full max-w-sm text-center">
-          <p className="font-[family-name:var(--font-display)] text-xs uppercase tracking-[0.3em] text-[var(--color-gold-soft)]">KClinics</p>
+          <div className="flex justify-center"><Logo mono /></div>
           <h2 className="mt-4 font-[family-name:var(--font-display)] text-3xl leading-tight">Thanks for stopping by 💛</h2>
           <p className="mt-4 text-[var(--color-blush)]">
             This experience is for adults only, and we couldn’t be sure this time — so we haven’t created a result.
@@ -382,7 +386,7 @@ export function KioskSessionFlow({
           <p className="mt-3 text-sm text-[var(--color-blush)]">
             Every photo from your session has already been deleted.
           </p>
-          <p className="mt-3 text-sm text-[var(--color-stone-soft)]">
+          <p className="mt-3 text-sm text-[var(--color-stone)]">
             If you’re 18 or over, come and say hello in the clinic — we’d love to meet you.
           </p>
           <a
@@ -408,14 +412,14 @@ export function KioskSessionFlow({
             </div>
           )}
 
-          {error && <p className="mt-4 text-sm text-[var(--color-blush)]">{error}</p>}
+          {error && <p role="alert" aria-live="assertive" className="mt-4 text-sm text-[var(--color-blush)]">{error}</p>}
 
           <label className="mt-6 block w-full cursor-pointer rounded-[var(--radius-md)] border border-[var(--color-gold)] px-6 py-4 text-lg font-medium text-[var(--color-gold-bright)]">
             {preview ? 'Retake photo' : 'Open camera'}
             <input type="file" accept="image/*" capture="user" onChange={onPick} className="hidden" />
           </label>
 
-          <label className="mt-3 block w-full cursor-pointer text-sm text-[var(--color-stone-soft)] underline">
+          <label className="mt-3 block w-full cursor-pointer text-sm text-[var(--color-stone)] underline">
             or choose from gallery
             <input type="file" accept="image/*" onChange={onPick} className="hidden" />
           </label>

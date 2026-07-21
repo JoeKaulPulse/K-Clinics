@@ -29,6 +29,13 @@ export async function chargeBookingAction(bookingId: string, amountPence: number
   const booking = await db.booking.findUnique({ where: { id: bookingId }, include: { client: true } });
   if (!booking) return { ok: false, error: 'Not found' };
   if (booking.chargedAt) return { ok: false, error: 'Already charged' };
+  // BLD-882: net an applied gift voucher SERVER-SIDE, here in the one shared
+  // charge action, so every surface (session checkout, booking detail page, a
+  // reloaded till) collects only the remainder — no UI has to know about the
+  // voucher for the arithmetic to hold.
+  const voucherOffPence = booking.giftVoucherPence ?? 0;
+  amountPence = Math.round(amountPence) - voucherOffPence;
+  if (amountPence <= 0) return { ok: false, error: 'The applied gift voucher already covers this amount — remove the voucher first to adjust the price.' };
   // Safety gateway: only ever take payment for a delivered treatment. The booking
   // must be marked COMPLETED first — this prevents charging a client before (or
   // instead of) their service. (Late-cancellation / no-show fees go through the
@@ -69,8 +76,9 @@ export async function chargeBookingAction(bookingId: string, amountPence: number
     const disc = opts?.discountReason?.trim()
       ? ` (price adjustment — ${opts.discountReason.trim()}${opts.originalPence && opts.originalPence > amountPence ? `; was £${(opts.originalPence / 100).toFixed(2)}` : ''})`
       : '';
-    await db.interaction.create({ data: { clientId: booking.clientId, type: 'APPOINTMENT', summary: `Charged £${(amountPence / 100).toFixed(2)} for ${booking.treatmentTitle}${disc}`, author: session.email } });
-    await logAudit({ action: 'PAYMENT_CHARGED', actor: session.email, actorRole: session.role, bookingId, clientId: booking.clientId, summary: `Charged £${(amountPence / 100).toFixed(2)}${disc}` });
+    const vnote = voucherOffPence > 0 ? ` + gift voucher £${(voucherOffPence / 100).toFixed(2)} already applied` : '';
+    await db.interaction.create({ data: { clientId: booking.clientId, type: 'APPOINTMENT', summary: `Charged £${(amountPence / 100).toFixed(2)} for ${booking.treatmentTitle}${disc}${vnote}`, author: session.email } });
+    await logAudit({ action: 'PAYMENT_CHARGED', actor: session.email, actorRole: session.role, bookingId, clientId: booking.clientId, summary: `Charged £${(amountPence / 100).toFixed(2)}${disc}${vnote}` });
     // The charged amount is the truest spend signal — credit loyalty points
     // (idempotent: a no-op if completion already awarded them).
     try {

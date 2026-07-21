@@ -33,12 +33,12 @@ export function CashflowManager({ cfg, drivers, consumablesMonthly, months, rese
       <div className="grid gap-3 sm:grid-cols-4">
         {[
           { label: L('Opening cash', 'Початковий баланс'), value: gbp(cfg.openingPence), tone: '' },
-          { label: L(`Operating cash · month ${cfg.months}`, `Операційні кошти · міс ${cfg.months}`), value: gbp(summary.endOperating), tone: summary.endOperating < cfg.safetyFloorPence ? 'text-[var(--color-blush)]' : '' },
+          { label: L(`Operating cash · month ${cfg.months}`, `Операційні кошти · міс ${cfg.months}`), value: gbp(summary.endOperating), tone: summary.endOperating < cfg.safetyFloorPence ? 'text-[var(--color-blush-deep)]' : '' },
           { label: L('Ring-fenced reserves', 'Захищені резерви'), value: gbp(summary.endReserves), tone: 'text-[var(--color-jade)]' },
-          { label: L('Lowest operating point', 'Найнижча точка'), value: gbp(summary.lowestOperating), tone: summary.everBelowFloor ? 'text-[var(--color-blush)]' : '' },
+          { label: L('Lowest operating point', 'Найнижча точка'), value: gbp(summary.lowestOperating), tone: summary.everBelowFloor ? 'text-[var(--color-blush-deep)]' : '' },
         ].map((s) => (
           <div key={s.label} className="rounded-[var(--radius-md)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-4">
-            <div className={`font-[family-name:var(--font-display)] text-2xl ${s.tone}`}>{s.value}</div>
+            <div className={`font-[family-name:var(--font-display)] text-2xl ${s.tone} tabular-nums`}>{s.value}</div>
             <div className="mt-1 text-xs text-[var(--color-stone)]">{s.label}</div>
           </div>
         ))}
@@ -53,7 +53,7 @@ export function CashflowManager({ cfg, drivers, consumablesMonthly, months, rese
       <section>
         <h2 className="mb-3 font-[family-name:var(--font-display)] text-xl">{L('Monthly projection', 'Помісячний прогноз')}</h2>
         <div className="overflow-x-auto rounded-[var(--radius-lg)] border border-[var(--color-line)]">
-          <table className="w-full min-w-[760px] text-sm">
+          <table className="w-full min-w-[760px] text-sm tabular-nums">
             <thead className="bg-[var(--color-bone)] text-xs uppercase tracking-wide text-[var(--color-stone)]">
               <tr>
                 {[L('Month', 'Місяць'), L('Income', 'Дохід'), L('of which booked', 'із них заброньовано'), L('Expenses', 'Витрати'), L('Net', 'Чистий'), L('To reserves', 'У резерви'), L('Operating', 'Операційні'), L('Reserves', 'Резерви')].map((h) => (
@@ -66,11 +66,11 @@ export function CashflowManager({ cfg, drivers, consumablesMonthly, months, rese
                 <tr key={i} className="border-t border-[var(--color-line)] bg-[var(--color-porcelain)]">
                   <td className="px-4 py-2.5 font-medium">{m.label}</td>
                   <td className="px-4 py-2.5 text-right text-[var(--color-jade)]">{gbp(m.incomePence)}</td>
-                  <td className="px-4 py-2.5 text-right text-[var(--color-stone-soft)]" title={L('Confirmed/pending bookings', 'Підтверджені/очікувані записи')}>{m.committedPence > 0 ? gbp(m.committedPence) : '—'}</td>
+                  <td className="px-4 py-2.5 text-right text-[var(--color-stone)]" title={L('Confirmed/pending bookings', 'Підтверджені/очікувані записи')}>{m.committedPence > 0 ? gbp(m.committedPence) : '—'}</td>
                   <td className="px-4 py-2.5 text-right text-[var(--color-stone)]">{gbp(m.expensePence)}</td>
-                  <td className={`px-4 py-2.5 text-right ${m.netPence < 0 ? 'text-[var(--color-blush)]' : ''}`}>{gbp(m.netPence)}</td>
-                  <td className="px-4 py-2.5 text-right text-[var(--color-stone-soft)]">{gbp(m.reserveContribPence)}</td>
-                  <td className={`px-4 py-2.5 text-right font-medium ${m.belowFloor ? 'text-[var(--color-blush)]' : ''}`}>{gbp(m.operatingPence)}{m.belowFloor ? ' ⚠' : ''}</td>
+                  <td className={`px-4 py-2.5 text-right ${m.netPence < 0 ? 'text-[var(--color-blush-deep)]' : ''}`}>{gbp(m.netPence)}</td>
+                  <td className="px-4 py-2.5 text-right text-[var(--color-stone)]">{gbp(m.reserveContribPence)}</td>
+                  <td className={`px-4 py-2.5 text-right font-medium ${m.belowFloor ? 'text-[var(--color-blush-deep)]' : ''}`}>{gbp(m.operatingPence)}{m.belowFloor ? ' ⚠' : ''}</td>
                   <td className="px-4 py-2.5 text-right text-[var(--color-jade)]">{gbp(m.reservesPence)}</td>
                 </tr>
               ))}
@@ -101,7 +101,7 @@ function LiveBalances({ balances, canManage, uk }: { balances: Balance[]; canMan
     <section className="rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-6">
       <div className="flex items-center justify-between">
         <h2 className="font-[family-name:var(--font-display)] text-xl">{L('Live balances', 'Поточні баланси')}</h2>
-        {anyConnected && canManage && <button onClick={useAsOpening} className="text-sm text-[var(--color-gold)] hover:underline">{L('Use as opening cash', 'Як початковий баланс')}</button>}
+        {anyConnected && canManage && <button onClick={useAsOpening} className="text-sm text-[var(--color-gold-deep)] hover:underline">{L('Use as opening cash', 'Як початковий баланс')}</button>}
       </div>
       <div className="mt-4 grid gap-3 sm:grid-cols-3">
         {balances.map((b) => (
@@ -112,8 +112,8 @@ function LiveBalances({ balances, canManage, uk }: { balances: Balance[]; canMan
             </div>
             {b.connected ? (
               <>
-                <div className="mt-1 font-[family-name:var(--font-display)] text-2xl">{gbp(b.availablePence)}</div>
-                {b.pendingPence > 0 && <p className="text-xs text-[var(--color-stone-soft)]">{gbp(b.pendingPence)} {L('pending', 'в очікуванні')}</p>}
+                <div className="mt-1 font-[family-name:var(--font-display)] text-2xl tabular-nums">{gbp(b.availablePence)}</div>
+                {b.pendingPence > 0 && <p className="text-xs text-[var(--color-stone)]">{gbp(b.pendingPence)} {L('pending', 'в очікуванні')}</p>}
               </>
             ) : (
               <p className="mt-2 text-xs text-[var(--color-stone)]">{b.detail || L('Not connected', 'Не підключено')}</p>
@@ -184,7 +184,7 @@ function DriversPanel({ drivers, consumablesMonthly, canManage, uk }: { drivers:
     <section className="rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-6">
       <div className="flex items-center justify-between">
         <h2 className="font-[family-name:var(--font-display)] text-xl">{L('Prediction drivers', 'Драйвери прогнозу')}</h2>
-        <button onClick={() => setOpen((o) => !o)} className="text-sm text-[var(--color-gold)] hover:underline">{open ? L('Hide', 'Сховати') : L('Edit assumptions', 'Редагувати')}</button>
+        <button onClick={() => setOpen((o) => !o)} className="text-sm text-[var(--color-gold-deep)] hover:underline">{open ? L('Hide', 'Сховати') : L('Edit assumptions', 'Редагувати')}</button>
       </div>
       <p className="mt-1 text-sm text-[var(--color-stone)]">
         {L(
@@ -207,7 +207,7 @@ function DriversPanel({ drivers, consumablesMonthly, canManage, uk }: { drivers:
         </div>
       )}
       {open && (
-        <p className="mt-3 text-xs text-[var(--color-stone-soft)]">
+        <p className="mt-3 text-xs text-[var(--color-stone)]">
           {L('Visitors and search rank will auto-populate once Analytics/Search Console are connected; bank, Stripe and Xero balances arrive with those integrations (coming next).',
              'Відвідувачі та позиції оновлюватимуться після підключення Аналітики; баланси банку, Stripe і Xero — з наступними інтеграціями.')}
         </p>
@@ -233,7 +233,7 @@ function Reserves({ reserves, canManage, uk }: { reserves: Reserve[]; canManage:
     <section>
       <div className="mb-3 flex items-center justify-between">
         <h2 className="font-[family-name:var(--font-display)] text-xl">{L('Ring-fenced reserves', 'Захищені резерви')}</h2>
-        {canManage && <button onClick={() => setOpen((o) => !o)} className="text-sm text-[var(--color-gold)] hover:underline">{open ? L('Close', 'Закрити') : L('+ Add', '+ Додати')}</button>}
+        {canManage && <button onClick={() => setOpen((o) => !o)} className="text-sm text-[var(--color-gold-deep)] hover:underline">{open ? L('Close', 'Закрити') : L('+ Add', '+ Додати')}</button>}
       </div>
       {open && canManage && (
         <div className="mb-3 grid grid-cols-2 gap-2 rounded-[var(--radius-md)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-3">
@@ -241,7 +241,7 @@ function Reserves({ reserves, canManage, uk }: { reserves: Reserve[]; canManage:
           <input type="number" value={v.balancePounds} onChange={set('balancePounds')} placeholder={L('Current £', 'Поточний £')} className={field} />
           <input type="number" value={v.targetPounds} onChange={set('targetPounds')} placeholder={L('Target £ (0 = none)', 'Ціль £ (0 = без)')} className={field} />
           <input type="number" value={v.monthlyPounds} onChange={set('monthlyPounds')} placeholder={L('Monthly top-up £', 'Щомісячно £')} className={field} />
-          <button onClick={add} className="rounded-full bg-[var(--color-gold)] px-4 py-2 text-sm text-white">{L('Add', 'Додати')}</button>
+          <button onClick={add} className="rounded-full bg-[var(--color-gold-deep)] px-4 py-2 text-sm text-white">{L('Add', 'Додати')}</button>
         </div>
       )}
       <div className="space-y-3">
@@ -252,16 +252,16 @@ function Reserves({ reserves, canManage, uk }: { reserves: Reserve[]; canManage:
             <div key={r.id} className="rounded-[var(--radius-md)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-4">
               <div className="flex items-center justify-between gap-2">
                 <span className="flex items-center gap-2 text-sm font-medium"><span className="h-2.5 w-2.5 rounded-full" style={{ background: r.color || 'var(--color-jade)' }} />{r.name}</span>
-                <span className="text-sm">{gbp(r.endPence)}{r.targetPence > 0 ? ` / ${gbp(r.targetPence)}` : ''}</span>
+                <span className="text-sm tabular-nums">{gbp(r.endPence)}{r.targetPence > 0 ? ` / ${gbp(r.targetPence)}` : ''}</span>
               </div>
               {r.targetPence > 0 && (
                 <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-[var(--color-bone)]">
                   <div className="h-full rounded-full" style={{ width: `${pct}%`, background: r.color || 'var(--color-jade)' }} />
                 </div>
               )}
-              <div className="mt-2 flex items-center justify-between text-xs text-[var(--color-stone-soft)]">
+              <div className="mt-2 flex items-center justify-between text-xs text-[var(--color-stone)]">
                 <span>{L('Now', 'Зараз')} {gbp(r.startPence)} · +{gbp(r.monthlyContributionPence)}/{L('mo', 'міс')}</span>
-                {canManage && <button onClick={() => del(r.id)} className="hover:text-[var(--color-blush)]">{L('Delete', 'Видалити')}</button>}
+                {canManage && <button onClick={() => del(r.id)} className="hover:text-[var(--color-blush-deep)]">{L('Delete', 'Видалити')}</button>}
               </div>
             </div>
           );
@@ -290,7 +290,7 @@ function Entries({ entries, canManage, uk }: { entries: Entry[]; canManage: bool
     <section>
       <div className="mb-3 flex items-center justify-between">
         <h2 className="font-[family-name:var(--font-display)] text-xl">{L('Income & expense lines', 'Статті доходів і витрат')}</h2>
-        {canManage && <button onClick={() => setOpen((o) => !o)} className="text-sm text-[var(--color-gold)] hover:underline">{open ? L('Close', 'Закрити') : L('+ Add', '+ Додати')}</button>}
+        {canManage && <button onClick={() => setOpen((o) => !o)} className="text-sm text-[var(--color-gold-deep)] hover:underline">{open ? L('Close', 'Закрити') : L('+ Add', '+ Додати')}</button>}
       </div>
       {open && canManage && (
         <div className="mb-3 grid grid-cols-2 gap-2 rounded-[var(--radius-md)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-3">
@@ -299,7 +299,7 @@ function Entries({ entries, canManage, uk }: { entries: Entry[]; canManage: bool
           <input value={v.label} onChange={setS('label')} placeholder={L('Label (e.g. Rent)', 'Назва (напр. Оренда)')} className={`${field} col-span-2`} />
           <input value={v.category} onChange={setS('category')} placeholder={L('Category', 'Категорія')} className={field} />
           <input type="number" value={v.amountPounds} onChange={setS('amountPounds')} placeholder={L('Amount £', 'Сума £')} className={field} />
-          <button onClick={add} className="col-span-2 rounded-full bg-[var(--color-gold)] px-4 py-2 text-sm text-white">{L('Add line', 'Додати')}</button>
+          <button onClick={add} className="col-span-2 rounded-full bg-[var(--color-gold-deep)] px-4 py-2 text-sm text-white">{L('Add line', 'Додати')}</button>
         </div>
       )}
       <div className="space-y-1.5">
@@ -309,11 +309,11 @@ function Entries({ entries, canManage, uk }: { entries: Entry[]; canManage: bool
             <span className="flex items-center gap-2">
               <span className={`h-2 w-2 rounded-full ${e.type === 'INCOME' ? 'bg-[var(--color-jade)]' : 'bg-[var(--color-blush)]'}`} />
               <span className="font-medium">{e.label}</span>
-              <span className="text-xs text-[var(--color-stone-soft)]">{e.category} · {cadenceLabel(e.cadence)}</span>
+              <span className="text-xs text-[var(--color-stone)]">{e.category} · {cadenceLabel(e.cadence)}</span>
             </span>
             <span className="flex items-center gap-3">
-              <span className={e.type === 'INCOME' ? 'text-[var(--color-jade)]' : 'text-[var(--color-stone)]'}>{gbp(e.amountPence)}</span>
-              {canManage && <button onClick={() => del(e.id)} className="text-xs text-[var(--color-stone-soft)] hover:text-[var(--color-blush)]">✕</button>}
+              <span className={`${e.type === 'INCOME' ? 'text-[var(--color-jade)]' : 'text-[var(--color-stone)]'} tabular-nums`}>{gbp(e.amountPence)}</span>
+              {canManage && <button onClick={() => del(e.id)} aria-label="Delete entry" className="text-xs text-[var(--color-stone)] hover:text-[var(--color-blush-deep)]">✕</button>}
             </span>
           </div>
         ))}

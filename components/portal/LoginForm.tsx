@@ -7,6 +7,7 @@ import { authField, authLabel } from '@/components/portal/AuthShell';
 import { Turnstile } from '@/components/security/Turnstile';
 import { portalTranslator, DEFAULT_LOCALE, type Locale } from '@/lib/i18n-portal';
 import { isLocale } from '@/lib/i18n';
+import { IS_STATIC_DEMO } from '@/lib/static-demo';
 
 function readCookieLocale(): Locale {
   if (typeof document === 'undefined') return DEFAULT_LOCALE;
@@ -45,8 +46,9 @@ function Inner() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password, captchaToken }),
       });
-      // 404 = route not present (static GitHub Pages demo only).
-      if (res.status === 404) {
+      // 404 = route not present (static GitHub Pages demo only). On the live site
+      // a 404 is a real error — fall through to the generic message below.
+      if (res.status === 404 && IS_STATIC_DEMO) {
         setError(t('login.preview'));
         return;
       }
@@ -81,7 +83,7 @@ function Inner() {
         <input id="password" type="password" autoComplete="current-password" required className={authField} value={password} onChange={(e) => setPassword(e.target.value)} />
       </div>
       {captchaSiteKey && <Turnstile siteKey={captchaSiteKey} onToken={setCaptchaToken} />}
-      {error && <p className="rounded-[var(--radius-sm)] bg-[var(--color-blush)]/25 px-4 py-2.5 text-sm text-[var(--color-ink)]">{error}</p>}
+      {error && <p role="alert" aria-live="assertive" className="rounded-[var(--radius-sm)] bg-[var(--color-blush)]/25 px-4 py-2.5 text-sm text-[var(--color-ink)]">{error}</p>}
       <button
         type="submit"
         disabled={loading}

@@ -11,7 +11,7 @@ import type { BuildType, BuildStatus, BuildUrgency } from '@prisma/client';
 export type NewBuildItem = {
   type?: BuildType; title: string; detail?: string; urgency?: BuildUrgency;
   assignee?: string; reportedBy?: string; pageUrl?: string; screenshots?: string[];
-  value?: number; effort?: number;
+  value?: number; effort?: number; projectId?: string;
 };
 
 /** Idempotently import Claude's working backlog (deduped by title) so the board
@@ -383,6 +383,64 @@ export async function removeDependency(itemId: string, dependsOnId: string, acto
   return db.buildItem.findUnique({ where: { id: itemId }, include: ITEM_INCLUDE });
 }
 
+/** Find-or-create a DB-only Project by name and return it (with its PRJ ref).
+ *  Used by the token-authed queue so an audit run can file all its findings
+ *  under one project. Idempotent: matches an existing project case-insensitively
+ *  by name first, otherwise creates one with a derived unique slug + PRJ ref.
+ *  Like promoteToProject's create path, this is safe against code rebuilds —
+ *  syncProjects only ever upserts/links, never deletes. */
+export async function ensureProject(name: string, summary?: string) {
+  const clean = (name || '').trim().slice(0, 120);
+  if (!clean) return null;
+  const existing = await db.buildProject.findFirst({ where: { name: { equals: clean, mode: 'insensitive' } } }).catch(() => null);
+  if (existing) {
+    if (!existing.ref) { const { assignProjectRef } = await import('@/lib/task-refs'); await assignProjectRef(existing.id).catch(() => {}); return (await db.buildProject.findUnique({ where: { id: existing.id } })) ?? existing; }
+    return existing;
+  }
+  const base = clean.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 48) || 'project';
+  let slug = base;
+  for (let i = 2; await db.buildProject.findUnique({ where: { slug } }); i++) slug = `${base}-${i}`;
+  const project = await db.buildProject.create({ data: { slug, name: clean, summary: (summary || '').trim() || null } });
+  const { assignProjectRef } = await import('@/lib/task-refs');
+  await assignProjectRef(project.id).catch(() => {});
+  return (await db.buildProject.findUnique({ where: { id: project.id } })) ?? project;
+}
+
+/** Promote an item into a Project — either an existing project (by id) or a
+ *  brand-new one created from `name`. This is the board's "Promote to project"
+ *  action (the declarative PROJECTS list is code-only; this is the UI path).
+ *  Projects created here live only in the DB, which is safe: syncProjects only
+ *  ever upserts/links, never deletes, so a code rebuild won't remove them.
+ *  Passing projectId: '' detaches the item from its project. */
+export async function promoteToProject(itemId: string, opts: { projectId?: string; name?: string; summary?: string }, actor: string) {
+  const item = await db.buildItem.findUnique({ where: { id: itemId }, select: { id: true, title: true } });
+  if (!item) return null;
+
+  // Detach when an empty projectId is explicitly sent.
+  if (opts.projectId === '') {
+    await db.buildItem.update({ where: { id: itemId }, data: { projectId: null } });
+    await db.buildEvent.create({ data: { itemId, kind: 'status', actor, body: 'Removed from its project' } }).catch(() => {});
+    return db.buildItem.findUnique({ where: { id: itemId }, include: ITEM_INCLUDE });
+  }
+
+  let project = opts.projectId ? await db.buildProject.findUnique({ where: { id: opts.projectId } }) : null;
+  if (!project) {
+    const name = (opts.name || '').trim() || item.title;
+    const base = name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 48) || 'project';
+    // Ensure a unique slug (slug is @unique) by derivation — no new constraints.
+    let slug = base;
+    for (let i = 2; await db.buildProject.findUnique({ where: { slug } }); i++) slug = `${base}-${i}`;
+    project = await db.buildProject.create({ data: { slug, name, summary: (opts.summary || '').trim() || null } });
+    const { assignProjectRef } = await import('@/lib/task-refs');
+    await assignProjectRef(project.id).catch(() => {});
+    project = (await db.buildProject.findUnique({ where: { id: project.id } })) ?? project;
+  }
+
+  await db.buildItem.update({ where: { id: itemId }, data: { projectId: project.id } });
+  await db.buildEvent.create({ data: { itemId, kind: 'status', actor, body: `Promoted into project “${project.name}”${project.ref ? ` (${project.ref})` : ''}` } }).catch(() => {});
+  return db.buildItem.findUnique({ where: { id: itemId }, include: ITEM_INCLUDE });
+}
+
 /** True when every dependency of `itemId` has shipped/closed. */
 async function depsMet(itemId: string): Promise<boolean> {
   const deps = await db.buildDependency.findMany({ where: { itemId }, include: { dependsOn: { select: { status: true } } } });
@@ -439,6 +497,7 @@ export async function createBuildItem(input: NewBuildItem, actor: string) {
       screenshots: (input.screenshots || []).slice(0, 6),
       value: typeof input.value === 'number' ? Math.max(1, Math.min(10, Math.round(input.value))) : null,
       effort: typeof input.effort === 'number' ? Math.max(1, Math.min(10, Math.round(input.effort))) : null,
+      projectId: input.projectId || null,
       events: { create: { kind: 'created', actor, body: `Reported as ${type} · ${input.urgency ?? 'P2'}` } },
     },
     include: { events: true, subtasks: true },
@@ -891,7 +950,10 @@ export async function pendingWork() {
 /** Rich, self-contained work queue for an unattended routine session — includes
  *  full detail, open subtasks, blocking dependencies and recent comments so a
  *  session can act on DB-only items (e.g. reported bugs) without a login. */
-export async function routineQueue() {
+export async function routineQueue(limit = 15) {
+  // Clamped so a routine session can page past the default window without
+  // being able to demand the whole 150+-item board in one response.
+  const cap = Math.max(1, Math.min(50, Math.round(limit) || 15));
   const items = await db.buildItem.findMany({
     where: { assignee: 'claude', status: { in: ['TRIAGE', 'IN_PROGRESS', 'IN_REVIEW'] } },
     include: {
@@ -923,8 +985,8 @@ export async function routineQueue() {
     continueRequestedAt: continueAt,
     lastWakeAt: lastWake,
     counts: { actionable: actionable.length, blocked: blocked.length, awaitingSignoff: await db.buildItem.count({ where: { status: 'SHIPPED' } }) },
-    actionable: actionable.slice(0, 15).map(serialize),
-    blocked: blocked.slice(0, 15).map(serialize),
+    actionable: actionable.slice(0, cap).map(serialize),
+    blocked: blocked.slice(0, cap).map(serialize),
   };
 }
 

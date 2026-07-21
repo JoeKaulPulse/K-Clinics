@@ -27,7 +27,7 @@ export function DiscountAction({ claimId, action, label }: { claimId: string; ac
       className={`rounded-full px-3 py-1 text-xs font-medium disabled:opacity-50 ${
         action === 'revoke'
           ? 'border border-[var(--color-line)] text-[var(--color-stone)] hover:border-[var(--color-blush)] hover:text-[var(--color-ink)]'
-          : 'bg-[var(--color-gold)] text-white hover:bg-[var(--color-ink)]'
+          : 'bg-[var(--color-gold-deep)] text-white hover:bg-[var(--color-ink)]'
       }`}
     >
       {pending ? '…' : label}

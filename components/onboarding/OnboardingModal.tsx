@@ -64,19 +64,19 @@ export function OnboardingModal({ title, intro, steps, initial, endpoint, onClos
 
           <AnimatePresence mode="wait">
             <motion.div key={i} initial={{ opacity: 0, x: 24 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -24 }} transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}>
-              <p className="text-[0.65rem] uppercase tracking-[0.18em] text-[var(--color-stone-soft)]">{title} · {i + 1}/{steps.length}</p>
+              <p className="text-[0.65rem] uppercase tracking-[0.18em] text-[var(--color-stone)]">{title} · {i + 1}/{steps.length}</p>
               <h2 className="mt-1 font-[family-name:var(--font-display)] text-2xl leading-tight">{step.label}</h2>
               {step.help && <p className="mt-1.5 text-sm text-[var(--color-stone)]">{step.help}</p>}
 
               <div className="mt-2">
                 {(step.type === 'text' || step.type === 'tel' || step.type === 'date') && (
-                  <input type={step.type === 'text' ? 'text' : step.type} autoFocus value={(vals[step.key] as string) ?? ''} onChange={(e) => set(step.key, e.target.value)} placeholder={'placeholder' in step ? step.placeholder : ''} className={field} />
+                  <input type={step.type === 'text' ? 'text' : step.type} autoFocus aria-label={step.label} value={(vals[step.key] as string) ?? ''} onChange={(e) => set(step.key, e.target.value)} placeholder={'placeholder' in step ? step.placeholder : ''} className={field} />
                 )}
                 {step.type === 'textarea' && (
-                  <textarea autoFocus rows={4} value={(vals[step.key] as string) ?? ''} onChange={(e) => set(step.key, e.target.value)} placeholder={step.placeholder} className={field} />
+                  <textarea autoFocus aria-label={step.label} rows={4} value={(vals[step.key] as string) ?? ''} onChange={(e) => set(step.key, e.target.value)} placeholder={step.placeholder} className={field} />
                 )}
                 {step.type === 'select' && (
-                  <select value={(vals[step.key] as string) ?? ''} onChange={(e) => set(step.key, e.target.value)} className={field}>
+                  <select aria-label={step.label} value={(vals[step.key] as string) ?? ''} onChange={(e) => set(step.key, e.target.value)} className={field}>
                     <option value="">Choose…</option>
                     {step.options.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
                   </select>
@@ -86,7 +86,7 @@ export function OnboardingModal({ title, intro, steps, initial, endpoint, onClos
                     {step.options.map((o) => {
                       const arr = (vals[step.key] as string[]) ?? [];
                       const on = arr.includes(o);
-                      return <button key={o} onClick={() => set(step.key, on ? arr.filter((x) => x !== o) : [...arr, o])} className={`rounded-full border px-4 py-2 text-sm ${on ? 'border-[var(--color-gold)] bg-[var(--color-gold)] text-white' : 'border-[var(--color-line)] hover:border-[var(--color-gold)]'}`}>{o}</button>;
+                      return <button key={o} onClick={() => set(step.key, on ? arr.filter((x) => x !== o) : [...arr, o])} className={`rounded-full border px-4 py-2 text-sm ${on ? 'border-[var(--color-gold)] bg-[var(--color-gold-deep)] text-white' : 'border-[var(--color-line)] hover:border-[var(--color-gold)]'}`}>{o}</button>;
                     })}
                   </div>
                 )}

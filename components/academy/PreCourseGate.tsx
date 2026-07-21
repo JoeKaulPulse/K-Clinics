@@ -34,7 +34,7 @@ export function PreCourseGate({ slug, title, level, content }: { slug: string; t
         <input type="checkbox" checked={agreed} onChange={(e) => setAgreed(e.target.checked)} className="mt-0.5 h-4 w-4 accent-[var(--color-gold)]" />
         <span>I have read and understood the information above, and I agree to the academy’s requirements, policies and terms.</span>
       </label>
-      {error && <p className="mt-3 text-sm text-[var(--color-blush)]">{error}</p>}
+      {error && <p role="alert" aria-live="assertive" className="mt-3 text-sm text-[var(--color-blush-deep)]">{error}</p>}
       <button onClick={acknowledge} disabled={!agreed || busy} className="mt-5 rounded-full bg-[var(--color-ink)] px-6 py-2.5 text-sm font-medium text-[var(--color-porcelain)] disabled:opacity-50">
         {busy ? 'Saving…' : 'I understand — continue to my course →'}
       </button>

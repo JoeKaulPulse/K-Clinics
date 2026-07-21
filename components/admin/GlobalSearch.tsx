@@ -158,11 +158,11 @@ export function GlobalSearch({ placeholder, pages = [] }: { placeholder: string;
           }}
           placeholder={placeholder}
           aria-label={placeholder}
-          className="h-11 w-full rounded-[var(--radius-md)] border border-[var(--color-line)] bg-white pl-9 pr-16 text-sm text-[var(--color-ink)] outline-none transition-shadow placeholder:text-[var(--color-stone-soft)] focus:border-[var(--color-gold)] focus:shadow-[0_0_0_3px_color-mix(in_oklab,var(--color-gold)_22%,transparent)]"
+          className="h-11 w-full rounded-[var(--radius-md)] border border-[var(--color-line)] bg-white pl-9 pr-16 text-sm text-[var(--color-ink)] outline-none transition-shadow placeholder:text-[var(--color-stone)] focus:border-[var(--color-gold)] focus:shadow-[0_0_0_3px_color-mix(in_oklab,var(--color-gold)_22%,transparent)]"
         />
         <span className="absolute right-2.5 flex items-center gap-1">
           {loading && (
-            <svg className="animate-spin text-[var(--color-stone-soft)]" width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden>
+            <svg className="animate-spin text-[var(--color-stone)]" width="15" height="15" viewBox="0 0 24 24" fill="none" aria-hidden>
               <circle cx="12" cy="12" r="9" stroke="currentColor" strokeWidth="3" strokeOpacity="0.25" />
               <path d="M21 12a9 9 0 0 0-9-9" stroke="currentColor" strokeWidth="3" strokeLinecap="round" />
             </svg>
@@ -194,11 +194,11 @@ export function GlobalSearch({ placeholder, pages = [] }: { placeholder: string;
             <>
               <div className="flex items-center justify-between bg-[var(--color-bone)]/70 px-3 py-1.5">
                 <span className="text-[0.62rem] font-semibold uppercase tracking-wide text-[var(--color-stone)]">Recent searches</span>
-                <button onMouseDown={(e) => { e.preventDefault(); clearRecent(); }} className="text-[0.62rem] text-[var(--color-stone-soft)] transition-colors hover:text-[var(--color-ink)]">Clear</button>
+                <button onMouseDown={(e) => { e.preventDefault(); clearRecent(); }} className="text-[0.62rem] text-[var(--color-stone)] transition-colors hover:text-[var(--color-ink)]">Clear</button>
               </div>
               {recent.map((r) => (
                 <button key={r} onMouseDown={(e) => { e.preventDefault(); setQ(r); }} className="flex w-full items-center gap-2.5 px-3 py-2.5 text-left text-sm transition-colors hover:bg-[var(--color-bone)]">
-                  <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" className="shrink-0 text-[var(--color-stone-soft)]" aria-hidden><path d="M8 4v4l2.5 1.5" /><path d="M2.5 8a5.5 5.5 0 1 0 1.6-3.9M2.5 3v2h2" /></svg>
+                  <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" className="shrink-0 text-[var(--color-stone)]" aria-hidden><path d="M8 4v4l2.5 1.5" /><path d="M2.5 8a5.5 5.5 0 1 0 1.6-3.9M2.5 3v2h2" /></svg>
                   <span className="truncate">{r}</span>
                 </button>
               ))}
@@ -206,7 +206,7 @@ export function GlobalSearch({ placeholder, pages = [] }: { placeholder: string;
           ) : !hasResults ? (
             <div className="px-3 py-6 text-center">
               <p className="text-sm text-[var(--color-stone)]">{loading ? 'Searching…' : `No matches for "${q.trim()}"`}</p>
-              {!loading && <p className="mt-1 text-xs text-[var(--color-stone-soft)]">Try a name, email, code, page or reference (e.g. BLD-12).</p>}
+              {!loading && <p className="mt-1 text-xs text-[var(--color-stone)]">Try a name, email, code, page or reference (e.g. BLD-12).</p>}
             </div>
           ) : (
             allGroups.map((g) => (
@@ -225,12 +225,12 @@ export function GlobalSearch({ placeholder, pages = [] }: { placeholder: string;
                       onClick={() => go(r.href)}
                       className={`flex w-full items-center gap-2.5 px-3 py-2.5 text-left transition-colors ${i === active ? 'bg-[var(--color-gold)]/12' : ''}`}
                     >
-                      {isNav && <SearchIcon className="shrink-0 text-[var(--color-stone-soft)]" />}
+                      {isNav && <SearchIcon className="shrink-0 text-[var(--color-stone)]" />}
                       <span className="min-w-0 flex-1">
                         <span className="block w-full truncate text-sm font-medium text-[var(--color-ink)]"><Highlight text={r.title} q={q} /></span>
-                        {r.sub && <span className="block w-full truncate text-xs text-[var(--color-stone-soft)]"><Highlight text={r.sub} q={q} /></span>}
+                        {r.sub && <span className="block w-full truncate text-xs text-[var(--color-stone)]"><Highlight text={r.sub} q={q} /></span>}
                       </span>
-                      {i === active && <span aria-hidden className="shrink-0 text-xs text-[var(--color-stone-soft)]">↵</span>}
+                      {i === active && <span aria-hidden className="shrink-0 text-xs text-[var(--color-stone)]">↵</span>}
                     </button>
                   );
                 })}
@@ -238,7 +238,7 @@ export function GlobalSearch({ placeholder, pages = [] }: { placeholder: string;
             ))
           )}
           {!showRecent && hasResults && (
-            <div className="sticky bottom-0 flex items-center gap-3 border-t border-[var(--color-line)] bg-white/95 px-3 py-1.5 text-[0.62rem] text-[var(--color-stone-soft)] backdrop-blur">
+            <div className="sticky bottom-0 flex items-center gap-3 border-t border-[var(--color-line)] bg-white/95 px-3 py-1.5 text-[0.62rem] text-[var(--color-stone)] backdrop-blur">
               <span><kbd className="font-sans">↑</kbd> <kbd className="font-sans">↓</kbd> navigate</span>
               <span><kbd className="font-sans">↵</kbd> open</span>
               <span><kbd className="font-sans">esc</kbd> close</span>

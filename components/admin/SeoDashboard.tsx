@@ -8,7 +8,7 @@ type PageScore = { path: string; title: string; description: string; focusKeywor
 type Audit = { pages: PageScore[]; health: number; byCategory: Record<string, number>; counts: Record<string, number> };
 
 const field = 'w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-2.5 py-1.5 text-sm';
-const tone = (s: number) => (s >= 80 ? 'text-green-700' : s >= 70 ? 'text-amber-600' : 'text-[var(--color-blush)]');
+const tone = (s: number) => (s >= 80 ? 'text-green-700' : s >= 70 ? 'text-amber-600' : 'text-[var(--color-blush-deep)]');
 const bg = (s: number) => (s >= 80 ? 'bg-green-600' : s >= 70 ? 'bg-amber-500' : 'bg-[var(--color-blush)]');
 const gradeTone = (g: string) => (g === 'A' ? 'bg-green-600' : g === 'B' ? 'bg-green-500' : g === 'C' ? 'bg-amber-500' : g === 'D' ? 'bg-orange-500' : 'bg-[var(--color-blush)]');
 
@@ -20,12 +20,12 @@ export function SeoDashboard({ audit }: { audit: Audit }) {
       <section className="grid gap-5 md:grid-cols-[260px_1fr]">
         <div className="rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-6 text-center">
           <p className="text-xs uppercase tracking-[0.16em] text-[var(--color-stone)]">Site health</p>
-          <p className={`mt-2 font-[family-name:var(--font-display)] text-6xl ${tone(audit.health)}`}>{audit.health}</p>
+          <p className={`mt-2 font-[family-name:var(--font-display)] text-6xl tabular-nums ${tone(audit.health)}`}>{audit.health}</p>
           <p className="text-sm text-[var(--color-stone)]">out of 100</p>
           <div className="mt-4 flex justify-center gap-4 text-xs text-[var(--color-stone)]">
             <span><strong className="text-[var(--color-ink)]">{audit.counts.total}</strong> pages</span>
             <span><strong className="text-green-700">{audit.counts.a}</strong> A-grade</span>
-            <span><strong className="text-[var(--color-blush)]">{audit.counts.needsWork}</strong> need work</span>
+            <span><strong className="text-[var(--color-blush-deep)]">{audit.counts.needsWork}</strong> need work</span>
           </div>
         </div>
         <div className="rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-6">
@@ -33,12 +33,12 @@ export function SeoDashboard({ audit }: { audit: Audit }) {
           <div className="space-y-3">
             {CATS.map(([k, label]) => (
               <div key={k}>
-                <div className="mb-1 flex justify-between text-sm"><span>{label}</span><span className={tone(audit.byCategory[k])}>{audit.byCategory[k]}</span></div>
+                <div className="mb-1 flex justify-between text-sm"><span>{label}</span><span className={`${tone(audit.byCategory[k])} tabular-nums`}>{audit.byCategory[k]}</span></div>
                 <div className="h-2 overflow-hidden rounded-full bg-[var(--color-sand)]"><div className={`h-full ${bg(audit.byCategory[k])}`} style={{ width: `${audit.byCategory[k]}%` }} /></div>
               </div>
             ))}
           </div>
-          {audit.counts.highIssues > 0 && <p className="mt-4 text-sm text-[var(--color-blush)]">{audit.counts.highIssues} high-severity issue(s) across the site.</p>}
+          {audit.counts.highIssues > 0 && <p className="mt-4 text-sm text-[var(--color-blush-deep)]">{audit.counts.highIssues} high-severity issue(s) across the site.</p>}
         </div>
       </section>
 
@@ -59,13 +59,13 @@ function PageRow({ p }: { p: PageScore }) {
       <button onClick={() => setOpen((v) => !v)} className="flex w-full items-center gap-3 py-2.5 text-left">
         <span className={`grid h-7 w-7 shrink-0 place-items-center rounded-full text-xs font-bold text-white ${gradeTone(p.grade)}`}>{p.grade}</span>
         <span className="min-w-0 flex-1">
-          <span className="block truncate text-sm font-medium text-[var(--color-ink)]">{p.path}{p.overridden && <span className="ml-2 rounded-full bg-[var(--color-gold)]/15 px-1.5 py-0.5 text-[0.6rem] text-[var(--color-gold)]">custom</span>}</span>
-          <span className="block truncate text-xs text-[var(--color-stone-soft)]">{p.title}</span>
+          <span className="block truncate text-sm font-medium text-[var(--color-ink)]">{p.path}{p.overridden && <span className="ml-2 rounded-full bg-[var(--color-gold)]/15 px-1.5 py-0.5 text-[0.6rem] text-[var(--color-gold-deep)]">custom</span>}</span>
+          <span className="block truncate text-xs text-[var(--color-stone)]">{p.title}</span>
         </span>
         <span className="hidden shrink-0 gap-3 text-xs text-[var(--color-stone)] sm:flex">
           {CATS.map(([k, label]) => <span key={k} className={tone(p[k as keyof PageScore] as number)}>{label.split(' ')[0]} {p[k as keyof PageScore] as number}</span>)}
         </span>
-        <span className={`shrink-0 text-sm font-semibold ${tone(p.overall)}`}>{p.overall}</span>
+        <span className={`shrink-0 text-sm font-semibold tabular-nums ${tone(p.overall)}`}>{p.overall}</span>
       </button>
       {open && <PageEditor p={p} />}
     </div>
@@ -120,8 +120,8 @@ function PageEditor({ p }: { p: PageScore }) {
         </ul>
       )}
       <div className="grid gap-3">
-        <label className="text-xs text-[var(--color-stone)]">Title <span className="text-[var(--color-stone-soft)]">({f.title.length} chars)</span><input className={field} value={f.title} onChange={(e) => set('title', e.target.value)} /></label>
-        <label className="text-xs text-[var(--color-stone)]">Meta description <span className="text-[var(--color-stone-soft)]">({f.description.length} chars)</span><textarea rows={2} className={field} value={f.description} onChange={(e) => set('description', e.target.value)} /></label>
+        <label className="text-xs text-[var(--color-stone)]">Title <span className="text-[var(--color-stone)]">({f.title.length} chars)</span><input className={field} value={f.title} onChange={(e) => set('title', e.target.value)} /></label>
+        <label className="text-xs text-[var(--color-stone)]">Meta description <span className="text-[var(--color-stone)]">({f.description.length} chars)</span><textarea rows={2} className={field} value={f.description} onChange={(e) => set('description', e.target.value)} /></label>
         <div className="grid gap-3 sm:grid-cols-2">
           <label className="text-xs text-[var(--color-stone)]">Focus keyword<input className={field} value={f.focusKeyword} onChange={(e) => set('focusKeyword', e.target.value)} /></label>
           <label className="text-xs text-[var(--color-stone)]">Canonical URL (optional)<input className={field} value={f.canonical} onChange={(e) => set('canonical', e.target.value)} placeholder="leave blank for default" /></label>
@@ -142,7 +142,7 @@ function PageEditor({ p }: { p: PageScore }) {
           loading="lazy"
           className="w-full max-w-[400px] rounded-[var(--radius-sm)] border border-[var(--color-line)]"
         />
-        <p className="mt-1 text-[0.7rem] text-[var(--color-stone-soft)]">How this page looks when shared on WhatsApp, iMessage, LinkedIn, X & Slack. Leave OG image blank to auto-generate from the title + description.</p>
+        <p className="mt-1 text-[0.7rem] text-[var(--color-stone)]">How this page looks when shared on WhatsApp, iMessage, LinkedIn, X & Slack. Leave OG image blank to auto-generate from the title + description.</p>
       </div>
       {recs.length > 0 && (
         <div className="mt-3 rounded-[var(--radius-sm)] bg-[var(--color-bone)] p-3">
@@ -153,10 +153,10 @@ function PageEditor({ p }: { p: PageScore }) {
       <div className="mt-4 flex flex-wrap items-center gap-2">
         <button onClick={aiSuggest} disabled={!!busy} className="rounded-full border border-[var(--color-line)] px-4 py-1.5 text-sm hover:border-[var(--color-gold)] disabled:opacity-50">{busy === 'ai' ? 'Thinking…' : '✦ AI suggest'}</button>
         <button onClick={save} disabled={!!busy} className="rounded-full bg-[var(--color-ink)] px-4 py-1.5 text-sm text-[var(--color-porcelain)] disabled:opacity-50">{busy === 'save' ? 'Saving…' : 'Save overrides'}</button>
-        {p.overridden && <button onClick={clear} className="text-xs text-[var(--color-blush)] hover:underline">Remove override</button>}
+        {p.overridden && <button onClick={clear} className="text-xs text-[var(--color-blush-deep)] hover:underline">Remove override</button>}
         {msg && <span className="text-sm text-[var(--color-stone)]">{msg}</span>}
       </div>
-      <p className="mt-2 text-[0.7rem] text-[var(--color-stone-soft)]">A live preview crawl reads the rendered page; scores update on save and reload.</p>
+      <p className="mt-2 text-[0.7rem] text-[var(--color-stone)]">A live preview crawl reads the rendered page; scores update on save and reload.</p>
     </div>
   );
 }

@@ -78,10 +78,10 @@ export default async function RewardsPage({ searchParams }: { searchParams: Prom
         {rows.length === 0 && <p className="text-sm text-[var(--color-stone)]">{L('No points awarded in this period yet.', 'У цей період бали ще не нараховані.')}</p>}
         {rows.map((r, i) => (
           <div key={r.staffId} className="flex flex-wrap items-center gap-4 rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-5 shadow-[var(--shadow-soft)]">
-            <span className="w-8 shrink-0 text-center text-2xl">{MEDAL[i] || <span className="text-base text-[var(--color-stone-soft)]">{i + 1}</span>}</span>
+            <span className="w-8 shrink-0 text-center text-2xl">{MEDAL[i] || <span className="text-base text-[var(--color-stone)]">{i + 1}</span>}</span>
             <span className="h-9 w-9 shrink-0 rounded-full" style={{ background: r.color || 'var(--color-gold)' }} />
             <div className="min-w-0 flex-1">
-              <p className="font-medium">{r.name}{r.title ? <span className="ml-2 text-xs text-[var(--color-stone-soft)]">{r.title}</span> : ''}</p>
+              <p className="font-medium">{r.name}{r.title ? <span className="ml-2 text-xs text-[var(--color-stone)]">{r.title}</span> : ''}</p>
               <div className="mt-1.5 h-1.5 max-w-md overflow-hidden rounded-full bg-[var(--color-bone)]">
                 <div className="h-full rounded-full bg-[var(--color-gold)]" style={{ width: `${Math.max(4, Math.round((r.total / top) * 100))}%` }} />
               </div>
@@ -91,7 +91,7 @@ export default async function RewardsPage({ searchParams }: { searchParams: Prom
               </p>
             </div>
             <div className="text-right">
-              <div className="font-[family-name:var(--font-display)] text-2xl text-[var(--color-gold)]">{r.total}</div>
+              <div className="font-[family-name:var(--font-display)] text-2xl tabular-nums text-[var(--color-gold)]">{r.total}</div>
               <div className="text-[0.65rem] uppercase tracking-[0.14em] text-[var(--color-stone)]">{L('points', 'балів')}</div>
             </div>
           </div>

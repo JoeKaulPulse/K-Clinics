@@ -37,8 +37,22 @@ export async function POST(req: Request) {
 
   const body = await req.json().catch(() => ({}));
   const roomId = typeof body.roomId === 'string' ? body.roomId : '';
+  if (!roomId) return NextResponse.json({ ok: false, error: 'Bad request.' }, { status: 400 });
+
+  // Manual occupancy toggle (BLD-506) — orthogonal to the prep/cleanliness state,
+  // so it carries its own field rather than a prep status.
+  if (typeof body.occupied === 'boolean') {
+    try {
+      const { setRoomOccupied, clinicDay } = await import('@/lib/room-prep');
+      await setRoomOccupied(roomId, clinicDay(), body.occupied, session.email);
+      return NextResponse.json({ ok: true, occupied: body.occupied });
+    } catch {
+      return NextResponse.json({ ok: false, error: 'Could not update the room.' }, { status: 500 });
+    }
+  }
+
   const status = body.status;
-  if (!roomId || !STATUSES.includes(status)) return NextResponse.json({ ok: false, error: 'Bad request.' }, { status: 400 });
+  if (!STATUSES.includes(status)) return NextResponse.json({ ok: false, error: 'Bad request.' }, { status: 400 });
   const note = typeof body.note === 'string' ? body.note.slice(0, 300) : undefined;
 
   try {

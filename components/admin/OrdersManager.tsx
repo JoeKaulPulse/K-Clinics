@@ -24,9 +24,9 @@ export function OrdersManager({ rows, canManage }: { rows: OrderRow[]; canManage
     </div>
   );
   return (
-    <div className="overflow-hidden rounded-[var(--radius-lg)] border border-[var(--color-line)]">
+    <div className="overflow-x-auto rounded-[var(--radius-lg)] border border-[var(--color-line)]">
       <table className="w-full text-sm tabular-nums">
-        <thead><tr className="bg-[var(--color-bone)] text-left text-xs uppercase tracking-wide text-[var(--color-stone-soft)]"><th scope="col" className="p-3">Order</th><th scope="col" className="p-3">Customer</th><th scope="col" className="p-3">Total</th><th scope="col" className="p-3">Status</th><th scope="col" className="p-3">Fulfilment</th></tr></thead>
+        <thead><tr className="bg-[var(--color-bone)] text-left text-xs uppercase tracking-wide text-[var(--color-stone)]"><th scope="col" className="p-3">Order</th><th scope="col" className="p-3">Customer</th><th scope="col" className="p-3">Total</th><th scope="col" className="p-3">Status</th><th scope="col" className="p-3">Fulfilment</th></tr></thead>
         <tbody>
           {rows.map((r) => (
             <Row key={r.id} r={r} open={open === r.id} onToggle={() => setOpen(open === r.id ? null : r.id)} canManage={canManage} />
@@ -53,9 +53,9 @@ function Row({ r, open, onToggle, canManage }: { r: OrderRow; open: boolean; onT
   const closed = r.status === 'REFUNDED' || r.status === 'CANCELLED';
   return (
     <>
-      <tr className="cursor-pointer border-t border-[var(--color-line)] hover:bg-[var(--color-bone)]/50" onClick={onToggle}>
-        <td className="p-3 font-medium">{r.number}<span className="block text-xs text-[var(--color-stone-soft)]">{new Date(r.createdAt).toLocaleDateString('en-GB')}</span></td>
-        <td className="p-3">{r.name}<span className="block text-xs text-[var(--color-stone-soft)]">{r.email}</span></td>
+      <tr className="cursor-pointer border-t border-[var(--color-line)] hover:bg-[var(--color-bone)]/50" onClick={onToggle} tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onToggle(); } }}>
+        <td className="p-3 font-medium">{r.number}<span className="block text-xs text-[var(--color-stone)]">{new Date(r.createdAt).toLocaleDateString('en-GB')}</span></td>
+        <td className="p-3">{r.name}<span className="block text-xs text-[var(--color-stone)]">{r.email}</span></td>
         <td className="p-3">{money(r.totalPence)}</td>
         <td className="p-3"><span className={`rounded-full px-2 py-0.5 text-[0.65rem] font-medium ${STATUS[r.status] ?? ''}`}>{r.status}</span></td>
         <td className="p-3 capitalize">{r.fulfillment}</td>
@@ -64,9 +64,9 @@ function Row({ r, open, onToggle, canManage }: { r: OrderRow; open: boolean; onT
         <tr className="border-t border-[var(--color-line)] bg-[var(--color-porcelain)]"><td colSpan={5} className="p-4">
           <div className="grid gap-4 sm:grid-cols-2">
             <div>
-              <p className="text-xs font-semibold uppercase text-[var(--color-stone-soft)]">Items</p>
+              <p className="text-xs font-semibold uppercase text-[var(--color-stone)]">Items</p>
               <ul className="mt-1 text-sm">{r.items.map((i, n) => <li key={n}>{i.name} × {i.qty}{i.ageRestricted && <span className="ml-1 rounded-full bg-[var(--color-ink)] px-1.5 py-0.5 text-[0.55rem] text-[var(--color-porcelain)]">18+</span>}</li>)}</ul>
-              <p className="mt-2 text-xs font-semibold uppercase text-[var(--color-stone-soft)]">{r.method === 'ship' ? 'Ship to' : 'Fulfilment'}</p>
+              <p className="mt-2 text-xs font-semibold uppercase text-[var(--color-stone)]">{r.method === 'ship' ? 'Ship to' : 'Fulfilment'}</p>
               <p className="text-sm text-[var(--color-stone)]">{r.address}</p>
             </div>
             {canManage && (
@@ -82,7 +82,7 @@ function Row({ r, open, onToggle, canManage }: { r: OrderRow; open: boolean; onT
                 {!closed && (
                   <div className="flex gap-3 text-xs">
                     <button disabled={busy} onClick={() => { if (confirm(`Mark order ${r.number} as refunded? Refund the payment in Stripe separately.`)) update({ status: 'REFUNDED' }); }} className="text-[var(--color-stone)] hover:underline disabled:opacity-50">Mark refunded</button>
-                    <button disabled={busy} onClick={() => { if (confirm(`Cancel order ${r.number}? This can't be undone here.`)) update({ status: 'CANCELLED' }); }} className="text-[var(--color-blush)] hover:underline disabled:opacity-50">Cancel</button>
+                    <button disabled={busy} onClick={() => { const willRefund = r.status === 'PAID' || r.status === 'FULFILLED'; if (confirm(`Cancel order ${r.number}?${willRefund ? ' This will refund the customer via Stripe and can’t be undone here.' : ' This can’t be undone here.'}`)) update({ status: 'CANCELLED' }); }} className="text-[var(--color-blush-deep)] hover:underline disabled:opacity-50">Cancel</button>
                   </div>
                 )}
               </div>

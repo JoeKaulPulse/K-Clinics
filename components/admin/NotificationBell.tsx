@@ -90,7 +90,7 @@ export function NotificationBell() {
           <div className="flex items-center justify-between border-b border-[var(--color-line)] bg-[var(--color-bone)] px-3 py-2">
             <span className="text-[0.62rem] font-semibold uppercase tracking-wide text-[var(--color-stone)]">Notifications</span>
             <div className="flex items-center gap-2">
-              {unread > 0 && <button onClick={markAll} className="text-[0.65rem] text-[var(--color-gold)] hover:underline">Mark all read</button>}
+              {unread > 0 && <button onClick={markAll} className="text-[0.65rem] text-[var(--color-gold-deep)] hover:underline">Mark all read</button>}
               <Link href="/admin/settings/notifications" onClick={() => setOpen(false)} aria-label="Notification settings" className="text-[var(--color-stone)] hover:text-[var(--color-ink)]">
                 <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="1.6"><circle cx="12" cy="12" r="3" /><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" /></svg>
               </Link>
@@ -110,7 +110,7 @@ export function NotificationBell() {
 
           <div className="max-h-[60vh] overflow-y-auto">
             {items.length === 0 ? (
-              <p className="px-3 py-6 text-center text-sm text-[var(--color-stone-soft)]">You’re all caught up.</p>
+              <p className="px-3 py-6 text-center text-sm text-[var(--color-stone)]">You’re all caught up.</p>
             ) : items.map((n) => (
               <button key={n.id} onClick={() => go(n)} className={`flex w-full items-start gap-2 border-b border-[var(--color-line)] px-3 py-2.5 text-left last:border-0 hover:bg-[var(--color-bone)] ${PRIORITY_ACCENT[n.priority || 'normal'] || ''} ${n.readAt ? '' : 'bg-[var(--color-gold)]/5'}`}>
                 <span className={`mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full ${PRIORITY_DOT[n.priority || 'normal'] || PRIORITY_DOT.normal}`} aria-hidden />
@@ -119,7 +119,7 @@ export function NotificationBell() {
                     <span className="truncate text-sm font-medium leading-snug text-[var(--color-ink)]">{n.title}</span>
                   </span>
                   {n.body && <span className="mt-0.5 line-clamp-2 block text-xs text-[var(--color-stone)]">{n.body}</span>}
-                  <span className="mt-0.5 flex items-center gap-1.5 text-[0.65rem] text-[var(--color-stone-soft)]">
+                  <span className="mt-0.5 flex items-center gap-1.5 text-[0.65rem] text-[var(--color-stone)]">
                     {n.category && <span className="rounded-full bg-[var(--color-bone)] px-1.5 py-0.5">{CATEGORY_LABEL[n.category] || n.category}</span>}
                     {ago(n.createdAt)}
                   </span>
@@ -128,7 +128,7 @@ export function NotificationBell() {
             ))}
           </div>
 
-          <Link href="/admin/notifications" onClick={() => setOpen(false)} className="block border-t border-[var(--color-line)] px-3 py-2 text-center text-xs text-[var(--color-gold)] hover:bg-[var(--color-bone)]">See all notifications →</Link>
+          <Link href="/admin/notifications" onClick={() => setOpen(false)} className="block border-t border-[var(--color-line)] px-3 py-2 text-center text-xs text-[var(--color-gold-deep)] hover:bg-[var(--color-bone)]">See all notifications →</Link>
         </div>
       )}
     </div>

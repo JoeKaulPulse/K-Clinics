@@ -72,8 +72,8 @@ export default async function InsightsPage({ searchParams }: { searchParams: Pro
 function Kpi({ label, value }: { label: string; value: string }) {
   return (
     <div className="rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-4">
-      <p className="text-xs uppercase tracking-[0.14em] text-[var(--color-stone-soft)]">{label}</p>
-      <p className="mt-1 font-[family-name:var(--font-display)] text-2xl text-[var(--color-ink)]">{value}</p>
+      <p className="text-xs uppercase tracking-[0.14em] text-[var(--color-stone)]">{label}</p>
+      <p className="mt-1 font-[family-name:var(--font-display)] text-2xl tabular-nums text-[var(--color-ink)]">{value}</p>
     </div>
   );
 }

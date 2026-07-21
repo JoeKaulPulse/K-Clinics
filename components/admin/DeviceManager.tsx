@@ -64,6 +64,8 @@ export function DeviceManager({ devices, providers, rooms = [] }: { devices: Dev
                 </select>
               </label>
               <label className="text-xs text-[var(--color-stone)]">Provider device ID<input className={`${f} mt-1`} value={form.externalId} onChange={(e) => set('externalId', e.target.value)} placeholder="POI / terminal id" /></label>
+              {/* BLD-908: registering a device is not enough — the provider needs API credentials before payments work. */}
+              <p className="text-[0.65rem] text-[var(--color-stone)] sm:col-span-2">A registered terminal only appears at checkout once its provider&rsquo;s API credentials are set (e.g. Tyl needs TYL_API_KEY and TYL_MERCHANT_ID in the server environment). Until then, take payment by link or the card on file.</p>
             </>)}
             {form.kind === 'DISPLAY' && (
               <label className="text-xs text-[var(--color-stone)] sm:col-span-2">Treatment room (for a room-status display)
@@ -81,10 +83,10 @@ export function DeviceManager({ devices, providers, rooms = [] }: { devices: Dev
             </label>
             <label className="text-xs text-[var(--color-stone)] sm:col-span-2">Notes<input className={`${f} mt-1`} value={form.notes} onChange={(e) => set('notes', e.target.value)} /></label>
           </div>
-          {error && <p className="mt-3 rounded-[var(--radius-sm)] bg-[var(--color-blush)]/25 px-3 py-2 text-sm">{error}</p>}
+          {error && <p role="alert" aria-live="assertive" className="mt-3 rounded-[var(--radius-sm)] bg-[var(--color-blush)]/25 px-3 py-2 text-sm">{error}</p>}
           <div className="mt-4 flex justify-end gap-3">
             <button onClick={() => { setForm(null); setError(null); }} className="px-4 py-2 text-sm text-[var(--color-stone)]">Cancel</button>
-            <button onClick={save} disabled={pending} className="rounded-full bg-[var(--color-gold)] px-5 py-2 text-sm font-medium text-white disabled:opacity-50">{pending ? 'Saving…' : 'Save device'}</button>
+            <button onClick={save} disabled={pending} className="rounded-full bg-[var(--color-gold-deep)] px-5 py-2 text-sm font-medium text-white disabled:opacity-50">{pending ? 'Saving…' : 'Save device'}</button>
           </div>
         </div>
       )}
@@ -105,7 +107,7 @@ export function DeviceManager({ devices, providers, rooms = [] }: { devices: Dev
                 {d.kind === 'DISPLAY' && d.roomId ? ` · ${rooms.find((r) => r.id === d.roomId)?.name ?? 'room'}` : ''}
               </p>
               {d.kind === 'DISPLAY' && d.token && (
-                <p className="mt-1 text-xs text-[var(--color-stone-soft)]">Point the screen at <a href={`/room-display/${d.token}`} target="_blank" rel="noreferrer" className="break-all text-[var(--color-gold)] underline">/room-display/{d.token}</a></p>
+                <p className="mt-1 text-xs text-[var(--color-stone)]">Point the screen at <a href={`/room-display/${d.token}`} target="_blank" rel="noreferrer" className="break-all text-[var(--color-gold-deep)] underline">/room-display/{d.token}</a></p>
               )}
             </div>
             <div className="flex shrink-0 items-center gap-2">

@@ -36,22 +36,22 @@ export function ReferralCard({ link, labels, qrSvg }: { link: string; labels: La
       <h2 className="font-[family-name:var(--font-display)] text-xl">{labels.title}</h2>
       <p className="mt-1.5 max-w-md text-sm text-[var(--color-stone)]">{labels.sub}</p>
 
-      <label className="mt-5 block text-xs font-medium uppercase tracking-wide text-[var(--color-stone-soft)]">{labels.yourLink}</label>
+      <label className="mt-5 block text-xs font-medium uppercase tracking-wide text-[var(--color-stone)]">{labels.yourLink}</label>
       <div className="mt-2 flex flex-wrap items-center gap-2">
         <input
           readOnly
           value={link}
           onFocus={(e) => e.currentTarget.select()}
-          className="min-w-0 flex-1 rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-3 py-2.5 font-[family-name:var(--font-mono)] text-sm text-[var(--color-ink)] outline-none"
+          className="min-w-0 flex-1 rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-3 py-2.5 font-[family-name:var(--font-mono)] text-sm text-[var(--color-ink)] outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-gold)]"
         />
         <button
           onClick={copy}
-          className="shrink-0 rounded-full border border-[var(--color-line)] bg-white px-4 py-2.5 text-sm font-medium transition-colors hover:border-[var(--color-gold)] hover:text-[var(--color-gold)]"
+          className="shrink-0 rounded-full border border-[var(--color-line)] bg-white px-4 py-2.5 text-sm font-medium transition-colors hover:border-[var(--color-gold)] hover:text-[var(--color-gold-deep)]"
         >
           {copied ? `✓ ${labels.copied}` : labels.copy}
         </button>
         {canShare && (
-          <button onClick={share} className="shrink-0 rounded-full bg-[var(--color-gold)] px-4 py-2.5 text-sm font-medium text-white hover:bg-[var(--color-ink)]">
+          <button onClick={share} className="shrink-0 rounded-full bg-[var(--color-gold-deep)] px-4 py-2.5 text-sm font-medium text-white hover:bg-[var(--color-ink)]">
             {labels.share}
           </button>
         )}
@@ -59,20 +59,20 @@ export function ReferralCard({ link, labels, qrSvg }: { link: string; labels: La
 
       {qrSvg && (
         <div className="mt-4">
-          <button onClick={() => setShowQr((v) => !v)} className="text-sm font-medium text-[var(--color-gold)] hover:underline">
+          <button onClick={() => setShowQr((v) => !v)} className="text-sm font-medium text-[var(--color-gold-deep)] hover:underline">
             {showQr ? (labels.qrHide ?? 'Hide QR code') : (labels.qrShow ?? 'Show QR code')}
           </button>
           {showQr && (
             <div className="mt-3 inline-flex flex-col items-center rounded-[var(--radius-md)] border border-[var(--color-line)] bg-white p-3">
               {/* eslint-disable-next-line react/no-danger */}
               <div className="h-44 w-44 [&>svg]:h-full [&>svg]:w-full" dangerouslySetInnerHTML={{ __html: qrSvg }} />
-              <p className="mt-2 max-w-[11rem] text-center text-xs text-[var(--color-stone-soft)]">{labels.qrHint ?? 'Let a friend scan this to open your invite.'}</p>
+              <p className="mt-2 max-w-[11rem] text-center text-xs text-[var(--color-stone)]">{labels.qrHint ?? 'Let a friend scan this to open your invite.'}</p>
             </div>
           )}
         </div>
       )}
 
-      <p className="mt-4 text-xs text-[var(--color-stone-soft)]">{labels.stats}</p>
+      <p className="mt-4 text-xs text-[var(--color-stone)]">{labels.stats}</p>
     </section>
   );
 }

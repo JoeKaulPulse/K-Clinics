@@ -29,7 +29,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   if (!crmEnabled) return NextResponse.json({ ok: false, error: 'CRM disabled.' }, { status: 503 });
 
   const session = await getSession();
-  if (!session || !sessionCan(session, 'consultations.view')) {
+  if (!session || !sessionCan(session, 'consultations.manage')) {
     return NextResponse.json({ ok: false, error: 'Forbidden.' }, { status: 403 });
   }
 
@@ -46,8 +46,11 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   });
   if (!consult) return NextResponse.json({ ok: false, error: 'Not found.' }, { status: 404 });
 
+  // BLD-913: team notes can hold clinical detail — encrypt at rest like every
+  // structurally equivalent field (medicalNotes/allergies/clinicalNoteEnc).
+  const { encClinical } = await import('@/lib/clinical-crypto');
   const note = await db.consultationNote.create({
-    data: { consultationId: id, body: trimmed, author: session.email },
+    data: { consultationId: id, body: encClinical(trimmed) as string, author: session.email },
   });
 
   // Resolve @-mentions and send in-app notifications (best-effort, non-blocking)
@@ -67,5 +70,6 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
     }
   } catch { /* notifications are non-fatal */ }
 
-  return NextResponse.json({ ok: true, note });
+  // Return the plaintext body — the cipher is an at-rest concern only.
+  return NextResponse.json({ ok: true, note: { ...note, body: trimmed } });
 }

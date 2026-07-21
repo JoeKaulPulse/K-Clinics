@@ -50,6 +50,9 @@ enum EmailKind {
   AFTERCARE
   SATISFACTION
   REBOOK_NUDGE
+  NPS_PROMOTER
+  NPS_DETRACTOR
+  BOOKING_INTENT
 }
 
 enum EmailStatus {
@@ -142,6 +145,7 @@ enum AuditAction {
   APPOINTMENT_COMPLETED
   SOP_ACKNOWLEDGED
   MEDICAL_FLAG_REVIEWED
+  PATCH_TEST_RECORDED
   PAYMENT_CHARGED
   PAYMENT_FAILED
   PAYMENT_REFUNDED
@@ -334,6 +338,14 @@ model Client {
   medicalFlagSetBy String?
   medicalFlagAt    DateTime?
 
+  // ── Patch test status (BLD-844) ──────────────────────────────────────────
+  // Staff-recorded PASSED/FAILED result so front desk can see at a glance
+  // whether a client is eligible for patch-test-gated treatments (laser etc.)
+  // without searching through appointments/notes.
+  patchTestResult String? // 'PASSED' | 'FAILED'
+  patchTestDate   DateTime?
+  patchTestSetBy  String?
+
   // ── Public loyalty leaderboard (PRJ-1.11) ────────────────────────────────
   // Only clients who explicitly opt in appear on the public leaderboard.
   // leaderboardPhotoUrl is staff-set after the client's written permission.
@@ -361,6 +373,7 @@ model Client {
   referralsMade  Referral[]         @relation("ReferralsMade")
   referredVia    Referral?          @relation("ReferralReceived")
   callRecords    CallRecord[]
+  academyStudents AcademyStudent[] // BLD-528: linked K Academy trainee account(s) (same person, by email)
 
   @@index([createdAt])
   @@index([dob])
@@ -581,15 +594,33 @@ model Booking {
   chargePaymentIntentId String?
   chargedPence          Int?
   chargedAt             DateTime?
+  // BNPL course pre-payment (BLD-399; BLD-409 course context). BNPL methods
+  // (Klarna/Clearpay) can't be saved off-session, so for a course the client
+  // pays the full price upfront via a Stripe Checkout link. Set when the
+  // course_prepaid payment_intent succeeds; once set, no card-on-file charge is
+  // taken for this booking. Additive, nullable — no card-on-file change.
+  prepaidVia            String? // 'klarna' | 'clearpay' | 'bnpl'
+  prepaidPence          Int? // amount pre-paid (pi.amount_received)
+  prepaidAt             DateTime?
+  prepaidCheckoutId     String? // Stripe Checkout Session id (traceability / idempotency)
+
+  // BLD-882: gift-voucher redemption at front-desk checkout. The voucher
+  // balance is reserved atomically (lib/gift-vouchers reserveVoucher) when
+  // applied; a partial application reduces the amount then collected by any
+  // other method, and staff can remove it (re-credit) any time before charge.
+  // Additive, nullable/defaulted — no existing rows change.
+  giftVoucherCode       String?
+  giftVoucherPence      Int      @default(0)
+
   // Refund (full or partial) of a charge, within the allowed window.
-  refundedPence         Int?
-  refundedAt            DateTime?
-  refundReason          String?
+  refundedPence     Int?
+  refundedAt        DateTime?
+  refundReason      String?
   // Xero sales push (lib/xero.ts): the ACCREC invoice raised for the charge
   // ('PENDING' while a push is in flight — doubles as the idempotency claim),
   // and the credit note raised for each refund.
-  xeroInvoiceId         String?
-  xeroCreditNoteIds     String[]  @default([])
+  xeroInvoiceId     String?
+  xeroCreditNoteIds String[]  @default([])
 
   // Cancellation.
   cancelledAt  DateTime?
@@ -601,11 +632,11 @@ model Booking {
   // Client self-service link token.
   manageToken String @unique @default(cuid())
 
-  remindersSent   Boolean  @default(false)
+  remindersSent   Boolean @default(false)
   // BLD-126: additional reminder windows (72h/48h) — additive, default false.
-  reminder72hSent Boolean  @default(false)
-  reminder48hSent Boolean  @default(false)
-  rescheduleCount Int      @default(0)
+  reminder72hSent Boolean @default(false)
+  reminder48hSent Boolean @default(false)
+  rescheduleCount Int     @default(0)
 
   // Google Calendar: id of the event mirrored onto the assigned clinician's
   // Workspace calendar, so it can be updated/removed idempotently. Null until
@@ -613,8 +644,8 @@ model Booking {
   // Best-effort — calendar sync never blocks the booking lifecycle.
   googleEventId String?
 
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   // Marketing attribution (first-touch, captured from UTM/campaign params).
   attribSource        String?
@@ -636,6 +667,12 @@ model Booking {
   @@index([clientId])
   @@index([practitionerId])
   @@index([marketingCampaignId])
+  // PRJ-939.7: the public booking-widget availability lookup (cliniciansForDay,
+  // slot search in lib/availability.ts) filters by status IN (...) AND startAt
+  // BETWEEN ..., often with locationId too — composite indexes let Postgres use
+  // one index instead of scanning on the busiest customer-facing query.
+  @@index([status, startAt])
+  @@index([locationId, startAt])
 }
 
 // ── Interactive appointment session (BLD-138) ───────────────────────────────
@@ -950,7 +987,7 @@ model AdminUser {
   googleSub   String?
   googleEmail String?
 
-  locale                 String  @default("en") // CRM UI language (en | uk)
+  locale                 String             @default("en") // CRM UI language (en | uk)
   preferredDashboardView String? // PRJ-63: OWNER/ADMIN can pin a role-view to land on (null = role default)
   notifPrefs             Json? // per-user notification preferences (in-app/email per category, quiet hours, digest, chat sound). Null = defaults. See lib/notifications.ts
   pushSubscriptions      PushSubscription[]
@@ -979,6 +1016,8 @@ model AdminUser {
   notifications   StaffNotification[]
   timeEntries     TimeEntry[]
   contractorTasks ContractorTask[]    @relation("ContractorTaskAssignee")
+  teamMemberships TeamChannelMember[] @relation("TeamChatMemberships")
+  teamMessages    TeamMessage[]       @relation("TeamChatAuthored")
 }
 
 // PRJ-63 — staff time tracking. A TimeEntry is an open/closed interval of either
@@ -1340,6 +1379,12 @@ model RoomPrep {
   cleanedAt DateTime?
   cleanedBy String? // staff email who set it READY
   note      String?
+  // Manual occupancy (BLD-506): clinicians/reception mark who is in the room, so
+  // the room-display screens show "Occupied" even without a booking. Orthogonal to
+  // cleanliness (a room can be READY and occupied). Additive, defaulted.
+  occupied   Boolean   @default(false)
+  occupiedAt DateTime?
+  occupiedBy String? // staff email who marked it occupied
   createdAt DateTime       @default(now())
   updatedAt DateTime       @updatedAt
 
@@ -1405,6 +1450,7 @@ model Task {
   parent      Task?        @relation("TaskSubtasks", fields: [parentId], references: [id], onDelete: Cascade)
   parentId    String?
   subtasks    Task[]       @relation("TaskSubtasks")
+  comments    TaskComment[] @relation("TaskComments")
   createdBy   String?
   completedAt DateTime?
   completedBy String?
@@ -1486,6 +1532,14 @@ model Setting {
 // effect without a redeploy. `name` is the env-var name (e.g. RESEND_API_KEY);
 // @id avoids @unique so the no-data-loss deploy gate accepts the new table.
 model ManagedSecret {
+  // `name` is the structural per-tenant key: global secrets are stored under the
+  // bare name, per-tenant secrets under a namespaced "t:<tenantId>:<name>" key
+  // (see lib/secrets.ts scopedName). Uniqueness stays structural — no composite
+  // @id change and no new @unique — so one logical key can hold a different value
+  // per tenant (R15 groundwork, BLD-302). Deliberately NO tenantId column: it
+  // would make this look like an Academy tenant model to the isolation guard and
+  // pull it into the auto-scoped set, which would filter out the global
+  // (no-tenant) secret rows; the namespaced key avoids that entirely.
   name      String   @id
   valueEnc  String   @db.Text
   updatedBy String?
@@ -1507,19 +1561,22 @@ model TreatmentSop {
 // ── Immutable audit log — every action across the booking→treatment→payment
 // lifecycle. Append-only: never updated or deleted. ─────────────────────────
 model AuditEvent {
-  id        String      @id @default(cuid())
-  action    AuditAction
-  booking   Booking?    @relation(fields: [bookingId], references: [id], onDelete: SetNull)
-  bookingId String?
-  clientId  String?
-  actor     String // staff email or 'client' / 'system'
-  actorRole String?
-  summary   String
-  meta      Json?
-  createdAt DateTime    @default(now())
+  id          String      @id @default(cuid())
+  action      AuditAction
+  booking     Booking?    @relation(fields: [bookingId], references: [id], onDelete: SetNull)
+  bookingId   String?
+  enrolment   Enrolment?  @relation(fields: [enrolmentId], references: [id], onDelete: SetNull)
+  enrolmentId String?
+  clientId    String?
+  actor       String // staff email or 'client' / 'system'
+  actorRole   String?
+  summary     String
+  meta        Json?
+  createdAt   DateTime    @default(now())
 
   @@index([bookingId, createdAt])
   @@index([clientId, createdAt])
+  @@index([enrolmentId, createdAt])
   @@index([createdAt])
 }
 
@@ -1797,23 +1854,39 @@ model AcademyStudent {
   resetTokenExp  DateTime?
   notes          String?
   xp             Int       @default(0) // gamification points (earned across the academy)
+  // BLD-528: bridge to the clinic CRM. A trainee is often also a clinic client;
+  // linked by email (best-effort) so staff can see both sides of the same person.
+  clientId       String?
+  client         Client?   @relation(fields: [clientId], references: [id], onDelete: SetNull)
   createdAt      DateTime  @default(now())
   updatedAt      DateTime  @updatedAt
 
-  enrolments       Enrolment[]
-  lessonProgress   LessonProgress[]
-  quizAttempts     QuizAttempt[]
-  practiceAttempts PracticeAttempt[]
-  pointEvents      PointEvent[]
-  badges           StudentBadge[]
-  dailyActivity    DailyActivity[]
-  passkeys         StudentPasskey[]
+  enrolments          Enrolment[]
+  lessonProgress      LessonProgress[]
+  lessonPlaybacks     LessonPlayback[]
+  lessonNotes         LessonNote[]
+  lessonComments      LessonComment[]
+  courseReviews       CourseReview[]
+  flashcardReviews    FlashcardReview[]
+  forumThreads        ForumThread[]
+  forumPosts          ForumPost[]
+  portfolioEntries    PortfolioEntry[]
+  exerciseAttempts    ExerciseAttempt[]
+  demoAttempts        DemoAttempt[]
+  quizAttempts        QuizAttempt[]
+  practiceAttempts    PracticeAttempt[]
+  pointEvents         PointEvent[]
+  badges              StudentBadge[]
+  dailyActivity       DailyActivity[]
+  passkeys            StudentPasskey[]
   homeworkSubmissions HomeworkSubmission[]
+  fundingApplications FundingApplication[]
 
   @@unique([tenantId, email]) // ClinicOS Ring 1 (BLD-301): per-tenant email — replaces the global @unique
   @@index([createdAt])
   @@index([xp])
   @@index([tenantId])
+  @@index([clientId])
 }
 
 // Trainee passkeys — Face ID / Touch ID / fingerprint sign-in for the academy
@@ -1846,6 +1919,9 @@ model Course {
   description    String? // long form (markdown-ish)
   pricePence     Int      @default(0)
   depositPence   Int? // optional deposit to reserve a place
+  promoPrice     Int? // pence — promotional price when set (BLD-490)
+  promoStartAt   DateTime? // if null, promo is immediate (BLD-490)
+  promoEndAt     DateTime? // if null, promo never expires (BLD-490)
   durationText   String? // e.g. "2 practical days + online theory + exam"
   format         String? // e.g. "Blended: Thinkific theory + practical + VTCT exam"
   accreditations String[] @default([]) // OFQUAL | VTCT | CPD
@@ -1853,25 +1929,70 @@ model Course {
   objectives     String[] @default([]) // course-level learning goals/objectives
   welcome        String? // intro shown when a student first opens the course
   preCourseInfo  String?  @db.Text // BLD-445: mandatory pre-course "please read" page; learners acknowledge before any lessons
+  portfolioTarget Int? // BLD-538: number of approved portfolio case studies needed to complete the course
   prerequisites  String?
   thinkificUrl   String? // theory platform link (shown in trainee portal)
   heroImage      String?
   featured       Boolean  @default(false)
   active         Boolean  @default(true)
+  // Once staff manually curate the curriculum (delete a seeded module/lesson),
+  // this flips false so the daily authored-content enrichment stops re-creating
+  // the modules they removed (Tetiana: "deleted modules keep reappearing").
+  autoEnrich     Boolean  @default(true)
   order          Int      @default(0)
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 
-  cohorts       Cohort[]
-  enrolments    Enrolment[]
-  modules       CourseModule[]
-  liveClasses   LiveClass[]
-  examQuestions ExamQuestion[]
-  pastPapers    PastPaper[]
+  cohorts             Cohort[]
+  enrolments          Enrolment[]
+  modules             CourseModule[]
+  liveClasses         LiveClass[]
+  examQuestions       ExamQuestion[]
+  pastPapers          PastPaper[]
   fundingApplications FundingApplication[]
+  reviews             CourseReview[]
+  flashcardDecks      FlashcardDeck[]
+  bundleItems         CourseBundleItem[]
+  portfolioEntries    PortfolioEntry[]
+  exercises           InteractiveExercise[]
+  demoVideos          DemoVideo[]
 
   @@unique([tenantId, slug]) // ClinicOS Ring 1 (BLD-301): per-tenant slug — replaces the global @unique
   @@index([active, order])
+  @@index([tenantId])
+}
+
+// BLD-532: a bundle / learning pathway grouping related courses (e.g. a Foundation
+// pathway). Marketing + grouping construct; learners still apply per course.
+model CourseBundle {
+  id          String             @id @default(cuid())
+  tenantId    String // ClinicOS multi-tenant (Ring 0); backfilled to the K Clinics tenant
+  slug        String
+  title       String
+  summary     String?
+  description String?            @db.Text
+  heroImage   String?
+  pricePence  Int? // optional combined price (display only)
+  active      Boolean            @default(true)
+  order       Int                @default(0)
+  items       CourseBundleItem[]
+  createdAt   DateTime           @default(now())
+  updatedAt   DateTime           @updatedAt
+
+  @@unique([tenantId, slug])
+  @@index([tenantId])
+}
+
+model CourseBundleItem {
+  id        String       @id @default(cuid())
+  tenantId  String
+  bundle    CourseBundle @relation(fields: [bundleId], references: [id], onDelete: Cascade)
+  bundleId  String
+  course    Course       @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  courseId  String
+  order     Int          @default(0)
+
+  @@index([bundleId, order])
   @@index([tenantId])
 }
 
@@ -1887,6 +2008,7 @@ model CourseModule {
   order     Int      @default(0)
   lessons   Lesson[]
   quiz      Quiz?
+  releases  CohortModuleRelease[]
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -1894,33 +2016,56 @@ model CourseModule {
   @@index([tenantId])
 }
 
+// BLD-529: lesson content type drives the primary media + the admin editor shape
+// (Thinkific-style). TEXT = body only; VIDEO = native Blob upload OR YouTube/Vimeo
+// embed (both via `videoUrl`); AUDIO = `audioUrl`; PDF = `pdfUrls`; DOWNLOAD =
+// `attachments`; EMBED = third-party iframe via `embedUrl`. The body still renders
+// underneath any media, so a lesson can stay multimodal.
+enum LessonType {
+  TEXT
+  VIDEO
+  AUDIO
+  PDF
+  DOWNLOAD
+  EMBED
+}
+
 model Lesson {
-  id          String           @id @default(cuid())
-  tenantId    String // ClinicOS multi-tenant (Ring 0); backfilled to the K Clinics tenant
-  module      CourseModule     @relation(fields: [moduleId], references: [id], onDelete: Cascade)
-  moduleId    String
-  title       String
-  order       Int              @default(0)
-  durationMin Int?
-  videoUrl    String? // YouTube watch/embed URL, or a search link (pre-test explainer)
-  imageUrl    String?
-  body        String           @db.Text // markdown-ish lesson content
-  keyPoints   String[]         @default([])
-  objectives  String[]         @default([]) // "by the end you will…" shown at lesson start
-  studyTips   String[]         @default([]) // exam tips / memory aids surfaced in-lesson
-  homework    String? // assignment to complete after the lesson (markdown)
-  requiresHomework Boolean     @default(false) // BLD-446: learner must submit homework files for this lesson
-  examRefs    String[]         @default([]) // real exam/syllabus references this maps to
-  steps       Json? // authored bite-size flow [{kind:'teach'|'say'|'ask', …}]; when null the player auto-chunks `body`
-  minSeconds  Int? // minimum dwell time before the lesson can be marked complete
-  citations   Json? // [{ label, url }]
-  resources   Json? // [{ label, url }]
-  pdfUrls     String[]         @default([]) // BLD-407: uploaded PDF attachments (Vercel Blob URLs)
-  pdfNoDownload String[]       @default([]) // BLD-443: subset of pdfUrls marked view-only (no download offered)
-  progress    LessonProgress[]
+  id                  String               @id @default(cuid())
+  tenantId            String // ClinicOS multi-tenant (Ring 0); backfilled to the K Clinics tenant
+  module              CourseModule         @relation(fields: [moduleId], references: [id], onDelete: Cascade)
+  moduleId            String
+  title               String
+  order               Int                  @default(0)
+  type                LessonType           @default(TEXT) // BLD-529: primary content type
+  preview             Boolean              @default(false) // BLD-532: free taster lesson — viewable publicly before enrolment
+  durationMin         Int?
+  videoUrl            String? // native Blob/MP4 upload, YouTube/Vimeo embed, or a search link (pre-test explainer)
+  captionsUrl         String? // BLD-904: WebVTT captions for a native video (YouTube embeds carry their own)
+  audioUrl            String? // BLD-529: native audio (Blob/MP3) or hosted audio URL
+  embedUrl            String? // BLD-529: third-party iframe embed (slides, interactive widget, form)
+  attachments         Json? // BLD-529: downloadable files [{ label, url, sizeBytes? }]
+  imageUrl            String?
+  body                String               @db.Text // markdown-ish lesson content
+  keyPoints           String[]             @default([])
+  objectives          String[]             @default([]) // "by the end you will…" shown at lesson start
+  studyTips           String[]             @default([]) // exam tips / memory aids surfaced in-lesson
+  homework            String? // assignment to complete after the lesson (markdown)
+  requiresHomework    Boolean              @default(false) // BLD-446: learner must submit homework files for this lesson
+  examRefs            String[]             @default([]) // real exam/syllabus references this maps to
+  steps               Json? // authored bite-size flow [{kind:'teach'|'say'|'ask', …}]; when null the player auto-chunks `body`
+  minSeconds          Int? // minimum dwell time before the lesson can be marked complete
+  citations           Json? // [{ label, url }]
+  resources           Json? // [{ label, url }]
+  pdfUrls             String[]             @default([]) // BLD-407: uploaded PDF attachments (Vercel Blob URLs)
+  pdfNoDownload       String[]             @default([]) // BLD-443: subset of pdfUrls marked view-only (no download offered)
+  progress            LessonProgress[]
+  playbacks           LessonPlayback[]
+  notes               LessonNote[]
+  comments            LessonComment[]
   homeworkSubmissions HomeworkSubmission[]
-  createdAt   DateTime         @default(now())
-  updatedAt   DateTime         @updatedAt
+  createdAt           DateTime             @default(now())
+  updatedAt           DateTime             @updatedAt
 
   @@index([moduleId, order])
   @@index([tenantId])
@@ -1964,6 +2109,13 @@ model Quiz {
   moduleId  String         @unique
   title     String
   passMark  Int            @default(70) // percentage required to pass
+  // BLD-529 assessments upgrade (all optional / non-breaking defaults):
+  timeLimitMin     Int? // optional countdown; client auto-submits at zero
+  maxAttempts      Int? // optional cap on attempts (null = unlimited)
+  shuffleQuestions Boolean @default(false) // randomise question order per attempt
+  shuffleOptions   Boolean @default(false) // randomise answer-option order per attempt
+  poolSize         Int? // draw N random questions from the bank (null = all)
+  isSurvey         Boolean @default(false) // ungraded feedback set — no pass/fail, no answer keys
   questions QuizQuestion[]
   attempts  QuizAttempt[]
   createdAt DateTime       @default(now())
@@ -1979,9 +2131,10 @@ model QuizQuestion {
   quizId      String
   order       Int     @default(0)
   prompt      String  @db.Text
-  type        String  @default("SINGLE") // SINGLE | MULTI | TRUEFALSE
+  type        String  @default("SINGLE") // SINGLE | MULTI | TRUEFALSE | SHORT (BLD-529)
   options     Json // [string]
   correct     Json // [number] (0-based indices)
+  acceptedAnswers String[] @default([]) // BLD-529: accepted text answers for SHORT (case-insensitive match)
   explanation String? @db.Text
   tip         String? // optional hint surfaced to help the learner (Duolingo-style)
   imageUrl    String?
@@ -2002,6 +2155,328 @@ model LessonProgress {
 
   @@unique([studentId, lessonId])
   @@index([studentId])
+  @@index([tenantId])
+}
+
+// BLD-529: resume position for media lessons (video/audio). Kept SEPARATE from
+// LessonProgress on purpose — a LessonProgress row means "completed" everywhere
+// (gamification counts rows), so storing an in-progress position there would
+// wrongly mark a half-watched video as done. New table → the @@unique is created
+// with it (the additive deploy gate only refuses @unique added to existing tables).
+model LessonPlayback {
+  id          String         @id @default(cuid())
+  tenantId    String // ClinicOS multi-tenant (Ring 0); backfilled to the K Clinics tenant
+  student     AcademyStudent @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  studentId   String
+  lesson      Lesson         @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+  lessonId    String
+  positionSec Int            @default(0) // last playback position in seconds
+  updatedAt   DateTime       @updatedAt
+
+  @@unique([studentId, lessonId])
+  @@index([studentId])
+  @@index([tenantId])
+}
+
+// BLD-529 (engagement & community): private per-lesson study notes the learner
+// takes as they go. One note per (student, lesson) — upsert.
+model LessonNote {
+  id        String         @id @default(cuid())
+  tenantId  String // ClinicOS multi-tenant (Ring 0); backfilled to the K Clinics tenant
+  student   AcademyStudent @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  studentId String
+  lesson    Lesson         @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+  lessonId  String
+  body      String         @db.Text
+  createdAt DateTime       @default(now())
+  updatedAt DateTime       @updatedAt
+
+  @@unique([studentId, lessonId])
+  @@index([studentId])
+  @@index([tenantId])
+}
+
+// BLD-529 (engagement & community): per-lesson discussion / Q&A. Threaded one
+// level (a top-level comment has replies via parentId). Staff replies set
+// isStaff + authorStaff (email); learner posts set authorStudentId. authorName is
+// denormalised for display so a deleted account doesn't blank the thread.
+model LessonComment {
+  id              String          @id @default(cuid())
+  tenantId        String // ClinicOS multi-tenant (Ring 0); backfilled to the K Clinics tenant
+  lesson          Lesson          @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+  lessonId        String
+  parent          LessonComment?  @relation("CommentReplies", fields: [parentId], references: [id], onDelete: Cascade)
+  parentId        String?
+  replies         LessonComment[] @relation("CommentReplies")
+  authorStudent   AcademyStudent? @relation(fields: [authorStudentId], references: [id], onDelete: SetNull)
+  authorStudentId String?
+  authorStaff     String? // staff email when a staff member replies
+  authorName      String // denormalised display name
+  isStaff         Boolean         @default(false)
+  body            String          @db.Text
+  pinned          Boolean         @default(false) // staff can pin an important thread to the top
+  resolved        Boolean         @default(false) // Q&A: marked answered
+  hidden          Boolean         @default(false) // moderation: hidden from learners
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+
+  @@index([lessonId, createdAt])
+  @@index([tenantId])
+}
+
+enum CourseReviewStatus {
+  PENDING // awaiting staff moderation — not shown publicly
+  PUBLISHED // visible on the public course page
+  HIDDEN // moderated out
+}
+
+// BLD-529 (engagement & community): a learner's star rating + written review of a
+// course. One per (student, course) — editing resets to PENDING for re-moderation.
+model CourseReview {
+  id          String             @id @default(cuid())
+  tenantId    String // ClinicOS multi-tenant (Ring 0); backfilled to the K Clinics tenant
+  course      Course             @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  courseId    String
+  student     AcademyStudent     @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  studentId   String
+  rating      Int // 1..5
+  title       String?
+  body        String?            @db.Text
+  authorName  String // denormalised display name for public display
+  status      CourseReviewStatus @default(PENDING)
+  moderatedBy String? // staff email
+  moderatedAt DateTime?
+  createdAt   DateTime           @default(now())
+  updatedAt   DateTime           @updatedAt
+
+  @@unique([studentId, courseId])
+  @@index([courseId, status])
+  @@index([tenantId])
+}
+
+// BLD-531 (academy: flashcards + spaced repetition). A deck of revision cards
+// attached to a course; staff author them. Optional moduleId groups a deck under a
+// module (plain column, no FK, to stay flexible).
+model FlashcardDeck {
+  id          String      @id @default(cuid())
+  tenantId    String // ClinicOS multi-tenant (Ring 0); backfilled to the K Clinics tenant
+  course      Course      @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  courseId    String
+  moduleId    String? // optional grouping under a module
+  title       String
+  description String?
+  order       Int         @default(0)
+  cards       Flashcard[]
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  @@index([courseId, order])
+  @@index([tenantId])
+}
+
+model Flashcard {
+  id        String            @id @default(cuid())
+  tenantId  String
+  deck      FlashcardDeck     @relation(fields: [deckId], references: [id], onDelete: Cascade)
+  deckId    String
+  order     Int               @default(0)
+  front     String            @db.Text
+  back      String            @db.Text
+  imageUrl  String?
+  reviews   FlashcardReview[]
+  createdAt DateTime          @default(now())
+  updatedAt DateTime          @updatedAt
+
+  @@index([deckId, order])
+  @@index([tenantId])
+}
+
+// Per-student spaced-repetition state for a card (SM-2-lite). One row per
+// (student, card) — upserted on each review.
+model FlashcardReview {
+  id           String         @id @default(cuid())
+  tenantId     String
+  student      AcademyStudent @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  studentId    String
+  card         Flashcard      @relation(fields: [cardId], references: [id], onDelete: Cascade)
+  cardId       String
+  ease         Int            @default(250) // ease factor ×100 (2.50)
+  intervalDays Int            @default(0)
+  reps         Int            @default(0)
+  lapses       Int            @default(0)
+  dueAt        DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+
+  @@unique([studentId, cardId])
+  @@index([studentId, dueAt])
+  @@index([tenantId])
+}
+
+// BLD-533: trainee community forum — a discussion space across the academy,
+// distinct from the per-lesson Q&A (LessonComment). Threads grouped by category.
+model ForumThread {
+  id              String          @id @default(cuid())
+  tenantId        String
+  category        String // general | study | showcase | wellbeing | announcements
+  title           String
+  body            String          @db.Text // opening message
+  authorStudent   AcademyStudent? @relation(fields: [authorStudentId], references: [id], onDelete: SetNull)
+  authorStudentId String?
+  authorStaff     String? // staff email when authored by a staff member
+  authorName      String // denormalised display name
+  isStaff         Boolean         @default(false)
+  pinned          Boolean         @default(false)
+  locked          Boolean         @default(false) // no new replies
+  hidden          Boolean         @default(false) // moderation
+  postCount       Int             @default(0)
+  lastPostAt      DateTime        @default(now())
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+  posts           ForumPost[]
+
+  @@index([tenantId, category, pinned, lastPostAt])
+  @@index([tenantId, hidden, lastPostAt])
+}
+
+model ForumPost {
+  id              String          @id @default(cuid())
+  tenantId        String
+  thread          ForumThread     @relation(fields: [threadId], references: [id], onDelete: Cascade)
+  threadId        String
+  authorStudent   AcademyStudent? @relation(fields: [authorStudentId], references: [id], onDelete: SetNull)
+  authorStudentId String?
+  authorStaff     String?
+  authorName      String
+  isStaff         Boolean         @default(false)
+  body            String          @db.Text
+  hidden          Boolean         @default(false)
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+
+  @@index([threadId, createdAt])
+  @@index([tenantId])
+}
+
+// BLD-534: learner portfolio — a trainee's evidence log of practical case
+// studies (treatment, anonymised client, before/after photos, notes), reviewed
+// by tutors. Mirrors the HomeworkSubmission review pattern.
+model PortfolioEntry {
+  id            String          @id @default(cuid())
+  tenantId      String
+  student       AcademyStudent  @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  studentId     String
+  course        Course?         @relation(fields: [courseId], references: [id], onDelete: SetNull)
+  courseId      String?
+  title         String
+  treatmentType String // e.g. Anti-wrinkle, Dermal filler, Skin
+  treatmentDate DateTime?
+  clientRef     String? // anonymised reference, e.g. "Client A"
+  notes         String          @db.Text
+  photos        Json            @default("[]") // [{ url, caption?, kind: 'before'|'after'|'other' }]
+  consentAttestedAt DateTime? // BLD-740: trainee attested the photographed subject consented to storage & review
+  status        String          @default("DRAFT") // DRAFT | SUBMITTED | APPROVED | NEEDS_WORK
+  feedback      String?         @db.Text // tutor feedback
+  reviewedBy    String? // staff email
+  reviewedAt    DateTime?
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+
+  @@index([studentId, status])
+  @@index([tenantId, status])
+  @@index([courseId])
+}
+
+// BLD-535: interactive self-check exercises (hotspots on an image, match pairs,
+// order steps). Staff-authored per course; graded server-side against `config`.
+model InteractiveExercise {
+  id           String            @id @default(cuid())
+  tenantId     String
+  course       Course            @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  courseId     String
+  title        String
+  type         String // HOTSPOT | MATCH | ORDER
+  instructions String?           @db.Text
+  imageUrl     String? // HOTSPOT background image
+  config       Json // shape depends on type (see lib/exercises.ts)
+  order        Int               @default(0)
+  active       Boolean           @default(true)
+  createdAt    DateTime          @default(now())
+  updatedAt    DateTime          @updatedAt
+  attempts     ExerciseAttempt[]
+
+  @@index([courseId, order])
+  @@index([tenantId])
+}
+
+model ExerciseAttempt {
+  id          String              @id @default(cuid())
+  tenantId    String
+  student     AcademyStudent      @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  studentId   String
+  exercise    InteractiveExercise @relation(fields: [exerciseId], references: [id], onDelete: Cascade)
+  exerciseId  String
+  scorePct    Int
+  attempts    Int                 @default(1)
+  completedAt DateTime            @default(now())
+
+  @@unique([studentId, exerciseId])
+  @@index([tenantId])
+}
+
+// BLD-539: "spot the mistake" demo walkthroughs. Staff upload a video and mark
+// time windows where the practitioner does something wrong; learners watch and
+// press space when they think they see one. Graded server-side (mistake times
+// withheld from the player until after grading).
+model DemoVideo {
+  id          String        @id @default(cuid())
+  tenantId    String
+  course      Course?       @relation(fields: [courseId], references: [id], onDelete: SetNull)
+  courseId    String?
+  title       String
+  description String?       @db.Text
+  videoUrl    String // Vercel Blob URL
+  captionsUrl String? // BLD-904: WebVTT captions
+  durationSec Int? // optional, for UI
+  order       Int           @default(0)
+  active      Boolean       @default(true)
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+  mistakes    DemoMistake[]
+  attempts    DemoAttempt[]
+
+  @@index([courseId, order])
+  @@index([tenantId])
+}
+
+model DemoMistake {
+  id        String    @id @default(cuid())
+  tenantId  String
+  video     DemoVideo @relation(fields: [videoId], references: [id], onDelete: Cascade)
+  videoId   String
+  atSec     Float // when the mistake occurs (seconds)
+  windowSec Float     @default(3) // tolerance window around atSec
+  label     String // what's wrong (revealed after grading)
+  createdAt DateTime  @default(now())
+
+  @@index([videoId])
+  @@index([tenantId])
+}
+
+model DemoAttempt {
+  id             String         @id @default(cuid())
+  tenantId       String
+  student        AcademyStudent @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  studentId      String
+  video          DemoVideo      @relation(fields: [videoId], references: [id], onDelete: Cascade)
+  videoId        String
+  spotted        Int
+  total          Int
+  falsePositives Int            @default(0)
+  scorePct       Int
+  attempts       Int            @default(1)
+  completedAt    DateTime       @default(now())
+
+  @@unique([studentId, videoId])
   @@index([tenantId])
 }
 
@@ -2155,25 +2630,72 @@ enum CohortStatus {
 }
 
 model Cohort {
-  id        String       @id @default(cuid())
-  tenantId  String // ClinicOS multi-tenant (Ring 0); backfilled to the K Clinics tenant
-  course    Course       @relation(fields: [courseId], references: [id], onDelete: Cascade)
-  courseId  String
-  startAt   DateTime
-  endAt     DateTime?
+  id            String       @id @default(cuid())
+  tenantId      String // ClinicOS multi-tenant (Ring 0); backfilled to the K Clinics tenant
+  course        Course       @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  courseId      String
+  startAt       DateTime
+  endAt         DateTime?
   accessStartAt DateTime? // BLD-408: course access opens for this cohort (null = open as soon as enrolled)
   accessEndAt   DateTime? // BLD-408: course access expires for this cohort (null = never expires)
-  capacity  Int          @default(8)
-  location  String?
-  trainer   String?
-  status    CohortStatus @default(OPEN)
+  capacity      Int          @default(8)
+  location      String?
+  trainer       String?
+  name          String?
+  status        CohortStatus @default(OPEN)
+  notes         String?
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+
+  enrolments     Enrolment[]
+  moduleReleases CohortModuleRelease[]
+  practicalDays  CohortPracticalDay[]
+
+  @@index([courseId, startAt])
+  @@index([tenantId])
+}
+
+// BLD-881: per-cohort practical training days. Each cohort keeps its own list
+// of in-person dates — several per cohort, edited and deleted independently,
+// never shared across cohorts. The cohort's own startAt/endAt remains the
+// legacy single practical window and is the student-calendar fallback for
+// cohorts with no day rows yet.
+model CohortPracticalDay {
+  id        String    @id @default(cuid())
+  tenantId  String // ClinicOS multi-tenant (Ring 0); backfilled to the K Clinics tenant
+  cohort    Cohort    @relation(fields: [cohortId], references: [id], onDelete: Cascade)
+  cohortId  String
+  title     String    @default("Practical training")
+  startAt   DateTime
+  endAt     DateTime?
+  location  String? // falls back to the cohort's location when null
+  trainer   String? // falls back to the cohort's trainer when null
   notes     String?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  @@index([cohortId, startAt])
+  @@index([tenantId])
+}
+
+// BLD: per-cohort content release schedule (drip). Courses can be opened before
+// every module's materials are ready, then unlocked gradually per cohort. A module
+// with a future releaseAt for the learner's cohort is LOCKED; no row (or a past
+// date) means it's available. Uniqueness (cohort+module) is enforced in app code
+// (no @unique), matching the additive-deploy convention.
+model CohortModuleRelease {
+  id        String       @id @default(cuid())
+  tenantId  String // ClinicOS multi-tenant (Ring 0)
+  cohort    Cohort       @relation(fields: [cohortId], references: [id], onDelete: Cascade)
+  cohortId  String
+  module    CourseModule @relation(fields: [moduleId], references: [id], onDelete: Cascade)
+  moduleId  String
+  releaseAt DateTime
   createdAt DateTime     @default(now())
   updatedAt DateTime     @updatedAt
 
-  enrolments Enrolment[]
-
-  @@index([courseId, startAt])
+  @@index([cohortId])
+  @@index([moduleId])
   @@index([tenantId])
 }
 
@@ -2203,18 +2725,97 @@ model Enrolment {
   experience      String? // free-text background / qualifications
   financeInterest Boolean @default(false) // interested in Clearpay financing
 
-  status     EnrolmentStatus @default(APPLIED)
-  pricePence Int             @default(0)
-  paidPence  Int             @default(0)
-  notes      String?
+  status         EnrolmentStatus @default(APPLIED)
+  pricePence     Int             @default(0)
+  agreedFeePence Int? // BLD-850: the fee actually quoted (promo-aware) — locked at offer / first payment so later promo changes never re-price an in-flight enrolment
+  paidPence      Int             @default(0) // running total of PAID EnrolmentPayments (kept in sync on every payment)
+  notes          String?
   preCourseAckAt DateTime? // BLD-445: when the learner acknowledged the pre-course information page
-  createdAt  DateTime        @default(now())
-  updatedAt  DateTime        @updatedAt
+
+  // BLD-528: enrolment + payment engine. The place is confirmed by staff (offer),
+  // then the learner accepts & pays online (full or deposit) or staff set up an
+  // in-house instalment plan. paidPence is the source of truth for "how much is in";
+  // payments[] is the itemised history + the scheduled instalment rows.
+  offeredAt      DateTime? // when staff made the offer (status → OFFERED)
+  offerExpiresAt DateTime? // optional offer expiry shown to the learner
+  acceptedAt     DateTime? // when the learner first paid / accepted the offer
+  paymentPlan    Boolean         @default(false) // an in-house instalment plan is in place
+  payments       EnrolmentPayment[]
+
+  // BLD-528: verifiable certificate reference, issued when the theory is complete.
+  // Stored (not derived) so /academy/verify can confirm it. Uniqueness is enforced
+  // in app code (self-healing), not a DB @unique, to stay within the deploy gate.
+  certificateRef      String?
+  certificateIssuedAt DateTime?
+  fundingApplications FundingApplication[]
+  auditEvents         AuditEvent[]
+
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
 
   @@index([status])
   @@index([courseId])
   @@index([applicantEmail])
   @@index([tenantId])
+  @@index([studentId])
+  @@index([studentId, status])
+}
+
+// BLD-528: itemised academy payments. One row per payment OR scheduled instalment.
+// A full/deposit/balance payment taken online starts PENDING (a Stripe PaymentIntent
+// is created) and is flipped to PAID by the webhook/confirm. A staff-set instalment
+// plan creates SCHEDULED rows with a dueAt; staff mark each PAID when collected
+// (balances are collected manually). The sum of PAID rows == Enrolment.paidPence.
+enum AcademyPaymentMethod {
+  CARD // Stripe card
+  BNPL // Klarna / Clearpay via Stripe
+  BANK_TRANSFER
+  CASH
+  OTHER
+}
+
+enum AcademyPaymentKind {
+  FULL // the whole course fee in one payment
+  DEPOSIT // a deposit to reserve a place
+  BALANCE // the remainder after a deposit
+  INSTALMENT // one payment of an instalment plan
+}
+
+enum AcademyPaymentState {
+  SCHEDULED // a planned instalment, not yet collected
+  PENDING // an online checkout has started, awaiting Stripe confirmation
+  PAID
+  FAILED
+  REFUNDED
+  CANCELLED
+}
+
+model EnrolmentPayment {
+  id                    String               @id @default(cuid())
+  tenantId              String // ClinicOS multi-tenant (Ring 0)
+  enrolment             Enrolment            @relation(fields: [enrolmentId], references: [id], onDelete: Cascade)
+  enrolmentId           String
+  kind                  AcademyPaymentKind   @default(FULL)
+  method                AcademyPaymentMethod?
+  state                 AcademyPaymentState  @default(PENDING)
+  amountPence           Int
+  // BLD-869: cumulative Stripe amount_refunded watermark, mirroring
+  // Booking.refundedPence / GiftVoucher.purchaseRefundedPence — partial
+  // dashboard refunds reconcile as deltas instead of being dropped (or the
+  // whole amountPence being reversed at once). Additive, defaulted.
+  refundedPence         Int                  @default(0)
+  dueAt                 DateTime? // for scheduled instalments / an outstanding balance
+  paidAt                DateTime?
+  stripePaymentIntentId String? // set for online payments
+  note                  String?
+  recordedBy            String? // staff email when recorded / collected manually
+  createdAt             DateTime             @default(now())
+  updatedAt             DateTime             @updatedAt
+
+  @@index([enrolmentId])
+  @@index([tenantId])
+  @@index([state, dueAt])
+  @@index([stripePaymentIntentId])
 }
 
 // ── Academy funding / grants applications ───────────────────────────────────
@@ -2235,7 +2836,7 @@ enum FundingStatus {
 }
 
 model FundingApplication {
-  id       String  @id @default(cuid())
+  id       String @id @default(cuid())
   tenantId String // ClinicOS multi-tenant (Ring 0); backfilled to the K Clinics tenant
 
   // Applicant.
@@ -2247,6 +2848,14 @@ model FundingApplication {
   course      Course? @relation(fields: [courseId], references: [id], onDelete: SetNull)
   courseId    String?
   courseLevel String? // level they're interested in, e.g. "Level 4"
+
+  // BLD-528: link a funding enquiry to the trainee account / enrolment it relates
+  // to (auto-linked by email, or attached by staff), so funding is traceable to
+  // the place it pays for instead of reconciling by name.
+  student     AcademyStudent? @relation(fields: [studentId], references: [id], onDelete: SetNull)
+  studentId   String?
+  enrolment   Enrolment?      @relation(fields: [enrolmentId], references: [id], onDelete: SetNull)
+  enrolmentId String?
 
   // Funding route the applicant is pursuing + every route the self-check flagged
   // as a likely fit (route keys live in lib/funding.ts).
@@ -2274,6 +2883,8 @@ model FundingApplication {
   @@index([email])
   @@index([tenantId])
   @@index([createdAt])
+  @@index([studentId])
+  @@index([enrolmentId])
 }
 
 // ── Post-treatment follow-up questionnaire ──────────────────────────────────
@@ -2413,6 +3024,12 @@ model GiftVoucher {
   expiresAt             DateTime?
   claimedByClientId     String?
   claimedAt             DateTime?
+  // PRJ-918.2: cumulative amount Stripe has refunded against THIS voucher's OWN
+  // purchase PaymentIntent (not a redemption elsewhere) that we've already
+  // reconciled — the watermark for the charge.refunded webhook CAS, mirroring
+  // Booking.refundedPence. Debited from balancePence (never credited) so a
+  // refunded purchase can't also leave a spendable card.
+  purchaseRefundedPence Int       @default(0)
   createdAt             DateTime  @default(now())
   updatedAt             DateTime  @updatedAt
 
@@ -2435,6 +3052,29 @@ model NewsletterSubscriber {
   updatedAt   DateTime @updatedAt
 
   @@index([active])
+}
+
+// BLD-838 / BLD-853: optional "email me my selection" capture from the public
+// booking funnel. A visitor who picks a treatment (before the deferred account
+// step, BLD-634) can leave an email to finish later, giving a follow-up route
+// for otherwise-unrecoverable drop-offs. Rows are anonymous (no client relation)
+// — the recovery automation matches to a Client by email only to honour a hard
+// unsubscribe. This is a single transactional "finish your booking" nudge under
+// legitimate interest, NOT a marketing opt-in. Mirrors NewsletterSubscriber:
+// no tenantId (single public-write tenant), no @unique (dedupe is structural).
+model BookingIntent {
+  id             String    @id @default(cuid())
+  email          String
+  treatmentSlug  String
+  treatmentTitle String
+  variantLabel   String?
+  source         String    @default("funnel")
+  createdAt      DateTime  @default(now())
+  recoveredAt    DateTime? // stamped when the email already/again has a booking for this treatment
+  emailedAt      DateTime? // stamped when the one-time recovery nudge is attempted (at-most-once)
+
+  @@index([email, treatmentSlug])
+  @@index([createdAt])
 }
 
 // Before/after gallery cases uploaded by staff in the CRM. Each holds a real
@@ -2476,6 +3116,25 @@ model SecurityEvent {
   @@index([identifier, createdAt])
   @@index([ip, createdAt])
   @@index([createdAt])
+}
+
+// Manually-blocked IP addresses — the staff "deny list" behind the Activity &
+// blocking page (BLD security audit). An IP is blocked while it has an `active`
+// row; unblocking flips `active=false` (kept for the audit trail, never deleted).
+// No @unique on `ip` by design — the deploy gate refuses adding unique
+// constraints (potential data loss); uniqueness is enforced structurally
+// (block = reuse the open row or create one; unblock = deactivate all open rows).
+model BlockedIp {
+  id        String   @id @default(cuid())
+  ip        String
+  reason    String?
+  active    Boolean  @default(true)
+  createdBy String? // staff email who placed the block
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([ip, active])
+  @@index([active, createdAt])
 }
 
 // Promotional discount codes — two kinds:
@@ -3024,6 +3683,11 @@ model Order {
   fulfillment           String      @default("unfulfilled") // unfulfilled | shipped | collected
   trackingNote          String?
   stripePaymentIntentId String?     @unique
+  // PRJ-918.10: set once stock has been restored for this order (on a CANCELLED
+  // or REFUNDED transition from a stock-decremented PAID/FULFILLED state). Guards
+  // restockOrder() so a redelivered webhook or a re-cancelled order can't
+  // increment stockQty back more than once.
+  restockedAt           DateTime?
   createdAt             DateTime    @default(now())
   updatedAt             DateTime    @updatedAt
 
@@ -3513,4 +4177,218 @@ model WaitlistEntry {
 
   @@index([treatmentSlug, status])
   @@index([clientId])
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Team chat — internal staff-to-staff messaging (BLD ref cited in the PR).
+// 1:1 DMs and group channels with file/image/video attachments, GIFs, emoji
+// reactions and @-mentions. Surfaced through the notifications hub; opens as
+// docked windows in the admin. Deliberately separate from the visitor-facing
+// ChatConversation / ChatMessage models (different audience, lifecycle, fields).
+// All new tables, so unique constraints are declared directly (created fresh by
+// the migration — no `db push` add-unique-to-existing-table concern).
+// ─────────────────────────────────────────────────────────────────────────────
+
+enum TeamChannelKind {
+  DM // 1:1 direct message
+  GROUP // named group of 2+ people
+}
+
+enum TeamMemberRole {
+  OWNER // can rename, add/remove members, delete the channel
+  MEMBER
+}
+
+model TeamChannel {
+  id   String          @id @default(cuid())
+  kind TeamChannelKind @default(DM)
+  // DMs only: a stable key built from the two sorted member ids, so a 1:1 is
+  // found-or-created exactly once. Null for groups (Postgres allows many NULLs
+  // under a unique index, so groups don't collide).
+  dmKey         String?   @unique
+  name          String? // group name; DMs derive their title from the other member
+  topic         String?
+  avatarUrl     String?
+  createdById   String?
+  archivedAt    DateTime?
+  lastMessageAt DateTime  @default(now())
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  members  TeamChannelMember[]
+  messages TeamMessage[]
+
+  @@index([kind])
+  @@index([lastMessageAt])
+}
+
+model TeamChannelMember {
+  id         String         @id @default(cuid())
+  channel    TeamChannel    @relation(fields: [channelId], references: [id], onDelete: Cascade)
+  channelId  String
+  user       AdminUser      @relation("TeamChatMemberships", fields: [userId], references: [id], onDelete: Cascade)
+  userId     String
+  role       TeamMemberRole @default(MEMBER)
+  lastReadAt DateTime? // everything up to here is read; drives unread counts
+  muted      Boolean        @default(false) // no notifications/sound for this channel
+  createdAt  DateTime       @default(now())
+
+  @@unique([channelId, userId])
+  @@index([userId])
+  @@index([channelId])
+}
+
+model TeamMessage {
+  id          String      @id @default(cuid())
+  channel     TeamChannel @relation(fields: [channelId], references: [id], onDelete: Cascade)
+  channelId   String
+  author      AdminUser?  @relation("TeamChatAuthored", fields: [authorId], references: [id], onDelete: SetNull)
+  authorId    String? // null for SYSTEM messages ("X created the group")
+  kind        String      @default("TEXT") // TEXT | SYSTEM
+  body        String      @db.Text
+  mentionIds  String[]    @default([]) // AdminUser ids @-mentioned in the body
+  mentionsAll Boolean     @default(false) // @everyone / @channel
+  replyToId   String? // light threading: quote/reply to an earlier message
+  editedAt    DateTime?
+  deletedAt   DateTime? // soft-delete: keeps thread ordering, shows "message removed"
+  createdAt   DateTime    @default(now())
+
+  attachments TeamMessageAttachment[]
+  reactions   TeamMessageReaction[]
+
+  @@index([channelId, createdAt])
+  @@index([authorId])
+}
+
+model TeamMessageAttachment {
+  id        String      @id @default(cuid())
+  message   TeamMessage @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  messageId String
+  kind      String // IMAGE | VIDEO | FILE | GIF
+  url       String      @db.Text
+  name      String?
+  mime      String?
+  size      Int?
+  width     Int?
+  height    Int?
+  createdAt DateTime    @default(now())
+
+  @@index([messageId])
+}
+
+model TeamMessageReaction {
+  id        String      @id @default(cuid())
+  message   TeamMessage @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  messageId String
+  userId    String // AdminUser id who reacted
+  emoji     String // a single emoji character/sequence
+  createdAt DateTime    @default(now())
+
+  @@unique([messageId, userId, emoji])
+  @@index([messageId])
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Team task board extensions — comments and an automations engine that
+// materialises recurring / triggered work onto the Tasks board (TSK-).
+// Automations carry their own ref scheme: AUT-<seq>. All new tables.
+// ─────────────────────────────────────────────────────────────────────────────
+
+model TaskComment {
+  id          String   @id @default(cuid())
+  task        Task     @relation("TaskComments", fields: [taskId], references: [id], onDelete: Cascade)
+  taskId      String
+  authorId    String? // AdminUser id (null if the author account was removed)
+  authorEmail String?
+  body        String   @db.Text
+  mentionIds  String[] @default([])
+  createdAt   DateTime @default(now())
+
+  @@index([taskId, createdAt])
+}
+
+enum TaskAutomationTrigger {
+  SCHEDULE // recurring on a calendar cadence (the "repeat events")
+  ON_TASK_COMPLETED // when a matching task is completed, spawn a follow-up
+}
+
+model TaskAutomation {
+  id          String                @id @default(cuid())
+  seq         Int                   @default(autoincrement())
+  ref         String? // AUT-<seq>
+  name        String
+  description String?
+  enabled     Boolean               @default(true)
+  trigger     TaskAutomationTrigger @default(SCHEDULE)
+
+  // ── Schedule config (trigger = SCHEDULE) ──────────────────────────────────
+  freq       String    @default("WEEKLY") // DAILY | WEEKLY | MONTHLY
+  interval   Int       @default(1) // every N periods (every 2 weeks, etc.)
+  daysOfWeek Int[]     @default([]) // 0=Sun … 6=Sat, for WEEKLY
+  dayOfMonth Int? // 1…28 for MONTHLY (capped at 28 to exist every month)
+  timeOfDay  String    @default("09:00") // HH:mm, clinic-local (Europe/London)
+  startsOn   DateTime?
+  endsOn     DateTime?
+
+  // ── Trigger config (trigger = ON_TASK_COMPLETED) ──────────────────────────
+  matchText String? // case-insensitive substring match on the completed task title
+
+  // ── Task template (what gets created) ─────────────────────────────────────
+  titleTemplate  String
+  detailTemplate String?
+  priority       String   @default("NORMAL") // LOW | NORMAL | HIGH
+  dueInDays      Int? // due date = creation date + N days
+  assignMode     String   @default("FIXED") // FIXED | ROUND_ROBIN | ALL
+  assigneeIds    String[] @default([]) // pool of AdminUser ids
+  roundRobinIdx  Int      @default(0) // cursor for ROUND_ROBIN
+
+  lastRunAt   DateTime?
+  nextRunAt   DateTime? // next scheduled fire (advisory; occurrenceKey is the guard)
+  createdById String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  runs TaskAutomationRun[]
+
+  @@index([enabled, trigger])
+  @@index([nextRunAt])
+}
+
+model TaskAutomationRun {
+  id            String         @id @default(cuid())
+  automation    TaskAutomation @relation(fields: [automationId], references: [id], onDelete: Cascade)
+  automationId  String
+  // Idempotency guard: one run row per due occurrence, so overlapping cron ticks
+  // can never double-spawn the same scheduled task.
+  occurrenceKey  String
+  createdTaskIds String[] @default([])
+  note           String?
+  createdAt      DateTime @default(now())
+
+  @@unique([automationId, occurrenceKey])
+  @@index([automationId, createdAt])
+}
+
+// Business compliance & renewals tracking (BLD-587): insurance, licences,
+// certifications, equipment servicing, PAT testing, EICR, waste contracts and
+// any other recurring deadline. The admin dashboard surfaces what's expired or
+// due soon; the daily cron alerts staff at the configured thresholds.
+model ComplianceItem {
+  id               String    @id @default(cuid())
+  name             String
+  category         String    @default("Other") // Insurance | Licence | Certification | Equipment servicing | Waste contract | PAT testing | EICR | Other
+  provider         String?
+  reference        String? // policy / certificate / contract number
+  renewalAt        DateTime // expiry / next renewal date
+  costPence        Int? // optional annual cost
+  notes            String?   @db.Text
+  reminderDays     Int[]     @default([90, 60, 30]) // days-before thresholds to alert at
+  lastRemindedDays Int? // smallest threshold already alerted this cycle; reset to null on renewal
+  lastRenewedAt    DateTime?
+  active           Boolean   @default(true)
+  createdBy        String?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  @@index([active, renewalAt])
 }

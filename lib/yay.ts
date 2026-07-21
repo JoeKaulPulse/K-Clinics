@@ -187,7 +187,11 @@ export async function ingestCall(parsed: ParsedCall, raw: unknown): Promise<{ id
       matchedClientId: match.clientId ?? null,
       matchedSupplierId: match.supplierId ?? null,
       matchedLabel: match.type === 'CLIENT' || match.type === 'SUPPLIER' ? null : match.label,
-      raw: (raw ?? null) as object,
+      // The raw webhook payload duplicates the transcript/recording + caller PII
+      // in plaintext, which would defeat the per-column encryption above — so the
+      // whole audit blob is encrypted at rest (BLD-602). Nothing reads it back in
+      // the app (the calls API strips it); decrypt manually if ever needed.
+      raw: raw == null ? undefined : encClinical(JSON.stringify(raw)),
     },
     select: { id: true },
   });

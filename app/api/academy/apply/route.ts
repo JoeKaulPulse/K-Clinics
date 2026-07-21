@@ -49,10 +49,22 @@ export async function POST(req: Request) {
     },
   });
 
+  // In-app staff notification so applications surface in the admin (not just email).
+  try {
+    const { notifyStaffByPermission } = await import('@/lib/notifications');
+    await notifyStaffByPermission('settings.manage', {
+      kind: 'status', category: 'academy', priority: 'high',
+      title: 'New academy application',
+      body: `${d.name} applied for ${course.title}${d.financeInterest ? ' (interested in finance)' : ''}`,
+      href: '/admin/academy/enrolments',
+      groupKey: `academy-apply-${enrolment.id}`,
+    });
+  } catch { /* non-fatal */ }
+
   // Notify the academy + acknowledge the applicant (best-effort).
   try {
     const { sendEmail, emailShell } = await import('@/lib/email');
-    const notifyTo = process.env.ACADEMY_NOTIFY_EMAIL || process.env.CLINIC_NOTIFY_EMAIL || 'info@kclinics.co.uk';
+    const notifyTo = process.env.ACADEMY_NOTIFY_EMAIL || process.env.CLINIC_NOTIFY_EMAIL || 'support@kclinics.co.uk';
     await Promise.allSettled([
       sendEmail({ to: notifyTo, subject: `New academy application — ${course.title}`, html: emailShell({ preheader: `${d.name} applied for ${course.title}`, body: `<h1 style="font-size:22px;margin:0 0 16px;">New academy application</h1><p><strong>${escapeHtml(d.name)}</strong> applied for <strong>${escapeHtml(course.title)}</strong>.</p><p>Email: ${escapeHtml(d.email)}<br>Phone: ${escapeHtml(d.phone || '—')}<br>Finance (Clearpay) interest: ${d.financeInterest ? 'Yes' : 'No'}</p><p>Experience:<br>${escapeHtml(d.experience || '—')}</p>` }) }),
       sendEmail({ to: d.email, subject: `Your application — ${course.title}`, html: emailShell({ preheader: `We've received your application for ${course.title}`, body: `<h1 style="font-size:24px;margin:0 0 16px;">Thank you, ${escapeHtml(d.name.split(' ')[0])}.</h1><p>We've received your application for <strong>${escapeHtml(course.title)}</strong> at K Academy. Our team will be in touch shortly to confirm your place${d.financeInterest ? ', discuss Clearpay financing' : ''} and next steps.</p><p>With warmth,<br>The K Academy team</p>` }) }),

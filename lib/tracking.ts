@@ -1,5 +1,5 @@
 import 'server-only';
-import { cache } from 'react';
+import { unstable_cache } from 'next/cache';
 import { crmEnabled } from '@/lib/crm';
 
 // Marketing/analytics pixel configuration, stored as JSON in a single Setting
@@ -12,6 +12,7 @@ export type TrackingConfig = {
 };
 
 export const SETTING_KEY = 'tracking_config';
+export const TRACKING_CONFIG_TAG = 'tracking-config';
 const EMPTY: TrackingConfig = { ga4Id: '', googleAdsId: '', metaPixelId: '' };
 
 const clean = (v: unknown) => (typeof v === 'string' ? v.trim().slice(0, 40) : '');
@@ -30,7 +31,7 @@ const ENV_FALLBACK: TrackingConfig = {
   metaPixelId: clean(process.env.NEXT_PUBLIC_META_PIXEL_ID) || DEFAULT_META_PIXEL_ID,
 };
 
-export const getTrackingConfig = cache(async (): Promise<TrackingConfig> => {
+async function loadTrackingConfig(): Promise<TrackingConfig> {
   if (!crmEnabled) return ENV_FALLBACK;
   try {
     const { db } = await import('@/lib/db');
@@ -45,6 +46,8 @@ export const getTrackingConfig = cache(async (): Promise<TrackingConfig> => {
   } catch {
     return ENV_FALLBACK;
   }
-});
+}
+
+export const getTrackingConfig = unstable_cache(loadTrackingConfig, ['tracking-config-v1'], { tags: [TRACKING_CONFIG_TAG], revalidate: 300 });
 
 export const hasAnyTracking = (c: TrackingConfig) => Boolean(c.ga4Id || c.googleAdsId || c.metaPixelId);

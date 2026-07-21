@@ -42,11 +42,20 @@ export async function POST(req: Request) {
     if (!id) return NextResponse.json({ ok: false, error: 'Missing id.' }, { status: 400 });
     // Only an OWNER may strip an OWNER's second factor (this runs before the
     // generic owner-protection guard below, so check it here too).
-    const t = await db.adminUser.findUnique({ where: { id }, select: { role: true } });
+    const t = await db.adminUser.findUnique({ where: { id }, select: { role: true, email: true, name: true } });
     if (t?.role === 'OWNER' && actor.role !== 'OWNER') return NextResponse.json({ ok: false, error: 'Only an owner can reset an owner’s 2FA.' }, { status: 403 });
     await db.adminUser.update({ where: { id }, data: { totpSecret: null, totpEnabledAt: null, recoveryCodes: [] } });
     const { logAudit } = await import('@/lib/audit');
     await logAudit({ action: 'NOTE_ADDED', actor: actor.email, actorRole: actor.role, summary: `Reset 2FA for staff ${id}` });
+    // PRJ-939.4: notify the affected staff member so a rogue/compromised
+    // staff.manage session can't silently strip their 2FA unnoticed.
+    if (t?.email) {
+      try {
+        const { sendEmail, tmplStaffSecurityChange } = await import('@/lib/email');
+        const base = process.env.NEXT_PUBLIC_SITE_URL || '';
+        await sendEmail({ to: t.email, subject: 'Your KClinics staff account security was changed', html: tmplStaffSecurityChange({ name: t.name || t.email, change: '2fa', loginUrl: `${base}/admin/login` }) });
+      } catch (e) { console.error('[admin/staff] 2FA-reset notification failed (reset still applied):', (e as Error)?.message); }
+    }
     return NextResponse.json({ ok: true, id });
   }
 
@@ -123,6 +132,28 @@ export async function POST(req: Request) {
     const securityRelevant = 'role' in data || 'permGrant' in data || 'permRevoke' in data || 'passwordHash' in data || data.active === false;
     if (securityRelevant) data.sessionEpoch = { increment: 1 };
     const updated = await db.adminUser.update({ where: { id }, data });
+    if (securityRelevant) {
+      try {
+        const { logAudit } = await import('@/lib/audit');
+        const changes: Record<string, unknown> = {};
+        if ('role' in data) changes.role = { before: target.role, after: data.role };
+        if ('permGrant' in data) changes.permGrant = { before: target.permGrant, after: data.permGrant };
+        if ('permRevoke' in data) changes.permRevoke = { before: target.permRevoke, after: data.permRevoke };
+        if ('passwordHash' in data) changes.password = 'changed';
+        if (data.active === false) changes.active = { before: target.active, after: false };
+        await logAudit({ action: 'SETTINGS_UPDATED', actor: actor.email, actorRole: actor.role, summary: `Staff security change on ${target.email}: ${Object.keys(changes).join(', ')}`, meta: { targetId: id, targetEmail: target.email, changes } });
+      } catch { /* non-fatal */ }
+    }
+    // PRJ-939.4: notify the target when someone ELSE changed their password —
+    // so a compromised/rogue staff.manage account can't silently change a
+    // colleague's password without them noticing.
+    if ('passwordHash' in data && target.email.toLowerCase() !== actor.email.toLowerCase()) {
+      try {
+        const { sendEmail, tmplStaffSecurityChange } = await import('@/lib/email');
+        const base = process.env.NEXT_PUBLIC_SITE_URL || '';
+        await sendEmail({ to: target.email, subject: 'Your KClinics staff account security was changed', html: tmplStaffSecurityChange({ name: target.name || target.email, change: 'password', loginUrl: `${base}/admin/login` }) });
+      } catch (e) { console.error('[admin/staff] password-change notification failed (change still applied):', (e as Error)?.message); }
+    }
     return NextResponse.json({ ok: true, id: updated.id });
   }
 
@@ -149,5 +180,22 @@ export async function POST(req: Request) {
       createdBy: actor.email,
     },
   });
+
+  // BLD-751: notify the new hire with their sign-in details, so credentials
+  // don't have to be relayed out-of-band by whoever created the account.
+  // Best-effort — a failed welcome email must not fail account creation.
+  try {
+    const { sendEmail, tmplStaffWelcome } = await import('@/lib/email');
+    const base = process.env.NEXT_PUBLIC_SITE_URL || '';
+    const res = await sendEmail({
+      to: created.email,
+      subject: 'Your K Clinics staff account',
+      html: tmplStaffWelcome({ name: name || created.email, email: created.email, tempPassword: password, loginUrl: `${base}/admin/login` }),
+    });
+    await db.emailEvent.create({ data: { kind: 'MANUAL', to: created.email, subject: 'Staff account created', status: res.ok ? 'SENT' : 'FAILED', providerId: res.id, error: res.error } });
+  } catch (e) {
+    console.error('[admin/staff] welcome email failed (account still created):', (e as Error)?.message);
+  }
+
   return NextResponse.json({ ok: true, id: created.id });
 }

@@ -75,7 +75,7 @@ export default async function ReviewsPage({ searchParams }: { searchParams: Prom
           { label: L('Published', 'Опубліковано'), value: countOf('PUBLISHED') },
         ].map((s) => (
           <div key={s.label} className="rounded-[var(--radius-md)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-4">
-            <div className={`font-[family-name:var(--font-display)] text-2xl ${s.tone || ''}`}>{s.value}</div>
+            <div className={`font-[family-name:var(--font-display)] text-2xl tabular-nums ${s.tone || ''}`}>{s.value}</div>
             <div className="mt-1 text-xs text-[var(--color-stone)]">{s.label}</div>
           </div>
         ))}
@@ -103,12 +103,12 @@ export default async function ReviewsPage({ searchParams }: { searchParams: Prom
                     {r.displayConsent
                       ? <span className="rounded-full bg-green-100 px-2.5 py-0.5 text-[0.65rem] font-medium uppercase tracking-wide text-green-800">{L('name consented', 'згода на ім’я')}</span>
                       : <span className="rounded-full bg-[var(--color-bone)] px-2.5 py-0.5 text-[0.65rem] font-medium uppercase tracking-wide text-[var(--color-stone)]">{L('name hidden publicly', 'ім’я приховано')}</span>}
-                    {r.treatmentTitle && <span className="text-xs text-[var(--color-stone-soft)]">{r.treatmentTitle}</span>}
+                    {r.treatmentTitle && <span className="text-xs text-[var(--color-stone)]">{r.treatmentTitle}</span>}
                   </div>
                   {r.title && <p className="mt-2 font-medium">{r.title}</p>}
                   {r.body && <p className="mt-1 text-sm text-[var(--color-ink-soft)]">{r.body}</p>}
-                  <p className="mt-2 text-xs text-[var(--color-stone-soft)]">
-                    <Link href={`/admin/clients/${r.client.id}`} className="hover:text-[var(--color-gold)]">{name}</Link>
+                  <p className="mt-2 text-xs text-[var(--color-stone)]">
+                    <Link href={`/admin/clients/${r.client.id}`} className="hover:text-[var(--color-gold-deep)]">{name}</Link>
                     {r.clinician?.name ? ` · ${r.clinician.name}` : ''}
                     {r.submittedAt ? ` · ${r.submittedAt.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}` : ''}
                   </p>

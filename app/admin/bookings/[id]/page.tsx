@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { notFound, redirect } from 'next/navigation';
 import { crmEnabled } from '@/lib/crm';
+import { CLINIC_TZ } from '@/lib/clinic-time';
 import { getSession, sessionPermissions } from '@/lib/auth';
 import { AdminShell } from '@/components/admin/AdminShell';
 import { CrmDisabled } from '@/components/admin/CrmDisabled';
@@ -45,10 +46,13 @@ export default async function BookingDetail({ params }: { params: Promise<{ id: 
   await ensureDefaultTemplates();
   const consentKey = await templateKeyForTreatment(b.treatmentSlug);
   const isLaser = isLaserTreatment(b.treatmentSlug);
-  const [consentTemplate, signedConsents, pendingConsents, beforePhotos] = await Promise.all([
+  const [consentTemplate, consentTemplates, signedConsents, pendingConsents, beforePhotos] = await Promise.all([
     db.consentTemplate.findUnique({ where: { key: consentKey } }),
+    // All active treatment-consent forms, so staff can pick the right one per
+    // appointment (BLD-505). The photo opt-out is excluded; it has its own flow.
+    db.consentTemplate.findMany({ where: { active: true, NOT: { key: 'photo_opt_out' } }, orderBy: { title: 'asc' }, select: { key: true, title: true } }),
     db.signedConsent.findMany({ where: { bookingId: b.id }, orderBy: { signedAt: 'desc' }, select: { id: true, title: true, signedAt: true, declined: true, kind: true } }),
-    db.consentRequest.findMany({ where: { bookingId: b.id, status: 'PENDING' }, select: { token: true, title: true, kind: true } }),
+    db.consentRequest.findMany({ where: { bookingId: b.id, status: 'PENDING' }, select: { token: true, title: true, kind: true, templateKey: true } }),
     db.beforePhoto.findMany({ where: { bookingId: b.id }, orderBy: { createdAt: 'asc' }, select: { id: true, area: true, capturedBy: true, createdAt: true } }),
   ]);
   const optOutSigned = signedConsents.some((s) => s.kind === 'photo_opt_out');
@@ -79,7 +83,14 @@ export default async function BookingDetail({ params }: { params: Promise<{ id: 
   const heldResources = await db.resource.findMany({ where: { bookings: { some: { id } } }, orderBy: { kind: 'asc' }, select: { name: true, kind: true, floor: true } });
   // Hospitality + aftercare + recommended next session for staff.
   const visitPrefs = await db.booking.findUnique({ where: { id }, select: { refreshments: true, allergyNote: true, aftercareAckAt: true, treatmentSlug: true, startAt: true, clientId: true } });
-  if (visitPrefs?.allergyNote) { const { decClinical } = await import('@/lib/clinical-crypto'); visitPrefs.allergyNote = decClinical(visitPrefs.allergyNote); }
+  // BLD-896: allergyNote is clinical data — same gate as the "Health & consent"
+  // box below (canClinical), so FRONT_DESK/STAFF without clients.clinical.view
+  // never see it decrypted, here or in the "Visit prep" panel.
+  const canClinical = sessionCan(session, 'clients.clinical.view');
+  if (visitPrefs?.allergyNote) {
+    if (canClinical) { const { decClinical } = await import('@/lib/clinical-crypto'); visitPrefs.allergyNote = decClinical(visitPrefs.allergyNote); }
+    else visitPrefs.allergyNote = null;
+  }
   const { refreshmentLabel } = await import('@/lib/hospitality');
 
   // BLD-211 — clinicians eligible to perform this treatment (competent or generalist),
@@ -108,7 +119,7 @@ export default async function BookingDetail({ params }: { params: Promise<{ id: 
     const completed = await db.booking.count({ where: { clientId: visitPrefs.clientId, treatmentSlug: visitPrefs.treatmentSlug, status: 'COMPLETED' } });
     const rec = recommendedNext(visitPrefs.treatmentSlug, completed + 1, visitPrefs.startAt);
     if (rec) {
-      nextRec = `${formatInterval(rec.weeks)} (≈ ${rec.date.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })})`;
+      nextRec = `${formatInterval(rec.weeks)} (≈ ${rec.date.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', timeZone: CLINIC_TZ })})`;
       followUpRecDate = rec.date.toLocaleDateString('en-CA', { timeZone: 'Europe/London' }); // YYYY-MM-DD
       followUpRecTime = rec.date.toLocaleTimeString('en-GB', { timeZone: 'Europe/London', hour12: false, hour: '2-digit', minute: '2-digit' });
       followUpRecLabel = formatInterval(rec.weeks);
@@ -145,7 +156,7 @@ export default async function BookingDetail({ params }: { params: Promise<{ id: 
   }
 
   // Clinical treatment note (clinical staff only) — decrypt for display.
-  const canClinical = sessionCan(session, 'clients.clinical.view');
+  // (canClinical computed earlier, alongside the visitPrefs.allergyNote gate.)
   let clinicalNote = '';
   if (canClinical && b.clinicalNoteEnc) {
     try {
@@ -168,7 +179,7 @@ export default async function BookingDetail({ params }: { params: Promise<{ id: 
   };
   return (
     <AdminShell user={session?.email} can={can}>
-      <Link href="/admin/bookings" className="text-sm text-[var(--color-gold)] hover:underline">← Bookings</Link>
+      <Link href="/admin/bookings" className="text-sm text-[var(--color-gold-deep)] hover:underline">← Bookings</Link>
 
       <div className="mt-4 flex flex-wrap items-start justify-between gap-4">
         <div>
@@ -184,7 +195,7 @@ export default async function BookingDetail({ params }: { params: Promise<{ id: 
               Course of {courseSessions} sessions{perSessionPence > 0 ? ` · ${money(perSessionPence)} per session` : ''}
             </p>
           ) : (
-            <p className="mt-2 text-sm text-[var(--color-stone-soft)]">Single session</p>
+            <p className="mt-2 text-sm text-[var(--color-stone)]">Single session</p>
           )}
         </div>
         <div className="text-right">
@@ -204,10 +215,10 @@ export default async function BookingDetail({ params }: { params: Promise<{ id: 
         <section>
           <h2 className="mb-3 font-[family-name:var(--font-display)] text-xl">Client</h2>
           <div className="rounded-[var(--radius-md)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-5">
-            <Link href={`/admin/clients/${b.clientId}`} className="font-medium hover:text-[var(--color-gold)]">{name}</Link>
+            <Link href={`/admin/clients/${b.clientId}`} className="font-medium hover:text-[var(--color-gold-deep)]">{name}</Link>
             <p className="mt-1 text-sm text-[var(--color-stone)]">{b.client.email}{b.client.phone ? ` · ${b.client.phone}` : ''}</p>
             {(() => { const n = (b.notes || '').replace(/\s*\[wp:[^\]]+\]/g, '').trim(); return n ? <p className="mt-3 whitespace-pre-line border-t border-[var(--color-line)] pt-3 text-sm">{n}</p> : null; })()}
-            <p className="mt-3 text-xs text-[var(--color-stone-soft)]">
+            <p className="mt-3 text-xs text-[var(--color-stone)]">
               Card {b.stripePaymentMethodId ? 'saved ✓' : 'not saved'} · booked {new Date(b.createdAt).toLocaleDateString('en-GB')}
             </p>
             {!b.stripePaymentMethodId && !['CANCELLED', 'COMPLETED', 'NO_SHOW'].includes(b.status) && sessionCan(session, 'bookings.charge') && (
@@ -218,10 +229,18 @@ export default async function BookingDetail({ params }: { params: Promise<{ id: 
           {/* Health & consent — clinical safety at a glance */}
           <div className="mt-4 rounded-[var(--radius-md)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-5">
             <p className="eyebrow mb-3 text-[var(--color-stone)]">Health &amp; consent</p>
-            {b.client.medicalFlag && (
-              <p className="mb-3 rounded-[var(--radius-sm)] bg-[color-mix(in_oklab,#c0392b_14%,transparent)] px-3 py-2 text-sm font-medium text-[var(--color-ink)]">⚠ {b.client.medicalFlag}</p>
+            {canClinical ? (
+              <>
+                {b.client.medicalFlag && (
+                  <p className="mb-3 rounded-[var(--radius-sm)] bg-[color-mix(in_oklab,#c0392b_14%,transparent)] px-3 py-2 text-sm font-medium text-[var(--color-ink)]">⚠ {b.client.medicalFlag}</p>
+                )}
+                {b.client.allergies && <p className="mb-3 text-sm"><span className="text-[var(--color-stone)]">Allergies:</span> {b.client.allergies}</p>}
+              </>
+            ) : (
+              (b.client.medicalFlag || b.client.allergies) && (
+                <p className="mb-3 text-sm text-[var(--color-stone)]">Clinical notes on file — view permission required.</p>
+              )
             )}
-            {b.client.allergies && <p className="mb-3 text-sm"><span className="text-[var(--color-stone)]">Allergies:</span> {b.client.allergies}</p>}
             {b.client.assessments.length === 0 ? (
               <p className="text-sm text-[var(--color-stone)]">No health or consent forms on file.</p>
             ) : (
@@ -234,7 +253,7 @@ export default async function BookingDetail({ params }: { params: Promise<{ id: 
                 ))}
               </ul>
             )}
-            <Link href={`/admin/clients/${b.clientId}`} className="mt-3 inline-block text-xs text-[var(--color-gold)] hover:underline">View full health records →</Link>
+            <Link href={`/admin/clients/${b.clientId}`} className="mt-3 inline-block text-xs text-[var(--color-gold-deep)] hover:underline">View full health records →</Link>
           </div>
 
           {/* Staff: book the client's next appointment (fills this column + delivers
@@ -257,7 +276,7 @@ export default async function BookingDetail({ params }: { params: Promise<{ id: 
                   {b.finishedAt ? 'Completed — review the walkthrough & timings' : b.startedAt ? 'In progress — rejoin the walkthrough' : 'Run the guided client walkthrough: arrival, consent, treatment, aftercare'}
                 </span>
               </span>
-              <span aria-hidden className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-[var(--color-gold)] text-white">→</span>
+              <span aria-hidden className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-[var(--color-gold-deep)] text-white">→</span>
             </Link>
           )}
           {/* Treatments & billing — itemised total; add a treatment mid-session */}
@@ -281,7 +300,7 @@ export default async function BookingDetail({ params }: { params: Promise<{ id: 
                 </div>
               </div>
               {canAddTreatment && <div className="mt-4"><AddTreatment bookingId={b.id} variants={variantOptions} /></div>}
-              {b.chargedAt && addOnItems.length > 0 && <p className="mt-3 text-xs text-[var(--color-stone-soft)]">Already charged — add further treatments to a new booking.</p>}
+              {b.chargedAt && addOnItems.length > 0 && <p className="mt-3 text-xs text-[var(--color-stone)]">Already charged — add further treatments to a new booking.</p>}
             </div>
           )}
           <ReadinessPanel items={readiness.items} ready={readiness.ready} neededCount={readiness.neededCount} started={!!b.startedAt} />
@@ -290,7 +309,8 @@ export default async function BookingDetail({ params }: { params: Promise<{ id: 
             sop={{ title: sop.title, content: sop.content }}
             sopSteps={sopSteps}
             sopSaved={sopSaved}
-            medicalFlag={b.client.medicalFlag}
+            medicalFlag={canClinical ? b.client.medicalFlag : null}
+            hasMedicalFlag={!!b.client.medicalFlag}
             state={{
               sopAcknowledgedAt: b.sopAcknowledgedAt?.toISOString() ?? null,
               medicalFlagReviewedAt: b.medicalFlagReviewedAt?.toISOString() ?? null,
@@ -305,6 +325,7 @@ export default async function BookingDetail({ params }: { params: Promise<{ id: 
             bookingId={b.id}
             clientId={b.client.id}
             treatmentForm={consentTemplate && consentTemplate.active ? { key: consentTemplate.key, title: consentTemplate.title } : null}
+            templates={consentTemplates}
             signed={signedConsents.map((s) => ({ id: s.id, title: s.title, signedAt: s.signedAt.toISOString(), declined: s.declined, kind: s.kind }))}
             pending={pendingConsents}
             baseUrl={site.url.replace(/\/$/, '')}
@@ -335,6 +356,7 @@ export default async function BookingDetail({ params }: { params: Promise<{ id: 
               refundableUntil={b.chargedAt ? new Date(b.chargedAt.getTime() + (await import('@/lib/settings').then((m) => m.getConfigNumber('refund_window_days'))) * 24 * 60 * 60 * 1000).toISOString() : null}
               canManage={sessionCan(session, 'bookings.manage')}
               canCharge={sessionCan(session, 'bookings.charge')}
+              pointsRedeemedPence={b.pointsRedeemedPence}
             />
           </div>
         </section>
@@ -350,7 +372,7 @@ export default async function BookingDetail({ params }: { params: Promise<{ id: 
             <li key={e.id} className="relative">
               <span className="absolute -left-[1.45rem] top-1.5 h-2.5 w-2.5 rounded-full bg-[var(--color-gold)]" />
               <p className="text-sm font-medium">{e.summary}</p>
-              <p className="mt-0.5 text-xs text-[var(--color-stone-soft)]">
+              <p className="mt-0.5 text-xs text-[var(--color-stone)]">
                 {new Date(e.createdAt).toLocaleString('en-GB')} · {e.action.toLowerCase().replace(/_/g, ' ')} · {e.actor}
               </p>
             </li>
@@ -371,9 +393,9 @@ export default async function BookingDetail({ params }: { params: Promise<{ id: 
 
       {visitPrefs && (visitPrefs.refreshments.length > 0 || visitPrefs.allergyNote || nextRec || visitPrefs.aftercareAckAt) && (
         <div className="mt-6 rounded-[var(--radius-md)] border border-[var(--color-line)] bg-[var(--color-bone)] p-4 text-sm">
-          <p className="mb-2 text-xs font-medium uppercase tracking-wide text-[var(--color-stone-soft)]">Visit prep</p>
+          <p className="mb-2 text-xs font-medium uppercase tracking-wide text-[var(--color-stone)]">Visit prep</p>
           {visitPrefs.refreshments.length > 0 && <p>☕ Refreshments: <span className="font-medium text-[var(--color-ink)]">{visitPrefs.refreshments.map(refreshmentLabel).join(', ')}</span></p>}
-          {visitPrefs.allergyNote && <p className="text-[var(--color-blush)]">⚠ Allergies/dietary: <span className="font-medium">{visitPrefs.allergyNote}</span></p>}
+          {visitPrefs.allergyNote && <p className="text-[var(--color-blush-deep)]">⚠ Allergies/dietary: <span className="font-medium">{visitPrefs.allergyNote}</span></p>}
           <p className="text-[var(--color-stone)]">Aftercare agreed: {visitPrefs.aftercareAckAt ? `Yes (${visitPrefs.aftercareAckAt.toLocaleDateString('en-GB')})` : 'Not yet'}</p>
           {nextRec && <p className="text-[var(--color-stone)]">Recommended next session: <span className="font-medium text-[var(--color-ink)]">{nextRec}</span></p>}
         </div>

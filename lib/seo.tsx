@@ -169,7 +169,11 @@ export function serviceLd({
 }) {
   const proc: Record<string, unknown> = {
     '@context': 'https://schema.org',
-    '@type': category === 'dentistry' ? 'Dentistry' : 'MedicalProcedure',
+    // BLD-876: Dentistry is a MedicalSpecialty enum member, not an instantiable
+    // type — the entity is always a MedicalProcedure, with the specialty carried
+    // on relevantSpecialty where it applies.
+    '@type': 'MedicalProcedure',
+    ...(category === 'dentistry' ? { relevantSpecialty: 'https://schema.org/Dentistry' } : {}),
     name,
     description,
     url: `${base}${path}`,
@@ -273,7 +277,17 @@ export function reviewLd(r: { author: string; rating: number; body: string; date
 }
 
 /** Course schema for K Academy training pages (rich-result eligible). */
-export function courseLd(c: { title: string; description: string; path: string; pricePence?: number | null; durationText?: string | null }) {
+export function courseLd(c: {
+  title: string;
+  description: string;
+  path: string;
+  pricePence?: number | null;
+  durationText?: string | null;
+  accreditations?: string[];
+  level?: string | null;
+  teaches?: string[];
+  prerequisites?: string | null;
+}) {
   const o: Record<string, unknown> = {
     '@context': 'https://schema.org',
     '@type': 'Course',
@@ -290,6 +304,20 @@ export function courseLd(c: { title: string; description: string; path: string; 
   };
   if (c.pricePence && c.pricePence > 0) {
     o.offers = { '@type': 'Offer', category: 'Tuition', price: (c.pricePence / 100).toFixed(2), priceCurrency: 'GBP', url: `${base}${c.path}`, availability: 'https://schema.org/InStock' };
+  }
+  if (c.accreditations?.length) {
+    const credMap: Record<string, string> = { VTCT: 'VTCT', OFQUAL: 'Ofqual', CPD: 'CPD' };
+    const creds = c.accreditations.map((a) => {
+      const prefix = credMap[a] ?? a;
+      return c.level ? `${prefix} ${c.level} Certificate` : `${prefix} Certificate`;
+    });
+    o.educationalCredentialAwarded = creds.join(', ');
+  }
+  if (c.teaches?.length) {
+    o.teaches = c.teaches.map((t) => ({ '@type': 'DefinedTerm', name: t }));
+  }
+  if (c.prerequisites) {
+    o.competencyRequired = c.prerequisites;
   }
   return o;
 }

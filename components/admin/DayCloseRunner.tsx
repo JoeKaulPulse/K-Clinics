@@ -176,7 +176,7 @@ export function DayCloseRunner({
                     <svg viewBox="0 0 24 24" className="h-5 w-5 shrink-0 text-[var(--color-gold)]" fill="none"><path d="M12 3l7 3v5c0 4.5-3 7.6-7 9-4-1.4-7-4.5-7-9V6l7-3z" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round" /></svg>
                     {total} steps · about 5 minutes. Equipment, fire & security checks included.
                   </div>
-                  <button onClick={() => go(1)} className="mt-9 rounded-full bg-[var(--color-gold)] px-7 py-3.5 font-medium text-white shadow-[var(--shadow-gold)] hover:bg-[var(--color-ink)]">
+                  <button onClick={() => go(1)} className="mt-9 rounded-full bg-[var(--color-gold-deep)] px-7 py-3.5 font-medium text-white shadow-[var(--shadow-gold)] hover:bg-[var(--color-ink)]">
                     Begin close-down
                   </button>
                 </motion.div>
@@ -248,7 +248,7 @@ export function DayCloseRunner({
                           </div>
                           <div className="flex items-center gap-2">
                             {Math.abs(diff) > 1e-9 && (
-                              <span className={`text-xs tabular-nums ${diff < 0 ? 'text-[var(--color-blush)]' : 'text-[var(--color-jade)]'}`}>{diff > 0 ? '+' : ''}{diff}</span>
+                              <span className={`text-xs tabular-nums ${diff < 0 ? 'text-[var(--color-blush-deep)]' : 'text-[var(--color-jade)]'}`}>{diff > 0 ? '+' : ''}{diff}</span>
                             )}
                             <input
                               type="number"
@@ -308,7 +308,7 @@ export function DayCloseRunner({
                     {config.cashHandling && <SummaryRow label="Cash drawer variance" pence={cashVar} />}
                     <div className="flex items-center justify-between rounded-[var(--radius-sm)] border border-[var(--color-line)] px-4 py-3 text-sm">
                       <span className="text-[var(--color-stone)]">Closedown checklist</span>
-                      <span className={doneItems === allItems ? 'text-[var(--color-jade)]' : 'text-[var(--color-blush)]'}>{doneItems}/{allItems} complete</span>
+                      <span className={doneItems === allItems ? 'text-[var(--color-jade)]' : 'text-[var(--color-blush-deep)]'}>{doneItems}/{allItems} complete</span>
                     </div>
                   </div>
 
@@ -321,8 +321,8 @@ export function DayCloseRunner({
                   <label className="mt-6 block text-sm font-medium">Notes for the manager (optional)</label>
                   <textarea rows={3} value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Anything to flag — variance reasons, faults, incidents…" className="mt-2 w-full rounded-[var(--radius-md)] border border-[var(--color-line)] bg-white px-4 py-3 outline-none focus:border-[var(--color-gold)]" />
 
-                  {error && <p className="mt-5 rounded-[var(--radius-sm)] bg-[var(--color-blush)]/25 px-4 py-2.5 text-sm text-[var(--color-ink)]">{error}</p>}
-                  <button onClick={submit} disabled={status === 'saving'} className="mt-8 rounded-full bg-[var(--color-gold)] px-7 py-3.5 font-medium text-white shadow-[var(--shadow-gold)] hover:bg-[var(--color-ink)] disabled:opacity-60">
+                  {error && <p role="alert" aria-live="assertive" className="mt-5 rounded-[var(--radius-sm)] bg-[var(--color-blush)]/25 px-4 py-2.5 text-sm text-[var(--color-ink)]">{error}</p>}
+                  <button onClick={submit} disabled={status === 'saving'} className="mt-8 rounded-full bg-[var(--color-gold-deep)] px-7 py-3.5 font-medium text-white shadow-[var(--shadow-gold)] hover:bg-[var(--color-ink)] disabled:opacity-60">
                     {status === 'saving' ? 'Closing…' : 'Complete close-down'}
                   </button>
                 </motion.div>
@@ -373,7 +373,7 @@ function VarianceRow({ label, pence }: { label: string; pence: number }) {
   return (
     <div className="mt-2 flex items-center justify-between text-sm">
       <span className="text-[var(--color-stone)]">{label}</span>
-      <span className={ok ? 'text-[var(--color-jade)]' : 'font-medium text-[var(--color-blush)]'}>
+      <span className={ok ? 'text-[var(--color-jade)]' : 'font-medium text-[var(--color-blush-deep)]'}>
         {ok ? 'Balanced ✓' : `${pence > 0 ? '+' : '−'}£${(Math.abs(pence) / 100).toFixed(2)}`}
       </span>
     </div>
@@ -385,7 +385,7 @@ function SummaryRow({ label, pence }: { label: string; pence: number }) {
   return (
     <div className="flex items-center justify-between rounded-[var(--radius-sm)] border border-[var(--color-line)] px-4 py-3 text-sm">
       <span className="text-[var(--color-stone)]">{label}</span>
-      <span className={ok ? 'text-[var(--color-jade)]' : 'font-medium text-[var(--color-blush)]'}>
+      <span className={ok ? 'text-[var(--color-jade)]' : 'font-medium text-[var(--color-blush-deep)]'}>
         {ok ? 'Balanced ✓' : `${pence > 0 ? '+' : '−'}£${(Math.abs(pence) / 100).toFixed(2)}`}
       </span>
     </div>
@@ -404,7 +404,7 @@ function DoneScreen({ result, cashHandling, doneItems, allItems, onClose }: { re
         {doneItems}/{allItems} checks complete · {balanced ? 'takings balanced' : 'variance recorded for the manager'}.
         It&apos;s safe to lock up.
       </p>
-      <button onClick={onClose} className="mt-7 inline-block rounded-full bg-[var(--color-gold)] px-6 py-3 font-medium text-white hover:bg-[var(--color-ink)]">
+      <button onClick={onClose} className="mt-7 inline-block rounded-full bg-[var(--color-gold-deep)] px-6 py-3 font-medium text-white hover:bg-[var(--color-ink)]">
         Done
       </button>
     </motion.div>

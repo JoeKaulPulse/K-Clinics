@@ -4,8 +4,10 @@ import { notFound } from 'next/navigation';
 import { PageHero } from '@/components/ui/PageHero';
 import { Reveal } from '@/components/motion/Reveal';
 import { ApplyForm } from '@/components/academy/ApplyForm';
+import { Stars } from '@/components/ui/Stars';
 import { pageMeta, JsonLd, breadcrumbLd, courseLd } from '@/lib/seo';
 import { ACCREDITATION_LABELS, formatFee } from '@/lib/academy';
+import { getActivePromo } from '@/lib/academy-utils';
 
 export const revalidate = 3600;
 
@@ -22,6 +24,7 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
 }
 
 const fmt = (iso: string) => new Date(iso).toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'long', year: 'numeric' });
+const fmtShort = (iso: string) => new Date(iso).toLocaleDateString('en-GB', { month: 'long', year: 'numeric' });
 
 export default async function CoursePage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
@@ -29,13 +32,17 @@ export default async function CoursePage({ params }: { params: Promise<{ slug: s
   const course = await getCourse(slug);
   if (!course) notFound();
 
+  const { getPublishedReviews, getPreviewLessons } = await import('@/lib/lms');
+  const [rating, previews] = await Promise.all([getPublishedReviews(course.id), getPreviewLessons(course.id)]);
+
   const cohortOptions = course.cohorts.map((h) => ({ id: h.id, label: `${fmt(h.startAt.toISOString())}${h.remaining <= 3 ? ` · ${h.remaining} places left` : ''}` }));
+  const activePromo = getActivePromo(course);
 
   return (
     <>
       <JsonLd data={[
         breadcrumbLd([{ name: 'Home', path: '/' }, { name: 'Academy', path: '/academy' }, { name: course.title, path: `/academy/${slug}` }]),
-        courseLd({ title: course.title, description: course.summary || course.description || course.title, path: `/academy/${slug}`, pricePence: course.pricePence, durationText: course.durationText }),
+        courseLd({ title: course.title, description: course.summary || course.description || course.title, path: `/academy/${slug}`, pricePence: course.pricePence, durationText: course.durationText, accreditations: course.accreditations, level: course.level, teaches: course.outcomes.slice(0, 10), prerequisites: course.prerequisites }),
       ]} />
       <PageHero
         eyebrow={course.level ? `K Academy · ${course.level}` : 'K Academy'}
@@ -51,6 +58,14 @@ export default async function CoursePage({ params }: { params: Promise<{ slug: s
               <div className="flex flex-wrap gap-x-6 gap-y-2 text-sm uppercase tracking-[0.14em] text-[var(--color-stone)]">
                 {course.accreditations.map((a) => <span key={a} className="flex items-center gap-2"><span className="text-[var(--color-gold)]">✦</span>{ACCREDITATION_LABELS[a] ?? a}</span>)}
               </div>
+            )}
+
+            {rating.count > 0 && (
+              <a href="#reviews" className="inline-flex items-center gap-2 text-sm text-[var(--color-ink-soft)] hover:text-[var(--color-ink)]">
+                <Stars rating={rating.average} />
+                <span className="font-medium">{rating.average.toFixed(1)}</span>
+                <span className="text-[var(--color-stone)]">· {rating.count} trainee review{rating.count === 1 ? '' : 's'}</span>
+              </a>
             )}
 
             {course.description && <div className="prose-lux whitespace-pre-line text-[var(--color-ink-soft)]">{course.description}</div>}
@@ -88,6 +103,47 @@ export default async function CoursePage({ params }: { params: Promise<{ slug: s
                 </ul>
               </div>
             )}
+
+            {previews.length > 0 && (
+              <div>
+                <h2 className="font-[family-name:var(--font-display)] text-2xl">Try a free taster</h2>
+                <p className="mt-1 text-sm text-[var(--color-stone)]">Sample a lesson before you apply — no sign-up needed.</p>
+                <ul className="mt-4 space-y-2">
+                  {previews.map((p) => (
+                    <li key={p.id}>
+                      <Link href={`/academy/${slug}/taster/${p.id}`} className="flex flex-wrap items-center gap-2 rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-bone)] px-4 py-3 text-sm transition-colors hover:border-[var(--color-gold)]">
+                        <span className="text-[var(--color-gold)]">▶</span>
+                        <span className="font-medium text-[var(--color-ink)]">{p.title}</span>
+                        <span className="text-[var(--color-stone)]">· {p.moduleTitle}{p.durationMin ? ` · ${p.durationMin} min` : ''}</span>
+                        <span className="ml-auto text-xs font-medium text-[var(--color-gold-deep)]">Free →</span>
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
+            {rating.count > 0 && (
+              <div id="reviews" className="scroll-mt-28">
+                <div className="flex flex-wrap items-baseline gap-3">
+                  <h2 className="font-[family-name:var(--font-display)] text-2xl">Trainee reviews</h2>
+                  <span className="flex items-center gap-2 text-sm text-[var(--color-stone)]"><Stars rating={rating.average} /> {rating.average.toFixed(1)} out of 5 · {rating.count} review{rating.count === 1 ? '' : 's'}</span>
+                </div>
+                <ul className="mt-4 grid gap-4 sm:grid-cols-2">
+                  {rating.reviews.map((r) => (
+                    <li key={r.id} className="rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-bone)] p-5">
+                      <div className="flex items-center justify-between gap-2">
+                        <Stars rating={r.rating} />
+                        <span className="text-xs text-[var(--color-stone)]">{fmtShort(r.createdAt)}</span>
+                      </div>
+                      {r.title && <p className="mt-2 font-medium text-[var(--color-ink)]">{r.title}</p>}
+                      {r.body && <p className="mt-1 whitespace-pre-line text-sm text-[var(--color-ink-soft)]">{r.body}</p>}
+                      <p className="mt-3 text-xs text-[var(--color-stone)]">— {r.authorName}</p>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
           </div>
         </Reveal>
 
@@ -95,7 +151,15 @@ export default async function CoursePage({ params }: { params: Promise<{ slug: s
           <div className="space-y-6 lg:sticky lg:top-28">
             <div className="rounded-[var(--radius-xl)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-6">
               <p className="text-xs uppercase tracking-[0.16em] text-[var(--color-stone)]">Course fee</p>
-              <p className="mt-1 font-[family-name:var(--font-display)] text-3xl text-[var(--color-ink)]">{formatFee(course.pricePence)}</p>
+              {activePromo ? (
+                <div className="mt-1 flex flex-wrap items-baseline gap-3">
+                  <span className="font-[family-name:var(--font-display)] text-3xl text-[var(--color-gold-deep)]">{formatFee(activePromo)}</span>
+                  <span className="text-lg text-[var(--color-stone)] line-through">{formatFee(course.pricePence)}</span>
+                  <span className="rounded-full bg-[var(--color-gold)]/15 px-2.5 py-0.5 text-xs font-medium text-[var(--color-gold-deep)]">Special offer</span>
+                </div>
+              ) : (
+                <p className="mt-1 font-[family-name:var(--font-display)] text-3xl text-[var(--color-ink)]">{formatFee(course.pricePence)}</p>
+              )}
               {course.pricePence > 0 && <p className="mt-2 text-sm text-[var(--color-stone)]">Spread the cost monthly, or check if you qualify for <Link href="/academy/funding" className="link-underline font-medium text-[var(--color-ink)]">government or council funding</Link>. No payment is taken until your place is confirmed.</p>}
             </div>
             <ApplyForm courseId={course.id} courseTitle={course.title} cohorts={cohortOptions} />

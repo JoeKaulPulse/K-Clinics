@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { revalidatePath } from 'next/cache';
+import { revalidatePath, revalidateTag } from 'next/cache';
 import { crmEnabled } from '@/lib/crm';
 
 export const runtime = 'nodejs';
@@ -21,7 +21,7 @@ export async function POST(req: Request) {
   });
 
   const { db } = await import('@/lib/db');
-  const { SETTING_KEY } = await import('@/lib/tracking');
+  const { SETTING_KEY, TRACKING_CONFIG_TAG } = await import('@/lib/tracking');
   await db.setting.upsert({
     where: { key: SETTING_KEY },
     create: { key: SETTING_KEY, value, updatedBy: session.email },
@@ -43,6 +43,7 @@ export async function POST(req: Request) {
 
   const { logAudit } = await import('@/lib/audit');
   await logAudit({ action: 'SETTINGS_UPDATED', actor: session.email, actorRole: session.role, summary: 'Updated marketing tracking pixels' });
+  revalidateTag(TRACKING_CONFIG_TAG, {});
   revalidatePath('/', 'layout');
   return NextResponse.json({ ok: true });
 }

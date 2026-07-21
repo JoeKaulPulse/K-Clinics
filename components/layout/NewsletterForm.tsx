@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 
-export function NewsletterForm() {
+export function NewsletterForm({ source = 'footer' }: { source?: string } = {}) {
   const [email, setEmail] = useState('');
   const [company, setCompany] = useState(''); // honeypot
   const [state, setState] = useState<'idle' | 'busy' | 'done' | 'error'>('idle');
@@ -13,7 +13,7 @@ export function NewsletterForm() {
     if (!/\S+@\S+\.\S+/.test(email)) { setState('error'); setMsg('Please enter a valid email address.'); return; }
     setState('busy'); setMsg('');
     try {
-      const res = await fetch('/api/newsletter', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email, company }) });
+      const res = await fetch('/api/newsletter', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email, company, source }) });
       const j = await res.json().catch(() => ({ ok: false }));
       if (j.ok) { setState('done'); setEmail(''); }
       else { setState('error'); setMsg(j.error || 'Something went wrong.'); }
@@ -33,10 +33,10 @@ export function NewsletterForm() {
           onChange={(e) => { setEmail(e.target.value); if (state === 'error') setState('idle'); }}
           placeholder="Your email address"
           aria-label="Your email address"
-          className="min-w-0 flex-1 bg-transparent px-4 py-3 text-sm text-[var(--color-porcelain)] outline-none placeholder:text-[color-mix(in_oklab,var(--color-porcelain)_45%,transparent)]"
+          className="min-w-0 flex-1 bg-transparent px-4 py-3 text-sm text-[var(--color-porcelain)] outline-none placeholder:text-[color-mix(in_oklab,var(--color-porcelain)_45%,transparent)] focus-visible:ring-2 focus-visible:ring-[var(--color-gold)]"
         />
         <input type="text" tabIndex={-1} autoComplete="off" value={company} onChange={(e) => setCompany(e.target.value)} className="absolute -left-[9999px]" aria-hidden />
-        <button type="submit" disabled={state === 'busy'} aria-label="Subscribe" className="grid w-12 shrink-0 place-items-center bg-[var(--color-gold)] text-white transition-colors hover:bg-[var(--color-gold-soft)] hover:text-[var(--color-ink)] disabled:opacity-60">
+        <button type="submit" disabled={state === 'busy'} aria-label="Subscribe" className="grid w-12 shrink-0 place-items-center bg-[var(--color-gold-deep)] text-white transition-colors hover:bg-[var(--color-gold-soft)] hover:text-[var(--color-ink)] disabled:opacity-60">
           {state === 'busy' ? '…' : '→'}
         </button>
       </div>

@@ -48,11 +48,11 @@ export function TreatmentContentEditor({ slug, base, override }: { slug: string;
 
   return (
     <div className="pb-24">
-      <Link href="/admin/services" className="text-sm text-[var(--color-gold)] hover:underline">← Services</Link>
+      <Link href="/admin/services" className="text-sm text-[var(--color-gold-deep)] hover:underline">← Services</Link>
       <div className="mt-2 flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="font-[family-name:var(--font-display)] text-3xl">{base.title}</h1>
-          <p className="mt-1 text-sm text-[var(--color-stone)]">Marketing content for <Link href={`/${slug}`} target="_blank" className="text-[var(--color-gold)] hover:underline">/{slug} ↗</Link>. Pricing is edited on the Services page.</p>
+          <p className="mt-1 text-sm text-[var(--color-stone)]">Marketing content for <Link href={`/${slug}`} target="_blank" className="text-[var(--color-gold-deep)] hover:underline">/{slug} ↗</Link>. Pricing is edited on the Services page.</p>
         </div>
       </div>
 
@@ -65,7 +65,7 @@ export function TreatmentContentEditor({ slug, base, override }: { slug: string;
               <div><label className={label}>Title</label><input className={field} value={f.title} onChange={(e) => set('title', e.target.value)} /></div>
               <div><label className={label}>Tagline</label><input className={field} value={f.tagline} onChange={(e) => set('tagline', e.target.value)} /></div>
               <div><label className={label}>Intro</label><textarea className={`${field} min-h-[90px]`} value={f.intro} onChange={(e) => set('intro', e.target.value)} /></div>
-              <p className="text-xs text-[var(--color-stone-soft)]">Prices are managed in <span className="font-medium">Services &amp; pricing</span> and shown automatically as a “from” price — there’s nothing to set here.</p>
+              <p className="text-xs text-[var(--color-stone)]">Prices are managed in <span className="font-medium">Services &amp; pricing</span> and shown automatically as a “from” price — there’s nothing to set here.</p>
             </div>
           </section>
 
@@ -79,7 +79,7 @@ export function TreatmentContentEditor({ slug, base, override }: { slug: string;
             <div className="space-y-4">
               <div><label className={label}>Meta title</label><input className={field} value={f.metaTitle} onChange={(e) => set('metaTitle', e.target.value)} /></div>
               <div><label className={label}>Meta description</label><textarea className={`${field} min-h-[60px]`} value={f.metaDescription} onChange={(e) => set('metaDescription', e.target.value)} /></div>
-              <div><label className={label}>Keywords <span className="normal-case text-[var(--color-stone-soft)]">(comma-separated)</span></label><input className={field} value={f.keywords} onChange={(e) => set('keywords', e.target.value)} /></div>
+              <div><label className={label}>Keywords <span className="normal-case text-[var(--color-stone)]">(comma-separated)</span></label><input className={field} value={f.keywords} onChange={(e) => set('keywords', e.target.value)} /></div>
               <div><label className={label}>Related treatment slugs</label><input className={field} value={f.related} onChange={(e) => set('related', e.target.value)} placeholder="ipl-phototherapy, hydraglow-facial" /></div>
             </div>
           </section>
@@ -89,7 +89,7 @@ export function TreatmentContentEditor({ slug, base, override }: { slug: string;
           <div className={card}>
             <button disabled={busy} onClick={save} className="w-full rounded-full bg-[var(--color-ink)] px-5 py-3 text-sm text-[var(--color-porcelain)] disabled:opacity-50">{busy ? 'Saving…' : 'Save changes'}</button>
             {msg && <p className={`mt-3 text-sm ${msg.k === 'ok' ? 'text-[var(--color-jade)]' : 'text-[#c0392b]'}`}>{msg.t}</p>}
-            <p className="mt-3 text-xs text-[var(--color-stone-soft)]">Saved changes publish to the live page within a minute.</p>
+            <p className="mt-3 text-xs text-[var(--color-stone)]">Saved changes publish to the live page within a minute.</p>
             {override && <button disabled={busy} onClick={reset} className="mt-4 w-full text-sm text-[var(--color-stone)] hover:text-[#c0392b]">Reset to built-in content</button>}
           </div>
         </aside>
@@ -108,7 +108,7 @@ function Repeater({ title, items, setItems, cols, blank, textarea, labels }: {
       <div className="space-y-3">
         {items.map((it, i) => (
           <div key={i} className="rounded-[var(--radius-md)] border border-[var(--color-line)] bg-[var(--color-bone)] p-3">
-            <div className="mb-2 flex items-center justify-end gap-1 text-[var(--color-stone-soft)]">
+            <div className="mb-2 flex items-center justify-end gap-1 text-[var(--color-stone)]">
               <button onClick={() => setItems(move(items, i, -1))} aria-label="Up" className="hover:text-[var(--color-ink)]">▲</button>
               <button onClick={() => setItems(move(items, i, 1))} aria-label="Down" className="hover:text-[var(--color-ink)]">▼</button>
               <button onClick={() => setItems(items.filter((_, j) => j !== i))} aria-label="Remove" className="ml-1 hover:text-[#c0392b]">✕</button>
@@ -125,7 +125,7 @@ function Repeater({ title, items, setItems, cols, blank, textarea, labels }: {
             </div>
           </div>
         ))}
-        <button onClick={() => setItems([...items, { ...blank }])} className="rounded-full border border-[var(--color-line)] px-3 py-1.5 text-sm hover:border-[var(--color-gold)] hover:text-[var(--color-gold)]">+ Add</button>
+        <button onClick={() => setItems([...items, { ...blank }])} className="rounded-full border border-[var(--color-line)] px-3 py-1.5 text-sm hover:border-[var(--color-gold)] hover:text-[var(--color-gold-deep)]">+ Add</button>
       </div>
     </section>
   );

@@ -35,7 +35,7 @@ export default async function KioskResultPage({ params }: { params: Promise<{ sl
 
   return (
     <main className="flex min-h-screen flex-col items-center justify-center gap-6 bg-[var(--color-ink)] px-5 py-10">
-      <ResultCard result={result} showShare claimHref={`/account/register?ref=kiosk&slug=${result.shareSlug}`} />
+      <ResultCard result={result} showShare claimHref={`/account/signup?ref=kiosk&slug=${result.shareSlug}`} />
       <a
         href="/kiosk/display"
         className="text-sm text-[var(--color-gold-soft)] underline underline-offset-4 hover:text-[var(--color-gold)]"

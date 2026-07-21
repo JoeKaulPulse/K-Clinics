@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { Logo } from '@/components/brand/Logo';
 import { ScoreRing } from './ScoreRing';
 import { ShareButtons } from './ShareButtons';
 
@@ -36,11 +37,14 @@ export function ResultCard({
   origin,
   claimHref,
   showShare = true,
+  onShared,
 }: {
   result: KioskResultView;
   origin?: string;
   claimHref?: string;
   showShare?: boolean;
+  /** Bubbled up from ShareButtons after any successful share action. */
+  onShared?: () => void;
 }) {
   const annotations = (result.annotations ?? []).filter(
     (a) =>
@@ -51,10 +55,16 @@ export function ResultCard({
 
   return (
     <div className="mx-auto w-full max-w-md rounded-[var(--radius-lg)] bg-[var(--color-porcelain)] p-6 shadow-xl">
-      <p className="text-center font-[family-name:var(--font-display)] text-xs uppercase tracking-[0.3em] text-[var(--color-gold)]">
-        KClinics · Skin &amp; Smile
-      </p>
-      <h1 className="mt-3 text-center font-[family-name:var(--font-display)] text-2xl leading-snug text-[var(--color-ink)]">
+      {/* Brand rule: where the logo belongs, render the supplied mark — never
+          typeset the brand name as plain text. "Skin & Smile" is a feature
+          descriptor, not the brand name, so it stays as a text eyebrow. */}
+      <div className="flex flex-col items-center">
+        <Logo />
+        <p className="mt-3 text-center font-[family-name:var(--font-display)] text-xs uppercase tracking-[0.3em] text-[var(--color-gold-deep)]">
+          Skin &amp; Smile
+        </p>
+      </div>
+      <h1 className="mt-4 text-center font-[family-name:var(--font-display)] text-2xl leading-snug text-[var(--color-ink)]">
         {result.headline}
       </h1>
 
@@ -100,6 +110,7 @@ export function ResultCard({
             skinScore={result.skinScore}
             shareCaption={result.shareCaption}
             origin={origin}
+            onShared={onShared}
           />
         </div>
       )}

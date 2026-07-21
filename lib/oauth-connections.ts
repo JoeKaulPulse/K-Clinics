@@ -52,15 +52,21 @@ export async function disconnect(provider: string) {
   await db.externalConnection.deleteMany({ where: { provider } });
 }
 
-/** Return a valid access token, refreshing via `refresh` if expired. */
+/** Return a valid access token, refreshing via `refresh` if expired.
+ *  `forceRefresh` skips the freshness check and refreshes unconditionally — used
+ *  to recover from a token that *looks* fresh but the API rejected (401): some
+ *  legacy connection rows store the raw `expires_in` rather than an absolute
+ *  `expiresAt`, so their expiry is recomputed as "now + expires_in" on every read
+ *  and the stale access token never refreshes on its own. */
 export async function validAccessToken(
   provider: string,
   refresh: (refreshToken: string) => Promise<Tokens | null>,
+  opts?: { forceRefresh?: boolean },
 ): Promise<string | null> {
   const conn = await getConnection(provider);
   if (!conn) return null;
   const { tokens } = conn;
-  const fresh = !tokens.expiresAt || tokens.expiresAt - 60_000 > Date.now();
+  const fresh = !opts?.forceRefresh && (!tokens.expiresAt || tokens.expiresAt - 60_000 > Date.now());
   if (fresh) return tokens.access;
   if (!tokens.refresh) return null;
   const next = await refresh(tokens.refresh);

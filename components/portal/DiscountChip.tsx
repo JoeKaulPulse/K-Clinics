@@ -21,7 +21,7 @@ export function DiscountChip({ code, copyLabel, copiedLabel }: { code: string; c
     <button
       onClick={copy}
       title={copyLabel}
-      className="group inline-flex items-center gap-2 rounded-full border border-dashed border-[var(--color-gold)] bg-[var(--color-porcelain)] px-3.5 py-1.5 font-[family-name:var(--font-mono)] text-sm font-semibold tracking-wide text-[var(--color-gold)] transition-colors hover:bg-[var(--color-gold)]/10"
+      className="group inline-flex items-center gap-2 rounded-full border border-dashed border-[var(--color-gold)] bg-[var(--color-porcelain)] px-3.5 py-1.5 font-[family-name:var(--font-mono)] text-sm font-semibold tracking-wide text-[var(--color-gold-deep)] transition-colors hover:bg-[var(--color-gold)]/10"
     >
       {code}
       {copied ? (

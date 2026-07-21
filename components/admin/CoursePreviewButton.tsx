@@ -12,7 +12,7 @@ export function CoursePreviewButton({ preview }: { preview: CourseLearning | nul
   if (!preview || preview.modules.length === 0) return null;
   return (
     <>
-      <button onClick={() => setOpen(true)} className="rounded-full border border-[var(--color-line)] bg-white px-4 py-2 text-sm font-medium transition-colors hover:border-[var(--color-gold)] hover:text-[var(--color-gold)]">
+      <button onClick={() => setOpen(true)} className="rounded-full border border-[var(--color-line)] bg-white px-4 py-2 text-sm font-medium transition-colors hover:border-[var(--color-gold)] hover:text-[var(--color-gold-deep)]">
         ▶ Preview course
       </button>
       {open && <ImmersiveCourse learning={preview} mode="preview" onExit={() => setOpen(false)} />}

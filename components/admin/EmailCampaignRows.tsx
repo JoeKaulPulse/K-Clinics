@@ -33,14 +33,14 @@ export function EmailCampaignRows({ rows }: { rows: DraftRow[] }) {
   }
 
   return (
-    <div className="overflow-hidden rounded-[var(--radius-lg)] border border-[var(--color-line)]">
+    <div className="overflow-x-auto rounded-[var(--radius-lg)] border border-[var(--color-line)]">
       <table className="w-full text-sm">
         <tbody>
           {rows.map((r) => (
             <tr key={r.id} className="border-b border-[var(--color-line)] last:border-0">
               <td className="p-3">
                 <span className="font-medium">{r.name}</span>
-                <span className="block text-xs text-[var(--color-stone-soft)]">{r.subject || 'No subject yet'} · {r.audience}</span>
+                <span className="block text-xs text-[var(--color-stone)]">{r.subject || 'No subject yet'} · {r.audience}</span>
               </td>
               <td className="p-3 text-xs text-[var(--color-stone)]">
                 {r.status === 'AB_TESTING'
@@ -51,12 +51,12 @@ export function EmailCampaignRows({ rows }: { rows: DraftRow[] }) {
               </td>
               <td className="p-3 text-right">
                 {r.status === 'AB_TESTING' ? (
-                  <span className="text-xs text-[var(--color-stone-soft)]">Testing in progress…</span>
+                  <span className="text-xs text-[var(--color-stone)]">Testing in progress…</span>
                 ) : (
                   <div className="flex flex-wrap justify-end gap-3 text-xs">
-                    <Link href={`/admin/marketing/email/new?id=${r.id}`} className="text-[var(--color-gold)] hover:underline">Edit</Link>
+                    <Link href={`/admin/marketing/email/new?id=${r.id}`} className="text-[var(--color-gold-deep)] hover:underline">Edit</Link>
                     <button disabled={busy === r.id} onClick={() => sendNow(r)} className="text-[var(--color-ink)] hover:underline disabled:opacity-50">{busy === r.id ? '…' : 'Send now'}</button>
-                    <button disabled={busy === r.id} onClick={() => remove(r)} className="text-[var(--color-blush)] hover:underline disabled:opacity-50">{r.status === 'SCHEDULED' ? 'Cancel' : 'Delete'}</button>
+                    <button disabled={busy === r.id} onClick={() => remove(r)} className="text-[var(--color-blush-deep)] hover:underline disabled:opacity-50">{r.status === 'SCHEDULED' ? 'Cancel' : 'Delete'}</button>
                   </div>
                 )}
               </td>
@@ -64,7 +64,7 @@ export function EmailCampaignRows({ rows }: { rows: DraftRow[] }) {
           ))}
         </tbody>
       </table>
-      {err && <p className="border-t border-[var(--color-line)] bg-[var(--color-blush)]/10 p-2 text-center text-xs text-[var(--color-blush)]">{err}</p>}
+      {err && <p role="alert" aria-live="assertive" className="border-t border-[var(--color-line)] bg-[var(--color-blush)]/10 p-2 text-center text-xs text-[var(--color-blush-deep)]">{err}</p>}
     </div>
   );
 }

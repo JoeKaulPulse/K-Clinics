@@ -323,6 +323,25 @@ export async function redeemPointsOnBooking(clientId: string, bookingId: string,
 }
 
 /** Return points tied to a booking (e.g. when it's cancelled). Idempotent. */
+/** BLD-836: claw back SPEND points earned on a booking when its charge is
+ *  refunded — refundBookingPoints below only returns REDEEMED points, so a
+ *  refunded client kept the points they earned on money that went back.
+ *  Pro-rata for partial refunds; idempotent by ledger arithmetic (negative
+ *  SPEND rows on the booking record what has already been reversed, so a
+ *  webhook redelivery or a second partial refund only reverses the delta). */
+export async function reverseSpendPoints(bookingId: string, totalRefundedPence: number, chargedPence: number): Promise<void> {
+  if (chargedPence <= 0 || totalRefundedPence <= 0) return;
+  const rows = await db.clientPoints.findMany({ where: { bookingId, category: 'SPEND' }, select: { points: true, clientId: true } });
+  if (!rows.length) return;
+  const earned = rows.filter((r) => r.points > 0).reduce((s, r) => s + r.points, 0);
+  const reversed = -rows.filter((r) => r.points < 0).reduce((s, r) => s + r.points, 0);
+  const shouldReverse = Math.floor(earned * Math.min(1, totalRefundedPence / chargedPence));
+  const delta = shouldReverse - reversed;
+  if (delta <= 0 || !rows[0]) return;
+  await awardClientPoints({ clientId: rows[0].clientId, points: -delta, category: 'SPEND', reason: 'Points reversed — payment refunded', bookingId, awardedBy: 'system' });
+  try { const { recomputeClientTier } = await import('@/lib/membership'); await recomputeClientTier(rows[0].clientId); } catch { /* tier refresh best-effort */ }
+}
+
 export async function refundBookingPoints(bookingId: string): Promise<void> {
   const b = await db.booking.findUnique({ where: { id: bookingId }, select: { id: true, clientId: true, pointsRedeemed: true, treatmentTitle: true } });
   if (!b || b.pointsRedeemed <= 0) return;
@@ -336,14 +355,18 @@ export async function refundBookingPoints(bookingId: string): Promise<void> {
  *  Idempotent within the year (one BIRTHDAY row per client per ~year). */
 export async function awardBirthdayPoints(): Promise<number> {
   const today = new Date();
-  const clients = await db.client.findMany({ where: { dob: { not: null }, portalActive: true }, select: { id: true, dob: true, firstName: true } });
+  const { getTiers, tierForSpend } = await import('@/lib/membership');
+  const tiers = await getTiers();
+  const clients = await db.client.findMany({ where: { dob: { not: null }, portalActive: true }, select: { id: true, dob: true, firstName: true, membershipTier: true } });
   let n = 0;
   for (const c of clients) {
     if (!c.dob || c.dob.getMonth() !== today.getMonth() || c.dob.getDate() !== today.getDate()) continue;
     const since = new Date(Date.now() - 350 * 864e5);
     const recent = await db.clientPoints.findFirst({ where: { clientId: c.id, category: 'BIRTHDAY', createdAt: { gte: since } } });
     if (recent) continue;
-    const res = await awardClientPoints({ clientId: c.id, points: LOYALTY.birthdayBonus, category: 'BIRTHDAY', reason: 'Happy birthday from KClinics 🎂' });
+    const tier = tiers.find((t) => t.key === c.membershipTier) ?? tierForSpend(tiers, 0);
+    const points = tier?.birthdayBonusPoints ?? LOYALTY.birthdayBonus;
+    const res = await awardClientPoints({ clientId: c.id, points, category: 'BIRTHDAY', reason: 'Happy birthday from KClinics 🎂' });
     if (res.ok) n++;
   }
   return n;

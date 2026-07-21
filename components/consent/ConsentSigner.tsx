@@ -22,6 +22,7 @@ export function ConsentSigner({
   const [name, setName] = useState(defaultName);
   const [ticks, setTicks] = useState<boolean[]>(acknowledgements.map(() => false));
   const [hasSig, setHasSig] = useState(false);
+  const [typedSig, setTypedSig] = useState('');
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState('');
   const [readPct, setReadPct] = useState(0);
@@ -36,9 +37,10 @@ export function ConsentSigner({
     setErr('');
     if (!name.trim()) return setErr('Please type your full name.');
     if (!allTicked) return setErr('Please confirm every statement first.');
-    if (!hasSig) return setErr('Please sign in the box.');
-    const signatureDataUrl = padRef.current?.toDataURL() ?? '';
-    if (!signatureDataUrl) return setErr('Please sign in the box.');
+    const typedTrim = typedSig.trim();
+    if (!hasSig && typedTrim.length < 2) return setErr('Please sign in the box, or type your name to sign.');
+    const signatureDataUrl = hasSig ? (padRef.current?.toDataURL() ?? '') : renderTypedSignature(typedTrim);
+    if (!signatureDataUrl) return setErr('Please sign in the box, or type your name to sign.');
     setBusy(true);
     const res = await fetch('/api/consent/sign', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -64,7 +66,7 @@ export function ConsentSigner({
           initial={reduce ? false : { scale: 0 }}
           animate={{ scale: 1 }}
           transition={{ type: 'spring', stiffness: 260, damping: 18, delay: 0.1 }}
-          className="mx-auto grid h-16 w-16 place-items-center rounded-full bg-[var(--color-gold)] text-white"
+          className="mx-auto grid h-16 w-16 place-items-center rounded-full bg-[var(--color-gold-deep)] text-white"
         >
           <svg width="28" height="28" viewBox="0 0 12 12" fill="none"><path d="M2 6.2 4.8 9 10 3.4" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" /></svg>
         </motion.span>
@@ -89,7 +91,7 @@ export function ConsentSigner({
       <AnimatePresence mode="wait">
         {act === 'read' && (
           <motion.section key="read" {...fade}>
-            <p className="text-center text-xs uppercase tracking-[0.2em] text-[var(--color-gold)]">Step 1 · Read</p>
+            <p className="text-center text-xs uppercase tracking-[0.2em] text-[var(--color-gold-deep)]">Step 1 · Read</p>
             <h2 className="mt-1 text-center font-[family-name:var(--font-display)] text-2xl">{title}</h2>
 
             <div className="relative mt-5 overflow-hidden rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-porcelain)]">
@@ -114,16 +116,16 @@ export function ConsentSigner({
             </div>
 
             <button type="button" onClick={() => setAct('agree')}
-              className="mt-5 inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-full bg-[var(--color-ink)] px-6 py-3.5 text-base font-medium text-[var(--color-porcelain)] transition-colors hover:bg-[var(--color-gold)]">
+              className="mt-5 inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-full bg-[var(--color-ink)] px-6 py-3.5 text-base font-medium text-[var(--color-porcelain)] transition-colors hover:bg-[var(--color-gold-deep)]">
               I’ve read this — continue
             </button>
-            <p className="mt-2 text-center text-xs text-[var(--color-stone-soft)]" role="status">{readPct < 100 ? 'Scroll to read it all — the gold line tracks your place.' : 'Read to the end — thank you.'}</p>
+            <p className="mt-2 text-center text-xs text-[var(--color-stone)]" role="status">{readPct < 100 ? 'Scroll to read it all — the gold line tracks your place.' : 'Read to the end — thank you.'}</p>
           </motion.section>
         )}
 
         {act === 'agree' && (
           <motion.section key="agree" {...fade}>
-            <p className="text-center text-xs uppercase tracking-[0.2em] text-[var(--color-gold)]">Step 2 · Confirm</p>
+            <p className="text-center text-xs uppercase tracking-[0.2em] text-[var(--color-gold-deep)]">Step 2 · Confirm</p>
             <h2 className="mt-1 text-center font-[family-name:var(--font-display)] text-2xl">Tap each statement to confirm</h2>
             <p className="mt-1 text-center text-xs tabular-nums text-[var(--color-stone)]">{ticks.filter(Boolean).length} of {acknowledgements.length} confirmed</p>
 
@@ -142,7 +144,7 @@ export function ConsentSigner({
                         ? 'border-[var(--color-gold)] bg-[var(--color-bone)]'
                         : 'border-[var(--color-line)] bg-[var(--color-porcelain)] hover:border-[var(--color-gold)]/50'}`}
                     >
-                      <span aria-hidden className={`mt-0.5 grid h-5 w-5 shrink-0 place-items-center rounded-full border transition-colors duration-200 ${on ? 'border-[var(--color-gold)] bg-[var(--color-gold)] text-white' : 'border-[var(--color-line)]'}`}>
+                      <span aria-hidden className={`mt-0.5 grid h-5 w-5 shrink-0 place-items-center rounded-full border transition-colors duration-200 ${on ? 'border-[var(--color-gold)] bg-[var(--color-gold-deep)] text-white' : 'border-[var(--color-line)]'}`}>
                         {on && <svg width="11" height="11" viewBox="0 0 12 12" fill="none"><path d="M2 6.2 4.8 9 10 3.4" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" /></svg>}
                       </span>
                       <span className={on ? 'text-[var(--color-ink)]' : 'text-[var(--color-ink-soft)]'}>{a}</span>
@@ -155,7 +157,7 @@ export function ConsentSigner({
             <div className="mt-5 flex items-center gap-3">
               <button type="button" onClick={() => setAct('read')} className="min-h-11 rounded-full px-4 py-2 text-sm text-[var(--color-stone)] transition-colors hover:text-[var(--color-ink)]">← Back</button>
               <button type="button" disabled={!allTicked} onClick={() => setAct('sign')}
-                className="min-h-12 flex-1 rounded-full bg-[var(--color-ink)] px-6 py-3.5 text-base font-medium text-[var(--color-porcelain)] transition-colors hover:bg-[var(--color-gold)] disabled:opacity-40">
+                className="min-h-12 flex-1 rounded-full bg-[var(--color-ink)] px-6 py-3.5 text-base font-medium text-[var(--color-porcelain)] transition-colors hover:bg-[var(--color-gold-deep)] disabled:opacity-40">
                 Continue to sign
               </button>
             </div>
@@ -164,7 +166,7 @@ export function ConsentSigner({
 
         {act === 'sign' && (
           <motion.section key="sign" {...fade}>
-            <p className="text-center text-xs uppercase tracking-[0.2em] text-[var(--color-gold)]">Step 3 · Sign</p>
+            <p className="text-center text-xs uppercase tracking-[0.2em] text-[var(--color-gold-deep)]">Step 3 · Sign</p>
             <h2 className="mt-1 text-center font-[family-name:var(--font-display)] text-2xl">{kind === 'photo_opt_out' ? 'Sign to decline' : 'Sign to consent'}</h2>
 
             <div className="mt-5 rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-6">
@@ -175,9 +177,22 @@ export function ConsentSigner({
               <div className="mt-5">
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-medium uppercase tracking-[0.16em] text-[var(--color-stone)]">Signature</span>
-                  {hasSig && <button type="button" onClick={() => padRef.current?.clear()} className="min-h-9 rounded-full px-3 text-xs text-[var(--color-stone)] transition-colors hover:text-[var(--color-ink)]">Start again</button>}
+                  {(hasSig || typedSig) && (
+                    <button type="button" onClick={() => { padRef.current?.clear(); setTypedSig(''); }} className="min-h-9 rounded-full px-3 text-xs text-[var(--color-stone)] transition-colors hover:text-[var(--color-ink)]">Start again</button>
+                  )}
                 </div>
                 <SignaturePad handleRef={padRef} hasSig={hasSig} onInk={setHasSig} />
+                <div className="mt-3">
+                  <label htmlFor="typed-signature" className="block text-xs font-medium uppercase tracking-[0.16em] text-[var(--color-stone)]">
+                    Can’t draw? Type your full name to sign
+                  </label>
+                  <input
+                    id="typed-signature" value={typedSig} onChange={(e) => setTypedSig(e.target.value)}
+                    autoComplete="off" placeholder="Type your full name here"
+                    className="mt-1.5 w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-3 py-3 text-base italic outline-none transition-colors focus:border-[var(--color-gold)]"
+                    style={{ fontFamily: 'var(--font-display), cursive' }}
+                  />
+                </div>
               </div>
 
               {err && <p role="alert" aria-live="assertive" className="mt-3 rounded-[var(--radius-sm)] bg-[var(--color-blush)]/20 px-3 py-2 text-sm">{err}</p>}
@@ -185,11 +200,11 @@ export function ConsentSigner({
               <div className="mt-5 flex items-center gap-3">
                 <button type="button" onClick={() => setAct('agree')} className="min-h-11 rounded-full px-4 py-2 text-sm text-[var(--color-stone)] transition-colors hover:text-[var(--color-ink)]">← Back</button>
                 <button type="button" onClick={submit} disabled={busy}
-                  className="min-h-12 flex-1 rounded-full bg-[var(--color-gold)] px-6 py-3.5 text-base font-medium text-white transition-colors hover:bg-[var(--color-ink)] disabled:opacity-50">
+                  className="min-h-12 flex-1 rounded-full bg-[var(--color-gold-deep)] px-6 py-3.5 text-base font-medium text-white transition-colors hover:bg-[var(--color-ink)] disabled:opacity-50">
                   {busy ? 'Sealing…' : kind === 'photo_opt_out' ? 'Sign & decline photos' : 'Sign & consent'}
                 </button>
               </div>
-              <p className="mt-3 text-center text-[0.7rem] leading-relaxed text-[var(--color-stone-soft)]">
+              <p className="mt-3 text-center text-[0.7rem] leading-relaxed text-[var(--color-stone)]">
                 Your signature, the time and this device are sealed into a tamper-evident record.
               </p>
             </div>
@@ -198,6 +213,22 @@ export function ConsentSigner({
       </AnimatePresence>
     </div>
   );
+}
+
+// Keyboard/switch-access fallback for the pointer-only ink pad (BLD-796): renders
+// a typed name as an image, so a typed signature seals into the consent record
+// exactly like a drawn one — same signatureDataUrl contract, same tamper-evident guarantee.
+function renderTypedSignature(text: string): string {
+  const canvas = document.createElement('canvas');
+  canvas.width = 600; canvas.height = 176;
+  const ctx = canvas.getContext('2d');
+  if (!ctx) return '';
+  ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, canvas.width, canvas.height);
+  ctx.fillStyle = '#2a2420';
+  ctx.font = 'italic 48px "Brush Script MT", cursive';
+  ctx.textBaseline = 'middle'; ctx.textAlign = 'center';
+  ctx.fillText(text, canvas.width / 2, canvas.height / 2, canvas.width - 40);
+  return canvas.toDataURL('image/png');
 }
 
 type SignaturePadHandle = { toDataURL: () => string; clear: () => void };
@@ -269,7 +300,7 @@ function SignaturePad({ handleRef, hasSig, onInk }: { handleRef: Ref<SignaturePa
     <div className="relative mt-1.5">
       <canvas ref={canvas} className="h-44 w-full touch-none rounded-[var(--radius-sm)] border border-dashed border-[var(--color-gold)]/50 bg-white" aria-label="Signature pad — sign with your finger" />
       {!hasSig && (
-        <span aria-hidden className="pointer-events-none absolute inset-0 grid place-items-center text-sm text-[var(--color-stone-soft)]">
+        <span aria-hidden className="pointer-events-none absolute inset-0 grid place-items-center text-sm text-[var(--color-stone)]">
           Sign here with your finger
         </span>
       )}

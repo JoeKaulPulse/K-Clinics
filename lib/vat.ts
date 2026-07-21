@@ -48,14 +48,30 @@ export type VatBreakdown = { netPence: number; vatPence: number; grossPence: num
 /** Split an amount into net/VAT/gross. When not registered (or exempt/zero), VAT
  *  is 0 and gross == net == the amount. `inclusive` means the amount already
  *  contains VAT. */
+/** Page-level note to display when the clinic is VAT-registered. Empty string when
+ *  not registered (the current default) so callers can gate on truthiness. */
+export async function getVatNote(): Promise<string> {
+  try {
+    const config = await getVatConfig();
+    if (!config.registered) return '';
+    // PRJ-939.1: prices are always inclusive now — the exclusive wording would
+    // contradict what is actually charged.
+    return 'All prices include VAT.';
+  } catch {
+    return '';
+  }
+}
+
 export function vatBreakdown(amountPence: number, cfg: VatConfig, cls: VatClass): VatBreakdown {
   const exempt = cls === 'EXEMPT' || cls === 'ZERO';
   const ratePct = cfg.registered && !exempt ? ratePctForClass(cls, cfg.defaultRatePct) : 0;
   if (ratePct <= 0) return { netPence: amountPence, vatPence: 0, grossPence: amountPence, ratePct: 0, applied: false, exempt: cfg.registered && exempt };
-  if (cfg.inclusive) {
-    const net = Math.round(amountPence / (1 + ratePct / 100));
-    return { netPence: net, vatPence: amountPence - net, grossPence: amountPence, ratePct, applied: true, exempt: false };
-  }
-  const vat = Math.round((amountPence * ratePct) / 100);
-  return { netPence: amountPence, vatPence: vat, grossPence: amountPence + vat, ratePct, applied: true, exempt: false };
+  // PRJ-939.1/BLD-847 (owner decision, 20 Jul): amounts are ALWAYS treated as
+  // VAT-inclusive. The old exclusive branch added VAT on top of the amount for
+  // reporting while every charge path charged the listed amount — so the books
+  // recorded VAT that was never collected. Customers pay exactly the listed
+  // price; the VAT portion is extracted from within it. cfg.inclusive is
+  // retained on the type for compatibility but no longer branches.
+  const net = Math.round(amountPence / (1 + ratePct / 100));
+  return { netPence: net, vatPence: amountPence - net, grossPence: amountPence, ratePct, applied: true, exempt: false };
 }

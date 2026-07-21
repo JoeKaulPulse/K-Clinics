@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { notFound, redirect } from 'next/navigation';
 import { crmEnabled } from '@/lib/crm';
 import { getSession, sessionPermissions, sessionCan } from '@/lib/auth';
+import { decClinical } from '@/lib/clinical-crypto';
 import { AdminShell } from '@/components/admin/AdminShell';
 import { CrmDisabled } from '@/components/admin/CrmDisabled';
 import { ConsultationNotes } from '@/components/admin/ConsultationNotes';
@@ -33,9 +34,11 @@ export default async function ConsultationDetail({ params }: { params: Promise<{
   const can = await sessionPermissions();
   const fullName = [consult.client.firstName, consult.client.lastName].filter(Boolean).join(' ');
 
+  // BLD-913: bodies are encrypted at rest; decClinical tolerates legacy
+  // plaintext rows until the daily backfill has swept them.
   const notes = consult.notes.map((n) => ({
     id: n.id,
-    body: n.body,
+    body: decClinical(n.body) ?? '',
     author: n.author,
     createdAt: n.createdAt.toISOString(),
   }));
@@ -43,9 +46,9 @@ export default async function ConsultationDetail({ params }: { params: Promise<{
   return (
     <AdminShell user={session?.email} can={can}>
       <div className="flex flex-wrap items-center gap-2 text-sm">
-        <Link href="/admin/consultations" className="text-[var(--color-gold)] hover:underline">← Consultations</Link>
-        <span className="text-[var(--color-stone-soft)]">·</span>
-        <Link href={`/admin/clients/${consult.clientId}`} className="text-[var(--color-gold)] hover:underline">{fullName}</Link>
+        <Link href="/admin/consultations" className="text-[var(--color-gold-deep)] hover:underline">← Consultations</Link>
+        <span className="text-[var(--color-stone)]">·</span>
+        <Link href={`/admin/clients/${consult.clientId}`} className="text-[var(--color-gold-deep)] hover:underline">{fullName}</Link>
       </div>
 
       <div className="mt-4 flex flex-wrap items-center justify-between gap-4">
@@ -88,37 +91,37 @@ export default async function ConsultationDetail({ params }: { params: Promise<{
             <dl className="space-y-2 text-sm">
               {consult.treatments.length > 0 && (
                 <div className="grid grid-cols-[1fr_1.5fr] gap-2 border-b border-[var(--color-line)] pb-2">
-                  <dt className="text-[var(--color-stone-soft)]">Treatments</dt>
+                  <dt className="text-[var(--color-stone)]">Treatments</dt>
                   <dd className="font-medium">{consult.treatments.join(', ')}</dd>
                 </div>
               )}
               {consult.concerns && (
                 <div className="grid grid-cols-[1fr_1.5fr] gap-2 border-b border-[var(--color-line)] pb-2">
-                  <dt className="text-[var(--color-stone-soft)]">Concerns</dt>
+                  <dt className="text-[var(--color-stone)]">Concerns</dt>
                   <dd>{consult.concerns}</dd>
                 </div>
               )}
               {consult.preferredTime && (
                 <div className="grid grid-cols-[1fr_1.5fr] gap-2 border-b border-[var(--color-line)] pb-2">
-                  <dt className="text-[var(--color-stone-soft)]">Preferred time</dt>
+                  <dt className="text-[var(--color-stone)]">Preferred time</dt>
                   <dd className="capitalize">{consult.preferredTime}</dd>
                 </div>
               )}
               {consult.preferredContact && (
                 <div className="grid grid-cols-[1fr_1.5fr] gap-2 border-b border-[var(--color-line)] pb-2">
-                  <dt className="text-[var(--color-stone-soft)]">Contact method</dt>
+                  <dt className="text-[var(--color-stone)]">Contact method</dt>
                   <dd className="capitalize">{consult.preferredContact}</dd>
                 </div>
               )}
               {consult.assignedTo && (
                 <div className="grid grid-cols-[1fr_1.5fr] gap-2 border-b border-[var(--color-line)] pb-2">
-                  <dt className="text-[var(--color-stone-soft)]">Assigned to</dt>
+                  <dt className="text-[var(--color-stone)]">Assigned to</dt>
                   <dd>{consult.assignedTo}</dd>
                 </div>
               )}
               {consult.medicalNotes && clinical && (
                 <div className="grid grid-cols-[1fr_1.5fr] gap-2">
-                  <dt className="text-[var(--color-stone-soft)]">Medical notes</dt>
+                  <dt className="text-[var(--color-stone)]">Medical notes</dt>
                   <dd>{consult.medicalNotes}</dd>
                 </div>
               )}
@@ -133,7 +136,7 @@ export default async function ConsultationDetail({ params }: { params: Promise<{
               <p className="font-medium">{fullName}</p>
               <p className="text-xs text-[var(--color-stone)]">{consult.client.email}</p>
             </div>
-            <span className="text-xs text-[var(--color-gold)]">Client record →</span>
+            <span className="text-xs text-[var(--color-gold-deep)]">Client record →</span>
           </Link>
         </aside>
       </div>

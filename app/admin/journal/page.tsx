@@ -27,7 +27,7 @@ export default async function AdminJournalPage() {
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
           <h1 className="font-[family-name:var(--font-display)] text-3xl">Journal</h1>
-          <p className="mt-1 text-sm text-[var(--color-stone)]">{posts.length} {posts.length === 1 ? 'post' : 'posts'} · published posts appear on <Link href="/journal" className="text-[var(--color-gold)] hover:underline">/journal</Link></p>
+          <p className="mt-1 text-sm text-[var(--color-stone)]">{posts.length} {posts.length === 1 ? 'post' : 'posts'} · published posts appear on <Link href="/journal" className="text-[var(--color-gold-deep)] hover:underline">/journal</Link></p>
         </div>
         <Link href="/admin/journal/new" className="rounded-full bg-[var(--color-ink)] px-5 py-2.5 text-sm text-[var(--color-porcelain)]">+ New post</Link>
       </div>

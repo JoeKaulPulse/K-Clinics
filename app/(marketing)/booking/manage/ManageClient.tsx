@@ -34,7 +34,9 @@ export function ManageClient({ token, booking }: { token: string; booking: B }) 
   const [selectedSlot, setSelectedSlot] = useState<string | null>(null);
   const [rescheduleCount, setRescheduleCount] = useState(booking.rescheduleCount);
 
-  const when = new Date(booking.startISO).toLocaleString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' });
+  // Clinic-local (Europe/London) — must match the confirmation email and the
+  // clinic diary regardless of the viewing device's timezone (BLD-795).
+  const when = new Date(booking.startISO).toLocaleString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit', timeZone: 'Europe/London' });
   const cancelled = status === 'CANCELLED';
   const rescheduled = status === 'RESCHEDULED';
   const done = cancelled || rescheduled || booking.status === 'COMPLETED';
@@ -72,7 +74,7 @@ export function ManageClient({ token, booking }: { token: string; booking: B }) 
             .filter((iso) => typeof iso === 'string')
             .map((iso) => ({
               startISO: iso,
-              label: new Date(iso).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }),
+              label: new Date(iso).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/London' }),
             })),
         );
       }
@@ -91,7 +93,7 @@ export function ManageClient({ token, booking }: { token: string; booking: B }) 
       });
       const j = await res.json();
       if (j.ok) {
-        const newWhen = new Date(selectedSlot).toLocaleString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' });
+        const newWhen = new Date(selectedSlot).toLocaleString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit', timeZone: 'Europe/London' });
         setMsg(`Your appointment has been moved to ${newWhen}.${j.charged ? ` A fee of ${money(j.charged)} was charged as you have used your ${MAX_FREE} free reschedules.` : ''} A confirmation email is on its way.`);
         setRescheduleCount((c) => c + 1);
         setShowReschedule(false);
@@ -196,6 +198,7 @@ export function ManageClient({ token, booking }: { token: string; booking: B }) 
                     {slots.map((s) => (
                       <button
                         key={s.startISO}
+                        aria-pressed={selectedSlot === s.startISO}
                         onClick={() => setSelectedSlot(s.startISO)}
                         className={`rounded-full px-3 py-1 text-sm transition ${selectedSlot === s.startISO ? 'bg-[var(--color-ink)] text-[var(--color-porcelain)]' : 'border border-[var(--color-line)] hover:border-[var(--color-gold)]'}`}
                       >

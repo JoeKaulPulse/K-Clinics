@@ -4,7 +4,7 @@ import { crmEnabled } from '@/lib/crm';
 import { getSession, sessionPermissions } from '@/lib/auth';
 import { AdminShell } from '@/components/admin/AdminShell';
 import { CrmDisabled } from '@/components/admin/CrmDisabled';
-import { AddNote, PinToggle, SendEmail, StatusSelect } from '@/components/admin/ClientActions';
+import { AddNote, PinToggle, SendEmail, SendPortalInvite, StatusSelect } from '@/components/admin/ClientActions';
 import { EditClientDetails } from '@/components/admin/EditClientDetails';
 import { LeaderboardCard } from '@/components/admin/LeaderboardCard';
 import { DiscountAction } from '@/components/admin/DiscountActions';
@@ -20,7 +20,7 @@ const NOTE_STYLE: Record<string, { label: string; dot: string; badge: string }> 
   EMAIL: { label: 'Email', dot: 'bg-[var(--color-stone-soft)]', badge: 'bg-[var(--color-bone)] text-[var(--color-stone)]' },
   SMS: { label: 'SMS', dot: 'bg-[var(--color-stone-soft)]', badge: 'bg-[var(--color-bone)] text-[var(--color-stone)]' },
   APPOINTMENT: { label: 'Appointment', dot: 'bg-green-400', badge: 'bg-green-100 text-green-800' },
-  SYSTEM: { label: 'System', dot: 'bg-[var(--color-line)]', badge: 'bg-[var(--color-bone)] text-[var(--color-stone-soft)]' },
+  SYSTEM: { label: 'System', dot: 'bg-[var(--color-line)]', badge: 'bg-[var(--color-bone)] text-[var(--color-stone)]' },
 };
 const noteStyle = (t: string) => NOTE_STYLE[t] ?? NOTE_STYLE.NOTE;
 
@@ -30,6 +30,7 @@ const GENDER_LABEL: Record<string, string> = {
 const genderLabel = (g: string, selfDescribe?: string | null) =>
   g === 'OTHER' && selfDescribe ? selfDescribe : (GENDER_LABEL[g] ?? g);
 import { MedicalFlagEditor } from '@/components/admin/MedicalFlagEditor';
+import { PatchTestEditor } from '@/components/admin/PatchTestEditor';
 import { ClientTasks } from '@/components/admin/ClientTasks';
 import { DataPrivacy } from '@/components/admin/DataPrivacy';
 import { sessionCan } from '@/lib/auth';
@@ -39,7 +40,7 @@ const BK_BADGE: Record<string, string> = {
   PENDING: 'bg-amber-100 text-amber-800',
   CONFIRMED: 'bg-[color-mix(in_oklab,var(--color-jade)_14%,transparent)] text-[var(--color-jade)]',
   COMPLETED: 'bg-[var(--color-ink)] text-[var(--color-porcelain)]',
-  CANCELLED: 'bg-[var(--color-bone)] text-[var(--color-stone-soft)]',
+  CANCELLED: 'bg-[var(--color-bone)] text-[var(--color-stone)]',
   NO_SHOW: 'bg-[var(--color-blush)]/25 text-[var(--color-ink)]',
 };
 
@@ -84,7 +85,7 @@ export default async function ClientDetail({ params }: { params: Promise<{ id: s
       // BLD-423: wrap each assessment in its own try/catch so one corrupt cipher
       // doesn't crash the whole client page (readAssessment returns null on error).
       let f: Awaited<ReturnType<typeof formatAssessment>> | null = null;
-      try { f = await formatAssessment(a.id); } catch { /* skip corrupt record */ }
+      try { f = await formatAssessment(a.id, { actor: session?.email || 'unknown', actorRole: session?.role ?? undefined }); } catch { /* skip corrupt record */ }
       if (!f) continue;
       const current = !seenType.has(a.type);
       seenType.add(a.type);
@@ -140,13 +141,13 @@ export default async function ClientDetail({ params }: { params: Promise<{ id: s
     } catch { /* AI section is best-effort */ }
   }
 
-  // Accountability (UK GDPR Art. 5(2) / Art. 32): record WHO viewed WHOSE clinical
-  // data whenever health/AI content was actually decrypted for display — not just
-  // on SAR export. No clinical content is placed in the summary.
-  if (clinical && (clinicalAssessments.length > 0 || aiAnalyses.length > 0)) {
+  // Accountability (UK GDPR Art. 5(2) / Art. 32): health assessment events are
+  // emitted inside readAssessment (throttled). Log AI analysis access separately
+  // since AI decryption doesn't go through readAssessment.
+  if (clinical && aiAnalyses.length > 0) {
     try {
       const { logAudit } = await import('@/lib/audit');
-      await logAudit({ action: 'ASSESSMENT_VIEWED', actor: session?.email || 'unknown', actorRole: session?.role, clientId: id, summary: 'Clinical record viewed (health/AI data decrypted for display)' });
+      await logAudit({ action: 'ASSESSMENT_VIEWED', actor: session?.email || 'unknown', actorRole: session?.role, clientId: id, summary: 'Clinical AI analysis decrypted for display' });
     } catch { /* audit is best-effort — never block the page */ }
   }
 
@@ -162,7 +163,7 @@ export default async function ClientDetail({ params }: { params: Promise<{ id: s
 
   return (
     <AdminShell user={session?.email} can={can}>
-      <Link href="/admin/clients" className="text-sm text-[var(--color-gold)] hover:underline">← Clients</Link>
+      <Link href="/admin/clients" className="text-sm text-[var(--color-gold-deep)] hover:underline">← Clients</Link>
 
       <div className="mt-4 flex flex-wrap items-start justify-between gap-4">
         <div>
@@ -181,8 +182,9 @@ export default async function ClientDetail({ params }: { params: Promise<{ id: s
         </div>
         {sessionCan(session, 'clients.edit') && (
           <div className="flex items-center gap-2">
-            <EditClientDetails client={{ id: c.id, firstName: c.firstName, lastName: c.lastName, email: c.email, phone: c.phone, dob: c.dob ? new Date(c.dob).toISOString() : null, gender: c.gender, genderSelfDescribe: c.genderSelfDescribe, allergies: c.allergies, notes: c.notes, marketingOptIn: c.marketingOptIn }} />
+            <EditClientDetails client={{ id: c.id, firstName: c.firstName, lastName: c.lastName, email: c.email, phone: c.phone, dob: c.dob ? new Date(c.dob).toISOString() : null, gender: c.gender, genderSelfDescribe: c.genderSelfDescribe, allergies: clinical ? c.allergies : null, notes: c.notes, marketingOptIn: c.marketingOptIn, canEditAllergies: clinical }} />
             <SendEmail clientId={c.id} email={c.email} />
+            <SendPortalInvite clientId={c.id} hasPassword={!!c.passwordHash} />
           </div>
         )}
       </div>
@@ -229,7 +231,7 @@ export default async function ClientDetail({ params }: { params: Promise<{ id: s
             const Group = ({ title, items, accent }: { title: string; items: typeof c.bookings; accent?: boolean }) =>
               items.length === 0 ? null : (
                 <div>
-                  <p className={`mb-2 text-xs font-semibold uppercase tracking-[0.12em] ${accent ? 'text-[var(--color-gold-deep)]' : 'text-[var(--color-stone-soft)]'}`}>{title}</p>
+                  <p className={`mb-2 text-xs font-semibold uppercase tracking-[0.12em] ${accent ? 'text-[var(--color-gold-deep)]' : 'text-[var(--color-stone)]'}`}>{title}</p>
                   <div className="space-y-2">{items.map((b) => <Row key={b.id} b={b} />)}</div>
                 </div>
               );
@@ -260,12 +262,12 @@ export default async function ClientDetail({ params }: { params: Promise<{ id: s
                   <span className={`absolute -left-[1.45rem] top-1.5 h-2.5 w-2.5 rounded-full ${st.dot}`} />
                   <div className="flex flex-wrap items-center gap-2">
                     <span className={`rounded-full px-2 py-0.5 text-[0.6rem] uppercase tracking-wide ${st.badge}`}>{st.label}</span>
-                    {it.pinned && <span className="text-[0.6rem] text-[var(--color-gold)]">★ pinned</span>}
+                    {it.pinned && <span className="text-[0.6rem] text-[var(--color-gold-deep)]">★ pinned</span>}
                   </div>
                   <p className="mt-1 text-sm font-medium">{it.summary}</p>
                   {it.detail && <p className="mt-0.5 whitespace-pre-wrap text-sm text-[var(--color-stone)]">{it.detail}</p>}
                   <div className="mt-0.5 flex items-center gap-3">
-                    <p className="text-xs text-[var(--color-stone-soft)]">
+                    <p className="text-xs text-[var(--color-stone)]">
                       {new Date(it.createdAt).toLocaleString('en-GB')}{it.author ? ` · ${it.author}` : ''}
                     </p>
                     {editable && <PinToggle noteId={it.id} clientId={c.id} pinned={it.pinned} />}
@@ -301,7 +303,7 @@ export default async function ClientDetail({ params }: { params: Promise<{ id: s
                 <div key={a.id} className="rounded-[var(--radius-md)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-4">
                   <div className="flex items-center justify-between gap-3">
                     <p className="text-sm font-medium">{a.summary || 'Analysis'}</p>
-                    <p className="text-xs text-[var(--color-stone-soft)]">{new Date(a.createdAt).toLocaleDateString('en-GB')}</p>
+                    <p className="text-xs text-[var(--color-stone)]">{new Date(a.createdAt).toLocaleDateString('en-GB')}</p>
                   </div>
                   {a.images.length > 0 && (
                     <div className="mt-3 flex flex-wrap gap-2">
@@ -311,10 +313,10 @@ export default async function ClientDetail({ params }: { params: Promise<{ id: s
                   )}
                   {a.findings.length > 0 && (
                     <ul className="mt-3 space-y-1 text-sm text-[var(--color-stone)]">
-                      {a.findings.map((f, i) => <li key={i}><span className="font-medium text-[var(--color-ink)]">{f.label}</span> — {f.note} <span className="text-[var(--color-stone-soft)]">({f.severity})</span></li>)}
+                      {a.findings.map((f, i) => <li key={i}><span className="font-medium text-[var(--color-ink)]">{f.label}</span> — {f.note} <span className="text-[var(--color-stone)]">({f.severity})</span></li>)}
                     </ul>
                   )}
-                  {a.treatments.length > 0 && <p className="mt-2 text-xs text-[var(--color-stone-soft)]">Plan: {a.treatments.join(' · ')}</p>}
+                  {a.treatments.length > 0 && <p className="mt-2 text-xs text-[var(--color-stone)]">Plan: {a.treatments.join(' · ')}</p>}
                 </div>
               ))}
             </div>
@@ -339,9 +341,9 @@ export default async function ClientDetail({ params }: { params: Promise<{ id: s
                         {a.title}
                         <span className={`ml-2 rounded-full px-2 py-0.5 text-[0.6rem] uppercase tracking-[0.12em] ${a.current ? 'bg-[var(--color-gold)]/20 text-[var(--color-ink)]' : 'bg-[var(--color-bone)] text-[var(--color-stone)]'}`}>{a.current ? 'Current' : 'Previous'}</span>
                       </p>
-                      <p className="text-xs text-[var(--color-stone-soft)]">v{a.version} · {new Date(a.submittedAt).toLocaleDateString('en-GB')}</p>
+                      <p className="text-xs text-[var(--color-stone)]">v{a.version} · {new Date(a.submittedAt).toLocaleDateString('en-GB')}</p>
                     </div>
-                    {a.tampered && <p className="mt-1 text-xs font-medium text-[var(--color-blush)]">⚠ Integrity check failed — record may have been altered.</p>}
+                    {a.tampered && <p className="mt-1 text-xs font-medium text-[var(--color-blush-deep)]">⚠ Integrity check failed — record may have been altered.</p>}
                     {a.translatedNote && <p className="mt-1 inline-block rounded-full bg-[var(--color-bone)] px-2.5 py-0.5 text-[0.65rem] text-[var(--color-stone)]">🌐 {a.translatedNote}</p>}
                     <dl className="mt-3 space-y-2">
                       {a.items.map((it) => (
@@ -350,7 +352,7 @@ export default async function ClientDetail({ params }: { params: Promise<{ id: s
                           <dd className="text-sm">
                             {it.value}
                             {it.original && it.original !== it.value && (
-                              <span className="mt-0.5 block text-xs italic text-[var(--color-stone-soft)]">{it.original}</span>
+                              <span className="mt-0.5 block text-xs italic text-[var(--color-stone)]">{it.original}</span>
                             )}
                           </dd>
                         </div>
@@ -378,7 +380,7 @@ export default async function ClientDetail({ params }: { params: Promise<{ id: s
                   <div key={s.id} className="flex items-center justify-between gap-3 rounded-[var(--radius-md)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-4">
                     <div>
                       <p className="text-sm font-medium">{s.title}</p>
-                      <p className="text-xs text-[var(--color-stone-soft)]">
+                      <p className="text-xs text-[var(--color-stone)]">
                         {s.declined ? 'Declined' : 'Signed'} · {new Date(s.signedAt).toLocaleDateString('en-GB')}
                         {s.templateKey === 'legacy_wordpress' ? ' · imported from the old site' : ''}
                       </p>
@@ -400,6 +402,16 @@ export default async function ClientDetail({ params }: { params: Promise<{ id: s
               initial={c.medicalFlag}
               setBy={c.medicalFlagSetBy}
               setAt={c.medicalFlagAt ? c.medicalFlagAt.toISOString() : null}
+            />
+          )}
+
+          {/* Patch test status (clinical staff only) */}
+          {clinical && (
+            <PatchTestEditor
+              clientId={c.id}
+              result={c.patchTestResult}
+              setBy={c.patchTestSetBy}
+              setAt={c.patchTestDate ? c.patchTestDate.toISOString() : null}
             />
           )}
 
@@ -426,11 +438,11 @@ export default async function ClientDetail({ params }: { params: Promise<{ id: s
                         {dc.percent}% · {dc.status.toLowerCase()}
                       </span>
                     </div>
-                    {dc.flagged && <p className="mt-1 text-xs font-medium text-[var(--color-blush)]">⚠ Flagged — matched an existing claim.</p>}
+                    {dc.flagged && <p className="mt-1 text-xs font-medium text-[var(--color-blush-deep)]">⚠ Flagged — matched an existing claim.</p>}
                     <div className="mt-2 flex items-center gap-2">
                       {dc.status === 'ACTIVE' && <DiscountAction claimId={dc.id} action="revoke" label="Revoke" />}
                       {(dc.status === 'BLOCKED' || dc.status === 'REVOKED') && <DiscountAction claimId={dc.id} action="restore" label="Grant anyway" />}
-                      {dc.reviewedBy && <span className="text-xs text-[var(--color-stone-soft)]">by {dc.reviewedBy}</span>}
+                      {dc.reviewedBy && <span className="text-xs text-[var(--color-stone)]">by {dc.reviewedBy}</span>}
                     </div>
                   </div>
                 ))}
@@ -445,10 +457,10 @@ export default async function ClientDetail({ params }: { params: Promise<{ id: s
               <div className="rounded-[var(--radius-md)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-4">
                 <div className="flex items-end justify-between gap-3">
                   <div>
-                    <p className="font-[family-name:var(--font-display)] text-2xl text-[var(--color-gold)]">{loyalty.balance.toLocaleString('en-GB')}</p>
+                    <p className="font-[family-name:var(--font-display)] text-2xl text-[var(--color-gold)] tabular-nums">{loyalty.balance.toLocaleString('en-GB')}</p>
                     <p className="text-xs text-[var(--color-stone)]">points · worth {formatPrice(loyalty.valuePence)}</p>
                   </div>
-                  <div className="text-right text-xs text-[var(--color-stone-soft)]">
+                  <div className="text-right text-xs text-[var(--color-stone)]">
                     {loyalty.expiringSoon > 0 && <p>{loyalty.expiringSoon} expiring soon</p>}
                     {(loyalty.referralsQualified > 0 || loyalty.referralsPending > 0) && (
                       <p>{loyalty.referralsQualified} referral{loyalty.referralsQualified === 1 ? '' : 's'} rewarded</p>
@@ -461,7 +473,7 @@ export default async function ClientDetail({ params }: { params: Promise<{ id: s
                     {loyaltyLedger.map((row) => (
                       <li key={row.id} className="flex items-center justify-between gap-3 py-1.5 text-xs">
                         <span className="min-w-0 truncate text-[var(--color-stone)]">{row.reason}</span>
-                        <span className={`shrink-0 font-medium ${row.points < 0 ? 'text-[var(--color-stone)]' : 'text-[var(--color-jade)]'}`}>{row.points > 0 ? '+' : ''}{row.points}</span>
+                        <span className={`shrink-0 font-medium tabular-nums ${row.points < 0 ? 'text-[var(--color-stone)]' : 'text-[var(--color-jade)]'}`}>{row.points > 0 ? '+' : ''}{row.points}</span>
                       </li>
                     ))}
                   </ul>
@@ -485,8 +497,8 @@ export default async function ClientDetail({ params }: { params: Promise<{ id: s
                   {cn.treatments.length > 0 && <p className="mt-1 text-xs text-[var(--color-stone)]">{cn.treatments.join(', ')}</p>}
                   {cn.message && <p className="mt-2 whitespace-pre-wrap break-words text-sm">{tidyConsultText(cn.message)}</p>}
                   <div className="mt-2 flex items-center justify-between gap-2">
-                    <p className="text-xs text-[var(--color-stone-soft)]">{new Date(cn.createdAt).toLocaleDateString('en-GB')}</p>
-                    <Link href={`/admin/consultations/${cn.id}`} className="text-xs text-[var(--color-gold)] hover:underline">Notes →</Link>
+                    <p className="text-xs text-[var(--color-stone)]">{new Date(cn.createdAt).toLocaleDateString('en-GB')}</p>
+                    <Link href={`/admin/consultations/${cn.id}`} className="text-xs text-[var(--color-gold-deep)] hover:underline">Notes →</Link>
                   </div>
                 </div>
               ))}
@@ -501,9 +513,9 @@ export default async function ClientDetail({ params }: { params: Promise<{ id: s
                 <div key={e.id} className="flex items-center justify-between gap-3 border-b border-[var(--color-line)] px-4 py-2.5 last:border-0">
                   <div>
                     <p className="text-sm">{e.subject}</p>
-                    <p className="text-xs text-[var(--color-stone-soft)]">{e.kind.toLowerCase()} · {new Date(e.createdAt).toLocaleDateString('en-GB')}</p>
+                    <p className="text-xs text-[var(--color-stone)]">{e.kind.toLowerCase()} · {new Date(e.createdAt).toLocaleDateString('en-GB')}</p>
                   </div>
-                  <span className={`text-xs ${e.status === 'SENT' ? 'text-[var(--color-jade)]' : 'text-[var(--color-blush)]'}`}>{e.status.toLowerCase()}</span>
+                  <span className={`text-xs ${e.status === 'SENT' ? 'text-[var(--color-jade)]' : 'text-[var(--color-blush-deep)]'}`}>{e.status.toLowerCase()}</span>
                 </div>
               ))}
             </div>
@@ -517,7 +529,7 @@ export default async function ClientDetail({ params }: { params: Promise<{ id: s
                 {auditRows.map((ev) => (
                   <li key={ev.id} className="border-b border-[var(--color-line)] px-4 py-2.5 last:border-0">
                     <p className="text-sm">{ev.summary}</p>
-                    <p className="mt-0.5 text-xs text-[var(--color-stone-soft)]">
+                    <p className="mt-0.5 text-xs text-[var(--color-stone)]">
                       <span className="uppercase tracking-wide">{ev.action.toLowerCase().replace(/_/g, ' ')}</span>
                       {' · '}{ev.actor}{ev.actorRole ? ` (${ev.actorRole.toLowerCase()})` : ''}
                       {' · '}{new Date(ev.createdAt).toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', timeZone: 'Europe/London' })}

@@ -4,6 +4,7 @@ import { useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'motion/react';
 import { ROLES, PERMISSIONS, PERMISSION_GROUPS, roleDefaults, type Role } from '@/lib/permissions';
+import { useDialogBehaviours } from '@/components/ui/Dialog';
 
 type Profile = { publicProfile: boolean; title: string; photoUrl: string; publicPhone: string; bio: string; credentials: string; yearsExperience: number | null; profileOrder: number; isClinician: boolean };
 type Staff = {
@@ -41,7 +42,7 @@ export function StaffManager({ staff, canManage, actorRole }: { staff: Staff[]; 
         )}
       </div>
 
-      <div className="overflow-hidden rounded-[var(--radius-lg)] border border-[var(--color-line)]">
+      <div className="overflow-x-auto rounded-[var(--radius-lg)] border border-[var(--color-line)]">
         <table className="w-full text-left text-sm">
           <thead className="bg-[var(--color-bone)] text-xs uppercase tracking-[0.14em] text-[var(--color-stone)]">
             <tr>
@@ -77,7 +78,7 @@ export function StaffManager({ staff, canManage, actorRole }: { staff: Staff[]; 
                         <button onClick={() => setProfileFor(s)} className="text-sm font-medium text-[var(--color-stone)] hover:underline" title="Public team-page profile">
                           Profile{s.profile?.publicProfile ? ' ✓' : ''}
                         </button>
-                        <button onClick={() => setEditing(s)} className="text-sm font-medium text-[var(--color-gold)] hover:underline">
+                        <button onClick={() => setEditing(s)} className="text-sm font-medium text-[var(--color-gold-deep)] hover:underline">
                           Edit
                         </button>
                       </span>
@@ -122,6 +123,8 @@ function Editor({ staff, actorRole, onClose, onSaved }: { staff: Staff | null; a
   const [revoke, setRevoke] = useState<Set<string>>(new Set(staff?.permRevoke ?? []));
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
+  // Modal behaviours (focus-in, Tab trap, Escape, focus restore) — shared Dialog primitive (BLD-849/BLD-803).
+  const { panelRef, onKeyDown } = useDialogBehaviours(onClose);
 
   const defaults = useMemo(() => new Set(roleDefaults(role)), [role]);
   const isOwnerTarget = staff?.role === 'OWNER';
@@ -177,14 +180,15 @@ function Editor({ staff, actorRole, onClose, onSaved }: { staff: Staff | null; a
   }
 
   return (
-    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 p-0 sm:items-center sm:p-6">
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onKeyDown={onKeyDown} className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 p-0 sm:items-center sm:p-6">
       <motion.div
+        ref={panelRef} role="dialog" aria-modal="true" aria-labelledby="staff-editor-title" tabIndex={-1}
         initial={{ y: 40, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 40, opacity: 0 }}
         transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
         className="max-h-[92vh] w-full max-w-2xl overflow-y-auto rounded-t-[var(--radius-xl)] bg-[var(--color-porcelain)] p-6 shadow-[var(--shadow-lift)] sm:rounded-[var(--radius-xl)] md:p-8"
       >
         <div className="mb-6 flex items-start justify-between gap-4">
-          <h2 className="font-[family-name:var(--font-display)] text-2xl">{staff ? 'Edit staff member' : 'Add staff member'}</h2>
+          <h2 id="staff-editor-title" className="font-[family-name:var(--font-display)] text-2xl">{staff ? 'Edit staff member' : 'Add staff member'}</h2>
           <button onClick={onClose} aria-label="Close" className="text-[var(--color-stone)] hover:text-[var(--color-ink)]"><span aria-hidden="true">✕</span></button>
         </div>
 
@@ -229,7 +233,7 @@ function Editor({ staff, actorRole, onClose, onSaved }: { staff: Staff | null; a
           <p className="eyebrow mb-1">Access control</p>
           <p className="mb-4 text-sm text-[var(--color-stone)]">
             Defaults come from the role; toggles below override them for this person.{' '}
-            {role === 'OWNER' && <span className="text-[var(--color-gold)]">Owners always have full access.</span>}
+            {role === 'OWNER' && <span className="text-[var(--color-gold-deep)]">Owners always have full access.</span>}
           </p>
           <div className="space-y-5">
             {PERMISSION_GROUPS.map((group) => (
@@ -251,7 +255,7 @@ function Editor({ staff, actorRole, onClose, onSaved }: { staff: Staff | null; a
                           <span className="flex items-center gap-1.5 text-sm font-medium">
                             {p.label}
                             {p.sensitive && <span className="rounded bg-[var(--color-blush)]/30 px-1.5 py-0.5 text-[0.6rem] uppercase tracking-wide">sensitive</span>}
-                            {overridden && <span className="text-[0.6rem] text-[var(--color-gold)]">• custom</span>}
+                            {overridden && <span className="text-[0.6rem] text-[var(--color-gold-deep)]">• custom</span>}
                           </span>
                           <span className="mt-0.5 block text-xs text-[var(--color-stone)]">{p.description}</span>
                         </span>
@@ -267,19 +271,19 @@ function Editor({ staff, actorRole, onClose, onSaved }: { staff: Staff | null; a
           </div>
         </div>
 
-        {error && <p className="mt-5 rounded-[var(--radius-sm)] bg-[var(--color-blush)]/25 px-4 py-2.5 text-sm">{error}</p>}
+        {error && <p role="alert" aria-live="assertive" className="mt-5 rounded-[var(--radius-sm)] bg-[var(--color-blush)]/25 px-4 py-2.5 text-sm">{error}</p>}
         <div className="mt-7 flex flex-wrap items-center justify-end gap-3">
           {staff && (
             <button
               type="button"
               onClick={async () => { if (confirm('Reset this member’s two-factor authentication? They’ll set it up again on next sign-in.')) { await fetch('/api/admin/staff', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ op: 'reset2fa', id: staff.id }) }); alert('2FA reset.'); } }}
-              className="mr-auto text-sm text-[var(--color-blush)] hover:underline"
+              className="mr-auto text-sm text-[var(--color-blush-deep)] hover:underline"
             >
               Reset 2FA
             </button>
           )}
           <button onClick={onClose} className="px-4 py-2.5 text-sm text-[var(--color-stone)]">Cancel</button>
-          <button onClick={save} disabled={saving} className="rounded-full bg-[var(--color-gold)] px-6 py-2.5 text-sm font-medium text-white hover:bg-[var(--color-ink)] disabled:opacity-60">
+          <button onClick={save} disabled={saving} className="rounded-full bg-[var(--color-gold-deep)] px-6 py-2.5 text-sm font-medium text-white hover:bg-[var(--color-ink)] disabled:opacity-60">
             {saving ? 'Saving…' : 'Save'}
           </button>
         </div>
@@ -313,6 +317,8 @@ function ProfileEditor({ staff, onClose, onSaved }: { staff: Staff; onClose: () 
   });
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState('');
+  // Modal behaviours (focus-in, Tab trap, Escape, focus restore) — shared Dialog primitive (BLD-849/BLD-803).
+  const { panelRef, onKeyDown } = useDialogBehaviours(onClose);
   const set = <K extends keyof typeof f>(k: K, v: (typeof f)[K]) => setF((s) => ({ ...s, [k]: v }));
   const field = 'w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-3 py-2 text-sm outline-none focus:border-[var(--color-gold)]';
 
@@ -325,11 +331,11 @@ function ProfileEditor({ staff, onClose, onSaved }: { staff: Staff; onClose: () 
   }
 
   return (
-    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 p-0 sm:items-center sm:p-6">
-      <motion.div initial={{ y: 24, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 24, opacity: 0 }} className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-t-[var(--radius-lg)] bg-[var(--color-porcelain)] p-6 sm:rounded-[var(--radius-lg)]">
+    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onKeyDown={onKeyDown} className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 p-0 sm:items-center sm:p-6">
+      <motion.div ref={panelRef} role="dialog" aria-modal="true" aria-labelledby="staff-profile-title" tabIndex={-1} initial={{ y: 24, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 24, opacity: 0 }} className="max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-t-[var(--radius-lg)] bg-[var(--color-porcelain)] p-6 sm:rounded-[var(--radius-lg)]">
         <div className="mb-4 flex items-center justify-between">
           <div>
-            <h2 className="font-[family-name:var(--font-display)] text-xl">Public team profile</h2>
+            <h2 id="staff-profile-title" className="font-[family-name:var(--font-display)] text-xl">Public team profile</h2>
             <p className="text-sm text-[var(--color-stone)]">{staff.name || staff.email} · shows on the /team page{p?.isClinician ? ' (clinical)' : ' (support)'}</p>
           </div>
           <button onClick={onClose} aria-label="Close" className="text-[var(--color-stone)] hover:text-[var(--color-ink)]"><span aria-hidden="true">✕</span></button>
@@ -347,8 +353,8 @@ function ProfileEditor({ staff, onClose, onSaved }: { staff: Staff; onClose: () 
           <label className="text-xs text-[var(--color-stone)] sm:col-span-2">Credentials<br /><input className={field} value={f.credentials} onChange={(e) => set('credentials', e.target.value)} placeholder="GMC reg. · Aesthetic Medicine" /></label>
           <label className="text-xs text-[var(--color-stone)] sm:col-span-2">Bio<br /><textarea rows={4} className={field} value={f.bio} onChange={(e) => set('bio', e.target.value)} /></label>
         </div>
-        <p className="mt-3 text-xs text-[var(--color-stone-soft)]">Services shown on the card come from this person’s competencies (set in Schedules), and the star rating is calculated from their published reviews.</p>
-        {err && <p className="mt-3 text-sm text-[var(--color-blush)]">{err}</p>}
+        <p className="mt-3 text-xs text-[var(--color-stone)]">Services shown on the card come from this person’s competencies (set in Schedules), and the star rating is calculated from their published reviews.</p>
+        {err && <p role="alert" aria-live="assertive" className="mt-3 text-sm text-[var(--color-blush-deep)]">{err}</p>}
         <div className="mt-5 flex justify-end gap-3">
           <button onClick={onClose} className="px-4 py-2.5 text-sm text-[var(--color-stone)]">Cancel</button>
           <button onClick={save} disabled={busy} className="rounded-full bg-[var(--color-ink)] px-5 py-2.5 text-sm text-[var(--color-porcelain)] disabled:opacity-60">{busy ? 'Saving…' : 'Save profile'}</button>

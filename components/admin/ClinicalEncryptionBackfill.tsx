@@ -74,7 +74,7 @@ export function ClinicalEncryptionBackfill() {
           )}
         </div>
 
-        {error && <p className="mt-3 text-sm text-[#b23b3b]">{error}</p>}
+        {error && <p role="alert" aria-live="assertive" className="mt-3 text-sm text-[#b23b3b]">{error}</p>}
 
         {result && total !== null && total > 0 && (
           <div className="mt-4 rounded-[var(--radius-md)] border border-[var(--color-line)] bg-[var(--color-bone)]/50 px-4 py-3">
@@ -84,7 +84,7 @@ export function ClinicalEncryptionBackfill() {
                 <li key={k}>{FIELD_LABELS[k] ?? k} — {n}</li>
               ))}
             </ul>
-            <p className="mt-2 text-xs text-[var(--color-stone-soft)]">Press the button once more — when it reports nothing left to upgrade, every historic record is encrypted.</p>
+            <p className="mt-2 text-xs text-[var(--color-stone)]">Press the button once more — when it reports nothing left to upgrade, every historic record is encrypted.</p>
           </div>
         )}
       </div>

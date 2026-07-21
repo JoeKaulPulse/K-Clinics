@@ -77,13 +77,18 @@ export async function deliverCampaign(opts: DeliverOpts & { audience: Audience }
 }
 
 /** Send an already-persisted campaign now (draft or scheduled → SENT). Guards
- *  against double-sends by flipping status to SENDING first. */
+ *  against double-sends by atomically claiming SENDING status (BLD-681). */
 export async function sendCampaignById(id: string): Promise<{ ok: boolean; sent?: number; failed?: number; error?: string }> {
   const c = await db.campaign.findUnique({ where: { id } });
   if (!c) return { ok: false, error: 'Campaign not found.' };
-  if (c.status === 'SENT' || c.status === 'SENDING') return { ok: false, error: 'This campaign has already been sent.' };
-  // Claim it so a concurrent cron/click can't send it twice.
-  await db.campaign.update({ where: { id }, data: { status: 'SENDING' } });
+  // Atomic claim: only the caller that wins this update proceeds. Two concurrent
+  // invocations both reading SCHEDULED before either writes SENDING can no
+  // longer both slip through — the second call's updateMany returns count 0.
+  const claimed = await db.campaign.updateMany({
+    where: { id, status: { in: ['DRAFT', 'SCHEDULED'] } },
+    data: { status: 'SENDING' },
+  });
+  if (claimed.count === 0) return { ok: false, error: 'This campaign has already been sent.' };
   let blocks: EmailBlock[] = [];
   try { blocks = JSON.parse(c.body) as EmailBlock[]; } catch { /* empty */ }
   const { sent, failed } = await deliverCampaign({

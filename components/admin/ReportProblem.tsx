@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { usePathname } from 'next/navigation';
+import { useDialogBehaviours } from '@/components/ui/Dialog';
 
 // Floating "Report a problem" button available across the admin. Staff log an
 // issue with a screenshot, detail and urgency; it lands on the Build & Issues
@@ -29,6 +30,8 @@ export function ReportProblem() {
   const [uploading, setUploading] = useState(false);
   const [status, setStatus] = useState<'idle' | 'saving' | 'done' | 'error'>('idle');
   const [error, setError] = useState('');
+  // Modal behaviours (focus-in, Tab trap, Escape, focus restore) — shared Dialog primitive (BLD-849/BLD-803).
+  const { panelRef, onKeyDown } = useDialogBehaviours(() => setOpen(false), open);
 
   async function upload(files: FileList | null) {
     if (!files?.length) return;
@@ -54,13 +57,20 @@ export function ReportProblem() {
     } else { setError(r.error || 'Could not submit.'); setStatus('error'); }
   }
 
+  // The full-screen messages view has its own bottom-right composer; this floating
+  // button would overlap its send button (esp. on mobile), so hide it there.
+  if (pathname.startsWith('/admin/messages')) return null;
+
   return (
     <>
-      <button onClick={() => setOpen(true)} className="fixed bottom-5 right-5 z-40 rounded-full bg-[var(--color-ink)] px-4 py-2.5 text-sm font-medium text-[var(--color-porcelain)] shadow-[var(--shadow-lift)] hover:bg-[var(--color-gold-deep)]">⚑ Report a problem</button>
+      {/* Sit above the shared GuideHost "?" launcher (also fixed bottom-5 right-5):
+          stacking them vertically stops the round help button from overlapping
+          and clipping this pill's label to "Report a prob…". */}
+      <button onClick={() => setOpen(true)} className="fixed bottom-20 right-5 z-40 rounded-full bg-[var(--color-ink)] px-4 py-2.5 text-sm font-medium text-[var(--color-porcelain)] shadow-[var(--shadow-lift)] hover:bg-[var(--color-gold-deep)]">⚑ Report a problem</button>
 
       {open && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-[rgba(42,36,32,0.5)] p-4" onClick={() => setOpen(false)}>
-          <div className="my-8 w-full max-w-lg rounded-[var(--radius-lg)] bg-[var(--color-porcelain)] p-6 shadow-[var(--shadow-lift)]" onClick={(e) => e.stopPropagation()}>
+        <div className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-[rgba(42,36,32,0.5)] p-4" onClick={() => setOpen(false)} onKeyDown={onKeyDown}>
+          <div ref={panelRef} role="dialog" aria-modal="true" aria-label="Report a problem" tabIndex={-1} className="my-8 w-full max-w-lg rounded-[var(--radius-lg)] bg-[var(--color-porcelain)] p-6 shadow-[var(--shadow-lift)]" onClick={(e) => e.stopPropagation()}>
             {status === 'done' ? (
               <div className="py-8 text-center">
                 <p className="font-[family-name:var(--font-display)] text-2xl">Thank you — logged.</p>
@@ -87,10 +97,10 @@ export function ReportProblem() {
                   {shots.length > 0 && <div className="mt-2 flex flex-wrap gap-2">{shots.map((s) => <img key={s} src={s} alt="" className="h-16 w-auto rounded border border-[var(--color-line)]" />)}</div>}
                 </div>
 
-                {error && <p className="mt-3 text-sm text-[var(--color-blush)]">{error}</p>}
+                {error && <p role="alert" aria-live="assertive" className="mt-3 text-sm text-[var(--color-blush-deep)]">{error}</p>}
                 <div className="mt-4 flex justify-end gap-2">
                   <button onClick={() => setOpen(false)} className="rounded-full px-4 py-2 text-sm text-[var(--color-stone)]">Cancel</button>
-                  <button onClick={submit} disabled={status === 'saving'} className="rounded-full bg-[var(--color-gold)] px-6 py-2 text-sm font-medium text-white disabled:opacity-50">{status === 'saving' ? 'Sending…' : 'Send to Claude'}</button>
+                  <button onClick={submit} disabled={status === 'saving'} className="rounded-full bg-[var(--color-gold-deep)] px-6 py-2 text-sm font-medium text-white disabled:opacity-50">{status === 'saving' ? 'Sending…' : 'Send to Claude'}</button>
                 </div>
               </>
             )}

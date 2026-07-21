@@ -35,10 +35,10 @@ export function ConsumablesPanel({ bookingId, items, used }: { bookingId: string
             <li key={u.id} className="flex items-center justify-between gap-3 py-2 text-sm">
               <span>
                 <span className="font-medium">{u.qty} {u.unit}</span> · {u.itemName}
-                {u.batchNo ? <span className="text-[var(--color-stone-soft)]"> · batch {u.batchNo}</span> : ''}
-                {u.by ? <span className="text-xs text-[var(--color-stone-soft)]"> · {u.by}</span> : ''}
+                {u.batchNo ? <span className="text-[var(--color-stone)]"> · batch {u.batchNo}</span> : ''}
+                {u.by ? <span className="text-xs text-[var(--color-stone)]"> · {u.by}</span> : ''}
               </span>
-              <button onClick={() => start(async () => { await removeConsumable(u.id, bookingId); })} disabled={pending} className="shrink-0 text-xs text-[var(--color-stone)] hover:text-[var(--color-blush)] disabled:opacity-50">Remove</button>
+              <button onClick={() => start(async () => { await removeConsumable(u.id, bookingId); })} disabled={pending} className="shrink-0 text-xs text-[var(--color-stone)] hover:text-[var(--color-blush-deep)] disabled:opacity-50">Remove</button>
             </li>
           ))}
         </ul>
@@ -57,7 +57,7 @@ export function ConsumablesPanel({ bookingId, items, used }: { bookingId: string
           <button onClick={add} disabled={pending} className="rounded-full bg-[var(--color-ink)] px-4 py-2 text-sm text-[var(--color-porcelain)] disabled:opacity-60">{pending ? '…' : 'Add'}</button>
         </div>
       )}
-      {err && <p className="mt-2 text-sm text-[var(--color-blush)]">{err}</p>}
+      {err && <p role="alert" aria-live="assertive" className="mt-2 text-sm text-[var(--color-blush-deep)]">{err}</p>}
     </section>
   );
 }

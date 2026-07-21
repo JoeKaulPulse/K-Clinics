@@ -29,7 +29,7 @@ export function PhysicalFulfilment({ items, canManage }: { items: Card[]; canMan
             <p className="mt-0.5 text-[var(--color-stone)]">
               {[c.shipLine1, c.shipLine2, c.shipCity, c.shipPostcode].filter(Boolean).join(', ')}
             </p>
-            <p className="mt-2 text-xs text-[var(--color-stone-soft)]">{money(c.amountPence)} · {c.design || 'champagne'} · <span className="font-mono">{c.code}</span></p>
+            <p className="mt-2 text-xs tabular-nums text-[var(--color-stone)]">{money(c.amountPence)} · {c.design || 'champagne'} · <span className="font-mono">{c.code}</span></p>
             {canManage && (
               <button onClick={() => markPosted(c.id)} disabled={busy === c.id} className="mt-3 rounded-full bg-[var(--color-ink)] px-4 py-1.5 text-xs font-medium text-[var(--color-porcelain)] disabled:opacity-50">
                 {busy === c.id ? 'Saving…' : 'Mark posted ✓'}

@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
+import { useDialogBehaviours } from '@/components/ui/Dialog';
 
 type Row = { id: string; name: string; category: string | null; contactName: string | null; email: string | null; phone: string | null; accountNumber: string | null; xeroContactId: string | null; active: boolean };
 type Call = { id: string; direction: string; startedAt: string; durationSec: number; fromNumber: string; toNumber: string };
@@ -56,18 +57,21 @@ export function SupplierManager({ canManage }: { canManage: boolean }) {
 
   const filtered = rows.filter((s) => !q || `${s.name} ${s.category ?? ''} ${s.contactName ?? ''} ${s.phone ?? ''}`.toLowerCase().includes(q.toLowerCase()));
   const set = <K extends keyof Full>(k: K, v: Full[K]) => setEditing((e) => ({ ...e, [k]: v }));
+  // Modal behaviours (focus-in, Tab trap, Escape, focus restore) — shared Dialog primitive (BLD-849/BLD-803).
+  const closeEdit = useCallback(() => setEditing(null), []);
+  const { panelRef, onKeyDown } = useDialogBehaviours(closeEdit, !!editing);
 
   return (
     <div>
       <div className="mb-4 flex flex-wrap items-center gap-3">
         <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search suppliers…" className={`${field} max-w-xs`} />
-        {canManage && <button onClick={() => setEditing(blank())} className="rounded-full bg-[var(--color-ink)] px-4 py-2 text-sm font-medium text-[var(--color-porcelain)] hover:bg-[var(--color-gold)]">Add supplier</button>}
-        {canManage && <button onClick={importXero} disabled={importing} className="rounded-full border border-[var(--color-line)] px-4 py-2 text-sm font-medium hover:border-[var(--color-gold)] hover:text-[var(--color-gold)] disabled:opacity-50">{importing ? 'Importing…' : 'Import from Xero'}</button>}
+        {canManage && <button onClick={() => setEditing(blank())} className="rounded-full bg-[var(--color-ink)] px-4 py-2 text-sm font-medium text-[var(--color-porcelain)] hover:bg-[var(--color-gold-deep)]">Add supplier</button>}
+        {canManage && <button onClick={importXero} disabled={importing} className="rounded-full border border-[var(--color-line)] px-4 py-2 text-sm font-medium hover:border-[var(--color-gold)] hover:text-[var(--color-gold-deep)] disabled:opacity-50">{importing ? 'Importing…' : 'Import from Xero'}</button>}
       </div>
 
-      <div className="overflow-hidden rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-porcelain)]">
+      <div className="overflow-x-auto rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-porcelain)]">
         {filtered.length === 0 ? (
-          <p className="p-6 text-sm text-[var(--color-stone-soft)]">No suppliers yet.</p>
+          <p className="p-6 text-sm text-[var(--color-stone)]">No suppliers yet.</p>
         ) : (
           <table className="w-full text-sm">
             <thead className="border-b border-[var(--color-line)] text-left text-xs uppercase tracking-wide text-[var(--color-stone)]">
@@ -76,11 +80,11 @@ export function SupplierManager({ canManage }: { canManage: boolean }) {
             <tbody>
               {filtered.map((s) => (
                 <tr key={s.id} onClick={() => openEdit(s.id)} className={`cursor-pointer border-b border-[var(--color-line)] last:border-0 hover:bg-[var(--color-bone)] ${!s.active ? 'opacity-50' : ''}`}>
-                  <td className="px-4 py-2.5 font-medium">{s.name}{!s.active && <span className="ml-2 text-[0.6rem] uppercase text-[var(--color-stone-soft)]">inactive</span>}</td>
+                  <td className="px-4 py-2.5 font-medium">{s.name}{!s.active && <span className="ml-2 text-[0.6rem] uppercase text-[var(--color-stone)]">inactive</span>}</td>
                   <td className="px-4 py-2.5 text-[var(--color-stone)]">{s.category || '—'}</td>
                   <td className="px-4 py-2.5 text-[var(--color-stone)]">{s.contactName || s.email || '—'}</td>
                   <td className="px-4 py-2.5 text-[var(--color-stone)]">{s.phone || '—'}</td>
-                  <td className="px-4 py-2.5">{s.xeroContactId ? <span className="rounded-full bg-[var(--color-jade)]/15 px-2 py-0.5 text-[0.6rem] font-medium text-[var(--color-jade)]">linked</span> : <span className="text-[var(--color-stone-soft)]">—</span>}</td>
+                  <td className="px-4 py-2.5">{s.xeroContactId ? <span className="rounded-full bg-[var(--color-jade)]/15 px-2 py-0.5 text-[0.6rem] font-medium text-[var(--color-jade)]">linked</span> : <span className="text-[var(--color-stone)]">—</span>}</td>
                 </tr>
               ))}
             </tbody>
@@ -89,9 +93,9 @@ export function SupplierManager({ canManage }: { canManage: boolean }) {
       </div>
 
       {editing && (
-        <div className="fixed inset-0 z-50 grid place-items-center bg-black/40 p-4" onClick={() => setEditing(null)}>
-          <div onClick={(e) => e.stopPropagation()} className="max-h-[88vh] w-full max-w-2xl overflow-y-auto rounded-[var(--radius-lg)] bg-[var(--color-porcelain)] p-6 shadow-[var(--shadow-lift)]">
-            <h2 className="font-[family-name:var(--font-display)] text-xl">{editing.id ? 'Edit supplier' : 'New supplier'}</h2>
+        <div className="fixed inset-0 z-50 grid place-items-center bg-black/40 p-4" onClick={() => setEditing(null)} onKeyDown={onKeyDown}>
+          <div ref={panelRef} role="dialog" aria-modal="true" aria-labelledby="supplier-editor-title" tabIndex={-1} onClick={(e) => e.stopPropagation()} className="max-h-[88vh] w-full max-w-2xl overflow-y-auto rounded-[var(--radius-lg)] bg-[var(--color-porcelain)] p-6 shadow-[var(--shadow-lift)]">
+            <h2 id="supplier-editor-title" className="font-[family-name:var(--font-display)] text-xl">{editing.id ? 'Edit supplier' : 'New supplier'}</h2>
             <div className="mt-4 grid gap-3 sm:grid-cols-2">
               <div className="sm:col-span-2"><label className={label}>Name *</label><input className={field} value={editing.name || ''} onChange={(e) => set('name', e.target.value)} disabled={!canManage} /></div>
               <div><label className={label}>Category</label><input className={field} value={editing.category || ''} onChange={(e) => set('category', e.target.value)} disabled={!canManage} placeholder="Consumables, Equipment…" /></div>
@@ -114,7 +118,7 @@ export function SupplierManager({ canManage }: { canManage: boolean }) {
                   {editing.calls.map((c) => (
                     <li key={c.id} className="flex items-center justify-between px-3 py-2">
                       <span>{c.direction === 'INBOUND' ? '↘ Inbound' : '↗ Outbound'} · {new Date(c.startedAt).toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}</span>
-                      <span className="text-[var(--color-stone)]">{Math.floor(c.durationSec / 60)}m {c.durationSec % 60}s</span>
+                      <span className="tabular-nums text-[var(--color-stone)]">{Math.floor(c.durationSec / 60)}m {c.durationSec % 60}s</span>
                     </li>
                   ))}
                 </ul>
@@ -126,16 +130,16 @@ export function SupplierManager({ canManage }: { canManage: boolean }) {
                 <div className="flex items-center justify-between">
                   <p className={label}>Xero bills</p>
                   {editing.xeroContactId
-                    ? <button onClick={() => loadBills(editing.id!)} className="text-xs font-medium text-[var(--color-gold)] hover:underline">Load bills →</button>
-                    : <span className="text-xs text-[var(--color-stone-soft)]">Add a Xero contact ID to see bills</span>}
+                    ? <button onClick={() => loadBills(editing.id!)} className="text-xs font-medium text-[var(--color-gold-deep)] hover:underline">Load bills →</button>
+                    : <span className="text-xs text-[var(--color-stone)]">Add a Xero contact ID to see bills</span>}
                 </div>
                 {billsMsg && <p className="mt-1 text-sm text-[var(--color-stone)]">{billsMsg}</p>}
                 {bills && bills.length > 0 && (
                   <ul className="mt-2 divide-y divide-[var(--color-line)] rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white text-sm">
                     {bills.map((bl, i) => (
                       <li key={i} className="flex items-center justify-between px-3 py-2">
-                        <span>{bl.invoiceNumber} · {bl.date ? new Date(bl.date).toLocaleDateString('en-GB') : '—'} <span className="text-[var(--color-stone-soft)]">({bl.status})</span></span>
-                        <span className="font-medium">£{bl.total.toFixed(2)}{bl.amountDue > 0 && <span className="ml-1 text-[var(--color-blush)]">· £{bl.amountDue.toFixed(2)} due</span>}</span>
+                        <span>{bl.invoiceNumber} · {bl.date ? new Date(bl.date).toLocaleDateString('en-GB') : '—'} <span className="text-[var(--color-stone)]">({bl.status})</span></span>
+                        <span className="font-medium tabular-nums">£{bl.total.toFixed(2)}{bl.amountDue > 0 && <span className="ml-1 text-[var(--color-blush-deep)]">· £{bl.amountDue.toFixed(2)} due</span>}</span>
                       </li>
                     ))}
                   </ul>
@@ -148,7 +152,7 @@ export function SupplierManager({ canManage }: { canManage: boolean }) {
                 {canManage && <button onClick={save} disabled={busy} className="rounded-full bg-[var(--color-ink)] px-5 py-2 text-sm font-medium text-[var(--color-porcelain)] disabled:opacity-50">{busy ? 'Saving…' : 'Save'}</button>}
                 <button onClick={() => setEditing(null)} className="rounded-full border border-[var(--color-line)] px-5 py-2 text-sm font-medium">Close</button>
               </div>
-              {canManage && editing.id && <button onClick={() => remove(editing.id!)} className="text-sm text-[var(--color-blush)] hover:underline">Deactivate</button>}
+              {canManage && editing.id && <button onClick={() => remove(editing.id!)} className="text-sm text-[var(--color-blush-deep)] hover:underline">Deactivate</button>}
             </div>
           </div>
         </div>

@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { MentionInput } from '@/components/admin/MentionInput';
+import { useDialogBehaviours } from '@/components/ui/Dialog';
 
 type Ev = { id: string; kind: string; body: string | null; actor: string; createdAt: string };
 type Subtask = { id: string; ref: string | null; title: string; status: string; assignee: string; ownerInput: boolean; order: number; completedAt: string | null; completedBy: string | null };
@@ -75,7 +76,7 @@ const URGENCY: Record<string, { label: string; cls: string }> = {
   P0: { label: 'P0 · Critical', cls: 'bg-red-100 text-red-800' },
   P1: { label: 'P1 · High', cls: 'bg-amber-100 text-amber-800' },
   P2: { label: 'P2 · Normal', cls: 'bg-[var(--color-bone)] text-[var(--color-stone)]' },
-  P3: { label: 'P3 · Low', cls: 'bg-[var(--color-bone)] text-[var(--color-stone-soft)]' },
+  P3: { label: 'P3 · Low', cls: 'bg-[var(--color-bone)] text-[var(--color-stone)]' },
 };
 const post = (p: object) => fetch('/api/admin/build', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(p) }).then((r) => r.json()).catch(() => ({ ok: false }));
 const fmt = (iso: string) => new Date(iso).toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
@@ -228,11 +229,11 @@ export function BuildBoard({ canManage, isAdmin, github, staff, me }: { canManag
         <span><strong className="text-[var(--color-ink)]">{blocked}</strong> blocked</span>
         <span><strong className="text-[var(--color-ink)]">{awaitingSignoff}</strong> awaiting sign-off</span>
         <span><strong className="text-[var(--color-ink)]">{items.filter((i) => i.assignee === 'claude' && !['SHIPPED', 'CLOSED', 'CANCELLED'].includes(i.status)).length}</strong> with Claude</span>
-        {gh.connected ? <span className="text-[var(--color-jade)]">GitHub ✓{gh.repo ? ` · ${gh.repo}` : ''}</span> : <span className="text-[var(--color-stone-soft)]">GitHub not connected</span>}
+        {gh.connected ? <span className="text-[var(--color-jade)]">GitHub ✓{gh.repo ? ` · ${gh.repo}` : ''}</span> : <span className="text-[var(--color-stone)]">GitHub not connected</span>}
         {gh.connected && canManage && <button onClick={toggleMirror} title="When off, the board never auto-pushes to GitHub — it runs entirely on its own and won’t hit API limits. Turn on to also mirror items to issues." className={`rounded-full px-2 py-0.5 text-xs ${mirror ? 'bg-[var(--color-jade)]/15 text-[var(--color-jade)]' : 'bg-[var(--color-bone)] text-[var(--color-stone)]'}`}>mirror {mirror ? 'on' : 'off'}</button>}
         {backoffUntil > Date.now() && <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs text-amber-800" title="GitHub rate-limited; auto-pushes paused. The board is unaffected.">GitHub cooling down · {new Date(backoffUntil).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}</span>}
         <span className="ml-auto flex flex-wrap items-center gap-2">
-          {canManage && <button onClick={continueWork} disabled={continuing} className="rounded-full bg-[var(--color-gold)] px-4 py-1.5 text-xs font-medium text-white hover:bg-[var(--color-ink)] disabled:opacity-50">{continuing ? 'Prompting…' : '▶ Continue working'}</button>}
+          {canManage && <button onClick={continueWork} disabled={continuing} className="rounded-full bg-[var(--color-gold-deep)] px-4 py-1.5 text-xs font-medium text-white hover:bg-[var(--color-ink)] disabled:opacity-50">{continuing ? 'Prompting…' : '▶ Continue working'}</button>}
           {sessionUrl && <a href={sessionUrl} target="_blank" rel="noreferrer" className="rounded-full border border-[var(--color-jade)] px-3 py-1.5 text-xs text-[var(--color-jade)] hover:bg-[var(--color-jade)]/10">▶ Watch session ↗</a>}
           <button onClick={() => setIdeaOpen(true)} className="rounded-full border border-[var(--color-line)] px-3 py-1.5 text-xs hover:bg-[var(--color-bone)]">💡 Add idea</button>
           <label className="flex items-center gap-1.5 text-xs"><input type="checkbox" checked={mine} onChange={(e) => setMine(e.target.checked)} className="h-3.5 w-3.5 accent-[var(--color-gold)]" /> Mine</label>
@@ -261,7 +262,7 @@ export function BuildBoard({ canManage, isAdmin, github, staff, me }: { canManag
       {view !== 'projects' && (
         <div className="mb-5 flex flex-wrap items-center gap-2 text-xs text-[var(--color-stone)]">
           {(() => { const sel = 'rounded-full border border-[var(--color-line)] bg-white px-2.5 py-1.5 outline-none focus:border-[var(--color-gold)]'; return (<>
-            <span className="text-[var(--color-stone-soft)]">Filter</span>
+            <span className="text-[var(--color-stone)]">Filter</span>
             <select aria-label="Priority" value={fUrgency} onChange={(e) => setFUrgency(e.target.value)} className={sel}>
               <option value="">All priorities</option>
               {Object.keys(URGENCY).map((u) => <option key={u} value={u}>{URGENCY[u].label}</option>)}
@@ -278,7 +279,7 @@ export function BuildBoard({ canManage, isAdmin, github, staff, me }: { canManag
               <option value="">Anyone</option>
               {assigneeOptions.map((a) => <option key={a} value={a}>{a === 'claude' ? 'Claude' : a}</option>)}
             </select>
-            <span className="ml-2 text-[var(--color-stone-soft)]">Sort</span>
+            <span className="ml-2 text-[var(--color-stone)]">Sort</span>
             <select aria-label="Sort by" value={sortBy} onChange={(e) => setSortBy(e.target.value as typeof sortBy)} className={sel}>
               <option value="priority">Priority</option>
               <option value="newest">Newest</option>
@@ -287,7 +288,7 @@ export function BuildBoard({ canManage, isAdmin, github, staff, me }: { canManag
               <option value="ref">Reference</option>
             </select>
             {filtersActive && <button onClick={clearFilters} className="rounded-full border border-[var(--color-line)] px-2.5 py-1 hover:bg-[var(--color-bone)]">Clear</button>}
-            <span className="ml-auto text-[var(--color-stone-soft)]">{view2.length} shown</span>
+            <span className="ml-auto text-[var(--color-stone)]">{view2.length} shown</span>
           </>); })()}
         </div>
       )}
@@ -301,9 +302,9 @@ export function BuildBoard({ canManage, isAdmin, github, staff, me }: { canManag
             <label className="text-xs text-[var(--color-stone)]">Repository<br /><input value={ghForm.repo} onChange={(e) => setGhForm((f) => ({ ...f, repo: e.target.value }))} placeholder="owner/name" className="mt-1 w-56 rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-3 py-2 text-sm outline-none focus:border-[var(--color-gold)]" /></label>
             <label className="text-xs text-[var(--color-stone)]">Access token<br /><input type="password" value={ghForm.token} onChange={(e) => setGhForm((f) => ({ ...f, token: e.target.value }))} placeholder="github_pat_… / ghp_…" className="mt-1 w-64 rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-3 py-2 text-sm outline-none focus:border-[var(--color-gold)]" /></label>
             <button onClick={connectGh} disabled={ghForm.busy} className="rounded-full bg-[var(--color-ink)] px-5 py-2 text-sm font-medium text-[var(--color-porcelain)] disabled:opacity-50">{ghForm.busy ? 'Connecting…' : 'Connect & test'}</button>
-            {canManage && gh.connected && <button onClick={disconnectGh} className="text-xs text-[var(--color-blush)] hover:underline">Disconnect</button>}
+            {canManage && gh.connected && <button onClick={disconnectGh} className="text-xs text-[var(--color-blush-deep)] hover:underline">Disconnect</button>}
           </div>
-          {ghForm.error && <p className="mt-2 text-sm text-[var(--color-blush)]">{ghForm.error}</p>}
+          {ghForm.error && <p role="alert" aria-live="assertive" className="mt-2 text-sm text-[var(--color-blush-deep)]">{ghForm.error}</p>}
         </div>
       )}
 
@@ -318,7 +319,7 @@ export function BuildBoard({ canManage, isAdmin, github, staff, me }: { canManag
         </div>
       )}
 
-      {loading && items.length === 0 ? <p className="text-sm text-[var(--color-stone-soft)]">Loading…</p> : (
+      {loading && items.length === 0 ? <p className="text-sm text-[var(--color-stone)]">Loading…</p> : (
         <>
           {view === 'projects' && <ProjectsView projects={projects} onOpen={(id) => { setProjectFilter(id); setView('kanban'); }} />}
           {view === 'kanban' && <KanbanView columns={COLUMNS} items={view2} counts={counts} onOpen={setActive} />}
@@ -327,7 +328,7 @@ export function BuildBoard({ canManage, isAdmin, github, staff, me }: { canManag
         </>
       )}
 
-      {active && <TaskModal item={active} allItems={items} canManage={canManage} isAdmin={isAdmin} gh={gh} staff={staff} onClose={() => setActive(null)} onChange={load} patch={patch} />}
+      {active && <TaskModal item={active} allItems={items} projects={projects} canManage={canManage} isAdmin={isAdmin} gh={gh} staff={staff} onClose={() => setActive(null)} onChange={load} patch={patch} />}
       {ideaOpen && <IdeaModal onClose={() => setIdeaOpen(false)} onDone={load} />}
     </>
   );
@@ -365,9 +366,9 @@ function Card({ i, onOpen }: { i: Item; onOpen: (i: Item) => void }) {
       <div className="mb-1 flex items-center gap-1.5">
         {i.ref && <span className="rounded bg-[var(--color-bone)] px-1 py-0.5 font-mono text-[0.6rem] tracking-tight text-[var(--color-stone)]">{i.ref}</span>}
         <span className={`rounded-full px-1.5 py-0.5 text-[0.6rem] font-semibold ${URGENCY[i.urgency]?.cls}`}>{i.urgency}</span>
-        <span className="text-[0.6rem] uppercase tracking-wide text-[var(--color-stone-soft)]">{i.type}</span>
+        <span className="text-[0.6rem] uppercase tracking-wide text-[var(--color-stone)]">{i.type}</span>
         {gatedCount(i) > 0 && <span title={`${gatedCount(i)} item(s) need your input`} className="grid h-4 min-w-4 place-items-center rounded-full bg-red-600 px-1 text-[0.6rem] font-bold text-white">{gatedCount(i)}</span>}
-        {r != null && <span className="ml-auto text-[0.6rem] text-[var(--color-stone-soft)]">V:E {r}</span>}
+        {r != null && <span className="ml-auto text-[0.6rem] text-[var(--color-stone)]">V:E {r}</span>}
       </div>
       <p className="break-words text-sm font-medium leading-snug">{i.title}</p>
       {i.project && <p className="mt-0.5 text-[0.6rem] uppercase tracking-wide text-[var(--color-gold-deep)]">▣ {i.project.ref ? `${i.project.ref} · ` : ''}{i.project.name}</p>}
@@ -385,7 +386,7 @@ function Card({ i, onOpen }: { i: Item; onOpen: (i: Item) => void }) {
 }
 
 function ProjectsView({ projects, onOpen }: { projects: Project[]; onOpen: (id: string) => void }) {
-  if (!projects.length) return <p className="text-sm text-[var(--color-stone-soft)]">No projects yet. Projects group an epic + its sub-tasks (formed from an idea).</p>;
+  if (!projects.length) return <p className="text-sm text-[var(--color-stone)]">No projects yet. Projects group an epic + its sub-tasks (formed from an idea).</p>;
   return (
     <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
       {projects.map((p) => (
@@ -406,7 +407,7 @@ function ProjectsView({ projects, onOpen }: { projects: Project[]; onOpen: (id: 
             <span>{p.open} open</span>
             {p.openErrors > 0 && <span className="rounded-full bg-red-100 px-2 py-0.5 font-medium text-red-800">{p.openErrors} error{p.openErrors === 1 ? '' : 's'}</span>}
             {p.userGated > 0 && <span className="font-medium text-red-700">⚑ {p.userGated} need you</span>}
-            {p.originIdeaTitle && <span className="text-[var(--color-stone-soft)]">· from idea</span>}
+            {p.originIdeaTitle && <span className="text-[var(--color-stone)]">· from idea</span>}
           </p>
         </button>
       ))}
@@ -419,7 +420,7 @@ function KanbanView({ columns, items, counts, onOpen }: { columns: { key: string
     <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-6">
       {columns.map((col) => (
         <div key={col.key} className="min-w-0 rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-3">
-          <p className="mb-2 flex items-center justify-between text-xs font-semibold uppercase tracking-wide text-[var(--color-stone)]">{col.label}<span className="text-[var(--color-stone-soft)]">{counts(col.key)}</span></p>
+          <p className="mb-2 flex items-center justify-between text-xs font-semibold uppercase tracking-wide text-[var(--color-stone)]">{col.label}<span className="text-[var(--color-stone)]">{counts(col.key)}</span></p>
           <div className="space-y-2">
             {items.filter((i) => i.status === col.key).map((i) => <Card key={i.id} i={i} onOpen={onOpen} />)}
           </div>
@@ -441,16 +442,16 @@ function ListView({ items, onOpen }: { items: Item[]; onOpen: (i: Item) => void 
           {sorted.map((i) => {
             const done = i.subtasks.filter((s) => s.status === 'DONE').length; const d = durMs(i); const r = ve(i);
             return (
-              <tr key={i.id} onClick={() => onOpen(i)} className="cursor-pointer border-t border-[var(--color-line)] bg-white hover:bg-[var(--color-bone)]">
+              <tr key={i.id} onClick={() => onOpen(i)} tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onOpen(i); } }} className="cursor-pointer border-t border-[var(--color-line)] bg-white hover:bg-[var(--color-bone)]">
                 <td className="px-3 py-2 font-mono text-xs text-[var(--color-stone)]">{i.ref || '—'}</td>
                 <td className="px-3 py-2 font-medium">{i.title}</td>
                 <td className="px-3 py-2 text-xs text-[var(--color-stone)]">{i.type}</td>
                 <td className="px-3 py-2"><span className={`rounded-full px-1.5 py-0.5 text-[0.6rem] font-semibold ${URGENCY[i.urgency]?.cls}`}>{i.urgency}</span></td>
                 <td className="px-3 py-2 text-xs">{i.status.replace('_', ' ').toLowerCase()}</td>
                 <td className="px-3 py-2 text-xs">{i.assignee === 'claude' ? '◆ Claude' : i.assignee.split('@')[0]}</td>
-                <td className="px-3 py-2 text-xs">{r ?? '—'}</td>
-                <td className="px-3 py-2 text-xs">{i.subtasks.length ? `${done}/${i.subtasks.length}` : '—'}</td>
-                <td className="px-3 py-2 text-xs">{d != null ? fmtDur(d) : '—'}</td>
+                <td className="px-3 py-2 text-xs tabular-nums">{r ?? '—'}</td>
+                <td className="px-3 py-2 text-xs tabular-nums">{i.subtasks.length ? `${done}/${i.subtasks.length}` : '—'}</td>
+                <td className="px-3 py-2 text-xs tabular-nums">{d != null ? fmtDur(d) : '—'}</td>
                 <td className="px-3 py-2 text-xs">{i.estCompleteAt ? day(i.estCompleteAt) : '—'}</td>
               </tr>
             );
@@ -463,7 +464,7 @@ function ListView({ items, onOpen }: { items: Item[]; onOpen: (i: Item) => void 
 
 function TimelineView({ items, onOpen }: { items: Item[]; onOpen: (i: Item) => void }) {
   const rows = [...items].filter((i) => i.status !== 'CANCELLED').sort((a, b) => +new Date(a.startedAt || a.createdAt) - +new Date(b.startedAt || b.createdAt));
-  if (!rows.length) return <p className="text-sm text-[var(--color-stone-soft)]">No items to plot.</p>;
+  if (!rows.length) return <p className="text-sm text-[var(--color-stone)]">No items to plot.</p>;
   const starts = rows.map((i) => +new Date(i.startedAt || i.createdAt));
   const ends = rows.map((i) => +new Date(i.closedAt || i.shippedAt || i.estCompleteAt || new Date().toISOString()));
   const min = Math.min(...starts), max = Math.max(...ends, Date.now());
@@ -472,7 +473,7 @@ function TimelineView({ items, onOpen }: { items: Item[]; onOpen: (i: Item) => v
   const barColor = (s: string) => (s === 'CLOSED' ? 'var(--color-jade)' : s === 'SHIPPED' ? 'var(--color-gold)' : s === 'BLOCKED' ? 'var(--color-blush)' : 'var(--color-stone)');
   return (
     <div className="space-y-1.5 rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-4">
-      <div className="mb-2 flex justify-between text-[0.65rem] text-[var(--color-stone-soft)]"><span>{day(new Date(min).toISOString())}</span><span>{day(new Date(max).toISOString())}</span></div>
+      <div className="mb-2 flex justify-between text-[0.65rem] text-[var(--color-stone)]"><span>{day(new Date(min).toISOString())}</span><span>{day(new Date(max).toISOString())}</span></div>
       {rows.map((i) => {
         const s = +new Date(i.startedAt || i.createdAt); const e = +new Date(i.closedAt || i.shippedAt || i.estCompleteAt || new Date().toISOString());
         return (
@@ -490,13 +491,15 @@ function TimelineView({ items, onOpen }: { items: Item[]; onOpen: (i: Item) => v
 }
 
 // ── Task detail modal ────────────────────────────────────────────────────────
-function TaskModal({ item, allItems, canManage, isAdmin, gh, staff, onClose, onChange, patch }: {
-  item: Item; allItems: Item[]; canManage: boolean; isAdmin: boolean; gh: { connected: boolean; repo: string | null };
+function TaskModal({ item, allItems, projects, canManage, isAdmin, gh, staff, onClose, onChange, patch }: {
+  item: Item; allItems: Item[]; projects: Project[]; canManage: boolean; isAdmin: boolean; gh: { connected: boolean; repo: string | null };
   staff: { email: string; name: string | null }[]; onClose: () => void; onChange: () => void; patch: (id: string, body: object) => void;
 }) {
   const d = durMs(item);
   const closed = item.status === 'CLOSED';
   const done = item.subtasks.filter((s) => s.status === 'DONE').length;
+  // Modal behaviours (focus-in, Tab trap, Escape, focus restore) — shared Dialog primitive (BLD-849/BLD-803).
+  const { panelRef, onKeyDown } = useDialogBehaviours(onClose);
 
   // Telemetry editor (managers): value/effort/ETA/tokens saved together.
   const [tel, setTel] = useState({ value: item.value ?? '', effort: item.effort ?? '', estCompleteAt: item.estCompleteAt ? item.estCompleteAt.slice(0, 10) : '', actualTokens: item.actualTokens ?? '' });
@@ -526,6 +529,17 @@ function TaskModal({ item, allItems, canManage, isAdmin, gh, staff, onClose, onC
   // Dependencies
   async function addDep(dependsOnId: string) { if (!dependsOnId) return; const r = await post({ op: 'dep-add', id: item.id, dependsOnId }); if (r.ok) onChange(); else alert(r.error || 'Failed'); }
   async function removeDep(dependsOnId: string) { const r = await post({ op: 'dep-remove', id: item.id, dependsOnId }); if (r.ok) onChange(); else alert(r.error || 'Failed'); }
+
+  // Project — promote this item into a new or existing project, or detach it.
+  const [projBusy, setProjBusy] = useState(false);
+  const [newProj, setNewProj] = useState(false);
+  const [projName, setProjName] = useState('');
+  async function promote(body: { projectId?: string; name?: string }) {
+    setProjBusy(true);
+    const r = await post({ op: 'promote-to-project', id: item.id, ...body });
+    setProjBusy(false);
+    if (r.ok) { setNewProj(false); setProjName(''); onChange(); } else alert(r.error || 'Could not update the project.');
+  }
   const depIds = new Set([item.id, ...item.dependencies.map((d) => d.dependsOn.id)]);
   const depDone = (s: string) => ['SHIPPED', 'CLOSED'].includes(s);
 
@@ -567,20 +581,20 @@ function TaskModal({ item, allItems, canManage, isAdmin, gh, staff, onClose, onC
     if (r.ok) { onClose(); onChange(); } else alert(r.error || 'Failed');
   }
 
-  const lbl = 'text-[0.6rem] uppercase tracking-wide text-[var(--color-stone-soft)]';
+  const lbl = 'text-[0.6rem] uppercase tracking-wide text-[var(--color-stone)]';
   return (
-    <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-[rgba(42,36,32,0.5)] p-4" onClick={onClose}>
-      <div className="my-8 w-full max-w-2xl rounded-[var(--radius-lg)] bg-[var(--color-porcelain)] p-6 shadow-[var(--shadow-lift)]" onClick={(e) => e.stopPropagation()}>
+    <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-[rgba(42,36,32,0.5)] p-4" onClick={onClose} onKeyDown={onKeyDown}>
+      <div ref={panelRef} role="dialog" aria-modal="true" aria-labelledby="task-modal-title" tabIndex={-1} className="my-8 w-full max-w-2xl rounded-[var(--radius-lg)] bg-[var(--color-porcelain)] p-6 shadow-[var(--shadow-lift)]" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-start justify-between gap-3">
           <div>
             <div className="mb-1 flex items-center gap-2">
               <CopyRef refId={item.ref} />
               <span className={`rounded-full px-2 py-0.5 text-[0.65rem] font-semibold ${URGENCY[item.urgency]?.cls}`}>{URGENCY[item.urgency]?.label}</span>
-              <span className="text-[0.65rem] uppercase tracking-wide text-[var(--color-stone-soft)]">{item.type}</span>
+              <span className="text-[0.65rem] uppercase tracking-wide text-[var(--color-stone)]">{item.type}</span>
               {item.project && <span className="text-[0.65rem] uppercase tracking-wide text-[var(--color-gold-deep)]">▣ {item.project.ref ? `${item.project.ref} · ` : ''}{item.project.name}</span>}
               {closed && <span className="rounded-full bg-[var(--color-jade)]/15 px-2 py-0.5 text-[0.65rem] font-medium text-[var(--color-jade)]">Closed ✓</span>}
             </div>
-            <h2 className="font-[family-name:var(--font-display)] text-xl">{item.title}</h2>
+            <h2 id="task-modal-title" className="font-[family-name:var(--font-display)] text-xl">{item.title}</h2>
             <p className="mt-0.5 text-xs text-[var(--color-stone)]">Reported by {item.reportedBy || '—'} · {fmt(item.createdAt)}{item.pageUrl ? ` · ${item.pageUrl}` : ''}</p>
           </div>
           <button onClick={onClose} aria-label="Close" className="text-sm text-[var(--color-stone)] hover:text-[var(--color-ink)]"><span aria-hidden="true">✕</span></button>
@@ -600,7 +614,7 @@ function TaskModal({ item, allItems, canManage, isAdmin, gh, staff, onClose, onC
               <input type="file" accept="image/*,video/*" multiple disabled={upBusy} className="hidden" onChange={(e) => uploadFiles(e.target.files)} />
             </label>
           </div>
-          {upErr && <p className="mt-2 text-xs text-[var(--color-blush)]">{upErr}</p>}
+          {upErr && <p className="mt-2 text-xs text-[var(--color-blush-deep)]">{upErr}</p>}
           {item.attachments.length > 0 ? (
             <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-3">
               {item.attachments.map((u) => (
@@ -612,15 +626,15 @@ function TaskModal({ item, allItems, canManage, isAdmin, gh, staff, onClose, onC
                 </div>
               ))}
             </div>
-          ) : <p className="mt-2 text-xs text-[var(--color-stone-soft)]">No files yet — add storefront photos or video straight from your phone.</p>}
+          ) : <p className="mt-2 text-xs text-[var(--color-stone)]">No files yet — add storefront photos or video straight from your phone.</p>}
         </div>
 
         {/* Telemetry strip */}
         <div className="mt-4 grid grid-cols-2 gap-3 rounded-[var(--radius-md)] border border-[var(--color-line)] bg-white p-3 text-xs sm:grid-cols-4">
-          <div><p className={lbl}>Value:Effort</p><p className="mt-0.5">{ve(item) ?? '—'}{item.value && item.effort ? <span className="text-[var(--color-stone-soft)]"> ({item.value}/{item.effort})</span> : ''}</p></div>
+          <div><p className={lbl}>Value:Effort</p><p className="mt-0.5">{ve(item) ?? '—'}{item.value && item.effort ? <span className="text-[var(--color-stone)]"> ({item.value}/{item.effort})</span> : ''}</p></div>
           <div><p className={lbl}>Time spent</p><p className="mt-0.5">{d != null ? fmtDur(d) : '—'}</p></div>
           <div><p className={lbl}>ETA</p><p className="mt-0.5">{item.estCompleteAt ? day(item.estCompleteAt) : '—'}</p></div>
-          <div><p className={lbl}>Tokens</p><p className="mt-0.5">{tokenStr(item.actualTokens)}{item.estTokens ? <span className="text-[var(--color-stone-soft)]"> / ~{tokenStr(item.estTokens)}</span> : ''}</p></div>
+          <div><p className={lbl}>Tokens</p><p className="mt-0.5">{tokenStr(item.actualTokens)}{item.estTokens ? <span className="text-[var(--color-stone)]"> / ~{tokenStr(item.estTokens)}</span> : ''}</p></div>
         </div>
 
         {canManage && (
@@ -671,19 +685,19 @@ function TaskModal({ item, allItems, canManage, isAdmin, gh, staff, onClose, onC
         )}
 
         {/* Subtasks */}
-        <h3 className="mt-5 flex items-center justify-between text-xs font-semibold uppercase tracking-wide text-[var(--color-stone)]">Subtasks {item.subtasks.length > 0 && <span className="text-[var(--color-stone-soft)]">{done}/{item.subtasks.length} done</span>}</h3>
+        <h3 className="mt-5 flex items-center justify-between text-xs font-semibold uppercase tracking-wide text-[var(--color-stone)]">Subtasks {item.subtasks.length > 0 && <span className="text-[var(--color-stone)]">{done}/{item.subtasks.length} done</span>}</h3>
         <ul className="mt-2 space-y-1">
           {item.subtasks.map((s) => (
             <li key={s.id} className="flex items-center gap-2 rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-2.5 py-1.5 text-sm">
               <input type="checkbox" checked={s.status === 'DONE'} onChange={(e) => setSubStatus(s.id, e.target.checked ? 'DONE' : 'TODO')} className="h-4 w-4 accent-[var(--color-jade)]" />
               {s.ref && <span className="shrink-0 rounded bg-[var(--color-bone)] px-1 py-0.5 font-mono text-[0.6rem] tracking-tight text-[var(--color-stone)]">{s.ref}</span>}
-              <span className={s.status === 'DONE' ? 'text-[var(--color-stone-soft)] line-through' : ''}>{s.title}</span>
+              <span className={s.status === 'DONE' ? 'text-[var(--color-stone)] line-through' : ''}>{s.title}</span>
               {s.ownerInput && <span className="rounded-full bg-amber-100 px-1.5 py-0.5 text-[0.55rem] font-medium text-amber-800">owner input</span>}
-              <span className="ml-auto text-[0.6rem] text-[var(--color-stone-soft)]">{s.assignee === 'claude' ? '◆' : s.assignee.split('@')[0]}{s.status === 'DOING' ? ' · doing' : ''}</span>
+              <span className="ml-auto text-[0.6rem] text-[var(--color-stone)]">{s.assignee === 'claude' ? '◆' : s.assignee.split('@')[0]}{s.status === 'DOING' ? ' · doing' : ''}</span>
               {canManage && s.status !== 'DONE' && <button onClick={() => setSubStatus(s.id, s.status === 'DOING' ? 'TODO' : 'DOING')} className="text-[0.6rem] text-[var(--color-stone)] hover:underline">{s.status === 'DOING' ? '↩' : '▶'}</button>}
             </li>
           ))}
-          {item.subtasks.length === 0 && <li className="text-xs text-[var(--color-stone-soft)]">No subtasks yet.</li>}
+          {item.subtasks.length === 0 && <li className="text-xs text-[var(--color-stone)]">No subtasks yet.</li>}
         </ul>
         {canManage && (
           <div className="mt-2 flex flex-wrap items-center gap-2">
@@ -693,20 +707,45 @@ function TaskModal({ item, allItems, canManage, isAdmin, gh, staff, onClose, onC
           </div>
         )}
 
+        {/* Project — group this item under a project (the UI promote action) */}
+        <h3 className="mt-5 text-xs font-semibold uppercase tracking-wide text-[var(--color-stone)]">Project</h3>
+        {item.project ? (
+          <div className="mt-2 flex flex-wrap items-center gap-2 text-sm">
+            <span className="rounded-full bg-[var(--color-gold)]/12 px-3 py-1 font-medium text-[var(--color-gold-deep)]">▣ {item.project.ref ? `${item.project.ref} · ` : ''}{item.project.name}</span>
+            {canManage && <button onClick={() => promote({ projectId: '' })} disabled={projBusy} className="text-[0.7rem] text-[var(--color-stone)] hover:underline disabled:opacity-50">remove from project</button>}
+          </div>
+        ) : !canManage ? (
+          <p className="mt-2 text-xs text-[var(--color-stone)]">Not part of a project.</p>
+        ) : newProj ? (
+          <div className="mt-2 flex flex-wrap items-center gap-2">
+            <input autoFocus value={projName} onChange={(e) => setProjName(e.target.value)} placeholder="New project name" className="flex-1 rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-2.5 py-1.5 text-sm" />
+            <button onClick={() => projName.trim() && promote({ name: projName.trim() })} disabled={projBusy || !projName.trim()} className="rounded-full bg-[var(--color-ink)] px-3 py-1.5 text-xs font-medium text-[var(--color-porcelain)] disabled:opacity-50">{projBusy ? 'Creating…' : 'Create & add'}</button>
+            <button onClick={() => { setNewProj(false); setProjName(''); }} className="text-[0.7rem] text-[var(--color-stone)] hover:underline">cancel</button>
+          </div>
+        ) : (
+          <div className="mt-2 flex flex-wrap items-center gap-2">
+            <select value="" disabled={projBusy} onChange={(e) => e.target.value && promote({ projectId: e.target.value })} className="flex-1 rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-2 py-1.5 text-xs">
+              <option value="">Promote into an existing project…</option>
+              {projects.map((p) => <option key={p.id} value={p.id}>{p.ref ? `${p.ref} · ${p.name}` : p.name}</option>)}
+            </select>
+            <button onClick={() => setNewProj(true)} disabled={projBusy} className="rounded-full border border-[var(--color-line)] px-3 py-1.5 text-xs hover:bg-[var(--color-bone)] disabled:opacity-50">+ New project</button>
+          </div>
+        )}
+
         {/* Dependencies */}
         <h3 className="mt-5 text-xs font-semibold uppercase tracking-wide text-[var(--color-stone)]">Dependencies</h3>
         <div className="mt-2 grid gap-3 sm:grid-cols-2">
           <div>
-            <p className="text-[0.6rem] uppercase tracking-wide text-[var(--color-stone-soft)]">Blocked by</p>
+            <p className="text-[0.6rem] uppercase tracking-wide text-[var(--color-stone)]">Blocked by</p>
             <ul className="mt-1 space-y-1">
               {item.dependencies.map((d) => (
                 <li key={d.id} className="flex items-center gap-2 rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-2.5 py-1.5 text-sm">
                   <span title={d.dependsOn.status}>{depDone(d.dependsOn.status) ? '✅' : '🔒'}</span>
-                  <span className={depDone(d.dependsOn.status) ? 'text-[var(--color-stone-soft)] line-through' : ''}>{withRef(d.dependsOn)}</span>
+                  <span className={depDone(d.dependsOn.status) ? 'text-[var(--color-stone)] line-through' : ''}>{withRef(d.dependsOn)}</span>
                   {canManage && <button onClick={() => removeDep(d.dependsOn.id)} className="ml-auto text-[0.6rem] text-[var(--color-stone)] hover:underline">remove</button>}
                 </li>
               ))}
-              {item.dependencies.length === 0 && <li className="text-xs text-[var(--color-stone-soft)]">Nothing — ready to start.</li>}
+              {item.dependencies.length === 0 && <li className="text-xs text-[var(--color-stone)]">Nothing — ready to start.</li>}
             </ul>
             {canManage && (
               <select value="" onChange={(e) => { addDep(e.target.value); e.currentTarget.value = ''; }} className="mt-1.5 w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-2 py-1.5 text-xs">
@@ -716,12 +755,12 @@ function TaskModal({ item, allItems, canManage, isAdmin, gh, staff, onClose, onC
             )}
           </div>
           <div>
-            <p className="text-[0.6rem] uppercase tracking-wide text-[var(--color-stone-soft)]">Blocks</p>
+            <p className="text-[0.6rem] uppercase tracking-wide text-[var(--color-stone)]">Blocks</p>
             <ul className="mt-1 space-y-1">
               {item.dependents.map((d) => (
                 <li key={d.id} className="rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-2.5 py-1.5 text-sm">{withRef(d.item)}</li>
               ))}
-              {item.dependents.length === 0 && <li className="text-xs text-[var(--color-stone-soft)]">Nothing depends on this.</li>}
+              {item.dependents.length === 0 && <li className="text-xs text-[var(--color-stone)]">Nothing depends on this.</li>}
             </ul>
           </div>
         </div>
@@ -730,7 +769,7 @@ function TaskModal({ item, allItems, canManage, isAdmin, gh, staff, onClose, onC
         <h3 className="mt-5 text-xs font-semibold uppercase tracking-wide text-[var(--color-stone)]">Activity</h3>
         <ul className="mt-2 space-y-1.5 border-l border-[var(--color-line)] pl-3 text-xs text-[var(--color-stone)]">
           {item.events.map((e) => (
-            <li key={e.id}><span className="text-[var(--color-ink-soft)]">{e.kind === 'comment' ? '' : `${e.kind}: `}{e.body}</span> <span className="text-[var(--color-stone-soft)]">— {e.actor === 'claude' ? 'Claude' : e.actor.split('@')[0]}, {fmt(e.createdAt)}</span></li>
+            <li key={e.id}><span className="text-[var(--color-ink-soft)]">{e.kind === 'comment' ? '' : `${e.kind}: `}{e.body}</span> <span className="text-[var(--color-stone)]">— {e.actor === 'claude' ? 'Claude' : e.actor.split('@')[0]}, {fmt(e.createdAt)}</span></li>
           ))}
         </ul>
         <CommentBox id={item.id} onDone={onChange} />
@@ -773,6 +812,8 @@ function IdeaModal({ onClose, onDone }: { onClose: () => void; onDone: () => voi
   const [detail, setDetail] = useState('');
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState('');
+  // Modal behaviours (focus-in, Tab trap, Escape, focus restore) — shared Dialog primitive (BLD-849/BLD-803).
+  const { panelRef, onKeyDown } = useDialogBehaviours(onClose);
   async function save() {
     if (!title.trim()) { setErr('Give the idea a short title.'); return; }
     setBusy(true); setErr('');
@@ -781,13 +822,13 @@ function IdeaModal({ onClose, onDone }: { onClose: () => void; onDone: () => voi
     if (r.ok) { onDone(); onClose(); } else setErr(r.error || 'Could not add.');
   }
   return (
-    <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-[rgba(42,36,32,0.5)] p-4" onClick={onClose}>
-      <div className="my-12 w-full max-w-md rounded-[var(--radius-lg)] bg-[var(--color-porcelain)] p-6 shadow-[var(--shadow-lift)]" onClick={(e) => e.stopPropagation()}>
-        <h2 className="font-[family-name:var(--font-display)] text-xl">💡 Add an idea</h2>
+    <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-[rgba(42,36,32,0.5)] p-4" onClick={onClose} onKeyDown={onKeyDown}>
+      <div ref={panelRef} role="dialog" aria-modal="true" aria-labelledby="idea-modal-title" tabIndex={-1} className="my-12 w-full max-w-md rounded-[var(--radius-lg)] bg-[var(--color-porcelain)] p-6 shadow-[var(--shadow-lift)]" onClick={(e) => e.stopPropagation()}>
+        <h2 id="idea-modal-title" className="font-[family-name:var(--font-display)] text-xl">💡 Add an idea</h2>
         <p className="mt-1 text-sm text-[var(--color-stone)]">Drop it in — Claude scores it (value/effort) and triages it into the workflow automatically.</p>
         <input value={title} onChange={(e) => setTitle(e.target.value)} autoFocus placeholder="The idea, in a line" className="mt-4 w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-3 py-2 text-sm outline-none focus:border-[var(--color-gold)]" />
         <textarea value={detail} onChange={(e) => setDetail(e.target.value)} rows={4} placeholder="Any context, why it matters, links… (optional)" className="mt-2 w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-3 py-2 text-sm outline-none focus:border-[var(--color-gold)]" />
-        {err && <p className="mt-2 text-sm text-[var(--color-blush)]">{err}</p>}
+        {err && <p role="alert" aria-live="assertive" className="mt-2 text-sm text-[var(--color-blush-deep)]">{err}</p>}
         <div className="mt-4 flex justify-end gap-2">
           <button onClick={onClose} className="rounded-full px-4 py-2 text-sm text-[var(--color-stone)]">Cancel</button>
           <button onClick={save} disabled={busy} className="rounded-full bg-[var(--color-ink)] px-5 py-2 text-sm font-medium text-[var(--color-porcelain)] disabled:opacity-50">{busy ? 'Adding…' : 'Add idea'}</button>

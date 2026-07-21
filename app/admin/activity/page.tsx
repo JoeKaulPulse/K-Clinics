@@ -41,9 +41,9 @@ export default async function ActivityPage() {
               <span className="mt-0.5 grid h-7 w-7 shrink-0 place-items-center rounded-full bg-[var(--color-bone)] text-xs">{ICON[e.action] ?? '•'}</span>
               <div className="flex-1">
                 <p className="text-sm">
-                  {e.bookingId ? <Link href={`/admin/bookings/${e.bookingId}`} className="font-medium hover:text-[var(--color-gold)]">{e.summary}</Link> : <span className="font-medium">{e.summary}</span>}
+                  {e.bookingId ? <Link href={`/admin/bookings/${e.bookingId}`} className="font-medium hover:text-[var(--color-gold-deep)]">{e.summary}</Link> : <span className="font-medium">{e.summary}</span>}
                 </p>
-                <p className="mt-0.5 text-xs text-[var(--color-stone-soft)]">
+                <p className="mt-0.5 text-xs text-[var(--color-stone)]">
                   {new Date(e.createdAt).toLocaleString('en-GB')} · {e.action.toLowerCase().replace(/_/g, ' ')} · {e.actor}{e.actorRole ? ` (${e.actorRole.toLowerCase()})` : ''}
                 </p>
               </div>

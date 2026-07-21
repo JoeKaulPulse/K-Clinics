@@ -34,14 +34,14 @@ export function RegisterInterest({ className = '' }: { className?: string }) {
           onChange={(e) => { setEmail(e.target.value); if (state === 'error') setState('idle'); }}
           placeholder="Your email address"
           aria-label="Your email address"
-          className="min-w-0 flex-1 bg-transparent px-4 py-3 text-sm text-[var(--color-ink)] outline-none placeholder:text-[var(--color-stone-soft)]"
+          className="min-w-0 flex-1 bg-transparent px-4 py-3 text-sm text-[var(--color-ink)] outline-none placeholder:text-[var(--color-stone)] focus-visible:ring-2 focus-visible:ring-[var(--color-gold)]"
         />
         <input type="text" tabIndex={-1} autoComplete="off" value={company} onChange={(e) => setCompany(e.target.value)} className="absolute -left-[9999px]" aria-hidden />
-        <button type="submit" disabled={state === 'busy'} className="shrink-0 bg-[var(--color-ink)] px-5 text-sm font-medium text-[var(--color-porcelain)] transition-colors hover:bg-[var(--color-gold)] hover:text-white disabled:opacity-60">
+        <button type="submit" disabled={state === 'busy'} className="shrink-0 bg-[var(--color-ink)] px-5 text-sm font-medium text-[var(--color-porcelain)] transition-colors hover:bg-[var(--color-gold-deep)] hover:text-white disabled:opacity-60">
           {state === 'busy' ? '…' : 'Notify me'}
         </button>
       </div>
-      {state === 'error' && <p className="mt-2 text-xs text-[var(--color-blush)]">{msg}</p>}
+      {state === 'error' && <p className="mt-2 text-xs text-[var(--color-blush-deep)]">{msg}</p>}
       <p className="mt-2.5 text-xs text-[var(--color-stone)]">We’ll only email you about our dentistry launch. Unsubscribe any time.</p>
     </form>
   );

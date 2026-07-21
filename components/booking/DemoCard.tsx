@@ -33,7 +33,7 @@ export function DemoCard({ onDone, onError }: { onDone: () => void; onError: (e:
   }
 
   const field =
-    'w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-4 py-3 text-[var(--color-ink)] outline-none transition-colors placeholder:text-[var(--color-stone-soft)] focus:border-[var(--color-gold)]';
+    'w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-4 py-3 text-[var(--color-ink)] outline-none transition-colors placeholder:text-[var(--color-stone)] focus:border-[var(--color-gold)]';
 
   return (
     <div>
@@ -45,16 +45,16 @@ export function DemoCard({ onDone, onError }: { onDone: () => void; onError: (e:
             <span className="h-4 w-6 rounded-sm bg-[linear-gradient(135deg,#eb001b,#f79e1b)]" />
           </span>
         </div>
-        <input value={fmtNum} onChange={(e) => setNum(e.target.value)} inputMode="numeric" placeholder="Card number" maxLength={23} className={`${field} mb-3 font-[family-name:var(--font-mono)] tracking-wide`} />
+        <input value={fmtNum} onChange={(e) => setNum(e.target.value)} inputMode="numeric" placeholder="Card number" aria-label="Card number" maxLength={23} className={`${field} mb-3 font-[family-name:var(--font-mono)] tracking-wide`} />
         <div className="grid grid-cols-2 gap-3">
-          <input value={exp} onChange={(e) => setExp(e.target.value)} placeholder="MM / YY" maxLength={7} className={`${field} font-[family-name:var(--font-mono)]`} />
-          <input value={cvc} onChange={(e) => setCvc(e.target.value.replace(/\D/g, ''))} inputMode="numeric" placeholder="CVC" maxLength={4} className={`${field} font-[family-name:var(--font-mono)]`} />
+          <input value={exp} onChange={(e) => setExp(e.target.value)} placeholder="MM / YY" aria-label="Expiry date (MM / YY)" maxLength={7} className={`${field} font-[family-name:var(--font-mono)]`} />
+          <input value={cvc} onChange={(e) => setCvc(e.target.value.replace(/\D/g, ''))} inputMode="numeric" placeholder="CVC" aria-label="CVC security code" maxLength={4} className={`${field} font-[family-name:var(--font-mono)]`} />
         </div>
       </div>
 
       <p className="mt-3 text-xs text-[var(--color-stone)]">
         <span className="font-medium text-[var(--color-ink-soft)]">Demo mode.</span> Use Stripe test card{' '}
-        <button type="button" onClick={() => { setNum('4242 4242 4242 4242'); setExp('12 / 34'); setCvc('123'); }} className="font-[family-name:var(--font-mono)] underline underline-offset-2 hover:text-[var(--color-gold)]">4242 4242 4242 4242</button>.
+        <button type="button" onClick={() => { setNum('4242 4242 4242 4242'); setExp('12 / 34'); setCvc('123'); }} className="font-[family-name:var(--font-mono)] underline underline-offset-2 hover:text-[var(--color-gold-deep)]">4242 4242 4242 4242</button>.
         No payment is taken.
       </p>
 

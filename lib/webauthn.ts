@@ -17,17 +17,30 @@ export function isStepUpPurpose(v: unknown): v is StepUpPurpose {
   return typeof v === 'string' && (STEP_UP_PURPOSES as readonly string[]).includes(v);
 }
 
+// PRJ-918.11 (owner-approved 20 Jul): the RP ID and accepted origins are
+// PINNED to the canonical site domain. The old derivation trusted the request
+// Host header, so a spoofed/forwarded Host could steer the ceremony's expected
+// origin. In production the request URL is now ignored entirely; localhost is
+// honoured only outside production builds so local development keeps working.
+const CANONICAL_SITE = (process.env.NEXT_PUBLIC_SITE_URL || 'https://kclinics.co.uk').replace(/\/$/, '');
+
 export function rp(req: Request): { rpID: string; origin: string; origins: string[]; rpName: string; secure: boolean } {
   const url = new URL(req.url);
+  const isLocalDev = process.env.NODE_ENV !== 'production' && (url.hostname === 'localhost' || url.hostname === '127.0.0.1');
+  if (isLocalDev) {
+    const origin = `${url.protocol}//${url.host}`;
+    return { rpID: url.hostname, origin, origins: [origin], rpName: 'K Clinics', secure: url.protocol === 'https:' };
+  }
+  const canon = new URL(CANONICAL_SITE);
   // Use the registrable domain (strip a leading `www.`) as the rpID so a passkey
   // created on the apex works on `www` and vice-versa — otherwise iOS can't find
   // the local passkey for the current host and falls back to the cross-device
   // "use a passkey" sheet instead of Face ID. Assertions are accepted from either
   // origin.
-  const rpID = url.hostname.replace(/^www\./, '');
-  const origin = `${url.protocol}//${url.host}`;
-  const origins = Array.from(new Set([origin, `${url.protocol}//${rpID}`, `${url.protocol}//www.${rpID}`]));
-  return { rpID, origin, origins, rpName: 'K Clinics', secure: url.protocol === 'https:' };
+  const rpID = canon.hostname.replace(/^www\./, '');
+  const origin = `${canon.protocol}//${canon.host}`;
+  const origins = Array.from(new Set([origin, `${canon.protocol}//${rpID}`, `${canon.protocol}//www.${rpID}`]));
+  return { rpID, origin, origins, rpName: 'K Clinics', secure: canon.protocol === 'https:' };
 }
 
 function secret(): Uint8Array {

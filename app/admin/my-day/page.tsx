@@ -149,7 +149,7 @@ export default async function MyDayPage({ searchParams }: { searchParams: Promis
         </div>
         <p className="truncate text-xs text-[var(--color-stone)]">{b.treatmentTitle}</p>
         {showClinician && b.practitioner?.name && (
-          <p className="text-xs text-[var(--color-stone-soft)]">{b.practitioner.name}</p>
+          <p className="text-xs text-[var(--color-stone)]">{b.practitioner.name}</p>
         )}
         {b.location?.name && (
           <p className="flex items-center gap-1 text-xs text-[var(--color-stone)]">
@@ -262,7 +262,7 @@ export default async function MyDayPage({ searchParams }: { searchParams: Promis
               <>
                 {dateTimeline}
                 <p className="mt-6 text-sm text-[var(--color-stone)]">
-                  <Link href="/admin" className="font-medium text-[var(--color-gold)] hover:underline">{uk ? 'Відкрити дашборд →' : 'Open management dashboard →'}</Link>
+                  <Link href="/admin" className="font-medium text-[var(--color-gold-deep)] hover:underline">{uk ? 'Відкрити дашборд →' : 'Open management dashboard →'}</Link>
                 </p>
               </>
             )}

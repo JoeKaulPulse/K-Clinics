@@ -55,7 +55,7 @@ export function ProfileEditor({ name: initialName, title: initialTitle, uk }: { 
             <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder={L('e.g. Aesthetic Doctor', 'напр. Лікар-естетист')} className={`${field} mt-1`} />
           </label>
           <div className="flex items-center gap-3">
-            <button onClick={saveProfile} disabled={pBusy} className="rounded-full bg-[var(--color-gold)] px-5 py-2 text-sm font-medium text-white hover:bg-[var(--color-ink)] disabled:opacity-60">{pBusy ? L('Saving…', 'Збереження…') : L('Save', 'Зберегти')}</button>
+            <button onClick={saveProfile} disabled={pBusy} className="rounded-full bg-[var(--color-gold-deep)] px-5 py-2 text-sm font-medium text-white hover:bg-[var(--color-ink)] disabled:opacity-60">{pBusy ? L('Saving…', 'Збереження…') : L('Save', 'Зберегти')}</button>
             {pMsg && <span className="text-sm text-[var(--color-stone)]">{pMsg}</span>}
           </div>
         </div>

@@ -323,5 +323,17 @@ export async function getIntegrations(): Promise<Integration[]> {
     ],
   });
 
+  // ── Error monitoring (Sentry) ──
+  const sentryDsn = present('SENTRY_DSN');
+  items.push({
+    id: 'sentry',
+    name: 'Error monitoring (Sentry)',
+    category: 'Observability',
+    description: 'Captures and alerts on unhandled server errors and exceptions.',
+    status: sentryDsn ? 'connected' : 'not_configured',
+    detail: sentryDsn ? 'Configured — errors will be reported' : 'SENTRY_DSN is not set — all server errors are silently dropped.',
+    envVars: [{ name: 'SENTRY_DSN', set: sentryDsn }],
+  });
+
   return items;
 }

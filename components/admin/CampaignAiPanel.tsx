@@ -12,10 +12,10 @@ function Copy({ label, text, multiline }: { label?: string; text: string; multil
     <div className="group rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white p-2.5">
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
-          {label && <p className="text-[0.6rem] uppercase tracking-wide text-[var(--color-stone-soft)]">{label}</p>}
+          {label && <p className="text-[0.6rem] uppercase tracking-wide text-[var(--color-stone)]">{label}</p>}
           <p className={`text-sm text-[var(--color-ink)] ${multiline ? 'whitespace-pre-wrap' : ''}`}>{text}</p>
         </div>
-        <button onClick={() => { navigator.clipboard?.writeText(text); setDone(true); setTimeout(() => setDone(false), 1200); }} className="shrink-0 text-[0.65rem] text-[var(--color-gold)] hover:underline">{done ? '✓' : 'copy'}</button>
+        <button onClick={() => { navigator.clipboard?.writeText(text); setDone(true); setTimeout(() => setDone(false), 1200); }} className="shrink-0 text-[0.65rem] text-[var(--color-gold-deep)] hover:underline">{done ? '✓' : 'copy'}</button>
       </div>
     </div>
   );
@@ -110,8 +110,8 @@ export function CampaignAiPanel({ campaignId, enabled, initial }: { campaignId: 
           {advice.testIdeas?.length > 0 && <div className="mt-3"><p className="text-xs font-semibold text-[var(--color-ink)]">A/B test ideas</p><ul className="ml-4 list-disc text-sm text-[var(--color-stone)]">{advice.testIdeas.map((x, i) => <li key={i}>{x}</li>)}</ul></div>}
         </div>
       )}
-      {!enabled && <p className="mt-2 text-xs text-[var(--color-blush)]">AI isn’t configured yet (missing ANTHROPIC_API_KEY).</p>}
-      {err && <p className="mt-2 text-sm text-[var(--color-blush)]">{err}</p>}
+      {!enabled && <p className="mt-2 text-xs text-[var(--color-blush-deep)]">AI isn’t configured yet (missing ANTHROPIC_API_KEY).</p>}
+      {err && <p role="alert" aria-live="assertive" className="mt-2 text-sm text-[var(--color-blush-deep)]">{err}</p>}
 
       {pack && (
         <div className="mt-5 grid gap-6 lg:grid-cols-2">
@@ -120,7 +120,7 @@ export function CampaignAiPanel({ campaignId, enabled, initial }: { campaignId: 
             <Copy label="Preview" text={pack.email.preview} />
             <Copy label="Headline" text={pack.email.headline} />
             <Copy label="Body" text={pack.email.body} multiline />
-            <button onClick={createEmailDraft} disabled={emailBusy} className="w-full rounded-full bg-[var(--color-gold)] px-4 py-2 text-sm text-white hover:bg-[var(--color-ink)] disabled:opacity-50">
+            <button onClick={createEmailDraft} disabled={emailBusy} className="w-full rounded-full bg-[var(--color-gold-deep)] px-4 py-2 text-sm text-white hover:bg-[var(--color-ink)] disabled:opacity-50">
               {emailBusy ? 'Creating…' : 'Create email draft →'}
             </button>
           </Group>

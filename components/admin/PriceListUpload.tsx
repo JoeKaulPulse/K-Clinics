@@ -61,7 +61,7 @@ export function PriceListUpload({ treatments, onImported }: { treatments: { slug
             {sections.map((s, i) => (
               <div key={i} className="grid grid-cols-[auto_1.4fr_1.6fr_auto] items-center gap-3 border-b border-[var(--color-line)] px-3 py-2 last:border-0">
                 <input type="checkbox" checked={s.include} onChange={(e) => set(i, { include: e.target.checked })} />
-                <span><span className="font-medium">{s.header}</span><span className="block text-xs text-[var(--color-stone-soft)]">{s.samples[0]}</span></span>
+                <span><span className="font-medium">{s.header}</span><span className="block text-xs text-[var(--color-stone)]">{s.samples[0]}</span></span>
                 <select className={`${field} w-full`} value={s.treatmentSlug} onChange={(e) => set(i, { treatmentSlug: e.target.value, include: !!e.target.value })}>
                   <option value="">— skip —</option>
                   {treatments.map((t) => <option key={t.slug} value={t.slug}>{t.title}</option>)}
@@ -72,7 +72,7 @@ export function PriceListUpload({ treatments, onImported }: { treatments: { slug
           </div>
           <div className="mt-3 flex items-center gap-3">
             <button onClick={commit} disabled={busy} className="rounded-full bg-[var(--color-ink)] px-5 py-2 text-sm text-[var(--color-porcelain)] disabled:opacity-50">{busy ? 'Importing…' : `Import ${sections.filter((s) => s.include && s.treatmentSlug).length} section(s)`}</button>
-            <span className="text-xs text-[var(--color-stone-soft)]">Replaces each linked service’s variants with the spreadsheet prices.</span>
+            <span className="text-xs text-[var(--color-stone)]">Replaces each linked service’s variants with the spreadsheet prices.</span>
           </div>
         </div>
       )}

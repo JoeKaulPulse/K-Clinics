@@ -20,7 +20,7 @@ export function AddToCart({ product, outOfStock }: { product: Omit<CartItem, 'qt
         <button onClick={() => setQty((q) => Math.min(20, q + 1))} className="h-10 w-10 text-lg">+</button>
       </div>
       <Button onClick={() => { add(product, qty); setAdded(true); }} variant="gold" size="lg">Add to bag</Button>
-      {added && <Link href="/shop/cart" className="inline-flex items-center gap-1 text-sm font-medium text-[var(--color-gold)] hover:underline">View bag <ArrowIcon /></Link>}
+      {added && <Link href="/shop/cart" className="inline-flex items-center gap-1 text-sm font-medium text-[var(--color-gold-deep)] hover:underline">View bag <ArrowIcon /></Link>}
     </div>
   );
 }

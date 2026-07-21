@@ -43,7 +43,7 @@ export function ExamBankManager({ courses, questions, papers }: { courses: Cours
 
         <div className="mt-4 space-y-2">
           {shown.map((q) => <QuestionRow key={q.id} q={q} courses={courses} courseTitle={q.courseId ? titleById.get(q.courseId) ?? null : null} busy={busy} act={act} />)}
-          {shown.length === 0 && <p className="rounded-[var(--radius-md)] border border-dashed border-[var(--color-line)] p-4 text-sm text-[var(--color-stone-soft)]">No questions yet. Import from a course’s quizzes above, or add one below.</p>}
+          {shown.length === 0 && <p className="rounded-[var(--radius-md)] border border-dashed border-[var(--color-line)] p-4 text-sm text-[var(--color-stone)]">No questions yet. Import from a course’s quizzes above, or add one below.</p>}
         </div>
         <QuestionForm courses={courses} defaultCourseId={filter === 'all' ? courses[0]?.id ?? '' : filter} busy={busy} act={act} />
       </section>
@@ -82,9 +82,9 @@ function QuestionRow({ q, courses, courseTitle, busy, act }: { q: QView; courses
         <button onClick={() => setOpen((v) => !v)} className="text-[var(--color-stone)]">{open ? '▾' : '▸'}</button>
         <span className="flex-1 text-sm">{q.prompt}</span>
         <span className="rounded-full bg-[var(--color-porcelain)] px-2 py-0.5 text-[0.6rem] uppercase tracking-wide text-[var(--color-stone)]">{q.type}</span>
-        {courseTitle && <span className="hidden text-xs text-[var(--color-stone-soft)] sm:inline">{courseTitle}</span>}
+        {courseTitle && <span className="hidden text-xs text-[var(--color-stone)] sm:inline">{courseTitle}</span>}
         <button onClick={() => act({ op: 'toggleQuestion', id: q.id, active: !q.active })} disabled={busy} className="text-xs text-[var(--color-stone)] hover:underline">{q.active ? 'Disable' : 'Enable'}</button>
-        <button onClick={() => { if (confirm('Delete this question?')) act({ op: 'deleteQuestion', id: q.id }); }} disabled={busy} className="text-xs text-[var(--color-blush)] hover:underline">Delete</button>
+        <button onClick={() => { if (confirm('Delete this question?')) act({ op: 'deleteQuestion', id: q.id }); }} disabled={busy} className="text-xs text-[var(--color-blush-deep)] hover:underline">Delete</button>
       </div>
       {open && <div className="border-t border-[var(--color-line)] p-3"><QuestionForm courses={courses} existing={q} busy={busy} act={act} /></div>}
     </div>
@@ -108,7 +108,7 @@ function QuestionForm({ courses, existing, defaultCourseId, busy, act }: { cours
     if (r.ok && !existing) setF({ courseId: f.courseId, topic: f.topic, difficulty: 'STANDARD', examBoard: f.examBoard, prompt: '', type: 'SINGLE', options: ['', ''], correct: [], explanation: '', tip: '' });
   }
 
-  if (!existing && !open) return <button onClick={() => setOpen(true)} className="mt-3 text-xs font-medium text-[var(--color-gold)] hover:underline">+ Add a question</button>;
+  if (!existing && !open) return <button onClick={() => setOpen(true)} className="mt-3 text-xs font-medium text-[var(--color-gold-deep)] hover:underline">+ Add a question</button>;
 
   return (
     <div className={existing ? '' : 'mt-3 rounded-[var(--radius-md)] border border-[var(--color-line)] bg-[var(--color-bone)] p-3'}>
@@ -121,17 +121,17 @@ function QuestionForm({ courses, existing, defaultCourseId, busy, act }: { cours
       </div>
       <div className="mt-2 flex items-center gap-3">
         <label className={lbl}>Type<select className={`${field} mt-1 w-40`} value={f.type} onChange={(e) => changeType(e.target.value)}><option value="SINGLE">Single answer</option><option value="MULTI">Multiple answers</option><option value="TRUEFALSE">True / False</option></select></label>
-        <span className="self-end pb-1.5 text-xs text-[var(--color-stone-soft)]">{f.type === 'MULTI' ? 'Tick all correct' : 'Pick the correct one'}</span>
+        <span className="self-end pb-1.5 text-xs text-[var(--color-stone)]">{f.type === 'MULTI' ? 'Tick all correct' : 'Pick the correct one'}</span>
       </div>
       <div className="mt-2 space-y-1.5">
         {f.options.map((o, i) => (
           <div key={i} className="flex items-center gap-2">
             <input type={f.type === 'MULTI' ? 'checkbox' : 'radio'} checked={f.correct.includes(i)} onChange={() => toggleCorrect(i)} className="h-4 w-4 accent-[var(--color-gold)]" />
             <input className={field} value={o} onChange={(e) => setOpt(i, e.target.value)} disabled={f.type === 'TRUEFALSE'} />
-            {f.type !== 'TRUEFALSE' && f.options.length > 2 && <button onClick={() => setF((s) => ({ ...s, options: s.options.filter((_, k) => k !== i), correct: s.correct.filter((k) => k !== i).map((k) => (k > i ? k - 1 : k)) }))} className="text-xs text-[var(--color-blush)]">✕</button>}
+            {f.type !== 'TRUEFALSE' && f.options.length > 2 && <button onClick={() => setF((s) => ({ ...s, options: s.options.filter((_, k) => k !== i), correct: s.correct.filter((k) => k !== i).map((k) => (k > i ? k - 1 : k)) }))} aria-label="Remove option" className="text-xs text-[var(--color-blush-deep)]">✕</button>}
           </div>
         ))}
-        {f.type !== 'TRUEFALSE' && <button onClick={() => setF((s) => ({ ...s, options: [...s.options, ''] }))} className="text-xs font-medium text-[var(--color-gold)] hover:underline">+ Add option</button>}
+        {f.type !== 'TRUEFALSE' && <button onClick={() => setF((s) => ({ ...s, options: [...s.options, ''] }))} className="text-xs font-medium text-[var(--color-gold-deep)] hover:underline">+ Add option</button>}
       </div>
       <div className="mt-2 grid gap-2 sm:grid-cols-2">
         <label className={lbl}>Hint (optional)<input className={`${field} mt-1`} value={f.tip} onChange={(e) => set('tip', e.target.value)} /></label>
@@ -152,8 +152,8 @@ function PaperRow({ p, courses, courseTitle, busy, act }: { p: PView; courses: C
       <div className="flex items-center gap-2 p-2.5">
         <button onClick={() => setOpen((v) => !v)} className="text-[var(--color-stone)]">{open ? '▾' : '▸'}</button>
         <span className="flex-1 text-sm">{p.title}</span>
-        <span className="text-xs text-[var(--color-stone-soft)]">{[p.examBoard, p.year, courseTitle].filter(Boolean).join(' · ')}</span>
-        <button onClick={() => { if (confirm('Delete this paper?')) act({ op: 'deletePaper', id: p.id }); }} disabled={busy} className="text-xs text-[var(--color-blush)] hover:underline">Delete</button>
+        <span className="text-xs text-[var(--color-stone)]">{[p.examBoard, p.year, courseTitle].filter(Boolean).join(' · ')}</span>
+        <button onClick={() => { if (confirm('Delete this paper?')) act({ op: 'deletePaper', id: p.id }); }} disabled={busy} className="text-xs text-[var(--color-blush-deep)] hover:underline">Delete</button>
       </div>
       {open && <div className="border-t border-[var(--color-line)] p-3"><PaperForm courses={courses} existing={p} busy={busy} act={act} /></div>}
     </div>
@@ -165,7 +165,7 @@ function PaperForm({ courses, existing, busy, act }: { courses: CourseRef[]; exi
   const [f, setF] = useState({ courseId: existing?.courseId ?? '', title: existing?.title ?? '', examBoard: existing?.examBoard ?? '', year: existing?.year ?? '', description: existing?.description ?? '', fileUrl: existing?.fileUrl ?? '' });
   const set = <K extends keyof typeof f>(k: K, v: (typeof f)[K]) => setF((s) => ({ ...s, [k]: v }));
   async function save() { const r = await act({ op: 'upsertPaper', id: existing?.id, ...f }); if (r.ok && !existing) setF({ courseId: '', title: '', examBoard: '', year: '', description: '', fileUrl: '' }); }
-  if (!existing && !open) return <button onClick={() => setOpen(true)} className="mt-3 text-xs font-medium text-[var(--color-gold)] hover:underline">+ Add a paper</button>;
+  if (!existing && !open) return <button onClick={() => setOpen(true)} className="mt-3 text-xs font-medium text-[var(--color-gold-deep)] hover:underline">+ Add a paper</button>;
   return (
     <div className={existing ? '' : 'mt-3 rounded-[var(--radius-md)] border border-[var(--color-line)] bg-[var(--color-bone)] p-3'}>
       <div className="grid gap-2 sm:grid-cols-2">

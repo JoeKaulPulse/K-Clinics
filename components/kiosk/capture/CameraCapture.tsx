@@ -311,7 +311,7 @@ export function CameraCapture({
         )}
       </div>
 
-      {error && <p className="mt-3 text-center text-sm text-[var(--color-blush)]">{error}</p>}
+      {error && <p role="alert" aria-live="assertive" className="mt-3 text-center text-sm text-[var(--color-blush)]">{error}</p>}
 
       {/* Controls */}
       {phase === 'posing' && (
@@ -324,7 +324,7 @@ export function CameraCapture({
             Ready — count me in
           </button>
           {canSkip && (
-            <button onClick={advance} className="mt-3 w-full text-sm text-[var(--color-stone-soft)] underline underline-offset-4">
+            <button onClick={advance} className="mt-3 w-full text-sm text-[var(--color-stone)] underline underline-offset-4">
               Skip this pose
             </button>
           )}

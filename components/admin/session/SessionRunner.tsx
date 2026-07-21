@@ -5,7 +5,8 @@ import Link from 'next/link';
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
 import { SESSION_STEPS, STEP_STATION, STATION_LABEL, stepActiveAtStation, type SessionStepKey, type StationMode, type StepTimings } from '@/lib/appointment-session';
 import type { SessionSnapshot } from '@/lib/appointment-session-server';
-import { reviewMedicalFlag, saveSopChecklist, startAppointment, finishAppointment, saveClinicalNote } from '@/app/admin/bookings/clinical-actions';
+import { reviewMedicalFlag, saveSopChecklist, startAppointment, finishAppointment, saveClinicalNote, removeAddonTreatment } from '@/app/admin/bookings/clinical-actions';
+import { BeforePhotoCapture } from '@/components/admin/BeforePhotoCapture';
 import { useSessionChannel } from '@/components/admin/session/useSessionChannel';
 import { CheckIcon } from '@/components/ui/session-icons';
 
@@ -32,7 +33,16 @@ type Props = {
   nextRec: { dateISO: string; label: string; maintenance: boolean } | null;
   booking: {
     id: string; treatmentSlug: string; treatmentTitle: string; startAt: string; durationMin: number; pricePence: number;
-    refreshments: string[]; addOns: string[];
+    chargedAt: string | null;
+    giftVoucherCode: string | null; giftVoucherPence: number;
+    refreshments: string[]; addOns: { id: string; label: string; pricePence: number }[];
+  };
+  photos: {
+    items: { id: string; area: string | null; capturedBy: string; createdAt: string }[];
+    optOutSigned: boolean;
+    baseUrl: string;
+    canManage: boolean;
+    isLaser: boolean;
   };
   client: { id: string; firstName: string; fullName: string; email: string; medicalFlag: string | null; allergyNote: string | null };
   practitionerName: string | null;
@@ -215,7 +225,7 @@ export function SessionRunner(p: Props) {
             )}
             {active && !isMine && !presenting && !sessionDone && (
               <button type="button" disabled={pending} onClick={() => run(() => api({ op: 'claim' }))}
-                className="shrink-0 rounded-full border border-[var(--color-gold)] px-3 py-1.5 text-xs font-medium text-[var(--color-gold)] transition-colors hover:bg-[var(--color-gold)] hover:text-white disabled:opacity-50">
+                className="shrink-0 rounded-full border border-[var(--color-gold)] px-3 py-1.5 text-xs font-medium text-[var(--color-gold-deep)] transition-colors hover:bg-[var(--color-gold-deep)] hover:text-white disabled:opacity-50">
                 Take over
               </button>
             )}
@@ -241,7 +251,7 @@ export function SessionRunner(p: Props) {
             <button
               type="button" onClick={() => setPresenting((v) => !v)} aria-pressed={presenting}
               className={`min-h-11 rounded-full border px-4 py-2 text-sm transition-colors ${presenting
-                ? 'border-[var(--color-gold)] bg-[var(--color-gold)] text-white'
+                ? 'border-[var(--color-gold)] bg-[var(--color-gold-deep)] text-white'
                 : 'border-[var(--color-line)] text-[var(--color-ink)] hover:border-[var(--color-gold)]'}`}
             >
               {presenting ? 'Presenting' : 'Present'}
@@ -267,8 +277,8 @@ export function SessionRunner(p: Props) {
                     className={`group flex w-full items-center gap-3 rounded-[var(--radius-sm)] px-3 py-2.5 text-left transition-colors ${state === 'current' ? 'bg-[var(--color-bone)]' : 'hover:bg-[var(--color-bone)]/60'} ${otherStation ? 'opacity-45' : ''}`}
                   >
                     <span aria-hidden className={`grid h-6 w-6 shrink-0 place-items-center rounded-full border text-[10px] transition-colors ${
-                      state === 'done' ? 'border-[var(--color-gold)] bg-[var(--color-gold)] text-white'
-                      : state === 'current' ? 'border-[var(--color-gold)] text-[var(--color-gold)]'
+                      state === 'done' ? 'border-[var(--color-gold)] bg-[var(--color-gold-deep)] text-white'
+                      : state === 'current' ? 'border-[var(--color-gold)] text-[var(--color-gold-deep)]'
                       : 'border-[var(--color-line)] text-[var(--color-stone)]'}`}>
                       {state === 'done' ? <CheckIcon /> : i + 1}
                     </span>
@@ -280,7 +290,7 @@ export function SessionRunner(p: Props) {
             })}
           </ol>
           {!presenting && (
-            <p className="mt-4 px-3 text-[11px] leading-relaxed text-[var(--color-stone-soft)]">
+            <p className="mt-4 px-3 text-[11px] leading-relaxed text-[var(--color-stone)]">
               Live on every device — hand the client to the next team member and their screen is already on the right step.
             </p>
           )}
@@ -296,7 +306,7 @@ export function SessionRunner(p: Props) {
 
           <AnimatePresence mode="wait">
             <motion.section key={step} {...fade} className={`mx-auto max-w-2xl ${presenting && clientSafe ? 'text-lg' : ''}`}>
-              <p className="text-xs uppercase tracking-[0.2em] text-[var(--color-gold)]">{def.kicker}</p>
+              <p className="text-xs uppercase tracking-[0.2em] text-[var(--color-gold-deep)]">{def.kicker}</p>
               <h1 className="mt-2 font-[family-name:var(--font-display)] text-4xl leading-tight sm:text-5xl">
                 {def.title.replace('{name}', p.client.firstName)}
               </h1>
@@ -306,13 +316,13 @@ export function SessionRunner(p: Props) {
               <div className="mt-8 space-y-6">
                 {!activeHere ? (
                   <div className="rounded-[var(--radius-lg)] border border-dashed border-[var(--color-line)] bg-[var(--color-bone)]/40 p-8 text-center">
-                    <p className="text-xs uppercase tracking-[0.2em] text-[var(--color-stone-soft)]">{STATION_LABEL[STEP_STATION[step]]} station</p>
+                    <p className="text-xs uppercase tracking-[0.2em] text-[var(--color-stone)]">{STATION_LABEL[STEP_STATION[step]]} station</p>
                     <p className="mt-3 text-lg">The <span className="font-medium">{STATION_LABEL[STEP_STATION[step]]}</span> team is with {p.client.firstName} — <span className="font-medium">{def.label}</span>.</p>
                     <p className="mt-2 text-sm text-[var(--color-stone)]">This stage happens at the {STATION_LABEL[STEP_STATION[step]]} station. Your screen picks up again when it returns to the {STATION_LABEL[station as 'reception' | 'room']}.</p>
                     {live.startedAt && !live.finishedAt && step === 'treatment' && (
                       <p className="mt-4 inline-flex items-center gap-2 rounded-full bg-[var(--color-ink)] px-3 py-1.5 text-xs text-[var(--color-porcelain)]"><span className="h-1.5 w-1.5 animate-pulse rounded-full bg-[var(--color-gold-bright)]" aria-hidden /><span className="tabular-nums">{fmtClock(treatmentElapsed)}</span></p>
                     )}
-                    <button type="button" onClick={() => pickStation('full')} className="mt-5 block w-full text-xs text-[var(--color-stone-soft)] underline-offset-2 hover:underline">Switch this device to Full view</button>
+                    <button type="button" onClick={() => pickStation('full')} className="mt-5 block w-full text-xs text-[var(--color-stone)] underline-offset-2 hover:underline">Switch this device to Full view</button>
                   </div>
                 ) : (<>
                 {step === 'arrival' && <ArrivalStep p={p} presenting={presenting} onBegin={() => goTo('safety')} />}
@@ -335,6 +345,7 @@ export function SessionRunner(p: Props) {
                     onStart={() => run(() => startAppointment(p.booking.id))}
                     onFinish={() => run(() => finishAppointment(p.booking.id))}
                     onSaveNote={(note) => run(() => saveClinicalNote(p.booking.id, note))}
+                    onRemoveAddon={(itemId) => run(() => removeAddonTreatment(p.booking.id, itemId))}
                     onContinue={() => goTo('aftercare')}
                   />
                 )}
@@ -385,7 +396,7 @@ function ArrivalStep({ p, presenting, onBegin }: { p: Props; presenting: boolean
     <>
       <p className="max-w-prose leading-relaxed text-[var(--color-stone)]">
         {p.booking.treatmentTitle}
-        {p.booking.addOns.length > 0 && <> with {p.booking.addOns.join(', ')}</>} ·{' '}
+        {p.booking.addOns.length > 0 && <> with {p.booking.addOns.map((a) => a.label).join(', ')}</>} ·{' '}
         {when.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' })} at {fmtTime(p.booking.startAt)} · about {p.booking.durationMin} minutes
         {p.practitionerName && <> with {p.practitionerName}</>}.
       </p>
@@ -428,7 +439,7 @@ function ArrivalStep({ p, presenting, onBegin }: { p: Props; presenting: boolean
         </div>
       )}
 
-      <button type="button" onClick={onBegin} className="mt-2 inline-flex min-h-12 items-center gap-3 rounded-full bg-[var(--color-gold)] px-8 py-3.5 text-base font-medium text-white transition-all hover:bg-[var(--color-ink)]">
+      <button type="button" onClick={onBegin} className="mt-2 inline-flex min-h-12 items-center gap-3 rounded-full bg-[var(--color-gold-deep)] px-8 py-3.5 text-base font-medium text-white transition-all hover:bg-[var(--color-ink)]">
         Begin <ArrowIcon />
       </button>
     </>
@@ -464,7 +475,7 @@ function SafetyStep({ p, live, pending, presenting, onReviewFlag, onSaveSop, onC
           <p className="text-sm font-semibold">Medical flag</p>
           <p className="mt-1 text-sm text-[var(--color-stone)]">{p.client.medicalFlag}</p>
           {flagDone
-            ? <p className="mt-2 inline-flex items-center gap-1.5 text-xs text-[var(--color-gold)]"><CheckIcon /> Reviewed</p>
+            ? <p className="mt-2 inline-flex items-center gap-1.5 text-xs text-[var(--color-gold-deep)]"><CheckIcon /> Reviewed</p>
             : <button type="button" disabled={pending} onClick={onReviewFlag} className="mt-3 min-h-11 rounded-full bg-[var(--color-ink)] px-5 py-2.5 text-sm text-[var(--color-porcelain)] disabled:opacity-50">I’ve reviewed this flag</button>}
         </div>
       )}
@@ -472,7 +483,7 @@ function SafetyStep({ p, live, pending, presenting, onReviewFlag, onSaveSop, onC
       <div className="rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-5">
         <div className="flex items-center justify-between gap-3">
           <p className="text-sm font-semibold">{p.sop.title}</p>
-          <span className={`text-xs tabular-nums ${allChecked ? 'text-[var(--color-gold)]' : 'text-[var(--color-stone)]'}`}>{items.filter((i) => i.checked).length}/{items.length}</span>
+          <span className={`text-xs tabular-nums ${allChecked ? 'text-[var(--color-gold-deep)]' : 'text-[var(--color-stone)]'}`}>{items.filter((i) => i.checked).length}/{items.length}</span>
         </div>
         <ul className="mt-4 space-y-3">
           {p.sop.steps.map((s, i) => (
@@ -499,7 +510,7 @@ function SafetyStep({ p, live, pending, presenting, onReviewFlag, onSaveSop, onC
           <button type="button" disabled={pending} onClick={() => onSaveSop(items, allChecked)} className="min-h-11 rounded-full bg-[var(--color-ink)] px-5 py-2.5 text-sm text-[var(--color-porcelain)] disabled:opacity-50">
             {allChecked ? 'Complete checklist' : 'Save progress'}
           </button>
-          {sopDone && <span className="inline-flex items-center gap-1.5 text-xs text-[var(--color-gold)]"><CheckIcon /> Acknowledged</span>}
+          {sopDone && <span className="inline-flex items-center gap-1.5 text-xs text-[var(--color-gold-deep)]"><CheckIcon /> Acknowledged</span>}
         </div>
       </div>
 
@@ -537,7 +548,7 @@ function ConsentStep({ p, live, onContinue, onSkip }: {
     return (
       <>
         <div className="rounded-[var(--radius-lg)] border border-[var(--color-gold)]/40 bg-[var(--color-bone)] p-8 text-center">
-          <span className="mx-auto grid h-12 w-12 place-items-center rounded-full bg-[var(--color-gold)] text-white" aria-hidden><CheckIcon large /></span>
+          <span className="mx-auto grid h-12 w-12 place-items-center rounded-full bg-[var(--color-gold-deep)] text-white" aria-hidden><CheckIcon large /></span>
           <p className="mt-4 font-[family-name:var(--font-display)] text-2xl">Consent on record</p>
           {c && (
             <p className="mt-2 text-sm text-[var(--color-stone)]">
@@ -560,7 +571,7 @@ function ConsentStep({ p, live, onContinue, onSkip }: {
       {link ? (
         <div className="space-y-3 rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-bone)] p-6">
           <a href={link} target="_blank" rel="noopener noreferrer"
-            className="inline-flex min-h-12 items-center gap-3 rounded-full bg-[var(--color-gold)] px-8 py-3.5 text-base font-medium text-white transition-colors hover:bg-[var(--color-ink)]">
+            className="inline-flex min-h-12 items-center gap-3 rounded-full bg-[var(--color-gold-deep)] px-8 py-3.5 text-base font-medium text-white transition-colors hover:bg-[var(--color-ink)]">
             Open the signing screen <ArrowIcon />
           </a>
           <div className="flex flex-wrap items-center gap-3 text-sm">
@@ -573,7 +584,7 @@ function ConsentStep({ p, live, onContinue, onSkip }: {
         </div>
       ) : p.consent.templateKey ? (
         <button type="button" disabled={busy} onClick={createRequest}
-          className="inline-flex min-h-12 items-center gap-3 rounded-full bg-[var(--color-gold)] px-8 py-3.5 text-base font-medium text-white transition-colors hover:bg-[var(--color-ink)] disabled:opacity-50">
+          className="inline-flex min-h-12 items-center gap-3 rounded-full bg-[var(--color-gold-deep)] px-8 py-3.5 text-base font-medium text-white transition-colors hover:bg-[var(--color-ink)] disabled:opacity-50">
           {busy ? 'Preparing…' : <>Prepare the consent form <ArrowIcon /></>}
         </button>
       ) : (
@@ -589,12 +600,12 @@ function ConsentStep({ p, live, onContinue, onSkip }: {
   );
 }
 
-function TreatmentStep({ p, live, sessData, pending, presenting, canStart, gateHints, elapsed, api, onStart, onFinish, onSaveNote, onContinue }: {
+function TreatmentStep({ p, live, sessData, pending, presenting, canStart, gateHints, elapsed, api, onStart, onFinish, onSaveNote, onRemoveAddon, onContinue }: {
   p: Props; live: { startedAt: string | null; finishedAt: string | null }; sessData: Record<string, { value: string; by: string; at: string }>;
   pending: boolean; presenting: boolean; canStart: boolean;
   gateHints: { flagOk: boolean; sopOk: boolean; consentOk: boolean; photoOk: boolean };
   elapsed: number; api: (payload: Record<string, unknown>) => Promise<{ ok: boolean }>;
-  onStart: () => void; onFinish: () => void; onSaveNote: (note: string) => void; onContinue: () => void;
+  onStart: () => void; onFinish: () => void; onSaveNote: (note: string) => void; onRemoveAddon: (itemId: string) => void; onContinue: () => void;
 }) {
   const [note, setNote] = useState(p.clinicalNote);
   // Live-derived until this device edits — a note saved on another device (or
@@ -621,14 +632,26 @@ function TreatmentStep({ p, live, sessData, pending, presenting, canStart, gateH
             <ul className="space-y-2 rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-bone)] p-5 text-sm">
               {gateList.map((g) => (
                 <li key={g.label} className={`flex items-center gap-2.5 ${g.ok ? 'text-[var(--color-stone)]' : ''}`}>
-                  <span aria-hidden className={`grid h-5 w-5 place-items-center rounded-full ${g.ok ? 'bg-[var(--color-gold)] text-white' : 'border border-[var(--color-blush)] text-[var(--color-blush)]'}`}>{g.ok ? <CheckIcon /> : '·'}</span>
+                  <span aria-hidden className={`grid h-5 w-5 place-items-center rounded-full ${g.ok ? 'bg-[var(--color-gold-deep)] text-white' : 'border border-[var(--color-blush)] text-[var(--color-blush-deep)]'}`}>{g.ok ? <CheckIcon /> : '·'}</span>
                   {g.label}
                 </li>
               ))}
             </ul>
           )}
+          {/* Before photo capture — accessible pre-start so the gate can be cleared here */}
+          {!presenting && (p.gates.requireBeforePhoto || p.photos.items.length > 0) && (
+            <BeforePhotoCapture
+              bookingId={p.booking.id}
+              clientId={p.client.id}
+              photos={p.photos.items}
+              optOutSigned={p.photos.optOutSigned}
+              baseUrl={p.photos.baseUrl}
+              canManage={p.photos.canManage}
+              required={p.photos.isLaser}
+            />
+          )}
           <button type="button" disabled={pending || !canStart} onClick={onStart}
-            className="inline-flex min-h-12 items-center gap-3 rounded-full bg-[var(--color-gold)] px-8 py-3.5 text-base font-medium text-white transition-colors hover:bg-[var(--color-ink)] disabled:opacity-40">
+            className="inline-flex min-h-12 items-center gap-3 rounded-full bg-[var(--color-gold-deep)] px-8 py-3.5 text-base font-medium text-white transition-colors hover:bg-[var(--color-ink)] disabled:opacity-40">
             Start treatment <ArrowIcon />
           </button>
         </>
@@ -664,9 +687,25 @@ function TreatmentStep({ p, live, sessData, pending, presenting, canStart, gateH
                 </div>
               )}
 
+              {/* Add-on treatments — listed with a remove button while uncharged */}
+              {p.booking.addOns.length > 0 && (
+                <AddonList bookingId={p.booking.id} addOns={p.booking.addOns} charged={!!p.booking.chargedAt} onRemove={onRemoveAddon} />
+              )}
+
+              {/* Before photo capture — always accessible during the session */}
+              <BeforePhotoCapture
+                bookingId={p.booking.id}
+                clientId={p.client.id}
+                photos={p.photos.items}
+                optOutSigned={p.photos.optOutSigned}
+                baseUrl={p.photos.baseUrl}
+                canManage={p.photos.canManage}
+                required={p.photos.isLaser}
+              />
+
               {!finished && (
                 <button type="button" disabled={pending} onClick={onFinish}
-                  className="inline-flex min-h-12 items-center gap-3 rounded-full bg-[var(--color-ink)] px-8 py-3.5 text-base font-medium text-[var(--color-porcelain)] transition-colors hover:bg-[var(--color-gold)] disabled:opacity-50">
+                  className="inline-flex min-h-12 items-center gap-3 rounded-full bg-[var(--color-ink)] px-8 py-3.5 text-base font-medium text-[var(--color-porcelain)] transition-colors hover:bg-[var(--color-gold-deep)] disabled:opacity-50">
                   End treatment (stops the clock)
                 </button>
               )}
@@ -717,7 +756,7 @@ function AftercareStep({ p, live, sessData, api, onContinue }: {
       {confirmed ? (
         <>
           <p className="inline-flex items-center gap-2 rounded-full bg-[var(--color-bone)] px-4 py-2.5 text-sm text-[var(--color-stone)]">
-            <span className="grid h-5 w-5 place-items-center rounded-full bg-[var(--color-gold)] text-white" aria-hidden><CheckIcon /></span>
+            <span className="grid h-5 w-5 place-items-center rounded-full bg-[var(--color-gold-deep)] text-white" aria-hidden><CheckIcon /></span>
             Aftercare confirmed{confirmedBy ? ` by ${confirmedBy}` : ''}
           </p>
           <ContinueButton onClick={onContinue} label="Continue to checkout" />
@@ -730,11 +769,11 @@ function AftercareStep({ p, live, sessData, api, onContinue }: {
               placeholder={p.client.firstName}
               className="min-w-0 flex-1 rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-4 py-3 outline-none transition-colors focus:border-[var(--color-gold)]" />
             <button type="button" disabled={busy} onClick={confirm}
-              className="min-h-12 rounded-full bg-[var(--color-gold)] px-7 py-3 font-medium text-white transition-colors hover:bg-[var(--color-ink)] disabled:opacity-50">
+              className="min-h-12 rounded-full bg-[var(--color-gold-deep)] px-7 py-3 font-medium text-white transition-colors hover:bg-[var(--color-ink)] disabled:opacity-50">
               {busy ? 'Saving…' : 'Confirm'}
             </button>
           </div>
-          {error && <p role="alert" className="mt-2 text-sm text-[var(--color-blush)]">{error}</p>}
+          {error && <p role="alert" className="mt-2 text-sm text-[var(--color-blush-deep)]">{error}</p>}
         </div>
       )}
     </>
@@ -765,6 +804,45 @@ function CheckoutStep({ p, live, sessData, pending, presenting, api, run, onCont
   const [discType, setDiscType] = useState<'percent' | 'amount'>('percent');
   const [discVal, setDiscVal] = useState('');
   const [discReason, setDiscReason] = useState('');
+  // BLD-882 — gift voucher against the treatment sale. Applying reserves the
+  // balance server-side (atomic); a full cover settles the booking (the SSE
+  // snapshot flips to Paid), a partial one is netted off SERVER-SIDE by every
+  // charge op. The amount field always means the agreed price — the remainder
+  // is derived, never written back, so a reload, a second till or a discount
+  // can't double-count the voucher.
+  const [vOpen, setVOpen] = useState(false);
+  const [vCode, setVCode] = useState('');
+  const [vApplied, setVApplied] = useState<{ code: string; pence: number } | null>(
+    p.booking.giftVoucherCode && (p.booking.giftVoucherPence ?? 0) > 0 && !p.booking.chargedAt
+      ? { code: p.booking.giftVoucherCode, pence: p.booking.giftVoucherPence }
+      : null,
+  );
+  const [vBusy, setVBusy] = useState(false);
+  const [vErr, setVErr] = useState('');
+  // What the chosen method will actually collect (the server nets the same way).
+  const duePence = Math.max(0, amountPence - (vApplied?.pence ?? 0));
+  const voucherExceedsAmount = !!vApplied && amountPence <= vApplied.pence;
+  async function applyVoucher() {
+    if (vBusy || !vCode.trim() || amountPence <= 0) return;
+    setVBusy(true); setVErr('');
+    const res = (await api({ op: 'voucher', code: vCode.trim(), amountPence, ...discParams })) as { ok: boolean; error?: string; appliedPence?: number; settled?: boolean };
+    setVBusy(false);
+    if (!res.ok) { setVErr(res.error || 'Could not apply the voucher.'); return; }
+    if (res.settled) return; // fully covered — the stream flips this card to Paid
+    setVApplied({ code: vCode.trim().toUpperCase(), pence: res.appliedPence || 0 });
+    setVCode('');
+    setLinkQr(null); // a previously-minted QR no longer matches the remainder
+  }
+  async function removeVoucher() {
+    if (vBusy || !vApplied) return;
+    setVBusy(true); setVErr('');
+    const res = await api({ op: 'voucher-remove' });
+    setVBusy(false);
+    if (!res.ok) { setVErr(res.error || 'Could not remove the voucher.'); return; }
+    setVApplied(null);
+    setVOpen(true);
+    setLinkQr(null); // a QR minted for the netted remainder is stale now
+  }
   const discParams = discReason.trim() ? { discountReason: discReason.trim(), originalPence: p.booking.pricePence } : {};
   function applyDiscount() {
     const base = p.booking.pricePence;
@@ -810,7 +888,7 @@ function CheckoutStep({ p, live, sessData, pending, presenting, api, run, onCont
         </div>
         {charged ? (
           <p className="mt-3 inline-flex items-center gap-2 text-sm text-[var(--color-stone)]">
-            <span className="grid h-5 w-5 place-items-center rounded-full bg-[var(--color-gold)] text-white" aria-hidden><CheckIcon /></span>
+            <span className="grid h-5 w-5 place-items-center rounded-full bg-[var(--color-gold-deep)] text-white" aria-hidden><CheckIcon /></span>
             Paid {new Date(live.chargedAt!).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}.
           </p>
         ) : !presenting && p.canCharge ? (
@@ -824,7 +902,8 @@ function CheckoutStep({ p, live, sessData, pending, presenting, api, run, onCont
               <div className="flex items-center rounded-full border border-[var(--color-line)] p-0.5 text-sm" role="group" aria-label="Payment method">
                 {p.hasCardOnFile && <button type="button" onClick={() => { setMethod('card'); setLinkQr(null); setPayErr(''); }} aria-pressed={method === 'card'} className={`rounded-full px-3 py-1.5 transition-colors ${method === 'card' ? 'bg-[var(--color-ink)] text-[var(--color-porcelain)]' : 'text-[var(--color-stone)] hover:text-[var(--color-ink)]'}`}>Card on file</button>}
                 <button type="button" onClick={() => { setMethod('link'); setPayErr(''); }} aria-pressed={method === 'link'} className={`rounded-full px-3 py-1.5 transition-colors ${method === 'link' ? 'bg-[var(--color-ink)] text-[var(--color-porcelain)]' : 'text-[var(--color-stone)] hover:text-[var(--color-ink)]'}`}>Payment link</button>
-                <button type="button" onClick={() => { setMethod('terminal'); setLinkQr(null); setPayErr(''); }} aria-pressed={method === 'terminal'} className={`rounded-full px-3 py-1.5 transition-colors ${method === 'terminal' ? 'bg-[var(--color-ink)] text-[var(--color-porcelain)]' : 'text-[var(--color-stone)] hover:text-[var(--color-ink)]'}`}>Terminal</button>
+                {/* BLD-908: no tab at all unless a configured provider + registered device exist — it was a guaranteed dead end otherwise. */}
+                {p.terminals.length > 0 && <button type="button" onClick={() => { setMethod('terminal'); setLinkQr(null); setPayErr(''); }} aria-pressed={method === 'terminal'} className={`rounded-full px-3 py-1.5 transition-colors ${method === 'terminal' ? 'bg-[var(--color-ink)] text-[var(--color-porcelain)]' : 'text-[var(--color-stone)] hover:text-[var(--color-ink)]'}`}>Terminal</button>}
                 <button type="button" onClick={() => { setMethod('cash'); setLinkQr(null); setPayErr(''); }} aria-pressed={method === 'cash'} className={`rounded-full px-3 py-1.5 transition-colors ${method === 'cash' ? 'bg-[var(--color-ink)] text-[var(--color-porcelain)]' : 'text-[var(--color-stone)] hover:text-[var(--color-ink)]'}`}>Cash</button>
                 <button type="button" onClick={() => { setMethod('treatwell'); setLinkQr(null); setPayErr(''); }} aria-pressed={method === 'treatwell'} className={`rounded-full px-3 py-1.5 transition-colors ${method === 'treatwell' ? 'bg-[var(--color-ink)] text-[var(--color-porcelain)]' : 'text-[var(--color-stone)] hover:text-[var(--color-ink)]'}`}>Treatwell</button>
               </div>
@@ -833,7 +912,7 @@ function CheckoutStep({ p, live, sessData, pending, presenting, api, run, onCont
             {/* BLD-207: ad-hoc discount / price adjustment (applies to the amount taken by any method) */}
             <div className="mt-3">
               {!discOpen ? (
-                <button type="button" onClick={() => setDiscOpen(true)} className="text-xs text-[var(--color-gold)] underline-offset-2 hover:underline">Apply a discount / adjust price</button>
+                <button type="button" onClick={() => setDiscOpen(true)} className="text-xs text-[var(--color-gold-deep)] underline-offset-2 hover:underline">Apply a discount / adjust price</button>
               ) : (
                 <div className="flex flex-wrap items-center gap-2 rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-bone)]/40 p-3 text-sm">
                   <div className="flex items-center rounded-full border border-[var(--color-line)] bg-white p-0.5 text-xs">
@@ -848,12 +927,32 @@ function CheckoutStep({ p, live, sessData, pending, presenting, api, run, onCont
               )}
             </div>
 
+            {/* BLD-882: gift voucher — applies to the amount before any method collects the rest */}
+            <div className="mt-2">
+              {vApplied ? (
+                <div className="flex flex-wrap items-center gap-2 rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-bone)]/40 p-3 text-sm">
+                  <span>Gift voucher <span className="font-medium">{vApplied.code}</span> — {money(vApplied.pence)} applied. {money(duePence)} left to collect.</span>
+                  <button type="button" onClick={removeVoucher} disabled={vBusy} className="text-xs text-[var(--color-gold-deep)] underline-offset-2 hover:underline disabled:opacity-50">{vBusy ? 'Removing…' : 'Remove'}</button>
+                  {voucherExceedsAmount && <span className="w-full text-xs text-red-700">The voucher covers more than the current amount — remove it and apply again at the new price.</span>}
+                </div>
+              ) : !vOpen ? (
+                <button type="button" onClick={() => setVOpen(true)} className="text-xs text-[var(--color-gold-deep)] underline-offset-2 hover:underline">Redeem a gift voucher</button>
+              ) : (
+                <div className="flex flex-wrap items-center gap-2 rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-bone)]/40 p-3 text-sm">
+                  <input value={vCode} onChange={(e) => { setVCode(e.target.value); setVErr(''); }} onKeyDown={(e) => e.key === 'Enter' && applyVoucher()} placeholder="Voucher code" aria-label="Gift voucher code" className="min-w-[10rem] rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-2 py-1.5 uppercase outline-none focus:border-[var(--color-gold)]" />
+                  <button type="button" onClick={applyVoucher} disabled={vBusy || !vCode.trim()} className="rounded-full bg-[var(--color-ink)] px-3 py-1.5 text-xs font-medium text-[var(--color-porcelain)] disabled:opacity-40">{vBusy ? 'Applying…' : 'Apply'}</button>
+                  <span className="text-xs text-[var(--color-stone)]">Covers up to the amount above; any leftover stays on the voucher.</span>
+                </div>
+              )}
+              {vErr && <p className="mt-1 text-xs text-red-700">{vErr}</p>}
+            </div>
+
             {/* The action for the chosen method */}
             <div className="mt-3">
               {method === 'card' && (
                 <button type="button" disabled={pending || !live.finishedAt}
                   onClick={() => run(() => api({ op: 'charge', amountPence, ...discParams }))}
-                  className="min-h-12 rounded-full bg-[var(--color-gold)] px-7 py-3 font-medium text-white transition-colors hover:bg-[var(--color-ink)] disabled:opacity-40">
+                  className="min-h-12 rounded-full bg-[var(--color-gold-deep)] px-7 py-3 font-medium text-white transition-colors hover:bg-[var(--color-ink)] disabled:opacity-40">
                   Charge the saved card
                 </button>
               )}
@@ -862,14 +961,14 @@ function CheckoutStep({ p, live, sessData, pending, presenting, api, run, onCont
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img src={linkQr.qr} alt="Payment QR code" width={120} height={120} className="rounded-[var(--radius-sm)]" />
                   <div className="min-w-0 text-sm">
-                    <p className="font-medium">Scan to pay {money(amountPence)}</p>
+                    <p className="font-medium">Scan to pay {money(duePence)}</p>
                     <p className="mt-1 text-[var(--color-stone)]">The client scans this with their phone camera. This screen updates to “Paid” automatically once it goes through.</p>
-                    {linkQr.url && <a href={linkQr.url} target="_blank" rel="noreferrer" className="mt-1 inline-block break-all text-xs text-[var(--color-gold)] underline">Open the payment page</a>}
+                    {linkQr.url && <a href={linkQr.url} target="_blank" rel="noreferrer" className="mt-1 inline-block break-all text-xs text-[var(--color-gold-deep)] underline">Open the payment page</a>}
                   </div>
                 </div>
               ) : (
                 <button type="button" disabled={payBusy || !live.finishedAt} onClick={makeLink}
-                  className="min-h-12 rounded-full bg-[var(--color-gold)] px-7 py-3 font-medium text-white transition-colors hover:bg-[var(--color-ink)] disabled:opacity-40">
+                  className="min-h-12 rounded-full bg-[var(--color-gold-deep)] px-7 py-3 font-medium text-white transition-colors hover:bg-[var(--color-ink)] disabled:opacity-40">
                   {payBusy ? 'Creating link…' : 'Create a payment link'}
                 </button>
               ))}
@@ -881,7 +980,7 @@ function CheckoutStep({ p, live, sessData, pending, presenting, api, run, onCont
                     </select>
                   ) : <p className="text-sm text-[var(--color-stone)]">No card terminal is registered — add one under Devices.</p>}
                   <button type="button" disabled={payBusy || !live.finishedAt || p.terminals.length === 0} onClick={takeTerminal}
-                    className="min-h-12 rounded-full bg-[var(--color-gold)] px-7 py-3 font-medium text-white transition-colors hover:bg-[var(--color-ink)] disabled:opacity-40">
+                    className="min-h-12 rounded-full bg-[var(--color-gold-deep)] px-7 py-3 font-medium text-white transition-colors hover:bg-[var(--color-ink)] disabled:opacity-40">
                     {payBusy ? 'Sending to terminal…' : 'Take payment on terminal'}
                   </button>
                 </div>
@@ -889,8 +988,8 @@ function CheckoutStep({ p, live, sessData, pending, presenting, api, run, onCont
               {method === 'cash' && (
                 <div>
                   <button type="button" disabled={payBusy || !live.finishedAt} onClick={takeCash}
-                    className="min-h-12 rounded-full bg-[var(--color-gold)] px-7 py-3 font-medium text-white transition-colors hover:bg-[var(--color-ink)] disabled:opacity-40">
-                    {payBusy ? 'Recording…' : `Record ${money(amountPence)} cash`}
+                    className="min-h-12 rounded-full bg-[var(--color-gold-deep)] px-7 py-3 font-medium text-white transition-colors hover:bg-[var(--color-ink)] disabled:opacity-40">
+                    {payBusy ? 'Recording…' : `Record ${money(duePence)} cash`}
                   </button>
                   <p className="mt-2 max-w-md text-xs text-[var(--color-stone)]">Records the sale as paid in cash against this booking. Remember to put the cash in the drawer — it’s included in the day-close total.</p>
                 </div>
@@ -898,7 +997,7 @@ function CheckoutStep({ p, live, sessData, pending, presenting, api, run, onCont
               {method === 'treatwell' && (
                 <div>
                   <button type="button" disabled={payBusy || !live.finishedAt} onClick={takeTreatwell}
-                    className="min-h-12 rounded-full bg-[var(--color-gold)] px-7 py-3 font-medium text-white transition-colors hover:bg-[var(--color-ink)] disabled:opacity-40">
+                    className="min-h-12 rounded-full bg-[var(--color-gold-deep)] px-7 py-3 font-medium text-white transition-colors hover:bg-[var(--color-ink)] disabled:opacity-40">
                     {payBusy ? 'Recording…' : 'Record as paid via Treatwell'}
                   </button>
                   <p className="mt-2 max-w-md text-xs text-[var(--color-stone)]">Records the sale as settled on Treatwell — no card is charged here. Tip: invite {p.client.firstName} to book their next visit directly with us to skip the Treatwell commission.</p>
@@ -995,7 +1094,7 @@ function Boutique({ p, sessData, api, presenting }: {
   if (paidNumber) {
     return (
       <div className="rounded-[var(--radius-lg)] border border-[var(--color-gold)]/40 bg-[var(--color-bone)] p-6 text-center">
-        <span className="mx-auto grid h-10 w-10 place-items-center rounded-full bg-[var(--color-gold)] text-white" aria-hidden><CheckIcon /></span>
+        <span className="mx-auto grid h-10 w-10 place-items-center rounded-full bg-[var(--color-gold-deep)] text-white" aria-hidden><CheckIcon /></span>
         <p className="mt-3 font-[family-name:var(--font-display)] text-xl">Boutique — paid</p>
         <p className="mt-1 text-sm text-[var(--color-stone)]">Order {paidNumber}. The receipt is on its way by email; products are ready at the front desk.</p>
       </div>
@@ -1061,13 +1160,13 @@ function Boutique({ p, sessData, api, presenting }: {
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <p className="font-[family-name:var(--font-display)] text-xl tabular-nums">{money(total)} <span className="text-sm text-[var(--color-stone)]">· {count} item{count === 1 ? '' : 's'}</span></p>
                 <button type="button" disabled={busy} onClick={payOnPhone}
-                  className="min-h-12 rounded-full bg-[var(--color-ink)] px-7 py-3 text-sm font-medium text-[var(--color-porcelain)] transition-colors hover:bg-[var(--color-gold)] disabled:opacity-50">
+                  className="min-h-12 rounded-full bg-[var(--color-ink)] px-7 py-3 text-sm font-medium text-[var(--color-porcelain)] transition-colors hover:bg-[var(--color-gold-deep)] disabled:opacity-50">
                   {busy ? 'Preparing…' : 'Pay on your phone (QR)'}
                 </button>
               </div>
             </div>
           )}
-          {error && <p role="alert" className="mt-3 text-sm text-[var(--color-blush)]">{error}</p>}
+          {error && <p role="alert" className="mt-3 text-sm text-[var(--color-blush-deep)]">{error}</p>}
         </>
       )}
     </div>
@@ -1112,10 +1211,10 @@ function NextVisitStep({ p, sessData, api, onContinue, onSkip }: {
     return (
       <>
         <div className="rounded-[var(--radius-lg)] border border-[var(--color-gold)]/40 bg-[var(--color-bone)] p-8 text-center">
-          <span className="mx-auto grid h-12 w-12 place-items-center rounded-full bg-[var(--color-gold)] text-white" aria-hidden><CheckIcon large /></span>
+          <span className="mx-auto grid h-12 w-12 place-items-center rounded-full bg-[var(--color-gold-deep)] text-white" aria-hidden><CheckIcon large /></span>
           <p className="mt-4 font-[family-name:var(--font-display)] text-2xl">You’re booked in</p>
           <p className="mt-2 text-[var(--color-stone)]">
-            {p.booking.treatmentTitle} — {d.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' })} at {d.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}.
+            {p.booking.treatmentTitle} — {d.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'Europe/London' })} at {d.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/London' })}.
             Your card stays on file; a confirmation is on its way.
           </p>
         </div>
@@ -1141,18 +1240,18 @@ function NextVisitStep({ p, sessData, api, onContinue, onSkip }: {
             : slots.length === 0 ? <p className="text-sm text-[var(--color-stone)]">Nothing free that day — try another.</p>
             : slots.map((s) => (
               <button key={s} type="button" role="option" aria-selected={slot === s} onClick={() => setSlot(s)}
-                className={`min-h-11 rounded-full border px-4 py-2 text-sm tabular-nums transition-colors ${slot === s ? 'border-[var(--color-gold)] bg-[var(--color-gold)] text-white' : 'border-[var(--color-line)] hover:border-[var(--color-gold)]'}`}>
-                {new Date(s).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}
+                className={`min-h-11 rounded-full border px-4 py-2 text-sm tabular-nums transition-colors ${slot === s ? 'border-[var(--color-gold)] bg-[var(--color-gold-deep)] text-white' : 'border-[var(--color-line)] hover:border-[var(--color-gold)]'}`}>
+                {new Date(s).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/London' })}
               </button>
             ))}
         </div>
         {slot && (
           <button type="button" disabled={busy} onClick={reserve}
-            className="mt-5 inline-flex min-h-12 items-center gap-3 rounded-full bg-[var(--color-gold)] px-8 py-3.5 text-base font-medium text-white transition-colors hover:bg-[var(--color-ink)] disabled:opacity-50">
+            className="mt-5 inline-flex min-h-12 items-center gap-3 rounded-full bg-[var(--color-gold-deep)] px-8 py-3.5 text-base font-medium text-white transition-colors hover:bg-[var(--color-ink)] disabled:opacity-50">
             {busy ? 'Booking…' : <>Book it <ArrowIcon /></>}
           </button>
         )}
-        {error && <p role="alert" className="mt-3 text-sm text-[var(--color-blush)]">{error}</p>}
+        {error && <p role="alert" className="mt-3 text-sm text-[var(--color-blush-deep)]">{error}</p>}
       </div>
 
       <button type="button" onClick={onSkip} className="block text-sm text-[var(--color-stone)] underline-offset-4 transition-colors hover:text-[var(--color-ink)] hover:underline">
@@ -1170,7 +1269,7 @@ function FarewellStep({ p, live, pending, sessionDone, timings, stepSeconds, onC
   return (
     <>
       <div className="rounded-[var(--radius-lg)] border border-[var(--color-gold)]/40 bg-[var(--color-bone)] p-8 text-center">
-        <span className="mx-auto grid h-12 w-12 place-items-center rounded-full bg-[var(--color-gold)] text-white" aria-hidden><CheckIcon large /></span>
+        <span className="mx-auto grid h-12 w-12 place-items-center rounded-full bg-[var(--color-gold-deep)] text-white" aria-hidden><CheckIcon large /></span>
         <p className="mt-4 font-[family-name:var(--font-display)] text-3xl">Thank you, {p.client.firstName}.</p>
         <p className="mt-2 text-[var(--color-stone)]">
           {live.actualMinutes ? <>Today took {live.actualMinutes} minutes (booked {p.booking.durationMin}). </> : null}
@@ -1181,7 +1280,7 @@ function FarewellStep({ p, live, pending, sessionDone, timings, stepSeconds, onC
       {!sessionDone ? (
         <>
           <button type="button" disabled={pending || !live.finishedAt} onClick={onComplete}
-            className="inline-flex min-h-12 items-center gap-3 rounded-full bg-[var(--color-gold)] px-8 py-3.5 text-base font-medium text-white transition-colors hover:bg-[var(--color-ink)] disabled:opacity-40">
+            className="inline-flex min-h-12 items-center gap-3 rounded-full bg-[var(--color-gold-deep)] px-8 py-3.5 text-base font-medium text-white transition-colors hover:bg-[var(--color-ink)] disabled:opacity-40">
             Complete the visit <ArrowIcon />
           </button>
           {!live.finishedAt && (
@@ -1214,7 +1313,7 @@ function FarewellStep({ p, live, pending, sessionDone, timings, stepSeconds, onC
       )}
 
       <Link href={`/admin/bookings/${p.booking.id}`}
-        className="inline-flex min-h-12 items-center gap-3 rounded-full bg-[var(--color-ink)] px-8 py-3.5 text-base font-medium text-[var(--color-porcelain)] transition-colors hover:bg-[var(--color-gold)]">
+        className="inline-flex min-h-12 items-center gap-3 rounded-full bg-[var(--color-ink)] px-8 py-3.5 text-base font-medium text-[var(--color-porcelain)] transition-colors hover:bg-[var(--color-gold-deep)]">
         Back to the booking <ArrowIcon />
       </Link>
     </>
@@ -1248,6 +1347,48 @@ function ArrowIcon() {
   return <svg aria-hidden width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M2 8h11m0 0L9 4m4 4-4 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></svg>;
 }
 
+
+// BLD-480 — add-on treatments list with remove button (staff only, pre-charge).
+function AddonList({ bookingId, addOns, charged, onRemove }: {
+  bookingId: string;
+  addOns: { id: string; label: string; pricePence: number }[];
+  charged: boolean;
+  onRemove: (itemId: string) => void;
+}) {
+  const [removing, setRemoving] = useState<string | null>(null);
+  const money = (p: number) => `£${(p / 100).toLocaleString('en-GB', { minimumFractionDigits: p % 100 ? 2 : 0 })}`;
+
+  async function handleRemove(id: string) {
+    if (!confirm('Remove this add-on treatment? The total will be reduced.')) return;
+    setRemoving(id);
+    onRemove(id);
+    setRemoving(null);
+  }
+
+  return (
+    <div className="rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-bone)]/60 p-4">
+      <p className="mb-2 text-xs uppercase tracking-[0.16em] text-[var(--color-stone)]">Add-on treatments</p>
+      <ul className="space-y-2">
+        {addOns.map((a) => (
+          <li key={a.id} className="flex items-center justify-between gap-3 text-sm">
+            <span className="min-w-0 break-words">{a.label}{a.pricePence > 0 ? ` — ${money(a.pricePence)}` : ''}</span>
+            {!charged && (
+              <button
+                type="button"
+                disabled={removing === a.id}
+                onClick={() => handleRemove(a.id)}
+                aria-label={`Remove ${a.label}`}
+                className="shrink-0 rounded-full border border-[var(--color-line)] px-3 py-1 text-xs text-[var(--color-stone)] transition-colors hover:border-[var(--color-blush)] hover:text-[var(--color-blush-deep)] disabled:opacity-50"
+              >
+                {removing === a.id ? 'Removing…' : 'Remove'}
+              </button>
+            )}
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
 
 // BLD-138 — in-session voice recorder. Records via browser MediaRecorder,
 // POSTs the audio blob to /api/admin/bookings/transcribe (Deepgram), and

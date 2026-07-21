@@ -135,16 +135,20 @@ export async function syncStaffCalendar(staffId: string, days = 60): Promise<{ o
   return { ok: true, imported };
 }
 
-/** Sync every connected clinician (used by cron + manual trigger). */
-export async function syncAllCalendars(): Promise<{ ok: boolean; staff: number; imported: number }> {
-  if (!googleConfigured()) return { ok: false, staff: 0, imported: 0 };
+/** Sync every connected clinician (used by cron + manual trigger). PRJ-918.8:
+ *  per-staff failures are counted and surfaced (ok flips false) instead of
+ *  being discarded — a clinician whose token expired silently stopped syncing. */
+export async function syncAllCalendars(): Promise<{ ok: boolean; staff: number; imported: number; failed: number }> {
+  if (!googleConfigured()) return { ok: false, staff: 0, imported: 0, failed: 0 };
   const connected = await db.adminUser.findMany({ where: { googleRefreshToken: { not: null }, active: true }, select: { id: true } });
   let imported = 0;
+  let failed = 0;
   for (const s of connected) {
     const r = await syncStaffCalendar(s.id);
     imported += r.imported;
+    if (!r.ok) { failed++; console.error(`[google-calendar] sync failed for staff ${s.id}: ${r.error}`); }
   }
-  return { ok: true, staff: connected.length, imported };
+  return { ok: failed === 0, staff: connected.length, imported, failed };
 }
 
 // ── Outbound: write the clinic's bookings onto the clinician's calendar ──────
@@ -160,7 +164,6 @@ export async function pushBookingToClinician(bookingId: string): Promise<{ ok: b
   const b = await db.booking.findUnique({
     where: { id: bookingId },
     include: {
-      client: { select: { firstName: true, lastName: true, email: true, phone: true } },
       practitioner: { select: { googleRefreshToken: true, googleCalendarId: true } },
     },
   });
@@ -171,16 +174,16 @@ export async function pushBookingToClinician(bookingId: string): Promise<{ ok: b
   const token = await accessToken(decryptRefresh(staff.googleRefreshToken));
   if (!token) return { ok: false, error: 'token refresh failed' };
 
-  const name = [b.client?.firstName, b.client?.lastName].filter(Boolean).join(' ') || 'Client';
+  // PRJ-939.6: the clinician's Google Calendar is often a personal account —
+  // outside the CRM's access controls, mirrored to lock screens, notification
+  // previews and any calendars they share. A treatment name can itself reveal
+  // a health condition, so the event carries no clinical or contact substance:
+  // a generic title and a link back to the CRM booking, which enforces its own
+  // login and role checks. (The Hostinger CalDAV feed is the clinic's own
+  // business calendar and keeps its operational detail — see hostinger-calendar.)
   const event = {
-    summary: `${b.treatmentTitle} — ${name}`,
-    description: [
-      `Client: ${name}`,
-      b.client?.phone ? `Phone: ${b.client.phone}` : '',
-      b.client?.email ? `Email: ${b.client.email}` : '',
-      b.notes ? `Notes: ${b.notes}` : '',
-      `Open in CRM: ${site.url}/admin/bookings/${b.id}`,
-    ].filter(Boolean).join('\n'),
+    summary: 'KClinics appointment',
+    description: `Details in the CRM (login required): ${site.url}/admin/bookings/${b.id}`,
     start: { dateTime: b.startAt.toISOString() },
     end: { dateTime: b.endAt.toISOString() },
     // Tag the event so it's identifiable as clinic-managed.
@@ -220,11 +223,52 @@ export async function removeBookingFromClinician(bookingId: string): Promise<{ o
   const token = await accessToken(decryptRefresh(b.practitioner.googleRefreshToken));
   if (!token) return { ok: false };
   const calId = encodeURIComponent(b.practitioner.googleCalendarId || 'primary');
-  await fetch(`https://www.googleapis.com/calendar/v3/calendars/${calId}/events/${encodeURIComponent(b.googleEventId)}`, {
-    method: 'DELETE',
-    headers: { Authorization: `Bearer ${token}` },
-    signal: AbortSignal.timeout(10_000),
-  }).catch(() => {});
+  // BLD-914: only clear googleEventId when the event is actually gone from
+  // Google's side (deleted now, or already deleted/expired: 404/410). Clearing
+  // it on a failed delete left a cancelled appointment live on the clinician's
+  // calendar with no record that the sync failed.
+  try {
+    const res = await fetch(`https://www.googleapis.com/calendar/v3/calendars/${calId}/events/${encodeURIComponent(b.googleEventId)}`, {
+      method: 'DELETE',
+      headers: { Authorization: `Bearer ${token}` },
+      signal: AbortSignal.timeout(10_000),
+    });
+    if (!res.ok && res.status !== 404 && res.status !== 410) {
+      console.error('[google-calendar] event delete failed:', res.status, bookingId);
+      const Sentry = await import('@sentry/nextjs');
+      Sentry.captureException(new Error(`Google Calendar event delete failed (${res.status})`), { tags: { area: 'google-calendar', stage: 'remove-booking' } });
+      return { ok: false };
+    }
+  } catch (e) {
+    console.error('[google-calendar] event delete failed:', (e as Error)?.message, bookingId);
+    const Sentry = await import('@sentry/nextjs');
+    Sentry.captureException(e, { tags: { area: 'google-calendar', stage: 'remove-booking' } });
+    return { ok: false };
+  }
   await db.booking.update({ where: { id: bookingId }, data: { googleEventId: null } });
   return { ok: true };
+}
+
+/** One-time sweep (PRJ-939.6): re-push every future clinic event so calendars
+ *  that already carry clinical titles and contact details get the redacted
+ *  content. Keyed in Settings so it runs once; new pushes are redacted at
+ *  source. Not run while Google is parked — the key is only stamped after a
+ *  real pass, so re-enabling the integration later still triggers the sweep. */
+export async function redactFutureClinicianEvents(): Promise<{ ok: boolean; updated: number }> {
+  const KEY = 'gcal_redact_backfill_v1';
+  if (!googleEnabled()) return { ok: false, updated: 0 };
+  const done = await db.setting.findUnique({ where: { key: KEY } }).catch(() => null);
+  if (done) return { ok: true, updated: 0 };
+  const rows = await db.booking.findMany({
+    where: { googleEventId: { not: null }, startAt: { gte: new Date() }, status: { not: 'CANCELLED' } },
+    select: { id: true },
+  });
+  let updated = 0;
+  for (const r of rows) {
+    const res = await pushBookingToClinician(r.id).catch(() => ({ ok: false }));
+    if (res.ok) updated++;
+  }
+  await db.setting.upsert({ where: { key: KEY }, update: { value: new Date().toISOString() }, create: { key: KEY, value: new Date().toISOString() } });
+  console.log(`[google-calendar] redaction backfill: ${updated}/${rows.length} future events re-pushed (PRJ-939.6)`);
+  return { ok: true, updated };
 }

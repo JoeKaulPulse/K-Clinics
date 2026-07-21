@@ -23,86 +23,108 @@ export default async function ReportsPage({ searchParams }: { searchParams: Prom
   const since = all ? new Date(0) : new Date(Date.now() - days * 864e5);
 
   const { db } = await import('@/lib/db');
-  const [completed, items, consumables] = await Promise.all([
-    db.booking.findMany({
-      // Filter on the appointment date (startAt) so imported/historical completed
-      // bookings — which have no finishedAt — are counted too.
-      where: { status: 'COMPLETED', startAt: { gte: since } },
-      select: { id: true, practitionerId: true, actualMinutes: true, durationMin: true, pricePence: true, chargedPence: true, refundedPence: true, pointsRedeemedPence: true, treatmentTitle: true, treatmentSlug: true, practitioner: { select: { name: true, email: true } } },
-    }),
+  // Filter on the appointment date (startAt) so imported/historical completed
+  // bookings — which have no finishedAt — are counted too.
+  const bookingWhere = { status: 'COMPLETED' as const, startAt: { gte: since } };
+
+  // Aggregate in the database, not in JS (BLD-889). range=all used to load
+  // every completed booking row into memory and reduce in JS, then run
+  // unbounded `bookingId IN (…)` lookups over the full id list — on years of
+  // history that walks tens of thousands of rows per page view. groupBy /
+  // aggregate returns one row per clinician / treatment instead, and the cost
+  // joins below are SQL aggregates.
+  const [totals, byStaff, byTreatment, items] = await Promise.all([
+    db.booking.aggregate({ where: bookingWhere, _count: true, _sum: { chargedPence: true, refundedPence: true, actualMinutes: true } }),
+    db.booking.groupBy({ by: ['practitionerId'], where: bookingWhere, _count: true, _sum: { actualMinutes: true, durationMin: true, chargedPence: true, refundedPence: true } }),
+    db.booking.groupBy({ by: ['treatmentTitle'], where: bookingWhere, _count: true, _sum: { chargedPence: true, refundedPence: true } }),
     db.stockItem.findMany({ where: { active: true }, select: { currentQty: true, costPence: true } }),
-    db.stockMovement.findMany({ where: { reason: { in: ['USED', 'WASTED'] }, createdAt: { gte: since } }, select: { delta: true, item: { select: { costPence: true } } } }),
   ]);
 
-  // Realised value of a completed treatment: the amount actually charged when
-  // Realised revenue only — the amount actually charged. We never count a
-  // completed-but-uncharged treatment as revenue (those surface separately via
-  // the dashboard's "completed, not charged" prompt), so nothing shows as a
-  // sale before payment is taken.
-  const rev = (b: { chargedPence: number | null; refundedPence: number | null }) => (b.chargedPence ?? 0) - (b.refundedPence ?? 0);
+  // Realised revenue only — the amount actually charged minus refunds. We never
+  // count a completed-but-uncharged treatment as revenue (those surface
+  // separately via the dashboard's "completed, not charged" prompt), so nothing
+  // shows as a sale before payment is taken.
+  const rev = (s: { chargedPence: number | null; refundedPence: number | null } | null | undefined) => (s?.chargedPence ?? 0) - (s?.refundedPence ?? 0);
+  const completedCount = totals._count;
 
   // Staff performance.
-  const staffMap = new Map<string, { name: string; count: number; actualMin: number; bookedMin: number; revenue: number }>();
-  for (const b of completed) {
-    const key = b.practitionerId || 'unassigned';
-    const name = b.practitioner?.name || b.practitioner?.email || 'Unassigned';
-    const s = staffMap.get(key) || { name, count: 0, actualMin: 0, bookedMin: 0, revenue: 0 };
-    s.count++; s.actualMin += b.actualMinutes ?? 0; s.bookedMin += b.durationMin; s.revenue += rev(b);
-    staffMap.set(key, s);
-  }
-  const staff = [...staffMap.values()].sort((a, b) => b.revenue - a.revenue);
+  const staffIds = byStaff.map((g) => g.practitionerId).filter((id): id is string => !!id);
+  const staffRows = staffIds.length ? await db.adminUser.findMany({ where: { id: { in: staffIds } }, select: { id: true, name: true, email: true } }) : [];
+  const nameById = new Map(staffRows.map((u) => [u.id, u.name || u.email]));
+  const staff = byStaff.map((g) => ({
+    name: (g.practitionerId && nameById.get(g.practitionerId)) || 'Unassigned',
+    count: g._count,
+    actualMin: g._sum.actualMinutes ?? 0,
+    bookedMin: g._sum.durationMin ?? 0,
+    revenue: rev(g._sum),
+  })).sort((a, b) => b.revenue - a.revenue);
 
   // Treatments.
-  const txMap = new Map<string, { count: number; revenue: number }>();
-  for (const b of completed) {
-    const t = txMap.get(b.treatmentTitle) || { count: 0, revenue: 0 };
-    t.count++; t.revenue += rev(b);
-    txMap.set(b.treatmentTitle, t);
-  }
-  const treatments = [...txMap.entries()].map(([title, v]) => ({ title, ...v })).sort((a, b) => b.revenue - a.revenue).slice(0, 12);
+  const treatmentAgg = byTreatment.map((g) => ({ title: g.treatmentTitle, count: g._count, revenue: rev(g._sum) })).sort((a, b) => b.revenue - a.revenue);
+  const treatments = treatmentAgg.slice(0, 12);
 
   // Profitability by service: revenue (charged − refunded) minus attributable
   // cost — variant cost-of-goods (from booking items) + consumables used on that
-  // booking. Cost is conservative (0 where not recorded), so margin never overstates.
-  const bookingIds = completed.map((b) => b.id);
-  const [itemRows, moveRows] = await Promise.all([
-    bookingIds.length ? db.bookingItem.findMany({ where: { bookingId: { in: bookingIds } }, select: { bookingId: true, sessions: true, variant: { select: { costPence: true } } } }) : Promise.resolve([]),
-    bookingIds.length ? db.stockMovement.findMany({ where: { bookingId: { in: bookingIds }, reason: { in: ['USED', 'WASTED'] } }, select: { bookingId: true, delta: true, item: { select: { costPence: true } } } }) : Promise.resolve([]),
-  ]);
-  const costByBooking = new Map<string, number>();
-  const addCost = (id: string, c: number) => costByBooking.set(id, (costByBooking.get(id) ?? 0) + c);
-  for (const it of itemRows) if (it.variant?.costPence) addCost(it.bookingId, it.variant.costPence * (it.sessions || 1));
-  for (const m of moveRows) if (m.bookingId) addCost(m.bookingId, Math.abs(m.delta) * (m.item.costPence ?? 0));
-  const profMap = new Map<string, { title: string; count: number; revenue: number; cost: number }>();
-  for (const b of completed) {
-    const p = profMap.get(b.treatmentTitle) || { title: b.treatmentTitle, count: 0, revenue: 0, cost: 0 };
-    p.count++; p.revenue += rev(b); p.cost += costByBooking.get(b.id) ?? 0;
-    profMap.set(b.treatmentTitle, p);
-  }
-  const profitability = [...profMap.values()]
+  // booking. Cost is conservative (0 where not recorded), so margin never
+  // overstates. Both cost sources aggregate per treatment in SQL; StockMovement
+  // has no Booking relation in the Prisma schema (bare bookingId column), so a
+  // join here replaces the old unbounded id list.
+  const goodsCost = await db.$queryRaw<{ title: string; cost: number | null }[]>`
+    SELECT b."treatmentTitle" AS title,
+           SUM(v."costPence" * GREATEST(bi."sessions", 1))::float8 AS cost
+      FROM "BookingItem" bi
+      JOIN "Booking" b ON b."id" = bi."bookingId"
+      JOIN "ServiceVariant" v ON v."id" = bi."variantId"
+     WHERE b."status" = 'COMPLETED' AND b."startAt" >= ${since} AND v."costPence" > 0
+     GROUP BY 1
+  `.catch(() => [] as { title: string; cost: number | null }[]);
+  const usedCost = await db.$queryRaw<{ title: string; cost: number | null }[]>`
+    SELECT b."treatmentTitle" AS title,
+           SUM(ABS(m."delta") * COALESCE(si."costPence", 0))::float8 AS cost
+      FROM "StockMovement" m
+      JOIN "Booking" b ON b."id" = m."bookingId"
+      JOIN "StockItem" si ON si."id" = m."itemId"
+     WHERE m."reason" IN ('USED', 'WASTED') AND b."status" = 'COMPLETED' AND b."startAt" >= ${since}
+     GROUP BY 1
+  `.catch(() => [] as { title: string; cost: number | null }[]);
+  const costByTreatment = new Map<string, number>();
+  for (const r of [...goodsCost, ...usedCost]) costByTreatment.set(r.title, (costByTreatment.get(r.title) ?? 0) + Math.round(r.cost ?? 0));
+  const profitability = treatmentAgg
+    .map((t) => ({ ...t, cost: costByTreatment.get(t.title) ?? 0 }))
     .map((p) => ({ ...p, margin: p.revenue - p.cost, marginPct: p.revenue > 0 ? Math.round(((p.revenue - p.cost) / p.revenue) * 100) : 0 }))
     .sort((a, b) => b.margin - a.margin).slice(0, 15);
   const minMarginPct = await import('@/lib/settings').then((m) => m.getConfigNumber('min_margin_pct')).catch(() => 0);
 
-  const totalRevenue = completed.reduce((s, b) => s + rev(b), 0);
+  const totalRevenue = rev(totals._sum);
   // VAT collected over the period (only when the clinic is VAT-registered).
+  // Summed per treatment slug (the VAT class is per service), so the rate is
+  // applied to the period total per service rather than per booking.
   let totalVat = 0; let vatRegistered = false;
   try {
     const { getVatConfig, effectiveVatClass, vatBreakdown } = await import('@/lib/vat');
     const vatCfg = await getVatConfig();
     vatRegistered = vatCfg.registered;
     if (vatCfg.registered) {
-      const svcRows = await db.service.findMany({ select: { treatmentSlug: true, vatClass: true, category: true } });
-      const byTreatment = new Map(svcRows.map((s) => [s.treatmentSlug, s]));
-      for (const b of completed) {
-        const svc = byTreatment.get(b.treatmentSlug);
-        totalVat += vatBreakdown(rev(b), vatCfg, effectiveVatClass({ vatClass: svc?.vatClass, category: svc?.category })).vatPence;
+      const [bySlug, svcRows] = await Promise.all([
+        db.booking.groupBy({ by: ['treatmentSlug'], where: bookingWhere, _sum: { chargedPence: true, refundedPence: true } }),
+        db.service.findMany({ select: { treatmentSlug: true, vatClass: true, category: true } }),
+      ]);
+      const svcBySlug = new Map(svcRows.map((s) => [s.treatmentSlug, s]));
+      for (const g of bySlug) {
+        const svc = svcBySlug.get(g.treatmentSlug);
+        totalVat += vatBreakdown(rev(g._sum), vatCfg, effectiveVatClass({ vatClass: svc?.vatClass, category: svc?.category })).vatPence;
       }
     }
   } catch { /* VAT figure is best-effort */ }
-  const totalActualMin = completed.reduce((s, b) => s + (b.actualMinutes ?? 0), 0);
+  const totalActualMin = totals._sum.actualMinutes ?? 0;
   const inventoryValue = items.reduce((s, i) => s + i.currentQty * (i.costPence ?? 0), 0);
-  const consumablesUsed = consumables.reduce((s, m) => s + Math.abs(m.delta) * (m.item.costPence ?? 0), 0);
+  const usedRow = await db.$queryRaw<[{ used: number | null }]>`
+    SELECT SUM(ABS(m."delta") * COALESCE(si."costPence", 0))::float8 AS used
+      FROM "StockMovement" m
+      JOIN "StockItem" si ON si."id" = m."itemId"
+     WHERE m."reason" IN ('USED', 'WASTED') AND m."createdAt" >= ${since}
+  `.catch(() => [{ used: 0 }] as [{ used: number | null }]);
+  const consumablesUsed = Math.round(usedRow[0]?.used ?? 0);
 
   // Appointment-session timing analytics (BLD-143): how long each stage takes,
   // what gets skipped, and where the most time goes — from AppointmentSession.steps.
@@ -154,7 +176,7 @@ export default async function ReportsPage({ searchParams }: { searchParams: Prom
         {[
           { label: L('Revenue (charged)', 'Дохід (стягнено)'), value: gbp(totalRevenue) },
           ...(vatRegistered ? [{ label: L('of which VAT', 'у т.ч. ПДВ'), value: gbp(totalVat) }] : []),
-          { label: L('Appointments', 'Записи'), value: String(completed.length) },
+          { label: L('Appointments', 'Записи'), value: String(completedCount) },
           { label: L('Clinical hours', 'Клінічні години'), value: hrs(totalActualMin) },
           { label: L('Consumables used', 'Витратні'), value: gbp(consumablesUsed) },
         ].map((k) => (
@@ -202,7 +224,7 @@ export default async function ReportsPage({ searchParams }: { searchParams: Prom
               {treatments.length === 0 && <p className="p-4 text-sm text-[var(--color-stone)]">{L('No data yet.', 'Немає даних.')}</p>}
               {treatments.map((t) => (
                 <div key={t.title} className="flex items-center justify-between border-b border-[var(--color-line)] bg-[var(--color-porcelain)] px-4 py-2.5 text-sm transition-colors last:border-0 hover:bg-[var(--color-bone)]">
-                  <span>{t.title} <span className="text-xs tabular-nums text-[var(--color-stone-soft)]">×{t.count}</span></span>
+                  <span>{t.title} <span className="text-xs tabular-nums text-[var(--color-stone)]">×{t.count}</span></span>
                   <span className="tabular-nums text-[var(--color-jade)]">{gbp(t.revenue)}</span>
                 </div>
               ))}
@@ -211,26 +233,26 @@ export default async function ReportsPage({ searchParams }: { searchParams: Prom
           <div>
             <div className="mb-3 flex items-baseline justify-between gap-2">
               <h2 className="font-[family-name:var(--font-display)] text-xl">{L('Profitability by service', 'Прибутковість за послугою')}</h2>
-              <span className="text-xs text-[var(--color-stone-soft)]">{L('revenue − goods & consumables', 'дохід − товари та витратні')}</span>
+              <span className="text-xs text-[var(--color-stone)]">{L('revenue − goods & consumables', 'дохід − товари та витратні')}</span>
             </div>
             <div className="overflow-x-auto rounded-[var(--radius-lg)] border border-[var(--color-line)]">
               <table className="w-full text-sm tabular-nums">
-                <thead><tr className="bg-[var(--color-bone)] text-xs uppercase tracking-wide text-[var(--color-stone-soft)]">{[L('Service', 'Послуга'), L('Revenue', 'Дохід'), L('Cost', 'Собівартість'), L('Margin', 'Маржа'), '%'].map((h) => <th key={h} className="px-4 py-2.5 text-right first:text-left">{h}</th>)}</tr></thead>
+                <thead><tr className="bg-[var(--color-bone)] text-xs uppercase tracking-wide text-[var(--color-stone)]">{[L('Service', 'Послуга'), L('Revenue', 'Дохід'), L('Cost', 'Собівартість'), L('Margin', 'Маржа'), '%'].map((h) => <th key={h} className="px-4 py-2.5 text-right first:text-left">{h}</th>)}</tr></thead>
                 <tbody>
                   {profitability.length === 0 && <tr><td colSpan={5} className="px-4 py-4 text-[var(--color-stone)]">{L('No data yet.', 'Немає даних.')}</td></tr>}
                   {profitability.map((p) => (
                     <tr key={p.title} className="border-t border-[var(--color-line)] bg-[var(--color-porcelain)] transition-colors duration-150 hover:bg-[var(--color-bone)]">
-                      <td className="px-4 py-2.5 font-medium">{p.title} <span className="text-xs text-[var(--color-stone-soft)]">×{p.count}</span>{minMarginPct > 0 && p.cost > 0 && p.marginPct < minMarginPct && <span className="ml-2 rounded-full bg-amber-100 px-2 py-0.5 text-[0.6rem] font-medium text-amber-800">⚠ below {minMarginPct}%</span>}</td>
+                      <td className="px-4 py-2.5 font-medium">{p.title} <span className="text-xs text-[var(--color-stone)]">×{p.count}</span>{minMarginPct > 0 && p.cost > 0 && p.marginPct < minMarginPct && <span className="ml-2 rounded-full bg-amber-100 px-2 py-0.5 text-[0.6rem] font-medium text-amber-800">⚠ below {minMarginPct}%</span>}</td>
                       <td className="px-4 py-2.5 text-right text-[var(--color-jade)]">{gbp(p.revenue)}</td>
                       <td className="px-4 py-2.5 text-right text-[var(--color-stone)]">{p.cost > 0 ? gbp(p.cost) : '—'}</td>
                       <td className="px-4 py-2.5 text-right font-medium">{gbp(p.margin)}</td>
-                      <td className={`px-4 py-2.5 text-right ${minMarginPct > 0 && p.cost > 0 && p.marginPct < minMarginPct ? 'text-amber-700' : p.marginPct >= 50 ? 'text-[var(--color-jade)]' : p.marginPct >= 0 ? 'text-[var(--color-ink)]' : 'text-[var(--color-blush)]'}`}>{p.marginPct}%</td>
+                      <td className={`px-4 py-2.5 text-right ${minMarginPct > 0 && p.cost > 0 && p.marginPct < minMarginPct ? 'text-amber-700' : p.marginPct >= 50 ? 'text-[var(--color-jade)]' : p.marginPct >= 0 ? 'text-[var(--color-ink)]' : 'text-[var(--color-blush-deep)]'}`}>{p.marginPct}%</td>
                     </tr>
                   ))}
                 </tbody>
               </table>
             </div>
-            <p className="mt-2 text-xs text-[var(--color-stone-soft)]">{L('Cost is conservative — only recorded goods (variant cost) and consumables linked to a booking are counted, so margin is never overstated.', 'Собівартість консервативна — лише зафіксовані товари та витратні, прив’язані до запису.')}</p>
+            <p className="mt-2 text-xs text-[var(--color-stone)]">{L('Cost is conservative — only recorded goods (variant cost) and consumables linked to a booking are counted, so margin is never overstated.', 'Собівартість консервативна — лише зафіксовані товари та витратні, прив’язані до запису.')}</p>
           </div>
           <div>
             <h2 className="mb-3 font-[family-name:var(--font-display)] text-xl">{L('Inventory valuation', 'Вартість складу')}</h2>
@@ -246,7 +268,7 @@ export default async function ReportsPage({ searchParams }: { searchParams: Prom
       <section className="mt-10">
         <div className="mb-3 flex items-baseline justify-between gap-2">
           <h2 className="font-[family-name:var(--font-display)] text-xl">{L('Appointment timing', 'Тривалість етапів')}</h2>
-          <span className="text-xs text-[var(--color-stone-soft)]">{L(`avg per stage across ${sessions.length} live session${sessions.length === 1 ? '' : 's'}`, `середнє за ${sessions.length} сесій`)}</span>
+          <span className="text-xs text-[var(--color-stone)]">{L(`avg per stage across ${sessions.length} live session${sessions.length === 1 ? '' : 's'}`, `середнє за ${sessions.length} сесій`)}</span>
         </div>
         {stepRows.length === 0 ? (
           <p className="rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-4 text-sm text-[var(--color-stone)]">{L('No live-session timing recorded in this period yet.', 'Ще немає даних про тривалість сесій за цей період.')}</p>
@@ -274,7 +296,7 @@ export default async function ReportsPage({ searchParams }: { searchParams: Prom
             </table>
           </div>
         )}
-        <p className="mt-2 text-xs text-[var(--color-stone-soft)]">{L('Longest stages show where time concentrates; high skip rates flag stages staff routinely bypass; revisits > 1× mean a stage is returned to.', 'Найдовші етапи показують, де зосереджено час; високий відсоток пропусків — етапи, які часто оминають.')}</p>
+        <p className="mt-2 text-xs text-[var(--color-stone)]">{L('Longest stages show where time concentrates; high skip rates flag stages staff routinely bypass; revisits > 1× mean a stage is returned to.', 'Найдовші етапи показують, де зосереджено час; високий відсоток пропусків — етапи, які часто оминають.')}</p>
       </section>
     </AdminShell>
   );

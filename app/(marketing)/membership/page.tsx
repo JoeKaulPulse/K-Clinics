@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import Image from 'next/image';
 import { PageHero } from '@/components/ui/PageHero';
 import { Reveal, Stagger, StaggerItem } from '@/components/motion/Reveal';
 import { BookingButtons } from '@/components/booking/BookingButtons';
@@ -7,6 +8,9 @@ import { Glyph } from '@/components/ui/Glyph';
 import { LOYALTY } from '@/lib/client-loyalty';
 import { site } from '@/lib/site';
 import { pageMeta, JsonLd, breadcrumbLd } from '@/lib/seo';
+
+// BLD-517: hourly ISR so these mostly-static pages are cached, not full SSR per request.
+export const revalidate = 3600;
 
 export const generateMetadata = (): Promise<Metadata> => pageMeta({
   title: 'Membership & Beauty Points Rewards | KClinics London',
@@ -168,8 +172,7 @@ async function Leaderboard() {
           <StaggerItem key={e.id}>
             <div className="flex items-center gap-4 rounded-[var(--radius-xl)] border border-[var(--color-line)] bg-[var(--color-bone)] p-5">
               {e.photoUrl ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img src={e.photoUrl} alt={`${e.name} -- KClinics member`} width={56} height={56} loading="lazy" decoding="async" className="h-14 w-14 shrink-0 rounded-full object-cover" />
+                <Image src={e.photoUrl} alt={`${e.name} -- KClinics member`} width={56} height={56} className="h-14 w-14 shrink-0 rounded-full object-cover" />
               ) : (
                 <span className="grid h-14 w-14 shrink-0 place-items-center rounded-full bg-[var(--color-ink)] font-[family-name:var(--font-display)] text-xl text-[var(--color-gold-soft)]" aria-hidden>
                   {(e.name[0] || '?').toUpperCase()}
@@ -180,7 +183,7 @@ async function Leaderboard() {
                   {i < 3 && <span aria-hidden>{MEDAL[i]}</span>}
                   <span className="truncate">{e.name}</span>
                 </p>
-                {e.tier && <p className="mt-0.5 text-xs uppercase tracking-[0.12em] text-[var(--color-gold)]">{e.tier}</p>}
+                {e.tier && <p className="mt-0.5 text-xs uppercase tracking-[0.12em] text-[var(--color-gold-deep)]">{e.tier}</p>}
                 <p className="mt-1 text-xs text-[var(--color-stone)]">{e.totalPoints.toLocaleString('en-GB')} pts</p>
               </div>
             </div>

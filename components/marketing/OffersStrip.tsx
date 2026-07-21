@@ -22,12 +22,12 @@ export async function OffersStrip({ heading = 'Offers on now' }: { heading?: str
   // provides a content container; the marketing page wraps it in container-lux).
   return (
     <div className="rounded-[var(--radius-xl)] border border-[var(--color-gold)]/30 bg-[var(--color-gold)]/8 p-6 md:p-8">
-      <p className="eyebrow mb-3 text-[var(--color-gold)]">{heading}</p>
+      <p className="eyebrow mb-3 text-[var(--color-gold-deep)]">{heading}</p>
       <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
         {offers.slice(0, 6).map((o) => (
           <li key={o.id} className="flex items-baseline justify-between gap-3 rounded-[var(--radius-md)] bg-[var(--color-porcelain)]/70 px-4 py-3">
             <span className="text-sm font-medium text-[var(--color-ink)]">{cleanName(o.name)}</span>
-            <span className="shrink-0 text-sm font-semibold text-[var(--color-gold)]">
+            <span className="shrink-0 text-sm font-semibold text-[var(--color-gold-deep)]">
               {o.percentOff ? `${o.percentOff}% off` : o.amountOffPence ? `£${(o.amountOffPence / 100).toLocaleString('en-GB')} off` : ''}
             </span>
           </li>

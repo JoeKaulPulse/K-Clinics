@@ -43,7 +43,7 @@ export default async function GiftVouchersPage() {
         lede="A KClinics voucher is the thoughtful way to treat someone — fully flexible, beautifully presented, and valid across our entire menu of treatments. Buy online in minutes."
         gradient={['#2a2420', '#a98a6d']}
       >
-        <a href="#buy" className="inline-flex items-center gap-2 rounded-full bg-[var(--color-gold)] px-7 py-3.5 text-sm font-medium text-white transition-colors hover:bg-[var(--color-ink)]">Buy a voucher →</a>
+        <a href="#buy" className="inline-flex items-center gap-2 rounded-full bg-[var(--color-gold-deep)] px-7 py-3.5 text-sm font-medium text-white transition-colors hover:bg-[var(--color-ink)]">Buy a voucher →</a>
       </PageHero>
 
       <section className="container-lux section">

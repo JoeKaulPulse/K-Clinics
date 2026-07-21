@@ -46,7 +46,7 @@ export function InventoryManager({ items, expiring, canManage, uk, hasISClinical
                   const order = Math.ceil(shortfall / i.moq) * i.moq;
                   return (
                     <li key={i.id}>
-                      {i.name} — <span className="font-medium text-[var(--color-blush)]">{i.currentQty} {i.unit}</span>{' '}
+                      {i.name} — <span className="font-medium text-[var(--color-blush-deep)] tabular-nums">{i.currentQty} {i.unit}</span>{' '}
                       <span className="text-xs">→ {L('order', 'замовити')} <span className="font-medium">{order}</span> ({L('MOQ', 'МОЗ')} {i.moq})</span>
                     </li>
                   );
@@ -130,11 +130,11 @@ function ItemRow({ item, canManage, uk }: { item: Item; canManage: boolean; uk: 
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2">
             <span className="text-sm font-medium">{item.name}</span>
-            {item.size && <span className="text-xs text-[var(--color-stone-soft)]">{item.size}</span>}
-            {item.sku && <span className="text-xs text-[var(--color-stone-soft)]">#{item.sku}</span>}
+            {item.size && <span className="text-xs text-[var(--color-stone)]">{item.size}</span>}
+            {item.sku && <span className="text-xs text-[var(--color-stone)]">#{item.sku}</span>}
             {item.isRetail && <span className="rounded-full bg-[var(--color-gold)]/15 px-2 py-0.5 text-[0.6rem] uppercase tracking-wide text-[var(--color-ink)]">{L('retail', 'роздріб')}</span>}
           </div>
-          <p className="mt-0.5 text-xs text-[var(--color-stone-soft)]">
+          <p className="mt-0.5 text-xs text-[var(--color-stone)]">
             {[item.brand, item.supplier].filter(Boolean).join(' · ')}
             {item.costPence != null ? ` · ${L('cost', 'собів.')} ${gbp(item.costPence)}` : ''}
             {item.retailPence != null ? ` · ${L('RRP', 'РРЦ')} ${gbp(item.retailPence)}` : ''}
@@ -143,8 +143,8 @@ function ItemRow({ item, canManage, uk }: { item: Item; canManage: boolean; uk: 
         </div>
         <div className="flex items-center gap-3">
           <div className="text-right">
-            <div className={`font-[family-name:var(--font-display)] text-lg leading-none ${low ? 'text-[var(--color-blush)]' : ''}`}>{item.currentQty}</div>
-            <div className="text-xs text-[var(--color-stone-soft)]">{item.unit}</div>
+            <div className={`font-[family-name:var(--font-display)] text-lg leading-none tabular-nums ${low ? 'text-[var(--color-blush-deep)]' : ''}`}>{item.currentQty}</div>
+            <div className="text-xs text-[var(--color-stone)]">{item.unit}</div>
           </div>
           {canManage && (
             <div className="flex flex-col gap-1">
@@ -194,7 +194,7 @@ function MoveForm({ itemId, unit, moq, uk, onDone }: { itemId: string; unit: str
       </label>
       <label className="text-xs text-[var(--color-stone)]">{L('Quantity', 'Кількість')} ({unit}){reason === 'ADJUSTMENT' ? ' ±' : ''}
         <input type="number" step="any" value={qty} onChange={(e) => setQty(e.target.value)} className={field} />
-        {reason === 'RECEIVED' && moq > 1 && <span className="mt-1 block text-[0.65rem] text-[var(--color-stone-soft)]">{L('Supplier MOQ', 'МОЗ постачальника')}: {moq}</span>}
+        {reason === 'RECEIVED' && moq > 1 && <span className="mt-1 block text-[0.65rem] text-[var(--color-stone)]">{L('Supplier MOQ', 'МОЗ постачальника')}: {moq}</span>}
       </label>
       {reason === 'RECEIVED' && (
         <>
@@ -210,7 +210,7 @@ function MoveForm({ itemId, unit, moq, uk, onDone }: { itemId: string; unit: str
         <input value={note} onChange={(e) => setNote(e.target.value)} className={field} />
       </label>
       <div className="flex items-center gap-3 sm:col-span-2">
-        <button onClick={submit} disabled={busy} className="rounded-full bg-[var(--color-gold)] px-5 py-2 text-sm font-medium text-white hover:bg-[var(--color-ink)] disabled:opacity-60">
+        <button onClick={submit} disabled={busy} className="rounded-full bg-[var(--color-gold-deep)] px-5 py-2 text-sm font-medium text-white hover:bg-[var(--color-ink)] disabled:opacity-60">
           {busy ? L('Saving…', 'Збереження…') : L('Record', 'Записати')}
         </button>
         {msg && <span className="text-sm text-[var(--color-stone)]">{msg}</span>}
@@ -256,7 +256,7 @@ function EditForm({ item, uk, onDone }: { item: Item; uk: boolean; onDone: () =>
       <label className="text-xs text-[var(--color-stone)]">{L('MOQ', 'МОЗ')}<input type="number" value={v.moq} onChange={set('moq')} className={field} /></label>
       <label className="text-xs text-[var(--color-stone)]">{L('Low-stock at', 'Поріг низького запасу')}<input type="number" step="any" value={v.lowStockAt} onChange={set('lowStockAt')} className={field} /></label>
       <label className="flex items-center gap-2 text-xs text-[var(--color-stone)] sm:col-span-2"><input type="checkbox" checked={v.isRetail} onChange={(e) => setV({ ...v, isRetail: e.target.checked })} className="h-4 w-4 accent-[var(--color-gold)]" />{L('Sold to clients (retail)', 'Продається клієнтам (роздріб)')}</label>
-      <div className="sm:col-span-2"><button onClick={save} disabled={busy} className="rounded-full bg-[var(--color-gold)] px-5 py-2 text-sm font-medium text-white hover:bg-[var(--color-ink)] disabled:opacity-60">{busy ? L('Saving…', 'Збереження…') : L('Save', 'Зберегти')}</button></div>
+      <div className="sm:col-span-2"><button onClick={save} disabled={busy} className="rounded-full bg-[var(--color-gold-deep)] px-5 py-2 text-sm font-medium text-white hover:bg-[var(--color-ink)] disabled:opacity-60">{busy ? L('Saving…', 'Збереження…') : L('Save', 'Зберегти')}</button></div>
     </div>
   );
 }
@@ -305,7 +305,7 @@ function AddItem({ uk }: { uk: boolean }) {
         <label className="flex items-center gap-2 text-xs text-[var(--color-stone)] sm:col-span-2"><input type="checkbox" checked={v.isRetail} onChange={(e) => setV({ ...v, isRetail: e.target.checked })} className="h-4 w-4 accent-[var(--color-gold)]" />{L('Sold to clients (retail)', 'Продається клієнтам (роздріб)')}</label>
       </div>
       <div className="mt-4 flex items-center gap-3">
-        <button onClick={submit} disabled={busy} className="rounded-full bg-[var(--color-gold)] px-5 py-2 text-sm font-medium text-white hover:bg-[var(--color-ink)] disabled:opacity-60">{busy ? L('Adding…', 'Додавання…') : L('Add item', 'Додати')}</button>
+        <button onClick={submit} disabled={busy} className="rounded-full bg-[var(--color-gold-deep)] px-5 py-2 text-sm font-medium text-white hover:bg-[var(--color-ink)] disabled:opacity-60">{busy ? L('Adding…', 'Додавання…') : L('Add item', 'Додати')}</button>
         <button onClick={() => setOpen(false)} className="text-sm text-[var(--color-stone)]">{L('Cancel', 'Скасувати')}</button>
         {msg && <span className="text-sm text-[var(--color-stone)]">{msg}</span>}
       </div>

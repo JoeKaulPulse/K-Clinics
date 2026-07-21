@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
 import { treatments } from '@/lib/treatments';
 import { site } from '@/lib/site';
@@ -33,7 +33,7 @@ const aesthetic = treatments.filter((t) => t.category === 'aesthetics');
 const dental = treatments.filter((t) => t.category === 'dentistry');
 
 const field =
-  'w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-porcelain)] px-4 py-3 text-[var(--color-ink)] outline-none transition-colors placeholder:text-[var(--color-stone-soft)] focus:border-[var(--color-gold)]';
+  'w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-porcelain)] px-4 py-3 text-[var(--color-ink)] outline-none transition-colors placeholder:text-[var(--color-stone)] focus:border-[var(--color-gold)]';
 const label = 'mb-1.5 block text-xs uppercase tracking-[0.16em] text-[var(--color-stone)]';
 
 export function ConsultForm() {
@@ -41,6 +41,7 @@ export function ConsultForm() {
   const [d, setD] = useState<Data>(empty);
   const [status, setStatus] = useState<'idle' | 'sending' | 'done' | 'error'>('idle');
   const [error, setError] = useState('');
+  const sendingRef = useRef(false);
 
   const set = <K extends keyof Data>(k: K, v: Data[K]) => setD((p) => ({ ...p, [k]: v }));
   const toggleTreatment = (name: string) =>
@@ -55,6 +56,11 @@ export function ConsultForm() {
     step === 3;
 
   async function submit() {
+    // BLD-887: reentrancy guard — the onClick closure's status check reads a
+    // stale value on a fast double-click, firing two POSTs and creating
+    // duplicate leads. The ref flips synchronously, before any re-render.
+    if (sendingRef.current) return;
+    sendingRef.current = true;
     setStatus('sending');
     setError('');
     // Shared id so the browser Lead event de-duplicates against the server-side
@@ -90,6 +96,8 @@ export function ConsultForm() {
     } catch {
       setError('Network error — please try again or call us.');
       setStatus('error');
+    } finally {
+      sendingRef.current = false;
     }
   }
 
@@ -125,7 +133,7 @@ export function ConsultForm() {
                 transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
               />
             </div>
-            <span className={`hidden text-[0.65rem] uppercase tracking-[0.14em] sm:block ${i === step ? 'text-[var(--color-gold)]' : 'text-[var(--color-stone)]'}`}>{s}</span>
+            <span className={`hidden text-[0.65rem] uppercase tracking-[0.14em] sm:block ${i === step ? 'text-[var(--color-gold-deep)]' : 'text-[var(--color-stone)]'}`}>{s}</span>
           </div>
         ))}
       </div>
@@ -197,20 +205,24 @@ export function ConsultForm() {
               <div><label className={label} htmlFor="ms">Anything else?</label><textarea id="ms" rows={2} className={field} value={d.message} onChange={(e) => set('message', e.target.value)} /></div>
               <label className="flex items-start gap-3 text-sm text-[var(--color-stone)]">
                 <input type="checkbox" checked={d.marketingOptIn} onChange={(e) => set('marketingOptIn', e.target.checked)} className="mt-1 h-4 w-4 accent-[var(--color-gold)]" />
-                Keep me updated with offers, events and skincare tips.
+                Keep me updated with offers, events and skincare tips. We may also use your contact details, in hashed form, to show you our offers on social media — see our Privacy Policy.
               </label>
               <label className="flex items-start gap-3 text-sm text-[var(--color-stone)]">
                 <input type="checkbox" checked={d.consent} onChange={(e) => set('consent', e.target.checked)} className="mt-1 h-4 w-4 accent-[var(--color-gold)]" />
                 I consent to KClinics contacting me about my enquiry. *
               </label>
-              {error && <p className="rounded-[var(--radius-sm)] bg-[var(--color-blush)]/20 px-4 py-3 text-sm text-[var(--color-ink)]">{error}</p>}
+              {error && <p role="alert" aria-live="assertive" className="rounded-[var(--radius-sm)] bg-[var(--color-blush)]/20 px-4 py-3 text-sm text-[var(--color-ink)]">{error}</p>}
             </div>
           )}
         </motion.div>
       </AnimatePresence>
 
       {/* Nav */}
-      <div className="mt-8 flex items-center justify-between gap-4">
+      {/* relative z-50: lifts the step buttons above the fixed WhatsApp launcher
+          (z-40, bottom-5 right-5, mobile-only) so a tap that visually lands on
+          "Continue"/"Request consultation" is never hijacked by the button
+          underneath (same fix as TreatmentFinder, BLD-769). */}
+      <div className="relative z-50 mt-8 flex items-center justify-between gap-4">
         <button
           type="button"
           onClick={() => setStep((s) => Math.max(0, s - 1))}
@@ -223,7 +235,7 @@ export function ConsultForm() {
             Continue <ArrowIcon />
           </Button>
         ) : (
-          <Button onClick={() => d.consent && status !== 'sending' && submit()} variant={d.consent ? 'gold' : 'outline'}>
+          <Button onClick={() => d.consent && submit()} disabled={status === 'sending'} variant={d.consent ? 'gold' : 'outline'}>
             {status === 'sending' ? 'Sending…' : 'Request consultation'} <ArrowIcon />
           </Button>
         )}
@@ -244,7 +256,7 @@ function Group({ title, items, selected, onToggle }: { title: string; items: typ
               key={t.slug}
               type="button"
               onClick={() => onToggle(t.title)}
-              className={`rounded-full border px-4 py-2 text-sm transition-all ${on ? 'border-[var(--color-gold)] bg-[var(--color-gold)] text-white' : 'border-[var(--color-line)] text-[var(--color-ink-soft)] hover:border-[var(--color-stone-soft)]'}`}
+              className={`rounded-full border px-4 py-2 text-sm transition-all ${on ? 'border-[var(--color-gold)] bg-[var(--color-gold-deep)] text-white' : 'border-[var(--color-line)] text-[var(--color-ink-soft)] hover:border-[var(--color-stone-soft)]'}`}
             >
               {t.title}
             </button>

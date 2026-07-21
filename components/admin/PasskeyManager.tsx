@@ -5,8 +5,10 @@ import { startRegistration } from '@simplewebauthn/browser';
 
 type Passkey = { id: string; deviceName: string | null; createdAt: string; lastUsedAt: string | null };
 
-// Lets any staff member enrol a platform passkey (Face ID / Touch ID / Windows
-// Hello) for fast, phishing-resistant sign-in to the CRM.
+// Lets the owner enrol a platform passkey (Face ID / Touch ID / Windows Hello)
+// for fast, phishing-resistant sign-in to the CRM. Passkeys are the OWNER-only
+// export step-up credential, so the register API and the profile page both gate
+// this to OWNER — do not render it for other roles.
 export function PasskeyManager() {
   const [keys, setKeys] = useState<Passkey[]>([]);
   const [loaded, setLoaded] = useState(false);
@@ -50,13 +52,13 @@ export function PasskeyManager() {
 
       <div className="mt-4">
         {!loaded ? (
-          <p className="text-xs text-[var(--color-stone-soft)]">Loading…</p>
+          <p className="text-xs text-[var(--color-stone)]">Loading…</p>
         ) : keys.length ? (
           <ul className="divide-y divide-[var(--color-line)] rounded-[var(--radius-md)] border border-[var(--color-line)] bg-white">
             {keys.map((k) => (
               <li key={k.id} className="flex items-center justify-between px-4 py-2.5 text-sm">
-                <span>{k.deviceName || 'Passkey'}<span className="ml-2 text-xs text-[var(--color-stone-soft)]">added {new Date(k.createdAt).toLocaleDateString('en-GB')}{k.lastUsedAt ? ` · last used ${new Date(k.lastUsedAt).toLocaleDateString('en-GB')}` : ''}</span></span>
-                <button onClick={() => remove(k.id)} className="text-xs text-[var(--color-blush)] hover:underline">Remove</button>
+                <span>{k.deviceName || 'Passkey'}<span className="ml-2 text-xs text-[var(--color-stone)]">added {new Date(k.createdAt).toLocaleDateString('en-GB')}{k.lastUsedAt ? ` · last used ${new Date(k.lastUsedAt).toLocaleDateString('en-GB')}` : ''}</span></span>
+                <button onClick={() => remove(k.id)} className="text-xs text-[var(--color-blush-deep)] hover:underline">Remove</button>
               </li>
             ))}
           </ul>

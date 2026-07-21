@@ -11,7 +11,11 @@ type Props = {
   sop: { title: string; content: string };
   sopSteps: SopStep[];
   sopSaved: SavedItem[] | null;
+  /** Decrypted flag text — passed ONLY to clinical viewers (clients.clinical.view). Null when redacted. */
   medicalFlag: string | null;
+  /** Whether a flag exists at all — drives the safety gate for everyone, so
+   *  redacting the text for non-clinical viewers never silently satisfies it. */
+  hasMedicalFlag: boolean;
   state: {
     sopAcknowledgedAt: string | null;
     medicalFlagReviewedAt: string | null;
@@ -23,12 +27,14 @@ type Props = {
   };
 };
 
-export function ClinicalWorkflow({ bookingId, sop, sopSteps, sopSaved, medicalFlag, state }: Props) {
+export function ClinicalWorkflow({ bookingId, sop, sopSteps, sopSaved, medicalFlag, hasMedicalFlag, state }: Props) {
   const [pending, start] = useTransition();
   const [err, setErr] = useState('');
 
   const sopOk = !!state.sopAcknowledgedAt;
-  const flagOk = !medicalFlag || !!state.medicalFlagReviewedAt;
+  // Gate on flag PRESENCE, not the decrypted text: a non-clinical viewer gets a
+  // null `medicalFlag` (redacted) but must still see the gate block their start.
+  const flagOk = !hasMedicalFlag || !!state.medicalFlagReviewedAt;
   const started = !!state.startedAt;
   const finished = !!state.finishedAt;
 
@@ -40,13 +46,14 @@ export function ClinicalWorkflow({ bookingId, sop, sopSteps, sopSaved, medicalFl
       <h2 className="mb-1 font-[family-name:var(--font-display)] text-xl">Appointment workflow</h2>
       <p className="mb-5 text-sm text-[var(--color-stone)]">Complete the pre-checks, then run the appointment clock.</p>
 
-      {/* Medical flag */}
-      {medicalFlag && (
+      {/* Medical flag — presence shows the gate to everyone; the decrypted text
+          only to clinical viewers (clients.clinical.view), else a neutral notice. */}
+      {hasMedicalFlag && (
         <div className={`mb-4 rounded-[var(--radius-md)] border p-4 ${flagOk ? 'border-[var(--color-line)] bg-[var(--color-bone)]' : 'border-[var(--color-blush)] bg-[var(--color-blush)]/15'}`}>
           <p className="flex items-center gap-2 text-sm font-semibold text-[var(--color-ink)]">
             <span aria-hidden>⚠</span> Medical flag
           </p>
-          <p className="mt-1 text-sm text-[var(--color-ink-soft)]">{medicalFlag}</p>
+          <p className="mt-1 text-sm text-[var(--color-ink-soft)]">{medicalFlag ?? 'On file — view permission required.'}</p>
           {flagOk ? (
             <p className="mt-2 text-xs text-[var(--color-jade)]">Reviewed ✓</p>
           ) : (
@@ -63,12 +70,12 @@ export function ClinicalWorkflow({ bookingId, sop, sopSteps, sopSaved, medicalFl
       {/* Timer + start/finish */}
       <Timer state={state} />
 
-      {err && <p className="mt-3 rounded-[var(--radius-sm)] bg-[var(--color-blush)]/25 px-3 py-2 text-sm">{err}</p>}
+      {err && <p role="alert" aria-live="assertive" className="mt-3 rounded-[var(--radius-sm)] bg-[var(--color-blush)]/25 px-3 py-2 text-sm">{err}</p>}
 
       <div className="mt-4 flex flex-wrap gap-2">
         {!started && !finished && (
           <button disabled={pending || !sopOk || !flagOk} onClick={() => run(() => startAppointment(bookingId))}
-            className="rounded-full bg-[var(--color-gold)] px-5 py-2.5 text-sm font-medium text-white hover:bg-[var(--color-ink)] disabled:opacity-40">
+            className="rounded-full bg-[var(--color-gold-deep)] px-5 py-2.5 text-sm font-medium text-white hover:bg-[var(--color-ink)] disabled:opacity-40">
             ▶ Start appointment
           </button>
         )}
@@ -120,7 +127,7 @@ function SopChecklist({ bookingId, title, steps, saved, acknowledged, disabled }
         <span className="text-sm font-medium">SOP checklist · {title}</span>
         <span className="flex items-center gap-2 text-xs">
           <span className={allChecked ? 'text-[var(--color-jade)]' : 'text-[var(--color-stone)]'}>{doneCount}/{items.length}</span>
-          <span className="text-[var(--color-gold)]">{collapsed ? 'Open' : 'Hide'}</span>
+          <span className="text-[var(--color-gold-deep)]">{collapsed ? 'Open' : 'Hide'}</span>
         </span>
       </button>
 
@@ -174,7 +181,7 @@ function Timer({ state }: { state: Props['state'] }) {
     return (
       <div className="rounded-[var(--radius-md)] bg-[var(--color-bone)] p-4 text-sm">
         Completed in <strong>{state.actualMinutes} min</strong> (booked {state.durationMin} min)
-        <span className={delta > 0 ? ' text-[var(--color-blush)]' : ' text-[var(--color-jade)]'}> · {delta > 0 ? `+${delta}` : delta} min</span>
+        <span className={delta > 0 ? ' text-[var(--color-blush-deep)]' : ' text-[var(--color-jade)]'}> · {delta > 0 ? `+${delta}` : delta} min</span>
       </div>
     );
   }

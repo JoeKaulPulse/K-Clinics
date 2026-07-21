@@ -32,7 +32,7 @@ export function ConnectionsManager({ providers, flash }: { providers: Provider[]
   return (
     <div className="space-y-4">
       {flash.connected && <p className="rounded-[var(--radius-sm)] bg-[var(--color-jade)]/12 px-4 py-3 text-sm text-[var(--color-jade)]">Connected {flash.connected} ✓</p>}
-      {flash.error && <p className="rounded-[var(--radius-sm)] bg-[var(--color-blush)]/20 px-4 py-3 text-sm text-[var(--color-ink)]">Couldn’t complete that connection ({flash.error.replace(/_/g, ' ')}). Check the setup steps and try again.</p>}
+      {flash.error && <p role="alert" aria-live="assertive" className="rounded-[var(--radius-sm)] bg-[var(--color-blush)]/20 px-4 py-3 text-sm text-[var(--color-ink)]">Couldn’t complete that connection ({flash.error.replace(/_/g, ' ')}). Check the setup steps and try again.</p>}
 
       <div className="grid gap-4 md:grid-cols-2">
         {providers.map((p) => (
@@ -40,7 +40,7 @@ export function ConnectionsManager({ providers, flash }: { providers: Provider[]
             <div className="flex items-start justify-between gap-3">
               <div>
                 <h2 className="font-[family-name:var(--font-display)] text-lg">{p.name}</h2>
-                <p className="text-xs uppercase tracking-wide text-[var(--color-stone-soft)]">{p.category}</p>
+                <p className="text-xs uppercase tracking-wide text-[var(--color-stone)]">{p.category}</p>
               </div>
               <span className={`shrink-0 rounded-full px-2.5 py-0.5 text-[0.65rem] font-medium ${BADGE[p.state]}`}>{LABEL[p.state]}</span>
             </div>
@@ -57,7 +57,7 @@ export function ConnectionsManager({ providers, flash }: { providers: Provider[]
               ) : (
                 <button onClick={() => setOpen(open === p.id ? null : p.id)} className="rounded-full border border-[var(--color-line)] px-4 py-1.5 text-sm hover:border-[var(--color-gold)]">{open === p.id ? 'Hide setup' : 'Setup guide'}</button>
               )}
-              <a href={p.docsUrl} target="_blank" rel="noopener noreferrer" className="text-xs text-[var(--color-gold)] hover:underline">Developer console ↗</a>
+              <a href={p.docsUrl} target="_blank" rel="noopener noreferrer" className="text-xs text-[var(--color-gold-deep)] hover:underline">Developer console ↗</a>
             </div>
 
             {(open === p.id || (p.state === 'setup' && open === p.id)) && (

@@ -96,7 +96,7 @@ export function CampaignEditor({ data, stats, baseUrl, canManage, spendSyncedAt 
           </div>
           <div className="grid gap-4 sm:grid-cols-4">
             <label className="text-xs text-[var(--color-stone)]">Budget £<input value={f.budget} onChange={(e) => set('budget', e.target.value)} className={field} /></label>
-            <label className="text-xs text-[var(--color-stone)]">Spend £{spendSyncedAt && <span className="ml-1 text-[var(--color-stone-soft)]">· synced {new Date(spendSyncedAt).toLocaleDateString('en-GB')}</span>}<input value={f.spend} onChange={(e) => set('spend', e.target.value)} className={field} /></label>
+            <label className="text-xs text-[var(--color-stone)]">Spend £{spendSyncedAt && <span className="ml-1 text-[var(--color-stone)]">· synced {new Date(spendSyncedAt).toLocaleDateString('en-GB')}</span>}<input value={f.spend} onChange={(e) => set('spend', e.target.value)} className={field} /></label>
             <label className="text-xs text-[var(--color-stone)]">Target £<input value={f.targetRevenue} onChange={(e) => set('targetRevenue', e.target.value)} className={field} /></label>
             <label className="text-xs text-[var(--color-stone)]">Target bookings<input value={f.targetBookings} onChange={(e) => set('targetBookings', e.target.value)} className={field} /></label>
           </div>
@@ -105,7 +105,7 @@ export function CampaignEditor({ data, stats, baseUrl, canManage, spendSyncedAt 
             <p className="text-xs text-[var(--color-stone)]">Channels</p>
             <div className="mt-1 flex flex-wrap gap-2">
               {CHANNELS.map((c) => (
-                <button key={c.key} onClick={() => toggleChannel(c.key)} className={`rounded-full border px-3 py-1 text-xs ${f.channels.includes(c.key) ? 'border-[var(--color-gold)] bg-[var(--color-gold)] text-white' : 'border-[var(--color-line)] hover:border-[var(--color-gold)]'}`}>{c.label}</button>
+                <button key={c.key} onClick={() => toggleChannel(c.key)} className={`rounded-full border px-3 py-1 text-xs ${f.channels.includes(c.key) ? 'border-[var(--color-gold)] bg-[var(--color-gold-deep)] text-white' : 'border-[var(--color-line)] hover:border-[var(--color-gold)]'}`}>{c.label}</button>
               ))}
             </div>
           </div>
@@ -113,7 +113,7 @@ export function CampaignEditor({ data, stats, baseUrl, canManage, spendSyncedAt 
             <div className="flex items-center gap-3 pt-1">
               <button onClick={() => save()} disabled={busy} className="rounded-full bg-[var(--color-ink)] px-5 py-2 text-sm text-[var(--color-porcelain)] disabled:opacity-50">{busy ? 'Saving…' : 'Save'}</button>
               {msg && <span className="text-sm text-[var(--color-stone)]">{msg}</span>}
-              <button onClick={remove} className="ml-auto text-xs text-[var(--color-blush)] hover:underline">Delete campaign</button>
+              <button onClick={remove} className="ml-auto text-xs text-[var(--color-blush-deep)] hover:underline">Delete campaign</button>
             </div>
           )}
         </section>
@@ -138,8 +138,8 @@ export function CampaignEditor({ data, stats, baseUrl, canManage, spendSyncedAt 
               {trackingLinks.map((l) => (
                 <li key={l.label} className="text-xs">
                   <span className="font-medium text-[var(--color-ink)]">{l.label}</span>
-                  <button onClick={() => navigator.clipboard?.writeText(l.url)} className="ml-2 text-[var(--color-gold)] hover:underline">copy</button>
-                  <span className="mt-0.5 block truncate font-mono text-[0.65rem] text-[var(--color-stone-soft)]">{l.url}</span>
+                  <button onClick={() => navigator.clipboard?.writeText(l.url)} className="ml-2 text-[var(--color-gold-deep)] hover:underline">copy</button>
+                  <span className="mt-0.5 block truncate font-mono text-[0.65rem] text-[var(--color-stone)]">{l.url}</span>
                 </li>
               ))}
             </ul>
@@ -153,8 +153,8 @@ export function CampaignEditor({ data, stats, baseUrl, canManage, spendSyncedAt 
 function Kpi({ label, value, sub }: { label: string; value: string; sub?: string }) {
   return (
     <div className="rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-4">
-      <p className="text-xs uppercase tracking-[0.14em] text-[var(--color-stone-soft)]">{label}</p>
-      <p className="mt-1 font-[family-name:var(--font-display)] text-2xl text-[var(--color-ink)]">{value}</p>
+      <p className="text-xs uppercase tracking-[0.14em] text-[var(--color-stone)]">{label}</p>
+      <p className="mt-1 font-[family-name:var(--font-display)] text-2xl text-[var(--color-ink)] tabular-nums">{value}</p>
       {sub && <p className="text-[0.65rem] text-[var(--color-stone)]">{sub}</p>}
     </div>
   );

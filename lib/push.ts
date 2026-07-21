@@ -11,7 +11,7 @@ function ensureVapid(): boolean {
   const pub = process.env.VAPID_PUBLIC_KEY, priv = process.env.VAPID_PRIVATE_KEY;
   if (!pub || !priv) return false;
   if (!configured) {
-    webpush.setVapidDetails(process.env.VAPID_SUBJECT || 'mailto:hello@kclinics.co.uk', pub, priv);
+    webpush.setVapidDetails(process.env.VAPID_SUBJECT || 'mailto:support@kclinics.co.uk', pub, priv);
     configured = true;
   }
   return true;

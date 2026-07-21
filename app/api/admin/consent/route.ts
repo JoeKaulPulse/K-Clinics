@@ -79,18 +79,47 @@ export async function POST(req: Request) {
       if (!body.clientId || !body.templateKey) return bad();
       const template = await db.consentTemplate.findUnique({ where: { key: body.templateKey } });
       if (!template) return bad('Template not found');
-      // Reuse an existing pending request for the same booking+template if present.
-      const existing = await db.consentRequest.findFirst({ where: { bookingId: body.bookingId ?? undefined, templateKey: body.templateKey, status: 'PENDING' } });
+      // Never issue a retired form: a deactivated template must not be sendable
+      // even though the picker hides them — the API must not trust the client.
+      if (!template.active) return bad('That consent form is no longer available.');
+      // The kind is derived from the template, NOT taken from the client: the
+      // photo opt-out is a decline record, so it must never be issued or stored
+      // as an affirmative treatment consent (or vice versa).
+      const kind = template.key === 'photo_opt_out' ? 'photo_opt_out' : 'treatment';
+      // Reuse an existing pending request for the same booking + form if present.
+      const existing = await db.consentRequest.findFirst({ where: { bookingId: body.bookingId ?? undefined, templateKey: body.templateKey, kind, status: 'PENDING' } });
       const reqRow = existing ?? await db.consentRequest.create({
         data: {
           clientId: body.clientId, bookingId: body.bookingId ?? null, templateKey: body.templateKey,
-          title: template.title, kind: body.kind === 'photo_opt_out' ? 'photo_opt_out' : 'treatment',
+          title: template.title, kind,
           createdBy: session.email, expiresAt: new Date(Date.now() + 30 * 86400000),
         },
       });
       if (!existing) await logAudit({ action: 'CONSENT_REQUESTED', actor: session.email, actorRole: session.role, clientId: body.clientId, bookingId: body.bookingId ?? undefined, summary: `Issued consent “${template.title}”` });
       if (body.bookingId) revalidatePath(`/admin/bookings/${body.bookingId}`);
       return ok({ token: reqRow.token, url: `${site.url.replace(/\/$/, '')}/sign/${reqRow.token}` });
+    }
+    case 'emailRequest': {
+      // Email the private signing link for an existing pending request straight to
+      // the client (BLD-505). The token identifies the form + client + appointment.
+      const session = await requirePermission('bookings.manage');
+      if (!session) return bad('Not permitted.');
+      if (!body.token) return bad();
+      const reqRow = await db.consentRequest.findUnique({ where: { token: String(body.token) }, select: { token: true, title: true, clientId: true, bookingId: true, status: true } });
+      if (!reqRow) return bad('That signing request could not be found.');
+      if (reqRow.status !== 'PENDING') return bad('This form has already been signed.');
+      const client = await db.client.findUnique({ where: { id: reqRow.clientId }, select: { firstName: true, email: true } });
+      if (!client?.email) return bad('This client has no email address on file.');
+      const { sendEmail, tmplConsentRequest } = await import('@/lib/email');
+      const url = `${site.url.replace(/\/$/, '')}/sign/${reqRow.token}`;
+      const res = await sendEmail({
+        to: client.email,
+        subject: 'Please sign your consent form — KClinics',
+        html: tmplConsentRequest({ firstName: client.firstName || 'there', formTitle: reqRow.title, url }),
+      });
+      if (!res.ok) return bad(res.error || 'The email could not be sent. Please try again or copy the link.');
+      await logAudit({ action: 'CONSENT_REQUESTED', actor: session.email, actorRole: session.role, clientId: reqRow.clientId, bookingId: reqRow.bookingId ?? undefined, summary: `Emailed consent “${reqRow.title}” to client` });
+      return ok();
     }
     default:
       return bad('Unknown operation');

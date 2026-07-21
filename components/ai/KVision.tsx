@@ -3,13 +3,15 @@
 import { useEffect, useRef, useState } from 'react';
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
 import { KMark } from '@/components/brand/marks';
+import { trackLead } from '@/lib/analytics-events';
+import { useDialogBehaviours } from '@/components/ui/Dialog';
 
 type Stage = 'intro' | 'budget' | 'consent' | 'capture' | 'auth' | 'analysing' | 'results';
 type Finding = { area: string; label: string; note: string; severity: 'mild' | 'moderate' | 'notable' };
-type PlanTreatment = { slug: string; title: string; sessions: number; intervalWeeks: number; reason: string; fromPence: number; totalPence: number; href: string };
+type PlanTreatment = { slug: string; title: string; sessions: number; intervalWeeks: number; reason: string; fromPence: number; totalPence: number; estimated?: boolean; href: string };
 type Phase = { title: string; timing: string; startISO: string; expect: string; treatments: PlanTreatment[]; phaseTotalPence: number };
 type Extra = { slug: string; title: string; fromPence: number; reason: string; href: string };
-type Result = { summary: string; findings: Finding[]; phases: Phase[]; planTotalPence: number; extras: Extra[]; confidence: number };
+type Result = { summary: string; findings: Finding[]; phases: Phase[]; planTotalPence: number; aboveBudget?: boolean; extras: Extra[]; confidence: number };
 type Photo = { id: string; area: string; dataUrl: string };
 type Budget = { label: string; pence: number | null };
 
@@ -157,7 +159,7 @@ export function KVision({ signedIn, firstName, enabled }: { signedIn: boolean; f
                   <div key={p.id} className="group relative aspect-square overflow-hidden rounded-2xl border border-white/10">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img src={p.dataUrl} alt={`Uploaded photo ${idx + 1}`} className="h-full w-full object-cover" />
-                    <button onClick={() => setPhotos((arr) => arr.filter((x) => x.id !== p.id))} className="absolute right-1.5 top-1.5 grid h-6 w-6 place-items-center rounded-full bg-black/60 text-xs opacity-0 transition-opacity group-hover:opacity-100">✕</button>
+                    <button onClick={() => setPhotos((arr) => arr.filter((x) => x.id !== p.id))} aria-label="Remove photo" className="absolute right-1.5 top-1.5 grid h-6 w-6 place-items-center rounded-full bg-black/60 text-xs opacity-0 transition-opacity group-hover:opacity-100">✕</button>
                   </div>
                 ))}
                 {photos.length < 4 && (
@@ -193,7 +195,7 @@ export function KVision({ signedIn, firstName, enabled }: { signedIn: boolean; f
           {stage === 'results' && result && <Results key="results" result={result} budget={budget} onRestart={() => { setResult(null); setPhotos([]); setConsent(false); setBudget(null); setStage('intro'); }} />}
         </AnimatePresence>
 
-        {error && <p className="mx-auto mt-6 max-w-2xl rounded-xl border border-[#d98c8c]/30 bg-[#d98c8c]/10 px-4 py-3 text-center text-sm text-[#f4d6d6]">{error}</p>}
+        {error && <p role="alert" aria-live="assertive" className="mx-auto mt-6 max-w-2xl rounded-xl border border-[#d98c8c]/30 bg-[#d98c8c]/10 px-4 py-3 text-center text-sm text-[#f4d6d6]">{error}</p>}
       </div>
 
       {/* Homepage-style scroll cue (intro only) */}
@@ -253,7 +255,7 @@ function Results({ result, budget, onRestart }: { result: Result; budget: Budget
                       <p className="mt-1 text-sm text-[#cdbfae]">{t.reason}</p>
                     </div>
                     <div className="shrink-0 text-right">
-                      <p className="text-sm text-[#9a8f80]">{money(t.totalPence)}</p>
+                      <p className="text-sm text-[#9a8f80]">{t.estimated && t.totalPence > 0 ? `from ${money(t.totalPence)}` : money(t.totalPence)}</p>
                       <a href={t.href} className="mt-1 inline-block rounded-full bg-[var(--color-gold,#c8a96a)] px-4 py-1.5 text-sm font-medium text-[#0c0b0a]">Book →</a>
                     </div>
                   </div>
@@ -268,8 +270,9 @@ function Results({ result, budget, onRestart }: { result: Result; budget: Budget
       {/* Total */}
       <div className="mt-2 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-white/10 bg-white/[0.04] p-5">
         <div>
-          <p className="text-sm text-[#9a8f80]">Plan total{budget?.pence ? ` · within your ${budget.label} budget` : ''}</p>
-          <p className="font-[family-name:var(--font-display)] text-2xl">{money(result.planTotalPence)}</p>
+          <p className="text-sm text-[#9a8f80]">Plan total{budget?.pence ? (result.aboveBudget ? ` · above your ${budget.label} budget` : ` · within your ${budget.label} budget`) : ''}</p>
+          <p className="font-[family-name:var(--font-display)] text-2xl">{result.phases.some((p) => p.treatments.some((t) => t.estimated)) && result.planTotalPence > 0 ? `from ${money(result.planTotalPence)}` : money(result.planTotalPence)}</p>
+          {result.aboveBudget && <p className="mt-1 text-xs text-[#cdbfae]">This is the smallest effective plan for what we saw — it sits a little above your chosen budget. You can start with one step, or spread the cost with Clearpay.</p>}
         </div>
         {result.phases[0]?.treatments[0] && <a href={result.phases[0].treatments[0].href} className="rounded-full bg-[var(--color-gold,#c8a96a)] px-7 py-3 text-sm font-medium text-[#0c0b0a] transition-transform hover:scale-[1.03]">Book your first step →</a>}
       </div>
@@ -329,6 +332,8 @@ function CameraCapture({ faceGuide, onCapture, onClose, onError }: { faceGuide: 
   const [facing, setFacing] = useState<'user' | 'environment'>('user');
   const [ready, setReady] = useState(false);
   const reduce = useReducedMotion();
+  // Modal behaviours (focus-in, Tab trap, Escape, focus restore) — shared Dialog primitive (BLD-849/BLD-803).
+  const { panelRef, onKeyDown } = useDialogBehaviours(onClose);
   useEffect(() => {
     let active = true;
     (async () => {
@@ -353,7 +358,7 @@ function CameraCapture({ faceGuide, onCapture, onClose, onError }: { faceGuide: 
     onCapture(canvas.toDataURL('image/jpeg', 0.85));
   }
   return (
-    <div className="fixed inset-0 z-[60] flex flex-col items-center justify-center bg-black/95 p-4">
+    <div ref={panelRef} role="dialog" aria-modal="true" aria-label="Take a photo" tabIndex={-1} onKeyDown={onKeyDown} className="fixed inset-0 z-[60] flex flex-col items-center justify-center bg-black/95 p-4">
       <div className="relative aspect-[3/4] w-full max-w-sm overflow-hidden rounded-3xl border border-white/10">
         <video ref={videoRef} playsInline muted className={`h-full w-full object-cover ${facing === 'user' ? '-scale-x-100' : ''}`} />
         {faceGuide && <div className="pointer-events-none absolute inset-0 grid place-items-center"><motion.div className="h-[68%] w-[56%] rounded-[50%] border-2" style={{ borderColor: gold, boxShadow: '0 0 0 9999px rgba(0,0,0,0.4)' }} animate={reduce ? { opacity: 0.9 } : { opacity: [0.5, 1, 0.5] }} transition={reduce ? { duration: 0 } : { duration: 2.4, repeat: Infinity }} /></div>}
@@ -373,28 +378,55 @@ function AuthStep({ onDone, onError, onBack }: { onDone: (firstName?: string) =>
   const [mode, setMode] = useState<'signup' | 'login'>('signup');
   const [f, setF] = useState({ firstName: '', email: '', password: '', company: '' });
   const [busy, setBusy] = useState(false);
+  // BLD-887: synchronous reentrancy guard — busy state alone lets a fast
+  // double-click fire two signup/login POSTs before React re-renders.
+  const busyRef = useRef(false);
+  // BLD-870: one Lead event id per auth attempt series — the browser pixel and
+  // the server CAPI copy share it so Meta de-duplicates.
+  const eventIdRef = useRef<string>('');
+  if (!eventIdRef.current && typeof crypto !== 'undefined' && crypto.randomUUID) eventIdRef.current = crypto.randomUUID();
   const input = 'w-full rounded-xl border border-white/15 bg-white/[0.04] px-4 py-3 text-[#f4ece1] outline-none placeholder:text-[#9a8f80] focus:border-[var(--color-gold,#c8a96a)]';
   async function go() {
+    if (busyRef.current) return;
+    busyRef.current = true;
     setBusy(true); onError('');
     const url = mode === 'signup' ? '/api/account/signup' : '/api/account/login';
-    const body = mode === 'signup' ? { firstName: f.firstName, email: f.email, password: f.password, locale: 'en', company: f.company } : { email: f.email, password: f.password };
-    try { const res = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }); const j = await res.json(); if (j.ok) onDone(mode === 'signup' ? f.firstName : undefined); else { onError(j.error || 'Something went wrong.'); setBusy(false); } } catch { onError('Network error.'); setBusy(false); }
+    // BLD-928 + BLD-734: source:'kvision' selects the relaxed, PASSWORDLESS
+    // signup schema server-side — name + email only, no password. Login mode
+    // still takes a password for the minority who set one via their emailed link.
+    const body = mode === 'signup' ? { firstName: f.firstName, email: f.email, locale: 'en', company: f.company, source: 'kvision', eventId: eventIdRef.current || undefined } : { email: f.email, password: f.password };
+    try {
+      const res = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+      const j = await res.json();
+      if (j.ok) {
+        // BLD-870: a new account created to unlock the plan IS the lead —
+        // mirror the consult form's browser-side event (deduped with CAPI).
+        if (mode === 'signup') { try { trackLead({ eventId: eventIdRef.current || undefined, detail: { source: 'k-vision' } }); } catch { /* analytics best-effort */ } }
+        onDone(mode === 'signup' ? f.firstName : undefined);
+      } else { onError(j.error || 'Something went wrong.'); setBusy(false); }
+    } catch { onError('Network error.'); setBusy(false); } finally { busyRef.current = false; }
   }
   return (
     <motion.div {...fade} className="mx-auto max-w-md">
       <button onClick={onBack} className="mb-5 text-sm text-[#cdbfae] hover:text-[#f4ece1]">← Back to photos</button>
-      <Heading kicker="Your plan is ready" title={mode === 'signup' ? 'Create your free account to reveal it' : 'Welcome back — sign in to reveal it'} />
-      <p className="mt-3 text-sm text-[#cdbfae]">{mode === 'signup' ? 'Create a free account to see your personalised plan, keep it private, and unlock 15% off your first visit.' : 'Sign in to reveal your personalised plan.'}</p>
+      <Heading kicker="Your plan is ready" title={mode === 'signup' ? 'Enter your email to reveal it' : 'Welcome back — sign in to reveal it'} />
+      <p className="mt-3 text-sm text-[#cdbfae]">{mode === 'signup' ? 'No password to set up — we’ll show your personalised plan now and email you a one-tap link to get back in, plus 15% off your first visit.' : 'Sign in to reveal your personalised plan.'}</p>
       <div className="mt-6 space-y-3">
         {mode === 'signup' && <input className={input} aria-label="First name" autoComplete="given-name" placeholder="First name" value={f.firstName} onChange={(e) => setF({ ...f, firstName: e.target.value })} />}
         <input className={input} type="email" aria-label="Email" autoComplete="email" placeholder="Email" value={f.email} onChange={(e) => setF({ ...f, email: e.target.value })} />
-        <input className={input} type="password" aria-label="Password" autoComplete={mode === 'signup' ? 'new-password' : 'current-password'} placeholder={mode === 'signup' ? 'Password (8+ characters)' : 'Password'} value={f.password} onChange={(e) => setF({ ...f, password: e.target.value })} />
+        {/* BLD-734: signup is passwordless (email-only) — password field shows in login mode only. */}
+        {mode === 'login' && <input className={input} type="password" aria-label="Password" autoComplete="current-password" placeholder="Password" value={f.password} onChange={(e) => setF({ ...f, password: e.target.value })} />}
         <input type="text" tabIndex={-1} className="absolute -left-[9999px]" value={f.company} onChange={(e) => setF({ ...f, company: e.target.value })} aria-hidden />
       </div>
       <div className="mt-6 flex items-center justify-between gap-4">
-        <button onClick={() => setMode(mode === 'signup' ? 'login' : 'signup')} className="text-sm text-[#cdbfae] hover:text-[#f4ece1]">{mode === 'signup' ? 'Have an account? Sign in' : 'New here? Create one'}</button>
-        <button onClick={() => !busy && go()} className="rounded-full bg-[var(--color-gold,#c8a96a)] px-6 py-3 text-sm font-medium text-[#0c0b0a] disabled:opacity-50">{busy ? 'Please wait…' : mode === 'signup' ? 'Create & continue' : 'Sign in'}</button>
+        <button onClick={() => setMode(mode === 'signup' ? 'login' : 'signup')} className="text-sm text-[#cdbfae] hover:text-[#f4ece1]">{mode === 'signup' ? 'Have a password? Sign in' : 'New here? Continue with email'}</button>
+        <button onClick={() => go()} disabled={busy} className="rounded-full bg-[var(--color-gold,#c8a96a)] px-6 py-3 text-sm font-medium text-[#0c0b0a] disabled:opacity-50">{busy ? 'Please wait…' : mode === 'signup' ? 'Reveal my plan' : 'Sign in'}</button>
       </div>
+      {mode === 'signup' && (
+        <p className="mt-4 text-xs text-[#9a8f80]">
+          By continuing you agree to our <a href="/info/terms-conditions" target="_blank" rel="noreferrer" className="underline underline-offset-2 hover:text-[#cdbfae]">terms</a> and <a href="/info/privacy-policy" target="_blank" rel="noreferrer" className="underline underline-offset-2 hover:text-[#cdbfae]">privacy policy</a>.
+        </p>
+      )}
     </motion.div>
   );
 }

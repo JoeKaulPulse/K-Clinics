@@ -40,20 +40,20 @@ export function ApplyForm({ roles }: { roles: { id: string; title: string }[] })
       <h3 className="font-[family-name:var(--font-display)] text-2xl">Apply</h3>
       <p className="mt-1 text-sm text-[var(--color-stone)]">Tell us about you. We review every application personally.</p>
       <div className="mt-6 grid gap-4 sm:grid-cols-2">
-        <div className="sm:col-span-2"><label className={label}>Role</label>
-          <select className={field} value={f.vacancyId} onChange={(e) => set('vacancyId', e.target.value)}>
+        <div className="sm:col-span-2"><label htmlFor="apply-role" className={label}>Role</label>
+          <select id="apply-role" className={field} value={f.vacancyId} onChange={(e) => set('vacancyId', e.target.value)}>
             {roles.map((r) => <option key={r.id} value={r.id}>{r.title}</option>)}
             <option value="">General / speculative application</option>
           </select>
         </div>
-        <div><label className={label}>Full name *</label><input className={field} value={f.name} onChange={(e) => set('name', e.target.value)} /></div>
-        <div><label className={label}>Email *</label><input type="email" className={field} value={f.email} onChange={(e) => set('email', e.target.value)} /></div>
-        <div><label className={label}>Phone</label><input type="tel" className={field} value={f.phone} onChange={(e) => set('phone', e.target.value)} /></div>
-        <div><label className={label}>CV / portfolio link</label><input className={field} value={f.cvUrl} onChange={(e) => set('cvUrl', e.target.value)} placeholder="https://…" /></div>
-        <div className="sm:col-span-2"><label className={label}>Cover note</label><textarea rows={4} className={field} value={f.coverNote} onChange={(e) => set('coverNote', e.target.value)} placeholder="Why you, why KClinics…" /></div>
+        <div><label htmlFor="apply-name" className={label}>Full name *</label><input id="apply-name" className={field} value={f.name} onChange={(e) => set('name', e.target.value)} /></div>
+        <div><label htmlFor="apply-email" className={label}>Email *</label><input id="apply-email" type="email" className={field} value={f.email} onChange={(e) => set('email', e.target.value)} /></div>
+        <div><label htmlFor="apply-phone" className={label}>Phone</label><input id="apply-phone" type="tel" className={field} value={f.phone} onChange={(e) => set('phone', e.target.value)} /></div>
+        <div><label htmlFor="apply-cv" className={label}>CV / portfolio link</label><input id="apply-cv" className={field} value={f.cvUrl} onChange={(e) => set('cvUrl', e.target.value)} placeholder="https://…" /></div>
+        <div className="sm:col-span-2"><label htmlFor="apply-cover" className={label}>Cover note</label><textarea id="apply-cover" rows={4} className={field} value={f.coverNote} onChange={(e) => set('coverNote', e.target.value)} placeholder="Why you, why KClinics…" /></div>
         <input type="text" tabIndex={-1} autoComplete="off" value={f.company} onChange={(e) => set('company', e.target.value)} className="absolute -left-[9999px] h-0 w-0" aria-hidden />
       </div>
-      {error && <p className="mt-4 rounded-[var(--radius-sm)] bg-[var(--color-blush)]/25 px-4 py-3 text-sm text-[var(--color-ink)]">{error}</p>}
+      {error && <p role="alert" aria-live="assertive" className="mt-4 rounded-[var(--radius-sm)] bg-[var(--color-blush)]/25 px-4 py-3 text-sm text-[var(--color-ink)]">{error}</p>}
       <div className="mt-6"><Button onClick={() => !busy && submit()} variant="gold" size="lg">{busy ? 'Submitting…' : 'Submit application'} <ArrowIcon /></Button></div>
     </div>
   );

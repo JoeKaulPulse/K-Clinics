@@ -9,7 +9,12 @@ import { Dialog } from '@/components/ui/Dialog';
 export type EditableClient = {
   id: string; firstName: string; lastName: string | null; email: string; phone: string | null;
   dob: string | null; gender: string | null; genderSelfDescribe: string | null;
+  /** Null when either genuinely empty OR redacted for a non-clinical viewer — see canEditAllergies. */
   allergies: string | null; notes: string | null; marketingOptIn: boolean;
+  /** clients.clinical.view — gates whether the allergies field is shown/editable at all. When
+   *  false, `allergies` is never rendered or included in the save payload, so a non-clinical
+   *  staff member editing other fields can never silently wipe the real (redacted) value. */
+  canEditAllergies: boolean;
 };
 
 const GENDERS = [
@@ -34,7 +39,12 @@ export function EditClientDetails({ client }: { client: EditableClient }) {
     setError(null);
     if (!d.firstName.trim()) { setError('First name is required.'); return; }
     start(async () => {
-      const r = await editClient(client.id, d);
+      // Omit allergies entirely when the viewer can't see it, rather than sending
+      // the redacted '' — the server treats a missing key as "leave unchanged",
+      // but a defined '' would overwrite the real (hidden) value.
+      const { allergies, ...rest } = d;
+      const payload = client.canEditAllergies ? d : rest;
+      const r = await editClient(client.id, payload);
       if (r.ok) { setOpen(false); router.refresh(); }
       else setError(r.error || 'Could not save.');
     });
@@ -74,11 +84,15 @@ export function EditClientDetails({ client }: { client: EditableClient }) {
             </label>
             {d.gender === 'OTHER' && <label className="text-xs text-[var(--color-stone)]">Self-described<input className={`${f} mt-1`} value={d.genderSelfDescribe} onChange={(e) => set('genderSelfDescribe', e.target.value)} /></label>}
           </div>
-          <label className="block text-xs text-[var(--color-stone)]">Allergies / dietary notes<input className={`${f} mt-1`} value={d.allergies} onChange={(e) => set('allergies', e.target.value)} /></label>
+          {client.canEditAllergies ? (
+            <label className="block text-xs text-[var(--color-stone)]">Allergies / dietary notes<input className={`${f} mt-1`} value={d.allergies} onChange={(e) => set('allergies', e.target.value)} /></label>
+          ) : (
+            <p className="text-xs text-[var(--color-stone)]">Allergies / dietary notes — clinical view permission required to see or edit.</p>
+          )}
           <label className="block text-xs text-[var(--color-stone)]">Notes<textarea rows={2} className={`${f} mt-1`} value={d.notes} onChange={(e) => set('notes', e.target.value)} /></label>
           <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={d.marketingOptIn} onChange={(e) => set('marketingOptIn', e.target.checked)} /> Marketing opt-in</label>
-          {error && <p className="rounded-[var(--radius-sm)] bg-[var(--color-blush)]/25 px-3 py-2 text-sm">{error}</p>}
-          <p className="text-xs text-[var(--color-stone-soft)]">Changes are recorded in the admin-only activity log.</p>
+          {error && <p role="alert" aria-live="assertive" className="rounded-[var(--radius-sm)] bg-[var(--color-blush)]/25 px-3 py-2 text-sm">{error}</p>}
+          <p className="text-xs text-[var(--color-stone)]">Changes are recorded in the admin-only activity log.</p>
           <div className="flex justify-end gap-3 pt-1">
             <button onClick={() => setOpen(false)} className="px-4 py-2 text-sm text-[var(--color-stone)]">Cancel</button>
             <button onClick={save} disabled={pending} className="rounded-full bg-[var(--color-ink)] px-5 py-2 text-sm font-medium text-[var(--color-porcelain)] disabled:opacity-50">{pending ? 'Saving…' : 'Save changes'}</button>

@@ -1,4 +1,5 @@
 import crypto from 'node:crypto';
+import * as Sentry from '@sentry/nextjs';
 import { crmEnabled } from '@/lib/crm';
 
 export const runtime = 'nodejs';
@@ -69,7 +70,15 @@ export async function POST(req: Request) {
     try {
       const ev = await db.emailEvent.findFirst({ where: { providerId }, select: { clientId: true } });
       if (ev?.clientId) await db.client.update({ where: { id: ev.clientId }, data: { unsubscribed: true, marketingOptIn: false } });
-    } catch { /* non-fatal */ }
+    } catch (e) {
+      // PRJ-918.7: this write suppresses marketing email for a client who just
+      // bounced/complained — a silent failure here means they keep getting emailed
+      // indefinitely with no operator visibility. Surface it and return 500 so
+      // Resend retries the delivery-status webhook instead of treating it as delivered.
+      console.error('[resend webhook] unsubscribe write failed', e);
+      Sentry.captureException(e, { tags: { eventType: evt.type } });
+      return new Response('unsubscribe write failed', { status: 500 });
+    }
   }
   return new Response('ok');
 }

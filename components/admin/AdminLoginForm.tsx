@@ -111,19 +111,19 @@ function Inner({ ssoEnabled }: { ssoEnabled: boolean }) {
 
       {captchaSiteKey && !twoFactor && <Turnstile siteKey={captchaSiteKey} onToken={setCaptchaToken} />}
 
-      {error && <p className="rounded-[var(--radius-sm)] bg-[var(--color-blush)]/25 px-4 py-2.5 text-sm text-[var(--color-ink)]">{error}</p>}
+      {error && <p role="alert" aria-live="assertive" className="rounded-[var(--radius-sm)] bg-[var(--color-blush)]/25 px-4 py-2.5 text-sm text-[var(--color-ink)]">{error}</p>}
 
       <button
         type="submit"
         disabled={loading}
-        className="w-full rounded-full bg-[var(--color-gold)] px-6 py-3.5 font-medium text-white shadow-[var(--shadow-gold)] transition-colors hover:bg-[var(--color-ink)] disabled:opacity-60"
+        className="w-full rounded-full bg-[var(--color-gold-deep)] px-6 py-3.5 font-medium text-white shadow-[var(--shadow-gold)] transition-colors hover:bg-[var(--color-ink)] disabled:opacity-60"
       >
         {loading ? 'Signing in…' : twoFactor ? 'Verify & sign in' : 'Sign in to the CRM'}
       </button>
 
       {!twoFactor && (
         <>
-          <div className="flex items-center gap-3 text-xs uppercase tracking-[0.18em] text-[var(--color-stone-soft)]">
+          <div className="flex items-center gap-3 text-xs uppercase tracking-[0.18em] text-[var(--color-stone)]">
             <span className="h-px flex-1 bg-[var(--color-line)]" /> or <span className="h-px flex-1 bg-[var(--color-line)]" />
           </div>
           {ssoEnabled && (
@@ -153,7 +153,7 @@ function Inner({ ssoEnabled }: { ssoEnabled: boolean }) {
       )}
       <p className="text-center text-xs text-[var(--color-stone)]">
         Authorised personnel only · activity is logged. Are you a client?{' '}
-        <Link href="/account/login" className="font-medium text-[var(--color-gold)]">Client sign in</Link>
+        <Link href="/account/login" className="font-medium text-[var(--color-gold-deep)]">Client sign in</Link>
       </p>
     </form>
   );

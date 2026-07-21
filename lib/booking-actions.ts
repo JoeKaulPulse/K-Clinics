@@ -10,6 +10,7 @@ import {
   tmplBookingRescheduled,
 } from './email';
 import { logAudit } from './audit';
+import { CLINIC_TZ } from './clinic-time';
 import type { Booking, Client } from '@prisma/client';
 
 const CANCEL_WINDOW_MS = 24 * 60 * 60 * 1000;
@@ -20,6 +21,31 @@ type BookingWithClient = Booking & { client: Client };
 
 export function isWithin24h(b: Pick<Booking, 'startAt'>): boolean {
   return b.startAt.getTime() - Date.now() < CANCEL_WINDOW_MS;
+}
+
+/**
+ * Full price of a course booking, in pence — the single source of truth for the
+ * BNPL pre-payment amount (BLD-399) and its webhook validation. The primary
+ * (non-add-on) line item holds the course total: create-action.ts sets its
+ * pricePence to (price-per-session × sessions), and the booking detail derives
+ * `basePence` the same way (booking.pricePence minus add-ons). We read the
+ * primary item directly so the link, the validation and the badge all agree.
+ * Returns { pence, sessions, label }; pence is 0 for an on-consultation (£0)
+ * booking, which callers must reject (nothing to pre-pay).
+ */
+export async function courseTotalPence(bookingId: string): Promise<{ pence: number; sessions: number; label: string } | null> {
+  const booking = await db.booking.findUnique({ where: { id: bookingId }, select: { pricePence: true, treatmentTitle: true } });
+  if (!booking) return null;
+  const primary = await db.bookingItem.findFirst({
+    where: { bookingId, isAddon: false },
+    orderBy: { createdAt: 'asc' },
+    select: { pricePence: true, sessions: true, label: true },
+  });
+  // Prefer the primary line item (course total + session count). Fall back to
+  // the booking price for legacy bookings created without line items.
+  const sessions = Math.max(1, primary?.sessions ?? 1);
+  const pence = primary?.pricePence ?? booking.pricePence ?? 0;
+  return { pence, sessions, label: primary?.label || booking.treatmentTitle };
 }
 
 /**
@@ -101,7 +127,7 @@ export async function chargeBooking(
     if (pi.status === 'succeeded') {
       await db.booking.update({
         where: { id: booking.id },
-        data: { chargePaymentIntentId: pi.id, chargedPence: amountPence, chargedAt: new Date() },
+        data: { chargePaymentIntentId: pi.id, chargedPence: pi.amount_received ?? amountPence, chargedAt: new Date() },
       });
       // VAT breakdown on the receipt once the clinic is VAT-registered (dormant otherwise).
       let vat: { netPence: number; vatPence: number; ratePct: number } | null = null;
@@ -188,6 +214,19 @@ export async function refundBooking(
   // so skip Stripe and just record the refund below; staff hand the cash back. Calling
   // Stripe here failed with "No such payment_intent: 'ext_cash'".
   const isExternalPayment = (booking.chargePaymentIntentId || '').startsWith('ext_');
+  // BLD-882: a voucher-settled booking DOES have a reversal rail, unlike cash —
+  // the refund goes back onto the voucher (capped at face value by
+  // creditVoucher). Without this, "refunded" would be recorded while the
+  // client's card value stayed silently spent.
+  if (booking.chargePaymentIntentId === 'ext_gift-voucher') {
+    if (!booking.giftVoucherCode) return { ok: false, error: 'This booking was paid by gift voucher but the voucher code is missing — refund it manually from the voucher manager.' };
+    try {
+      const { creditVoucher } = await import('@/lib/gift-vouchers');
+      await creditVoucher(booking.giftVoucherCode, amount);
+    } catch (e) {
+      return { ok: false, error: `Couldn’t return the balance to voucher ${booking.giftVoucherCode} — try again. (${(e as Error)?.message || 'unknown error'})` };
+    }
+  }
   if (!isExternalPayment) {
     try {
       await stripe().refunds.create({
@@ -217,6 +256,27 @@ export async function refundBooking(
   // Reverse loyalty points once the booking is fully refunded (best-effort).
   if (fully) {
     try { const { refundBookingPoints } = await import('@/lib/client-loyalty'); await refundBookingPoints(booking.id); } catch { /* non-fatal */ }
+  }
+  // BLD-836: also claw back the SPEND points EARNED on the refunded money —
+  // refundBookingPoints only returns redeemed points. Pro-rata on partials,
+  // idempotent by ledger arithmetic inside the helper.
+  try { const { reverseSpendPoints } = await import('@/lib/client-loyalty'); await reverseSpendPoints(booking.id, totalRefunded, booking.chargedPence ?? 0); } catch { /* non-fatal */ }
+
+  // BLD-882: a partial-voucher booking's chargedPence is the card remainder
+  // only — when THAT is fully refunded, the voucher-covered portion goes back
+  // on the voucher too, mirroring the orders route's restore-on-money-reversal
+  // (BLD-393). Best-effort with a loud trail: the card refund above has already
+  // happened, so a credit failure must not unwind the whole refund.
+  if (fully && booking.chargePaymentIntentId !== 'ext_gift-voucher' && (booking.giftVoucherPence ?? 0) > 0 && booking.giftVoucherCode) {
+    try {
+      const { creditVoucher } = await import('@/lib/gift-vouchers');
+      await creditVoucher(booking.giftVoucherCode, booking.giftVoucherPence);
+      await logAudit({ action: 'REWARD_REDEEMED', actor: opts.actor || 'system', bookingId: booking.id, clientId: booking.clientId, summary: `Gift voucher ${booking.giftVoucherCode} restored on full refund — £${(booking.giftVoucherPence / 100).toFixed(2)} back on the voucher` }).catch(() => {});
+    } catch (e) {
+      console.error('[refund] voucher restore failed:', (e as Error)?.message);
+      const Sentry = await import('@sentry/nextjs');
+      Sentry.captureException(e, { tags: { area: 'gift-vouchers', stage: 'refund-restore' } });
+    }
   }
 
   await db.interaction.create({ data: { clientId: booking.clientId, type: 'APPOINTMENT', summary: `Refunded £${(amount / 100).toFixed(2)} for ${booking.treatmentTitle}${opts.reason ? ` — ${opts.reason}` : ''}`, author: opts.actor || 'system' } }).catch(() => {});
@@ -276,12 +336,13 @@ export async function finalizeBookingCharge(
       }
     } catch { /* receipt still sends without the VAT line */ }
     const detail = opts.late ? null : await receiptDetail(booking.id, booking.stripePaymentMethodId);
-    await sendEmail({
+    const receipt = await sendEmail({
       to: booking.client.email,
       subject: opts.late ? 'Late-cancellation fee — KClinics' : `Receipt — ${booking.treatmentTitle}`,
       html: tmplChargeReceipt({ firstName: booking.client.firstName, treatment: booking.treatmentTitle, pricePence: amountReceivedPence, late: opts.late, vat, ...(detail ?? {}) }),
     });
-    await db.emailEvent.create({ data: { clientId: booking.clientId, kind: 'MANUAL', to: booking.client.email, subject: 'Payment receipt', status: 'SENT' } });
+    if (!receipt.ok) console.error('[charge] receipt email failed:', receipt.error);
+    await db.emailEvent.create({ data: { clientId: booking.clientId, kind: 'MANUAL', to: booking.client.email, subject: 'Payment receipt', status: receipt.ok ? 'SENT' : 'FAILED', providerId: receipt.id, error: receipt.error } }).catch(() => {});
   } catch (e) { console.error('[charge] receipt failed:', (e as Error)?.message); }
   try { const { awardClientSpend } = await import('./client-loyalty'); await awardClientSpend(bookingId); } catch (e) { console.error('[charge] loyalty failed:', (e as Error)?.message); }
   try { const { pushBookingSaleToXero } = await import('@/lib/xero'); await pushBookingSaleToXero(bookingId); } catch (e) { console.error('[charge] xero push failed:', (e as Error)?.message); }
@@ -321,13 +382,17 @@ export async function cancelBooking(
 
   const late = isWithin24h(booking);
   const shouldCharge = late && !opts.waiveFee && booking.pricePence > 0;
+  // BLD-733: net off any loyalty points the client already redeemed as money off
+  // this booking — otherwise the late fee bills the pre-discount price on top of
+  // a discount the client already paid for with points.
+  const chargeablePence = Math.max(0, booking.pricePence - (booking.pointsRedeemedPence ?? 0));
   let charged = 0;
   let requiresAction = false;
   let feeFailed = false;
 
   if (shouldCharge) {
-    const res = await chargeBooking(booking, booking.pricePence, { late: true });
-    if (res.ok) charged = booking.pricePence;
+    const res = await chargeBooking(booking, chargeablePence, { late: true });
+    if (res.ok) charged = chargeablePence;
     else if (res.requiresAction) requiresAction = true;
     else feeFailed = true; // charge declined — cancel anyway, but flag for follow-up.
   }
@@ -343,6 +408,14 @@ export async function cancelBooking(
       feeWaived: late && opts.waiveFee ? true : false,
     },
   });
+  // BLD-336: reconcile any open in-treatment session so a cancelled booking
+  // doesn't leave a dangling ACTIVE appointmentSession. The session route already
+  // refuses new actions on a cancelled booking; this closes the existing row so
+  // it can't show as live in the diary. No-op when there's no open session.
+  await db.appointmentSession.updateMany({
+    where: { bookingId: booking.id, status: { not: 'COMPLETED' } },
+    data: { status: 'CANCELLED', completedAt: new Date() },
+  }).catch(() => {});
   await db.interaction.create({
     data: { clientId: booking.clientId, type: 'APPOINTMENT', summary: `Cancelled ${booking.treatmentTitle}${late ? ' (within 24h)' : ''}${charged ? ` — charged £${(charged / 100).toFixed(2)}` : feeFailed ? ' — LATE FEE FAILED (follow up)' : opts.waiveFee && late ? ' — fee waived' : ''}`, author: opts.by },
   });
@@ -358,12 +431,46 @@ export async function cancelBooking(
   // Remove from the clinician's Google Calendar too (no-op while parked).
   import('@/lib/google-calendar').then((m) => m.removeBookingFromClinician(booking.id)).catch(() => {});
 
-  // Return any loyalty points the client had applied to this booking.
-  try {
-    const { refundBookingPoints } = await import('@/lib/client-loyalty');
-    await refundBookingPoints(booking.id);
-  } catch (e) {
-    console.error('[cancelBooking] points refund failed (continuing):', (e as Error)?.message);
+  // Return any loyalty points the client had applied to this booking -- but
+  // only when they weren't already consumed as a discount on a late-cancellation
+  // fee that actually got charged (BLD-915: chargeablePence above already nets
+  // the fee by pointsRedeemedPence, so refunding here too let a client redeem
+  // points for a discount, late-cancel to pay the reduced fee, and get the
+  // points back as well, repeatably). charged === 0 covers every case where the
+  // points weren't consumed: no fee due, the charge failed, or it needs further
+  // action from the client.
+  if (charged === 0) {
+    try {
+      const { refundBookingPoints } = await import('@/lib/client-loyalty');
+      await refundBookingPoints(booking.id);
+    } catch (e) {
+      console.error('[cancelBooking] points refund failed (continuing):', (e as Error)?.message);
+    }
+  }
+
+  // BLD-882: return a reserved-but-unconsumed gift-voucher application. The
+  // discriminator is the PRE-CANCEL chargedAt (read at the top, before any late
+  // fee lands): a booking already charged before cancellation consumed its
+  // voucher as part of that settled sale (fully by voucher, or netted off a
+  // card/cash remainder) — returning consumed value is a refund decision, made
+  // deliberately via refundBooking, never automatic. A late fee charged DURING
+  // this cancellation is computed from pricePence and never spends the voucher,
+  // so the reservation still returns. Guarded clear so a concurrent removal
+  // can't double-credit.
+  if ((booking.giftVoucherPence ?? 0) > 0 && booking.giftVoucherCode && !booking.chargedAt) {
+    try {
+      const cleared = await db.booking.updateMany({
+        where: { id: booking.id, giftVoucherCode: booking.giftVoucherCode, giftVoucherPence: booking.giftVoucherPence },
+        data: { giftVoucherCode: null, giftVoucherPence: 0 },
+      });
+      if (cleared.count > 0) {
+        const { creditVoucher } = await import('@/lib/gift-vouchers');
+        await creditVoucher(booking.giftVoucherCode, booking.giftVoucherPence);
+        await logAudit({ action: 'REWARD_REDEEMED', actor: opts.by, bookingId: booking.id, clientId: booking.clientId, summary: `Gift voucher ${booking.giftVoucherCode} returned on cancellation — £${(booking.giftVoucherPence / 100).toFixed(2)} back on the voucher` }).catch(() => {});
+      }
+    } catch (e) {
+      console.error('[cancelBooking] voucher re-credit failed (continuing):', (e as Error)?.message);
+    }
   }
 
   // Cancellation email (free vs late-fee) — best-effort, with its outcome recorded
@@ -371,14 +478,14 @@ export async function cancelBooking(
   const cancelEmail = await sendEmail({
     to: booking.client.email,
     subject: `Booking cancelled — ${booking.treatmentTitle}`,
-    html: tmplBookingCancelled({ firstName: booking.client.firstName, treatment: booking.treatmentTitle, start: booking.startAt, feeCharged: charged || undefined }),
+    html: tmplBookingCancelled({ firstName: booking.client.firstName, treatment: booking.treatmentTitle, start: booking.startAt, feeCharged: charged || undefined, feeDeclined: feeFailed ? chargeablePence : undefined }),
   });
   if (!cancelEmail.ok) console.error('[cancelBooking] email failed:', cancelEmail.error);
   await db.emailEvent.create({ data: { clientId: booking.clientId, kind: 'MANUAL', to: booking.client.email, subject: 'Booking cancelled', status: cancelEmail.ok ? 'SENT' : 'FAILED', providerId: cancelEmail.id, error: cancelEmail.error } }).catch(() => {});
 
   try {
     const { notifyStaffByPermission } = await import('@/lib/notifications');
-    const when = booking.startAt.toLocaleString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+    const when = booking.startAt.toLocaleString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', timeZone: CLINIC_TZ });
     await notifyStaffByPermission('bookings.view', { kind: 'status', category: 'bookings', priority: 'high', title: `Booking cancelled: ${booking.treatmentTitle}`, body: `${booking.client.firstName || 'A client'} · ${when}`, href: `/admin/bookings/${booking.id}` });
   } catch { /* non-fatal */ }
   return { ok: true, charged, requiresAction, feeFailed };
@@ -400,7 +507,7 @@ export async function rescheduleBooking(
   newStartISO: string,
   opts: { by: string; reason?: string; admin?: boolean },
 ): Promise<{ ok: boolean; charged?: number; requiresAction?: boolean; error?: string; code?: 'SLOT_TAKEN' }> {
-  const booking = await db.booking.findUnique({ where: { id: bookingId }, include: { client: true } });
+  const booking = await db.booking.findUnique({ where: { id: bookingId }, include: { client: true, resources: { select: { id: true } } } });
   if (!booking) return { ok: false, error: 'Booking not found.' };
   if (['CANCELLED', 'COMPLETED', 'NO_SHOW'].includes(booking.status)) {
     return { ok: false, error: 'This booking can no longer be rescheduled.' };
@@ -419,32 +526,63 @@ export async function rescheduleBooking(
 
   const newEnd = new Date(newStart.getTime() + booking.durationMin * 60 * 1000);
 
-  // The chosen time must be a genuinely free, in-hours slot — the same guard every
-  // booking-creation path uses. Without this a crafted POST could move a booking
-  // outside opening hours or on top of another appointment (the UI only offers
-  // valid slots, but the API must not trust the client).
-  const { isSlotFree } = await import('@/lib/availability');
-  // BLD-192: an admin reschedule may move an appointment to any free time (the
-  // 48h-notice gate above already governs client self-service); a staff move must
-  // not be blocked by the public 2-hour online lead window.
-  // Exclude this booking from the clash check so a same-day move doesn't conflict
-  // with its own current slot/clinician/room (BLD reschedule self-clash).
-  if (!(await isSlotFree(newStartISO, booking.durationMin, booking.treatmentSlug, null, { excludeBookingId: bookingId, ...(opts.admin ? { leadMinutes: 0 } : {}) }))) {
-    return { ok: false, code: 'SLOT_TAKEN', error: 'That time is no longer available. Please choose another slot.' };
+  // BLD-502: validate the new time without false-rejecting genuinely free slots.
+  //
+  // A STAFF/admin reschedule may move an appointment to any time (BLD-105 intent:
+  // "staff can move any time"). The only hard rule is not creating a real
+  // double-booking. The full public availability gate (isSlotFree) over-rejects
+  // here: with staff-availability enforcement on, a treatment with no matching
+  // clinician competency (e.g. a consultation) falls through to a clinic-wide
+  // "one appointment at a time" check, so a slot that is clearly free on the
+  // calendar is refused. So for staff we check only a true clash on THIS booking's
+  // own clinician or room(s); for client self-service we keep the strict gate.
+  if (opts.admin) {
+    const resourceIds = booking.resources.map((r) => r.id);
+    const newBusyEndMs = newEnd.getTime() + booking.bufferMin * 60_000;
+    // Nothing exclusive to clash on (no clinician, no room/equipment) → any future
+    // time is fine (this is the consultation case BLD-502 was about).
+    if (booking.practitionerId || resourceIds.length) {
+      const windowStart = new Date(newStart.getTime() - 24 * 60 * 60 * 1000);
+      const candidates = await db.booking.findMany({
+        where: {
+          id: { not: bookingId },
+          status: { in: ['PENDING', 'CONFIRMED'] },
+          startAt: { gte: windowStart, lte: new Date(newBusyEndMs) },
+          OR: [
+            ...(booking.practitionerId ? [{ practitionerId: booking.practitionerId }] : []),
+            ...(resourceIds.length ? [{ resources: { some: { id: { in: resourceIds } } } }] : []),
+          ],
+        },
+        select: { startAt: true, endAt: true, bufferMin: true },
+      });
+      const clash = candidates.some((b) => newStart.getTime() < b.endAt.getTime() + b.bufferMin * 60_000 && newBusyEndMs > b.startAt.getTime());
+      if (clash) return { ok: false, code: 'SLOT_TAKEN', error: 'That time clashes with another appointment for the same clinician, room or equipment. Please choose another slot.' };
+    }
+  } else {
+    // Client self-service: the chosen time must be a genuinely free, in-hours slot
+    // — the same guard every public booking path uses (the API must not trust the
+    // client). Exclude this booking so a same-day move doesn't clash with itself.
+    const { isSlotFree } = await import('@/lib/availability');
+    if (!(await isSlotFree(newStartISO, booking.durationMin, booking.treatmentSlug, null, { excludeBookingId: bookingId }))) {
+      return { ok: false, code: 'SLOT_TAKEN', error: 'That time is no longer available. Please choose another slot.' };
+    }
   }
 
   let charged = 0;
   let requiresAction = false;
 
   // 4th+ reschedule incurs the full booking price — client self-service only;
-  // a staff/admin reschedule never charges a fee.
+  // a staff/admin reschedule never charges a fee. BLD-733: net off any loyalty
+  // points already redeemed as money off, so a client who redeemed points isn't
+  // billed the pre-discount price.
   if (!opts.admin && booking.rescheduleCount >= MAX_FREE_RESCHEDULES && booking.pricePence > 0) {
-    const res = await chargeBooking(booking, booking.pricePence, { late: false });
+    const rescheduleFeePence = Math.max(0, booking.pricePence - (booking.pointsRedeemedPence ?? 0));
+    const res = await chargeBooking(booking, rescheduleFeePence, { late: false });
     if (!res.ok) {
       if (res.requiresAction) requiresAction = true;
       else return { ok: false, error: res.error || 'Payment required for this reschedule could not be processed.' };
     } else {
-      charged = booking.pricePence;
+      charged = rescheduleFeePence;
     }
   }
 
@@ -457,7 +595,7 @@ export async function rescheduleBooking(
     data: {
       clientId: booking.clientId,
       type: 'APPOINTMENT',
-      summary: `Rescheduled ${booking.treatmentTitle} from ${booking.startAt.toLocaleString('en-GB')} to ${newStart.toLocaleString('en-GB')}${charged ? ` — charged £${(charged / 100).toFixed(2)} (reschedule ${booking.rescheduleCount + 1})` : ''}`,
+      summary: `Rescheduled ${booking.treatmentTitle} from ${booking.startAt.toLocaleString('en-GB', { timeZone: CLINIC_TZ })} to ${newStart.toLocaleString('en-GB', { timeZone: CLINIC_TZ })}${charged ? ` — charged £${(charged / 100).toFixed(2)} (reschedule ${booking.rescheduleCount + 1})` : ''}`,
       author: opts.by,
     },
   });
@@ -495,7 +633,7 @@ export async function rescheduleBooking(
 
   try {
     const { notifyStaffByPermission } = await import('@/lib/notifications');
-    const when = newStart.toLocaleString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+    const when = newStart.toLocaleString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', timeZone: CLINIC_TZ });
     await notifyStaffByPermission('bookings.view', { kind: 'status', category: 'bookings', priority: 'high', title: `Booking rescheduled: ${booking.treatmentTitle}`, body: `${booking.client.firstName || 'A client'} · now ${when}`, href: `/admin/bookings/${booking.id}` });
   } catch { /* non-fatal */ }
   return { ok: true, charged, requiresAction };

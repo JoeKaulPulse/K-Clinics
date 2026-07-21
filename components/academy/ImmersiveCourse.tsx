@@ -8,6 +8,8 @@ import { Illustration, matchIllustration, type IlloKey, type IlloLevel } from '@
 import { AmbientBackdrop } from '@/components/academy/AmbientBackdrop';
 import { ExplainerPlayer } from '@/components/academy/ExplainerPlayer';
 import { HomeworkPanel } from '@/components/academy/HomeworkPanel';
+import { SecurePdfViewer } from '@/components/academy/SecurePdfViewer';
+import { kindLabel } from '@/components/academy/attachment-kinds';
 import { academyLevel } from '@/lib/academy-levels';
 import { isMascotMuted, setMascotMuted } from '@/components/academy/mascotVoice';
 import type { CourseLearning, LessonView, QuizView } from '@/lib/lms';
@@ -33,6 +35,10 @@ function ytId(url: string): string | null {
   return m ? m[1] : null;
 }
 
+// Short label for the in-lesson "Homework" chip (Tetiana — surface homework state).
+const HW_CHIP: Record<string, string> = { SUBMITTED: 'submitted', REVIEWED: 'reviewed', APPROVED: 'approved ✓', NEEDS_REVISION: 'needs revision' };
+const homeworkChipLabel = (status: string): string => HW_CHIP[status] ?? 'submitted';
+
 type Step =
   | { kind: 'intro' }
   | { kind: 'lesson'; mi: number; li: number }
@@ -43,6 +49,7 @@ export function ImmersiveCourse({ learning, slug, mode = 'learn', xp = 0, regist
   const steps = useMemo<Step[]>(() => {
     const s: Step[] = [{ kind: 'intro' }];
     learning.modules.forEach((m, mi) => {
+      if (m.lockedUntil) return; // BLD: drip — skip not-yet-released modules
       m.lessons.forEach((_, li) => s.push({ kind: 'lesson', mi, li }));
       if (m.quiz) s.push({ kind: 'quiz', mi });
     });
@@ -123,14 +130,11 @@ export function ImmersiveCourse({ learning, slug, mode = 'learn', xp = 0, regist
     enqueue(...badgeCelebrations(result.newBadges));
     advance();
   }
-  // One interspersed multiple-choice check per lesson, drawn from the module's
-  // question bank (server-graded in learn mode; answer key present in preview).
-  function formativeFor(st: Step): AskStep | null {
-    if (st.kind !== 'lesson') return null;
-    const m = learning.modules[st.mi];
-    if (!m.quiz || m.quiz.questions.length === 0) return null;
-    const q = m.quiz.questions[st.li % m.quiz.questions.length];
-    return { kind: 'ask', prompt: q.prompt, qtype: q.type as AskStep['qtype'], options: q.options, tip: q.tip ?? undefined, quizId: m.quiz.id, questionId: q.id, ...(q.correct !== undefined ? { correct: q.correct } : {}) };
+  // BLD: per owner request, lessons no longer intersperse a formative question.
+  // The only questions a student sees are the curriculum module quizzes, so every
+  // question is one staff authored and can find in the curriculum editor.
+  function formativeFor(_st: Step): AskStep | null {
+    return null;
   }
 
   const moduleLabel = step.kind === 'lesson' || step.kind === 'quiz' ? learning.modules[step.mi]?.title : null;
@@ -259,13 +263,27 @@ function LessonStep({ lesson, reviewing, preview, formative, register, onContinu
     const base = buildLessonFlow({ title: lesson.title, body: lesson.body, objectives: lesson.objectives, studyTips: lesson.studyTips, homework: lesson.homework, steps: lesson.steps }, register);
     // Auto-chunked lessons get one interspersed check, just before the closing line.
     const withAsk = !authored && formative && base.length > 1 ? [...base.slice(0, -1), formative as FlowStep, base[base.length - 1]] : base;
-    let videoArt: string | null = null;
-    if (lesson.videoUrl) { const yt = ytId(lesson.videoUrl); videoArt = yt ? `video:yt:${yt}` : `video:url:${encodeURIComponent(lesson.videoUrl)}`; }
-    return videoArt ? [{ kind: 'teach', title: 'Watch first', text: '', art: videoArt }, ...withAsk] : withAsk;
+    let mediaArt: string | null = null;
+    let mediaTitle = 'Watch first';
+    if (lesson.videoUrl) { const yt = ytId(lesson.videoUrl); mediaArt = yt ? `video:yt:${yt}` : `video:url:${encodeURIComponent(lesson.videoUrl)}`; }
+    else if (lesson.audioUrl) { mediaArt = `audio:url:${encodeURIComponent(lesson.audioUrl)}`; mediaTitle = 'Listen'; }
+    else if (lesson.embedUrl) { mediaArt = `embed:url:${encodeURIComponent(lesson.embedUrl)}`; mediaTitle = ''; }
+    return mediaArt ? [{ kind: 'teach', title: mediaTitle, text: '', art: mediaArt }, ...withAsk] : withAsk;
   }, [lesson, formative, register]);
 
   const [mi, setMi] = useState(0);
   const [showExplainer, setShowExplainer] = useState(false);
+  const [pdfView, setPdfView] = useState<{ index: number; name: string } | null>(null);
+  // Tetiana: surface attached PDFs / downloads / homework at the TOP of the lesson
+  // so they're obvious — the immersive flow is one card at a time, so resources
+  // rendered at the bottom were easy to miss. These chips scroll down to them.
+  const resourcesRef = useRef<HTMLDivElement>(null);
+  const hasPdfs = lesson.pdfUrls.length > 0;
+  const hasDownloads = lesson.attachments.length > 0;
+  const hasHomework = lesson.requiresHomework;
+  const hasResources = hasPdfs || hasDownloads || hasHomework;
+  const scrollToResources = () => resourcesRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  const chip = 'inline-flex items-center gap-1.5 rounded-full border border-[var(--color-gold)]/40 bg-[var(--color-gold)]/10 px-3 py-1 text-xs font-medium text-[var(--color-gold)] transition-colors hover:bg-[var(--color-gold)]/20';
   const startedAt = useRef(Date.now());
   const cur = flow[Math.min(mi, flow.length - 1)];
   const last = mi >= flow.length - 1;
@@ -284,6 +302,13 @@ function LessonStep({ lesson, reviewing, preview, formative, register, onContinu
         {explainerPoints.length >= 2 && <button onClick={() => setShowExplainer(true)} className="ml-auto shrink-0 rounded-full border border-white/20 px-2.5 py-1 text-[0.65rem] font-medium text-white/70 transition-colors hover:border-[var(--color-gold)] hover:text-[var(--color-gold)]">▶ Explainer</button>}
         <span className={`shrink-0 text-xs tabular-nums text-white/30 ${explainerPoints.length >= 2 ? '' : 'ml-auto'}`}>{Math.min(mi + 1, flow.length)} / {flow.length}</span>
       </div>
+      {hasResources && (
+        <div className="mb-6 flex flex-wrap items-center gap-2">
+          {hasPdfs && <button onClick={scrollToResources} className={chip}>📄 {lesson.pdfUrls.length} PDF{lesson.pdfUrls.length > 1 ? 's' : ''}</button>}
+          {hasDownloads && <button onClick={scrollToResources} className={chip}>📎 {lesson.attachments.length} download{lesson.attachments.length > 1 ? 's' : ''}</button>}
+          {hasHomework && <button onClick={scrollToResources} className={chip}>✍ Homework{lesson.submission ? ` · ${homeworkChipLabel(lesson.submission.status)}` : ' to submit'}</button>}
+        </div>
+      )}
       {showExplainer && <ExplainerPlayer title={lesson.title} points={explainerPoints} onClose={() => setShowExplainer(false)} />}
       <div className="mb-8 h-1 overflow-hidden rounded-full bg-white/10"><div className="h-full rounded-full bg-[var(--color-gold)]/70 transition-[width] duration-300" style={{ width: `${pct}%` }} /></div>
 
@@ -295,29 +320,59 @@ function LessonStep({ lesson, reviewing, preview, formative, register, onContinu
         </motion.div>
       </AnimatePresence>
 
+      <div ref={resourcesRef} className="scroll-mt-4">
       {lesson.pdfUrls.length > 0 && (
         <div className="mt-6 rounded-[var(--radius-lg)] border border-white/10 bg-white/5 p-4">
           <p className="mb-3 text-[0.65rem] font-semibold uppercase tracking-[0.16em] text-white/40">Lesson resources</p>
           <ul className="space-y-2">
-            {lesson.pdfUrls.map((url) => {
+            {lesson.pdfUrls.map((url, idx) => {
               const raw = url.split('/').pop() ?? 'Document';
               const name = (() => { try { return decodeURIComponent(raw); } catch { return raw; } })().replace(/^\d+-/, '');
               const viewOnly = lesson.pdfNoDownload?.includes(url) ?? false;
+              const icon = <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden className="shrink-0 text-[var(--color-gold)]/70"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><polyline points="14 2 14 8 20 8" /><line x1="12" y1="18" x2="12" y2="12" /><line x1="9" y1="15" x2="15" y2="15" /></svg>;
+              // View-only → open the secure in-app viewer (no download/print, URL never exposed).
               return (
                 <li key={url}>
-                  <a href={url} target="_blank" rel="noreferrer" {...(viewOnly ? {} : { download: name })} className="flex items-center gap-2.5 text-sm text-white/80 transition-colors hover:text-[var(--color-gold)]">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden className="shrink-0 text-[var(--color-gold)]/70"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><polyline points="14 2 14 8 20 8" /><line x1="12" y1="18" x2="12" y2="12" /><line x1="9" y1="15" x2="15" y2="15" /></svg>
-                    <span className="truncate">{name}</span>
-                    <span className="ml-auto shrink-0 text-[0.65rem] text-white/30">{viewOnly ? 'View only' : 'Download'}</span>
-                  </a>
+                  {viewOnly ? (
+                    <button onClick={() => setPdfView({ index: idx, name })} className="flex w-full items-center gap-2.5 text-left text-sm text-white/80 transition-colors hover:text-[var(--color-gold)]">
+                      {icon}
+                      <span className="truncate">{name}</span>
+                      <span className="ml-auto shrink-0 text-[0.65rem] text-white/30">View only</span>
+                    </button>
+                  ) : (
+                    <a href={url} target="_blank" rel="noreferrer" download={name} className="flex items-center gap-2.5 text-sm text-white/80 transition-colors hover:text-[var(--color-gold)]">
+                      {icon}
+                      <span className="truncate">{name}</span>
+                      <span className="ml-auto shrink-0 text-[0.65rem] text-white/30">Download</span>
+                    </a>
+                  )}
                 </li>
               );
             })}
           </ul>
         </div>
       )}
+      {pdfView && <SecurePdfViewer lessonId={lesson.id} index={pdfView.index} title={pdfView.name} onClose={() => setPdfView(null)} />}
+
+      {lesson.attachments.length > 0 && (
+        <div className="mt-6 rounded-[var(--radius-lg)] border border-white/10 bg-white/5 p-4">
+          <p className="mb-3 text-[0.65rem] font-semibold uppercase tracking-[0.16em] text-white/40">Downloads</p>
+          <ul className="space-y-2">
+            {lesson.attachments.map((a, i) => (
+              <li key={`${a.url}-${i}`}>
+                <a href={a.url} download target="_blank" rel="noreferrer" className="flex items-center gap-2.5 text-sm text-white/80 transition-colors hover:text-[var(--color-gold)]">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden className="shrink-0 text-[var(--color-gold)]/70"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="7 10 12 15 17 10" /><line x1="12" y1="15" x2="12" y2="3" /></svg>
+                  <span className="truncate">{a.label}</span>
+                  <span className="ml-auto shrink-0 rounded-full bg-white/10 px-2 py-0.5 text-[0.6rem] uppercase tracking-wide text-white/50">{kindLabel(a.kind)}</span>
+                </a>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
 
       {lesson.requiresHomework && <HomeworkPanel lessonId={lesson.id} submission={lesson.submission} />}
+      </div>
     </div>
   );
 }
@@ -344,7 +399,10 @@ function TeachMicro({ step, onContinue, gated }: { step: TeachStep; onContinue: 
   const v = step.art?.startsWith('video:') ? step.art.slice(6) : null;
   const ytv = v?.startsWith('yt:') ? v.slice(3) : null;
   const filev = v?.startsWith('url:') ? decodeURIComponent(v.slice(4)) : null;
-  const art = v ? null : resolveArt(step.art, `${step.title ?? ''} ${step.text}`);
+  const audioSrc = step.art?.startsWith('audio:url:') ? decodeURIComponent(step.art.slice(10)) : null;
+  const embedSrc = step.art?.startsWith('embed:url:') ? decodeURIComponent(step.art.slice(10)) : null;
+  const isMedia = !!v || !!audioSrc || !!embedSrc;
+  const art = isMedia ? null : resolveArt(step.art, `${step.title ?? ''} ${step.text}`);
   const [lvl] = useState<IlloLevel>(() => (art ? levelFor(art) : 'full'));
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { if (art) seeArt(art); }, []);
@@ -356,6 +414,11 @@ function TeachMicro({ step, onContinue, gated }: { step: TeachStep; onContinue: 
       ) : filev ? (
         // eslint-disable-next-line jsx-a11y/media-has-caption
         <video controls playsInline className="aspect-video w-full max-w-md rounded-[var(--radius-lg)] border border-white/12" src={filev} />
+      ) : audioSrc ? (
+        // eslint-disable-next-line jsx-a11y/media-has-caption
+        <audio controls preload="metadata" className="w-full max-w-md" src={audioSrc} />
+      ) : embedSrc ? (
+        <div className="aspect-video w-full max-w-md overflow-hidden rounded-[var(--radius-lg)] border border-white/12"><iframe className="h-full w-full" src={embedSrc} title="Lesson content" loading="lazy" allow="accelerometer; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen" allowFullScreen /></div>
       ) : (
         <>
           {art && <div className="mb-5 w-full max-w-[190px]"><Illustration name={art} level={lvl} /></div>}
@@ -465,32 +528,45 @@ type Checked = { correct: boolean; correctIndices: number[]; explanation: string
 function QuizStep({ quiz, preview, onFinish }: { quiz: QuizView; preview: boolean; onFinish: (result: { passed: boolean; scorePct: number; newBadges: AwardedBadge[] }) => void }) {
   const [qi, setQi] = useState(0);
   const [selected, setSelected] = useState<number[]>([]);
+  const [text, setTextAns] = useState('');
   const [checked, setChecked] = useState<Checked | null>(null);
   const [showTip, setShowTip] = useState(false);
   const [busy, setBusy] = useState(false);
   const [correctCount, setCorrectCount] = useState(0);
-  const answersRef = useRef<Record<string, number[]>>({});
+  const answersRef = useRef<Record<string, number[] | string>>({});
   const [done, setDone] = useState<null | { scorePct: number; passed: boolean; newBadges: AwardedBadge[] }>(null);
 
   const q = quiz.questions[qi];
   const multi = q?.type === 'MULTI';
+  const isShort = q?.type === 'SHORT';
+  const survey = quiz.isSurvey;
   const last = qi === quiz.questions.length - 1;
+  const answered = isShort ? !!text.trim() : selected.length > 0;
 
   function toggle(oi: number) {
     if (checked) return;
     setSelected((cur) => (multi ? (cur.includes(oi) ? cur.filter((x) => x !== oi) : [...cur, oi]) : [oi]));
   }
+  function recordCurrent() { answersRef.current[q.id] = isShort ? text : selected; }
 
   async function check() {
-    if (!selected.length || checked) return;
-    answersRef.current[q.id] = selected;
+    if (!answered || checked) return;
+    recordCurrent();
     setBusy(true);
     try {
       let res: Checked;
-      if (q.correct !== undefined) {
+      if (isShort) {
+        if (q.acceptedAnswers !== undefined) {
+          const accepted = q.acceptedAnswers.map((s) => s.trim().toLowerCase());
+          res = { correct: !!text.trim() && accepted.includes(text.trim().toLowerCase()), correctIndices: [], explanation: q.explanation ?? null };
+        } else {
+          const r = await fetch('/api/academy/quiz', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ mode: 'check', quizId: quiz.id, questionId: q.id, answer: text }) }).then((x) => x.json());
+          res = { correct: !!r.correct, correctIndices: [], explanation: r.explanation ?? null };
+        }
+      } else if (q.correct !== undefined) {
         // Preview: answer key is present — grade locally.
-        const correctIndices = [...q.correct].sort();
-        const given = [...selected].sort();
+        const correctIndices = [...q.correct].sort((a, b) => a - b);
+        const given = [...selected].sort((a, b) => a - b);
         res = { correct: correctIndices.length === given.length && correctIndices.every((v, i) => v === given[i]), correctIndices, explanation: q.explanation ?? null };
       } else {
         const r = await fetch('/api/academy/quiz', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ mode: 'check', quizId: quiz.id, questionId: q.id, answer: selected }) }).then((x) => x.json());
@@ -503,11 +579,11 @@ function QuizStep({ quiz, preview, onFinish }: { quiz: QuizView; preview: boolea
   }
 
   async function next() {
-    if (!last) { setQi((i) => i + 1); setSelected([]); setChecked(null); setShowTip(false); return; }
+    if (!last) { setQi((i) => i + 1); setSelected([]); setTextAns(''); setChecked(null); setShowTip(false); return; }
     // Finish: record the attempt (learn) or compute locally (preview).
     setBusy(true);
     const localPct = Math.round((correctCount / quiz.questions.length) * 100);
-    let scorePct = localPct, passed = localPct >= quiz.passMark;
+    let scorePct = survey ? 100 : localPct, passed = survey ? true : localPct >= quiz.passMark;
     let newBadges: AwardedBadge[] = [];
     if (!preview) {
       try {
@@ -519,9 +595,24 @@ function QuizStep({ quiz, preview, onFinish }: { quiz: QuizView; preview: boolea
     setDone({ scorePct, passed, newBadges });
   }
 
-  function retry() { setQi(0); setSelected([]); setChecked(null); setShowTip(false); setCorrectCount(0); answersRef.current = {}; setDone(null); }
+  // Survey: no per-question grading — record the answer and move on.
+  function advanceSurvey() { if (!answered) return; recordCurrent(); next(); }
+
+  function retry() { setQi(0); setSelected([]); setTextAns(''); setChecked(null); setShowTip(false); setCorrectCount(0); answersRef.current = {}; setDone(null); }
 
   if (done) {
+    if (survey) {
+      return (
+        <div className="text-center">
+          <KMascot variant="pass" size={78} className="mx-auto" />
+          <h2 className="mt-5 font-[family-name:var(--font-display)] text-3xl">Thank you</h2>
+          <p className="mt-2 text-white/70">Your feedback has been recorded.</p>
+          <div className="mt-8 flex items-center justify-center gap-3">
+            <button onClick={() => onFinish({ passed: done.passed, scorePct: done.scorePct, newBadges: done.newBadges })} className="rounded-full bg-[var(--color-gold)] px-7 py-3 text-sm font-semibold text-[var(--color-ink)] hover:scale-[1.02]">Continue →</button>
+          </div>
+        </div>
+      );
+    }
     return (
       <div className="text-center">
         {done.passed ? (
@@ -544,30 +635,41 @@ function QuizStep({ quiz, preview, onFinish }: { quiz: QuizView; preview: boolea
   return (
     <div>
       <div className="flex items-center justify-between text-xs text-white/45">
-        <span className="uppercase tracking-[0.16em]">{quiz.title}</span>
+        <span className="uppercase tracking-[0.16em]">{quiz.title}{survey ? ' · survey' : ''}</span>
         <span className="tabular-nums">Question {qi + 1} / {quiz.questions.length}</span>
       </div>
       <h2 className="mt-4 font-[family-name:var(--font-display)] text-2xl leading-snug">{q.prompt}{multi && <span className="ml-2 align-middle text-xs font-normal text-white/45">(select all that apply)</span>}</h2>
       {q.imageUrl && /* eslint-disable-next-line @next/next/no-img-element */ <img src={q.imageUrl} alt="" className="mt-4 max-h-64 rounded-[var(--radius-md)]" />}
 
-      <div className="mt-6 space-y-2.5">
-        {q.options.map((opt, oi) => {
-          const chosen = selected.includes(oi);
-          const isC = checked?.correctIndices.includes(oi);
-          const cls = checked
-            ? isC ? 'border-[var(--color-gold)] bg-[var(--color-gold)]/15' : chosen ? 'border-red-400/60 bg-red-400/10' : 'border-white/10 opacity-60'
-            : chosen ? 'border-white bg-white/10' : 'border-white/15 hover:border-white/40';
-          return (
-            <button key={oi} onClick={() => toggle(oi)} disabled={!!checked} className={`flex w-full items-center gap-3 rounded-[var(--radius-md)] border px-4 py-3 text-left text-sm transition-colors ${cls}`}>
-              <span className={`grid h-5 w-5 shrink-0 place-items-center ${multi ? 'rounded-[4px]' : 'rounded-full'} border text-[0.7rem] ${chosen ? 'border-white bg-white text-[var(--color-ink)]' : 'border-white/40'}`}>{chosen ? '✓' : ''}</span>
-              <span className="flex-1">{opt}</span>
-              {checked && isC && <span className="text-xs font-medium text-[var(--color-gold)]">✓</span>}
-            </button>
-          );
-        })}
-      </div>
+      {isShort ? (
+        <input
+          type="text"
+          value={text}
+          disabled={!!checked}
+          onChange={(e) => setTextAns(e.target.value)}
+          placeholder="Type your answer…"
+          className={`mt-6 w-full rounded-[var(--radius-md)] border bg-white/5 px-4 py-3 text-sm text-white placeholder:text-white/35 ${checked ? (checked.correct ? 'border-[var(--color-gold)]' : 'border-red-400/60') : 'border-white/20 focus:border-white/50 focus:outline-none'}`}
+        />
+      ) : (
+        <div className="mt-6 space-y-2.5">
+          {q.options.map((opt, oi) => {
+            const chosen = selected.includes(oi);
+            const isC = checked?.correctIndices.includes(oi);
+            const cls = checked
+              ? isC ? 'border-[var(--color-gold)] bg-[var(--color-gold)]/15' : chosen ? 'border-red-400/60 bg-red-400/10' : 'border-white/10 opacity-60'
+              : chosen ? 'border-white bg-white/10' : 'border-white/15 hover:border-white/40';
+            return (
+              <button key={oi} onClick={() => toggle(oi)} disabled={!!checked} className={`flex w-full items-center gap-3 rounded-[var(--radius-md)] border px-4 py-3 text-left text-sm transition-colors ${cls}`}>
+                <span className={`grid h-5 w-5 shrink-0 place-items-center ${multi ? 'rounded-[4px]' : 'rounded-full'} border text-[0.7rem] ${chosen ? 'border-white bg-white text-[var(--color-ink)]' : 'border-white/40'}`}>{chosen ? '✓' : ''}</span>
+                <span className="flex-1">{opt}</span>
+                {checked && isC && <span className="text-xs font-medium text-[var(--color-gold)]">✓</span>}
+              </button>
+            );
+          })}
+        </div>
+      )}
 
-      {q.tip && !checked && (
+      {q.tip && !checked && !survey && (
         <div className="mt-4">
           {showTip ? (
             <p className="rounded-[var(--radius-md)] border border-[var(--color-gold)]/25 bg-[var(--color-gold)]/8 px-4 py-2.5 text-sm text-white/85">💡 {q.tip}</p>
@@ -577,7 +679,7 @@ function QuizStep({ quiz, preview, onFinish }: { quiz: QuizView; preview: boolea
         </div>
       )}
 
-      {checked && (
+      {checked && !survey && (
         <div className={`mt-5 rounded-[var(--radius-lg)] border p-4 ${checked.correct ? 'border-[var(--color-gold)]/40 bg-[var(--color-gold)]/10' : 'border-red-400/40 bg-red-400/10'}`}>
           <p className="font-semibold">{checked.correct ? '✓ Correct' : '✗ Not quite'}</p>
           {checked.explanation && <p className="mt-1 text-sm text-white/80">{checked.explanation}</p>}
@@ -585,10 +687,12 @@ function QuizStep({ quiz, preview, onFinish }: { quiz: QuizView; preview: boolea
       )}
 
       <div className="mt-7 flex justify-center border-t border-white/10 pt-6">
-        {checked ? (
+        {survey ? (
+          <button onClick={advanceSurvey} disabled={!answered || busy} className="rounded-full bg-[var(--color-gold)] px-8 py-3 text-sm font-semibold text-[var(--color-ink)] enabled:hover:scale-[1.02] disabled:cursor-not-allowed disabled:opacity-50">{busy ? '…' : last ? 'Finish →' : 'Continue →'}</button>
+        ) : checked ? (
           <button onClick={next} disabled={busy} className="rounded-full bg-[var(--color-gold)] px-8 py-3 text-sm font-semibold text-[var(--color-ink)] hover:scale-[1.02] disabled:opacity-60">{busy ? '…' : last ? 'See result →' : 'Continue →'}</button>
         ) : (
-          <button onClick={check} disabled={!selected.length || busy} className="rounded-full bg-[var(--color-gold)] px-8 py-3 text-sm font-semibold text-[var(--color-ink)] enabled:hover:scale-[1.02] disabled:cursor-not-allowed disabled:opacity-50">{busy ? 'Checking…' : 'Check'}</button>
+          <button onClick={check} disabled={!answered || busy} className="rounded-full bg-[var(--color-gold)] px-8 py-3 text-sm font-semibold text-[var(--color-ink)] enabled:hover:scale-[1.02] disabled:cursor-not-allowed disabled:opacity-50">{busy ? 'Checking…' : 'Check'}</button>
         )}
       </div>
     </div>

@@ -18,7 +18,9 @@ export function DashboardHero({ firstName, locale, next, visits, memberSince, la
   const greeting = t(greetKey, { name: '<<<' });
   const [greetLead, greetTail] = greeting.split('<<<');
   const lc = locale === 'uk' ? 'uk-UA' : 'en-GB';
-  const dateFmt = (iso: string, opts: Intl.DateTimeFormatOptions) => new Date(iso).toLocaleDateString(lc, opts);
+  // Clinic-local (Europe/London) so the portal matches the confirmation email and
+  // the clinic diary regardless of the viewing device's timezone (BLD-795).
+  const dateFmt = (iso: string, opts: Intl.DateTimeFormatOptions) => new Date(iso).toLocaleDateString(lc, { timeZone: 'Europe/London', ...opts });
 
   let countdown = '';
   if (next) {
@@ -60,10 +62,10 @@ export function DashboardHero({ firstName, locale, next, visits, memberSince, la
               <p className="text-xs uppercase tracking-[0.16em] text-[color-mix(in_oklab,var(--color-porcelain)_64%,transparent)]">{t('dash.nextAppt')} · {countdown}</p>
               <p className="mt-3 font-[family-name:var(--font-display)] text-[clamp(1.6rem,1.2rem+1.4vw,2.4rem)] leading-tight">{next.treatmentTitle}</p>
               <p className="mt-1.5 text-[color-mix(in_oklab,var(--color-porcelain)_80%,transparent)]">
-                {dateFmt(next.startISO, { weekday: 'long', day: 'numeric', month: 'long' })} · {new Date(next.startISO).toLocaleTimeString(lc, { hour: '2-digit', minute: '2-digit' })}
+                {dateFmt(next.startISO, { weekday: 'long', day: 'numeric', month: 'long' })} · {new Date(next.startISO).toLocaleTimeString(lc, { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/London' })}
               </p>
             </div>
-            <Link href="/account/appointments" className="rounded-full bg-[var(--color-gold)] px-6 py-3 text-sm font-medium text-white shadow-[var(--shadow-gold)] transition-colors hover:bg-white hover:text-[var(--color-ink)]">
+            <Link href="/account/appointments" className="rounded-full bg-[var(--color-gold-deep)] px-6 py-3 text-sm font-medium text-white shadow-[var(--shadow-gold)] transition-colors hover:bg-white hover:text-[var(--color-ink)]">
               {t('dash.manage')} →
             </Link>
           </motion.div>
@@ -73,7 +75,7 @@ export function DashboardHero({ firstName, locale, next, visits, memberSince, la
             className="mt-9 flex flex-wrap items-center justify-between gap-6 border-t border-white/12 pt-8"
           >
             <p className="max-w-md text-[color-mix(in_oklab,var(--color-porcelain)_80%,transparent)]">{t('dash.noUpcoming')}</p>
-            <Link href="/book" className="rounded-full bg-[var(--color-gold)] px-6 py-3 text-sm font-medium text-white shadow-[var(--shadow-gold)] transition-colors hover:bg-white hover:text-[var(--color-ink)]">
+            <Link href="/book" className="rounded-full bg-[var(--color-gold-deep)] px-6 py-3 text-sm font-medium text-white shadow-[var(--shadow-gold)] transition-colors hover:bg-white hover:text-[var(--color-ink)]">
               {t('dash.bookNow')} →
             </Link>
           </motion.div>

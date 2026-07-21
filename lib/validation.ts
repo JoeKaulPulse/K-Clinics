@@ -43,6 +43,29 @@ export const clientSignupSchema = z.object({
   company: z.string().optional(),
 });
 
+// Guest booking (BLD-550): the same identity + consent fields as signup, minus
+// the password. Creates a passwordless account so a first-time client can book
+// without choosing a password; they claim it later via an activation email.
+export const guestBookingSchema = clientSignupSchema.omit({ password: true });
+
+// BLD-928: the K Vision "Get my plan" auth step deliberately collects only
+// BLD-734 (owner decision, 20 Jul — email-only signup): name + email only, NO
+// password. The AI plan is the biggest drop-off point when gated behind a
+// password to invent on the spot, so the account is created PASSWORDLESS
+// (guest, BLD-550): the plan reveals immediately on a live session and a
+// one-tap sign-in link is emailed for returning later. lastName/phone/dob are
+// optional in SignupInput and captured later at booking. Terms acceptance is an
+// explicit "By continuing you agree…" line in that UI, so no consent checkbox
+// field. `eventId` de-dupes the browser Lead pixel against the server CAPI copy.
+export const kVisionSignupSchema = z.object({
+  firstName: z.string().min(1, 'First name is required').max(80),
+  email: z.string().email('Enter a valid email'),
+  locale: z.enum(['en', 'uk']).optional(),
+  source: z.literal('kvision'),
+  eventId: z.string().max(64).optional(),
+  company: z.string().optional(),
+});
+
 export const clientLoginSchema = z.object({
   email: z.string().email('Enter a valid email'),
   password: z.string().min(1, 'Enter your password'),
@@ -56,7 +79,12 @@ export const assessmentSchema = z.object({
 
 export const loginSchema = z.object({
   email: z.string().email(),
-  password: z.string().min(6),
+  // Login must accept whatever credential is already stored — a length policy
+  // here would retroactively lock out any admin whose existing password is
+  // shorter, with no reset path. Enforce minimum length on password *creation*
+  // (staff invite / reset), not at the login gate. The HIBP breach check in the
+  // login route already nudges weak/compromised passwords toward rotation.
+  password: z.string().min(1),
 });
 
 export const campaignSchema = z.object({

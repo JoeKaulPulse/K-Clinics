@@ -57,7 +57,10 @@ export function TreatmentFinder({ gender, prices = {} }: { gender?: string | nul
           <motion.div key={q.id} custom={dir} variants={slide} initial="enter" animate="center" exit="exit" transition={trans}>
             <h2 className="font-[family-name:var(--font-display)] text-[clamp(1.6rem,1.2rem+1.6vw,2.5rem)] leading-tight">{q.prompt}</h2>
             {q.help && <p className="mt-2 text-[var(--color-stone)]">{q.help}</p>}
-            <div className="mt-7 grid gap-3 sm:grid-cols-2">
+            {/* relative z-50: lifts the answer buttons above the fixed WhatsApp
+                launcher (z-40, bottom-5 right-5, mobile-only) so a tap that visually
+                lands on an option is never hijacked by the button underneath (BLD-769). */}
+            <div className="relative z-50 mt-7 grid gap-3 sm:grid-cols-2">
               {q.options.map((o) => (
                 <button
                   key={o.value}
@@ -94,14 +97,14 @@ export function TreatmentFinder({ gender, prices = {} }: { gender?: string | nul
                         <p className="text-sm text-[var(--color-stone)]">{t.tagline}</p>
                       </div>
                     </div>
-                    <span className="hidden shrink-0 text-sm text-[var(--color-gold)] sm:block">{price ? `from ${formatPrice(price)}` : 'Consult'}</span>
+                    <span className="hidden shrink-0 text-sm text-[var(--color-gold-deep)] sm:block">{price ? `from ${formatPrice(price)}` : 'Consult'}</span>
                   </Link>
                 );
               })}
             </div>
             <div className="mt-8 flex flex-wrap gap-3">
-              <Link href="/consultation" className="rounded-full bg-[var(--color-gold)] px-7 py-3.5 font-medium text-white shadow-[var(--shadow-gold)] hover:bg-[var(--color-ink)]">Book a free consultation</Link>
-              <button onClick={() => { setAnswers({}); setStep(0); setDir(-1); }} className="rounded-full border border-[var(--color-line)] px-6 py-3.5 font-medium hover:border-[var(--color-gold)] hover:text-[var(--color-gold)]">Start over</button>
+              <Link href="/consultation" className="rounded-full bg-[var(--color-gold-deep)] px-7 py-3.5 font-medium text-white shadow-[var(--shadow-gold)] hover:bg-[var(--color-ink)]">Book a free consultation</Link>
+              <button onClick={() => { setAnswers({}); setStep(0); setDir(-1); }} className="rounded-full border border-[var(--color-line)] px-6 py-3.5 font-medium hover:border-[var(--color-gold)] hover:text-[var(--color-gold-deep)]">Start over</button>
             </div>
           </motion.div>
         )}

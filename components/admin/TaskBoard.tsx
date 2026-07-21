@@ -12,11 +12,12 @@ type Task = {
   parentId: string | null; parentRef: string | null;
 };
 type Staff = { id: string; name: string };
+type TaskCommentT = { id: string; body: string; createdAt: string; authorId: string | null; authorName: string; authorPhoto: string | null; mentionIds: string[] };
 
 const PRIORITY_STYLE: Record<string, string> = {
   HIGH: 'bg-[var(--color-blush)]/25 text-[var(--color-ink)]',
   NORMAL: 'bg-[var(--color-bone)] text-[var(--color-stone)]',
-  LOW: 'bg-[var(--color-bone)] text-[var(--color-stone-soft)]',
+  LOW: 'bg-[var(--color-bone)] text-[var(--color-stone)]',
 };
 
 // Refs branch from the parent (TSK-12 → TSK-12.1); keep branches readable.
@@ -148,7 +149,7 @@ function CreateTask({ staff, uk }: { staff: Staff[]; uk: boolean }) {
           </select>
         </div>
         <div className="flex items-center gap-3">
-          <button onClick={submit} disabled={busy} className="rounded-full bg-[var(--color-gold)] px-5 py-2 text-sm font-medium text-white hover:bg-[var(--color-ink)] disabled:opacity-60">
+          <button onClick={submit} disabled={busy} className="rounded-full bg-[var(--color-gold-deep)] px-5 py-2 text-sm font-medium text-white hover:bg-[var(--color-ink)] disabled:opacity-60">
             {busy ? L('Adding…', 'Додавання…') : L('Add task', 'Додати завдання')}
           </button>
           {msg && <span className="text-sm text-[var(--color-stone)]">{msg}</span>}
@@ -164,7 +165,24 @@ function Row({ t, staff, uk, orphanSub }: { t: Task; staff: Staff[]; uk: boolean
   const [subOpen, setSubOpen] = useState(false);
   const [subTitle, setSubTitle] = useState('');
   const [subBusy, setSubBusy] = useState(false);
+  const [cOpen, setCOpen] = useState(false);
+  const [comments, setComments] = useState<TaskCommentT[] | null>(null);
+  const [cText, setCText] = useState('');
+  const [cBusy, setCBusy] = useState(false);
   const L = (en: string, ukt: string) => (uk ? ukt : en);
+
+  async function loadComments() {
+    const r = await fetch('/api/admin/tasks', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ op: 'comments', taskId: t.id }) }).then((x) => x.json()).catch(() => null);
+    if (r?.ok) setComments(r.comments);
+  }
+  function toggleComments() { const n = !cOpen; setCOpen(n); if (n && comments === null) void loadComments(); }
+  async function addComment() {
+    if (!cText.trim()) return;
+    setCBusy(true);
+    const ok = await post({ op: 'comment', taskId: t.id, body: cText.trim() });
+    setCBusy(false);
+    if (ok) { setCText(''); void loadComments(); }
+  }
   const done = t.status === 'DONE';
   const overdue = !done && t.dueAt && new Date(t.dueAt) < new Date(new Date().toDateString());
   const canAddSub = !done && refDepth(t) < MAX_REF_DEPTH;
@@ -200,7 +218,7 @@ function Row({ t, staff, uk, orphanSub }: { t: Task; staff: Staff[]; uk: boolean
     <div className="rounded-[var(--radius-md)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-4">
       <div className="flex items-start gap-3">
         <button onClick={toggle} disabled={busy} title={done ? L('Reopen', 'Відкрити знову') : L('Mark done', 'Позначити виконаним')}
-          className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full border ${done ? 'border-[var(--color-gold)] bg-[var(--color-gold)] text-white' : 'border-[var(--color-stone-soft)] hover:border-[var(--color-gold)]'}`}>
+          className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full border ${done ? 'border-[var(--color-gold)] bg-[var(--color-gold-deep)] text-white' : 'border-[var(--color-stone-soft)] hover:border-[var(--color-gold)]'}`}>
           {done && '✓'}
         </button>
         <div className="min-w-0 flex-1">
@@ -208,22 +226,23 @@ function Row({ t, staff, uk, orphanSub }: { t: Task; staff: Staff[]; uk: boolean
             <RefChip refId={t.ref} uk={uk} />
             <span className={`text-sm font-medium ${done ? 'line-through text-[var(--color-stone)]' : ''}`}>{t.title}</span>
             <span className={`rounded-full px-2 py-0.5 text-[0.6rem] uppercase tracking-wide ${PRIORITY_STYLE[t.priority]}`}>{t.priority.toLowerCase()}</span>
-            {t.dueAt && <span className={`text-xs ${overdue ? 'font-medium text-[var(--color-blush)]' : 'text-[var(--color-stone-soft)]'}`}>{overdue ? '⚠ ' : ''}{new Date(t.dueAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}</span>}
-            {orphanSub && t.parentRef && <span className="text-xs text-[var(--color-stone-soft)]">↳ {L('part of', 'частина')} {t.parentRef}</span>}
+            {t.dueAt && <span className={`text-xs ${overdue ? 'font-medium text-[var(--color-blush-deep)]' : 'text-[var(--color-stone)]'}`}>{overdue ? '⚠ ' : ''}{new Date(t.dueAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}</span>}
+            {orphanSub && t.parentRef && <span className="text-xs text-[var(--color-stone)]">↳ {L('part of', 'частина')} {t.parentRef}</span>}
           </div>
           {t.detail && <p className="mt-0.5 whitespace-pre-wrap text-sm text-[var(--color-stone)]">{t.detail}</p>}
-          <div className="mt-1.5 flex flex-wrap items-center gap-3 text-xs text-[var(--color-stone-soft)]">
-            {t.clientId && t.clientName && <Link href={`/admin/clients/${t.clientId}`} className="text-[var(--color-gold)] hover:underline">{t.clientName}</Link>}
+          <div className="mt-1.5 flex flex-wrap items-center gap-3 text-xs text-[var(--color-stone)]">
+            {t.clientId && t.clientName && <Link href={`/admin/clients/${t.clientId}`} className="text-[var(--color-gold-deep)] hover:underline">{t.clientName}</Link>}
             {!done && (
               <select value={t.assigneeId || ''} onChange={(e) => reassign(e.target.value)} className="rounded-full border border-[var(--color-line)] bg-transparent px-2 py-0.5 text-xs">
                 <option value="">{L('Unassigned', 'Без виконавця')}</option>
                 {staff.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
               </select>
             )}
-            {canAddSub && <button onClick={() => setSubOpen((o) => !o)} className="hover:text-[var(--color-gold)]">{subOpen ? L('Cancel', 'Скасувати') : `+ ${L('Sub-task', 'Підзавдання')}`}</button>}
+            {canAddSub && <button onClick={() => setSubOpen((o) => !o)} className="hover:text-[var(--color-gold-deep)]">{subOpen ? L('Cancel', 'Скасувати') : `+ ${L('Sub-task', 'Підзавдання')}`}</button>}
+            <button onClick={toggleComments} className="hover:text-[var(--color-gold-deep)]">💬 {L('Comments', 'Коментарі')}{comments && comments.length > 0 ? ` (${comments.length})` : ''}</button>
             {done && t.assigneeName && <span>{t.assigneeName}</span>}
             {done && t.completedBy && <span>· {L('done by', 'виконав')} {t.completedBy}</span>}
-            <button onClick={remove} className="ml-auto hover:text-[var(--color-blush)]">{L('Delete', 'Видалити')}</button>
+            <button onClick={remove} className="ml-auto hover:text-[var(--color-blush-deep)]">{L('Delete', 'Видалити')}</button>
           </div>
           {subOpen && (
             <div className="mt-2 flex items-center gap-2">
@@ -233,6 +252,37 @@ function Row({ t, staff, uk, orphanSub }: { t: Task; staff: Staff[]; uk: boolean
               <button onClick={addSub} disabled={subBusy || !subTitle.trim()} className="rounded-[var(--radius-sm)] bg-[var(--color-ink)] px-3 py-1.5 text-sm text-[var(--color-porcelain)] disabled:opacity-50">
                 {subBusy ? L('Adding…', 'Додавання…') : L('Add', 'Додати')}
               </button>
+            </div>
+          )}
+          {cOpen && (
+            <div className="mt-3 rounded-[var(--radius-md)] border border-[var(--color-line)] bg-white/60 p-3">
+              {comments === null ? (
+                <p className="text-xs text-[var(--color-stone)]">{L('Loading…', 'Завантаження…')}</p>
+              ) : comments.length === 0 ? (
+                <p className="text-xs text-[var(--color-stone)]">{L('No comments yet. Start the discussion.', 'Коментарів ще немає. Почніть обговорення.')}</p>
+              ) : (
+                <ul className="space-y-2">
+                  {comments.map((c) => (
+                    <li key={c.id} className="flex gap-2">
+                      <span aria-hidden className="mt-0.5 grid h-6 w-6 shrink-0 place-items-center rounded-full bg-[var(--color-ink)] text-[0.6rem] text-[var(--color-gold-bright)]">
+                        {c.authorName.split(/\s+/).slice(0, 2).map((w) => w[0]?.toUpperCase()).join('')}
+                      </span>
+                      <div className="min-w-0">
+                        <p className="text-xs"><span className="font-medium text-[var(--color-ink)]">{c.authorName}</span> <span className="text-[var(--color-stone)]">· {new Date(c.createdAt).toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}</span></p>
+                        <p className="whitespace-pre-wrap break-words text-sm text-[var(--color-ink-soft)]">{c.body}</p>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              )}
+              <div className="mt-2 flex items-center gap-2">
+                <input value={cText} onChange={(e) => setCText(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && addComment()}
+                  placeholder={L('Write a comment…', 'Напишіть коментар…')}
+                  className="min-w-0 flex-1 rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-3 py-1.5 text-sm outline-none focus:border-[var(--color-gold)]" />
+                <button onClick={addComment} disabled={cBusy || !cText.trim()} className="rounded-[var(--radius-sm)] bg-[var(--color-gold-deep)] px-3 py-1.5 text-sm font-medium text-white hover:bg-[var(--color-ink)] disabled:opacity-50">
+                  {cBusy ? L('…', '…') : L('Send', 'Надіслати')}
+                </button>
+              </div>
             </div>
           )}
         </div>

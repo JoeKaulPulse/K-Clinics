@@ -7,6 +7,34 @@ export const VOUCHER_PRESETS = [2500, 5000, 7500, 10000, 15000, 25000];
 export const VOUCHER_MIN = 1000;   // £10
 export const VOUCHER_MAX = 50000;  // £500
 
+// One shared rejection message so previews and reservations never disagree in copy.
+export const VOUCHER_INVALID_ERROR = 'That voucher code isn’t valid, has expired, or has no balance left.';
+
+/** Read-only spendability check (BLD-882): the single predicate both the POS
+ *  preview and error paths use, kept in step with reserveVoucher's guard so a
+ *  preview can never promise a balance a reservation would refuse. Returns 0
+ *  when the voucher isn't spendable. */
+export async function spendableBalancePence(code: string): Promise<number> {
+  const v = await db.giftVoucher.findUnique({ where: { code: code.trim().toUpperCase() }, select: { status: true, balancePence: true, expiresAt: true } });
+  if (!v || v.status !== 'ACTIVE' || v.balancePence <= 0 || (v.expiresAt && v.expiresAt < new Date())) return 0;
+  return v.balancePence;
+}
+
+/** Reverse a reserveVoucher decrement on a failure path (BLD-739/BLD-882): one
+ *  shared unwind for every checkout so a fix to it lands everywhere at once.
+ *  Never throws; failures are logged loudly because a lost re-credit is
+ *  stranded customer money. */
+export async function undoVoucherReservation(code: string | null, pence: number): Promise<void> {
+  if (!code || pence <= 0) return;
+  try {
+    await creditVoucher(code, pence);
+  } catch (e) {
+    console.error(`[gift-vouchers] re-credit of ${pence}p to ${code} FAILED — balance stranded:`, (e as Error)?.message);
+    const Sentry = await import('@sentry/nextjs');
+    Sentry.captureException(e, { tags: { area: 'gift-vouchers', stage: 'undo-reservation' } });
+  }
+}
+
 const baseUrl = () => process.env.NEXT_PUBLIC_SITE_URL || site.url;
 const money = (p: number) => `£${(p / 100).toLocaleString('en-GB', { minimumFractionDigits: p % 100 ? 2 : 0 })}`;
 
@@ -208,8 +236,35 @@ export async function creditVoucher(code: string, amountPence: number): Promise<
   const c = code.trim().toUpperCase();
   const add = Math.max(0, Math.round(amountPence));
   if (!add) return;
-  await db.giftVoucher.updateMany({ where: { code: c }, data: { balancePence: { increment: add } } });
-  await db.giftVoucher.updateMany({ where: { code: c, status: 'REDEEMED' }, data: { status: 'ACTIVE' } });
+  // Cap the balance at the purchased face value (amountPence) so a Stripe webhook
+  // redelivery or a charge.refunded race can never re-credit past what the card is
+  // worth and let a client redeem more than they bought (BLD-646). LEAST is applied
+  // atomically in a single statement — no read-modify-write window — and is
+  // idempotent at the cap: once the balance is restored to amountPence, repeated
+  // credits add nothing. (Prisma can't compare/cap against another column, hence raw.)
+  await db.$executeRaw`UPDATE "GiftVoucher" SET "balancePence" = LEAST("balancePence" + ${add}, "amountPence") WHERE "code" = ${c}`;
+  await db.giftVoucher.updateMany({ where: { code: c, status: 'REDEEMED', balancePence: { gt: 0 } }, data: { status: 'ACTIVE' } });
+}
+
+/** Debit a voucher's balance because ITS OWN purchase was refunded — NOT a
+ *  booking/order that redeemed it as a discount (that case still credits back
+ *  via creditVoucher above). A refund of the purchase itself means the
+ *  customer got their money back for buying the card, so the card must lose
+ *  spending power, never gain it (PRJ-918.2 — the old code called creditVoucher
+ *  here, a double payout: cash back AND a spendable/regrown card).
+ *  `deltaPence` is capped by the caller to at most the card's face value;
+ *  GREATEST floors the balance at 0 so this can never go negative. Once
+ *  `totalRefundedPence` (Stripe's cumulative amount_refunded on the purchase)
+ *  reaches the card's face value, the card is cancelled outright so it can
+ *  never be redeemed again for money that was returned. */
+export async function debitVoucherForPurchaseRefund(voucherId: string, deltaPence: number, totalRefundedPence: number): Promise<void> {
+  const delta = Math.max(0, Math.round(deltaPence));
+  if (!delta) return;
+  await db.$executeRaw`UPDATE "GiftVoucher" SET "balancePence" = GREATEST("balancePence" - ${delta}, 0) WHERE id = ${voucherId}`;
+  const v = await db.giftVoucher.findUnique({ where: { id: voucherId }, select: { amountPence: true } });
+  if (v && totalRefundedPence >= v.amountPence) {
+    await db.giftVoucher.updateMany({ where: { id: voucherId, status: { not: 'CANCELLED' } }, data: { status: 'CANCELLED' } });
+  }
 }
 
 /** Recipient claims/validates a voucher onto their account. The recipient must

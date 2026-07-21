@@ -28,7 +28,7 @@ export function GiftCardClaim({ initialCode, needsAge, claimed }: { initialCode:
   return (
     <div className="space-y-5">
       <section className="rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-6">
-        <label className="block text-xs font-medium uppercase tracking-wide text-[var(--color-stone-soft)]">Gift card code
+        <label className="block text-xs font-medium uppercase tracking-wide text-[var(--color-stone)]">Gift card code
           <input value={code} onChange={(e) => setCode(e.target.value)} placeholder="KC-XXXX-XXXX" className={`${field} font-mono`} />
         </label>
 
@@ -43,7 +43,7 @@ export function GiftCardClaim({ initialCode, needsAge, claimed }: { initialCode:
           </div>
         )}
 
-        {msg && <p className="mt-3 text-sm text-[var(--color-blush)]">{msg}</p>}
+        {msg && <p className="mt-3 text-sm text-[var(--color-blush-deep)]">{msg}</p>}
         {ok && <p className="mt-3 rounded-[var(--radius-sm)] bg-[var(--color-jade)]/12 px-3 py-2 text-sm text-[var(--color-jade)]">{ok}</p>}
         <button onClick={claim} disabled={busy || !code} className="mt-4 rounded-full bg-[var(--color-ink)] px-6 py-2.5 text-sm text-[var(--color-porcelain)] disabled:opacity-50">{busy ? 'Adding…' : 'Add gift card'}</button>
       </section>

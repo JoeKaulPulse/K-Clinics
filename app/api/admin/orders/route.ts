@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { revalidatePath } from 'next/cache';
+import * as Sentry from '@sentry/nextjs';
 import { crmEnabled } from '@/lib/crm';
 
 export const runtime = 'nodejs';
@@ -16,28 +17,87 @@ export async function POST(req: Request) {
   if (!body.id) return NextResponse.json({ ok: false }, { status: 400 });
   const { db } = await import('@/lib/db');
 
-  // When marking an order as REFUNDED, issue the actual Stripe refund first.
-  if (body.status === 'REFUNDED') {
-    const order = await db.order.findUnique({ where: { id: body.id }, select: { stripePaymentIntentId: true, totalPence: true, status: true, giftCardCode: true, giftCardPence: true } });
+  // When marking an order as REFUNDED, or CANCELLING one that's already been
+  // paid for (BLD-763: "Cancel" must not leave the customer charged with
+  // nothing to show for it), issue the actual Stripe refund first.
+  if (body.status === 'REFUNDED' || body.status === 'CANCELLED') {
+    const order = await db.order.findUnique({ where: { id: body.id }, select: { stripePaymentIntentId: true, totalPence: true, status: true, giftCardCode: true, giftCardPence: true, email: true, number: true } });
     if (!order) return NextResponse.json({ ok: false, error: 'Order not found.' }, { status: 404 });
-    if (order.status === 'REFUNDED') return NextResponse.json({ ok: false, error: 'Order already refunded.' }, { status: 409 });
-    if (order.stripePaymentIntentId) {
-      const { stripe, stripeEnabled } = await import('@/lib/stripe');
-      if (!stripeEnabled) return NextResponse.json({ ok: false, error: 'Stripe not configured.' }, { status: 503 });
-      try {
-        await stripe().refunds.create(
-          { payment_intent: order.stripePaymentIntentId, amount: order.totalPence },
-          { idempotencyKey: `order-refund-${body.id}` },
-        );
-      } catch (e) {
-        return NextResponse.json({ ok: false, error: (e as Error).message || 'Refund failed at Stripe.' }, { status: 502 });
+    const wasPaid = order.status === 'PAID' || order.status === 'FULFILLED';
+    // Already in a reversed state (e.g. Cancel ran, then Mark-refunded fires on the
+    // same order via a second tab / direct API call): the money was already put
+    // back, so the non-idempotent side-effects below must not run a second time.
+    const alreadyReversed = order.status === 'REFUNDED' || order.status === 'CANCELLED';
+    const needsMoneyReversal = body.status === 'REFUNDED' || wasPaid;
+
+    if (needsMoneyReversal) {
+      // CAS guard: atomically claim the target status before touching Stripe.
+      // A concurrent retry that lost the race gets count===0 and bails out,
+      // preventing a second full refund on a transient 5xx re-submit.
+      const claimed = await db.order.updateMany({ where: { id: body.id, status: { not: body.status } }, data: { status: body.status } });
+      if (claimed.count === 0) return NextResponse.json({ ok: false, error: `Order already ${body.status.toLowerCase()}.` }, { status: 409 });
+      if (order.stripePaymentIntentId) {
+        const { stripe, stripeEnabled } = await import('@/lib/stripe');
+        if (!stripeEnabled) {
+          // Roll back the status claim — never leave an order marked refunded/
+          // cancelled with the customer still charged and no refund issued.
+          await db.order.updateMany({ where: { id: body.id, status: body.status }, data: { status: order.status } }).catch(() => {});
+          return NextResponse.json({ ok: false, error: 'Stripe not configured.' }, { status: 503 });
+        }
+        try {
+          await stripe().refunds.create(
+            { payment_intent: order.stripePaymentIntentId, amount: order.totalPence, metadata: { orderId: body.id } },
+            // Shared with the REFUNDED path (not scoped by body.status) so whichever
+            // of "Mark refunded" / "Cancel" staff click first also wins at Stripe —
+            // the other can never trigger a second refund for the same order.
+            { idempotencyKey: `order-refund-${body.id}-${order.totalPence}` },
+          );
+        } catch (e) {
+          Sentry.captureException(e, { tags: { area: 'admin/orders', stage: 'stripe-refund' } });
+          // Roll back the status change so staff can retry after fixing Stripe config.
+          await db.order.updateMany({ where: { id: body.id, status: body.status }, data: { status: order.status } }).catch(() => {});
+          return NextResponse.json({ ok: false, error: (e as Error).message || 'Refund failed at Stripe.' }, { status: 502 });
+        }
       }
-    }
-    // BLD-393: restore the gift-card balance debited at checkout (it was permanently
-    // lost on refund — only the card portion was refunded via Stripe above).
-    if (order.giftCardCode && order.giftCardPence && order.giftCardPence > 0) {
-      try { const { creditVoucher } = await import('@/lib/gift-vouchers'); await creditVoucher(order.giftCardCode, order.giftCardPence); }
-      catch (e) { console.error('[orders] gift-card balance restore failed for', body.id, (e as Error)?.message); }
+      // BLD-393: restore the gift-card balance debited at checkout (it was permanently
+      // lost on refund — only the card portion was refunded via Stripe above). Skip
+      // when the order was already in a reversed state, so a Cancel-then-refund on
+      // the same order can't credit the voucher twice.
+      if (!alreadyReversed && order.giftCardCode && order.giftCardPence && order.giftCardPence > 0) {
+        try { const { creditVoucher } = await import('@/lib/gift-vouchers'); await creditVoucher(order.giftCardCode, order.giftCardPence); }
+        catch (e) {
+          console.error('[orders] gift-card balance restore failed for', body.id, (e as Error)?.message);
+          Sentry.captureException(e, { tags: { area: 'admin/orders', stage: 'voucher-restore' } });
+        }
+      }
+      // PRJ-918.10: give back stock decremented at finalizeOrder time — ONLY if the
+      // order was actually in a stock-decremented state (PAID/FULFILLED) first. Stock
+      // is never decremented for a PENDING order, so restocking one (e.g. marking a
+      // never-paid order refunded) would add phantom inventory. restockOrder is itself
+      // idempotent (CAS on Order.restockedAt), so a retried/duplicate request, or
+      // REFUNDED-after-CANCELLED, can't double-restock.
+      if (wasPaid) {
+        try { const { restockOrder } = await import('@/lib/shop'); await restockOrder(body.id); }
+        catch (e) {
+          console.error('[orders] restock failed for', body.id, (e as Error)?.message);
+          Sentry.captureException(e, { tags: { area: 'admin/orders', stage: 'restock' } });
+        }
+      }
+      // BLD-763: staff cancelling/refunding a paid order must not leave the
+      // customer wondering where their money went. Only when money was actually
+      // taken (wasPaid) — a never-charged order has nothing to return, and this also
+      // stops a duplicate email on a Cancel-then-refund of the same order.
+      if (wasPaid && order.email && order.stripePaymentIntentId) {
+        try {
+          const { sendEmail, emailShell } = await import('@/lib/email');
+          const fmt = (p: number) => `£${(p / 100).toFixed(2)}`;
+          const num = order.number.replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]!));
+          const verb = body.status === 'CANCELLED' ? 'cancelled and refunded' : 'refunded';
+          const subject = `Your KClinics order ${order.number} has been ${verb}`;
+          const html = `<h1 style="font-size:22px;margin:0 0 10px;">Order ${verb}</h1><p>Order <strong>${num}</strong> has been ${verb}. <strong>${fmt(order.totalPence)}</strong> will be returned to your original payment method — this usually takes 5–10 business days to appear.</p><p style="font-size:14px;color:#91766e;">If you have any questions, please reply to this email.</p>`;
+          await sendEmail({ to: order.email, subject, html: emailShell({ body: html, preheader: subject }) });
+        } catch (e) { console.error('[orders] refund/cancel email failed for', body.id, (e as Error)?.message); }
+      }
     }
   }
 

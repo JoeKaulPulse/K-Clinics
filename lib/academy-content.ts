@@ -2398,9 +2398,585 @@ export const NEW_MODULES: CourseContentDef[] = [
     ],
   },
 
+  {
+    courseSlug: L2,
+    modules: [
+      {
+        title: 'Laser Safety & Equipment',
+        summary: 'Know your laser class, control the treatment area, and keep everyone protected.',
+        lessons: [
+          {
+            title: 'Laser Classes & Controlled Areas',
+            durationMin: 10,
+            objectives: ['Name laser classes used in aesthetics', 'Set up a controlled area', 'Post correct warning signs'],
+            studyTips: ['Class 3B and 4 can injure from direct and reflected beams.'],
+            examRefs: ['Laser safety'],
+            steps: [
+              { kind: 'say', text: 'Lasers are powerful tools — handled correctly, they’re safe. Let’s get it right.', mood: 'happy' },
+              { kind: 'teach', title: 'Laser classes', text: 'Class 3B and Class 4 are the types used in aesthetics. Both can damage eyes and skin from direct and reflected beams.' },
+              { kind: 'ask', prompt: 'Which laser classes are commonly used in aesthetic treatments?', qtype: 'MULTI', options: ['Class 3B', 'Class 4', 'Class 1', 'Class 0'], correct: [0, 1], explanation: 'Class 3B and 4 are the treatment classes.' },
+              { kind: 'teach', title: 'Controlled area', text: 'The treatment room becomes a laser-controlled area during use. Entry is restricted and warning signs go on every door.' },
+              { kind: 'ask', prompt: 'During laser use, the treatment room is a laser-___ area.', qtype: 'WORD', options: ['controlled', 'open', 'free'], correct: [0], explanation: 'A controlled area with restricted entry.' },
+              { kind: 'say', text: 'Signs up, door locked — now the personal protection.', mood: 'cheer' },
+              { kind: 'teach', title: 'Responsibility', text: 'The operator is responsible for safe laser use at all times — not the manufacturer or the regulator.' },
+              { kind: 'ask', prompt: 'Responsibility for safe laser use rests with...', qtype: 'SINGLE', options: ['The operator', 'The machine manufacturer', 'The client', 'The regulator alone'], correct: [0], explanation: 'The operator is accountable.' },
+              { kind: 'say', text: 'Your room is prepared. Now the safety gear.', mood: 'cheer' },
+            ],
+          },
+          {
+            title: 'PPE & Eye Protection',
+            durationMin: 9,
+            objectives: ['Explain why eye protection is critical', 'Match goggles to the wavelength', 'Know who wears what'],
+            studyTips: ['Wavelength-matched goggles only — ordinary sunglasses offer no protection.'],
+            examRefs: ['Laser safety'],
+            steps: [
+              { kind: 'say', text: 'Eyes are irreplaceable. Let’s make sure everyone in the room stays safe.', mood: 'think' },
+              { kind: 'teach', title: 'Eye damage', text: 'A laser can permanently damage eyes in a fraction of a second. Ordinary sunglasses don’t help.' },
+              { kind: 'ask', prompt: 'Ordinary sunglasses protect eyes from laser beams.', qtype: 'TRUEFALSE', options: ['False', 'True'], correct: [0], explanation: 'Wavelength-rated goggles are essential; sunglasses do not protect.' },
+              { kind: 'teach', title: 'Wavelength-matched goggles', text: 'Protective goggles must be rated for the specific wavelength in use. A different wavelength needs different optical density ratings.' },
+              { kind: 'ask', prompt: 'Protective laser goggles must be rated for the specific ___ in use.', qtype: 'WORD', options: ['wavelength', 'brand', 'colour'], correct: [0], explanation: 'Different wavelengths require different optical densities.' },
+              { kind: 'teach', title: 'Who wears them', text: 'The practitioner, the client, and anyone else present in the room all wear appropriate protective eyewear throughout the treatment.' },
+              { kind: 'ask', prompt: 'Wavelength-matched eyewear must be worn by...', qtype: 'MULTI', options: ['The practitioner', 'The client', 'Any observers in the room', 'Nobody'], correct: [0, 1, 2], explanation: 'Every person present needs protection.' },
+              { kind: 'say', text: 'Everyone protected, every session. That’s professional.', mood: 'cheer' },
+            ],
+          },
+        ],
+        quiz: {
+          title: 'Laser Safety Assessment', passMark: 70,
+          questions: [
+            { prompt: 'Which laser classes are used in aesthetic treatments?', type: 'MULTI', options: ['Class 3B', 'Class 4', 'Class 2', 'Class 1'], correct: [0, 1], explanation: 'Class 3B and 4 are the treatment classes.' },
+            { prompt: 'During laser use the treatment room is a laser-___ area.', type: 'WORD', options: ['controlled', 'free', 'open'], correct: [0], explanation: 'A controlled area with restricted entry and warning signs.' },
+            { prompt: 'Ordinary sunglasses protect eyes from treatment lasers.', type: 'TRUEFALSE', options: ['False', 'True'], correct: [0], explanation: 'Only wavelength-rated goggles protect.' },
+            { prompt: 'Protective goggles must match the ___ of the laser.', type: 'WORD', options: ['wavelength', 'brand', 'colour'], correct: [0], explanation: 'Different wavelengths need different optical densities.' },
+            { prompt: 'Which people in the room must wear eye protection?', type: 'MULTI', options: ['The practitioner', 'The client', 'Any observers', 'Nobody'], correct: [0, 1, 2], explanation: 'Everyone present.' },
+            { prompt: 'Responsibility for safe laser use rests with...', type: 'SINGLE', options: ['The operator', 'The manufacturer only', 'The client', 'The regulator alone'], correct: [0], explanation: 'The operator is accountable.' },
+          ],
+        },
+      },
+    ],
+  },
+  {
+    courseSlug: 'level-4-certificate-aesthetic-practice',
+    modules: [
+      {
+        title: 'Skin Analysis Techniques',
+        summary: 'Read the skin accurately to build a safe, effective treatment plan.',
+        lessons: [
+          {
+            title: 'Reading the Skin Accurately',
+            durationMin: 10,
+            objectives: ['Cleanse before assessing', 'Identify skin type vs condition', 'Use tools correctly'],
+            studyTips: ['Skin type is genetic; dehydration is a condition any type can develop.'],
+            examRefs: ['Skin analysis'],
+            steps: [
+              { kind: 'say', text: 'You can’t plan well without accurate assessment. Let’s read the skin properly.', mood: 'happy' },
+              { kind: 'teach', title: 'Cleanse first', text: 'Remove all products before assessing; residue masks the skin’s true state and skews the analysis.' },
+              { kind: 'ask', prompt: 'Before a skin analysis, skin should be...', qtype: 'WORD', options: ['cleansed', 'moisturised', 'made up'], correct: [0], explanation: 'A bare skin surface gives the accurate read.' },
+              { kind: 'teach', title: 'Type vs condition', text: 'Skin type (oily, dry, combination, normal) is genetic and stable. Dehydration is a changeable condition any skin type can have.' },
+              { kind: 'ask', prompt: 'Dehydration is a skin ___, not a skin type.', qtype: 'WORD', options: ['condition', 'disease', 'colour'], correct: [0], explanation: 'Any skin type can be dehydrated — it is a changeable state.' },
+              { kind: 'teach', title: 'The main types', text: 'The four main skin types are oily, dry, combination and normal. Getting this right shapes every product and protocol choice.' },
+              { kind: 'ask', prompt: 'Which are the main skin types?', qtype: 'MULTI', options: ['Oily', 'Dry', 'Combination', 'Dehydrated'], correct: [0, 1, 2], explanation: 'Dehydrated is a condition, not a type.' },
+              { kind: 'say', text: 'Types and conditions clear. Now look closer.', mood: 'cheer' },
+              { kind: 'teach', title: 'Magnifying lamp', text: 'A magnifying lamp reveals pores, texture, vascular detail and pigmentation that are easy to miss with the naked eye.' },
+              { kind: 'ask', prompt: 'A magnifying lamp helps you see...', qtype: 'MULTI', options: ['Open pores', 'Comedones', 'Erythema', 'The client’s exact age'], correct: [0, 1, 2], explanation: 'It reveals texture and vascular detail — not age.' },
+              { kind: 'say', text: 'Eyes and tools working together. Lovely.', mood: 'cheer' },
+            ],
+          },
+          {
+            title: 'Building the Treatment Plan',
+            durationMin: 9,
+            objectives: ['Match findings to treatments', 'Explain the plan to the client', 'Document and review'],
+            studyTips: ['Assessment drives the plan; plan drives the treatment.'],
+            examRefs: ['Treatment planning'],
+            steps: [
+              { kind: 'say', text: 'Analysis done — now turn findings into a safe, informed plan.', mood: 'think' },
+              { kind: 'teach', title: 'Match findings to plan', text: 'Each finding shapes the choice: a reactive skin needs gentler settings; photodamage suggests different modalities to dry skin.' },
+              { kind: 'ask', prompt: 'The main purpose of a skin analysis is to...', qtype: 'SINGLE', options: ['Shape a safe treatment plan', 'Set the price', 'Skip the consultation', 'Impress the client'], correct: [0], explanation: 'Analysis informs a safe, appropriate plan.' },
+              { kind: 'teach', title: 'Explain clearly', text: 'Walk the client through what you found and why the plan suits their skin. They understand better and consent more confidently.' },
+              { kind: 'ask', prompt: 'After analysis, the client should understand...', qtype: 'SINGLE', options: ['What was found and why the plan suits them', 'Nothing — just sign the form', 'The price only', 'The device brand'], correct: [0], explanation: 'Informed clients give better consent.' },
+              { kind: 'teach', title: 'Document and review', text: 'Record your findings and the agreed plan. Review at each follow-up and adjust if the skin has changed.' },
+              { kind: 'ask', prompt: 'Skin analysis findings should be...', qtype: 'MULTI', options: ['Documented', 'Reviewed at follow-up', 'Used to shape the plan', 'Ignored after the first visit'], correct: [0, 1, 2], explanation: 'Document, review, and use them — they drive every decision.' },
+              { kind: 'say', text: 'Analysed, planned, documented. That’s expert practice.', mood: 'cheer' },
+            ],
+          },
+        ],
+        quiz: {
+          title: 'Skin Analysis Assessment', passMark: 70,
+          questions: [
+            { prompt: 'Before skin analysis, skin should be...', type: 'WORD', options: ['cleansed', 'moisturised', 'tanned'], correct: [0], explanation: 'A clean surface gives an accurate read.' },
+            { prompt: 'Dehydration is a skin ___, not a type.', type: 'WORD', options: ['condition', 'disease', 'colour'], correct: [0], explanation: 'Any skin type can be dehydrated.' },
+            { prompt: 'The four main skin types are oily, dry, combination and normal.', type: 'TRUEFALSE', options: ['True', 'False'], correct: [0], explanation: 'Dehydration is a condition, not a type.' },
+            { prompt: 'A magnifying lamp helps identify...', type: 'MULTI', options: ['Open pores', 'Skin texture', 'Erythema', 'The client’s exact age'], correct: [0, 1, 2], explanation: 'It reveals detail — not age.' },
+            { prompt: 'The main purpose of skin analysis is to...', type: 'SINGLE', options: ['Shape a safe treatment plan', 'Set the price', 'Skip the consultation', 'Impress the client'], correct: [0], explanation: 'Analysis informs the plan.' },
+            { prompt: 'Skin analysis findings should be documented and reviewed at follow-up.', type: 'TRUEFALSE', options: ['True', 'False'], correct: [0], explanation: 'Records protect everyone.' },
+          ],
+        },
+      },
+    ],
+  },
+  // -- BATCH 12 modules --------------------------------------------------------
+
+  {
+    courseSlug: L2,
+    modules: [
+      {
+        title: 'Skin Anatomy & the Laser Target',
+        summary: 'Map the layers of the skin and the structure of the hair follicle so you can link anatomy to treatment rationale in the exam and in the clinic.',
+        lessons: [
+          {
+            title: 'Layers of the Skin: Structure & Function',
+            durationMin: 10,
+            objectives: [
+              'Name the three main skin layers and their primary roles',
+              'Explain where melanin is produced and why it matters in laser treatment',
+              'Describe what the dermis contains and why laser rejuvenation targets it',
+            ],
+            studyTips: [
+              'Link each layer to at least one laser application: epidermis = pigment/hair target; dermis = rejuvenation/collagen; hypodermis = body contouring.',
+            ],
+            examRefs: ['Skin anatomy', 'Selective photothermolysis', 'Chromophores'],
+            steps: [
+              { kind: 'say', text: 'Understanding the skin underneath is what makes laser treatments predictable rather than guesswork.', mood: 'think' },
+              { kind: 'teach', title: 'Three main layers', text: 'The skin has three main layers: the epidermis (outermost), the dermis (middle), and the hypodermis (deepest, also called subcutaneous tissue).' },
+              { kind: 'ask', prompt: 'The outermost layer of the skin is called the...', qtype: 'WORD', options: ['epidermis', 'dermis', 'hypodermis'], correct: [0], explanation: 'The epidermis is the outermost layer, acting as the skin\'s first barrier.' },
+              { kind: 'teach', title: 'The epidermis', text: 'The epidermis contains keratinocytes (the main structural cell) and melanocytes, which produce melanin. Melanin is the chromophore for hair removal and pigmentation lasers.' },
+              { kind: 'ask', prompt: 'Melanin is produced by cells called...', qtype: 'WORD', options: ['melanocytes', 'keratinocytes', 'fibroblasts'], correct: [0], explanation: 'Melanocytes in the basal layer produce melanin, the target chromophore for hair removal and pigmentation treatments.' },
+              { kind: 'teach', title: 'The dermis', text: 'The dermis sits below the epidermis and contains collagen, elastin, blood vessels, nerve endings, sebaceous glands, and hair follicles. Laser rejuvenation targets this layer to stimulate new collagen.' },
+              { kind: 'ask', prompt: 'Which skin layer contains collagen, elastin and blood vessels?', qtype: 'SINGLE', options: ['Dermis', 'Epidermis', 'Hypodermis', 'Stratum corneum'], correct: [0], explanation: 'The dermis is the structural layer -- collagen here is the target for rejuvenation lasers and RF.' },
+              { kind: 'teach', title: 'The hypodermis', text: 'The hypodermis (subcutaneous layer) contains fat cells (adipocytes) and connective tissue. Body-contouring devices such as cryolipolysis and HIFU body settings target this layer.' },
+              { kind: 'ask', prompt: 'Body-contouring devices that target fat operate mainly at the...', qtype: 'SINGLE', options: ['Hypodermis', 'Epidermis', 'Dermis', 'Stratum corneum'], correct: [0], explanation: 'Adipocytes in the hypodermis are the target for cryolipolysis and body-focused HIFU.' },
+              { kind: 'say', text: 'Anatomy links directly to treatment rationale. That connection makes you a safer and more confident clinician.', mood: 'cheer' },
+            ],
+          },
+          {
+            title: 'The Hair Follicle: Structure, Cycles & Laser Targets',
+            durationMin: 10,
+            objectives: [
+              'Name the key structures within a hair follicle',
+              'Explain why only the anagen phase responds to laser hair removal',
+              'Describe why fair and grey hair responds poorly to laser',
+            ],
+            studyTips: [
+              'Anagen = active = melanin-rich = responds to laser. Catagen and telogen follicles have less melanin in the target zone and do not respond effectively.',
+            ],
+            examRefs: ['Hair follicle anatomy', 'Laser hair removal', 'Hair growth cycle'],
+            steps: [
+              { kind: 'say', text: 'The follicle is the target. Knowing its structure tells you exactly what the laser is aiming at -- and why sessions must be repeated.', mood: 'think' },
+              { kind: 'teach', title: 'Follicle structure', text: 'The hair follicle includes: the bulb (deepest part, contains the dermal papilla which nourishes the hair), the bulge (houses stem cells that allow regrowth), and the sebaceous gland (produces sebum).' },
+              { kind: 'ask', prompt: 'The deepest part of the hair follicle that nourishes the hair is the...', qtype: 'WORD', options: ['bulb', 'shaft', 'bulge'], correct: [0], explanation: 'The bulb contains the dermal papilla -- the vascular supply that keeps the hair alive. Destroying it prevents regrowth.' },
+              { kind: 'teach', title: 'Melanin in the follicle', text: 'Melanin in the hair shaft, cortex and matrix cells of the bulb is the chromophore. The laser energy is absorbed by this melanin and converted to heat, destroying the papilla and stem cells.' },
+              { kind: 'ask', prompt: 'Laser hair removal works because melanin in the follicle absorbs energy and converts it to...', qtype: 'WORD', options: ['heat', 'light', 'electricity'], correct: [0], explanation: 'Selective photothermolysis: the right wavelength is absorbed by melanin, which converts it to heat that destroys the target.' },
+              { kind: 'teach', title: 'The three growth phases', text: 'Hair grows in cycles: anagen (active growth -- bulb full, melanin-rich, close to papilla), catagen (transition -- bulb shrinks), and telogen (resting -- papilla separate). Laser is only effective on anagen follicles.' },
+              { kind: 'ask', prompt: 'Which hair growth phase must the follicle be in for laser removal to be effective?', qtype: 'SINGLE', options: ['Anagen', 'Catagen', 'Telogen', 'Any phase equally'], correct: [0], explanation: 'Only in anagen is the bulb close to the papilla and the melanin content high enough for effective laser destruction.' },
+              { kind: 'teach', title: 'Why multiple sessions are needed', text: 'At any one time, only around 20-30% of follicles are in anagen. Sessions spaced 4-8 weeks apart catch follicles as they cycle into anagen, progressively reducing the overall follicle count.' },
+              { kind: 'ask', prompt: 'Laser hair removal needs multiple sessions because not all follicles are in anagen at the...', qtype: 'WORD', options: ['same time', 'right place', 'winter'], correct: [0], explanation: 'Hair follicles cycle independently; repeated sessions at the right interval catch each batch in the anagen window.' },
+              { kind: 'say', text: 'Follicle, melanin, anagen -- those three words explain why laser hair removal works, and why it takes a course.', mood: 'cheer' },
+            ],
+          },
+        ],
+        quiz: {
+          title: 'Skin Anatomy & the Laser Target Assessment',
+          passMark: 70,
+          questions: [
+            { prompt: 'The outermost layer of the skin is the...', type: 'WORD', options: ['epidermis', 'dermis', 'hypodermis'], correct: [0], explanation: 'The epidermis is the outermost skin layer.' },
+            { prompt: 'Melanin, the chromophore for hair removal lasers, is produced by cells called...', type: 'WORD', options: ['melanocytes', 'keratinocytes', 'fibroblasts'], correct: [0], explanation: 'Melanocytes in the basal epidermis produce melanin.' },
+            { prompt: 'Laser skin rejuvenation primarily targets which skin layer?', type: 'SINGLE', options: ['Dermis', 'Epidermis', 'Hypodermis', 'Stratum corneum'], correct: [0], explanation: 'The dermis contains collagen and elastin -- the targets for rejuvenation lasers and RF.' },
+            { prompt: 'Which phase must a hair follicle be in for laser removal to be effective?', type: 'SINGLE', options: ['Anagen', 'Catagen', 'Telogen', 'All phases equally'], correct: [0], explanation: 'Anagen follicles have a high melanin content and the bulb is close to the papilla -- ideal for laser destruction.' },
+            { prompt: 'Laser hair removal requires multiple sessions because only a fraction of follicles are in anagen at the same time.', type: 'TRUEFALSE', options: ['True', 'False'], correct: [0], explanation: 'Around 20-30% of follicles are in anagen at any one time; a course catches them progressively.' },
+            { prompt: 'Grey and white hair responds poorly to laser because it contains very little...', type: 'WORD', options: ['melanin', 'keratin', 'collagen'], correct: [0], explanation: 'No melanin = no chromophore = no heat generation. Laser cannot destroy a target that does not absorb the wavelength.' },
+          ],
+        },
+      },
+    ],
+  },
+
+  {
+    courseSlug: 'level-3-laser-aesthetic-therapies',
+    modules: [
+      {
+        title: 'Skin Tightening, HIFU & Body Contouring Modalities',
+        summary: 'Understand how radiofrequency, HIFU and cryolipolysis work, which clients benefit most, and the contraindications that make each modality unsafe.',
+        lessons: [
+          {
+            title: 'Radiofrequency & HIFU: Mechanisms and Applications',
+            durationMin: 12,
+            objectives: [
+              'Explain how RF generates heat and where in the skin it acts',
+              'Describe how HIFU targets the SMAS and deep dermis',
+              'State realistic expectations for both modalities',
+            ],
+            studyTips: [
+              'RF heats the dermis by resistive heating. HIFU focuses at a precise depth (1.5-4.5 mm) to coagulate the SMAS. Both produce gradual results over weeks to months -- not instant lifts.',
+            ],
+            examRefs: ['Skin tightening', 'Radiofrequency', 'HIFU', 'Collagen remodelling'],
+            steps: [
+              { kind: 'say', text: 'Tightening with energy is about controlled heat at the right depth. The depth is everything.', mood: 'think' },
+              { kind: 'teach', title: 'Radiofrequency (RF) tightening', text: 'RF current passes through tissue, generating resistive heat in the dermis. This immediately contracts existing collagen fibres and triggers neocollagenesis (new collagen production) over 6-12 weeks.' },
+              { kind: 'ask', prompt: 'RF skin tightening works by heating the ___ to contract collagen and stimulate new production.', qtype: 'WORD', options: ['dermis', 'epidermis', 'fat'], correct: [0], explanation: 'Resistive heat in the dermis contracts existing collagen and triggers neocollagenesis over weeks.' },
+              { kind: 'teach', title: 'Realistic expectations for RF', text: 'Some immediate tightening is visible as collagen contracts; the main improvement develops over 6-12 weeks. Results are modest firming, not a surgical lift. Multiple sessions are usually needed.' },
+              { kind: 'ask', prompt: 'The main visible result of RF skin tightening appears...', qtype: 'SINGLE', options: ['Gradually over 6-12 weeks as collagen remodels', 'Instantly and permanently', 'After a single session only', 'After one year'], correct: [0], explanation: 'Collagen remodelling takes weeks; expecting instant surgical results leads to dissatisfied clients.' },
+              { kind: 'teach', title: 'HIFU -- High-Intensity Focused Ultrasound', text: 'HIFU focuses ultrasound energy to a precise depth: 1.5 mm (dermis), 3 mm (deep dermis), or 4.5 mm (SMAS -- the muscular layer that surgical facelifts address). Thermal damage zones (coagulation points) form at the focus, triggering collagen contraction and regeneration without disrupting the skin surface.' },
+              { kind: 'ask', prompt: 'HIFU differs from RF because it deposits energy at a highly specific ___ in the deep dermis or SMAS.', qtype: 'WORD', options: ['depth', 'colour', 'wavelength'], correct: [0], explanation: 'HIFU focuses at precise depths (1.5, 3, 4.5 mm) -- a key distinction from RF which heats more diffusely.' },
+              { kind: 'ask', prompt: 'Which clients benefit most from RF and HIFU skin-tightening treatments?', qtype: 'SINGLE', options: ['Those with mild to moderate skin laxity', 'Those needing a surgical facelift', 'Clients with severe deep laxity', 'Clients with active skin infection in the treatment zone'], correct: [0], explanation: 'Mild to moderate laxity responds best; severe laxity is better addressed surgically, and active infection is a contraindication.' },
+              { kind: 'say', text: 'RF heats broadly; HIFU focuses precisely. Both depend on the body\'s own collagen response -- not on an instant change.', mood: 'cheer' },
+            ],
+          },
+          {
+            title: 'Cryolipolysis & Body-Contouring Modalities',
+            durationMin: 11,
+            objectives: [
+              'Explain the mechanism by which cryolipolysis selectively destroys fat cells',
+              'Describe the expected result and clearance timeline',
+              'List the key contraindications to cryolipolysis',
+            ],
+            studyTips: [
+              'Cryolipolysis = controlled cold kills fat cells (apoptosis). Results take 8-12 weeks to appear as the lymphatic system clears dead cells. Cold-sensitivity conditions are absolute contraindications.',
+            ],
+            examRefs: ['Body contouring', 'Cryolipolysis', 'Adipocytes', 'Lymphatic clearance'],
+            steps: [
+              { kind: 'say', text: 'Body contouring with cold is about biology, not willpower. Understanding the mechanism helps you counsel clients honestly.', mood: 'think' },
+              { kind: 'teach', title: 'How cryolipolysis works', text: 'Adipocytes (fat cells) are more susceptible to cold than surrounding skin, nerves or blood vessels. Controlled cooling to around -11 degrees C triggers apoptosis -- programmed cell death -- in the adipocytes without damaging the overlying skin.' },
+              { kind: 'ask', prompt: 'Cryolipolysis selectively destroys fat cells because they are more susceptible to cold than...', qtype: 'SINGLE', options: ['Surrounding skin, nerves and blood vessels', 'Nothing -- all cells are equally affected', 'Collagen fibres only', 'Melanin in the skin'], correct: [0], explanation: 'Adipocytes have a higher freezing point than adjacent tissue -- this selectivity is the basis of the treatment.' },
+              { kind: 'teach', title: 'Clearance timeline', text: 'Dead adipocytes are not removed instantly. They trigger an inflammatory response and are gradually cleared by the lymphatic system over 8-12 weeks. Clients should not expect to see results for at least 4-6 weeks.' },
+              { kind: 'ask', prompt: 'After cryolipolysis, destroyed fat cells are cleared by the ___ system over 8-12 weeks.', qtype: 'WORD', options: ['lymphatic', 'nervous', 'skeletal'], correct: [0], explanation: 'The lymphatic system is responsible for clearing apoptotic adipocytes -- results are gradual, not immediate.' },
+              { kind: 'teach', title: 'Contraindications', text: 'Absolute contraindications include: cryoglobulinaemia, cold agglutinin disease, and paroxysmal cold haemoglobinuria (conditions where cold causes dangerous blood reactions). Also contraindicated: Raynaud\'s phenomenon, insufficient skin fold to fill the applicator, active infection or open wounds in the area, hernias in the treatment zone.' },
+              { kind: 'ask', prompt: 'Why is cryoglobulinaemia an absolute contraindication to cryolipolysis?', qtype: 'SINGLE', options: ['Cold triggers harmful blood reactions that could be life-threatening', 'The fat does not respond to cold', 'Cold changes the skin colour', 'Treatment becomes too painful'], correct: [0], explanation: 'In cryoglobulinaemia, cold causes abnormal proteins in the blood to precipitate -- a potentially severe systemic reaction.' },
+              { kind: 'teach', title: 'What it is -- and is not', text: 'Cryolipolysis reduces the number of fat cells in the treated area. It is not a weight-loss treatment and does not treat obesity. Results are best maintained alongside a healthy diet and exercise.' },
+              { kind: 'ask', prompt: 'Cryolipolysis is best described as...', qtype: 'SINGLE', options: ['A fat-reduction treatment to improve body contour, not a weight-loss solution', 'A replacement for diet and exercise', 'A surgical-level fat removal', 'A treatment suitable for all body areas and all clients'], correct: [0], explanation: 'It reduces fat cells locally; it does not produce weight loss and is not suitable for all clients or all areas.' },
+              { kind: 'say', text: 'Set expectations before the first session: gradual, localised fat reduction -- not instant, not surgical, not for everyone.', mood: 'cheer' },
+            ],
+          },
+        ],
+        quiz: {
+          title: 'Skin Tightening & Body Contouring Assessment',
+          passMark: 70,
+          questions: [
+            { prompt: 'RF skin tightening heats the ___ to contract existing collagen and stimulate new production.', type: 'WORD', options: ['dermis', 'epidermis', 'fat'], correct: [0], explanation: 'Resistive heat in the dermis is the mechanism of RF tightening.' },
+            { prompt: 'HIFU targets a precise depth in the...', type: 'SINGLE', options: ['SMAS and deep dermis', 'Epidermis only', 'Hypodermis fat layer', 'Subcutaneous muscle only'], correct: [0], explanation: 'HIFU focuses at 1.5-4.5 mm depth, reaching the deep dermis and SMAS.' },
+            { prompt: 'The main result of RF skin tightening appears...', type: 'SINGLE', options: ['Gradually over 6-12 weeks', 'Instantly in one session', 'After 2 years', 'Immediately and permanently'], correct: [0], explanation: 'Collagen remodelling takes weeks; manage expectations accordingly.' },
+            { prompt: 'Cryolipolysis destroys fat cells by applying controlled cold, triggering...', type: 'WORD', options: ['apoptosis', 'necrosis', 'inflammation'], correct: [0], explanation: 'Controlled cold at -11 C triggers apoptosis (programmed cell death) in adipocytes.' },
+            { prompt: 'After cryolipolysis, dead fat cells are cleared by the lymphatic system over...', type: 'SINGLE', options: ['8-12 weeks', '24 hours', 'One week', 'One year'], correct: [0], explanation: '8-12 weeks for lymphatic clearance; results appear gradually from week 4-6.' },
+            { prompt: 'Cold-sensitivity conditions such as cryoglobulinaemia are an absolute contraindication to cryolipolysis.', type: 'TRUEFALSE', options: ['True', 'False'], correct: [0], explanation: 'These conditions cause dangerous blood reactions when cold is applied; treatment must never proceed.' },
+          ],
+        },
+      },
+    ],
+  },
+
+  {
+    courseSlug: 'level-4-certificate-aesthetic-practice',
+    modules: [
+      {
+        title: 'Medication Interactions & Pre-treatment Medical Clearance',
+        summary: 'Identify the drug classes that change the risk profile for laser and aesthetic treatments, and know when to pause treatment and obtain written GP clearance.',
+        lessons: [
+          {
+            title: 'Photosensitising & Contraindicated Medications',
+            durationMin: 12,
+            objectives: [
+              'Identify drug classes that increase photosensitivity or affect skin healing',
+              'Explain why isotretinoin is an absolute contraindication during and after treatment',
+              'State when to refer to the prescribing GP rather than making a clinical decision alone',
+            ],
+            studyTips: [
+              'The central question for every medication: does it increase photosensitivity, affect bleeding, impair immunity, or change skin architecture? Any yes means you need to investigate before treating.',
+            ],
+            examRefs: ['Medication interactions', 'Photosensitivity', 'Pre-treatment screening', 'Isotretinoin'],
+            steps: [
+              { kind: 'say', text: 'The medication history is as clinical as the treatment itself. Know what to ask for -- and what the answers mean.', mood: 'think' },
+              { kind: 'teach', title: 'Why medications matter', text: 'Some medications increase photosensitivity (raising burn and PIH risk), others impair coagulation (bruising and bleeding), reduce immunity (delayed healing), or dramatically change skin architecture (fragility). All of these shift the risk profile for laser and energy-based treatments.' },
+              { kind: 'ask', prompt: 'Why must a full medication history be taken before any laser or energy-based treatment?', qtype: 'SINGLE', options: ['Medications can change the risk profile through photosensitivity, bleeding, healing or skin fragility', 'It is only needed for new clients', 'It is a regulatory formality only', 'To set the correct price'], correct: [0], explanation: 'Medications can fundamentally alter how the skin responds to energy. This is a patient safety issue, not a paperwork exercise.' },
+              { kind: 'teach', title: 'Photosensitising drugs', text: 'Key photosensitisers include: tetracycline-class antibiotics (doxycycline, lymecycline), fluoroquinolones, thiazide diuretics, NSAIDs (especially naproxen), amiodarone, and some herbal supplements (St John\'s Wort). These raise burn and PIH risk with light-based treatments.' },
+              { kind: 'ask', prompt: 'Which class of antibiotic is most commonly associated with photosensitivity?', qtype: 'SINGLE', options: ['Tetracyclines (e.g. doxycycline)', 'Beta-lactams (e.g. amoxicillin)', 'Macrolides (e.g. azithromycin)', 'Penicillins'], correct: [0], explanation: 'Tetracyclines (including doxycycline and lymecycline, commonly used for acne) are well-known photosensitisers and contraindicate laser in most cases.' },
+              { kind: 'teach', title: 'Anticoagulants', text: 'Warfarin, apixaban, rivaroxaban, aspirin and clopidogrel all increase bruising and bleeding risk, particularly for vascular treatments. Never advise a client to stop anticoagulation -- that decision belongs to the prescribing GP.' },
+              { kind: 'ask', prompt: 'A client asks whether to stop warfarin before their vascular IPL appointment. You should...', qtype: 'SINGLE', options: ['Advise them never to stop without GP instruction, and obtain written GP clearance', 'Tell them to miss one dose only', 'Reassure them 48 hours off is safe', 'Proceed without involving the GP'], correct: [0], explanation: 'Stopping anticoagulation can cause stroke or thromboembolism. This is a GP decision; never give that advice yourself.' },
+              { kind: 'teach', title: 'Isotretinoin -- absolute contraindication', text: 'Isotretinoin (Roaccutane) causes dramatic changes in skin architecture: thinning the epidermis, reducing sebaceous function and skin turnover, and sensitising skin to treatment injury. It is an absolute contraindication DURING the course and for at least 6 months after the last dose.' },
+              { kind: 'ask', prompt: 'The minimum wait after finishing a course of isotretinoin before any laser or IPL treatment is...', qtype: 'SINGLE', options: ['6 months', '2 weeks', '1 month', 'There is no waiting period'], correct: [0], explanation: '6 months is the accepted minimum; some protocols recommend 12 months for ablative procedures. Appearance alone does not confirm skin safety.' },
+              { kind: 'say', text: 'If any medication raises a clinical question, defer treatment. A short delay for clearance is always safer than a serious adverse event.', mood: 'think' },
+            ],
+          },
+          {
+            title: 'When to Require GP or Specialist Clearance',
+            durationMin: 11,
+            objectives: [
+              'List the clinical scenarios that require written GP or specialist clearance before treatment',
+              'Explain how to request clearance correctly',
+              'Describe the documentation required when treatment is deferred',
+            ],
+            studyTips: [
+              'GP clearance must be in writing -- verbal is never sufficient. Document every deferral: date, reason, referral made, and what you told the client.',
+            ],
+            examRefs: ['Medical clearance', 'GP referral', 'Scope of practice', 'Record keeping'],
+            steps: [
+              { kind: 'say', text: 'Knowing when to pause and seek clearance is clinical judgement at its best -- and it protects both your client and your practice.', mood: 'think' },
+              { kind: 'teach', title: 'When clearance is required', text: 'The main categories requiring GP or specialist clearance before treatment: anticoagulation therapy; recent isotretinoin (within 6 months); active or recent serious systemic illness; immunosuppressant therapy; pregnancy (most energy devices are contraindicated); an uncertain or suspicious pigmented lesion in the treatment area; active autoimmune skin condition (e.g. lupus, psoriasis flare).' },
+              { kind: 'ask', prompt: 'Which of these scenarios requires GP clearance before laser treatment?', qtype: 'MULTI', options: ['Anticoagulation therapy', 'Recent isotretinoin use', 'Uncertain pigmented lesion in the treatment area', 'Mild skin dryness'], correct: [0, 1, 2], explanation: 'Mild dry skin does not require medical involvement. The other three carry real clinical risk that only the GP or a specialist can assess.' },
+              { kind: 'teach', title: 'How to request clearance', text: 'Write to the GP with: the client\'s details, the proposed treatment, the specific clinical concern, and a clear question (e.g. "Is it safe to proceed with pulsed-dye laser in the context of warfarin therapy?"). Include the client\'s written consent for this communication.' },
+              { kind: 'ask', prompt: 'When writing to a GP requesting treatment clearance, you must include...', qtype: 'MULTI', options: ['The proposed treatment and the specific clinical concern', 'A clear, specific clinical question', 'The client\'s written consent for this communication', 'Your price list'], correct: [0, 1, 2], explanation: 'The GP needs to know what you want to do and why it concerns you, with the client\'s permission for the disclosure.' },
+              { kind: 'teach', title: 'Documenting a deferral', text: 'When treatment is deferred pending clearance, record in the notes: the date, the reason for deferral, the referral or letter sent, and what you told the client. Review this at the next appointment before proceeding.' },
+              { kind: 'ask', prompt: 'When deferring treatment pending GP clearance, the clinical record must include...', qtype: 'MULTI', options: ['Date and reason for deferral', 'The referral or letter made', 'What the client was told', 'The device brand'], correct: [0, 1, 2], explanation: 'Clinical documentation of the deferral protects the client and creates an audit trail. Device brand is irrelevant here.' },
+              { kind: 'teach', title: 'Receiving clearance', text: 'Written clearance must be received before treatment proceeds and attached to the clinical record. Verbal clearance over the phone is not sufficient -- get it in writing.' },
+              { kind: 'ask', prompt: 'GP clearance for a client on anticoagulants must be...', qtype: 'SINGLE', options: ['In writing, attached to the clinical record before treatment proceeds', 'Verbal on the phone', 'Via the client\'s word', 'Not required if the client is low-risk'], correct: [0], explanation: 'Written clearance becomes part of the clinical record; verbal is not an acceptable standard of evidence.' },
+              { kind: 'say', text: 'When in doubt, defer. Document everything. A well-managed deferral is professional practice; an adverse event from ignoring a red flag is not.', mood: 'cheer' },
+            ],
+          },
+        ],
+        quiz: {
+          title: 'Medication Interactions & Clearance Assessment',
+          passMark: 70,
+          questions: [
+            { prompt: 'Tetracycline antibiotics are associated with photosensitivity and should be flagged before laser treatment.', type: 'TRUEFALSE', options: ['True', 'False'], correct: [0], explanation: 'Tetracyclines (doxycycline, lymecycline) are well-known photosensitisers -- a risk that must be assessed before any light-based treatment.' },
+            { prompt: 'A client on warfarin asks if they should stop before treatment. You should...', type: 'SINGLE', options: ['Never advise stopping; obtain written GP clearance first', 'Tell them to skip one dose', 'Reassure them 48 hours off is safe', 'Treat as normal with extra cooling'], correct: [0], explanation: 'Stopping anticoagulation without medical instruction can be life-threatening. Only the prescribing GP can make that call.' },
+            { prompt: 'The minimum wait after finishing isotretinoin before any laser treatment is...', type: 'SINGLE', options: ['6 months', '2 weeks', '30 days', 'No waiting period'], correct: [0], explanation: '6 months is the standard minimum; isotretinoin changes skin architecture and greatly increases adverse event risk.' },
+            { prompt: 'Which scenarios require GP clearance before proceeding with laser?', type: 'MULTI', options: ['Anticoagulation therapy', 'Recent isotretinoin (within 6 months)', 'Uncertain pigmented lesion in the treatment area', 'Mild seasonal dry skin'], correct: [0, 1, 2], explanation: 'Dry skin does not require GP involvement; the others carry clinical risk that requires medical assessment.' },
+            { prompt: 'GP clearance for treatment must be received...', type: 'SINGLE', options: ['In writing, before treatment proceeds', 'Verbally over the phone', 'Via the client\'s written statement only', 'Not at all if the client accepts the risk'], correct: [0], explanation: 'Only written clearance is an adequate clinical record standard.' },
+            { prompt: 'When deferring treatment pending clearance, the record must document the date, reason, referral made and what the client was told.', type: 'TRUEFALSE', options: ['True', 'False'], correct: [0], explanation: 'A full deferral record creates the audit trail and demonstrates duty of care.' },
+          ],
+        },
+      },
+    ],
+  },
+
+  {
+    courseSlug: 'advanced-aesthetics-level-5-7',
+    modules: [
+      {
+        title: 'Evidence-Based Practice & Clinical Audit',
+        summary: 'Ground decisions in evidence and use clinical audit to raise your own standards.',
+        lessons: [
+          {
+            title: 'Using Evidence in Practice',
+            durationMin: 10,
+            objectives: ['Grade the evidence you encounter', 'Reject unsupported claims', 'Apply evidence at decision points'],
+            studyTips: ['A peer-reviewed study outranks a manufacturer claim every time.'],
+            examRefs: ['Evidence-based practice'],
+            steps: [
+              { kind: 'say', text: 'Experts base decisions on evidence, not habit. Let’s build that skill.', mood: 'think' },
+              { kind: 'teach', title: 'Evidence hierarchy', text: 'Not all evidence is equal. Peer-reviewed clinical research sits at the top; manufacturer brochures and social media sit at the bottom.' },
+              { kind: 'ask', prompt: 'The strongest source of evidence for a treatment outcome is...', qtype: 'SINGLE', options: ['A peer-reviewed study', 'A manufacturer brochure', 'A viral video', 'A rumour'], correct: [0], explanation: 'Peer-reviewed evidence outranks marketing.' },
+              { kind: 'teach', title: 'Red flags in claims', text: 'Watch for “clinically proven” with no cited study, before/after photos with no context, and single-session cure claims.' },
+              { kind: 'ask', prompt: 'Which are red flags in a treatment claim?', qtype: 'MULTI', options: ['"Clinically proven" with no study cited', 'Before/after without context', 'A single-session cure claim', 'A published peer-reviewed citation'], correct: [0, 1, 2], explanation: 'A proper citation is evidence; the others are marketing.' },
+              { kind: 'say', text: 'Critical eyes on — now apply it to real decisions.', mood: 'cheer' },
+              { kind: 'teach', title: 'Apply at decision points', text: 'Before adopting new equipment, updating a protocol or adding a treatment, check the evidence base. It protects clients and your reputation.' },
+              { kind: 'ask', prompt: 'Checking evidence before changing a protocol protects...', qtype: 'MULTI', options: ['Clients', 'Your reputation', 'Your outcomes', 'Nobody — it just slows you down'], correct: [0, 1, 2], explanation: 'Evidence-based decisions protect clients and practitioners alike.' },
+              { kind: 'say', text: 'Evidence-based practice raises everyone’s standard. Excellent.', mood: 'cheer' },
+            ],
+          },
+          {
+            title: 'The Clinical Audit Cycle',
+            durationMin: 10,
+            objectives: ['Explain the five-step audit cycle', 'Set a standard and measure against it', 'Close the loop with re-audit'],
+            studyTips: ['Plan — collect — compare — change — re-audit. Never skip re-audit.'],
+            examRefs: ['Clinical audit'],
+            steps: [
+              { kind: 'say', text: 'Audit is how you prove — to yourself and others — that your practice is good.', mood: 'happy' },
+              { kind: 'teach', title: 'The five steps', text: 'Plan what to measure → Collect data → Compare to the agreed standard → Change what needs changing → Re-audit to confirm improvement.' },
+              { kind: 'ask', prompt: 'A clinical audit compares your practice against a...', qtype: 'WORD', options: ['standard', 'rival', 'trend'], correct: [0], explanation: 'Measure against an agreed standard.' },
+              { kind: 'teach', title: 'The loop must close', text: 'Re-audit after a change is the most commonly skipped step. Without it you cannot confirm the change actually improved things.' },
+              { kind: 'ask', prompt: 'The audit cycle is only complete once you have...', qtype: 'SINGLE', options: ['Re-audited to confirm improvement', 'Written a report', 'Presented findings at a meeting', 'Filed the data'], correct: [0], explanation: 'Re-audit closes the loop; without it you cannot confirm improvement.' },
+              { kind: 'teach', title: 'Useful metrics', text: 'Complication rates, client satisfaction, re-treatment rates and consent completeness are all measurable and meaningful.' },
+              { kind: 'ask', prompt: 'Which are useful audit metrics?', qtype: 'MULTI', options: ['Complication rates', 'Client satisfaction', 'Consent completeness', 'Lunch break length'], correct: [0, 1, 2], explanation: 'Clinical and outcome metrics; not break times.' },
+              { kind: 'say', text: 'Measured, improved, confirmed. That’s expertise.', mood: 'cheer' },
+            ],
+          },
+        ],
+        quiz: {
+          title: 'Evidence & Audit Assessment', passMark: 70,
+          questions: [
+            { prompt: 'The strongest evidence for a treatment comes from...', type: 'SINGLE', options: ['A peer-reviewed study', 'A manufacturer brochure', 'A social media post', 'Word of mouth'], correct: [0], explanation: 'Peer-reviewed research ranks highest.' },
+            { prompt: '"Clinically proven" with no cited study is...', type: 'SINGLE', options: ['A red flag in a claim', 'A regulatory standard', 'Good enough evidence', 'Always correct'], correct: [0], explanation: 'Unsupported claims need scrutiny.' },
+            { prompt: 'An audit compares your practice against a...', type: 'WORD', options: ['standard', 'rival', 'trend'], correct: [0], explanation: 'An agreed standard.' },
+            { prompt: 'Re-auditing after a change confirms the improvement worked.', type: 'TRUEFALSE', options: ['True', 'False'], correct: [0], explanation: 'Closing the loop confirms improvement.' },
+            { prompt: 'Which are useful audit metrics?', type: 'MULTI', options: ['Complication rates', 'Client satisfaction', 'Consent completeness', 'Social media followers'], correct: [0, 1, 2], explanation: 'Clinical metrics, not social metrics.' },
+            { prompt: 'Evidence-based practice protects both clients and the practitioner’s reputation.', type: 'TRUEFALSE', options: ['True', 'False'], correct: [0], explanation: 'It raises standards and reduces harm.' },
+          ],
+        },
+      },
+    ],
+  },
+  // ── Content batch (BLD-311): hair-growth cycle (L2), selective photothermolysis
+  // (L3), complaints & duty of candour (L4). Create-only, matched by title/prompt.
+  {
+    courseSlug: L2,
+    modules: [
+      {
+        title: 'The Hair Growth Cycle & Treatment Timing',
+        summary: 'Understand why hair grows in cycles, why only some hairs respond, and how that drives course spacing.',
+        lessons: [
+          {
+            title: 'The Three Phases of Hair Growth',
+            durationMin: 11,
+            objectives: ['Name the three phases of the hair cycle', 'Explain which phase responds to laser', 'Link the cycle to multiple sessions'],
+            studyTips: ['Remember A-C-T: Anagen, Catagen, Telogen. Only Anagen (active) responds well.'],
+            examRefs: ['Hair growth cycle'],
+            steps: [
+              { kind: 'say', text: 'Ever wondered why laser hair removal needs a whole course? It is all about the hair cycle.', mood: 'happy' },
+              { kind: 'teach', title: 'Anagen', text: 'The active growth phase. The hair is attached to the follicle and rich in melanin, so it absorbs the laser well. This is the phase we target.' },
+              { kind: 'teach', title: 'Catagen', text: 'A short transition phase. The follicle shrinks and the hair detaches, so the laser is far less effective.' },
+              { kind: 'teach', title: 'Telogen', text: 'The resting phase. The old hair sheds and a new one will start growing. Laser does little here.' },
+              { kind: 'ask', prompt: 'Which phase responds best to laser?', qtype: 'SINGLE', options: ['Anagen', 'Catagen', 'Telogen', 'All equally'], correct: [0], explanation: 'Anagen hairs are attached and melanin-rich, so they absorb the energy.' },
+              { kind: 'say', text: 'Exactly.', mood: 'cheer' },
+              { kind: 'teach', title: 'Why courses', text: 'At any moment only a fraction of hairs are in anagen, so one session can only treat those. Repeat sessions catch others as they enter anagen.' },
+              { kind: 'ask', prompt: 'Only ___ hairs are treated effectively in a single session.', qtype: 'WORD', options: ['anagen', 'telogen', 'grey'], correct: [0], explanation: 'Only the active-growth hairs respond, which is why a course is needed.' },
+              { kind: 'say', text: 'Now the course makes sense, right?', mood: 'cheer' },
+            ],
+          },
+          {
+            title: 'Spacing & Realistic Course Planning',
+            durationMin: 11,
+            objectives: ['Space sessions to match the cycle', 'Set realistic expectations', 'List factors that affect results'],
+            studyTips: ['If a client expects permanent removal in one go, manage that in the consultation — laser gives long-term reduction.'],
+            examRefs: ['Course planning'],
+            steps: [
+              { kind: 'say', text: 'So how far apart should sessions be? It depends on the area.', mood: 'happy' },
+              { kind: 'teach', title: 'Spacing', text: 'Face hair cycles faster (often 4 weeks) than the body (6–8 weeks). Spacing sessions to the area lets new anagen hairs appear before the next treatment.' },
+              { kind: 'ask', prompt: 'Body areas are usually spaced further apart than the face.', qtype: 'TRUEFALSE', options: ['True', 'False'], correct: [0], explanation: 'Body hair cycles more slowly, so sessions are spaced wider.' },
+              { kind: 'teach', title: 'Expectations', text: 'Laser gives long-term reduction, not guaranteed permanent removal. Most clients need 6–8+ sessions, then occasional top-ups.' },
+              { kind: 'ask', prompt: 'Honest wording for results is permanent hair ___.', qtype: 'WORD', options: ['reduction', 'removal', 'colour'], correct: [0], explanation: '"Reduction" is the accurate, defensible claim.' },
+              { kind: 'teach', title: 'What affects results', text: 'Hair colour and thickness, skin type, hormones (e.g. PCOS), medications and sun exposure all change how well a client responds.' },
+              { kind: 'ask', prompt: 'Which can reduce laser effectiveness or suitability?', qtype: 'MULTI', options: ['Very fair or grey hair', 'Recent sun tan', 'Some hormonal conditions', 'Dark, coarse hair'], correct: [0, 1, 2], explanation: 'Little melanin, a tan or hormonal drivers all complicate results; dark coarse hair responds best.' },
+              { kind: 'say', text: 'Great — you can plan a realistic, honest course now.', mood: 'cheer' },
+            ],
+          },
+        ],
+        quiz: {
+          title: 'Hair Growth Cycle Assessment',
+          passMark: 70,
+          questions: [
+            { prompt: 'The three phases of the hair cycle are…', type: 'SINGLE', options: ['Anagen, catagen, telogen', 'Start, middle, end', 'Wash, cut, dry', 'Spring, summer, winter'], correct: [0], explanation: 'Anagen (growth), catagen (transition), telogen (rest).' },
+            { prompt: 'Laser works best on hairs in the ___ phase.', type: 'WORD', options: ['anagen', 'telogen', 'catagen'], correct: [0], explanation: 'Active-growth hairs are attached and melanin-rich.' },
+            { prompt: 'A course of sessions is needed because…', type: 'SINGLE', options: ['Only some hairs are in anagen at any time', 'The laser is weak', 'Skin needs to tan', 'It is more profitable'], correct: [0], explanation: 'Repeat sessions catch hairs as they enter anagen.' },
+            { prompt: 'Which factors can reduce results?', type: 'MULTI', options: ['Grey or very fair hair', 'A recent tan', 'Hormonal conditions', 'Dark coarse hair'], correct: [0, 1, 2], explanation: 'Dark coarse hair responds best; the others complicate it.' },
+            { prompt: 'The accurate claim for laser hair removal is permanent…', type: 'SINGLE', options: ['Reduction', 'Removal', 'Colour change', 'Cure'], correct: [0], explanation: 'Long-term reduction, not guaranteed total removal.' },
+          ],
+        },
+      },
+    ],
+  },
+  {
+    courseSlug: 'level-3-laser-aesthetic-therapies',
+    modules: [
+      {
+        title: 'Selective Photothermolysis: Matching Wavelength to Target',
+        summary: 'The core principle behind safe, effective laser/IPL: heat the target, spare the surroundings.',
+        lessons: [
+          {
+            title: 'Chromophores & Selective Photothermolysis',
+            durationMin: 12,
+            objectives: ['Define selective photothermolysis', 'Name the three main chromophores', 'Explain how a target is heated without damaging nearby tissue'],
+            studyTips: ['Three chromophores: melanin, haemoglobin, water. Match the wavelength to the one you want to treat.'],
+            examRefs: ['Selective photothermolysis'],
+            steps: [
+              { kind: 'say', text: 'This is the single most important idea in laser work — let us get it clear.', mood: 'happy' },
+              { kind: 'teach', title: 'Chromophores', text: 'A chromophore is a target that absorbs light. The three that matter are melanin (hair, pigment), haemoglobin (blood vessels) and water (skin tissue).' },
+              { kind: 'teach', title: 'Selective photothermolysis', text: 'Choose a wavelength absorbed strongly by your target chromophore, and a pulse short enough to heat it before the heat spreads — so the target is destroyed and surrounding tissue is spared.' },
+              { kind: 'ask', prompt: 'Which chromophore does hair removal target?', qtype: 'SINGLE', options: ['Melanin', 'Haemoglobin', 'Water', 'Collagen'], correct: [0], explanation: 'Melanin in the hair absorbs the energy and heats the follicle.' },
+              { kind: 'say', text: 'Spot on.', mood: 'cheer' },
+              { kind: 'teach', title: 'Vascular targets', text: 'For thread veins and redness, the target is haemoglobin in the blood vessel — a different wavelength is chosen to suit it.' },
+              { kind: 'ask', prompt: 'Thread veins are treated by targeting…', qtype: 'SINGLE', options: ['Haemoglobin', 'Melanin', 'Water', 'Keratin'], correct: [0], explanation: 'Haemoglobin in the vessel absorbs the light and the vessel is coagulated.' },
+              { kind: 'ask', prompt: 'Selective photothermolysis spares nearby tissue.', qtype: 'TRUEFALSE', options: ['True', 'False'], correct: [0], explanation: 'That selectivity is the whole point — target heated, surroundings spared.' },
+              { kind: 'say', text: 'That is the principle nailed.', mood: 'cheer' },
+            ],
+          },
+          {
+            title: 'Choosing Wavelength, Pulse & Fluence',
+            durationMin: 12,
+            objectives: ['Relate wavelength to depth', 'Adjust settings for skin type', 'Use cooling to protect the skin'],
+            studyTips: ['Longer wavelength = deeper penetration and safer for darker skin (less melanin absorption at the surface).'],
+            examRefs: ['Laser parameters'],
+            steps: [
+              { kind: 'say', text: 'Now the dials: wavelength, pulse duration and fluence. Let us make them intuitive.', mood: 'happy' },
+              { kind: 'teach', title: 'Wavelength = depth', text: 'Longer wavelengths reach deeper. Nd:YAG (1064nm) goes deep and is absorbed less by surface melanin, so it is safer on darker skin; shorter wavelengths suit lighter skin and shallower targets.' },
+              { kind: 'ask', prompt: 'A longer wavelength generally penetrates…', qtype: 'SINGLE', options: ['Deeper', 'Shallower', 'Not at all', 'Sideways'], correct: [0], explanation: 'Longer wavelengths reach deeper structures.' },
+              { kind: 'teach', title: 'Pulse duration', text: 'Match the pulse to the target size — short pulses for small targets, longer pulses for larger or for darker skin to spread the heat more gently.' },
+              { kind: 'teach', title: 'Fluence', text: 'Fluence is the energy delivered per area. Higher fluence does more, but raises the risk of burns — increase cautiously and watch the skin response.' },
+              { kind: 'ask', prompt: 'Raising fluence too high risks…', qtype: 'SINGLE', options: ['Burns', 'Faster hair growth', 'Nothing', 'Better hydration'], correct: [0], explanation: 'Too much energy damages surrounding skin.' },
+              { kind: 'teach', title: 'Cooling', text: 'Skin cooling (contact, cryogen or air) protects the surface and reduces pain, letting you treat effectively with less risk.' },
+              { kind: 'ask', prompt: 'For darker skin types you generally prefer…', qtype: 'MULTI', options: ['A longer wavelength', 'Good cooling', 'Conservative fluence', 'Maximum fluence with no cooling'], correct: [0, 1, 2], explanation: 'Longer wavelength, cooling and cautious fluence protect higher-melanin skin.' },
+              { kind: 'say', text: 'Excellent — you can reason about settings, not just memorise them.', mood: 'cheer' },
+            ],
+          },
+        ],
+        quiz: {
+          title: 'Selective Photothermolysis Assessment',
+          passMark: 70,
+          questions: [
+            { prompt: 'The three main chromophores in laser work are…', type: 'SINGLE', options: ['Melanin, haemoglobin, water', 'Salt, sugar, fat', 'Red, green, blue', 'Acid, base, salt'], correct: [0], explanation: 'These absorb the light and define the target.' },
+            { prompt: 'Hair removal targets which chromophore?', type: 'WORD', options: ['melanin', 'water', 'haemoglobin'], correct: [0], explanation: 'Melanin in the hair shaft and follicle.' },
+            { prompt: 'A longer wavelength penetrates…', type: 'SINGLE', options: ['Deeper', 'Shallower', 'Not at all', 'Only on pale skin'], correct: [0], explanation: 'Depth increases with wavelength.' },
+            { prompt: 'Why is Nd:YAG (1064nm) preferred for darker skin?', type: 'SINGLE', options: ['Less absorbed by surface melanin', 'It is cheaper', 'It is faster', 'It needs no cooling'], correct: [0], explanation: 'Lower surface-melanin absorption reduces burn risk on higher Fitzpatrick types.' },
+            { prompt: 'Selective photothermolysis means heating the target while sparing surrounding tissue.', type: 'TRUEFALSE', options: ['True', 'False'], correct: [0], explanation: 'Right wavelength + right pulse = selective heating.' },
+            { prompt: 'Which protect higher-melanin skin?', type: 'MULTI', options: ['Longer wavelength', 'Cooling', 'Conservative fluence', 'Max fluence, no cooling'], correct: [0, 1, 2], explanation: 'The first three reduce risk; the last increases it.' },
+          ],
+        },
+      },
+    ],
+  },
+  {
+    courseSlug: 'level-4-certificate-aesthetic-practice',
+    modules: [
+      {
+        title: 'Complaints, Duty of Candour & Accountability',
+        summary: 'Handle complaints professionally, be open when something goes wrong, and work within your scope and indemnity.',
+        lessons: [
+          {
+            title: 'Handling Complaints Professionally',
+            durationMin: 11,
+            objectives: ['Respond to a complaint calmly and fairly', 'Document it correctly', 'Know when to escalate'],
+            studyTips: ['Listen, apologise for the experience, document, resolve or escalate — never get defensive.'],
+            examRefs: ['Complaints handling'],
+            steps: [
+              { kind: 'say', text: 'Complaints happen to everyone. Handling them well protects the client and your reputation.', mood: 'happy' },
+              { kind: 'teach', title: 'Listen first', text: 'Let the client explain fully without interrupting. Acknowledge how they feel and apologise for the experience, even before any fault is established.' },
+              { kind: 'ask', prompt: 'The first step when a client complains is to…', qtype: 'SINGLE', options: ['Listen and acknowledge', 'Defend yourself', 'Offer a refund immediately', 'Ignore it'], correct: [0], explanation: 'Listening de-escalates and shows you take it seriously.' },
+              { kind: 'teach', title: 'Document', text: 'Record the complaint factually: what happened, when, what was said and what you agreed. Keep it objective.' },
+              { kind: 'teach', title: 'Resolve or escalate', text: 'Resolve what you can fairly. If it involves harm, a clinical concern or legal/insurance issues, escalate to the responsible person and your indemnity provider.' },
+              { kind: 'ask', prompt: 'You should escalate a complaint when…', qtype: 'MULTI', options: ['A client was harmed', 'There is a clinical concern', 'It may involve insurance/legal', 'The client was mildly annoyed and resolved on the spot'], correct: [0, 1, 2], explanation: 'Harm, clinical risk or legal exposure go up the chain; a resolved minor gripe does not.' },
+              { kind: 'say', text: 'Calm, fair, documented — that is the formula.', mood: 'cheer' },
+            ],
+          },
+          {
+            title: 'Duty of Candour & Professional Accountability',
+            durationMin: 11,
+            objectives: ['Explain the duty of candour', 'Stay within your scope of practice', 'Keep valid indemnity'],
+            studyTips: ['Duty of candour = being open and honest with a client when something goes wrong, and saying sorry.'],
+            examRefs: ['Accountability'],
+            steps: [
+              { kind: 'say', text: 'When something does go wrong, what you do next defines you as a professional.', mood: 'happy' },
+              { kind: 'teach', title: 'Duty of candour', text: 'Be open and honest: tell the client what happened, apologise, explain what you will do about it, and record it. Hiding a mistake is far worse than the mistake.' },
+              { kind: 'ask', prompt: 'Duty of candour means…', qtype: 'SINGLE', options: ['Being open and honest when something goes wrong', 'Never admitting anything', 'Only telling your manager', 'Refunding everyone'], correct: [0], explanation: 'Openness with the client, plus an apology and a plan.' },
+              { kind: 'teach', title: 'Scope of practice', text: 'Only perform treatments you are trained, competent and insured for. If a case is beyond you, refer — that is a strength, not a failure.' },
+              { kind: 'ask', prompt: 'Working outside your scope of practice is acceptable if you are confident.', qtype: 'TRUEFALSE', options: ['True', 'False'], correct: [1], explanation: 'Confidence is not competence or insurance — stay within scope and refer.' },
+              { kind: 'teach', title: 'Indemnity', text: 'Keep valid professional indemnity insurance for every treatment you offer. Without it you are personally exposed and may be acting unlawfully.' },
+              { kind: 'ask', prompt: 'Valid indemnity insurance must cover…', qtype: 'SINGLE', options: ['Every treatment you actually offer', 'Only facials', 'Nothing if you are careful', 'Just the premises'], correct: [0], explanation: 'Cover must match the treatments you perform.' },
+              { kind: 'say', text: 'Open, in-scope and insured — that is accountable practice.', mood: 'cheer' },
+            ],
+          },
+        ],
+        quiz: {
+          title: 'Complaints & Accountability Assessment',
+          passMark: 70,
+          questions: [
+            { prompt: 'The first response to a complaint should be to…', type: 'SINGLE', options: ['Listen and acknowledge', 'Argue the facts', 'Refund instantly', 'Ignore it'], correct: [0], explanation: 'Listening de-escalates and informs your response.' },
+            { prompt: 'Duty of candour is about being ___ when something goes wrong.', type: 'WORD', options: ['honest', 'quiet', 'quick'], correct: [0], explanation: 'Open and honest with the client, with an apology.' },
+            { prompt: 'You should escalate a complaint when…', type: 'MULTI', options: ['A client was harmed', 'There is a clinical concern', 'Insurance/legal may be involved', 'It was minor and already resolved'], correct: [0, 1, 2], explanation: 'Harm, clinical risk and legal exposure need escalation.' },
+            { prompt: 'Working outside your scope of practice is acceptable if you feel confident.', type: 'TRUEFALSE', options: ['True', 'False'], correct: [1], explanation: 'Stay within training, competence and insurance — refer otherwise.' },
+            { prompt: 'Professional indemnity insurance must cover…', type: 'SINGLE', options: ['Every treatment you offer', 'Only the cheapest treatment', 'Nothing', 'Just the building'], correct: [0], explanation: 'Cover must match what you actually perform.' },
+            { prompt: 'Hiding a mistake from a client is worse than the mistake itself.', type: 'TRUEFALSE', options: ['True', 'False'], correct: [0], explanation: 'Openness maintains trust and meets the duty of candour.' },
+          ],
+        },
+      },
+    ],
+  },
 ];
 
 export const NEW_EXAM_QUESTIONS: ExamQDef[] = [
+  { courseSlug: L2, topic: 'Hair cycle', prompt: 'Laser hair removal is most effective on hairs in which phase?', options: ['Anagen', 'Catagen', 'Telogen', 'Any phase'], correct: [0], explanation: 'Active-growth (anagen) hairs are attached and melanin-rich.' },
+  { courseSlug: L2, topic: 'Hair cycle', prompt: 'The honest claim for a laser hair course is permanent ___.', type: 'WORD', options: ['reduction', 'removal', 'cure'], correct: [0], explanation: 'Long-term reduction, not guaranteed total removal.' },
+  { courseSlug: 'level-3-laser-aesthetic-therapies', topic: 'Laser physics', prompt: 'A longer laser wavelength generally penetrates…', options: ['Deeper into the skin', 'Only the surface', 'Not at all', 'Only pale skin'], correct: [0], explanation: 'Depth increases with wavelength.' },
+  { courseSlug: 'level-3-laser-aesthetic-therapies', topic: 'Laser physics', prompt: 'Which protect higher-melanin (darker) skin during laser?', type: 'MULTI', options: ['Longer wavelength', 'Skin cooling', 'Conservative fluence', 'Maximum fluence with no cooling'], correct: [0, 1, 2], explanation: 'The first three reduce burn risk; the last raises it.' },
+  { courseSlug: 'level-4-certificate-aesthetic-practice', topic: 'Accountability', prompt: 'Duty of candour requires you to…', options: ['Be open and honest with the client when something goes wrong', 'Conceal minor errors', 'Tell only your insurer', 'Refund every client'], correct: [0], explanation: 'Openness plus an apology and a plan.' },
+  { courseSlug: 'level-4-certificate-aesthetic-practice', topic: 'Professional practice', prompt: 'Professional indemnity insurance must cover every treatment you actually offer.', type: 'TRUEFALSE', options: ['True', 'False'], correct: [0], explanation: 'Cover must match your real scope of practice.' },
   { courseSlug: L2, topic: 'Consultation', prompt: 'The main purpose of a patch test is to…', options: ['Check skin reaction before a full treatment', 'Speed up results', 'Replace consent', 'Warm the skin'], correct: [0], explanation: 'It flags adverse reactions before committing to a full treatment.' },
   { courseSlug: L2, topic: 'Aftercare', prompt: 'For 24–48 hours after laser, clients should avoid…', type: 'MULTI', options: ['Saunas and hot showers', 'Direct sun', 'Daily SPF', 'Heat near the area'], correct: [0, 1, 3], explanation: 'Heat and sun are out; SPF is encouraged.' },
   { courseSlug: L2, topic: 'Skin', prompt: 'The acid mantle keeps skin slightly…', type: 'WORD', options: ['acidic', 'alkaline', 'oily'], correct: [0], explanation: 'pH ~4.5–5.5 inhibits microbes.' },
@@ -2595,6 +3171,51 @@ export const NEW_EXAM_QUESTIONS: ExamQDef[] = [
   { courseSlug: 'level-4-certificate-aesthetic-practice', topic: 'Consent', prompt: 'A cooling-off period before an aesthetic treatment gives the client time to...', options: ['Reflect on the decision and withdraw without pressure', 'Change their appointment time', 'Test the practitioner\'s patience', 'Request a cheaper alternative'], correct: [0], explanation: 'A cooling-off period ensures consent is free and informed, not impulsive. Industry codes (JCCP/Save Face) recommend at least 24-48 hours for some treatments.' },
   { courseSlug: 'advanced-aesthetics-level-5-7', topic: 'Adverse events', prompt: 'A serious adverse event linked to a laser device must be reported to the...', type: 'WORD', options: ['MHRA', 'client only', 'insurer only'], correct: [0], explanation: 'The MHRA (Medicines and Healthcare products Regulatory Agency) collects medical device adverse event reports under the Medical Devices Regulations.' },
   { courseSlug: 'advanced-aesthetics-level-5-7', topic: 'Governance', prompt: 'The duty of candour requires that when something goes wrong, you...', type: 'MULTI', options: ['Inform the client promptly', 'Apologise sincerely', 'Offer a practical remedy or support', 'Delete the treatment record'], correct: [0, 1, 2], explanation: 'Openness, an apology, and a remedy are the three pillars of duty of candour. Deleting records is a criminal act.' },
+  // -- BATCH 11 exam bank questions -------------------------------------------
+
+  // L2 — Laser safety
+  { courseSlug: L2, topic: 'Laser safety', prompt: 'Class 3B and Class 4 lasers pose risk from both direct and ___ beams.', type: 'WORD', options: ['reflected', 'ambient', 'harmless'], correct: [0], explanation: 'Reflected beams from shiny surfaces are a recognised hazard for both classes.' },
+  { courseSlug: L2, topic: 'Laser safety', prompt: 'A laser warning notice on the treatment room door must show the class, wavelength and hazard level.', type: 'TRUEFALSE', options: ['True', 'False'], correct: [0], explanation: 'Warning signage must include class, wavelength and hazard so anyone entering knows the risk.' },
+  { courseSlug: L2, topic: 'Laser safety', prompt: 'Potential laser hazards in addition to eye and skin injury include fire and...', type: 'WORD', options: ['fumes', 'music', 'gravity'], correct: [0], explanation: 'Laser tissue fumes (plume) are a biological and chemical hazard requiring extraction or filtration.' },
+  { courseSlug: L2, topic: 'Laser safety', prompt: 'The optical density (OD) rating on laser goggles indicates...', options: ['The protection level at a given wavelength', 'The brand quality', 'How dark the lens is', 'The frame size'], correct: [0], explanation: 'OD rating confirms how much the lens attenuates energy at the specified wavelength.' },
+  { courseSlug: L2, topic: 'Laser safety', prompt: 'A shiny reflective surface in a laser treatment room...', options: ['Must be removed or covered before use', 'Improves the treatment result', 'Offers no hazard', 'Is required for safety'], correct: [0], explanation: 'Shiny surfaces can scatter or reflect beams and cause unintended injury.' },
+
+  // L3 — Skin tightening & body contouring
+  { courseSlug: 'level-3-laser-aesthetic-therapies', topic: 'Skin tightening', prompt: 'HIFU (high-intensity focused ultrasound) tightens skin by depositing energy at...', options: ['A precise depth in the SMAS/deep dermis', 'The skin surface only', 'Subcutaneous fat only', 'Bone level'], correct: [0], explanation: 'HIFU targets the SMAS and deep dermis to trigger collagen contraction and neocollagenesis at a controlled depth.' },
+  { courseSlug: 'level-3-laser-aesthetic-therapies', topic: 'Skin tightening', prompt: 'Skin tightening with energy-based devices produces results that are...', options: ['Gradual over 2-3 months as collagen remodels', 'Instant and permanent', 'Equivalent to a surgical facelift', 'Visible only under UV light'], correct: [0], explanation: 'Collagen remodelling takes weeks to months; results are modest and gradual — not surgical.' },
+  { courseSlug: 'level-3-laser-aesthetic-therapies', topic: 'Body contouring', prompt: 'Cryolipolysis (fat freezing) works by applying...', options: ['Controlled cold to selectively destroy fat cells', 'Heat to melt fat', 'Suction alone', 'RF energy to the fat layer'], correct: [0], explanation: 'Controlled cooling (around -11°C) triggers apoptosis (cell death) selectively in adipocytes without damaging the skin surface.' },
+  { courseSlug: 'level-3-laser-aesthetic-therapies', topic: 'Body contouring', prompt: 'After cryolipolysis, destroyed fat cells are removed by the body’s ___ system over weeks.', type: 'WORD', options: ['lymphatic', 'nervous', 'skeletal'], correct: [0], explanation: 'Dead adipocytes are cleared via the lymphatic system over 8-12 weeks.' },
+
+  // L4 — Skin analysis
+  { courseSlug: 'level-4-certificate-aesthetic-practice', topic: 'Skin analysis', prompt: 'Fitzpatrick skin typing and skin-type assessment are completed...', options: ['Before any energy-based treatment', 'Only once at registration', 'After the first treatment', 'Only if the client asks'], correct: [0], explanation: 'Skin type and Fitzpatrick classification must be established before every energy-based treatment to guide safe settings.' },
+  { courseSlug: 'level-4-certificate-aesthetic-practice', topic: 'Skin analysis', prompt: 'A telangiectasia visible during skin analysis is a...', options: ['Dilated superficial blood vessel', 'Form of malignant melanoma', 'Type of comedone', 'Sign of bacterial infection'], correct: [0], explanation: 'Telangiectasia are small dilated superficial vessels — visible lesions to note and potentially treat with vascular devices.' },
+  { courseSlug: 'level-4-certificate-aesthetic-practice', topic: 'Skin analysis', prompt: 'A thorough medical history before aesthetic treatment includes asking about current...', type: 'MULTI', options: ['Prescription medications', 'Herbal supplements', 'Recent isotretinoin use', 'Favourite television show'], correct: [0, 1, 2], explanation: 'Medications, herbal supplements and isotretinoin history are all clinically relevant contraindication checks.' },
+  { courseSlug: 'level-4-certificate-aesthetic-practice', topic: 'Skin analysis', prompt: 'Transient erythema (redness) immediately after laser treatment is...', options: ['A normal expected response', 'A sign of treatment failure', 'An allergic reaction requiring referral', 'A contraindication to further treatment'], correct: [0], explanation: 'Brief erythema is a normal vascular response to laser energy. Persistent or worsening erythema may need review.' },
+
+  // L5-7 — Evidence, audit, mentoring
+  { courseSlug: 'advanced-aesthetics-level-5-7', topic: 'Evidence', prompt: 'A systematic review or meta-analysis sits at the top of the evidence hierarchy because it...', options: ['Pools and statistically combines multiple studies to reduce bias', 'Is written by the manufacturer', 'Is the newest study available', 'Uses the largest single sample'], correct: [0], explanation: 'Systematic reviews/meta-analyses aggregate evidence across many trials, reducing the effect of individual study bias.' },
+  { courseSlug: 'advanced-aesthetics-level-5-7', topic: 'Audit', prompt: 'An audit criterion is...', type: 'WORD', options: ['a measurable standard', 'a client outcome', 'a team opinion'], correct: [0], explanation: 'A criterion is a specific, measurable statement of the standard you are auditing against.' },
+  { courseSlug: 'advanced-aesthetics-level-5-7', topic: 'Mentoring', prompt: 'When giving constructive feedback to a mentee, the most useful feedback is specific, actionable and...', type: 'WORD', options: ['kind', 'vague', 'public'], correct: [0], explanation: 'Specific, actionable and kind feedback supports growth without embarrassing or demoralising the mentee.' },
+
+  // -- BATCH 12 exam bank questions -------------------------------------------
+
+  // Skin Anatomy & the Laser Target (L2)
+  { courseSlug: L2, topic: 'Skin anatomy', prompt: 'The skin layer that contains collagen, elastin and blood vessels is the...', type: 'WORD', options: ['dermis', 'epidermis', 'hypodermis'], correct: [0], explanation: 'The dermis houses collagen and elastin -- the structural components targeted by rejuvenation lasers and RF.' },
+  { courseSlug: L2, topic: 'Skin anatomy', prompt: 'Melanin is produced in the epidermis by cells called...', type: 'WORD', options: ['melanocytes', 'keratinocytes', 'fibroblasts'], correct: [0], explanation: 'Melanocytes in the basal epidermis produce melanin -- the chromophore for hair removal and pigmentation laser treatments.' },
+  { courseSlug: L2, topic: 'Hair follicle', prompt: 'Laser hair removal is effective only when the follicle is in the ___ phase.', type: 'WORD', options: ['anagen', 'catagen', 'telogen'], correct: [0], explanation: 'Only anagen follicles have a melanin-rich bulb close to the dermal papilla -- the two conditions needed for effective destruction.' },
+  { courseSlug: L2, topic: 'Hair follicle', prompt: 'Grey and white hair responds poorly to laser because it contains very little...', type: 'WORD', options: ['melanin', 'keratin', 'collagen'], correct: [0], explanation: 'Without melanin there is no chromophore -- the laser energy has nothing to absorb and no heat is generated at the target.' },
+
+  // Skin Tightening, HIFU & Body Contouring (L3)
+  { courseSlug: 'level-3-laser-aesthetic-therapies', topic: 'Skin tightening', prompt: 'RF skin tightening generates heat in the dermis through ___ heating.', type: 'WORD', options: ['resistive', 'reflective', 'reactive'], correct: [0], explanation: 'RF current passing through tissue creates resistive (ohmic) heat in the dermis, contracting collagen and triggering neocollagenesis.' },
+  { courseSlug: 'level-3-laser-aesthetic-therapies', topic: 'HIFU', prompt: 'HIFU achieves skin tightening without breaking the skin surface by focusing energy at a precise...', type: 'WORD', options: ['depth', 'colour', 'wavelength'], correct: [0], explanation: 'HIFU focuses at depths of 1.5, 3, or 4.5 mm, creating thermal damage zones at the target while leaving overlying skin intact.' },
+  { courseSlug: 'level-3-laser-aesthetic-therapies', topic: 'Body contouring', prompt: 'After cryolipolysis, clients should be told to expect visible results after approximately...', type: 'SINGLE', options: ['4-6 weeks, with full results at 8-12 weeks', 'The same day', 'One week', 'Six months minimum always'], correct: [0], explanation: 'Lymphatic clearance of apoptotic fat cells takes 8-12 weeks; the first results typically appear from week 4-6.' },
+  { courseSlug: 'level-3-laser-aesthetic-therapies', topic: 'Body contouring', prompt: 'Cryolipolysis is a treatment for local fat reduction, not a treatment for...', type: 'WORD', options: ['obesity', 'laxity', 'pigmentation'], correct: [0], explanation: 'Cryolipolysis reduces fat cells in the treated area; it does not produce weight loss and is not indicated for obesity.' },
+
+  // Medication Interactions & Clearance (L4)
+  { courseSlug: 'level-4-certificate-aesthetic-practice', topic: 'Medication interactions', prompt: 'St John\'s Wort is an over-the-counter supplement that increases photosensitivity and must be disclosed before laser treatment.', type: 'TRUEFALSE', options: ['True', 'False'], correct: [0], explanation: 'St John\'s Wort is a photosensitiser. Many clients do not consider herbal supplements as medications -- always ask specifically.' },
+  { courseSlug: 'level-4-certificate-aesthetic-practice', topic: 'Medical clearance', prompt: 'Written GP clearance for a client on anticoagulants should be obtained...', type: 'SINGLE', options: ['Before the treatment session proceeds', 'After the first session if no reaction occurs', 'Only if the client asks', 'Never -- verbal clearance is enough'], correct: [0], explanation: 'Written clearance becomes part of the clinical record. Verbal clearance is not a sufficient standard of evidence.' },
+  { courseSlug: 'level-4-certificate-aesthetic-practice', topic: 'Medication interactions', prompt: 'Immunosuppressant therapy (e.g. methotrexate, ciclosporin) before laser treatment requires...', type: 'SINGLE', options: ['GP or specialist clearance before proceeding', 'No modification to the treatment plan', 'Only an extra patch test', 'Immediate cancellation with no possibility of rescheduling'], correct: [0], explanation: 'Immunosuppression impairs healing and can increase infection risk after any energy-based procedure. GP clearance is needed.' },
+  { courseSlug: 'level-4-certificate-aesthetic-practice', topic: 'Medical clearance', prompt: 'When treatment is deferred pending GP clearance, the clinical record must include the reason for deferral and the referral made.', type: 'TRUEFALSE', options: ['True', 'False'], correct: [0], explanation: 'A complete deferral record demonstrates duty of care and creates the audit trail needed if a complaint arises.' },
 
 ];
 
@@ -2608,8 +3229,10 @@ export async function enrichCourseContentIfNeeded(): Promise<{ modules: number; 
   let modules = 0, lessons = 0, questions = 0;
 
   for (const cc of NEW_MODULES) {
-    const course = await db.course.findFirst({ where: { slug: cc.courseSlug }, select: { id: true, tenantId: true } }).catch(() => null);
-    if (!course) continue;
+    const course = await db.course.findFirst({ where: { slug: cc.courseSlug }, select: { id: true, tenantId: true, autoEnrich: true } }).catch(() => null);
+    // Skip courses staff have manually curated — re-seeding would resurrect the
+    // modules/lessons they deleted (the "deleted modules keep reappearing" bug).
+    if (!course || course.autoEnrich === false) continue;
     for (const m of cc.modules) {
       let mod = await db.courseModule.findFirst({ where: { courseId: course.id, title: m.title }, select: { id: true } });
       if (!mod) {
@@ -2639,8 +3262,8 @@ export async function enrichCourseContentIfNeeded(): Promise<{ modules: number; 
   }
 
   for (const slug of [...new Set(NEW_EXAM_QUESTIONS.map((q) => q.courseSlug))]) {
-    const course = await db.course.findFirst({ where: { slug }, select: { id: true, accreditations: true, tenantId: true } }).catch(() => null);
-    if (!course) continue;
+    const course = await db.course.findFirst({ where: { slug }, select: { id: true, accreditations: true, tenantId: true, autoEnrich: true } }).catch(() => null);
+    if (!course || course.autoEnrich === false) continue;
     const board = Array.isArray(course.accreditations) && course.accreditations.length ? course.accreditations[0] : null;
     const existing = new Set((await db.examQuestion.findMany({ where: { courseId: course.id }, select: { prompt: true } })).map((q) => q.prompt));
     for (const q of NEW_EXAM_QUESTIONS.filter((x) => x.courseSlug === slug)) {

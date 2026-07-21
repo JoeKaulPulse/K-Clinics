@@ -77,7 +77,7 @@ export function BeforePhotoCapture({ bookingId, clientId, photos, optOutSigned, 
 
   return (
     <div>
-      <h2 className="mb-3 font-[family-name:var(--font-display)] text-xl">Before &amp; after photo <span className={`text-xs font-normal ${required ? 'text-[var(--color-blush)]' : 'text-[var(--color-stone-soft)]'}`}>· {required ? 'required for laser' : 'optional'}</span></h2>
+      <h2 className="mb-3 font-[family-name:var(--font-display)] text-xl">Before &amp; after photo <span className={`text-xs font-normal ${required ? 'text-[var(--color-blush-deep)]' : 'text-[var(--color-stone)]'}`}>· {required ? 'required for laser' : 'optional'}</span></h2>
       <div className="rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-4">
         <div className="rounded-[var(--radius-sm)] bg-[var(--color-blush)]/15 px-3 py-2 text-xs text-[var(--color-ink)]">
           ⚠ Capture stays in this secure system — it is <strong>never saved to this device</strong>. <strong>No intimate areas</strong> may be photographed.
@@ -90,7 +90,7 @@ export function BeforePhotoCapture({ bookingId, clientId, photos, optOutSigned, 
               <div key={p.id} className="relative">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img src={`${baseUrl}/api/admin/bookings/before-photo/${p.id}`} alt={p.area ?? 'before'} className="h-24 w-24 rounded border border-[var(--color-line)] object-cover" />
-                {canManage && <button onClick={() => del(p.id)} className="absolute -right-1.5 -top-1.5 grid h-5 w-5 place-items-center rounded-full bg-[var(--color-ink)] text-[0.6rem] text-white">✕</button>}
+                {canManage && <button onClick={() => del(p.id)} aria-label="Remove photo" className="absolute -right-1.5 -top-1.5 grid h-5 w-5 place-items-center rounded-full bg-[var(--color-ink)] text-[0.6rem] text-white">✕</button>}
                 {p.area && <span className="mt-0.5 block max-w-24 truncate text-[0.6rem] text-[var(--color-stone)]">{p.area}</span>}
               </div>
             ))}
@@ -122,7 +122,7 @@ export function BeforePhotoCapture({ bookingId, clientId, photos, optOutSigned, 
                   {!on ? (
                     <button onClick={startCam} disabled={!attest} className="rounded-full bg-[var(--color-ink)] px-4 py-1.5 text-sm text-[var(--color-porcelain)] disabled:opacity-50">Open camera</button>
                   ) : (
-                    <button onClick={capture} className="rounded-full bg-[var(--color-gold)] px-4 py-1.5 text-sm text-white">Capture</button>
+                    <button onClick={capture} className="rounded-full bg-[var(--color-gold-deep)] px-4 py-1.5 text-sm text-white">Capture</button>
                   )}
                 </div>
               </>
@@ -136,16 +136,16 @@ export function BeforePhotoCapture({ bookingId, clientId, photos, optOutSigned, 
                 </div>
               </>
             )}
-            {err && <p className="mt-2 text-sm text-[var(--color-blush)]">{err}</p>}
+            {err && <p role="alert" aria-live="assertive" className="mt-2 text-sm text-[var(--color-blush-deep)]">{err}</p>}
 
             {/* Opt-out path — only when a photo is actually required (laser). */}
             {required && (
               <div className="mt-3 border-t border-[var(--color-line)] pt-3 text-xs text-[var(--color-stone)]">
                 Client wants to decline the photo?
                 {optLink ? (
-                  <a href={optLink} target="_blank" rel="noopener noreferrer" className="ml-1 text-[var(--color-gold)] hover:underline">Open opt-out form to sign →</a>
+                  <a href={optLink} target="_blank" rel="noopener noreferrer" className="ml-1 text-[var(--color-gold-deep)] hover:underline">Open opt-out form to sign →</a>
                 ) : (
-                  <button onClick={genOptOut} className="ml-1 text-[var(--color-gold)] hover:underline">Generate opt-out form</button>
+                  <button onClick={genOptOut} className="ml-1 text-[var(--color-gold-deep)] hover:underline">Generate opt-out form</button>
                 )}
               </div>
             )}

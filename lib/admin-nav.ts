@@ -7,7 +7,7 @@
 // optional `keywords` string of extra synonyms so search matches how people
 // actually describe a page ("till" → POS, "vat"/"tax" → finance, etc.).
 
-export type NavBadge = 'tasks' | 'timeoff' | 'chat';
+export type NavBadge = 'tasks' | 'timeoff' | 'chat' | 'teamchat';
 export type NavItem = {
   href: string;
   key: string;        // i18n key for the label
@@ -27,6 +27,8 @@ export const navGroups: NavGroup[] = [
     { href: '/admin/my-day', key: 'nav.myday', keywords: 'today agenda shift' },
     { href: '/admin/calendar', key: 'nav.calendar', perm: 'calendar.view', keywords: 'diary appointments schedule day week' },
     { href: '/admin/tasks', key: 'nav.tasks', badge: 'tasks', keywords: 'todo to-do checklist' },
+    { href: '/admin/tasks/automations', key: 'nav.taskAutomations', perm: 'tasks.automate', keywords: 'recurring repeat automation schedule task generator rota workload engine' },
+    { href: '/admin/messages', key: 'nav.teamChat', badge: 'teamchat', keywords: 'team chat messages dm direct message group staff colleagues internal slack' },
     { href: '/admin/time-off', key: 'nav.timeoff', badge: 'timeoff', keywords: 'holiday leave annual absence' },
   ] },
   // Clients & bookings: the people and conversations. Loyalty/offers split out
@@ -85,12 +87,14 @@ export const navGroups: NavGroup[] = [
     { href: '/admin/devices', key: 'nav.devices', perm: 'settings.manage', keywords: 'hardware card terminal reader tyl natwest display screen kiosk printer registry' },
     { href: '/admin/day-close', key: 'nav.dayclose', perm: 'dayclose.run', keywords: 'cash up end of day reconciliation till' },
     { href: '/admin/facility', key: 'nav.facility', perm: 'facility.view', keywords: 'floor plan electrical plumbing equipment where things are maintenance knowledge base' },
+    { href: '/admin/compliance', key: 'nav.compliance', perm: 'compliance.view', keywords: 'compliance renewals insurance licence licences certification pat testing eicr equipment servicing waste contract expiry deadlines renewal dates reminders certificates' },
   ] },
   { heading: 'nav.group.marketing', icon: 'marketing', items: [
     { href: '/admin/marketing', key: 'nav.marketing', exact: true, perm: 'campaigns.view', keywords: 'hub overview' },
     { href: '/admin/marketing/performance', key: 'nav.performance', perm: 'campaigns.view', keywords: 'forecast results roi analytics' },
     { href: '/admin/marketing/campaigns', key: 'nav.campaigns', perm: 'campaigns.view', keywords: 'broadcasts sends sms email' },
     { href: '/admin/marketing/audiences', key: 'nav.audiences', perm: 'campaigns.view', keywords: 'segments lists contacts targeting' },
+    { href: '/admin/marketing/subscribers', key: 'nav.subscribers', perm: 'campaigns.view', keywords: 'newsletter subscribers signups sign-ups email list audience mailing list opted in footer waitlist who subscribed unsubscribe' },
     { href: '/admin/marketing/email', key: 'nav.email', perm: 'campaigns.view', keywords: 'newsletter broadcast' },
     { href: '/admin/marketing/templates', key: 'nav.templates', perm: 'campaigns.view', keywords: 'email designs layouts' },
     { href: '/admin/automations', key: 'nav.automations', perm: 'automations.view', keywords: 'workflows triggers journeys flows' },
@@ -117,6 +121,7 @@ export const navGroups: NavGroup[] = [
     { href: '/admin/workspace', key: 'nav.workspace', perm: 'settings.manage', keywords: 'google workspace email mailbox alias group seat directory' },
     { href: '/admin/staff', key: 'nav.staff', perm: 'staff.view', keywords: 'team users access roles permissions employees' },
     { href: '/admin/security', key: 'nav.security', perm: 'security.manage', keywords: 'login 2fa sessions audit centre' },
+    { href: '/admin/security/activity', key: 'nav.ipActivity', perm: 'security.manage', keywords: 'ip address device tracking block blocklist deny suspicious activity user agent mac address fingerprint geolocation visitor traffic' },
     { href: '/admin/activity', key: 'nav.activity', perm: 'staff.view', keywords: 'log history audit trail events' },
     { href: '/admin/site', key: 'nav.site', perm: 'settings.manage', keywords: 'globals config header footer settings' },
     { href: '/admin/locations', key: 'nav.locations', perm: 'settings.manage', keywords: 'clinics branches addresses sites' },

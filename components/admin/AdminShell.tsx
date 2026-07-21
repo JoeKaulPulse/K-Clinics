@@ -2,14 +2,19 @@
 
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { useDialogBehaviours } from '@/components/ui/Dialog';
 import { KMark, ClinicsWordmark } from '@/components/brand/marks';
 import { site } from '@/lib/site';
 import { GlobalSearch } from '@/components/admin/GlobalSearch';
 import { NotificationBell } from '@/components/admin/NotificationBell';
+import { TeamChatProvider } from '@/components/admin/teamchat/TeamChatProvider';
+import { ChatLauncher } from '@/components/admin/teamchat/ChatLauncher';
+import { ChatDock } from '@/components/admin/teamchat/ChatDock';
 import { GuideHost } from '@/components/guide/GuideHost';
 import { CloseDownReminder } from '@/components/admin/CloseDownReminder';
 import { ReportProblem } from '@/components/admin/ReportProblem';
+import { ThemeToggle } from '@/components/admin/ThemeToggle';
 import { I18nProvider } from '@/components/i18n/I18nProvider';
 import { translator, isLocale, LOCALES, LOCALE_LABELS, DEFAULT_LOCALE, type Locale } from '@/lib/i18n';
 import { navGroups, type NavItem, type GroupIconKey } from '@/lib/admin-nav';
@@ -83,6 +88,7 @@ export function AdminShell({
   const [pendingTimeOff, setPendingTimeOff] = useState(0);
   const [openTasks, setOpenTasks] = useState(0);
   const [chatUnread, setChatUnread] = useState(0);
+  const [teamChatUnread, setTeamChatUnread] = useState(0);
   const canApproveTimeOff = allowed.has('schedule.manage');
   useEffect(() => {
     let on = true;
@@ -91,7 +97,7 @@ export function AdminShell({
       if (typeof document !== 'undefined' && document.hidden) return;
       fetch('/api/admin/badges')
         .then((r) => r.json())
-        .then((j) => { if (on && j?.ok) { setPendingTimeOff(j.pendingTimeOff || 0); setOpenTasks(j.openTasks || 0); setChatUnread(j.chatUnread || 0); } })
+        .then((j) => { if (on && j?.ok) { setPendingTimeOff(j.pendingTimeOff || 0); setOpenTasks(j.openTasks || 0); setChatUnread(j.chatUnread || 0); setTeamChatUnread(j.teamChatUnread || 0); } })
         .catch(() => {});
     };
     load();
@@ -102,7 +108,7 @@ export function AdminShell({
   }, []);
 
   const badgeCount = (badge?: string) =>
-    badge === 'timeoff' ? (canApproveTimeOff ? pendingTimeOff : 0) : badge === 'tasks' ? openTasks : badge === 'chat' ? chatUnread : 0;
+    badge === 'timeoff' ? (canApproveTimeOff ? pendingTimeOff : 0) : badge === 'tasks' ? openTasks : badge === 'chat' ? chatUnread : badge === 'teamchat' ? teamChatUnread : 0;
 
   // Collapsible sidebar sections (desktop). Collapsed by default; the section
   // containing the current page opens automatically so you can see where you are.
@@ -127,14 +133,12 @@ export function AdminShell({
   }, []);
 
   // Mobile menu drawer (the desktop sidebar is hidden on small screens).
+  // Focus-in, Tab trap, Escape close and focus restore all come from the shared
+  // Dialog primitive's hook (PRJ-939.10).
   const [mobileOpen, setMobileOpen] = useState(false);
   useEffect(() => { setMobileOpen(false); }, [pathname]); // close on navigation
-  useEffect(() => {
-    if (!mobileOpen) return;
-    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setMobileOpen(false); };
-    document.addEventListener('keydown', onKey);
-    return () => document.removeEventListener('keydown', onKey);
-  }, [mobileOpen]);
+  const closeMobile = useCallback(() => setMobileOpen(false), []);
+  const { panelRef: drawerRef, onKeyDown: drawerKeyDown } = useDialogBehaviours<HTMLElement>(closeMobile, mobileOpen);
 
   // Top-bar profile dropdown (account · language · sign out).
   const [profileOpen, setProfileOpen] = useState(false);
@@ -147,6 +151,19 @@ export function AdminShell({
     document.addEventListener('keydown', onKey);
     return () => { document.removeEventListener('mousedown', onClick); document.removeEventListener('keydown', onKey); };
   }, []);
+  // Re-assert the admin colour scheme on mount. The root <head> script themes
+  // the portal on a full load; this covers client-side navigation *into* admin,
+  // where that script doesn't re-run. (Leaving admin for the public site happens
+  // via a full load, which the script handles.)
+  useEffect(() => {
+    try {
+      const m = document.cookie.match(/(?:^|; )kc_admin_theme=([^;]+)/);
+      const v = m ? decodeURIComponent(m[1]) : 'system';
+      const dark = v === 'dark' || (v !== 'light' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+      document.documentElement.setAttribute('data-theme', dark ? 'dark' : 'light');
+    } catch { /* no-op */ }
+  }, []);
+
   // Initials for the avatar, derived from the signed-in email local-part.
   const initials = (user || '').replace(/@.*/, '').split(/[.\-_ ]+/).filter(Boolean).slice(0, 2).map((s) => s[0]?.toUpperCase()).join('') || 'K';
 
@@ -189,7 +206,7 @@ export function AdminShell({
       <span className="mt-3 block h-[0.62rem] w-[6.75rem]"><ClinicsWordmark /></span>
       <p className="mt-3 pl-[0.3em] text-center text-[0.66rem] font-medium uppercase tracking-[0.3em] text-[var(--color-stone)]">
         {locationLabel}
-        <span className="text-[var(--color-stone-soft)]"> · CRM</span>
+        <span className="text-[var(--color-stone)]"> · CRM</span>
       </p>
     </div>
   );
@@ -207,7 +224,7 @@ export function AdminShell({
             <button
               onClick={() => toggleGroup(key)}
               aria-expanded={open}
-              className="flex w-full cursor-pointer items-center gap-2 rounded-[var(--radius-sm)] px-4 pb-1 pt-4 text-[0.6rem] font-semibold uppercase tracking-[0.14em] text-[var(--color-stone-soft)] transition-colors hover:text-[var(--color-stone)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-gold)]"
+              className="flex w-full cursor-pointer items-center gap-2 rounded-[var(--radius-sm)] px-4 pb-1 pt-4 text-[0.6rem] font-semibold uppercase tracking-[0.14em] text-[var(--color-stone)] transition-colors hover:text-[var(--color-stone)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-gold)]"
             >
               <svg
                 viewBox="0 0 16 16" width="10" height="10" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden
@@ -234,6 +251,7 @@ export function AdminShell({
 
   return (
     <I18nProvider locale={locale}>
+      <TeamChatProvider>
       <div className="flex min-h-screen bg-[var(--color-bone)]">
         {/* Desktop sidebar — navigation only; account moved to the top bar. */}
         <aside className="hidden shrink-0 flex-col border-r border-[var(--color-line)] bg-[var(--color-porcelain)] lg:flex lg:w-64">
@@ -243,9 +261,9 @@ export function AdminShell({
 
         {/* Mobile drawer — off-canvas, opened from the top-bar hamburger. */}
         {mobileOpen && (
-          <div className="fixed inset-0 z-50 lg:hidden" role="dialog" aria-modal="true">
+          <div className="fixed inset-0 z-50 lg:hidden" onKeyDown={drawerKeyDown}>
             <div className="kc-fade-in absolute inset-0 bg-[var(--color-ink)]/45 backdrop-blur-sm" onClick={() => setMobileOpen(false)} />
-            <aside className="kc-slide-in-left absolute inset-y-0 left-0 flex w-[82%] max-w-xs flex-col bg-[var(--color-porcelain)] shadow-[var(--shadow-lift)]">
+            <aside ref={drawerRef} role="dialog" aria-modal="true" aria-label={t('shell.menu')} tabIndex={-1} className="kc-slide-in-left absolute inset-y-0 left-0 flex w-[82%] max-w-xs flex-col bg-[var(--color-porcelain)] shadow-[var(--shadow-lift)]">
               <div className="flex items-center justify-between border-b border-[var(--color-line)] px-5 py-4">
                 {brand}
                 <button onClick={() => setMobileOpen(false)} aria-label="Close menu" className="flex h-10 w-10 items-center justify-center rounded-full text-[var(--color-stone)] transition-colors hover:bg-[var(--color-bone)] hover:text-[var(--color-ink)]">
@@ -271,6 +289,7 @@ export function AdminShell({
             <span className="block h-6 w-[0.9rem] shrink-0 text-[var(--color-ink)] lg:hidden"><KMark /></span>
             <div data-tour="admin-search" className="min-w-0 flex-1"><div className="max-w-xl"><GlobalSearch placeholder={t('shell.search')} pages={navPages} /></div></div>
             <div className="flex shrink-0 items-center gap-1 md:gap-2">
+              <ChatLauncher />
               <NotificationBell />
               <div ref={profileRef} className="relative">
                 <button
@@ -284,9 +303,9 @@ export function AdminShell({
                   <svg className={`hidden text-[var(--color-stone)] transition-transform md:block ${profileOpen ? 'rotate-180' : ''}`} width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden><path d="m4 6 4 4 4-4" /></svg>
                 </button>
                 {profileOpen && (
-                  <div role="menu" className="kc-pop absolute right-0 z-40 mt-2 w-64 overflow-hidden rounded-[var(--radius-md)] border border-[var(--color-line)] bg-white shadow-[var(--shadow-lift)]">
+                  <div role="menu" className="kc-pop absolute right-0 z-40 mt-2 w-64 overflow-hidden rounded-[var(--radius-md)] border border-[var(--color-line)] bg-[var(--color-porcelain)] shadow-[var(--shadow-lift)]">
                     <div className="border-b border-[var(--color-line)] bg-[var(--color-bone)]/60 px-4 py-3">
-                      <p className="text-[0.6rem] font-semibold uppercase tracking-[0.14em] text-[var(--color-stone-soft)]">Signed in as</p>
+                      <p className="text-[0.6rem] font-semibold uppercase tracking-[0.14em] text-[var(--color-stone)]">Signed in as</p>
                       {user && <p className="mt-0.5 truncate text-sm font-medium text-[var(--color-ink)]">{user}</p>}
                     </div>
                     <Link href="/admin/profile" role="menuitem" className="flex items-center gap-2.5 px-4 py-2.5 text-sm text-[var(--color-ink-soft)] transition-colors hover:bg-[var(--color-bone)]">
@@ -295,10 +314,13 @@ export function AdminShell({
                     </Link>
                     <label className="block px-4 py-2.5">
                       <span className="mb-1 block text-[0.6rem] uppercase tracking-[0.14em] text-[var(--color-stone)]">{t('shell.language')}</span>
-                      <select value={locale} onChange={(e) => changeLanguage(e.target.value as Locale)} className="w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-2 py-1.5 text-sm outline-none focus:border-[var(--color-gold)]">
+                      <select value={locale} onChange={(e) => changeLanguage(e.target.value as Locale)} className="w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-porcelain)] px-2 py-1.5 text-sm outline-none focus:border-[var(--color-gold)]">
                         {LOCALES.map((l) => <option key={l} value={l}>{LOCALE_LABELS[l]}</option>)}
                       </select>
                     </label>
+                    <div className="border-t border-[var(--color-line)]">
+                      <ThemeToggle />
+                    </div>
                     <button onClick={signOut} role="menuitem" className="flex w-full items-center gap-2.5 border-t border-[var(--color-line)] px-4 py-2.5 text-left text-sm text-[#b23b3b] transition-colors hover:bg-[color-mix(in_oklab,#b23b3b_10%,transparent)]">
                       <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden><path d="M6 2.5H3.5v11H6M10.5 11l3-3-3-3M13 8H6.5" /></svg>
                       {t('shell.signOut')}
@@ -310,14 +332,16 @@ export function AdminShell({
           </header>
           {/* key={pathname} restarts the entrance on every navigation — a short
               fade-up that makes page changes feel composed rather than abrupt. */}
-          <main key={pathname} className="kc-page-enter flex-1 p-5 md:p-8 lg:p-10">
+          <main id="admin-main" key={pathname} className="kc-page-enter flex-1 p-5 md:p-8 lg:p-10">
             {allowed.has('dayclose.run') && <CloseDownReminder />}
             {children}
           </main>
         </div>
         {allowed.has('build.view') && <ReportProblem />}
       </div>
+      <ChatDock />
       <GuideHost />
+      </TeamChatProvider>
     </I18nProvider>
   );
 }

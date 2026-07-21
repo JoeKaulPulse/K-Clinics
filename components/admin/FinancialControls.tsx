@@ -99,10 +99,11 @@ export function FinancialControls({ refundWindowDays, minMarginPct, vat, kiosk }
           <input type="checkbox" checked={registered} onChange={(e) => { setRegistered(e.target.checked); setVatMsg(''); }} className="h-4 w-4 accent-[var(--color-gold)]" />
           The clinic is VAT-registered
         </label>
-        <label className="mt-2 flex items-center gap-2 text-sm">
-          <input type="checkbox" checked={inclusive} onChange={(e) => { setInclusive(e.target.checked); setVatMsg(''); }} className="h-4 w-4 accent-[var(--color-gold)]" />
-          Prices include VAT (the displayed price is what the client pays)
-        </label>
+        {/* PRJ-939.1 (owner decision): prices are always VAT-inclusive — the
+            displayed price is what the client pays and the VAT portion is
+            extracted from it for the books. The old inclusive/exclusive toggle
+            is gone; the state stays so saves keep sending a value. */}
+        <p className="mt-2 text-sm text-[var(--color-stone)]">Prices always include VAT — the displayed price is what the client pays; reports extract the VAT portion from it.</p>
         <div className="mt-3 flex flex-wrap items-end gap-2">
           <label className="text-xs text-[var(--color-stone)]">Standard rate (%)<br />
             <input value={rate} onChange={(e) => { setRate(e.target.value.replace(/\D/g, '').slice(0, 3)); setVatMsg(''); }} inputMode="numeric" className="mt-1 w-24 rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-3 py-2 text-sm outline-none focus:border-[var(--color-gold)]" />

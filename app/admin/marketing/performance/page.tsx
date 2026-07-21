@@ -55,7 +55,7 @@ export default async function PerformancePage() {
           connected and the GA4 property id is set. */}
       <section className="mt-8 rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-5">
         <div className="mb-3 flex flex-wrap items-baseline justify-between gap-2">
-          <h2 className="font-[family-name:var(--font-display)] text-lg">Traffic by channel <span className="text-xs font-normal text-[var(--color-stone-soft)]">· GA4 · 90 days</span></h2>
+          <h2 className="font-[family-name:var(--font-display)] text-lg">Traffic by channel <span className="text-xs font-normal text-[var(--color-stone)]">· GA4 · 90 days</span></h2>
           {ga4.configured && <span className="text-xs text-[var(--color-stone)] tabular-nums">{ga4.sessions.toLocaleString('en-GB')} sessions · {ga4.conversions.toLocaleString('en-GB')} conversions</span>}
         </div>
         {!ga4.configured ? (
@@ -64,7 +64,7 @@ export default async function PerformancePage() {
           <p className="text-sm text-[var(--color-stone)]">No GA4 traffic recorded in the last 90 days.</p>
         ) : (
           <table className="w-full text-sm">
-            <thead><tr className="text-left text-xs uppercase tracking-wide text-[var(--color-stone-soft)]"><th className="pb-2">Channel</th><th className="pb-2 text-right">Sessions</th><th className="pb-2 text-right">Conversions</th></tr></thead>
+            <thead><tr className="text-left text-xs uppercase tracking-wide text-[var(--color-stone)]"><th className="pb-2">Channel</th><th className="pb-2 text-right">Sessions</th><th className="pb-2 text-right">Conversions</th></tr></thead>
             <tbody>
               {ga4.byChannel.map((c) => (
                 <tr key={c.source} className="border-t border-[var(--color-line)]">
@@ -87,7 +87,7 @@ export default async function PerformancePage() {
         />
       </div>
 
-      <p className="mt-6 text-xs text-[var(--color-stone-soft)]">
+      <p className="mt-6 text-xs text-[var(--color-stone)]">
         Connect ad platforms in <Link href="/admin/marketing/connections" className="underline">Connections</Link> to layer spend &amp; ROAS on top of this attribution.
       </p>
     </AdminShell>
@@ -97,7 +97,7 @@ export default async function PerformancePage() {
 function Kpi({ label, value, sub }: { label: string; value: string; sub?: string }) {
   return (
     <div className="rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-5">
-      <p className="text-xs uppercase tracking-[0.14em] text-[var(--color-stone-soft)]">{label}</p>
+      <p className="text-xs uppercase tracking-[0.14em] text-[var(--color-stone)]">{label}</p>
       <p className="mt-2 font-[family-name:var(--font-display)] text-3xl text-[var(--color-ink)]">{value}</p>
       {sub && <p className="mt-0.5 text-xs text-[var(--color-stone)]">{sub}</p>}
     </div>
@@ -112,11 +112,11 @@ function Table({ title, rows, empty }: { title: string; rows: { label: string; b
         <p className="text-sm text-[var(--color-stone)]">{empty}</p>
       ) : (
         <table className="w-full text-sm">
-          <thead><tr className="text-left text-xs uppercase tracking-wide text-[var(--color-stone-soft)]"><th className="pb-2">Name</th><th className="pb-2">Bookings</th><th className="pb-2 text-right">Revenue</th></tr></thead>
+          <thead><tr className="text-left text-xs uppercase tracking-wide text-[var(--color-stone)]"><th className="pb-2">Name</th><th className="pb-2">Bookings</th><th className="pb-2 text-right">Revenue</th></tr></thead>
           <tbody>
             {rows.map((r, i) => (
               <tr key={i} className="border-t border-[var(--color-line)]">
-                <td className="py-2 capitalize">{r.href ? <Link href={r.href} className="hover:text-[var(--color-gold)]">{r.label}</Link> : r.label}</td>
+                <td className="py-2 capitalize">{r.href ? <Link href={r.href} className="hover:text-[var(--color-gold-deep)]">{r.label}</Link> : r.label}</td>
                 <td className="py-2">{r.bookings}</td>
                 <td className="py-2 text-right font-medium">{money(r.revenuePence)}</td>
               </tr>

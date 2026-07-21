@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { crmEnabled } from '@/lib/crm';
-import { getSession, sessionPermissions, sessionCan } from '@/lib/auth';
+import { getSession, sessionPermissions, sessionCan, sessionIsAdmin } from '@/lib/auth';
 import { AdminShell } from '@/components/admin/AdminShell';
 import { CrmDisabled } from '@/components/admin/CrmDisabled';
 import { NewBookingButton } from '@/components/admin/NewBookingButton';
@@ -59,7 +59,7 @@ export default async function BookingsPage({ searchParams }: { searchParams: Pro
       <div className="flex flex-wrap items-center justify-between gap-4">
         <h1 className="font-[family-name:var(--font-display)] text-3xl">{t(locale, 'nav.bookings')}</h1>
         {sessionCan(session, 'bookings.manage') && (
-          <NewBookingButton treatments={treatmentsForBooking} />
+          <NewBookingButton treatments={treatmentsForBooking} isAdmin={sessionIsAdmin(session)} />
         )}
       </div>
 
@@ -84,7 +84,7 @@ export default async function BookingsPage({ searchParams }: { searchParams: Pro
               </svg>
             </span>
             <input name="q" defaultValue={q} placeholder="Client or treatment…"
-              className="block h-11 w-56 rounded-full border border-[var(--color-line)] bg-[var(--color-porcelain)] pl-9 pr-4 text-sm outline-none transition-shadow placeholder:text-[var(--color-stone-soft)] focus:border-[var(--color-gold)] focus:shadow-[0_0_0_3px_color-mix(in_oklab,var(--color-gold)_22%,transparent)]" />
+              className="block h-11 w-56 rounded-full border border-[var(--color-line)] bg-[var(--color-porcelain)] pl-9 pr-4 text-sm outline-none transition-shadow placeholder:text-[var(--color-stone)] focus:border-[var(--color-gold)] focus:shadow-[0_0_0_3px_color-mix(in_oklab,var(--color-gold)_22%,transparent)]" />
           </span>
         </label>
         <label className="text-xs text-[var(--color-stone)]">

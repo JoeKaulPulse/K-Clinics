@@ -25,7 +25,7 @@ export function LiveClassManager({ courses, liveClasses }: { courses: CourseRef[
       </div>
       {adding && <Form courses={courses} onDone={() => setAdding(false)} />}
       <div className="mt-4 space-y-2">
-        {liveClasses.length === 0 && <p className="text-sm text-[var(--color-stone-soft)]">No live classes scheduled yet.</p>}
+        {liveClasses.length === 0 && <p className="text-sm text-[var(--color-stone)]">No live classes scheduled yet.</p>}
         {liveClasses.map((l) => <Row key={l.id} l={l} courses={courses} />)}
       </div>
     </section>
@@ -41,13 +41,13 @@ function Row({ l, courses }: { l: LiveClass; courses: CourseRef[] }) {
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="min-w-0">
           <span className="font-medium">{l.title}</span>
-          <span className="text-xs text-[var(--color-stone-soft)]"> · {l.courseTitle} · {fmt(l.startAt)}</span>
+          <span className="text-xs text-[var(--color-stone)]"> · {l.courseTitle} · {fmt(l.startAt)}</span>
           {!l.joinUrl && <span className="ml-2 rounded-full bg-amber-100 px-2 py-0.5 text-[0.6rem] font-medium uppercase tracking-wide text-amber-800">No join link</span>}
         </div>
         <div className="flex items-center gap-3 text-xs">
-          {l.joinUrl && <a href={l.joinUrl} target="_blank" rel="noopener" className="text-[var(--color-gold)] hover:underline">Meet ↗</a>}
-          <button onClick={() => setEditing((e) => !e)} className="text-[var(--color-gold)] hover:underline">{editing ? 'Close' : 'Edit'}</button>
-          <button onClick={() => { if (confirm('Delete this session?')) act({ op: 'removeLiveClass', id: l.id }); }} className="text-[var(--color-blush)] hover:underline">Delete</button>
+          {l.joinUrl && <a href={l.joinUrl} target="_blank" rel="noopener" className="text-[var(--color-gold-deep)] hover:underline">Meet ↗</a>}
+          <button onClick={() => setEditing((e) => !e)} className="text-[var(--color-gold-deep)] hover:underline">{editing ? 'Close' : 'Edit'}</button>
+          <button onClick={() => { if (confirm('Delete this session?')) act({ op: 'removeLiveClass', id: l.id }); }} className="text-[var(--color-blush-deep)] hover:underline">Delete</button>
         </div>
       </div>
       {editing && <div className="mt-3"><Form courses={courses} liveClass={l} onDone={() => setEditing(false)} /></div>}

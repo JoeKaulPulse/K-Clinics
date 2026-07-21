@@ -10,11 +10,15 @@ export const dynamic = 'force-dynamic';
 export async function GET(_req: Request, { params }: { params: Promise<{ token: string }> }) {
   if (!crmEnabled) return NextResponse.json({ ok: false }, { status: 503 });
   const { token } = await params;
-  const { db } = await import('@/lib/db');
-  const b = await db.booking.findUnique({ where: { manageToken: token }, select: { id: true } });
-  if (!b) return NextResponse.json({ ok: false }, { status: 404 });
-  const { sessionSnapshot, clientView } = await import('@/lib/appointment-session-server');
-  const snap = await sessionSnapshot(b.id);
-  if (!snap) return NextResponse.json({ ok: false }, { status: 404 });
-  return NextResponse.json({ ok: true, live: clientView(snap) }, { headers: { 'cache-control': 'no-store' } });
+  try {
+    const { db } = await import('@/lib/db');
+    const b = await db.booking.findUnique({ where: { manageToken: token }, select: { id: true } });
+    if (!b) return NextResponse.json({ ok: false }, { status: 404 });
+    const { sessionSnapshot, clientView } = await import('@/lib/appointment-session-server');
+    const snap = await sessionSnapshot(b.id);
+    if (!snap) return NextResponse.json({ ok: false }, { status: 404 });
+    return NextResponse.json({ ok: true, live: clientView(snap) }, { headers: { 'cache-control': 'no-store' } });
+  } catch {
+    return NextResponse.json({ ok: false, error: 'service_unavailable' }, { status: 503, headers: { 'cache-control': 'no-store' } });
+  }
 }

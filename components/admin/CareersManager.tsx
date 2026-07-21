@@ -29,22 +29,22 @@ function Applications({ applications }: { applications: App[] }) {
   return (
     <section className="rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-5">
       <h2 className="mb-3 font-[family-name:var(--font-display)] text-xl">Applications</h2>
-      {applications.length === 0 ? <p className="text-sm text-[var(--color-stone-soft)]">No applications yet.</p> : (
+      {applications.length === 0 ? <p className="text-sm text-[var(--color-stone)]">No applications yet.</p> : (
         <div className="overflow-x-auto">
           <table className="w-full min-w-[760px] text-sm">
-            <thead><tr className="text-left text-xs uppercase tracking-wide text-[var(--color-stone-soft)]"><th scope="col" className="py-1 pr-2">Applicant</th><th scope="col" className="px-2">Role</th><th scope="col" className="px-2">Status</th><th scope="col" className="px-2"></th></tr></thead>
+            <thead><tr className="text-left text-xs uppercase tracking-wide text-[var(--color-stone)]"><th scope="col" className="py-1 pr-2">Applicant</th><th scope="col" className="px-2">Role</th><th scope="col" className="px-2">Status</th><th scope="col" className="px-2"></th></tr></thead>
             <tbody>
               {applications.map((a) => (
                 <tr key={a.id} className="border-t border-[var(--color-line)] align-top">
                   <td className="py-2 pr-2">
                     <span className="font-medium">{a.name}</span>
-                    <span className="block text-xs text-[var(--color-stone-soft)]">{a.email}{a.phone ? ` · ${a.phone}` : ''} · {fmt(a.createdAt)}</span>
-                    {a.cvUrl && <a href={a.cvUrl} target="_blank" rel="noopener" className="text-xs text-[var(--color-gold)] hover:underline">CV / portfolio ↗</a>}
+                    <span className="block text-xs text-[var(--color-stone)]">{a.email}{a.phone ? ` · ${a.phone}` : ''} · {fmt(a.createdAt)}</span>
+                    {a.cvUrl && <a href={a.cvUrl} target="_blank" rel="noopener" className="text-xs text-[var(--color-gold-deep)] hover:underline">CV / portfolio ↗</a>}
                     {a.coverNote && <span className="mt-1 block max-w-md text-xs text-[var(--color-stone)]">{a.coverNote}</span>}
                   </td>
                   <td className="px-2">{a.roleTitle}</td>
                   <td className="px-2"><select value={a.status} onChange={(e) => act({ op: 'appStatus', id: a.id, status: e.target.value })} className={field}>{STATUSES.map((s) => <option key={s} value={s}>{s}</option>)}</select></td>
-                  <td className="px-2 text-right"><button onClick={() => { if (confirm('Remove this application?')) act({ op: 'removeApp', id: a.id }); }} className="text-xs text-[var(--color-blush)] hover:underline">Remove</button></td>
+                  <td className="px-2 text-right"><button onClick={() => { if (confirm('Remove this application?')) act({ op: 'removeApp', id: a.id }); }} className="text-xs text-[var(--color-blush-deep)] hover:underline">Remove</button></td>
                 </tr>
               ))}
             </tbody>
@@ -76,11 +76,11 @@ function VacancyRow({ v }: { v: Vacancy }) {
   return (
     <div className={`rounded-[var(--radius-md)] border border-[var(--color-line)] bg-white p-4 ${v.active ? '' : 'opacity-60'}`}>
       <div className="flex items-center justify-between gap-3">
-        <div><span className="font-medium">{v.title}</span><span className="text-xs text-[var(--color-stone-soft)]"> · {[v.type, v.location, v.department].filter(Boolean).join(' · ') || 'no details'}</span></div>
+        <div><span className="font-medium">{v.title}</span><span className="text-xs text-[var(--color-stone)]"> · {[v.type, v.location, v.department].filter(Boolean).join(' · ') || 'no details'}</span></div>
         <div className="flex items-center gap-3 text-xs">
-          <button onClick={() => setEditing((e) => !e)} className="text-[var(--color-gold)] hover:underline">{editing ? 'Close' : 'Edit'}</button>
+          <button onClick={() => setEditing((e) => !e)} className="text-[var(--color-gold-deep)] hover:underline">{editing ? 'Close' : 'Edit'}</button>
           <button onClick={() => act({ op: 'toggle', id: v.id, active: !v.active })} className="text-[var(--color-stone)] hover:underline">{v.active ? 'Unpublish' : 'Publish'}</button>
-          <button onClick={() => { if (confirm('Delete this vacancy?')) act({ op: 'remove', id: v.id }); }} className="text-[var(--color-blush)] hover:underline">Delete</button>
+          <button onClick={() => { if (confirm('Delete this vacancy?')) act({ op: 'remove', id: v.id }); }} className="text-[var(--color-blush-deep)] hover:underline">Delete</button>
         </div>
       </div>
       {editing && <div className="mt-3"><VacancyForm vacancy={v} onDone={() => setEditing(false)} /></div>}

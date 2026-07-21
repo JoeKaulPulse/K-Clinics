@@ -20,7 +20,7 @@ export default async function AdminNpsPage() {
 
   const Stat = ({ label, value, tone = '' }: { label: string; value: string; tone?: string }) => (
     <div className="rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-5">
-      <p className={`font-[family-name:var(--font-display)] text-3xl ${tone}`}>{value}</p>
+      <p className={`font-[family-name:var(--font-display)] text-3xl tabular-nums ${tone}`}>{value}</p>
       <p className="mt-1 text-xs uppercase tracking-wide text-[var(--color-stone)]">{label}</p>
     </div>
   );
@@ -35,7 +35,7 @@ export default async function AdminNpsPage() {
       ) : (
         <>
           <div className="mt-6 grid gap-4 sm:grid-cols-4">
-            <Stat label="NPS score" value={s.nps != null ? String(s.nps) : '—'} tone={s.nps != null && s.nps >= 50 ? 'text-[var(--color-jade)]' : s.nps != null && s.nps < 0 ? 'text-[var(--color-blush)]' : ''} />
+            <Stat label="NPS score" value={s.nps != null ? String(s.nps) : '—'} tone={s.nps != null && s.nps >= 50 ? 'text-[var(--color-jade)]' : s.nps != null && s.nps < 0 ? 'text-[var(--color-blush-deep)]' : ''} />
             <Stat label="Avg (0–10)" value={s.avg != null ? s.avg.toFixed(1) : '—'} />
             <Stat label="Responses" value={`${s.responses}/${s.sentTotal}`} />
             <Stat label="Promoters" value={`${s.promoters}`} tone="text-[var(--color-jade)]" />
@@ -50,7 +50,7 @@ export default async function AdminNpsPage() {
                   <li key={i} className="rounded-[var(--radius-md)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-4 text-sm">
                     <span className={`mr-2 rounded-full px-2 py-0.5 text-xs font-semibold ${(c.score ?? 0) >= 9 ? 'bg-green-100 text-green-800' : (c.score ?? 0) <= 6 ? 'bg-red-100 text-red-800' : 'bg-[var(--color-bone)] text-[var(--color-stone)]'}`}>{c.score}</span>
                     <span className="text-[var(--color-ink-soft)]">{c.comment}</span>
-                    <span className="ml-2 text-xs text-[var(--color-stone-soft)]">{c.treatment ? `· ${c.treatment} ` : ''}· {fmt(c.at)}</span>
+                    <span className="ml-2 text-xs text-[var(--color-stone)]">{c.treatment ? `· ${c.treatment} ` : ''}· {fmt(c.at)}</span>
                   </li>
                 ))}
               </ul>

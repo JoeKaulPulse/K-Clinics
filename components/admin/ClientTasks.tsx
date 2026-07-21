@@ -36,7 +36,7 @@ export function ClientTasks({ clientId, tasks }: { clientId: string; tasks: Task
     <section>
       <div className="mb-3 flex items-center justify-between">
         <h2 className="font-[family-name:var(--font-display)] text-xl">Tasks</h2>
-        <Link href="/admin/tasks" className="text-sm text-[var(--color-gold)] hover:underline">All tasks</Link>
+        <Link href="/admin/tasks" className="text-sm text-[var(--color-gold-deep)] hover:underline">All tasks</Link>
       </div>
       <div className="rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-4">
         <ul className="space-y-2">
@@ -46,7 +46,7 @@ export function ClientTasks({ clientId, tasks }: { clientId: string; tasks: Task
               <button onClick={() => complete(t.id)} title="Mark done" className="mt-0.5 h-4 w-4 shrink-0 rounded-full border border-[var(--color-stone-soft)] hover:border-[var(--color-gold)]" />
               <div className="min-w-0 flex-1">
                 <p className="text-sm">{t.title}</p>
-                <p className="text-xs text-[var(--color-stone-soft)]">
+                <p className="text-xs text-[var(--color-stone)]">
                   {t.priority.toLowerCase()}{t.dueAt ? ` · ${new Date(t.dueAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}` : ''}{t.assigneeName ? ` · ${t.assigneeName}` : ''}
                 </p>
               </div>
@@ -58,11 +58,11 @@ export function ClientTasks({ clientId, tasks }: { clientId: string; tasks: Task
             <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Task for this client…" className={field} autoFocus />
             <div className="flex items-center gap-2">
               <input type="date" value={due} onChange={(e) => setDue(e.target.value)} className={field} />
-              <button onClick={add} disabled={busy} className="shrink-0 rounded-full bg-[var(--color-gold)] px-4 py-2 text-sm text-white disabled:opacity-60">{busy ? '…' : 'Add'}</button>
+              <button onClick={add} disabled={busy} className="shrink-0 rounded-full bg-[var(--color-gold-deep)] px-4 py-2 text-sm text-white disabled:opacity-60">{busy ? '…' : 'Add'}</button>
             </div>
           </div>
         ) : (
-          <button onClick={() => setAdding(true)} className="mt-3 text-sm text-[var(--color-gold)] hover:underline">+ Add task</button>
+          <button onClick={() => setAdding(true)} className="mt-3 text-sm text-[var(--color-gold-deep)] hover:underline">+ Add task</button>
         )}
       </div>
     </section>

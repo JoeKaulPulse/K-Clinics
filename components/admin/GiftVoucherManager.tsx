@@ -60,10 +60,10 @@ export function GiftVoucherManager({ vouchers, canManage = false }: { vouchers: 
 
       <div className="overflow-x-auto rounded-[var(--radius-lg)] border border-[var(--color-line)]">
         <table className="w-full min-w-[820px] text-sm">
-          <thead><tr className="bg-[var(--color-porcelain)] text-left text-xs uppercase tracking-wide text-[var(--color-stone-soft)]"><th scope="col" className="px-3 py-2">Code</th><th scope="col" className="px-3 py-2">From / To</th><th scope="col" className="px-3 py-2">Value</th><th scope="col" className="px-3 py-2">Balance</th><th scope="col" className="px-3 py-2">Status</th><th scope="col" className="px-3 py-2">Expires</th><th scope="col" className="px-3 py-2"></th></tr></thead>
+          <thead><tr className="bg-[var(--color-porcelain)] text-left text-xs uppercase tracking-wide text-[var(--color-stone)]"><th scope="col" className="px-3 py-2">Code</th><th scope="col" className="px-3 py-2">From / To</th><th scope="col" className="px-3 py-2">Value</th><th scope="col" className="px-3 py-2">Balance</th><th scope="col" className="px-3 py-2">Status</th><th scope="col" className="px-3 py-2">Expires</th><th scope="col" className="px-3 py-2"></th></tr></thead>
           <tbody>
             {filtered.length === 0 ? (
-              <tr><td colSpan={7} className="px-3 py-6 text-center text-[var(--color-stone-soft)]">No vouchers found.</td></tr>
+              <tr><td colSpan={7} className="px-3 py-6 text-center text-[var(--color-stone)]">No vouchers found.</td></tr>
             ) : filtered.map((v) => <Row key={v.id} v={v} canManage={canManage} />)}
           </tbody>
         </table>
@@ -75,8 +75,8 @@ export function GiftVoucherManager({ vouchers, canManage = false }: { vouchers: 
 function Stat({ label, value }: { label: string; value: string }) {
   return (
     <div className="rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-4">
-      <p className="text-xs uppercase tracking-wide text-[var(--color-stone-soft)]">{label}</p>
-      <p className="mt-1 font-[family-name:var(--font-display)] text-2xl">{value}</p>
+      <p className="text-xs uppercase tracking-wide text-[var(--color-stone)]">{label}</p>
+      <p className="mt-1 font-[family-name:var(--font-display)] text-2xl tabular-nums">{value}</p>
     </div>
   );
 }
@@ -91,20 +91,20 @@ function Row({ v, canManage }: { v: Voucher; canManage: boolean }) {
       <td className="px-3 py-2 font-[family-name:var(--font-mono,monospace)] text-xs">{v.code}</td>
       <td className="px-3 py-2">
         <span className="block">{v.purchaserName}</span>
-        <span className="block text-xs text-[var(--color-stone-soft)]">→ {v.recipientName || v.recipientEmail || 'self'}{v.deliverAt && !v.delivered ? ` · scheduled ${fmt(v.deliverAt)}` : ''}</span>
+        <span className="block text-xs text-[var(--color-stone)]">→ {v.recipientName || v.recipientEmail || 'self'}{v.deliverAt && !v.delivered ? ` · scheduled ${fmt(v.deliverAt)}` : ''}</span>
       </td>
-      <td className="px-3 py-2">{money(v.amountPence)}</td>
-      <td className="px-3 py-2 font-medium">{money(v.balancePence)}</td>
+      <td className="px-3 py-2 tabular-nums">{money(v.amountPence)}</td>
+      <td className="px-3 py-2 font-medium tabular-nums">{money(v.balancePence)}</td>
       <td className="px-3 py-2"><span className={`rounded-full px-2 py-0.5 text-xs font-medium ${STATUS_STYLE[v.status] || ''}`}>{v.status}</span></td>
       <td className="px-3 py-2 text-xs text-[var(--color-stone)]">{fmt(v.expiresAt)}</td>
       <td className="px-3 py-2 text-right">
         {canManage ? (
           <div className="flex flex-wrap justify-end gap-2 text-xs">
-            {redeemable && <button disabled={busy} onClick={() => { const a = prompt(`Redeem amount (£), balance ${money(v.balancePence)}:`); const p = Math.round(Number(a) * 100); if (p > 0) act({ op: 'redeem', id: v.id, amountPence: p }); }} className="text-[var(--color-gold)] hover:underline disabled:opacity-50">Redeem</button>}
+            {redeemable && <button disabled={busy} onClick={() => { const a = prompt(`Redeem amount (£), balance ${money(v.balancePence)}:`); const p = Math.round(Number(a) * 100); if (p > 0) act({ op: 'redeem', id: v.id, amountPence: p }); }} className="text-[var(--color-gold-deep)] hover:underline disabled:opacity-50">Redeem</button>}
             {(v.status === 'ACTIVE' || v.status === 'REDEEMED') && <button disabled={busy} onClick={() => act({ op: 'resend', id: v.id })} className="text-[var(--color-stone)] hover:underline disabled:opacity-50">Resend</button>}
-            {v.status !== 'CANCELLED' && <button disabled={busy} onClick={() => { if (confirm('Cancel this voucher? The balance will no longer be redeemable.')) act({ op: 'cancel', id: v.id }); }} className="text-[var(--color-blush)] hover:underline disabled:opacity-50">Cancel</button>}
+            {v.status !== 'CANCELLED' && <button disabled={busy} onClick={() => { if (confirm('Cancel this voucher? The balance will no longer be redeemable.')) act({ op: 'cancel', id: v.id }); }} className="text-[var(--color-blush-deep)] hover:underline disabled:opacity-50">Cancel</button>}
           </div>
-        ) : <span className="text-xs text-[var(--color-stone-soft)]">—</span>}
+        ) : <span className="text-xs text-[var(--color-stone)]">—</span>}
       </td>
     </tr>
   );

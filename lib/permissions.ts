@@ -79,6 +79,7 @@ export const PERMISSIONS: Permission[] = [
   { key: 'schedule.manage', group: 'Scheduling', label: 'Manage schedules & time-off', description: 'Edit staff working hours, time-off and availability.' },
   { key: 'sop.manage', group: 'Scheduling', label: 'Manage SOPs', description: 'Edit standard operating procedures per treatment.', sensitive: true },
   { key: 'rooms.prep.manage', group: 'Scheduling', label: 'Set room readiness', description: 'Mark treatment rooms dirty / cleaning / ready and see room availability.' },
+  { key: 'tasks.automate', group: 'Scheduling', label: 'Manage task automations', description: 'Create recurring/triggered work and repeat events that auto-assign tasks to staff.' },
 
   // Inventory
   { key: 'inventory.view', group: 'Inventory', label: 'View inventory', description: 'See stock levels, batches and expiry dates.' },
@@ -121,6 +122,10 @@ export const PERMISSIONS: Permission[] = [
   // Time tracking (BLD-285 / PRJ-63.6)
   { key: 'timetracking.use', group: 'Facility', label: 'Clock in / out', description: 'Clock in and out of shifts and log breaks.' },
   { key: 'timetracking.manage', group: 'Facility', label: 'Manage timesheets', description: 'View and edit all staff shift records and timesheets.' },
+
+  // Compliance & renewals (BLD-587)
+  { key: 'compliance.view', group: 'Facility', label: 'View compliance & renewals', description: 'See business renewal dates (insurance, licences, PAT/EICR, servicing) and what is due.' },
+  { key: 'compliance.manage', group: 'Facility', label: 'Manage compliance & renewals', description: 'Add, edit and renew compliance items and their reminder dates.', sensitive: true },
 ];
 
 export const PERMISSION_KEYS = PERMISSIONS.map((p) => p.key);
@@ -162,6 +167,7 @@ const ROLE_DEFAULTS: Record<Role, string[]> = {
     'reviews.manage',
     'calendar.view',
     'schedule.manage',
+    'tasks.automate',
     'rooms.prep.manage',
     'inventory.view',
     'inventory.manage',

@@ -7,6 +7,8 @@ export const runtime = 'nodejs';
 const schema = z.object({
   email: z.string().email(),
   company: z.string().max(0).optional().or(z.literal('')), // honeypot
+  // BLD-691: which surface captured the signup (attribution was blind before).
+  source: z.string().regex(/^[a-z0-9-]{1,40}$/).optional(),
 });
 
 // Public newsletter sign-up. Explicit, single opt-in with a stored consent
@@ -25,7 +27,7 @@ export async function POST(req: Request) {
     const sub = await db.newsletterSubscriber.upsert({
       where: { email },
       update: { active: true, consentedAt: new Date() },
-      create: { email, source: 'footer' },
+      create: { email, source: parsed.data.source || 'footer' },
     });
     // Single opt-in confirmation with one-click unsubscribe (fire-and-forget;
     // a mail hiccup never fails the subscribe).

@@ -1,11 +1,13 @@
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
+import Image from 'next/image';
 import type { Metadata } from 'next';
 import { AddToCart } from '@/components/shop/AddToCart';
 import { CartLink } from '@/components/shop/CartLink';
 import { getProductBySlug, formatPence } from '@/lib/shop';
 import { crmEnabled } from '@/lib/crm';
 import { pageMeta, JsonLd, productLd, breadcrumbLd } from '@/lib/seo';
+import { getVatNote } from '@/lib/vat';
 
 export const revalidate = 3600;
 
@@ -22,6 +24,7 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
   if (!p) notFound();
   const onSale = p.compareAtPence && p.compareAtPence > p.pricePence;
   const inStock = !(p.trackInventory && p.stockQty <= 0);
+  const vatNote = await getVatNote();
 
   return (
     <>
@@ -39,14 +42,12 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
       <div className="grid gap-10 lg:grid-cols-2">
         <div className="overflow-hidden rounded-[var(--radius-2xl)] border border-[var(--color-line)] bg-[var(--color-bone)]">
           {p.images[0]
-            // eslint-disable-next-line @next/next/no-img-element
-            ? <img src={p.images[0]} alt={p.name} className="aspect-square w-full object-cover" />
-            : <span className="grid aspect-square place-items-center text-5xl text-[var(--color-stone-soft)]">▦</span>}
+            ? <Image src={p.images[0]} alt={p.name} width={800} height={800} sizes="(max-width: 1024px) 100vw, 50vw" className="aspect-square w-full object-cover" priority />
+            : <span className="grid aspect-square place-items-center text-5xl text-[var(--color-stone)]">▦</span>}
           {p.images.length > 1 && (
             <div className="flex gap-2 p-3">
               {p.images.slice(1, 5).map((u, i) => (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img key={i} src={u} alt="" className="h-16 w-16 rounded object-cover" />
+                <Image key={i} src={u} alt="" width={64} height={64} className="h-16 w-16 rounded object-cover" />
               ))}
             </div>
           )}
@@ -58,6 +59,7 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
             {formatPence(p.pricePence)}
             {onSale ? <span className="ml-3 text-lg text-[var(--color-stone)] line-through">{formatPence(p.compareAtPence!)}</span> : null}
           </p>
+          {vatNote && <p className="mt-1 text-xs text-[var(--color-stone)]">{vatNote}</p>}
           {p.description && <p className="mt-5 whitespace-pre-line leading-relaxed text-[var(--color-stone)]">{p.description}</p>}
           {p.ageRestricted && <p className="mt-4 inline-block rounded-full bg-[var(--color-ink)] px-3 py-1 text-xs text-[var(--color-porcelain)]">Age-restricted — 18+ verification required at checkout</p>}
           <div className="mt-7">

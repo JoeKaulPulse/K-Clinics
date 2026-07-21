@@ -55,11 +55,11 @@ function Card({ loc, uk }: { loc: Loc; uk: boolean }) {
           <p className="mt-2 text-sm text-[var(--color-stone)]">
             {[loc.addressLine, loc.city, loc.postcode].filter(Boolean).join(', ') || L('No address set', 'Адресу не вказано')}
           </p>
-          <p className="mt-1 text-xs text-[var(--color-stone-soft)]">{[loc.phone, loc.email].filter(Boolean).join(' · ')}</p>
+          <p className="mt-1 text-xs text-[var(--color-stone)]">{[loc.phone, loc.email].filter(Boolean).join(' · ')}</p>
           <div className="mt-3 flex items-center gap-4 text-xs">
             <span className="text-[var(--color-stone)]">{loc.staffCount} {L('clinician(s)', 'клініцист(ів)')}</span>
-            {!loc.isPrimary && <button onClick={setPrimary} className="text-[var(--color-gold)] hover:underline">{L('Make primary', 'Зробити основною')}</button>}
-            <button onClick={toggleActive} className="text-[var(--color-stone)] hover:text-[var(--color-blush)]">{loc.active ? L('Archive', 'Архівувати') : L('Reactivate', 'Відновити')}</button>
+            {!loc.isPrimary && <button onClick={setPrimary} className="text-[var(--color-gold-deep)] hover:underline">{L('Make primary', 'Зробити основною')}</button>}
+            <button onClick={toggleActive} className="text-[var(--color-stone)] hover:text-[var(--color-blush-deep)]">{loc.active ? L('Archive', 'Архівувати') : L('Reactivate', 'Відновити')}</button>
           </div>
         </>
       ) : (
@@ -77,7 +77,7 @@ function Card({ loc, uk }: { loc: Loc; uk: boolean }) {
           <label className="flex items-center gap-2 text-xs text-[var(--color-stone)]">{L('Calendar colour', 'Колір календаря')}
             <input type="color" value={v.color} onChange={set('color')} className="h-8 w-12 rounded border border-[var(--color-line)]" />
           </label>
-          <button onClick={save} className="rounded-full bg-[var(--color-gold)] px-5 py-2 text-sm font-medium text-white hover:bg-[var(--color-ink)]">{L('Save', 'Зберегти')}</button>
+          <button onClick={save} className="rounded-full bg-[var(--color-gold-deep)] px-5 py-2 text-sm font-medium text-white hover:bg-[var(--color-ink)]">{L('Save', 'Зберегти')}</button>
         </div>
       )}
     </div>
@@ -114,7 +114,7 @@ function AddLocation({ uk }: { uk: boolean }) {
         <input value={v.email} onChange={set('email')} placeholder="Email" className={field} />
       </div>
       <div className="mt-4 flex items-center gap-3">
-        <button onClick={add} disabled={busy} className="rounded-full bg-[var(--color-gold)] px-5 py-2 text-sm font-medium text-white hover:bg-[var(--color-ink)] disabled:opacity-60">{busy ? L('Adding…', 'Додавання…') : L('Add location', 'Додати')}</button>
+        <button onClick={add} disabled={busy} className="rounded-full bg-[var(--color-gold-deep)] px-5 py-2 text-sm font-medium text-white hover:bg-[var(--color-ink)] disabled:opacity-60">{busy ? L('Adding…', 'Додавання…') : L('Add location', 'Додати')}</button>
         <button onClick={() => setOpen(false)} className="text-sm text-[var(--color-stone)]">{L('Cancel', 'Скасувати')}</button>
       </div>
     </section>

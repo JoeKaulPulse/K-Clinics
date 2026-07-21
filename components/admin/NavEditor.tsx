@@ -8,7 +8,7 @@ import type { FooterColumn } from '@/lib/site-config';
 
 const fld = 'w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-porcelain)] px-2.5 py-1.5 text-sm outline-none focus:border-[var(--color-gold)]';
 const card = 'rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-5';
-const ghost = 'rounded-full border border-[var(--color-line)] px-3 py-1.5 text-sm text-[var(--color-ink-soft)] hover:border-[var(--color-gold)] hover:text-[var(--color-gold)]';
+const ghost = 'rounded-full border border-[var(--color-line)] px-3 py-1.5 text-sm text-[var(--color-ink-soft)] hover:border-[var(--color-gold)] hover:text-[var(--color-gold-deep)]';
 
 function move<T>(a: T[], i: number, d: number): T[] { const j = i + d; if (j < 0 || j >= a.length) return a; const n = [...a]; [n[i], n[j]] = [n[j], n[i]]; return n; }
 function setAt<T>(a: T[], i: number, v: T): T[] { const n = [...a]; n[i] = v; return n; }
@@ -17,9 +17,9 @@ function delAt<T>(a: T[], i: number): T[] { return a.filter((_, j) => j !== i); 
 function Reorder({ onUp, onDown, onDel }: { onUp: () => void; onDown: () => void; onDel: () => void }) {
   return (
     <div className="flex shrink-0 items-center gap-1">
-      <button onClick={onUp} aria-label="Move up" className="text-[var(--color-stone-soft)] hover:text-[var(--color-ink)]">▲</button>
-      <button onClick={onDown} aria-label="Move down" className="text-[var(--color-stone-soft)] hover:text-[var(--color-ink)]">▼</button>
-      <button onClick={onDel} aria-label="Remove" className="ml-1 text-[var(--color-stone-soft)] hover:text-[#c0392b]">✕</button>
+      <button onClick={onUp} aria-label="Move up" className="text-[var(--color-stone)] hover:text-[var(--color-ink)]">▲</button>
+      <button onClick={onDown} aria-label="Move down" className="text-[var(--color-stone)] hover:text-[var(--color-ink)]">▼</button>
+      <button onClick={onDel} aria-label="Remove" className="ml-1 text-[var(--color-stone)] hover:text-[#c0392b]">✕</button>
     </div>
   );
 }

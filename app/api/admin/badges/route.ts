@@ -17,17 +17,19 @@ export async function GET() {
     const { db } = await import('@/lib/db');
     const canApprove = sessionCan(session, 'schedule.manage');
     const canChat = sessionCan(session, 'clients.view');
-    const [pendingTimeOff, openTasks, chatUnread, notifications] = await Promise.all([
+    const [pendingTimeOff, openTasks, chatUnread, notifications, teamChatUnread] = await Promise.all([
       canApprove ? db.staffTimeOff.count({ where: { status: 'PENDING' } }) : Promise.resolve(0),
       db.task.count({ where: { assigneeId: session.sub, status: 'OPEN' } }),
       canChat ? db.chatConversation.count({ where: { status: 'OPEN', staffUnread: { gt: 0 } } }) : Promise.resolve(0),
       db.staffNotification.count({ where: { userId: session.sub, readAt: null } }),
+      // Team chat: unread messages across my un-muted channels (drives the dock badge).
+      (async () => { try { const { totalUnread } = await import('@/lib/team-chat'); return await totalUnread(session.sub); } catch { return 0; } })(),
     ]);
-    return NextResponse.json({ ok: true, pendingTimeOff, openTasks, chatUnread, notifications });
+    return NextResponse.json({ ok: true, pendingTimeOff, openTasks, chatUnread, notifications, teamChatUnread });
   } catch (e) {
     // Non-critical: log for diagnosis but return a benign empty payload so the
     // sidebar poll doesn't spam 500s in the Vercel logs or the browser console.
     console.error('[badges] failed', e);
-    return NextResponse.json({ ok: false, pendingTimeOff: 0, openTasks: 0, chatUnread: 0 });
+    return NextResponse.json({ ok: false, pendingTimeOff: 0, openTasks: 0, chatUnread: 0, teamChatUnread: 0 });
   }
 }

@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { Suspense, type ReactElement } from 'react';
 import { crmEnabled } from '@/lib/crm';
 import { getSession, sessionCan, sessionPermissions } from '@/lib/auth';
 import { formatPrice } from '@/lib/treatments';
@@ -24,6 +25,8 @@ import { ClinicianView } from '@/components/admin/dashboard/ClinicianView';
 import { ReceptionistView } from '@/components/admin/dashboard/ReceptionistView';
 import { DeveloperView } from '@/components/admin/dashboard/DeveloperView';
 import { ContractorView } from '@/components/admin/dashboard/ContractorView';
+import { GaTrafficWidget } from '@/components/admin/dashboard/GaTrafficWidget';
+import { ComplianceWidget } from '@/components/admin/dashboard/ComplianceWidget';
 import { RoomPrepStatus } from '@/components/admin/rooms/RoomPrepStatus';
 
 export const dynamic = 'force-dynamic';
@@ -66,7 +69,7 @@ export default async function AdminOverview() {
   // cluster (built below) so the top row stays one tidy, anchored band.
   const heading = (
     <div>
-      <p className="text-[0.7rem] font-semibold uppercase tracking-[0.18em] text-[var(--color-stone-soft)]">Overview · {todayLabel}</p>
+      <p className="text-[0.7rem] font-semibold uppercase tracking-[0.18em] text-[var(--color-stone)]">Overview · {todayLabel}</p>
       <h1 className="mt-1 font-[family-name:var(--font-display)] text-3xl">{greeting}{session?.name ? `, ${session.name}` : ''}</h1>
     </div>
   );
@@ -87,7 +90,7 @@ export default async function AdminOverview() {
               <span className="tabular-nums">{weather.tempC}°</span>
               <span className="ml-1 inline-block max-w-[7rem] truncate align-bottom font-normal text-[var(--color-stone)]">{weather.label}</span>
               {weather.uvMax != null && uv && (
-                <span className="ml-1.5 text-[var(--color-stone-soft)]">· UV <span className={uv.tone === 'high' ? 'text-[#b23b3b]' : uv.tone === 'moderate' ? 'text-[var(--color-gold-deep)]' : 'text-[var(--color-jade)]'}>{weather.uvMax}</span></span>
+                <span className="ml-1.5 text-[var(--color-stone)]">· UV <span className={uv.tone === 'high' ? 'text-[#b23b3b]' : uv.tone === 'moderate' ? 'text-[var(--color-gold-deep)]' : 'text-[var(--color-jade)]'}>{weather.uvMax}</span></span>
               )}
             </p>
           </div>
@@ -132,6 +135,8 @@ export default async function AdminOverview() {
   const canReviews = sessionCan(session, 'reviews.manage');
   const canBuild = sessionCan(session, 'build.view');
   const canAutomations = sessionCan(session, 'automations.view');
+  const canMarketing = sessionCan(session, 'campaigns.view');
+  const canCompliance = sessionCan(session, 'compliance.view');
   const dayStart = new Date(); dayStart.setHours(0, 0, 0, 0);
   const dayEnd = new Date(); dayEnd.setHours(23, 59, 59, 999);
   // Comms health: transactional emails (booking confirmations/receipts/reminders)
@@ -206,6 +211,15 @@ export default async function AdminOverview() {
     ink: 'border-[var(--color-line)] bg-[var(--color-porcelain)] text-[var(--color-ink)]',
   };
 
+  const bookingStatusCls: Record<string, string> = {
+    CONFIRMED: 'bg-[color-mix(in_oklab,var(--color-jade)_12%,transparent)] text-[var(--color-jade)]',
+    PENDING: 'bg-amber-50 text-amber-800',
+    REQUESTED: 'bg-amber-100 text-amber-900',
+    COMPLETED: 'bg-[var(--color-bone)] text-[var(--color-stone)]',
+    CANCELLED: 'bg-red-50 text-[#b23b3b]',
+    NO_SHOW: 'bg-[var(--color-bone)] text-[var(--color-stone)]',
+  };
+
   const kpis = [
     { label: 'Revenue · 30 days', value: formatPrice(a.rev30), trend: a.revTrend, href: '/admin/bookings' },
     { label: 'Upcoming appointments', value: String(a.upcomingCount), href: '/admin/bookings' },
@@ -234,6 +248,7 @@ export default async function AdminOverview() {
       }).catch(() => null)
     : null;
   const canRoomsPrep = sessionCan(session, 'rooms.prep.manage');
+  const canClinical = sessionCan(session, 'clients.clinical.view');
   const nextRoom = nextBk ? await db.resource.findFirst({ where: { kind: 'ROOM', bookings: { some: { id: nextBk.id } } }, select: { id: true, name: true } }).catch(() => null) : null;
   // The next arrival's room prep state (for the live arrival-prep checklist).
   const { getRoomPrepFor, getRoomsForDay } = await import('@/lib/room-prep');
@@ -251,8 +266,9 @@ export default async function AdminOverview() {
     roomPrep: nextRoomPrep?.status,
     canManageRoom: canRoomsPrep,
     drinks: nextBk.refreshments ?? [],
-    allergies: decClinical(nextBk.client.allergies) ?? null,
-    medicalFlag: decClinical(nextBk.client.medicalFlag) ?? null,
+    // clients.clinical.view gated — same redaction as ReceptionistView (front-of-house never sees clinical data).
+    allergies: canClinical ? decClinical(nextBk.client.allergies) ?? null : null,
+    medicalFlag: canClinical ? decClinical(nextBk.client.medicalFlag) ?? null : null,
   } : null;
   // Rooms board (front-of-house / clinician): availability + prep for the day.
   const roomsToday = canRoomsPrep ? await getRoomsForDay().catch(() => []) : [];
@@ -262,10 +278,22 @@ export default async function AdminOverview() {
       <DashboardShell role={role} view={renderedView} heading={heading} aside={clockWeather}>
 
       {/* Needs attention */}
-      {attention.length > 0 && (
+      {attention.length === 0 ? (
+        <div className="mt-6 flex items-center gap-2.5 rounded-full border border-[var(--color-jade)]/30 bg-[color-mix(in_oklab,var(--color-jade)_7%,transparent)] px-4 py-2 text-sm text-[var(--color-jade)]">
+          <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+            <path d="M13 4.5 6.5 11 3 7.5" />
+          </svg>
+          All clear — no issues requiring attention
+        </div>
+      ) : (
         <div className="mt-6 flex flex-wrap gap-3">
-          {attention.map((x) => (
-            <Link key={x.label} href={x.href} className={`flex items-center gap-3 rounded-full border px-4 py-2 text-sm transition-shadow hover:shadow-[var(--shadow-soft)] ${toneCls[x.tone]}`}>
+          {attention.map((x, i) => (
+            <Link
+              key={x.label}
+              href={x.href}
+              className={`kc-item-enter flex items-center gap-3 rounded-full border px-4 py-2 text-sm transition-shadow hover:shadow-[var(--shadow-soft)] ${toneCls[x.tone]}`}
+              style={{ animationDelay: `${i * 35}ms` }}
+            >
               <span className="font-[family-name:var(--font-display)] text-lg leading-none">{x.value}</span>
               <span>{x.label}</span>
             </Link>
@@ -288,15 +316,32 @@ export default async function AdminOverview() {
           <p className="eyebrow mb-3 text-[var(--color-stone)]">Quick actions</p>
           {canBookings && <div className="mb-3"><NewBookingButton treatments={treatments} /></div>}
           <div className="grid grid-cols-2 gap-2">
-            {[
-              { href: '/admin/calendar', label: 'Calendar', perm: 'calendar.view' },
-              { href: '/admin/my-day', label: 'My day' },
-              { href: '/admin/schedule', label: 'Lunch & breaks', perm: 'schedule.manage' },
-              { href: '/admin/day-close', label: 'Day-close', perm: 'dayclose.run' },
-            ]
+            {([
+              {
+                href: '/admin/calendar', label: 'Calendar', perm: 'calendar.view',
+                icon: <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden><rect x="2" y="3" width="12" height="11" rx="1.2" /><path d="M5 1.5v3M11 1.5v3M2 7h12" /></svg>,
+              },
+              {
+                href: '/admin/my-day', label: 'My day', perm: undefined,
+                icon: <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden><circle cx="8" cy="8" r="3" /><path d="M8 1.5V3M8 13v1.5M1.5 8H3M13 8h1.5M3.6 3.6l1 1M11.4 11.4l1 1M3.6 12.4l1-1M11.4 4.6l1-1" /></svg>,
+              },
+              {
+                href: '/admin/schedule', label: 'Lunch & breaks', perm: 'schedule.manage',
+                icon: <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden><circle cx="8" cy="8" r="6" /><path d="M8 4.5V8l2.5 1.5" /></svg>,
+              },
+              {
+                href: '/admin/day-close', label: 'Day-close', perm: 'dayclose.run',
+                icon: <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden><path d="M13 5.5 6.5 12 3 8.5" /><circle cx="8" cy="8" r="6" /></svg>,
+              },
+            ] as { href: string; label: string; perm?: string; icon: ReactElement }[])
               .filter((t) => !t.perm || sessionCan(session, t.perm))
               .map((t) => (
-                <Link key={t.href} href={t.href} className="flex items-center justify-center rounded-[var(--radius-sm)] border border-[var(--color-line)] px-3 py-3 text-center text-sm text-[var(--color-ink-soft)] transition-colors hover:bg-[var(--color-bone)] hover:text-[var(--color-ink)]">
+                <Link
+                  key={t.href}
+                  href={t.href}
+                  className="flex flex-col items-center gap-2 rounded-[var(--radius-sm)] border border-[var(--color-line)] px-3 py-3.5 text-center text-sm text-[var(--color-ink-soft)] transition-[colors,transform,box-shadow] duration-150 hover:-translate-y-0.5 hover:bg-[var(--color-bone)] hover:text-[var(--color-ink)] hover:shadow-[var(--shadow-soft)] active:translate-y-0"
+                >
+                  <span className="text-[var(--color-stone)]">{t.icon}</span>
                   {t.label}
                 </Link>
               ))}
@@ -329,6 +374,21 @@ export default async function AdminOverview() {
         <RevenueChart series={a.series} />
         <TopTreatments items={a.topTreatments} />
       </div>
+
+      {/* GA4 website-traffic snapshot — streams in independently so a slow GA API
+          call never delays the dashboard; renders nothing until GA is connected. */}
+      {canMarketing && (
+        <Suspense fallback={null}>
+          <GaTrafficWidget days={28} />
+        </Suspense>
+      )}
+
+      {/* Compliance & renewals — only renders when something's expired or due soon. */}
+      {canCompliance && (
+        <Suspense fallback={null}>
+          <ComplianceWidget />
+        </Suspense>
+      )}
 
       {/* Build & issues — live status of the work board */}
       {canBuild && (
@@ -363,25 +423,25 @@ export default async function AdminOverview() {
         <section>
           <div className="mb-3 flex items-center justify-between">
             <h2 className="font-[family-name:var(--font-display)] text-xl">Today’s schedule</h2>
-            <Link href="/admin/bookings" className="text-sm text-[var(--color-gold)] hover:underline">All bookings</Link>
+            <Link href="/admin/bookings" className="text-sm text-[var(--color-gold-deep)] hover:underline">All bookings</Link>
           </div>
           <div className="overflow-hidden rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-porcelain)]">
             {a.today.length === 0 && <p className="p-6 text-sm text-[var(--color-stone)]">No appointments today.</p>}
             {a.today.map((b) => (
               <Link key={b.id} href={`/admin/bookings/${b.id}`} className="flex items-center gap-4 border-b border-[var(--color-line)] px-5 py-3.5 last:border-0 hover:bg-[var(--color-bone)]">
-                <span className="w-14 shrink-0 font-[family-name:var(--font-display)] text-lg text-[var(--color-gold)]">{b.time}</span>
+                <span className="w-14 shrink-0 font-[family-name:var(--font-display)] text-lg text-[var(--color-gold-deep)]">{b.time}</span>
                 <div className="flex-1">
                   <p className="font-medium">{b.treatment}</p>
                   <p className="text-xs text-[var(--color-stone)]">{b.client}</p>
                 </div>
-                <span className="rounded-full bg-[var(--color-bone)] px-3 py-1 text-xs">{b.status.toLowerCase()}</span>
+                <span className={`rounded-full px-3 py-1 text-xs ${bookingStatusCls[b.status] ?? 'bg-[var(--color-bone)] text-[var(--color-stone)]'}`}>{b.status.toLowerCase()}</span>
               </Link>
             ))}
           </div>
 
           <div className="mb-3 mt-8 flex items-center justify-between">
             <h2 className="font-[family-name:var(--font-display)] text-xl">Recent consultations</h2>
-            <Link href="/admin/consultations" className="text-sm text-[var(--color-gold)] hover:underline">View all</Link>
+            <Link href="/admin/consultations" className="text-sm text-[var(--color-gold-deep)] hover:underline">View all</Link>
           </div>
           <div className="overflow-hidden rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-porcelain)]">
             {o.recentConsults.length === 0 && <p className="p-6 text-sm text-[var(--color-stone)]">No consultations yet.</p>}
@@ -391,7 +451,7 @@ export default async function AdminOverview() {
                   <p className="font-medium">{c.client.firstName} {c.client.lastName ?? ''}</p>
                   <p className="text-xs text-[var(--color-stone)]">{c.category} · {c.treatments.slice(0, 2).join(', ') || 'general'}</p>
                 </div>
-                <span className="rounded-full bg-[var(--color-bone)] px-3 py-1 text-xs">{c.status}</span>
+                <span className={`rounded-full px-3 py-1 text-xs ${bookingStatusCls[c.status] ?? 'bg-[var(--color-bone)] text-[var(--color-stone)]'}`}>{c.status.toLowerCase()}</span>
               </Link>
             ))}
           </div>
@@ -407,7 +467,8 @@ export default async function AdminOverview() {
                 { label: 'This week', value: o.weekConsults },
                 { label: 'Subscribers', value: o.marketingClients },
               ].map((s) => (
-                <div key={s.label} className="rounded-[var(--radius-md)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-4">
+                <div key={s.label} className="relative overflow-hidden rounded-[var(--radius-md)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-4">
+                  <span aria-hidden className="absolute inset-y-3 left-0 w-0.5 rounded-full bg-[var(--color-gold)]/50" />
                   <p className="font-[family-name:var(--font-display)] text-2xl tabular-nums">{s.value}</p>
                   <p className="text-xs text-[var(--color-stone)]">{s.label}</p>
                 </div>
@@ -420,8 +481,12 @@ export default async function AdminOverview() {
             <div className="overflow-hidden rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-porcelain)]">
               {o.upcomingBirthdays.length === 0 && <p className="p-6 text-sm text-[var(--color-stone)]">None in the next two weeks.</p>}
               {o.upcomingBirthdays.map((b) => (
-                <div key={b.id} className="flex items-center justify-between border-b border-[var(--color-line)] px-5 py-3 last:border-0">
-                  <span className="text-sm">{b.name}</span>
+                <div key={b.id} className="flex items-center gap-3 border-b border-[var(--color-line)] px-5 py-3 last:border-0">
+                  <span
+                    aria-hidden
+                    className={`h-2 w-2 shrink-0 rounded-full ${b.inDays === 0 ? 'bg-[var(--color-jade)]' : b.inDays <= 3 ? 'bg-amber-400' : 'bg-[var(--color-blush)]'}`}
+                  />
+                  <span className="flex-1 text-sm">{b.name}</span>
                   <span className="text-xs text-[var(--color-stone)]">{b.date} · {b.inDays === 0 ? 'today' : `in ${b.inDays}d`}</span>
                 </div>
               ))}

@@ -91,7 +91,7 @@ export default async function IntegrationsPage({ searchParams }: { searchParams:
 
                   {(i.manageHref || i.docsHref) && (
                     <div className="mt-4 flex items-center gap-4 text-sm">
-                      {i.manageHref && <a href={i.manageHref} className="font-medium text-[var(--color-gold)] hover:text-[var(--color-ink)]">{uk ? 'Керувати' : 'Manage'} →</a>}
+                      {i.manageHref && <a href={i.manageHref} className="font-medium text-[var(--color-gold-deep)] hover:text-[var(--color-ink)]">{uk ? 'Керувати' : 'Manage'} →</a>}
                       {i.docsHref && <a href={i.docsHref} target="_blank" rel="noopener noreferrer" className="text-[var(--color-stone)] hover:text-[var(--color-ink)]">{uk ? 'Документація' : 'Get keys'} ↗</a>}
                     </div>
                   )}
@@ -136,7 +136,7 @@ async function EncryptionStatus() {
           <p className="mt-3 rounded-[var(--radius-sm)] border border-amber-500/30 bg-amber-50 px-4 py-2.5 text-sm text-amber-800">Re-encryption in progress — <strong>{status.total}</strong> record(s) remaining on a retired key (health {status.pending.healthAssessments}, notes {status.pending.clinicalNotes}, SOPs {status.pending.sopChecklists}, tokens {status.pending.oauthTokens}). The daily job migrates these automatically; keep the old key until this reaches 0.</p>
         )
       ) : (
-        <p className="mt-3 text-sm text-[var(--color-stone-soft)]">No rotation in progress. To rotate: add the new value to <code className="text-xs">HEALTH_ENCRYPTION_KEY</code>, move the old value into <code className="text-xs">HEALTH_ENCRYPTION_KEYS_OLD</code>, and redeploy.</p>
+        <p className="mt-3 text-sm text-[var(--color-stone)]">No rotation in progress. To rotate: add the new value to <code className="text-xs">HEALTH_ENCRYPTION_KEY</code>, move the old value into <code className="text-xs">HEALTH_ENCRYPTION_KEYS_OLD</code>, and redeploy.</p>
       )}
     </section>
   );

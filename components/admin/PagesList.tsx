@@ -21,11 +21,11 @@ export function PagesList({ pages, legalPages = [] }: { pages: PageRow[]; legalP
     const existing = byPath.get(item.path);
     return (
       <div key={item.path} className={rowCls}>
-        <span><span className="font-medium">{item.label}</span><span className="ml-2 text-sm text-[var(--color-stone-soft)]">{item.path}</span></span>
+        <span><span className="font-medium">{item.label}</span><span className="ml-2 text-sm text-[var(--color-stone)]">{item.path}</span></span>
         <span className="flex items-center gap-3">
-          {existing ? <StatusBadge status={existing.status} /> : <span className="text-xs text-[var(--color-stone-soft)]">Built-in</span>}
+          {existing ? <StatusBadge status={existing.status} /> : <span className="text-xs text-[var(--color-stone)]">Built-in</span>}
           {existing
-            ? <Link href={`/admin/pages/${existing.id}`} className="rounded-full border border-[var(--color-line)] px-4 py-1.5 text-sm hover:border-[var(--color-gold)] hover:text-[var(--color-gold)]">Edit</Link>
+            ? <Link href={`/admin/pages/${existing.id}`} className="rounded-full border border-[var(--color-line)] px-4 py-1.5 text-sm hover:border-[var(--color-gold)] hover:text-[var(--color-gold-deep)]">Edit</Link>
             : <button disabled={!!busy} onClick={() => create(item.path)} className="rounded-full bg-[var(--color-ink)] px-4 py-1.5 text-sm text-[var(--color-porcelain)] disabled:opacity-50">{busy === item.path ? 'Opening…' : 'Customise'}</button>}
         </span>
       </div>
@@ -76,13 +76,13 @@ export function PagesList({ pages, legalPages = [] }: { pages: PageRow[]; legalP
             item.manage === 'builder' ? builderRow(item)
             : item.manage === 'catalogue' ? (
               <div key={item.path} className={rowCls}>
-                <span><span className="font-medium">{item.label}</span><span className="ml-2 text-sm text-[var(--color-stone-soft)]">{item.path}</span></span>
-                <Link href={item.adminHref!} className="rounded-full border border-[var(--color-line)] px-4 py-1.5 text-sm hover:border-[var(--color-gold)] hover:text-[var(--color-gold)]">Open editor →</Link>
+                <span><span className="font-medium">{item.label}</span><span className="ml-2 text-sm text-[var(--color-stone)]">{item.path}</span></span>
+                <Link href={item.adminHref!} className="rounded-full border border-[var(--color-line)] px-4 py-1.5 text-sm hover:border-[var(--color-gold)] hover:text-[var(--color-gold-deep)]">Open editor →</Link>
               </div>
             ) : (
               <div key={item.path} className={rowCls}>
-                <span><span className="font-medium">{item.label}</span><span className="ml-2 text-sm text-[var(--color-stone-soft)]">{item.path}</span></span>
-                <span className="text-xs text-[var(--color-stone-soft)]">Built-in</span>
+                <span><span className="font-medium">{item.label}</span><span className="ml-2 text-sm text-[var(--color-stone)]">{item.path}</span></span>
+                <span className="text-xs text-[var(--color-stone)]">Built-in</span>
               </div>
             )
           ))}
@@ -104,7 +104,7 @@ export function PagesList({ pages, legalPages = [] }: { pages: PageRow[]; legalP
             <input className="w-56 rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-porcelain)] px-3 py-2 text-sm outline-none focus:border-[var(--color-gold)]" value={path} placeholder="/new-page" onChange={(e) => setPath(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && create(path)} />
             <button disabled={!!busy} onClick={() => create(path)} className="rounded-full bg-[var(--color-ink)] px-5 py-2 text-sm text-[var(--color-porcelain)] disabled:opacity-50">Create</button>
           </div>
-          {err && <p className="mt-2 text-sm text-[#c0392b]">{err}</p>}
+          {err && <p role="alert" aria-live="assertive" className="mt-2 text-sm text-[#c0392b]">{err}</p>}
         </div>
       </Section>
     </div>

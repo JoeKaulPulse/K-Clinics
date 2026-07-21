@@ -16,10 +16,23 @@ const csp = [
   "frame-ancestors 'self'",
   "form-action 'self'",
   "img-src 'self' data: blob: https:",
+  // Native <video>/<audio> playback is governed by media-src, which falls back
+  // to default-src 'self' when absent — that silently blocked every uploaded
+  // lesson video/audio on *.public.blob.vercel-storage.com (they appeared but
+  // wouldn't play). Mirror img-src so blob-hosted and direct https media play.
+  "media-src 'self' data: blob: https:",
   "font-src 'self' https://fonts.gstatic.com data:",
   "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
-  "script-src 'self' 'unsafe-inline' https://js.stripe.com https://challenges.cloudflare.com https://www.youtube.com https://www.youtube-nocookie.com https://maps.googleapis.com https://maps.gstatic.com https://connect.facebook.net",
-  "connect-src 'self' https://api.stripe.com https://m.stripe.network https://r.stripe.com https://challenges.cloudflare.com https://maps.googleapis.com https://blob.vercel-storage.com https://*.public.blob.vercel-storage.com https://*.sentry.io https://sentry.io https://connect.facebook.net https://graph.facebook.com",
+  "script-src 'self' 'unsafe-inline' https://js.stripe.com https://challenges.cloudflare.com https://www.youtube.com https://www.youtube-nocookie.com https://maps.googleapis.com https://maps.gstatic.com https://connect.facebook.net https://www.googletagmanager.com",
+  // NB: the @vercel/blob *client* SDK performs client-direct uploads via
+  // https://vercel.com/api/blob (not the storage host directly), so vercel.com
+  // MUST be allowed here or every client-direct upload (team chat, academy PDFs,
+  // homework, build attachments) is CSP-blocked in the browser.
+  // google-analytics.com/googletagmanager.com/googleadservices.com carry the
+  // GA4 + Google Ads conversion beacons that components/marketing/TrackingScripts.tsx
+  // fires via gtag() — script-src alone lets gtag.js load but its collect/config
+  // calls still need connect-src or they silently fail.
+  "connect-src 'self' https://api.stripe.com https://m.stripe.network https://r.stripe.com https://challenges.cloudflare.com https://maps.googleapis.com https://vercel.com https://blob.vercel-storage.com https://*.blob.vercel-storage.com https://*.public.blob.vercel-storage.com https://*.sentry.io https://sentry.io https://connect.facebook.net https://graph.facebook.com https://www.googletagmanager.com https://www.google-analytics.com https://*.google-analytics.com https://www.googleadservices.com https://googleads.g.doubleclick.net",
   "frame-src 'self' https://js.stripe.com https://hooks.stripe.com https://challenges.cloudflare.com https://www.youtube.com https://www.youtube-nocookie.com https://www.google.com",
   "worker-src 'self' blob:",
   'upgrade-insecure-requests',
@@ -50,6 +63,22 @@ const redirects = async () => [
   { source: '/individualised-treatment-plans', destination: '/about', permanent: true },
   // IPL Phototherapy retired from the menu — send old links to the treatments hub.
   { source: '/ipl-phototherapy', destination: '/treatments', permanent: true },
+  // POM-brand pages removed for CAP 12.12 / MHRA compliance (no advertising a
+  // prescription-only medicine to the public). Their SEO equity is preserved by
+  // redirecting to the compliant, generically-named injectables page.
+  { source: '/botox', destination: '/cosmetic-injections', permanent: true },
+  { source: '/kybella', destination: '/cosmetic-injections', permanent: true },
+  // /booking is a natural URL guess for the real booking flow at /book (which
+  // has no page.tsx of its own, so it fell through to the marketing catch-all
+  // and soft-404'd instead of reaching the booking flow). BLD-895.
+  { source: '/booking', destination: '/book', permanent: true },
+  // BLD-886: these info stubs redirect() in the page, but the route is
+  // statically generated so Next bakes that into a meta-refresh served with
+  // HTTP 200 — an indexable duplicate of the destination. A config redirect
+  // runs before routing and issues a true 3xx.
+  { source: '/info/careers', destination: '/careers', permanent: true },
+  { source: '/info/refer-a-friend', destination: '/refer-a-friend', permanent: true },
+  { source: '/info/gift-vouchers', destination: '/gift-vouchers', permanent: true },
 ];
 
 const nextConfig = {
@@ -112,7 +141,13 @@ const nextConfig = {
   // Exposed to client + server so image paths from /public can be prefixed with
   // the Pages sub-path. next/image does NOT prepend basePath to unoptimized
   // /public images in a static export, so we do it ourselves (see treatment-images).
-  env: { NEXT_PUBLIC_BASE_PATH: repoBase },
+  // NEXT_PUBLIC_STATIC_DEMO is true ONLY in the GitHub Pages static export (no
+  // /api routes). Portal forms use it to show a friendly "preview" result on a
+  // 404 instead of erroring — and crucially NOT on the live site, where a real
+  // API 404/503 must surface as a genuine error rather than silently faking
+  // success (a 404 blip previously made the signup wizard claim "account
+  // created" without creating one — clients then couldn't log in).
+  env: { NEXT_PUBLIC_BASE_PATH: repoBase, NEXT_PUBLIC_STATIC_DEMO: isPages ? 'true' : '' },
   images: {
     formats: ['image/avif', 'image/webp'],
     // GitHub Pages has no image optimiser; serve images as-is.
@@ -121,6 +156,11 @@ const nextConfig = {
     dangerouslyAllowSVG: true,
     contentDispositionType: 'inline',
     contentSecurityPolicy: "default-src 'self'; script-src 'none'; sandbox;",
+    // BLD-577: allow next/image to optimise user-uploaded content from Vercel Blob.
+    remotePatterns: [
+      { protocol: 'https', hostname: '*.public.blob.vercel-storage.com' },
+      { protocol: 'https', hostname: '*.blob.vercel-storage.com' },
+    ],
   },
   ...(isPages
     ? {

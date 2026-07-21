@@ -36,7 +36,7 @@ export function HeatmapViewer({ path, baseUrl, points }: { path: string; baseUrl
           </div>
         )}
       </div>
-      <p className="mt-2 text-xs text-[var(--color-stone-soft)]">Dot positions are approximate (mapped by % of page); use session replay for exact behaviour.</p>
+      <p className="mt-2 text-xs text-[var(--color-stone)]">Dot positions are approximate (mapped by % of page); use session replay for exact behaviour.</p>
     </section>
   );
 }

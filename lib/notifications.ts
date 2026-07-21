@@ -56,7 +56,7 @@ export function emailEnabled(prefs: NotifPrefs, c: Category): boolean {
 /** Categorise a notification from its destination (and kind) when not given. */
 export function deriveCategory(kind: string, href?: string): Category {
   const h = href || '';
-  if (h.includes('/admin/chat')) return 'messages';
+  if (h.includes('/admin/chat') || h.includes('/admin/messages')) return 'messages';
   if (h.includes('/admin/bookings')) return 'bookings';
   if (h.includes('/admin/consultations') || h.includes('/admin/clients')) return 'clinical';
   if (h.includes('/admin/reviews')) return 'reviews';

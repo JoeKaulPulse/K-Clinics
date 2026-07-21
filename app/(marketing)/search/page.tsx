@@ -26,7 +26,7 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
             name="q" defaultValue={q} autoFocus placeholder="Search treatments, articles…" aria-label="Search"
             className="min-w-0 flex-1 rounded-full border border-white/20 bg-white/10 px-5 py-3 text-[var(--color-porcelain)] placeholder:text-[var(--color-porcelain)]/50 outline-none focus:border-[var(--color-gold)]"
           />
-          <button className="shrink-0 rounded-full bg-[var(--color-gold)] px-6 py-3 text-sm font-medium text-white">Search</button>
+          <button className="shrink-0 rounded-full bg-[var(--color-gold-deep)] px-6 py-3 text-sm font-medium text-white">Search</button>
         </form>
       </PageHero>
 

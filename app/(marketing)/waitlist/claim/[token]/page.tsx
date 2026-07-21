@@ -56,7 +56,7 @@ export default async function ClaimPage({ params }: { params: Promise<{ token: s
         <h2 className="text-title">{entry.treatmentTitle}</h2>
         <p className="mt-2 text-lg text-[var(--color-ink-soft)]">{when}</p>
         <p className="mt-4 text-sm text-[var(--color-stone)]">It’s yours to claim before anyone else on the waitlist. Tap below to confirm your details and secure it — your card is only charged when your treatment is delivered.</p>
-        <a href={href} className="mt-6 inline-block rounded-full bg-[var(--color-ink)] px-7 py-3 text-sm font-medium text-[var(--color-porcelain)] transition-colors hover:bg-[var(--color-gold)]">Book this slot</a>
+        <a href={href} className="mt-6 inline-block rounded-full bg-[var(--color-ink)] px-7 py-3 text-sm font-medium text-[var(--color-porcelain)] transition-colors hover:bg-[var(--color-gold-deep)]">Book this slot</a>
       </Shell>
     );
   }
@@ -73,7 +73,7 @@ export default async function ClaimPage({ params }: { params: Promise<{ token: s
     <Shell>
       <h2 className="text-title">{m.title}</h2>
       <p className="mt-3 text-[var(--color-ink-soft)]">{m.body}</p>
-      <a href="/book" className="mt-6 inline-block rounded-full bg-[var(--color-ink)] px-7 py-3 text-sm font-medium text-[var(--color-porcelain)] transition-colors hover:bg-[var(--color-gold)]">See live availability</a>
+      <a href="/book" className="mt-6 inline-block rounded-full bg-[var(--color-ink)] px-7 py-3 text-sm font-medium text-[var(--color-porcelain)] transition-colors hover:bg-[var(--color-gold-deep)]">See live availability</a>
       {callUs}
     </Shell>
   );

@@ -15,6 +15,9 @@ export async function POST(req: Request) {
   const { db } = await import('@/lib/db');
   const { decClinical } = await import('@/lib/clinical-crypto'); // BLD-127: recordings/transcripts encrypted at rest
 
+  const { sessionCan } = await import('@/lib/auth');
+  const canViewClinical = sessionCan(session, 'clients.clinical.view');
+
   switch (b.op) {
     case 'list': {
       const where = b.filter === 'inbound' ? { direction: 'INBOUND' as const }
@@ -28,7 +31,8 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: true, calls: rows.map((c) => ({
         id: c.id, direction: c.direction, fromNumber: c.fromNumber, toNumber: c.toNumber,
         status: c.status, startedAt: c.startedAt.toISOString(), durationSec: c.durationSec,
-        recordingUrl: decClinical(c.recordingUrl), transcriptStatus: c.transcriptStatus, hasTranscript: !!c.transcript,
+        recordingUrl: canViewClinical ? decClinical(c.recordingUrl) : null,
+        transcriptStatus: c.transcriptStatus, hasTranscript: canViewClinical && !!c.transcript,
         matchType: c.matchType, matchedLabel: c.matchedLabel,
         client: c.matchedClient ? { id: c.matchedClient.id, name: [c.matchedClient.firstName, c.matchedClient.lastName].filter(Boolean).join(' ') } : null,
         supplier: c.matchedSupplier ? { id: c.matchedSupplier.id, name: c.matchedSupplier.name } : null,
@@ -42,6 +46,11 @@ export async function POST(req: Request) {
         include: { matchedClient: { select: { id: true, firstName: true, lastName: true } }, matchedSupplier: { select: { id: true, name: true } } },
       });
       if (!c) return NextResponse.json({ ok: false }, { status: 404 });
+      if (!canViewClinical) return NextResponse.json({ ok: false, error: 'Clinical data access not permitted.' }, { status: 403 });
+      try {
+        const { logAudit } = await import('@/lib/audit');
+        await logAudit({ action: 'ASSESSMENT_VIEWED', actor: session.email, actorRole: session.role, summary: `Call transcript/recording accessed — call ${c.id}` });
+      } catch { /* non-fatal */ }
       return NextResponse.json({ ok: true, call: {
         ...c, startedAt: c.startedAt.toISOString(), answeredAt: c.answeredAt?.toISOString() ?? null,
         endedAt: c.endedAt?.toISOString() ?? null, createdAt: c.createdAt.toISOString(), raw: undefined,

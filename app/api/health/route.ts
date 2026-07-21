@@ -108,5 +108,22 @@ export async function GET(req: Request) {
     if (authed) report.error = (err as Error)?.message?.slice(0, 200) || 'unknown';
   }
 
+  // BLD-841: nothing scheduled this check before — a production outage was
+  // only caught by a manual audit. The Vercel Cron entry in vercel.json now
+  // hits this route every 5 minutes with CRON_SECRET; on failure, alert the
+  // same way every other cron does (mirrors app/api/cron/daily/route.ts).
+  if (!report.ok && authed) {
+    const summary = `[kclinics health] check failed — database:${report.database} env:${report.env}`;
+    try {
+      const Sentry = await import('@sentry/nextjs');
+      Sentry.captureMessage(summary, 'error');
+    } catch { /* Sentry not available — non-fatal */ }
+    const webhookUrl = process.env.CRON_ALERT_WEBHOOK_URL;
+    if (webhookUrl) {
+      const body = JSON.stringify({ text: summary, ...report });
+      fetch(webhookUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body }).catch(() => {});
+    }
+  }
+
   return NextResponse.json(report, { status: report.ok ? 200 : 503 });
 }

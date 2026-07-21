@@ -12,6 +12,8 @@ import { Button, ArrowIcon } from '@/components/ui/Button';
 import { BookingButtons } from '@/components/booking/BookingButtons';
 import { site } from '@/lib/site';
 import { pricingForTreatment, formatPence, statusLabel, type ServiceStatus } from '@/lib/services';
+import { getVatNote } from '@/lib/vat';
+import { NewsletterCapture } from '@/components/layout/NewsletterCapture';
 
 /** Build the small print under a variant — duration + course price, per-session
  *  cost and the saving vs a single session (so the value of a course is clear). */
@@ -20,7 +22,7 @@ function variantNote(durationMin: number, courses: { sessions: number; totalPenc
   if (durationMin) parts.push(`${durationMin} min`);
   for (const c of courses) {
     const per = Math.round(c.totalPence / c.sessions);
-    const save = singlePence > 0 ? Math.round((1 - per / singlePence) * 100) : 0;
+    const save = singlePence > 0 && per < singlePence ? Math.round((1 - per / singlePence) * 100) : 0;
     parts.push(`course of ${c.sessions} ${formatPence(c.totalPence)} (${formatPence(per)}/session${save > 0 ? `, save ${save}%` : ''})`);
   }
   return parts.join(' · ');
@@ -61,7 +63,7 @@ export async function TreatmentTemplate({ t }: { t: Treatment }) {
   const related = t.related.map(getTreatment).filter(Boolean) as Treatment[];
 
   // Pricing + presentation status derived live from the admin catalogue (SSOT).
-  const pricing = await pricingForTreatment(t.slug);
+  const [pricing, vatNote] = await Promise.all([pricingForTreatment(t.slug), getVatNote()]);
   const fromPence = pricing?.fromPence ?? null;
   const fromOfferPence = pricing?.fromOfferPence ?? null;
   const offerName = pricing?.offerName ?? null;
@@ -70,14 +72,14 @@ export async function TreatmentTemplate({ t }: { t: Treatment }) {
   // Group laser/IPL areas by body part (falls back to a flat list otherwise).
   const groupedAreas = /laser|ipl/i.test(t.slug) ? groupAreas(variants) : null;
   const variantRow = (v: (typeof variants)[number]) => {
-    const note = variantNote(v.durationMin, v.courses, v.pricePence);
+    const note = variantNote(v.durationMin, v.courses, v.offerPence ?? v.pricePence);
     const unavailable = v.status === 'COMING_SOON' || v.status === 'UNAVAILABLE';
     return (
       <li key={v.id} className="flex items-baseline justify-between gap-4 bg-[var(--color-porcelain)] px-6 py-5">
         <div>
           <p className="font-[family-name:var(--font-display)] text-lg text-[var(--color-ink)]">{v.name}</p>
           {!unavailable && note && <p className="mt-0.5 text-sm text-[var(--color-stone)]">{note}</p>}
-          {v.offerPence != null && v.offerName && <p className="mt-0.5 text-sm font-medium text-[var(--color-gold)]">{v.offerName}</p>}
+          {v.offerPence != null && v.offerName && <p className="mt-0.5 text-sm font-medium text-[var(--color-gold-deep)]">{v.offerName}</p>}
         </div>
         <p className="shrink-0 font-[family-name:var(--font-display)] text-xl text-[var(--color-ink)]">
           {unavailable ? (
@@ -85,7 +87,7 @@ export async function TreatmentTemplate({ t }: { t: Treatment }) {
           ) : v.status === 'CONSULTATION' ? (
             <span className="text-base text-[var(--color-stone)]">On consultation</span>
           ) : v.offerPence != null ? (
-            <span><span className="mr-2 text-base text-[var(--color-stone-soft)] line-through">{formatPence(v.pricePence)}</span>{formatPence(v.offerPence)}</span>
+            <span><span className="mr-2 text-base text-[var(--color-stone)] line-through">{formatPence(v.pricePence)}</span>{formatPence(v.offerPence)}</span>
           ) : (
             formatPence(v.pricePence)
           )}
@@ -194,8 +196,8 @@ export async function TreatmentTemplate({ t }: { t: Treatment }) {
                     </>
                   ) : fromOfferPence != null ? (
                     <>
-                      <p className="flex items-center gap-2 text-xs uppercase tracking-[0.16em] text-[var(--color-stone)]">From <span className="rounded-full bg-[var(--color-gold)] px-1.5 py-0.5 text-[0.6rem] font-semibold normal-case tracking-normal text-white">Offer</span></p>
-                      <p className="font-[family-name:var(--font-display)] text-2xl text-[var(--color-ink)]"><span className="mr-2 text-lg text-[var(--color-stone-soft)] line-through">{formatPence(fromPence)}</span>{formatPence(fromOfferPence)}</p>
+                      <p className="flex items-center gap-2 text-xs uppercase tracking-[0.16em] text-[var(--color-stone)]">From <span className="rounded-full bg-[var(--color-gold-deep)] px-1.5 py-0.5 text-[0.6rem] font-semibold normal-case tracking-normal text-white">Offer</span></p>
+                      <p className="font-[family-name:var(--font-display)] text-2xl text-[var(--color-ink)]"><span className="mr-2 text-lg text-[var(--color-stone)] line-through">{formatPence(fromPence)}</span>{formatPence(fromOfferPence)}</p>
                     </>
                   ) : (
                     <>
@@ -220,7 +222,7 @@ export async function TreatmentTemplate({ t }: { t: Treatment }) {
           <Stagger className="mt-[var(--space-block)] grid gap-px overflow-hidden rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-line)] sm:grid-cols-2">
             {t.benefits.map((b) => (
               <StaggerItem key={b.title} className="group bg-[var(--color-porcelain)] p-8 transition-colors duration-500 hover:bg-[var(--color-bone)]">
-                <div className="mb-4 grid h-11 w-11 place-items-center rounded-full bg-[var(--color-ink)] text-[var(--color-gold-soft)] transition-all duration-500 [transition-timing-function:var(--ease-spring)] group-hover:scale-110 group-hover:bg-[var(--color-gold)] group-hover:text-white">
+                <div className="mb-4 grid h-11 w-11 place-items-center rounded-full bg-[var(--color-ink)] text-[var(--color-gold-soft)] transition-all duration-500 [transition-timing-function:var(--ease-spring)] group-hover:scale-110 group-hover:bg-[var(--color-gold-deep)] group-hover:text-white">
                   <svg viewBox="0 0 20 20" className="h-5 w-5" fill="none">
                     <path d="M4 10.5l4 4 8-9" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
                   </svg>
@@ -268,7 +270,7 @@ export async function TreatmentTemplate({ t }: { t: Treatment }) {
               <h2 className="text-title">Transparent pricing.</h2>
               {offerName && !enquiryOnly && (
                 <p className="mt-4 inline-flex items-center gap-2 rounded-full bg-[var(--color-gold-soft)] px-3 py-1 text-sm font-medium text-[var(--color-ink)]">
-                  <span className="rounded-full bg-[var(--color-gold)] px-1.5 py-0.5 text-[0.6rem] font-semibold uppercase tracking-wide text-white">Offer</span>
+                  <span className="rounded-full bg-[var(--color-gold-deep)] px-1.5 py-0.5 text-[0.6rem] font-semibold uppercase tracking-wide text-white">Offer</span>
                   {offerName}
                 </p>
               )}
@@ -288,6 +290,11 @@ export async function TreatmentTemplate({ t }: { t: Treatment }) {
                   <BookingButtons consult treatmentSlug={t.slug} />
                 )}
                 <Button href="/pricing" variant="outline">Full price list <ArrowIcon /></Button>
+              </div>
+              {vatNote && <p className="mt-4 text-xs text-[var(--color-stone)]">{vatNote}</p>}
+              <div className="mt-5 flex flex-wrap gap-x-5 gap-y-2 text-sm">
+                <Link href="/gallery" className="font-medium text-[var(--color-gold-deep)] hover:underline">See real results →</Link>
+                <Link href="/reviews" className="font-medium text-[var(--color-gold-deep)] hover:underline">Read verified reviews →</Link>
               </div>
             </Reveal>
             <Reveal delay={0.1}>
@@ -358,6 +365,8 @@ export async function TreatmentTemplate({ t }: { t: Treatment }) {
           </Stagger>
         </section>
       )}
+      {/* BLD-691: email capture on every treatment page, attributed. */}
+      <NewsletterCapture source="treatment" />
     </article>
   );
 }

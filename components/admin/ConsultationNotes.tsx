@@ -42,7 +42,7 @@ export function ConsultationNotes({ consultationId, initial }: { consultationId:
         {notes.map((n) => (
           <div key={n.id} className="rounded-[var(--radius-md)] border border-[var(--color-line)] bg-[var(--color-porcelain)] px-4 py-3">
             <p className="whitespace-pre-wrap break-words text-sm">{n.body}</p>
-            <p className="mt-1.5 text-xs text-[var(--color-stone-soft)]">
+            <p className="mt-1.5 text-xs text-[var(--color-stone)]">
               {new Date(n.createdAt).toLocaleString('en-GB')} · {n.author}
             </p>
           </div>
@@ -67,7 +67,7 @@ export function ConsultationNotes({ consultationId, initial }: { consultationId:
           {saving ? '…' : 'Post'}
         </button>
       </div>
-      {error && <p className="text-xs text-[var(--color-blush)]">{error}</p>}
+      {error && <p role="alert" aria-live="assertive" className="text-xs text-[var(--color-blush-deep)]">{error}</p>}
     </div>
   );
 }

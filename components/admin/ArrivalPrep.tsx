@@ -77,7 +77,7 @@ export function ArrivalPrep({ a }: { a: NextArrival }) {
       <div className="p-5">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div className="min-w-0">
-            <Link href={`/admin/clients/${a.clientId}`} className="font-[family-name:var(--font-display)] text-xl hover:text-[var(--color-gold)]">{a.clientName}</Link>
+            <Link href={`/admin/clients/${a.clientId}`} className="font-[family-name:var(--font-display)] text-xl hover:text-[var(--color-gold-deep)]">{a.clientName}</Link>
             <p className="mt-0.5 text-sm text-[var(--color-stone)]">{a.treatment}{a.practitioner ? ` · with ${a.practitioner}` : ''}</p>
           </div>
           <Link href={`/admin/bookings/${a.id}`} className="shrink-0 rounded-full border border-[var(--color-line)] px-3.5 py-1.5 text-sm transition-colors hover:bg-[var(--color-bone)]">Open booking →</Link>
@@ -92,7 +92,7 @@ export function ArrivalPrep({ a }: { a: NextArrival }) {
 
         <div className="mt-4">
           <div className="mb-2 flex items-center justify-between">
-            <p className="text-[0.7rem] font-semibold uppercase tracking-[0.14em] text-[var(--color-stone-soft)]">Prep checklist</p>
+            <p className="text-[0.7rem] font-semibold uppercase tracking-[0.14em] text-[var(--color-stone)]">Prep checklist</p>
             <span className="text-xs tabular-nums text-[var(--color-stone)]">{readyCount}/{total} ready</span>
           </div>
           <ul className="space-y-1.5">
@@ -114,7 +114,7 @@ export function ArrivalPrep({ a }: { a: NextArrival }) {
                     aria-pressed={checked}
                     className={`flex w-full items-center gap-3 rounded-[var(--radius-sm)] px-3 py-2.5 text-left text-sm transition-colors ${p.soon ? 'cursor-default opacity-60' : 'hover:bg-[var(--color-bone)]'} ${isLiveRoom && roomBusy ? 'opacity-60' : ''}`}
                   >
-                    <span aria-hidden className={`grid h-5 w-5 shrink-0 place-items-center rounded-full border transition-colors ${checked ? 'border-[var(--color-gold)] bg-[var(--color-gold)] text-white' : 'border-[var(--color-sand)]'}`}>
+                    <span aria-hidden className={`grid h-5 w-5 shrink-0 place-items-center rounded-full border transition-colors ${checked ? 'border-[var(--color-gold)] bg-[var(--color-gold-deep)] text-white' : 'border-[var(--color-sand)]'}`}>
                       {checked && <svg width="11" height="11" viewBox="0 0 12 12" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M2 6.2 4.8 9 10 3.4" /></svg>}
                     </span>
                     <span className={`min-w-0 break-words ${checked ? 'text-[var(--color-stone)] line-through' : 'text-[var(--color-ink-soft)]'}`}>{p.label}</span>

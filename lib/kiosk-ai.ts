@@ -1,4 +1,5 @@
 import 'server-only';
+import * as Sentry from '@sentry/nextjs';
 import { getSecret } from '@/lib/secrets';
 
 // Kiosk Skin & Smile AI analysis — lightweight, friendly, non-clinical.
@@ -17,7 +18,7 @@ When given a photo, provide:
 5. 1-2 treatment suggestions from K Clinics that could enhance their look
 
 Treatment options to suggest from (use exact names):
-- HydraFacial, Chemical Peel, Microneedling, LED Light Therapy, Botox, Dermal Fillers, Lip Fillers, Teeth Whitening, Composite Bonding, Laser Hair Removal, IPL Photorejuvenation
+- HydraFacial, Chemical Peel, Microneedling, LED Light Therapy, Anti-Wrinkle Injections, Dermal Fillers, Lip Fillers, Teeth Whitening, Composite Bonding, Laser Hair Removal, IPL Photorejuvenation
 
 Tone: warm, fun, celebratory — like a beauty-savvy friend. Never medical or diagnostic. If the photo isn't a usable face/selfie (e.g. no person, intimate areas, a minor), still return the JSON but with a gentle generic headline and modest scores.
 
@@ -30,15 +31,18 @@ ALWAYS respond in this exact JSON format:
   "treatments": ["HydraFacial", "LED Light Therapy"]
 }`;
 
+// Public-facing treatment names only. Never a prescription-only medicine brand
+// (e.g. "Botox"): naming a POM to the public breaches CAP 12.12 / MHRA, so the
+// botulinum-toxin option is the compliant generic "Anti-Wrinkle Injections".
 export const ALLOWED_TREATMENTS = [
-  'HydraFacial', 'Chemical Peel', 'Microneedling', 'LED Light Therapy', 'Botox',
+  'HydraFacial', 'Chemical Peel', 'Microneedling', 'LED Light Therapy', 'Anti-Wrinkle Injections',
   'Dermal Fillers', 'Lip Fillers', 'Teeth Whitening', 'Composite Bonding',
   'Laser Hair Removal', 'IPL Photorejuvenation',
 ];
 
 // Treatments that are invasive: the model is told to only ever suggest these
 // when the visual signal is unambiguous (and the surrounding copy stays soft).
-const INVASIVE_TREATMENTS = ['Botox', 'Dermal Fillers', 'Lip Fillers'];
+const INVASIVE_TREATMENTS = ['Anti-Wrinkle Injections', 'Dermal Fillers', 'Lip Fillers'];
 
 export type KioskAiResult = {
   headline: string;
@@ -76,14 +80,14 @@ export async function analyzeKioskPhoto(photoUrl: string): Promise<KioskAiResult
   }
 
   try {
-    // 1) Fetch the photo and base64-encode it.
-    const imgRes = await fetch(photoUrl);
-    if (!imgRes.ok) {
-      console.error('[kiosk-ai] photo fetch failed', imgRes.status);
+    // 1) Fetch the photo (private blob first — BLD-798) and base64-encode it.
+    const { fetchKioskBlob } = await import('@/lib/kiosk-blob');
+    const img = await fetchKioskBlob(photoUrl);
+    if (!img) {
+      console.error('[kiosk-ai] photo fetch failed');
       return null;
     }
-    const ab = await imgRes.arrayBuffer();
-    const b64 = Buffer.from(ab).toString('base64');
+    const b64 = Buffer.from(img.bytes).toString('base64');
     const media = mediaTypeFromUrl(photoUrl);
 
     // 2) Call Claude with a 30s timeout (same pattern as callClaude in lib/ai-consultation.ts).
@@ -141,6 +145,9 @@ export async function analyzeKioskPhoto(photoUrl: string): Promise<KioskAiResult
     return { headline, skinScore, smileScore, insights, treatments };
   } catch (e) {
     console.error('[kiosk-ai] analysis failed:', (e as Error)?.message);
+    // BLD-851: a provider outage silently breaks the in-clinic kiosk demo —
+    // surface it in Sentry like chat-ai/ai-consultation do.
+    Sentry.captureException(e, { tags: { area: 'kiosk-ai' } });
     return null;
   }
 }
@@ -244,13 +251,17 @@ const num01 = (n: unknown): number | null => {
 };
 
 /** Parse + enforce one raw observation; null when invalid. */
-function sanitiseObservation(raw: unknown, photoCount: number): KioskObservation | null {
+// BLD-336: validIndices is the set of photo indexes that actually fetched; an
+// observation pointing at a purged/failed photo is dropped (photoIndex is
+// validated against submitted count first, then against the fetched set).
+function sanitiseObservation(raw: unknown, photoCount: number, validIndices?: Set<number>): KioskObservation | null {
   if (!raw || typeof raw !== 'object') return null;
   const o = raw as Record<string, unknown>;
   const area = o.area === 'skin' || o.area === 'smile' ? o.area : null;
   if (!area) return null;
   const photoIndex = Math.round(Number(o.photoIndex));
   if (!Number.isFinite(photoIndex) || photoIndex < 0 || photoIndex >= photoCount) return null;
+  if (validIndices && !validIndices.has(photoIndex)) return null;
   const label = String(o.label || '').trim().slice(0, 24);
   const detail = String(o.detail || '').trim().slice(0, 90);
   if (!label || !detail) return null;
@@ -282,12 +293,12 @@ export async function analyzeKioskPhotosV2(photoUrls: string[]): Promise<KioskAi
   try {
     // 1) Fetch + base64 every photo (keep ORIGINAL indexes so photoIndex /
     //    bestPhotoIndex map back onto photoUrls even if one fetch fails).
+    const { fetchKioskBlob } = await import('@/lib/kiosk-blob');
     const fetched = await Promise.all(urls.map(async (url, idx) => {
       try {
-        const res = await fetch(url);
-        if (!res.ok) return null;
-        const ab = await res.arrayBuffer();
-        return { idx, media: mediaTypeFromUrl(url), b64: Buffer.from(ab).toString('base64') };
+        const img = await fetchKioskBlob(url); // private blob first — BLD-798
+        if (!img) return null;
+        return { idx, media: mediaTypeFromUrl(url), b64: Buffer.from(img.bytes).toString('base64') };
       } catch { return null; }
     }));
     const photos = fetched.filter((p): p is NonNullable<typeof p> => !!p);
@@ -349,8 +360,9 @@ export async function analyzeKioskPhotosV2(photoUrls: string[]): Promise<KioskAi
       bestPhotoIndex = photos[0].idx;
     }
 
+    const validIndices = new Set(photos.map((p) => p.idx));
     const observations = (Array.isArray(obj.observations) ? obj.observations : [])
-      .map((o: unknown) => sanitiseObservation(o, urls.length))
+      .map((o: unknown) => sanitiseObservation(o, urls.length, validIndices))
       .filter((o: KioskObservation | null): o is KioskObservation => !!o)
       .slice(0, 6);
 
@@ -365,6 +377,7 @@ export async function analyzeKioskPhotosV2(photoUrls: string[]): Promise<KioskAi
     return { clearlyOver21, headline, skinScore, smileScore, bestPhotoIndex, observations, treatments, shareCaption };
   } catch (e) {
     console.error('[kiosk-ai] v2 analysis failed:', (e as Error)?.message);
+    Sentry.captureException(e, { tags: { area: 'kiosk-ai' } });
     return null;
   }
 }

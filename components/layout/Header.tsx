@@ -30,6 +30,8 @@ export function Header({ config }: { config: SiteConfig }) {
   const triggerRefs = useRef<Record<string, HTMLButtonElement | null>>({});
   const panelRef = useRef<HTMLDivElement>(null);
   const focusPanelOnOpen = useRef(false);
+  const hamburgerRef = useRef<HTMLButtonElement>(null);
+  const mobileDrawerRef = useRef<HTMLDivElement>(null);
   const menuId = (label: string) => `mega-${label.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`;
   function toggleMenu(label: string) {
     setOpen((prev) => {
@@ -74,6 +76,34 @@ export function Header({ config }: { config: SiteConfig }) {
     document.body.style.overflow = mobile ? 'hidden' : '';
   }, [mobile]);
 
+  // BLD-575: focus-trap + return-focus for the mobile drawer.
+  useEffect(() => {
+    if (!mobile) return;
+    const drawer = mobileDrawerRef.current;
+    if (!drawer) return;
+    const focusable = () => Array.from(drawer.querySelectorAll<HTMLElement>('a[href],button:not([disabled]),input,select,textarea,[tabindex]:not([tabindex="-1"])'));
+    // Move focus into drawer on open.
+    const first = focusable()[0];
+    first?.focus();
+    function onKey(e: KeyboardEvent) {
+      if (e.key === 'Escape') { setMobile(false); hamburgerRef.current?.focus(); return; }
+      if (e.key !== 'Tab') return;
+      const els = focusable();
+      if (els.length === 0) return;
+      const last = els[els.length - 1];
+      if (e.shiftKey) {
+        if (document.activeElement === els[0]) { e.preventDefault(); last.focus(); }
+      } else {
+        if (document.activeElement === last) { e.preventDefault(); els[0].focus(); }
+      }
+    }
+    document.addEventListener('keydown', onKey);
+    return () => {
+      document.removeEventListener('keydown', onKey);
+      hamburgerRef.current?.focus();
+    };
+  }, [mobile]);
+
   // Over the dark hero at the top of every page (incl. the home hero) we use
   // light text; once scrolled, the bar frosts to cream and switches to dark text.
   const light = !scrolled && !mobile;
@@ -94,7 +124,7 @@ export function Header({ config }: { config: SiteConfig }) {
         </Link>
 
         {/* Desktop nav */}
-        <nav className="hidden items-center gap-1 lg:flex" aria-label="Primary">
+        <nav className="hidden items-center gap-1 xl:flex" aria-label="Primary">
           {primaryNav.map((item) => {
             const active = pathname === item.href || pathname.startsWith(`${item.href}/`);
             const hasMenu = !!item.columns;
@@ -139,8 +169,8 @@ export function Header({ config }: { config: SiteConfig }) {
           })}
         </nav>
 
-        <div className="hidden items-center gap-3 lg:flex">
-          <Link href="/shop" className={`text-sm font-medium transition-colors hover:text-[var(--color-gold)] ${light ? 'text-[var(--color-porcelain)]' : 'text-[var(--color-ink)]'}`}>Shop</Link>
+        <div className="hidden items-center gap-3 xl:flex">
+          {config.shopLive && <Link href="/shop" className={`text-sm font-medium transition-colors ${light ? 'text-[var(--color-porcelain)] hover:text-[var(--color-gold)]' : 'text-[var(--color-ink)] hover:text-[var(--color-gold-deep)]'}`}>Shop</Link>}
           <SiteSearch light={light} />
           <AccountMenu light={light} />
           <Button href={booking.path} size="md" variant={light ? 'gold' : 'ink'}>
@@ -148,21 +178,40 @@ export function Header({ config }: { config: SiteConfig }) {
           </Button>
         </div>
 
-        {/* Mobile toggle */}
-        <button
-          className={`relative z-10 grid h-11 w-11 place-items-center rounded-full lg:hidden ${
-            light ? 'text-[var(--color-porcelain)]' : 'text-[var(--color-ink)]'
-          }`}
-          onClick={() => setMobile((m) => !m)}
-          aria-label={mobile ? 'Close menu' : 'Open menu'}
-          aria-expanded={mobile}
-        >
-          <span className="flex flex-col gap-[5px]">
-            <span className={`h-[1.5px] w-6 bg-current transition-all duration-300 ${mobile ? 'translate-y-[6.5px] rotate-45' : ''}`} />
-            <span className={`h-[1.5px] w-6 bg-current transition-all duration-300 ${mobile ? 'opacity-0' : ''}`} />
-            <span className={`h-[1.5px] w-6 bg-current transition-all duration-300 ${mobile ? '-translate-y-[6.5px] -rotate-45' : ''}`} />
-          </span>
-        </button>
+        {/* Mobile/tablet: hamburger + a persistent compact Book CTA (BLD-735).
+            The full CTA cluster above is xl+-only, so without this the
+            primary "Book Now" action was reachable only by opening the
+            hamburger drawer and scrolling to the bottom. Reuses the same
+            Button + booking.path as the desktop Book Now button, just sized
+            to fit the header bar. */}
+        <div className="flex items-center gap-2 xl:hidden">
+          <Button
+            href={booking.path}
+            size="md"
+            variant={light ? 'gold' : 'ink'}
+            magnetic={false}
+            className="!min-h-11 !gap-1.5 !px-4 !py-2 !text-sm"
+          >
+            Book <ArrowIcon className="h-3.5 w-3.5" />
+          </Button>
+
+          <button
+            ref={hamburgerRef}
+            className={`relative z-10 grid h-11 w-11 place-items-center rounded-full ${
+              light ? 'text-[var(--color-porcelain)]' : 'text-[var(--color-ink)]'
+            }`}
+            onClick={() => setMobile((m) => !m)}
+            aria-label={mobile ? 'Close menu' : 'Open menu'}
+            aria-expanded={mobile}
+            aria-controls="mobile-nav"
+          >
+            <span className="flex flex-col gap-[5px]">
+              <span className={`h-[1.5px] w-6 bg-current transition-all duration-300 ${mobile ? 'translate-y-[6.5px] rotate-45' : ''}`} />
+              <span className={`h-[1.5px] w-6 bg-current transition-all duration-300 ${mobile ? 'opacity-0' : ''}`} />
+              <span className={`h-[1.5px] w-6 bg-current transition-all duration-300 ${mobile ? '-translate-y-[6.5px] -rotate-45' : ''}`} />
+            </span>
+          </button>
+        </div>
       </div>
 
       {/* Desktop mega-menu */}
@@ -177,7 +226,7 @@ export function Header({ config }: { config: SiteConfig }) {
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -8 }}
             transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
-            className="absolute inset-x-0 top-full hidden border-b border-[var(--color-line)] bg-[color-mix(in_oklab,var(--color-porcelain)_94%,transparent)] backdrop-blur-2xl lg:block"
+            className="absolute inset-x-0 top-full hidden border-b border-[var(--color-line)] bg-[color-mix(in_oklab,var(--color-porcelain)_94%,transparent)] backdrop-blur-2xl xl:block"
           >
             <div className="container-lux py-9" onMouseLeave={() => setPreview(null)}>
               {primaryNav
@@ -258,11 +307,16 @@ export function Header({ config }: { config: SiteConfig }) {
       <AnimatePresence>
         {mobile && (
           <motion.div
+            ref={mobileDrawerRef}
+            id="mobile-nav"
+            role="dialog"
+            aria-modal="true"
+            aria-label="Navigation"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.4 }}
-            className="fixed inset-0 top-0 z-0 h-[100dvh] overflow-y-auto bg-[var(--color-porcelain)] px-6 pb-12 pt-24 lg:hidden"
+            className="fixed inset-0 top-0 z-0 h-[100dvh] overflow-y-auto bg-[var(--color-porcelain)] px-6 pb-12 pt-24 xl:hidden"
           >
             <nav className="flex flex-col divide-y divide-[var(--color-line)]" aria-label="Mobile">
               {primaryNav.map((item, idx) => {
@@ -277,14 +331,19 @@ export function Header({ config }: { config: SiteConfig }) {
                   >
                     {item.columns ? (
                       <>
-                        <button
-                          onClick={() => setOpen(expanded ? null : item.label)}
-                          aria-expanded={expanded}
-                          className="flex w-full items-center justify-between font-[family-name:var(--font-display)] text-2xl"
-                        >
-                          {item.label}
-                          <svg viewBox="0 0 24 24" className={`h-5 w-5 text-[var(--color-stone)] transition-transform ${expanded ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" strokeWidth="1.6"><path d="M6 9l6 6 6-6" strokeLinecap="round" strokeLinejoin="round" /></svg>
-                        </button>
+                        <div className="flex w-full items-center justify-between">
+                          <Link href={item.href} onClick={() => setMobile(false)} className="font-[family-name:var(--font-display)] text-2xl">
+                            {item.label}
+                          </Link>
+                          <button
+                            onClick={() => setOpen(expanded ? null : item.label)}
+                            aria-expanded={expanded}
+                            className="grid h-9 w-9 place-items-center text-[var(--color-stone)]"
+                            aria-label={`${expanded ? 'Close' : 'Open'} ${item.label} submenu`}
+                          >
+                            <svg viewBox="0 0 24 24" className={`h-5 w-5 transition-transform ${expanded ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" strokeWidth="1.6"><path d="M6 9l6 6 6-6" strokeLinecap="round" strokeLinejoin="round" /></svg>
+                          </button>
+                        </div>
                         {expanded && (
                           <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} className="mt-3 grid grid-cols-2 gap-x-4 gap-y-2.5 overflow-hidden">
                             {item.columns.flatMap((c) => c.links).map((l) => (
@@ -303,6 +362,13 @@ export function Header({ config }: { config: SiteConfig }) {
                   </motion.div>
                 );
               })}
+              {config.shopLive && (
+                <div className="py-4">
+                  <Link href="/shop" onClick={() => setMobile(false)} className="block font-[family-name:var(--font-display)] text-2xl">
+                    Shop
+                  </Link>
+                </div>
+              )}
             </nav>
             <div className="mt-8 flex flex-col gap-3">
               <Button href={booking.path} size="lg" className="w-full">
@@ -311,7 +377,7 @@ export function Header({ config }: { config: SiteConfig }) {
               <Link
                 href="/account"
                 onClick={() => setMobile(false)}
-                className="flex items-center justify-center gap-2 rounded-full border border-[var(--color-line)] px-6 py-3.5 text-sm font-medium text-[var(--color-ink-soft)] transition-colors hover:border-[var(--color-gold)] hover:text-[var(--color-gold)]"
+                className="flex items-center justify-center gap-2 rounded-full border border-[var(--color-line)] px-6 py-3.5 text-sm font-medium text-[var(--color-ink-soft)] transition-colors hover:border-[var(--color-gold)] hover:text-[var(--color-gold-deep)]"
               >
                 <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" aria-hidden>
                   <circle cx="12" cy="8" r="3.4" stroke="currentColor" strokeWidth="1.5" />
@@ -319,7 +385,7 @@ export function Header({ config }: { config: SiteConfig }) {
                 </svg>
                 Sign in / My account
               </Link>
-              <Link href="/consultation" className="mt-1 text-center text-sm font-medium text-[var(--color-gold)] underline-offset-4 hover:underline">
+              <Link href="/consultation" className="mt-1 text-center text-sm font-medium text-[var(--color-gold-deep)] underline-offset-4 hover:underline">
                 Or request a free consultation
               </Link>
               <a href={phoneHref} className="mt-2 text-center text-sm font-medium">

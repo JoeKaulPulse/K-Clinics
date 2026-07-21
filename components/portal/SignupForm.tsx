@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { motion } from 'motion/react';
 import { authField, authLabel } from '@/components/portal/AuthShell';
+import { IS_STATIC_DEMO } from '@/lib/static-demo';
 
 export function SignupForm() {
   const router = useRouter();
@@ -26,8 +27,9 @@ export function SignupForm() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(d),
       });
-      // 404 = route not present (static GitHub Pages demo only) — preview success.
-      if (res.status === 404) {
+      // 404 fakes success ONLY on the static GitHub Pages demo (no /api). On the
+      // live site a 404 is a real failure — fall through to the error below.
+      if (res.status === 404 && IS_STATIC_DEMO) {
         setDone({ granted: true, code: 'WELCOME15', percent: 15 });
         return;
       }
@@ -81,7 +83,7 @@ export function SignupForm() {
       <div><label className={authLabel} htmlFor="pw">Create a password</label><input id="pw" type="password" autoComplete="new-password" required minLength={8} className={authField} value={d.password} onChange={(e) => set('password', e.target.value)} /></div>
       <label className="flex items-start gap-3 text-sm text-[var(--color-stone)]">
         <input type="checkbox" checked={d.marketingOptIn} onChange={(e) => set('marketingOptIn', e.target.checked)} className="mt-0.5 h-4 w-4 accent-[var(--color-gold)]" />
-        Send me offers, events and skincare tips.
+        Send me offers, events and skincare tips. We may also use your contact details, in hashed form, to show you our offers on social media — see our Privacy Policy.
       </label>
       <label className="flex items-start gap-3 text-sm text-[var(--color-stone)]">
         <input type="checkbox" checked={d.consent} onChange={(e) => set('consent', e.target.checked)} className="mt-0.5 h-4 w-4 accent-[var(--color-gold)]" />
@@ -89,7 +91,7 @@ export function SignupForm() {
         <Link href="/info/terms-conditions" className="underline">Terms</Link> &{' '}
         <Link href="/info/privacy-policy" className="underline">Privacy Policy</Link>.
       </label>
-      {error && <p className="rounded-[var(--radius-sm)] bg-[var(--color-blush)]/25 px-4 py-2.5 text-sm text-[var(--color-ink)]">{error}</p>}
+      {error && <p role="alert" aria-live="assertive" className="rounded-[var(--radius-sm)] bg-[var(--color-blush)]/25 px-4 py-2.5 text-sm text-[var(--color-ink)]">{error}</p>}
       <button type="submit" disabled={loading} className="w-full rounded-full bg-[var(--color-gold-deep)] px-6 py-3.5 font-medium text-white shadow-[var(--shadow-gold)] transition-colors hover:bg-[var(--color-ink)] disabled:opacity-60">
         {loading ? 'Creating your account…' : 'Create account & claim 15% off'}
       </button>
