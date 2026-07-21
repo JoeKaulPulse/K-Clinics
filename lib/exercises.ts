@@ -2,6 +2,7 @@ import 'server-only';
 import { db } from '@/lib/db';
 import { currentTenantId } from '@/lib/tenant';
 import { scoreAndBadge } from '@/lib/academy-gamification';
+import { studentCanAccess } from '@/lib/lms';
 
 // ── BLD-535 / BLD-536: interactive self-check exercises ──────────────────────
 // All graded SERVER-SIDE against the stored `config` so the answer key never
@@ -114,6 +115,9 @@ const dist = (ax: number, ay: number, bx: number, by: number) => Math.sqrt((ax -
 export async function gradeExercise(studentId: string, exerciseId: string, answer: unknown): Promise<GradeResult> {
   const e = await db.interactiveExercise.findFirst({ where: { id: exerciseId, active: true }, select: { id: true, type: true, courseId: true, config: true } });
   if (!e) return { ok: false, error: 'Exercise not found.' };
+  // BLD-706: only a student enrolled on the course that owns this exercise may
+  // grade against it — otherwise the server-side answer key leaks across courses.
+  if (!(await studentCanAccess(studentId, e.courseId))) return { ok: false, error: 'Not enrolled.' };
   const cfg = parseConfig(e.type, e.config);
 
   let total = 0, correct = 0; const results: boolean[] = []; let reveal: unknown;

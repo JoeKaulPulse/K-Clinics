@@ -125,6 +125,22 @@ export async function signupClient(input: SignupInput): Promise<SignupResult> {
     },
   });
 
+  // BLD-703: serialise the welcome grant so two concurrent signups can't both
+  // mint an ACTIVE claim. The fingerprint read above guards cross-identity reuse
+  // (email/phone/nameDob); this atomic CAS on the client's firstDiscountClaimed
+  // flag closes the same-client race — exactly one concurrent writer flips
+  // false→true and may create the claim, the loser is downgraded to BLOCKED.
+  // Mirrors the conditional-updateMany pattern in lib/shop.ts (BLD-898).
+  if (grant) {
+    try {
+      const won = await db.client.updateMany({ where: { id: client.id, firstDiscountClaimed: false }, data: { firstDiscountClaimed: true } });
+      if (won.count === 0) grant = false; // a concurrent signup already claimed the welcome offer for this client
+    } catch (e) {
+      console.error('[signup] welcome-claim CAS failed (continuing, not granting):', (e as Error)?.message);
+      grant = false;
+    }
+  }
+
   let code: string | undefined;
   try {
     if (grant) {
@@ -132,7 +148,6 @@ export async function signupClient(input: SignupInput): Promise<SignupResult> {
       await db.discountClaim.create({
         data: { clientId: client.id, code, status: 'ACTIVE', percent: 15, emailNorm, phoneNorm, nameDobKey, ip: input.ip || undefined },
       });
-      await db.client.update({ where: { id: client.id }, data: { firstDiscountClaimed: true } });
     } else {
       // Record the blocked attempt for staff visibility (flagged, no usable code).
       await db.discountClaim.create({
