@@ -18,7 +18,7 @@ export async function POST(req: Request) {
   // 'set' also verifies a guessed currentPin and was previously unguarded,
   // letting a session brute-force the 6-digit PIN with no attempt cap.
   const { enforceRateLimit } = await import('@/lib/security/guard');
-  if (!(await enforceRateLimit(req, 'finance-unlock', 8, 300, 'admin'))) {
+  if (!(await enforceRateLimit(req, 'finance-unlock', 8, 300, 'admin', { failClosed: true }))) {
     return NextResponse.json({ ok: false, error: 'Too many attempts — wait a few minutes.' }, { status: 429 });
   }
 
