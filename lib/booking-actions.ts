@@ -162,7 +162,11 @@ export async function chargeBooking(
     // SCA / authentication required → email the client a secure confirm link.
     const err = e as { code?: string; raw?: { payment_intent?: { id: string; client_secret: string } } };
     if (err.code === 'authentication_required' && err.raw?.payment_intent) {
-      const payUrl = `${process.env.NEXT_PUBLIC_SITE_URL || site.url}/booking/pay?pi=${err.raw.payment_intent.client_secret}`;
+      // BLD-716: link with the PaymentIntent ID only — never the client_secret.
+      // The secret authorises card confirmation and would otherwise be logged in
+      // Vercel access logs, the browser history and the email itself. The pay
+      // page fetches the secret server-side from this ID.
+      const payUrl = `${process.env.NEXT_PUBLIC_SITE_URL || site.url}/booking/pay?pi=${err.raw.payment_intent.id}`;
       await db.booking.update({ where: { id: booking.id }, data: { chargePaymentIntentId: err.raw.payment_intent.id } });
       await sendEmail({
         to: booking.client.email,

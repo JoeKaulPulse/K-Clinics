@@ -47,16 +47,26 @@ export async function POST(req: Request) {
 
   try {
     // Upsert the client (dedupe by email) and attach a consultation + timeline.
+    // BLD-712: an open consult form must never silently overwrite an existing
+    // client's saved details (name/phone/dob) with whatever a later submitter
+    // typed against the same email. On an existing record we only FILL fields
+    // that are currently empty; marketing opt-in is additive (never downgraded).
+    // A brand-new email still creates the client below. The upsert keeps its
+    // atomicity — if the row is created concurrently between this read and the
+    // write, the (empty) no-clobber update simply leaves it untouched.
+    const emailNorm = data.email.toLowerCase();
+    const existing = await db.client.findUnique({ where: { email: emailNorm }, select: { firstName: true, lastName: true, phone: true, dob: true, marketingOptIn: true } });
+    const noClobber: Record<string, unknown> = {};
+    if (existing) {
+      if (!existing.firstName && data.firstName) noClobber.firstName = data.firstName;
+      if (!existing.lastName && data.lastName) noClobber.lastName = data.lastName;
+      if (!existing.phone && data.phone) noClobber.phone = data.phone;
+      if (!existing.dob && data.dob) noClobber.dob = new Date(data.dob);
+      if (data.marketingOptIn && !existing.marketingOptIn) { noClobber.marketingOptIn = true; Object.assign(noClobber, marketingConsentFields('consult-form')); }
+    }
     const client = await db.client.upsert({
-      where: { email: data.email.toLowerCase() },
-      update: {
-        firstName: data.firstName,
-        lastName: data.lastName || undefined,
-        phone: data.phone || undefined,
-        dob: data.dob ? new Date(data.dob) : undefined,
-        marketingOptIn: data.marketingOptIn || undefined,
-        ...(data.marketingOptIn ? marketingConsentFields('consult-form') : {}),
-      },
+      where: { email: emailNorm },
+      update: noClobber,
       create: {
         firstName: data.firstName,
         lastName: data.lastName || null,

@@ -22,6 +22,21 @@ export async function POST(req: Request) {
 
   const { db } = await import('@/lib/db');
 
+  // BLD-714: idempotency ledger. Claim this event id before running any handler.
+  // A redelivery / replay fails the primary-key insert (P2002) and is acked with
+  // 200 so Stripe stops retrying — without re-running side effects. A store error
+  // must never drop a genuine event, so we fail OPEN (proceed): the handlers are
+  // themselves idempotent (CAS on booking/order state), so this is
+  // defence-in-depth, not the sole guard.
+  try {
+    await db.processedStripeEvent.create({ data: { id: event.id, type: event.type } });
+  } catch (e) {
+    if ((e as { code?: string })?.code === 'P2002') {
+      return NextResponse.json({ ok: true, duplicate: true });
+    }
+    console.error('[webhook] idempotency-ledger write failed (continuing):', (e as Error)?.message);
+  }
+
   try {
     switch (event.type) {
       case 'payment_intent.succeeded': {

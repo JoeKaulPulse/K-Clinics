@@ -258,11 +258,23 @@ export async function claimKioskDiscount(resultId: string, emailRaw: string, fir
   // The kiosk's explicit 18+ tap carries over to the client record so later
   // bookings inherit the declaration (attribution per KIOSK_V2_CONTRACT.md).
   const ageDeclaredAt = result.session.ageDeclaredAt;
+  // BLD-892: the claim email is typed at the kiosk and unverified, so it must
+  // NEVER flip an EXISTING client's marketing preference — someone entering
+  // another person's address (or one that previously opted out) can't fabricate
+  // consent for them. A brand-new client is created WITH the kiosk opt-in (the
+  // visitor tapped the explicit consent + 18+ gate on the kiosk); an existing
+  // record keeps its own preference and we refresh consent evidence (BLD-128,
+  // GDPR Art. 7) only when it is already opted in. The age declaration carries
+  // over to the record either way. The upsert stays atomic against a concurrent
+  // create.
+  const existingClient = await db.client.findUnique({ where: { email }, select: { marketingOptIn: true } });
+  const kioskUpdate: Record<string, unknown> = {};
+  if (existingClient?.marketingOptIn) Object.assign(kioskUpdate, marketingConsentFields('kiosk'));
+  if (ageDeclaredAt) kioskUpdate.ageDeclaredAt = ageDeclaredAt;
   try {
     await db.client.upsert({
       where: { email },
-      // BLD-128: record consent evidence (what/when/where) per GDPR Art. 7.
-      update: { marketingOptIn: true, ...marketingConsentFields('kiosk'), ...(ageDeclaredAt ? { ageDeclaredAt } : {}) },
+      update: kioskUpdate,
       create: { email, firstName, marketingOptIn: true, source: 'kiosk', ...marketingConsentFields('kiosk'), ...(ageDeclaredAt ? { ageDeclaredAt } : {}) },
     });
   } catch (e) { console.error('[kiosk] client upsert failed (continuing):', (e as Error)?.message); }
