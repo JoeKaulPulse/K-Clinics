@@ -38,7 +38,11 @@ async function adminCsp(nonce: string): Promise<string> {
     "media-src 'self' data: blob: https:",
     "font-src 'self' https://fonts.gstatic.com data:",
     "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
-    `script-src 'self' 'nonce-${nonce}' 'sha256-${noflash}' 'sha256-${CONSENT_PRINT_HASH}' 'strict-dynamic' https:`,
+    // BLD-725 (owner-approved 21 Jul): the legacy `https:` fallback is removed —
+    // it only served browsers too old to understand 'strict-dynamic', and it let
+    // any https script URL through on those browsers. Modern browsers were
+    // already governed by strict-dynamic + nonce.
+    `script-src 'self' 'nonce-${nonce}' 'sha256-${noflash}' 'sha256-${CONSENT_PRINT_HASH}' 'strict-dynamic'`,
     "connect-src 'self' https://api.stripe.com https://m.stripe.network https://r.stripe.com https://challenges.cloudflare.com https://maps.googleapis.com https://vercel.com https://blob.vercel-storage.com https://*.blob.vercel-storage.com https://*.public.blob.vercel-storage.com https://*.sentry.io https://sentry.io https://connect.facebook.net https://graph.facebook.com",
     "frame-src 'self' https://js.stripe.com https://hooks.stripe.com https://challenges.cloudflare.com https://www.youtube.com https://www.youtube-nocookie.com https://www.google.com",
     "worker-src 'self' blob:",

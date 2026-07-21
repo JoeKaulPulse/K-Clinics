@@ -145,20 +145,30 @@ export function localDayEnd(d = new Date()): Date {
 }
 
 export type ExpectedTakings = {
-  cardPence: number; // total card takings (treatment charges + paid product orders)
+  cardPence: number; // total card takings (treatment charges + paid product orders + voucher sales)
   chargesPence: number;
   chargeCount: number;
   ordersPence: number;
   orderCount: number;
+  vouchersPence: number; // BLD-927: gift vouchers SOLD (by card) this day
+  voucherCount: number;
 };
 
 /**
- * Expected card takings for a location on a given day. All client payments run
- * through Stripe (card), so this is the system's view of what *should* have been
- * taken — to reconcile against the terminal Z-report. Cash is counted manually.
+ * Expected card takings for a location on a given day — the system's view of
+ * what *should* be on the terminal Z-report. Cash is counted manually.
  *
- * Product orders carry no location, so they're only included when this is the
- * primary/only site (`includeOrders`).
+ * BLD-927 corrections:
+ *  - Bookings settled by a non-card channel (chargePaymentIntentId 'ext_*' —
+ *    gift voucher, cash, bank) are EXCLUDED: no card money was taken for them.
+ *    A partial-voucher booking's chargedPence is already only the card
+ *    remainder, so it stays included as-is.
+ *  - Gift vouchers SOLD by card that day are INCLUDED (face value + any
+ *    physical-card fee): that card money previously appeared on the Z-report
+ *    but never in the expected figure.
+ *
+ * Product orders and voucher sales carry no location, so they're only included
+ * when this is the primary/only site (`includeOrders`).
  */
 export async function computeExpected(
   locationId: string | null,
@@ -174,6 +184,11 @@ export async function computeExpected(
     where: {
       chargedAt: { gte, lte },
       chargedPence: { not: null },
+      // Keep legacy rows with no PI id (status quo); exclude external channels.
+      OR: [
+        { chargePaymentIntentId: null },
+        { NOT: { chargePaymentIntentId: { startsWith: 'ext_' } } },
+      ],
       ...(locationId ? { locationId } : {}),
     },
   });
@@ -182,6 +197,8 @@ export async function computeExpected(
 
   let ordersPence = 0;
   let orderCount = 0;
+  let vouchersPence = 0;
+  let voucherCount = 0;
   if (includeOrders) {
     const orders = await db.order.aggregate({
       _sum: { totalPence: true },
@@ -190,9 +207,18 @@ export async function computeExpected(
     });
     ordersPence = orders._sum.totalPence ?? 0;
     orderCount = orders._count;
+
+    // Stripe-paid voucher sales (front-desk comp vouchers carry no PI id).
+    const vouchers = await db.giftVoucher.aggregate({
+      _sum: { amountPence: true, physicalFeePence: true },
+      _count: true,
+      where: { createdAt: { gte, lte }, stripePaymentIntentId: { not: null }, status: { in: ['ACTIVE', 'REDEEMED'] } },
+    });
+    vouchersPence = (vouchers._sum.amountPence ?? 0) + (vouchers._sum.physicalFeePence ?? 0);
+    voucherCount = vouchers._count;
   }
 
-  return { cardPence: chargesPence + ordersPence, chargesPence, chargeCount, ordersPence, orderCount };
+  return { cardPence: chargesPence + ordersPence + vouchersPence, chargesPence, chargeCount, ordersPence, orderCount, vouchersPence, voucherCount };
 }
 
 export type StockTakeItem = { id: string; name: string; unit: string; category: string | null; expectedQty: number };

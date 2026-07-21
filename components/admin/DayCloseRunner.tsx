@@ -193,6 +193,7 @@ export function DayCloseRunner({
                     <p className="mt-1 text-xs text-[var(--color-stone)]">
                       {expected.chargeCount} treatment charge{expected.chargeCount === 1 ? '' : 's'} · {money(expected.chargesPence)}
                       {expected.orderCount > 0 && <> · {expected.orderCount} product order{expected.orderCount === 1 ? '' : 's'} · {money(expected.ordersPence)}</>}
+                      {expected.voucherCount > 0 && <> · {expected.voucherCount} voucher sale{expected.voucherCount === 1 ? '' : 's'} · {money(expected.vouchersPence)}</>}
                     </p>
                   </div>
 
