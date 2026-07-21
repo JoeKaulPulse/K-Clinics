@@ -110,8 +110,14 @@ export async function POST(req: Request) {
   // Fetch order before update so we can detect fulfillment transitions.
   const prevOrder = await db.order.findUnique({
     where: { id: body.id },
-    select: { email: true, number: true, fulfillment: true, method: true, trackingNote: true },
+    select: { email: true, number: true, fulfillment: true, method: true, trackingNote: true, status: true, paidAt: true },
   });
+
+  // PRJ-1032.7: stamp the settlement time when staff manually flip an order to
+  // PAID, so it lands in the right day-close session. Only on a genuine first
+  // transition — never overwrite an existing paidAt (that would move already-
+  // settled takings to today).
+  if (data.status === 'PAID' && prevOrder && !prevOrder.paidAt) data.paidAt = new Date();
 
   await db.order.update({ where: { id: body.id }, data });
   const { logAudit } = await import('@/lib/audit');
