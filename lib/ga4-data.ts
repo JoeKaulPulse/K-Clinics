@@ -171,6 +171,72 @@ export async function ga4FullReport(days = 28): Promise<Ga4FullReport> {
   }
 }
 
+// ── PRJ-724.5: GA4 Realtime (last 30 minutes) ───────────────────────────────
+// The realtime endpoint is a different resource (:runRealtimeReport) but the same
+// auth (Google token + numeric property id). Reports the live active-user count
+// plus the top events and active pages, so the dashboard can show what is
+// happening on the site right now.
+export type Ga4Realtime = {
+  configured: boolean;
+  ok: boolean;
+  error: string | null;
+  activeUsers: number;
+  byEvent: { name: string; count: number }[];
+  byPage: { name: string; users: number }[];
+};
+
+async function runRealtimeReport(propertyId: string, token: string, body: object): Promise<{ rows: ApiRow[]; error: string | null }> {
+  try {
+    const res = await fetch(`${API}/properties/${propertyId}:runRealtimeReport`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}`, 'content-type': 'application/json' },
+      body: JSON.stringify(body),
+      signal: AbortSignal.timeout(15_000),
+    });
+    if (!res.ok) {
+      const t = await res.text().catch(() => '');
+      let reason = `HTTP ${res.status}`;
+      try { const j = JSON.parse(t); if (j?.error) reason = `HTTP ${res.status}: ${j.error.message || ''}`.replace(/\s+/g, ' ').trim(); }
+      catch { if (t) reason = `HTTP ${res.status}: ${t.slice(0, 200)}`; }
+      return { rows: [], error: reason };
+    }
+    const j = await res.json().catch(() => null);
+    return { rows: (j?.rows ?? []) as ApiRow[], error: null };
+  } catch (e) {
+    return { rows: [], error: `Request failed: ${(e as Error)?.message || 'network or timeout'}` };
+  }
+}
+
+export async function ga4Realtime(): Promise<Ga4Realtime> {
+  const base: Ga4Realtime = { configured: false, ok: false, error: null, activeUsers: 0, byEvent: [], byPage: [] };
+  try {
+    const propertyId = await ga4PropertyId();
+    if (!propertyId) return { ...base, error: 'GA4_PROPERTY_ID is not set.' };
+    let token = await googleAccessToken();
+    if (!token) return { ...base, error: 'Google account is not connected.' };
+    const run = (tok: string) => Promise.all([
+      runRealtimeReport(propertyId, tok, { metrics: [{ name: 'activeUsers' }] }),
+      runRealtimeReport(propertyId, tok, { dimensions: [{ name: 'eventName' }], metrics: [{ name: 'eventCount' }], orderBys: [{ metric: { metricName: 'eventCount' }, desc: true }], limit: 8 }),
+      runRealtimeReport(propertyId, tok, { dimensions: [{ name: 'unifiedScreenName' }], metrics: [{ name: 'activeUsers' }], orderBys: [{ metric: { metricName: 'activeUsers' }, desc: true }], limit: 8 }),
+    ]);
+    let [tot, ev, pg] = await run(token);
+    if (/\b401\b|UNAUTHENTICATED/i.test(tot.error || ev.error || pg.error || '')) {
+      const refreshed = await googleAccessToken({ forceRefresh: true });
+      if (refreshed && refreshed !== token) { token = refreshed; [tot, ev, pg] = await run(token); }
+    }
+    const err = tot.error || ev.error || pg.error;
+    if (err) return { ...base, configured: true, error: err };
+    return {
+      configured: true, ok: true, error: null,
+      activeUsers: num(tot.rows[0]?.metricValues?.[0]?.value),
+      byEvent: ev.rows.map((r) => ({ name: r.dimensionValues?.[0]?.value || '(unknown)', count: num(r.metricValues?.[0]?.value) })),
+      byPage: pg.rows.map((r) => ({ name: r.dimensionValues?.[0]?.value || '(unknown)', users: num(r.metricValues?.[0]?.value) })),
+    };
+  } catch (e) {
+    return { ...base, error: `Request failed: ${(e as Error)?.message || 'error'}` };
+  }
+}
+
 export async function ga4Performance(days = 90): Promise<Ga4Summary> {
   const empty: Ga4Summary = { configured: false, sessions: 0, conversions: 0, byChannel: [] };
   try {

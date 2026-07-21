@@ -26,6 +26,7 @@ import { ReceptionistView } from '@/components/admin/dashboard/ReceptionistView'
 import { DeveloperView } from '@/components/admin/dashboard/DeveloperView';
 import { ContractorView } from '@/components/admin/dashboard/ContractorView';
 import { GaTrafficWidget } from '@/components/admin/dashboard/GaTrafficWidget';
+import { GaRealtimeWidget } from '@/components/admin/dashboard/GaRealtimeWidget';
 import { ComplianceWidget } from '@/components/admin/dashboard/ComplianceWidget';
 import { RoomPrepStatus } from '@/components/admin/rooms/RoomPrepStatus';
 
@@ -382,6 +383,10 @@ export default async function AdminOverview() {
           <GaTrafficWidget days={28} />
         </Suspense>
       )}
+
+      {/* PRJ-724.5: live GA4 realtime — active users on the site now + top events
+          and pages. Client-side polling; renders nothing until GA is connected. */}
+      {canMarketing && <GaRealtimeWidget />}
 
       {/* Compliance & renewals — only renders when something's expired or due soon. */}
       {canCompliance && (
