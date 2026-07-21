@@ -38,6 +38,8 @@ export async function POST(req: Request) {
   if (!parsed.success) return NextResponse.json({ ok: false, reason: 'error', message: parsed.error.issues[0]?.message || 'Check your photos and try again.' }, { status: 422 });
 
   const { analyze } = await import('@/lib/ai-consultation');
-  const result = await analyze({ clientId: client.id, areas: parsed.data.areas, images: parsed.data.images, storeImages: parsed.data.storeImages, budgetPence: parsed.data.budgetPence, budgetLabel: parsed.data.budgetLabel });
+  // BLD-702: the affirmative `consent: true` tick is enforced by the schema above;
+  // record where it was captured so the stored consent version is auditable.
+  const result = await analyze({ clientId: client.id, areas: parsed.data.areas, images: parsed.data.images, storeImages: parsed.data.storeImages, budgetPence: parsed.data.budgetPence, budgetLabel: parsed.data.budgetLabel, consentSource: 'kvision-account' });
   return NextResponse.json(result, { status: result.ok ? 200 : (result.reason === 'limit' ? 429 : 200) });
 }

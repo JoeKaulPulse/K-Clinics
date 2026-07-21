@@ -309,7 +309,9 @@ export function tmplClinicNotify(data: {
       <tr><td style="color:#91766e;padding-right:16px;">Interest</td><td>${escape(data.category)}</td></tr>
       <tr><td style="color:#91766e;padding-right:16px;">Treatments</td><td>${escape(data.treatments.join(', ') || '—')}</td></tr>
     </table>
-    ${data.message ? `<p style="margin-top:16px;background:#efe3d7;padding:14px 16px;border-radius:10px;">${escape(data.message)}</p>` : ''}
+    <!-- BLD-715: the enquiry's free-text message can carry health detail; it is
+         not emailed to the clinic inbox (data minimisation). Staff read it in the
+         CRM, where access is controlled and audited. -->
     <p style="margin:24px 0 0;">${btn(site.url + '/admin/consultations', 'Open in CRM')}</p>`,
   });
 }

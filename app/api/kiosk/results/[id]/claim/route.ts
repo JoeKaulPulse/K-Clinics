@@ -7,6 +7,11 @@ export const dynamic = 'force-dynamic';
 // Public. After sharing, a kiosk visitor creates an account and claims their
 // single-use discount code. Share-gated + idempotent in claimKioskDiscount.
 export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
+  // BLD-711: this mints an account + single-use discount code — throttle per IP.
+  const { enforceRateLimit } = await import('@/lib/security/guard');
+  if (!(await enforceRateLimit(req, 'kiosk-claim', 10, 600))) {
+    return NextResponse.json({ ok: false, error: 'Too many requests.' }, { status: 429 });
+  }
   const { id } = await params;
   const body = await req.json().catch(() => ({}));
   const r = await claimKioskDiscount(id, String(body?.email || ''), String(body?.firstName || ''));

@@ -2,6 +2,7 @@ import 'server-only';
 import { db } from '@/lib/db';
 import { site } from '@/lib/site';
 import { CLINIC_TZ } from '@/lib/clinic-time';
+import { escapeHtml } from '@/lib/sanitize';
 
 const clinicEmail = () => process.env.CLINIC_NOTIFY_EMAIL || 'support@kclinics.co.uk';
 const baseUrl = () => process.env.NEXT_PUBLIC_SITE_URL || site.url;
@@ -28,7 +29,7 @@ export async function notifyAftercare(bookingId: string): Promise<void> {
   const items = guide.items.map((it) => `<li style="margin:8px 0;line-height:1.55;">${aftercareText(it, 'en')}</li>`).join('');
   const body = `
     <h1 style="font-size:22px;margin:0 0 8px;">${aftercareTitle(guide, 'en')}</h1>
-    <p style="margin:0 0 14px;">Hi ${c.firstName || 'there'}, thank you for visiting us today. Here is your aftercare for your <strong>${booking.treatmentTitle}</strong>:</p>
+    <p style="margin:0 0 14px;">Hi ${escapeHtml(c.firstName || 'there')}, thank you for visiting us today. Here is your aftercare for your <strong>${escapeHtml(booking.treatmentTitle)}</strong>:</p>
     <p style="margin:0 0 14px;color:#7d6259;">${aftercareIntro(guide, 'en')}</p>
     <ul style="padding-left:20px;margin:0 0 16px;">${items}</ul>
     <p style="margin:0;">You can revisit this any time in your account: <a href="${baseUrl()}/account/aftercare">your aftercare guide</a>. Any questions, just reply — we're always here.</p>

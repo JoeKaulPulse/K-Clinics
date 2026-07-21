@@ -1,4 +1,5 @@
 import 'server-only';
+import * as Sentry from '@sentry/nextjs';
 import { db } from '@/lib/db';
 import { encryptJson, decryptJson, integrityHash, verifyIntegrity } from '@/lib/crypto';
 import { getEffectiveQuestionnaire, getQuestionnaireAtVersion } from '@/lib/questionnaire-versions';
@@ -16,7 +17,13 @@ async function emitAssessmentView(clientId: string, actor: string, actorRole?: s
       select: { id: true },
     });
     if (!recent) await logAudit({ action: 'ASSESSMENT_VIEWED', actor, actorRole, clientId, summary: 'Health assessment decrypted for clinical viewing' });
-  } catch { /* non-fatal */ }
+  } catch (err) {
+    // BLD-719: the view-audit must never block clinical viewing, but silent
+    // swallowing hides a compliance gap (a clinical decryption with no audit
+    // trail). Surface it (BLD-394 audit pattern) while keeping the read non-blocking.
+    console.error('[health-assessments] emitAssessmentView failed — audit trail gap:', (err as Error)?.message, { clientId, actor });
+    Sentry.captureException(err, { tags: { area: 'health-assessments' } });
+  }
 }
 
 /**

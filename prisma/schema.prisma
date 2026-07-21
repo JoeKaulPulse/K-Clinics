@@ -2931,6 +2931,8 @@ model AiAnalysis {
   tokensIn         Int?
   tokensOut        Int?
   consentAt        DateTime?
+  consentVersion   String? // BLD-702: audited AI-processing consent wording version
+  consentSource    String? // BLD-702: where the affirmative tick was captured, e.g. "kvision-account"
   storeImages      Boolean   @default(true)
   createdAt        DateTime  @default(now())
 

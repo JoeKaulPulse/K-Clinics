@@ -85,8 +85,10 @@ export async function unlock(opts: { identifier?: string; ip?: string }, portal:
 }
 
 /** Per-IP rate limit for a sensitive endpoint. Returns true if allowed.
- *  Records a RATE_LIMITED event when the limit is hit. */
-export async function enforceRateLimit(req: Request, scope: string, limit: number, windowSec: number, portal: Portal = 'client'): Promise<boolean> {
+ *  Records a RATE_LIMITED event when the limit is hit. Pass failClosed=true
+ *  for high-sensitivity scopes (finance PIN, promo) so a store outage never
+ *  silently disables protection (BLD-717). */
+export async function enforceRateLimit(req: Request, scope: string, limit: number, windowSec: number, portal: Portal = 'client', opts?: { failClosed?: boolean }): Promise<boolean> {
   const ip = clientIp(req);
   // A blocked IP fails every rate-limited endpoint (admin deny-list, cached).
   const { isIpBlocked } = await import('@/lib/security/ip-activity');
@@ -94,7 +96,7 @@ export async function enforceRateLimit(req: Request, scope: string, limit: numbe
     await recordSecurity('RATE_LIMITED', portal, null, req, { scope, blocked: true });
     return false;
   }
-  const r = await rateLimit(`${scope}:${ip}`, limit, windowSec);
+  const r = await rateLimit(`${scope}:${ip}`, limit, windowSec, opts);
   if (!r.allowed) await recordSecurity('RATE_LIMITED', portal, null, req, { scope });
   return r.allowed;
 }

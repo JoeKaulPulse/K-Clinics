@@ -12,7 +12,7 @@ export async function POST(req: Request) {
 
   // Throttle so the endpoint can't be used to brute-force valid discount codes.
   const { enforceRateLimit } = await import('@/lib/security/guard');
-  if (!(await enforceRateLimit(req, 'promo-validate', 20, 600))) return NextResponse.json({ ok: false, error: 'Too many attempts — please try again shortly.' }, { status: 429 });
+  if (!(await enforceRateLimit(req, 'promo-validate', 20, 600, 'client', { failClosed: true }))) return NextResponse.json({ ok: false, error: 'Too many attempts — please try again shortly.' }, { status: 429 });
 
   const { getTreatment } = await import('@/lib/treatments');
   if (!getTreatment(String(slug))) return NextResponse.json({ ok: false, error: 'Unknown treatment.' }, { status: 404 });
