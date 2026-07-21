@@ -362,11 +362,26 @@ export async function finalizeBookingCharge(
  * rather than silently lost. Leaves a follow-up note on the client + audit log.
  */
 export async function recordChargeFailure(bookingId: string, reason: string): Promise<void> {
-  const booking = await db.booking.findUnique({ where: { id: bookingId } });
+  const booking = await db.booking.findUnique({ where: { id: bookingId }, include: { client: true } });
   if (!booking) return;
   const msg = `Card charge failed — follow up: ${reason}`.slice(0, 200);
   try { await db.interaction.create({ data: { clientId: booking.clientId, type: 'APPOINTMENT', summary: msg, author: 'system' } }); } catch { /* non-fatal */ }
   try { await logAudit({ action: 'PAYMENT_FAILED', actor: 'system', summary: msg, bookingId, clientId: booking.clientId }); } catch { /* non-fatal */ }
+  // BLD-757: also tell the CLIENT their off-session payment did not go through, so
+  // an async decline (a post-treatment or balance charge Stripe reports via the
+  // webhook) is not silent to them — previously only staff were notified. The
+  // late-cancellation-fee decline already emails the client separately; this
+  // covers the general off-session path. Best-effort; never throws.
+  try {
+    if (booking.client?.email) {
+      const { sendEmail, tmplManual } = await import('@/lib/email');
+      const { escapeHtml } = await import('@/lib/sanitize');
+      const name = escapeHtml(booking.client.firstName || 'there');
+      const treatment = escapeHtml(booking.treatmentTitle);
+      const body = `<p>Hi ${name},</p><p>We tried to take payment for your <strong>${treatment}</strong>, but the card on file was declined — so nothing has been charged.</p><p>Please reply to this email or give us a call and we will sort it out; it only takes a moment to settle or update your card.</p>`;
+      await sendEmail({ to: booking.client.email, subject: 'We couldn’t take your payment — KClinics', html: tmplManual(body) });
+    }
+  } catch (e) { console.error('[charge] client decline email failed (continuing):', (e as Error)?.message); }
 }
 
 /**

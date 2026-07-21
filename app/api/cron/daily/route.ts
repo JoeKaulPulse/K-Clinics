@@ -302,6 +302,16 @@ export async function GET(req: Request) {
     await runRenewalReminders();
   } catch (e) { failures++; console.error('[cron] renewal reminders failed (continuing):', (e as Error)?.message); } // BLD-907: counted so the existing Sentry/webhook/500 alerting fires
 
+  // BLD-857: dunning for in-house academy instalment plans — a gentle, capped
+  // reminder to learners whose scheduled instalment is due soon or overdue.
+  let instalmentDunning = { sent: 0 };
+  try {
+    const { academyInstalmentReminders } = await import('@/lib/academy-payments');
+    instalmentDunning = await academyInstalmentReminders();
+  } catch (e) {
+    failures++; console.error('[cron] academy instalment dunning failed (continuing):', (e as Error)?.message);
+  }
+
   // BLD-537: daily community digest to staff (new threads, replies, unanswered).
   let communityDigest = { sent: false, threads: 0, posts: 0 };
   try {
@@ -338,7 +348,7 @@ export async function GET(req: Request) {
 
   // BLD-153: surface failure to the scheduler — non-200 when anything failed.
   return NextResponse.json(
-    { ok: failures === 0, failures, durationMs: cronDurationMs, ...result, loyalty, membership, gcal, gbiz, retention, idMeta, gdprSweep, scheduledEmail, adSpend, board, clinicalBackfill, portfolioMigration, examBank, gamification, authored, courseContent, communityDigest },
+    { ok: failures === 0, failures, durationMs: cronDurationMs, ...result, loyalty, membership, gcal, gbiz, retention, idMeta, gdprSweep, scheduledEmail, adSpend, board, clinicalBackfill, portfolioMigration, examBank, gamification, authored, courseContent, communityDigest, instalmentDunning },
     { status: failures === 0 ? 200 : 500 },
   );
 }

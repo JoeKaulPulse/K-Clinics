@@ -82,6 +82,10 @@ export async function eraseClientData(clientId: string) {
     db.task.deleteMany({ where: { clientId } }),
     db.healthAssessment.deleteMany({ where: { clientId } }),
     db.beforePhoto.deleteMany({ where: { clientId } }),
+    // BLD-765: published before/after gallery cases linked to this client are
+    // their real photos with only consent as the basis — once erased that basis
+    // is gone, so pull them (they cascade off the public /gallery too).
+    db.galleryItem.deleteMany({ where: { clientId } }),
     db.aiAnalysis.deleteMany({ where: { clientId } }),
     db.signedConsent.deleteMany({ where: { clientId } }),
     db.review.deleteMany({ where: { clientId } }),

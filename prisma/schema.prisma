@@ -2809,6 +2809,8 @@ model EnrolmentPayment {
   stripePaymentIntentId String? // set for online payments
   note                  String?
   recordedBy            String? // staff email when recorded / collected manually
+  remindersSent         Int                  @default(0) // BLD-857: dunning reminders sent for this scheduled instalment
+  lastRemindedAt        DateTime? // BLD-857: when the last dunning reminder went out (rate-limits re-reminders)
   createdAt             DateTime             @default(now())
   updatedAt             DateTime             @updatedAt
 
@@ -3108,12 +3110,14 @@ model GalleryItem {
   afterType     String   @default("image/jpeg")
   published     Boolean  @default(false) // "show on the website" toggle
   consent       Boolean  @default(false) // client gave written consent to publish
+  clientId      String? // BLD-765: link to the client whose case this is, so consent is traceable and Art. 17 erasure can pull their photos off the site
   order         Int      @default(0)
   createdBy     String?
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
   @@index([published, order])
+  @@index([clientId])
 }
 
 // Append-only security/auth telemetry — powers the admin Security centre and

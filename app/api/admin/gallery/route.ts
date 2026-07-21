@@ -50,6 +50,7 @@ export async function POST(req: Request) {
           beforeImage: before.buf, beforeType: before.type,
           afterImage: after.buf, afterType: after.type,
           consent: !!b.consent,
+          clientId: (b.clientId as string)?.trim() || null, // BLD-765: optional link to the depicted client for consent + erasure
           published: false,
           order: count,
           createdBy: session.email,
@@ -66,6 +67,7 @@ export async function POST(req: Request) {
       if (b.treatmentSlug !== undefined) data.treatmentSlug = (b.treatmentSlug as string)?.trim() || null;
       if (b.caption !== undefined) data.caption = (b.caption as string)?.slice(0, 200) || null;
       if (typeof b.consent === 'boolean') data.consent = b.consent;
+      if (b.clientId !== undefined) data.clientId = (b.clientId as string)?.trim() || null; // BLD-765
       if (b.beforeImage) { const i = decodeImage(b.beforeImage); if (!i) return bad('Invalid before image.'); data.beforeImage = i.buf; data.beforeType = i.type; }
       if (b.afterImage) { const i = decodeImage(b.afterImage); if (!i) return bad('Invalid after image.'); data.afterImage = i.buf; data.afterType = i.type; }
       await db.galleryItem.update({ where: { id: String(b.id) }, data });
