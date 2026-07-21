@@ -72,7 +72,7 @@ function ImagePick({ label, value, onPick }: { label: string; value: string; onP
 
 function UploadForm() {
   const router = useRouter();
-  const [f, setF] = useState({ category: '', treatmentSlug: '', caption: '', before: '', after: '', consent: false });
+  const [f, setF] = useState({ category: '', treatmentSlug: '', caption: '', before: '', after: '', consent: false, clientId: '' });
   const [busy, setBusy] = useState(false);
   const set = <K extends keyof typeof f>(k: K, v: (typeof f)[K]) => setF((s) => ({ ...s, [k]: v }));
 
@@ -80,9 +80,9 @@ function UploadForm() {
     if (!f.category.trim()) return alert('Choose a treatment category.');
     if (!f.before || !f.after) return alert('Add both a before and an after image.');
     setBusy(true);
-    const r = await post({ op: 'create', category: f.category, treatmentSlug: f.treatmentSlug, caption: f.caption, consent: f.consent, beforeImage: f.before, afterImage: f.after });
+    const r = await post({ op: 'create', category: f.category, treatmentSlug: f.treatmentSlug, caption: f.caption, consent: f.consent, clientId: f.clientId, beforeImage: f.before, afterImage: f.after });
     setBusy(false);
-    if (r.ok) { setF({ category: '', treatmentSlug: '', caption: '', before: '', after: '', consent: false }); router.refresh(); }
+    if (r.ok) { setF({ category: '', treatmentSlug: '', caption: '', before: '', after: '', consent: false, clientId: '' }); router.refresh(); }
     else alert(r.error || 'Could not save.');
   }
 
@@ -103,6 +103,9 @@ function UploadForm() {
         </label>
         <label className="text-xs text-[var(--color-stone)] sm:col-span-2">Caption (optional)<br />
           <input value={f.caption} onChange={(e) => set('caption', e.target.value)} className={`${field} mt-1`} placeholder="e.g. 6 sessions over 12 weeks" />
+        </label>
+        <label className="text-xs text-[var(--color-stone)] sm:col-span-2">Client record ID (optional — links this case to the client so their consent is traceable and it is removed automatically if they are ever erased)<br />
+          <input value={f.clientId} onChange={(e) => set('clientId', e.target.value)} className={`${field} mt-1`} placeholder="Paste the client’s ID from their profile page URL" />
         </label>
       </div>
       <label className="mt-4 flex items-start gap-2.5 text-sm text-[var(--color-ink-soft)]">
