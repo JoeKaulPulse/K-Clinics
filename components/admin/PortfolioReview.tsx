@@ -79,7 +79,7 @@ function EntryRow({ entry: e, statusLabels, onChanged }: { entry: ReviewEntry; s
           {e.reviewedBy && <p className="text-xs text-[var(--color-stone)]">Last reviewed by {e.reviewedBy} on {dateFmt(e.reviewedAt)}.</p>}
 
           <div>
-            <textarea value={feedback} onChange={(ev) => setFeedback(ev.target.value)} rows={2} placeholder="Feedback for the trainee (required to request changes)…" className="w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-3 py-2 text-sm" />
+            <textarea value={feedback} onChange={(ev) => setFeedback(ev.target.value)} rows={2} placeholder="Feedback for the trainee (required to request changes)…" aria-label="Feedback for trainee" className="w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-3 py-2 text-sm" />
             <div className="mt-2 flex flex-wrap gap-2">
               <button onClick={() => review('APPROVED')} disabled={busy} className="rounded-full bg-[var(--color-ink)] px-4 py-1.5 text-xs font-medium text-[var(--color-porcelain)] disabled:opacity-50">Approve</button>
               <button onClick={() => review('NEEDS_WORK')} disabled={busy} className="rounded-full border border-[var(--color-line)] px-4 py-1.5 text-xs hover:border-[var(--color-gold)] disabled:opacity-50">Request changes</button>

@@ -88,7 +88,7 @@ export function MediaGrid({ onPick, compact }: { onPick?: (asset: Asset) => void
 
       {assets.length > 0 && (
         <div className="mt-4 flex items-center justify-between gap-3">
-          <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search images…" className="w-56 rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-porcelain)] px-3 py-1.5 text-sm outline-none focus:border-[var(--color-gold)]" />
+          <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search images…" aria-label="Search images" className="w-56 rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-porcelain)] px-3 py-1.5 text-sm outline-none focus:border-[var(--color-gold)]" />
           <span className="text-xs text-[var(--color-stone)]">{shown.length} of {assets.length}</span>
         </div>
       )}
@@ -145,7 +145,7 @@ export function MediaField({ value, onChange, label }: { value: string; onChange
             : <span className="text-[0.6rem] text-[var(--color-stone)]">None</span>}
         </div>
         <div className="flex-1">
-          <input className="w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-porcelain)] px-3 py-2 text-sm outline-none focus:border-[var(--color-gold)]" value={value} placeholder="https://… or choose from library" onChange={(e) => onChange(e.target.value)} />
+          <input className="w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-porcelain)] px-3 py-2 text-sm outline-none focus:border-[var(--color-gold)]" value={value} placeholder="https://… or choose from library" aria-label={label || 'Image URL'} onChange={(e) => onChange(e.target.value)} />
         </div>
         <button type="button" onClick={() => setOpen(true)} className="shrink-0 rounded-full border border-[var(--color-line)] px-4 py-2 text-sm hover:border-[var(--color-gold)] hover:text-[var(--color-gold-deep)]">Library</button>
         {value && <button type="button" onClick={() => onChange('')} className="shrink-0 text-sm text-[var(--color-stone)] hover:text-[#c0392b]">Clear</button>}

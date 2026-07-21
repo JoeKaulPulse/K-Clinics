@@ -68,15 +68,15 @@ export function HealthFormManager({ formKey, questions }: { formKey: string; que
 
       {open ? (
         <form onSubmit={submit} className="mt-3 space-y-2 rounded-[var(--radius-md)] border border-dashed border-[var(--color-line)] bg-[var(--color-bone)]/40 p-3">
-          <input name="prompt" placeholder="Question wording (e.g. Have you had this treatment before?)" className={field} maxLength={400} autoFocus />
+          <input name="prompt" placeholder="Question wording (e.g. Have you had this treatment before?)" aria-label="Question wording" className={field} maxLength={400} autoFocus />
           <div className="grid gap-2 sm:grid-cols-2">
             <select name="fieldType" value={fieldType} onChange={(e) => setFieldType(e.target.value)} className={field}>
               {TYPES.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
             </select>
-            <input name="help" placeholder="Helper text (optional)" className={field} maxLength={300} />
+            <input name="help" placeholder="Helper text (optional)" aria-label="Helper text" className={field} maxLength={300} />
           </div>
           {needsOptions && (
-            <textarea name="optionsText" rows={3} placeholder={'One option per line, e.g.\nYes\nNo\nNot sure'} className={field} />
+            <textarea name="optionsText" rows={3} placeholder={'One option per line, e.g.\nYes\nNo\nNot sure'} aria-label="Answer options, one per line" className={field} />
           )}
           <label className="flex items-center gap-2 text-sm text-[var(--color-stone)]"><input type="checkbox" name="required" /> Required</label>
           {error && <p role="alert" aria-live="assertive" className="text-xs text-[#b23b3b]">{error}</p>}

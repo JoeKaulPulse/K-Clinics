@@ -80,7 +80,7 @@ export function TreatmentContentEditor({ slug, base, override }: { slug: string;
               <div><label className={label}>Meta title</label><input className={field} value={f.metaTitle} onChange={(e) => set('metaTitle', e.target.value)} /></div>
               <div><label className={label}>Meta description</label><textarea className={`${field} min-h-[60px]`} value={f.metaDescription} onChange={(e) => set('metaDescription', e.target.value)} /></div>
               <div><label className={label}>Keywords <span className="normal-case text-[var(--color-stone)]">(comma-separated)</span></label><input className={field} value={f.keywords} onChange={(e) => set('keywords', e.target.value)} /></div>
-              <div><label className={label}>Related treatment slugs</label><input className={field} value={f.related} onChange={(e) => set('related', e.target.value)} placeholder="ipl-phototherapy, hydraglow-facial" /></div>
+              <div><label className={label}>Related treatment slugs</label><input className={field} value={f.related} onChange={(e) => set('related', e.target.value)} placeholder="ipl-phototherapy, hydraglow-facial" aria-label="Related treatment slugs" /></div>
             </div>
           </section>
         </div>

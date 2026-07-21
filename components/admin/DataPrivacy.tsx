@@ -53,7 +53,7 @@ export function DataPrivacy({ clientId, canDelete = false }: { clientId: string;
         ) : (
           <div className="space-y-2 rounded-[var(--radius-sm)] border border-[var(--color-blush)]/40 bg-[var(--color-blush)]/5 p-3">
             <p className="text-xs text-[var(--color-ink)]">This pseudonymises the client’s personal data (keeping financial records for legal retention) and deletes free-text notes. It can’t be undone. Type <strong>ERASE</strong> to confirm.</p>
-            <input value={confirm} onChange={(e) => setConfirm(e.target.value)} placeholder="ERASE" className="w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-3 py-2 text-sm outline-none focus:border-[var(--color-blush)]" />
+            <input value={confirm} onChange={(e) => setConfirm(e.target.value)} placeholder="ERASE" aria-label="Type ERASE to confirm" className="w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-3 py-2 text-sm outline-none focus:border-[var(--color-blush)]" />
             <div className="flex gap-2">
               <button onClick={erase} disabled={confirm !== 'ERASE' || pending} className="rounded-full bg-[var(--color-blush)] px-4 py-2 text-xs text-white disabled:opacity-40">{pending ? 'Erasing…' : 'Erase'}</button>
               <button onClick={() => { setOpen(false); setConfirm(''); }} className="px-3 py-2 text-xs text-[var(--color-stone)]">Cancel</button>
@@ -82,6 +82,7 @@ export function DataPrivacy({ clientId, canDelete = false }: { clientId: string;
                   value={delConfirm}
                   onChange={(e) => { setDelConfirm(e.target.value); setDelErr(''); }}
                   placeholder="DELETE"
+                  aria-label="Type DELETE to confirm"
                   autoComplete="off"
                   className="w-full rounded-[var(--radius-sm)] border border-[var(--color-blush)]/60 bg-white px-3 py-2 text-sm outline-none focus:border-[var(--color-blush)]"
                 />

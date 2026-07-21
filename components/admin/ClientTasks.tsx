@@ -55,7 +55,7 @@ export function ClientTasks({ clientId, tasks }: { clientId: string; tasks: Task
         </ul>
         {adding ? (
           <div className="mt-3 space-y-2 border-t border-[var(--color-line)] pt-3">
-            <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Task for this client…" className={field} autoFocus />
+            <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Task for this client…" aria-label="Task" className={field} autoFocus />
             <div className="flex items-center gap-2">
               <input type="date" value={due} onChange={(e) => setDue(e.target.value)} className={field} />
               <button onClick={add} disabled={busy} className="shrink-0 rounded-full bg-[var(--color-gold-deep)] px-4 py-2 text-sm text-white disabled:opacity-60">{busy ? '…' : 'Add'}</button>

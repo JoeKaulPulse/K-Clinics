@@ -130,7 +130,7 @@ function RoomRow({ room, equipment }: { room: Resource; equipment: Resource[] })
           <div>
             <p className="mb-1 text-xs font-medium text-[var(--color-stone)]">Used for (tags)</p>
             <div className="flex items-center gap-2">
-              <input value={tags} onChange={(e) => setTags(e.target.value)} placeholder="aesthetics, laser" className={`${field} w-64`} />
+              <input value={tags} onChange={(e) => setTags(e.target.value)} placeholder="aesthetics, laser" aria-label="Tags" className={`${field} w-64`} />
               <button onClick={saveTags} className="rounded-full bg-[var(--color-ink)] px-3 py-1.5 text-xs text-[var(--color-porcelain)]">Save</button>
               {msg && <span className="text-xs text-[var(--color-stone)]">{msg}</span>}
             </div>

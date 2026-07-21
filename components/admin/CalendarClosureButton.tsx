@@ -43,7 +43,7 @@ export function CalendarClosureButton({ dateISO, closure }: { dateISO: string; c
     <div className="absolute right-0 top-12 z-30 w-72 rounded-[var(--radius-md)] border border-[var(--color-line)] bg-white p-4 shadow-[var(--shadow-soft)]">
       <p className="mb-1 text-sm font-medium">Close the whole clinic</p>
       <p className="mb-2 text-xs text-[var(--color-stone)]">Blocks all online bookings for every clinician on {dateISO}.</p>
-      <input value={reason} onChange={(e) => setReason(e.target.value)} placeholder="Reason (optional, e.g. Bank holiday)" className="w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-2 py-1.5 text-sm" />
+      <input value={reason} onChange={(e) => setReason(e.target.value)} placeholder="Reason (optional, e.g. Bank holiday)" aria-label="Reason" className="w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-2 py-1.5 text-sm" />
       {msg && <p className="mt-2 text-xs text-[var(--color-blush-deep)]">{msg}</p>}
       <div className="mt-3 flex gap-2">
         <button onClick={() => post({ startDate: dateISO, reason })} disabled={busy} className="rounded-full bg-[var(--color-ink)] px-4 py-1.5 text-xs text-[var(--color-porcelain)] disabled:opacity-60">{busy ? '…' : 'Close clinic'}</button>

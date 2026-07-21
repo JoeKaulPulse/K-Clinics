@@ -200,11 +200,11 @@ export function WorkspaceClient() {
               <summary className="px-4 py-3 text-sm font-medium cursor-pointer">Create new Workspace user</summary>
               <form onSubmit={handleCreateUser} className="p-4 space-y-3">
                 <div className="grid grid-cols-2 gap-3">
-                  <input className={inputCls} placeholder="First name" value={newUserFirst} onChange={(e) => setNewUserFirst(e.target.value)} required />
-                  <input className={inputCls} placeholder="Last name" value={newUserLast} onChange={(e) => setNewUserLast(e.target.value)} required />
+                  <input className={inputCls} placeholder="First name" aria-label="First name" value={newUserFirst} onChange={(e) => setNewUserFirst(e.target.value)} required />
+                  <input className={inputCls} placeholder="Last name" aria-label="Last name" value={newUserLast} onChange={(e) => setNewUserLast(e.target.value)} required />
                 </div>
-                <input className={`${inputCls} w-full`} type="email" placeholder="user@kclinics.co.uk" value={newUserEmail} onChange={(e) => setNewUserEmail(e.target.value)} required />
-                <input className={`${inputCls} w-full`} type="password" placeholder="Temporary password" value={newUserPass} onChange={(e) => setNewUserPass(e.target.value)} required minLength={8} />
+                <input className={`${inputCls} w-full`} type="email" placeholder="user@kclinics.co.uk" aria-label="Email" value={newUserEmail} onChange={(e) => setNewUserEmail(e.target.value)} required />
+                <input className={`${inputCls} w-full`} type="password" placeholder="Temporary password" aria-label="Temporary password" value={newUserPass} onChange={(e) => setNewUserPass(e.target.value)} required minLength={8} />
                 {createError && <p className="text-xs text-red-600">{createError}</p>}
                 <button type="submit" disabled={creating} className={`${btnCls} bg-[var(--color-ink)] text-[var(--color-parchment)] disabled:opacity-50`}>
                   {creating ? 'Creating…' : 'Create user'}
@@ -251,6 +251,7 @@ export function WorkspaceClient() {
                             <input
                               className={inputCls}
                               placeholder="alias@kclinics.co.uk"
+              aria-label="Email alias"
                               value={aliasValue}
                               onChange={(e) => setAliasValue(e.target.value)}
                               onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addAlias(u.email); } }}
@@ -303,9 +304,9 @@ export function WorkspaceClient() {
             <details className="rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)]">
               <summary className="px-4 py-3 text-sm font-medium cursor-pointer">Create new group / shared inbox</summary>
               <form onSubmit={handleCreateGroup} className="p-4 space-y-3">
-                <input className={`${inputCls} w-full`} type="email" placeholder="support@kclinics.co.uk" value={newGroupEmail} onChange={(e) => setNewGroupEmail(e.target.value)} required />
-                <input className={`${inputCls} w-full`} placeholder="Display name (e.g. Front desk)" value={newGroupName} onChange={(e) => setNewGroupName(e.target.value)} required />
-                <input className={`${inputCls} w-full`} placeholder="Description (optional)" value={newGroupDesc} onChange={(e) => setNewGroupDesc(e.target.value)} />
+                <input className={`${inputCls} w-full`} type="email" placeholder="support@kclinics.co.uk" aria-label="Group email" value={newGroupEmail} onChange={(e) => setNewGroupEmail(e.target.value)} required />
+                <input className={`${inputCls} w-full`} placeholder="Display name (e.g. Front desk)" aria-label="Display name" value={newGroupName} onChange={(e) => setNewGroupName(e.target.value)} required />
+                <input className={`${inputCls} w-full`} placeholder="Description (optional)" aria-label="Description" value={newGroupDesc} onChange={(e) => setNewGroupDesc(e.target.value)} />
                 {createGroupError && <p className="text-xs text-red-600">{createGroupError}</p>}
                 <button type="submit" disabled={creatingGroup} className={`${btnCls} bg-[var(--color-ink)] text-[var(--color-parchment)] disabled:opacity-50`}>
                   {creatingGroup ? 'Creating…' : 'Create group'}

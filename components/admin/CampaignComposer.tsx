@@ -20,10 +20,10 @@ export function CampaignComposer({ audience }: { audience: number }) {
       className="space-y-3 rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-6"
     >
       <p className="text-sm text-[var(--color-stone)]">Broadcasts to your {audience} opted-in subscriber{audience === 1 ? '' : 's'}. Use <code>{'{firstName}'}</code> to personalise{discountOn ? <> and <code>{'{discountCode}'}</code> to insert each recipient&rsquo;s unique code</> : ''}.</p>
-      <input name="name" className={fieldCls} placeholder="Campaign name (internal)" required />
-      <input name="segment" className={fieldCls} placeholder="Tag filter (optional, e.g. vip)" />
-      <input name="subject" className={fieldCls} placeholder="Email subject" required />
-      <textarea name="body" rows={8} className={fieldCls} placeholder={discountOn ? 'Dear {firstName},\n\nHere is £25 off your next treatment — use code {discountCode} when you book.' : 'Dear {firstName},\n\n…'} required />
+      <input name="name" className={fieldCls} placeholder="Campaign name (internal)" aria-label="Campaign name" required />
+      <input name="segment" className={fieldCls} placeholder="Tag filter (optional, e.g. vip)" aria-label="Tag filter" />
+      <input name="subject" className={fieldCls} placeholder="Email subject" aria-label="Email subject" required />
+      <textarea name="body" rows={8} className={fieldCls} aria-label="Message body" placeholder={discountOn ? 'Dear {firstName},\n\nHere is £25 off your next treatment — use code {discountCode} when you book.' : 'Dear {firstName},\n\n…'} required />
 
       {/* Per-recipient discount */}
       <div className="rounded-[var(--radius-sm)] border border-[var(--color-line)] p-3">
@@ -34,7 +34,7 @@ export function CampaignComposer({ audience }: { audience: number }) {
         {discountOn && (
           <div className="mt-3 flex flex-wrap items-center gap-2 text-sm">
             <select name="discountType" className={`${fieldCls} w-28`}><option value="PERCENT">% off</option><option value="FIXED">£ off</option></select>
-            <input name="discountValue" type="number" min={1} className={`${fieldCls} w-28`} placeholder="Value" />
+            <input name="discountValue" type="number" min={1} className={`${fieldCls} w-28`} placeholder="Value" aria-label="Discount value" />
             <span className="text-[var(--color-stone)]">valid for</span>
             <input name="discountDays" type="number" min={1} defaultValue={14} className={`${fieldCls} w-20`} />
             <span className="text-[var(--color-stone)]">days. Insert <code>{'{discountCode}'}</code> in the message.</span>

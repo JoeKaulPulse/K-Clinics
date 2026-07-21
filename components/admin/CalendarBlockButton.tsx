@@ -47,7 +47,7 @@ export function CalendarBlockButton({ clinicians, dateISO }: { clinicians: Clini
           <span className="text-[var(--color-stone)]">–</span>
           <input type="time" value={end} onChange={(e) => setEnd(e.target.value)} className={field} />
         </div>
-        <input value={reason} onChange={(e) => setReason(e.target.value)} placeholder="Reason (optional)" className={`${field} w-full`} />
+        <input value={reason} onChange={(e) => setReason(e.target.value)} placeholder="Reason (optional)" aria-label="Reason" className={`${field} w-full`} />
       </div>
       {msg && <p className="mt-2 text-xs text-[var(--color-blush-deep)]">{msg}</p>}
       <div className="mt-3 flex gap-2">

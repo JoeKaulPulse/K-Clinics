@@ -117,7 +117,7 @@ export function BeforePhotoCapture({ bookingId, clientId, photos, optOutSigned, 
                   <input type="checkbox" checked={attest} onChange={(e) => setAttest(e.target.checked)} className="mt-0.5 accent-[var(--color-gold)]" />
                   I confirm this is a <strong>non-intimate</strong> treatment area and the client has consented to the photo.
                 </label>
-                <input value={area} onChange={(e) => setArea(e.target.value)} placeholder="Area (e.g. lower legs)" className="mb-2 w-full max-w-xs rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-2 py-1.5 text-sm" />
+                <input value={area} onChange={(e) => setArea(e.target.value)} placeholder="Area (e.g. lower legs)" aria-label="Area" className="mb-2 w-full max-w-xs rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-2 py-1.5 text-sm" />
                 <div className="flex flex-wrap gap-2">
                   {!on ? (
                     <button onClick={startCam} disabled={!attest} className="rounded-full bg-[var(--color-ink)] px-4 py-1.5 text-sm text-[var(--color-porcelain)] disabled:opacity-50">Open camera</button>

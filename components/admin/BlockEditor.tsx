@@ -143,7 +143,7 @@ function BlockView({ block: b, active, setActive, update, convert, taRef }: {
           placeholder={b.type === 'heading' ? 'Heading' : b.type === 'callout' ? 'A highlighted note…' : b.type === 'quote' ? 'A pull quote…' : 'Write something, or “/” for blocks…'}
           onChange={(v) => update({ text: v })} />
         {b.type === 'quote' && (
-          <input className="be-cite-input" value={b.cite || ''} placeholder="Attribution (optional)"
+          <input className="be-cite-input" value={b.cite || ''} placeholder="Attribution (optional)" aria-label="Attribution"
             onChange={(e) => update({ cite: e.target.value })} />
         )}
       </div>
@@ -182,10 +182,10 @@ function BlockView({ block: b, active, setActive, update, convert, taRef }: {
         {b.src
           ? <img src={b.src} alt={b.alt || ''} className="be-img" />
           : <div className="be-img-empty">Image preview</div>}
-        <input className="be-field" value={b.src} placeholder="Image URL (https://…)" onChange={(e) => update({ src: e.target.value })} />
+        <input className="be-field" value={b.src} placeholder="Image URL (https://…)" aria-label="Image URL" onChange={(e) => update({ src: e.target.value })} />
         <div className="grid gap-2 sm:grid-cols-2">
-          <input className="be-field" value={b.alt || ''} placeholder="Alt text (accessibility)" onChange={(e) => update({ alt: e.target.value })} />
-          <input className="be-field" value={b.caption || ''} placeholder="Caption (optional)" onChange={(e) => update({ caption: e.target.value })} />
+          <input className="be-field" value={b.alt || ''} placeholder="Alt text (accessibility)" aria-label="Alt text" onChange={(e) => update({ alt: e.target.value })} />
+          <input className="be-field" value={b.caption || ''} placeholder="Caption (optional)" aria-label="Caption" onChange={(e) => update({ caption: e.target.value })} />
         </div>
       </div>
     );
@@ -196,8 +196,8 @@ function BlockView({ block: b, active, setActive, update, convert, taRef }: {
       <div className="be-card">
         {b.label.trim() && <div className="be-cta-preview"><span>{b.label}</span></div>}
         <div className="grid gap-2 sm:grid-cols-2">
-          <input className="be-field" value={b.label} placeholder="Button label" onChange={(e) => update({ label: e.target.value })} />
-          <input className="be-field" value={b.href} placeholder="Link (/laser-hair-removal or https://…)" onChange={(e) => update({ href: e.target.value })} />
+          <input className="be-field" value={b.label} placeholder="Button label" aria-label="Button label" onChange={(e) => update({ label: e.target.value })} />
+          <input className="be-field" value={b.href} placeholder="Link (/laser-hair-removal or https://…)" aria-label="Link URL" onChange={(e) => update({ href: e.target.value })} />
         </div>
       </div>
     );
@@ -257,7 +257,7 @@ function AutoTextarea({ value, onChange, className, placeholder, autoFocus, inpu
   return (
     <textarea
       ref={(el) => { ref.current = el; inputRef?.(el); }}
-      className={className} value={value} placeholder={placeholder} rows={1} autoFocus={autoFocus}
+      className={className} value={value} placeholder={placeholder} aria-label={placeholder} rows={1} autoFocus={autoFocus}
       onChange={(e) => { onChange(e.target.value); autosize(e.target); }}
     />
   );

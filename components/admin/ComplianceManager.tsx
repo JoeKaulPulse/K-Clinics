@@ -148,14 +148,14 @@ function ItemForm({ initial, busy, onSave, onCancel, submitLabel }: { initial: t
   return (
     <div className="rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-white p-5">
       <div className="grid gap-4 sm:grid-cols-2">
-        <div className="sm:col-span-2"><label className={label}>Name *</label><input className={field} value={f.name} onChange={(e) => set('name', e.target.value)} placeholder="e.g. Public liability insurance" /></div>
+        <div className="sm:col-span-2"><label className={label}>Name *</label><input className={field} value={f.name} onChange={(e) => set('name', e.target.value)} placeholder="e.g. Public liability insurance" aria-label="Name" /></div>
         <div><label className={label}>Category</label>
           <select className={field} value={f.category} onChange={(e) => set('category', e.target.value)}>
             {RENEWAL_CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
           </select>
         </div>
         <div><label className={label}>Renewal / expiry date *</label><input type="date" className={field} value={f.renewalAt} onChange={(e) => set('renewalAt', e.target.value)} /></div>
-        <div><label className={label}>Provider</label><input className={field} value={f.provider} onChange={(e) => set('provider', e.target.value)} placeholder="e.g. Hiscox" /></div>
+        <div><label className={label}>Provider</label><input className={field} value={f.provider} onChange={(e) => set('provider', e.target.value)} placeholder="e.g. Hiscox" aria-label="Provider" /></div>
         <div><label className={label}>Reference / policy no.</label><input className={field} value={f.reference} onChange={(e) => set('reference', e.target.value)} /></div>
         <div><label className={label}>Annual cost (£)</label><input type="number" min="0" className={field} value={f.costPence} onChange={(e) => set('costPence', e.target.value)} /></div>
         <div className="sm:col-span-2"><label className={label}>Notes</label><textarea className={field} rows={2} value={f.notes} onChange={(e) => set('notes', e.target.value)} /></div>

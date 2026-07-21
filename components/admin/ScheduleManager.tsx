@@ -269,7 +269,7 @@ function TimeOff({ staff, onChange }: { staff: Staff; onChange: () => void }) {
         <label className="text-xs text-[var(--color-stone)]">Type<br /><select value={kind} onChange={(e) => setKind(e.target.value)} className={f}>{['HOLIDAY', 'SICK', 'TRAINING', 'BLOCKED'].map((k) => <option key={k} value={k}>{k[0] + k.slice(1).toLowerCase()}</option>)}</select></label>
         <label className="text-xs text-[var(--color-stone)]">From<br /><input type="datetime-local" value={start} onChange={(e) => setStart(e.target.value)} className={f} /></label>
         <label className="text-xs text-[var(--color-stone)]">To<br /><input type="datetime-local" value={end} onChange={(e) => setEnd(e.target.value)} className={f} /></label>
-        <input placeholder="Reason (optional)" value={reason} onChange={(e) => setReason(e.target.value)} className={`${f} flex-1`} />
+        <input placeholder="Reason (optional)" aria-label="Reason" value={reason} onChange={(e) => setReason(e.target.value)} className={`${f} flex-1`} />
         <button disabled={busy} onClick={add} className="rounded-full bg-[var(--color-ink)] px-4 py-2 text-sm text-[var(--color-porcelain)] disabled:opacity-60">Add</button>
       </div>
       {msg && <p className="mt-2 text-sm text-[var(--color-blush-deep)]">{msg}</p>}

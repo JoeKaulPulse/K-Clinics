@@ -246,20 +246,20 @@ export function EmailComposer({ segments, tags, initial, templates = [] }: { seg
                 </div>
                 {(b.type === 'heading' || b.type === 'subheading') && <input value={b.text} onFocus={onFocus('block', i)} onChange={(e) => update(i, { text: e.target.value })} className={`${field} w-full`} />}
                 {b.type === 'paragraph' && <textarea value={b.text} onFocus={onFocus('block', i)} onChange={(e) => update(i, { text: e.target.value })} rows={3} className={`${field} w-full`} />}
-                {b.type === 'list' && <textarea value={b.items.join('\n')} onChange={(e) => update(i, { items: e.target.value.split('\n') })} rows={3} placeholder="One item per line" className={`${field} w-full`} />}
+                {b.type === 'list' && <textarea value={b.items.join('\n')} onChange={(e) => update(i, { items: e.target.value.split('\n') })} rows={3} placeholder="One item per line" aria-label="List items" className={`${field} w-full`} />}
                 {b.type === 'image' && (
                   <div className="grid gap-2">
-                    <input value={b.url} onChange={(e) => update(i, { url: e.target.value })} placeholder="Image URL" className={`${field} w-full`} />
+                    <input value={b.url} onChange={(e) => update(i, { url: e.target.value })} placeholder="Image URL" aria-label="Image URL" className={`${field} w-full`} />
                     <div className="grid gap-2 sm:grid-cols-2">
-                      <input value={b.alt ?? ''} onChange={(e) => update(i, { alt: e.target.value })} placeholder="Alt text" className={field} />
-                      <input value={b.href ?? ''} onChange={(e) => update(i, { href: e.target.value })} placeholder="Link when clicked (optional)" className={field} />
+                      <input value={b.alt ?? ''} onChange={(e) => update(i, { alt: e.target.value })} placeholder="Alt text" aria-label="Alt text" className={field} />
+                      <input value={b.href ?? ''} onChange={(e) => update(i, { href: e.target.value })} placeholder="Link when clicked (optional)" aria-label="Image link URL" className={field} />
                     </div>
                   </div>
                 )}
                 {b.type === 'button' && (
                   <div className="grid gap-2 sm:grid-cols-2">
-                    <input value={b.label} onChange={(e) => update(i, { label: e.target.value })} placeholder="Label" className={field} />
-                    <input value={b.href} onChange={(e) => update(i, { href: e.target.value })} placeholder="Link URL" className={field} />
+                    <input value={b.label} onChange={(e) => update(i, { label: e.target.value })} placeholder="Label" aria-label="Button label" className={field} />
+                    <input value={b.href} onChange={(e) => update(i, { href: e.target.value })} placeholder="Link URL" aria-label="Button link URL" className={field} />
                   </div>
                 )}
                 {b.type === 'spacer' && (

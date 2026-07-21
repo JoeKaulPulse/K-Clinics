@@ -110,7 +110,7 @@ function ThreadRow({ thread: t, label, busy, act }: { thread: ModThread; label: 
           )}
 
           <div className="flex gap-2">
-            <textarea value={reply} onChange={(e) => setReply(e.target.value)} rows={2} placeholder="Reply as K Academy…" className="flex-1 rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-3 py-2 text-sm" />
+            <textarea value={reply} onChange={(e) => setReply(e.target.value)} rows={2} placeholder="Reply as K Academy…" aria-label="Reply to question" className="flex-1 rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-3 py-2 text-sm" />
             <button onClick={sendReply} disabled={replying || !reply.trim()} className="shrink-0 self-end rounded-full bg-[var(--color-gold-deep)] px-4 py-2 text-sm font-medium text-white hover:bg-[var(--color-ink)] disabled:opacity-50">{replying ? 'Sending…' : 'Reply'}</button>
           </div>
         </div>

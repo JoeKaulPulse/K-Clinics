@@ -79,7 +79,7 @@ function Row({ s, first, onChange }: { s: Secret; first: boolean; onChange: (s: 
         <div className="flex items-center gap-2">
           <input
             type="password" value={value} onChange={(e) => setValue(e.target.value)}
-            placeholder={s.source === 'app' ? 'Enter to replace' : 'Paste value'} autoComplete="off"
+            placeholder={s.source === 'app' ? 'Enter to replace' : 'Paste value'} aria-label={s.label} autoComplete="off"
             className="w-48 rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-3 py-1.5 text-sm focus:border-[var(--color-gold)] focus:outline-none"
           />
           <button type="button" onClick={save} disabled={busy || !value.trim()}

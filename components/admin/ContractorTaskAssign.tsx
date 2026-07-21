@@ -36,8 +36,8 @@ export function ContractorTaskAssign({ contractors }: { contractors: { id: strin
     <form ref={formRef} onSubmit={submit} className="mb-4 rounded-[var(--radius-md)] border border-dashed border-[var(--color-line)] bg-[var(--color-bone)]/40 p-4">
       <p className="eyebrow mb-3 text-[var(--color-stone)]">Assign a task</p>
       <div className="grid gap-2 sm:grid-cols-2">
-        <input name="title" placeholder="Task (e.g. Service the air-con)" className={`${field} sm:col-span-2`} maxLength={200} />
-        <input name="description" placeholder="Details (optional)" className={`${field} sm:col-span-2`} maxLength={2000} />
+        <input name="title" placeholder="Task (e.g. Service the air-con)" aria-label="Task" className={`${field} sm:col-span-2`} maxLength={200} />
+        <input name="description" placeholder="Details (optional)" aria-label="Details" className={`${field} sm:col-span-2`} maxLength={2000} />
         <select name="assigneeId" defaultValue="" className={field}>
           <option value="">Unassigned</option>
           {contractors.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}

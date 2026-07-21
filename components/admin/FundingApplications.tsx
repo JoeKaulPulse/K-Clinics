@@ -125,6 +125,7 @@ export function FundingApplications({ applications }: { applications: FundingVie
               onBlur={(e) => saveNotes(r.id, e.target.value)}
               rows={2}
               placeholder="Staff notes (saved when you click away)…"
+              aria-label="Staff notes"
               className={`${field} w-full`}
             />
           </div>

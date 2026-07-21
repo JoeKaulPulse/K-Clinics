@@ -30,8 +30,8 @@ export function AdjustClientPoints({ clientId }: { clientId: string }) {
 
   return (
     <div className="mt-3 space-y-2 rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white p-3">
-      <input type="number" inputMode="numeric" placeholder="Points (− to deduct)" value={points} onChange={(e) => setPoints(e.target.value)} className={field} />
-      <input placeholder="Reason (shown to client)" value={reason} onChange={(e) => setReason(e.target.value)} className={field} />
+      <input type="number" inputMode="numeric" placeholder="Points (− to deduct)" aria-label="Points" value={points} onChange={(e) => setPoints(e.target.value)} className={field} />
+      <input placeholder="Reason (shown to client)" aria-label="Reason" value={reason} onChange={(e) => setReason(e.target.value)} className={field} />
       {msg && <p className="text-xs text-[var(--color-blush-deep)]">{msg}</p>}
       <div className="flex gap-2">
         <button onClick={submit} disabled={busy} className="rounded-full bg-[var(--color-ink)] px-4 py-1.5 text-xs text-[var(--color-porcelain)] disabled:opacity-60">{busy ? '…' : 'Apply'}</button>

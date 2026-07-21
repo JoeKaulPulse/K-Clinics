@@ -80,7 +80,7 @@ export function DayCloseSettings({ initial }: { initial: DayCloseConfig }) {
               <input value={sec.title} onChange={(e) => patchSection(si, { title: e.target.value })} className={`${field} flex-1 font-medium`} />
               <button onClick={() => patch({ sections: config.sections.filter((_, j) => j !== si) })} className="px-2 py-2 text-xs text-[var(--color-blush-deep)] hover:underline">Remove</button>
             </div>
-            <input value={sec.description || ''} onChange={(e) => patchSection(si, { description: e.target.value })} placeholder="Short description (optional)" className={`${field} mt-2 w-full text-xs`} />
+            <input value={sec.description || ''} onChange={(e) => patchSection(si, { description: e.target.value })} placeholder="Short description (optional)" aria-label="Section description" className={`${field} mt-2 w-full text-xs`} />
 
             <ul className="mt-3 space-y-2">
               {sec.items.map((it, ii) => (

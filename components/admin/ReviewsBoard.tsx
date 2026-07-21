@@ -109,7 +109,7 @@ function QuestionRow({ q, busy, act }: { q: QuestionItem; busy: boolean; act: (p
       )}
 
       <div className="mt-3 flex flex-col gap-2 sm:flex-row">
-        <textarea value={reply} onChange={(e) => setReply(e.target.value)} rows={2} placeholder="Reply as K Academy (also marks the question answered and emails the trainee)…" className="flex-1 rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-3 py-2 text-sm" />
+        <textarea value={reply} onChange={(e) => setReply(e.target.value)} rows={2} placeholder="Reply as K Academy (also marks the question answered and emails the trainee)…" aria-label="Reply to question" className="flex-1 rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-3 py-2 text-sm" />
         <button onClick={sendReply} disabled={sending || !reply.trim()} className="shrink-0 self-end rounded-full bg-[var(--color-gold-deep)] px-4 py-2 text-sm font-medium text-white hover:bg-[var(--color-ink)] disabled:opacity-50">{sending ? 'Sending…' : 'Reply'}</button>
       </div>
 

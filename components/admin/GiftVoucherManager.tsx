@@ -55,7 +55,7 @@ export function GiftVoucherManager({ vouchers, canManage = false }: { vouchers: 
             <button key={s} onClick={() => setFilter(s)} className={`rounded-full border px-3 py-1.5 text-xs transition-colors ${filter === s ? 'border-[var(--color-ink)] bg-[var(--color-ink)] text-[var(--color-porcelain)]' : 'border-[var(--color-line)] hover:border-[var(--color-stone-soft)]'}`}>{s[0] + s.slice(1).toLowerCase()}</button>
           ))}
         </div>
-        <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search code, name or email…" className="ml-auto w-full max-w-xs rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-3 py-1.5 text-sm outline-none focus:border-[var(--color-gold)]" />
+        <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search code, name or email…" aria-label="Search gift vouchers" className="ml-auto w-full max-w-xs rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-3 py-1.5 text-sm outline-none focus:border-[var(--color-gold)]" />
       </div>
 
       <div className="overflow-x-auto rounded-[var(--radius-lg)] border border-[var(--color-line)]">

@@ -137,9 +137,9 @@ export function BookingActions({
               <p className="mb-2 text-sm font-medium">Refund the client</p>
               <div className="flex flex-wrap items-center gap-2">
                 <span className="text-sm text-[var(--color-stone)]">£</span>
-                <input value={refundAmt} onChange={(e) => { setRefundAmt(e.target.value); setConfirmRefund(false); }} inputMode="decimal" placeholder={(remainingRefund / 100).toFixed(2)}
+                <input value={refundAmt} onChange={(e) => { setRefundAmt(e.target.value); setConfirmRefund(false); }} inputMode="decimal" placeholder={(remainingRefund / 100).toFixed(2)} aria-label="Refund amount (£)"
                   className="w-28 rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-bone)] px-3 py-2 text-sm outline-none focus:border-[var(--color-gold)]" />
-                <input value={refundReason} onChange={(e) => setRefundReason(e.target.value)} placeholder="Reason (optional)"
+                <input value={refundReason} onChange={(e) => setRefundReason(e.target.value)} placeholder="Reason (optional)" aria-label="Refund reason"
                   className="min-w-[8rem] flex-1 rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-bone)] px-3 py-2 text-sm outline-none focus:border-[var(--color-gold)]" />
               </div>
               {(() => { const pence = Math.round((parseFloat(refundAmt) || remainingRefund / 100) * 100); return (
@@ -191,7 +191,7 @@ export function BookingActions({
           {within24h && (
             <p className="mb-2 text-xs text-[var(--color-stone)]">Within 24h — the full fee ({money(pricePence)}) will be charged unless waived.</p>
           )}
-          <input value={reason} onChange={(e) => setReason(e.target.value)} placeholder="Reason (optional)"
+          <input value={reason} onChange={(e) => setReason(e.target.value)} placeholder="Reason (optional)" aria-label="Cancellation reason"
             className="mb-2 w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-porcelain)] px-3 py-2 text-sm outline-none focus:border-[var(--color-gold)]" />
           {within24h && (
             <label className="mb-3 flex items-center gap-2 text-sm text-[var(--color-stone)]">

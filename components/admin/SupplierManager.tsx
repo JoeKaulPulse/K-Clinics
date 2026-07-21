@@ -64,7 +64,7 @@ export function SupplierManager({ canManage }: { canManage: boolean }) {
   return (
     <div>
       <div className="mb-4 flex flex-wrap items-center gap-3">
-        <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search suppliers…" className={`${field} max-w-xs`} />
+        <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search suppliers…" aria-label="Search suppliers" className={`${field} max-w-xs`} />
         {canManage && <button onClick={() => setEditing(blank())} className="rounded-full bg-[var(--color-ink)] px-4 py-2 text-sm font-medium text-[var(--color-porcelain)] hover:bg-[var(--color-gold-deep)]">Add supplier</button>}
         {canManage && <button onClick={importXero} disabled={importing} className="rounded-full border border-[var(--color-line)] px-4 py-2 text-sm font-medium hover:border-[var(--color-gold)] hover:text-[var(--color-gold-deep)] disabled:opacity-50">{importing ? 'Importing…' : 'Import from Xero'}</button>}
       </div>
@@ -98,7 +98,7 @@ export function SupplierManager({ canManage }: { canManage: boolean }) {
             <h2 id="supplier-editor-title" className="font-[family-name:var(--font-display)] text-xl">{editing.id ? 'Edit supplier' : 'New supplier'}</h2>
             <div className="mt-4 grid gap-3 sm:grid-cols-2">
               <div className="sm:col-span-2"><label className={label}>Name *</label><input className={field} value={editing.name || ''} onChange={(e) => set('name', e.target.value)} disabled={!canManage} /></div>
-              <div><label className={label}>Category</label><input className={field} value={editing.category || ''} onChange={(e) => set('category', e.target.value)} disabled={!canManage} placeholder="Consumables, Equipment…" /></div>
+              <div><label className={label}>Category</label><input className={field} value={editing.category || ''} onChange={(e) => set('category', e.target.value)} disabled={!canManage} placeholder="Consumables, Equipment…" aria-label="Category" /></div>
               <div><label className={label}>Account number</label><input className={field} value={editing.accountNumber || ''} onChange={(e) => set('accountNumber', e.target.value)} disabled={!canManage} /></div>
               <div><label className={label}>Contact name</label><input className={field} value={editing.contactName || ''} onChange={(e) => set('contactName', e.target.value)} disabled={!canManage} /></div>
               <div><label className={label}>Phone</label><input className={field} value={editing.phone || ''} onChange={(e) => set('phone', e.target.value)} disabled={!canManage} /></div>
@@ -107,7 +107,7 @@ export function SupplierManager({ canManage }: { canManage: boolean }) {
               <div className="sm:col-span-2"><label className={label}>Address</label><input className={field} value={editing.addressLine || ''} onChange={(e) => set('addressLine', e.target.value)} disabled={!canManage} /></div>
               <div><label className={label}>City</label><input className={field} value={editing.city || ''} onChange={(e) => set('city', e.target.value)} disabled={!canManage} /></div>
               <div><label className={label}>Postcode</label><input className={field} value={editing.postcode || ''} onChange={(e) => set('postcode', e.target.value)} disabled={!canManage} /></div>
-              <div className="sm:col-span-2"><label className={label}>Xero contact ID</label><input className={field} value={editing.xeroContactId || ''} onChange={(e) => set('xeroContactId', e.target.value)} disabled={!canManage} placeholder="Links to their bills in Xero" /></div>
+              <div className="sm:col-span-2"><label className={label}>Xero contact ID</label><input className={field} value={editing.xeroContactId || ''} onChange={(e) => set('xeroContactId', e.target.value)} disabled={!canManage} placeholder="Links to their bills in Xero" aria-label="Xero contact ID" /></div>
               <div className="sm:col-span-2"><label className={label}>Notes</label><textarea rows={2} className={field} value={editing.notes || ''} onChange={(e) => set('notes', e.target.value)} disabled={!canManage} /></div>
             </div>
 

@@ -30,7 +30,7 @@ export function BlocksList({ blocks }: { blocks: Row[] }) {
       <div className="mt-6 rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-5">
         <p className="text-sm font-medium">New reusable block</p>
         <div className="mt-3 flex flex-wrap items-center gap-2">
-          <input className="w-56 rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-porcelain)] px-3 py-2 text-sm outline-none focus:border-[var(--color-gold)]" value={name} placeholder="Name (e.g. Footer CTA)" onChange={(e) => setName(e.target.value)} />
+          <input className="w-56 rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-porcelain)] px-3 py-2 text-sm outline-none focus:border-[var(--color-gold)]" value={name} placeholder="Name (e.g. Footer CTA)" aria-label="Block name" onChange={(e) => setName(e.target.value)} />
           <select className="rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-porcelain)] px-3 py-2 text-sm" value={type} onChange={(e) => setType(e.target.value)}>
             {PICKABLE.map((d) => <option key={d.type} value={d.type}>{d.label}</option>)}
           </select>

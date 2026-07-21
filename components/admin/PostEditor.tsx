@@ -65,7 +65,7 @@ export function PostEditor({ initial }: { initial: Initial }) {
           <div>
             <label className={label}>Title</label>
             <input className={`${field} font-[family-name:var(--font-display)] text-xl`} value={f.title}
-              onChange={(e) => set('title', e.target.value)} placeholder="Article title" />
+              onChange={(e) => set('title', e.target.value)} placeholder="Article title" aria-label="Title" />
           </div>
           <div>
             <label className={label}>Content</label>
@@ -90,11 +90,11 @@ export function PostEditor({ initial }: { initial: Initial }) {
           </div>
 
           <div className="rounded-[var(--radius-md)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-4 space-y-4">
-            <div><label className={label}>URL slug <span className="normal-case text-[var(--color-stone)]">(blank = auto)</span></label><input className={field} value={f.slug} onChange={(e) => set('slug', e.target.value)} placeholder="my-article" /></div>
+            <div><label className={label}>URL slug <span className="normal-case text-[var(--color-stone)]">(blank = auto)</span></label><input className={field} value={f.slug} onChange={(e) => set('slug', e.target.value)} placeholder="my-article" aria-label="URL slug" /></div>
             <div><label className={label}>Category</label><select className={field} value={f.category} onChange={(e) => set('category', e.target.value)}>{CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}</select></div>
             <div>
               <label className={label}>Excerpt <span className="normal-case text-[var(--color-stone)]">(card + intro)</span></label>
-              <textarea className={`${field} min-h-[70px]`} value={f.excerpt} onChange={(e) => set('excerpt', e.target.value)} placeholder="Short summary — blank to auto-generate from the first paragraph." />
+              <textarea className={`${field} min-h-[70px]`} value={f.excerpt} onChange={(e) => set('excerpt', e.target.value)} placeholder="Short summary — blank to auto-generate from the first paragraph." aria-label="Excerpt" />
             </div>
             <div>
               <label className={label}>Read time <span className="normal-case text-[var(--color-stone)]">(0 = auto: {estRead} min)</span></label>
@@ -107,7 +107,7 @@ export function PostEditor({ initial }: { initial: Initial }) {
             <MediaField label="Cover image" value={f.coverImage} onChange={(v) => set('coverImage', v)} />
             <div><label className={label}>Meta description</label><textarea className={`${field} min-h-[60px]`} value={f.metaDescription} onChange={(e) => set('metaDescription', e.target.value)} /></div>
             <div><label className={label}>Keywords <span className="normal-case text-[var(--color-stone)]">(comma-separated)</span></label><input className={field} value={f.keywords} onChange={(e) => set('keywords', e.target.value)} /></div>
-            <div><label className={label}>Related treatment slugs <span className="normal-case text-[var(--color-stone)]">(comma-separated)</span></label><input className={field} value={f.related} onChange={(e) => set('related', e.target.value)} placeholder="laser-hair-removal, hydraglow-facial" /></div>
+            <div><label className={label}>Related treatment slugs <span className="normal-case text-[var(--color-stone)]">(comma-separated)</span></label><input className={field} value={f.related} onChange={(e) => set('related', e.target.value)} placeholder="laser-hair-removal, hydraglow-facial" aria-label="Related treatment slugs" /></div>
           </div>
 
           {initial && <Link href={`/journal/${f.slug}`} target="_blank" className="block text-center text-sm text-[var(--color-gold-deep)] hover:underline">View on site ↗</Link>}

@@ -72,10 +72,10 @@ function TestCard({ t, canManage }: { t: AbTestRow; canManage: boolean }) {
               </div>
               {canManage && (
                 <div className="mt-3 grid gap-2 sm:grid-cols-2">
-                  <input defaultValue={v.headline} onBlur={(e) => e.target.value !== v.headline && act({ op: 'updateVariant', id: v.id, headline: e.target.value })} placeholder="Headline" className={field} />
-                  <input defaultValue={v.subhead} onBlur={(e) => e.target.value !== v.subhead && act({ op: 'updateVariant', id: v.id, subhead: e.target.value })} placeholder="Subhead" className={field} />
-                  <input defaultValue={v.ctaLabel} onBlur={(e) => e.target.value !== v.ctaLabel && act({ op: 'updateVariant', id: v.id, ctaLabel: e.target.value })} placeholder="CTA label" className={field} />
-                  <input defaultValue={v.ctaHref} onBlur={(e) => e.target.value !== v.ctaHref && act({ op: 'updateVariant', id: v.id, ctaHref: e.target.value })} placeholder="CTA link (/book)" className={field} />
+                  <input defaultValue={v.headline} onBlur={(e) => e.target.value !== v.headline && act({ op: 'updateVariant', id: v.id, headline: e.target.value })} placeholder="Headline" aria-label="Headline" className={field} />
+                  <input defaultValue={v.subhead} onBlur={(e) => e.target.value !== v.subhead && act({ op: 'updateVariant', id: v.id, subhead: e.target.value })} placeholder="Subhead" aria-label="Subhead" className={field} />
+                  <input defaultValue={v.ctaLabel} onBlur={(e) => e.target.value !== v.ctaLabel && act({ op: 'updateVariant', id: v.id, ctaLabel: e.target.value })} placeholder="CTA label" aria-label="CTA label" className={field} />
+                  <input defaultValue={v.ctaHref} onBlur={(e) => e.target.value !== v.ctaHref && act({ op: 'updateVariant', id: v.id, ctaHref: e.target.value })} placeholder="CTA link (/book)" aria-label="CTA link" className={field} />
                 </div>
               )}
               {canManage && t.variants.length > 2 && <button onClick={() => act({ op: 'removeVariant', id: v.id })} className="mt-2 text-xs text-[var(--color-blush-deep)] hover:underline">Remove variant</button>}
