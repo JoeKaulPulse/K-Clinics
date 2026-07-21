@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { verifyToken, verifyClientToken, verifyAcademyToken, SESSION_COOKIE, CLIENT_SESSION_COOKIE, ACADEMY_SESSION_COOKIE } from '@/lib/auth-edge';
+import { isSameOrigin } from '@/lib/security/origin';
 import { ATTRIB_COOKIE, ATTRIB_MAX_AGE, attributionFromUrl } from '@/lib/attribution';
 import { SEG_COOKIE, SEG_MAX_AGE, segmentFromUrl } from '@/lib/personalize';
 import { THEME_NO_FLASH_SCRIPT } from '@/lib/admin-theme';
@@ -152,6 +153,24 @@ function edgeClientIp(req: NextRequest): string {
 export async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
 
+  // ── BLD-698: CSRF / same-origin check for cookie-authed API mutations ─────
+  // Run first for /api routes and return immediately, so no other (redirect /
+  // admin CSP / attribution) logic executes on them. Gated on the presence of a
+  // session cookie: token-authed and Stripe-signature routes carry none, so they
+  // are exempt by construction. isSameOrigin() only inspects headers/URLs (edge-
+  // safe) and only blocks state-changing methods.
+  if (pathname.startsWith('/api/')) {
+    const hasSession = Boolean(
+      req.cookies.get(SESSION_COOKIE)?.value ||
+      req.cookies.get(CLIENT_SESSION_COOKIE)?.value ||
+      req.cookies.get(ACADEMY_SESSION_COOKIE)?.value,
+    );
+    if (hasSession && !isSameOrigin(req)) {
+      return NextResponse.json({ ok: false, error: 'Cross-site request blocked.' }, { status: 403 });
+    }
+    return NextResponse.next();
+  }
+
   // ── IP deny-list — blocked IPs get nothing (checked before any work) ─────
   const ip = edgeClientIp(req);
   if (ip !== 'unknown') {
@@ -252,7 +271,8 @@ export async function middleware(req: NextRequest) {
 }
 
 export const config = {
-  // Run on the app areas (auth) and the public site (redirects), but skip
-  // Next internals, API routes, and any request for a file with an extension.
-  matcher: ['/((?!api|_next/static|_next/image|favicon.ico|robots.txt|sitemap.xml|.*\\.[\\w]+$).*)'],
+  // Run on the app areas (auth), the public site (redirects) and API routes
+  // (the BLD-698 CSRF check, which returns immediately), but skip Next internals
+  // and any request for a file with an extension.
+  matcher: ['/((?!_next/static|_next/image|favicon.ico|robots.txt|sitemap.xml|.*\\.[\\w]+$).*)'],
 };
