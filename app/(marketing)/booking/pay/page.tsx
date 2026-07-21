@@ -16,23 +16,29 @@ export const metadata: Metadata = { title: 'Complete your payment | KClinics', r
 const ACTIONABLE = ['requires_action', 'requires_confirmation'];
 
 export default async function PayPage({ searchParams }: { searchParams: Promise<{ pi?: string }> }) {
-  const { pi: clientSecret } = await searchParams;
+  const { pi: piParam } = await searchParams;
 
   let state: 'notfound' | 'paid' | 'ready' | 'callus' = 'notfound';
   let view: { treatment: string; pricePence: number; clientSecret: string } | null = null;
 
-  if (crmEnabled && stripeEnabled && clientSecret && clientSecret.startsWith('pi_')) {
+  // BLD-716: `pi` is the PaymentIntent ID (new links carry the ID only, never the
+  // client_secret). Legacy emails may still carry a full `pi_..._secret_...`
+  // value; splitting on `_secret_` yields the ID for both. The client_secret used
+  // to confirm the card is fetched server-side and only rendered into the form —
+  // it never appears in the URL, server logs or browser history.
+  if (crmEnabled && stripeEnabled && piParam && piParam.startsWith('pi_')) {
     try {
-      const piId = clientSecret.split('_secret_')[0];
+      const piId = piParam.split('_secret_')[0];
       const { stripe } = await import('@/lib/stripe');
       const { db, withDbRetry } = await import('@/lib/db');
       const pi = await stripe().paymentIntents.retrieve(piId).catch(() => null);
-      // Only proceed if the caller actually holds this PaymentIntent's secret.
-      if (pi && pi.client_secret === clientSecret && pi.metadata?.bookingId) {
+      // A real, unexpired PaymentIntent for a known booking is the capability;
+      // the secret is read from Stripe, not the URL.
+      if (pi && pi.client_secret && pi.metadata?.bookingId) {
         const b = await withDbRetry(() => db.booking.findUnique({ where: { id: pi.metadata.bookingId } }));
         if (b) {
           if (pi.status === 'succeeded' || b.chargedAt) state = 'paid';
-          else if (ACTIONABLE.includes(pi.status)) { state = 'ready'; view = { treatment: b.treatmentTitle, pricePence: pi.amount, clientSecret }; }
+          else if (ACTIONABLE.includes(pi.status)) { state = 'ready'; view = { treatment: b.treatmentTitle, pricePence: pi.amount, clientSecret: pi.client_secret }; }
           else state = 'callus'; // e.g. canceled / requires_payment_method — needs a new card
         }
       }
