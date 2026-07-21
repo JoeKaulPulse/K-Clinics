@@ -1,5 +1,6 @@
 'use client';
 
+import { useId, useRef } from 'react';
 import type { Field } from '@/lib/sections';
 import type { Block } from '@/lib/blocks';
 import { BlockEditor } from '@/components/admin/BlockEditor';
@@ -11,6 +12,12 @@ const lbl = 'block text-xs font-medium uppercase tracking-[0.12em] text-[var(--c
 type Data = Record<string, unknown>;
 const move = <T,>(a: T[], i: number, d: number): T[] => { const j = i + d; if (j < 0 || j >= a.length) return a; const n = [...a]; [n[i], n[j]] = [n[j], n[i]]; return n; };
 
+// PRJ-1032.30 (WCAG 2.1.1): arrow-key control for the focal-point picker, so the
+// point is settable without a mouse. There is a single point, so arrows move it
+// live (2% steps, Shift = 10%) rather than the place-a-marker model the exercise
+// editor uses; a debounced aria-live line announces the position.
+const FOCAL_DIRS: Record<string, [number, number] | undefined> = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1] };
+
 /** Render a section's fields from its schema, editing a flat data object. */
 export function SectionFields({ fields, data, onChange }: { fields: Field[]; data: Data; onChange: (data: Data) => void }) {
   const set = (key: string, value: unknown) => onChange({ ...data, [key]: value });
@@ -21,27 +28,55 @@ export function SectionFields({ fields, data, onChange }: { fields: Field[]; dat
   );
 }
 
+function FocalField({ label, help, src, pos, onChange }: { label: string; help?: string; src: string; pos: string; onChange: (v: string) => void }) {
+  const [x, y] = pos.split(' ');
+  const liveRef = useRef<HTMLSpanElement>(null);
+  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const hintId = useId();
+  const setFocal = (px: number, py: number) => {
+    onChange(`${px}% ${py}%`);
+    if (timer.current) clearTimeout(timer.current);
+    timer.current = setTimeout(() => { if (liveRef.current) liveRef.current.textContent = `Focal point at ${px}% across, ${py}% down`; }, 150);
+  };
+  const onKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
+    const d = FOCAL_DIRS[e.key];
+    if (!d) return;
+    e.preventDefault();
+    const step = e.shiftKey ? 10 : 2;
+    const cx = parseInt(x, 10) || 50;
+    const cy = parseInt(y, 10) || 50;
+    setFocal(Math.min(100, Math.max(0, cx + d[0] * step)), Math.min(100, Math.max(0, cy + d[1] * step)));
+  };
+  return (
+    <div>
+      <label className={lbl}>{label}</label>
+      {src ? (
+        <div
+          role="application"
+          aria-label={`${label}. Focal point.`}
+          aria-describedby={hintId}
+          tabIndex={0}
+          onKeyDown={onKeyDown}
+          className="relative cursor-crosshair overflow-hidden rounded-[var(--radius-sm)] border border-[var(--color-line)] outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-gold-deep)] focus-visible:ring-offset-2"
+          onClick={(e) => { const r = e.currentTarget.getBoundingClientRect(); const px = Math.round(((e.clientX - r.left) / r.width) * 100); const py = Math.round(((e.clientY - r.top) / r.height) * 100); setFocal(px, py); }}
+        >
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={src} alt="" className="block max-h-52 w-full object-cover" style={{ objectPosition: pos }} />
+          <span className="pointer-events-none absolute h-4 w-4 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-white bg-[var(--color-gold)] shadow" style={{ left: x, top: y }} />
+          <span ref={liveRef} aria-live="polite" className="sr-only" />
+          <span id={hintId} className="sr-only">Click the image to set the focal point, or focus it and use the arrow keys (2% per press, hold Shift for 10%).</span>
+        </div>
+      ) : <p className="text-xs text-[var(--color-stone)]">Add an image above, then click it to set the focal point.</p>}
+      {help && <p className="mt-1 text-xs text-[var(--color-stone)]">{help}</p>}
+    </div>
+  );
+}
+
 function FieldInput({ field: f, value, data, onChange }: { field: Field; value: unknown; data?: Data; onChange: (v: unknown) => void }) {
   if (f.type === 'focal') {
     const src = String((data?.[f.imageKey || 'image'] as string) || '');
     const pos = String(value || '50% 50%');
-    const [x, y] = pos.split(' ');
-    return (
-      <div>
-        <label className={lbl}>{f.label}</label>
-        {src ? (
-          <div
-            className="relative cursor-crosshair overflow-hidden rounded-[var(--radius-sm)] border border-[var(--color-line)]"
-            onClick={(e) => { const r = e.currentTarget.getBoundingClientRect(); const px = Math.round(((e.clientX - r.left) / r.width) * 100); const py = Math.round(((e.clientY - r.top) / r.height) * 100); onChange(`${px}% ${py}%`); }}
-          >
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={src} alt="" className="block max-h-52 w-full object-cover" style={{ objectPosition: pos }} />
-            <span className="pointer-events-none absolute h-4 w-4 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-white bg-[var(--color-gold)] shadow" style={{ left: x, top: y }} />
-          </div>
-        ) : <p className="text-xs text-[var(--color-stone)]">Add an image above, then click it to set the focal point.</p>}
-        {f.help && <p className="mt-1 text-xs text-[var(--color-stone)]">{f.help}</p>}
-      </div>
-    );
+    return <FocalField label={f.label} help={f.help} src={src} pos={pos} onChange={onChange} />;
   }
   if (f.type === 'blocks') {
     return (

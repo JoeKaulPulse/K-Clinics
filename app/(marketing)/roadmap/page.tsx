@@ -1,14 +1,19 @@
 import type { Metadata } from 'next';
 import { listPublicItems } from '@/lib/build-board';
 import { comingSoonContent, shippedContent, type RoadmapEntry } from '@/lib/roadmap-content';
+import { pageMeta } from '@/lib/seo';
 
 export const revalidate = 300; // ISR — public board snapshot, no per-request state
 
-export const metadata: Metadata = {
-  title: 'Roadmap — K Clinics',
-  description: 'See what\'s new and what\'s coming next from K Clinics.',
-  robots: { index: true, follow: true },
-};
+// PRJ-1032.36: route through pageMeta so the page carries a self-canonical URL
+// and a per-page OG/Twitter card (the bare metadata export had neither), and
+// use the canonical brand spelling (site.name === 'KClinics').
+export const generateMetadata = (): Promise<Metadata> => pageMeta({
+  title: 'Roadmap — KClinics',
+  description: 'See what\'s new and what\'s coming next from KClinics.',
+  path: '/roadmap',
+  keywords: ['KClinics roadmap', 'what\'s new', 'coming soon'],
+});
 
 const STATUS_ORDER = ['IN_PROGRESS', 'IN_REVIEW', 'TRIAGE', 'SHIPPED', 'CLOSED'];
 
@@ -104,7 +109,7 @@ export default async function RoadmapPage() {
   return (
     <main className="mx-auto max-w-2xl px-5 py-16 sm:py-24">
       <div className="mb-12 text-center">
-        <p className="mb-3 text-[0.7rem] uppercase tracking-[0.18em] text-[var(--color-stone)]">K Clinics</p>
+        <p className="mb-3 text-[0.7rem] uppercase tracking-[0.18em] text-[var(--color-stone)]">KClinics</p>
         <h1 className="font-[family-name:var(--font-display)] text-4xl sm:text-5xl">What we&rsquo;re building</h1>
         <p className="mt-4 text-[var(--color-stone)]">
           The experience keeps getting better — for clients, for trainees, and for the team. Here&rsquo;s what&rsquo;s new and what&rsquo;s next.

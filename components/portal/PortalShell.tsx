@@ -58,6 +58,9 @@ export function PortalShell({ firstName, locale: localeProp, children }: { first
 
   return (
     <div className="relative flex min-h-screen flex-col">
+      {/* PRJ-1032.29: keyboard/AT skip link to the main content (parity with the
+          marketing + admin layouts). Visible only when focused. */}
+      <a href="#main" className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-[60] focus:rounded-full focus:bg-[var(--color-ink)] focus:px-4 focus:py-2 focus:text-sm focus:font-medium focus:text-[var(--color-porcelain)]">Skip to content</a>
       {/* Ambient brand wash — the marketing-site depth treatment, kept whisper-soft
           on the light portal so content stays crisp. */}
       <div aria-hidden className="pointer-events-none fixed inset-0 -z-10">
@@ -110,7 +113,7 @@ export function PortalShell({ firstName, locale: localeProp, children }: { first
       </div>
 
       <div className="mx-auto flex w-full max-w-[88rem] flex-1 flex-col px-[var(--gutter)]">
-        <main className="flex-1 py-9 md:py-14">{children}</main>
+        <main id="main" className="flex-1 py-9 md:py-14">{children}</main>
 
         <footer className="mt-8 flex flex-col gap-3 border-t border-[var(--color-line)] py-7 text-xs text-[var(--color-stone)] sm:flex-row sm:items-center sm:justify-between">
           <p>{t('portal.footer')}{' '}

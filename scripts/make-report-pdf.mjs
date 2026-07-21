@@ -42,12 +42,12 @@ const listBlock = (arr) => `<ul>${(arr || []).map((x) => `<li>${md(x)}</li>`).jo
 
 const html = `<!doctype html><html lang="en-GB"><head><meta charset="utf-8">
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Inter:wght@400;500;600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Geist:wght@400;500;600&display=swap'); /* PRJ-1032.34: brand body font is Geist, not Inter */
 :root{--ink:#2a2420;--stone:#7d6259;--porcelain:#f6ece3;--bone:#efe3d7;--sand:#e3d3c4;--gold:#a98a6d;--gold-deep:#816748;--jade:#2f7152;--line:rgba(42,36,32,.12)}
 *{box-sizing:border-box}
 @page{size:A4;margin:18mm 16mm}
 @page:first{margin:0}
-body{font-family:Inter,system-ui,sans-serif;color:var(--ink);font-size:10.5pt;line-height:1.55;margin:0}
+body{font-family:Geist,system-ui,sans-serif;color:var(--ink);font-size:10.5pt;line-height:1.55;margin:0}
 h1,h2,h3{font-family:Fraunces,Georgia,serif;font-weight:500;line-height:1.15}
 h2{font-size:19pt;margin:0 0 4pt;border-bottom:2px solid var(--gold-deep);padding-bottom:6pt}
 h3{font-size:13pt;margin:14pt 0 4pt}
@@ -76,7 +76,7 @@ td.delta{font-weight:600;color:var(--jade);text-align:center}
 .bar{position:relative;background:var(--bone);border-radius:5px;height:13pt;width:120pt;overflow:hidden}
 .bar-fill{height:100%;border-radius:5px}
 .bar-val{position:absolute;right:5pt;top:0;line-height:13pt;font-size:8pt;font-weight:600}
-.scorechip{display:inline-block;color:#fff;font-family:Inter;font-size:9pt;font-weight:600;padding:1pt 6pt;border-radius:20px;vertical-align:middle}
+.scorechip{display:inline-block;color:#fff;font-family:Geist;font-size:9pt;font-weight:600;padding:1pt 6pt;border-radius:20px;vertical-align:middle}
 .arrow{color:var(--stone);margin:0 4pt}
 .avoid-break{break-inside:avoid}
 .callout{background:var(--bone);border-left:3px solid var(--gold-deep);padding:8pt 11pt;border-radius:0 6px 6px 0;margin:8pt 0}

@@ -21,16 +21,23 @@ export function ChatDock() {
           if (!channel) return null;
           if (minimized[id]) {
             return (
-              <button
+              // PRJ-1032.31: the close control is a SIBLING real <button>, not a
+              // clickable <span> nested inside the toggle button (nested interactive
+              // content is invalid and the span was not keyboard-focusable).
+              <div
                 key={id}
-                onClick={() => { toggleMinimize(id); markRead(id); }}
-                className="pointer-events-auto flex w-52 items-center gap-2 rounded-t-[var(--radius-md)] border border-[var(--color-line)] bg-[var(--color-ink)] px-3 py-2 text-left text-[var(--color-porcelain)] shadow-[var(--shadow-lift)]"
+                className="pointer-events-auto flex w-52 items-center rounded-t-[var(--radius-md)] border border-[var(--color-line)] bg-[var(--color-ink)] text-[var(--color-porcelain)] shadow-[var(--shadow-lift)]"
               >
-                {channel.kind === 'GROUP' ? <AvatarStack members={channel.members} meId={meId} size={24} /> : <Avatar name={channel.title} photo={channel.members.find((m) => m.id !== meId)?.photoUrl} size={24} />}
-                <span className="min-w-0 flex-1 truncate text-sm">{channel.title}</span>
-                {channel.unread > 0 && <span className="grid h-5 min-w-5 place-items-center rounded-full bg-[var(--color-gold-deep)] px-1 text-[0.65rem] font-semibold text-white">{channel.unread}</span>}
-                <span onClick={(e) => { e.stopPropagation(); closeWindow(id); }} className="text-[var(--color-gold-bright)]" aria-label="Close">✕</span>
-              </button>
+                <button
+                  onClick={() => { toggleMinimize(id); markRead(id); }}
+                  className="flex min-w-0 flex-1 items-center gap-2 px-3 py-2 text-left"
+                >
+                  {channel.kind === 'GROUP' ? <AvatarStack members={channel.members} meId={meId} size={24} /> : <Avatar name={channel.title} photo={channel.members.find((m) => m.id !== meId)?.photoUrl} size={24} />}
+                  <span className="min-w-0 flex-1 truncate text-sm">{channel.title}</span>
+                  {channel.unread > 0 && <span className="grid h-5 min-w-5 place-items-center rounded-full bg-[var(--color-gold-deep)] px-1 text-[0.65rem] font-semibold text-white">{channel.unread}</span>}
+                </button>
+                <button onClick={() => closeWindow(id)} aria-label="Close chat" className="shrink-0 px-2.5 py-2 text-[var(--color-gold-bright)] hover:text-white">✕</button>
+              </div>
             );
           }
           return (
