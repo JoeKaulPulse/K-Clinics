@@ -143,7 +143,8 @@ export function ManageClient({ token, booking }: { token: string; booking: B }) 
 
   return (
     <div className="rounded-[var(--radius-2xl)] border border-[var(--color-line)] bg-[var(--color-bone)] p-8 md:p-10">
-      <span className={`inline-block rounded-full px-3 py-1 text-xs uppercase tracking-[0.16em] ${cancelled || rescheduled ? 'bg-[var(--color-sand)] text-[var(--color-stone)]' : 'bg-[var(--color-gold)]/20 text-[var(--color-ink)]'}`}>{status}</span>
+      {/* PRJ-1032.32: ink-soft on the sand pill — stone stays below AA on sand even after the token nudge, and this is small (text-xs) text. */}
+      <span className={`inline-block rounded-full px-3 py-1 text-xs uppercase tracking-[0.16em] ${cancelled || rescheduled ? 'bg-[var(--color-sand)] text-[var(--color-ink-soft)]' : 'bg-[var(--color-gold)]/20 text-[var(--color-ink)]'}`}>{status}</span>
       <h2 className="mt-4 font-[family-name:var(--font-display)] text-3xl">{booking.treatmentTitle}</h2>
       <p className="mt-2 text-[var(--color-stone)]">{when}</p>
       <p className="mt-1 text-[var(--color-stone)]">{booking.pricePence > 0 ? money(booking.pricePence) : 'Assessed at your visit'}</p>
