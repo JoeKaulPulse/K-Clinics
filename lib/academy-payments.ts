@@ -431,6 +431,65 @@ export async function createInstalmentPlan(enrolmentId: string, input: { count: 
   return { ok: true };
 }
 
+/** BLD-857: dunning for in-house instalment plans. Sends the learner a gentle,
+ *  transactional reminder when a SCHEDULED instalment is due soon (within 3 days)
+ *  or overdue. Capped at 4 reminders per instalment and no more than one every 7
+ *  days, so nobody is harassed. Transactional (a payment they agreed to for a
+ *  course they enrolled on), so it sends regardless of marketing preference.
+ *  Idempotent via remindersSent / lastRemindedAt. Run daily from the cron.
+ *  The cadence (3-day lead, 7-day gap, 4-reminder cap) is a sensible default and
+ *  can be tuned. */
+export async function academyInstalmentReminders(): Promise<{ sent: number }> {
+  const MAX_REMINDERS = 4;
+  const now = new Date();
+  const soonWindow = new Date(now.getTime() + 3 * 24 * 60 * 60 * 1000); // due within 3 days
+  const reReminderGap = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000); // not re-reminded in the last 7 days
+  const due = await db.enrolmentPayment.findMany({
+    where: {
+      state: 'SCHEDULED',
+      kind: 'INSTALMENT',
+      dueAt: { not: null, lte: soonWindow },
+      remindersSent: { lt: MAX_REMINDERS },
+      OR: [{ lastRemindedAt: null }, { lastRemindedAt: { lt: reReminderGap } }],
+      enrolment: { studentId: { not: null } },
+    },
+    select: {
+      id: true, amountPence: true, dueAt: true,
+      enrolment: { select: { student: { select: { email: true, firstName: true } }, course: { select: { title: true } } } },
+    },
+    take: 200,
+  });
+  if (!due.length) return { sent: 0 };
+
+  const { escapeHtml } = await import('@/lib/sanitize');
+  const { sendEmail, tmplManual } = await import('@/lib/email');
+  const gbp = (p: number) => `£${(p / 100).toFixed(2)}`;
+  let sent = 0;
+  for (const p of due) {
+    const student = p.enrolment.student;
+    if (!student?.email || !p.dueAt) continue;
+    const overdue = p.dueAt < now;
+    const name = escapeHtml(student.firstName || 'there');
+    const course = escapeHtml(p.enrolment.course.title);
+    const dueStr = p.dueAt.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
+    const body = overdue
+      ? `<p>Hi ${name},</p><p>A payment of <strong>${gbp(p.amountPence)}</strong> for your <strong>${course}</strong> course was due on ${dueStr} and is now outstanding.</p><p>Please settle it when you can — if you have already paid, or you would like to talk through your plan, just reply to this email and we will sort it out.</p>`
+      : `<p>Hi ${name},</p><p>This is a friendly reminder that a payment of <strong>${gbp(p.amountPence)}</strong> for your <strong>${course}</strong> course is due on ${dueStr}.</p><p>No action is needed if it is already in hand — just reply if you would like to talk through your plan.</p>`;
+    try {
+      const r = await sendEmail({
+        to: student.email,
+        subject: overdue ? `Payment outstanding — ${p.enrolment.course.title}` : `Payment due soon — ${p.enrolment.course.title}`,
+        html: tmplManual(body),
+      });
+      if (r.ok) {
+        await db.enrolmentPayment.update({ where: { id: p.id }, data: { remindersSent: { increment: 1 }, lastRemindedAt: new Date() } });
+        sent++;
+      }
+    } catch (e) { console.error('[academy] instalment reminder failed (continuing):', (e as Error)?.message); }
+  }
+  return { sent };
+}
+
 /** Issue a Stripe refund for a PAID online academy payment and mark it REFUNDED. */
 export async function refundEnrolmentPayment(paymentId: string, staffEmail?: string): Promise<{ ok: boolean; error?: string }> {
   const p = await db.enrolmentPayment.findUnique({

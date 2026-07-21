@@ -2809,6 +2809,8 @@ model EnrolmentPayment {
   stripePaymentIntentId String? // set for online payments
   note                  String?
   recordedBy            String? // staff email when recorded / collected manually
+  remindersSent         Int                  @default(0) // BLD-857: dunning reminders sent for this scheduled instalment
+  lastRemindedAt        DateTime? // BLD-857: when the last dunning reminder went out (rate-limits re-reminders)
   createdAt             DateTime             @default(now())
   updatedAt             DateTime             @updatedAt
 
