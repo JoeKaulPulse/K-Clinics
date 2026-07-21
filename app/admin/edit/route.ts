@@ -30,6 +30,14 @@ export async function GET(req: Request) {
   if (item?.manage === 'system') return to('/admin/pages');
 
   // Editorial / legal / new path → create a (seeded) page and open it.
+  // PRJ-1032.2: creating the page is a state change on a GET, so gate it on a
+  // same-origin signal. A real click from the in-app edit bar is a same-origin
+  // navigation (or a typed URL / bookmark = 'none'); a cross-site <img src> or
+  // link that tries to forge the write against a logged-in admin is not, and
+  // lands on the pages list without creating anything.
+  const { isSameOriginRequest } = await import('@/lib/security/origin');
+  if (!isSameOriginRequest(req)) return to('/admin/pages');
+
   const { pageSeed } = await import('@/lib/page-seeds');
   const { asSections } = await import('@/lib/sections');
   const sections = pageSeed(path) ?? [];

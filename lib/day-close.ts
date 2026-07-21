@@ -209,7 +209,17 @@ export async function computeExpected(
       // them inflated the expected CARD figure and produced a phantom shortfall.
       // A Stripe-processed order always carries stripePaymentIntentId; cash/
       // terminal POS orders never do.
-      where: { status: { in: ['PAID', 'FULFILLED'] }, updatedAt: { gte, lte }, stripePaymentIntentId: { not: null } },
+      // PRJ-1032.7: bracket by the settlement day (paidAt), not updatedAt — a
+      // later fulfilment/refund edit used to drag the row into the wrong session.
+      // Legacy rows settled before paidAt existed fall back to createdAt.
+      where: {
+        status: { in: ['PAID', 'FULFILLED'] },
+        stripePaymentIntentId: { not: null },
+        OR: [
+          { paidAt: { gte, lte } },
+          { paidAt: null, createdAt: { gte, lte } },
+        ],
+      },
     });
     ordersPence = orders._sum.totalPence ?? 0;
     orderCount = orders._count;

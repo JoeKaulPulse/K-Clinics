@@ -3755,6 +3755,12 @@ model Order {
   // restockOrder() so a redelivered webhook or a re-cancelled order can't
   // increment stockQty back more than once.
   restockedAt           DateTime?
+  // PRJ-1032.7: the settlement timestamp — set once when the order flips to PAID.
+  // Day-close brackets card takings by the day money was actually taken; matching
+  // on updatedAt drifted them across days (a later fulfilment/refund edit moved
+  // the row into the wrong session). Nullable + backfilled-by-fallback (day-close
+  // reads paidAt ?? createdAt) so it stays an additive, non-destructive change.
+  paidAt                DateTime?
   createdAt             DateTime    @default(now())
   updatedAt             DateTime    @updatedAt
 
@@ -3762,6 +3768,7 @@ model Order {
 
   @@index([status])
   @@index([createdAt])
+  @@index([paidAt])
 }
 
 model OrderItem {

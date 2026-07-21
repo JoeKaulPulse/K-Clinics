@@ -106,7 +106,9 @@ export async function finalizeOrder(orderId: string): Promise<{ ok: boolean; num
   // gift-card reservation credited back, so silently re-claiming it here on a
   // late/retried PaymentIntent success would fulfil the order for free on top
   // of that refund. Leave it CANCELLED for staff to review instead.
-  const claim = await db.order.updateMany({ where: { id: orderId, status: { notIn: ['PAID', 'FULFILLED', 'CANCELLED'] } }, data: { status: 'PAID' } });
+  // PRJ-1032.7: stamp the settlement time in the same atomic claim that flips the
+  // order to PAID, so day-close can bracket card takings by when money was taken.
+  const claim = await db.order.updateMany({ where: { id: orderId, status: { notIn: ['PAID', 'FULFILLED', 'CANCELLED'] } }, data: { status: 'PAID', paidAt: new Date() } });
   if (claim.count === 0) {
     // Lost the claim. Normally a concurrent caller already flipped it to
     // PAID/FULFILLED (the intended idempotent no-op). But if it's now CANCELLED,
