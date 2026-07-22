@@ -2665,10 +2665,10 @@ export const BUILD_BACKLOG: BacklogItem[] = [
     notes: ["Root cause: students onboarded via the magic-link activation flow (app/(marketing)/academy/activate) never got lastLoginAt written — only password login and passkey auth did. activateStudent() now records lastLoginAt like every other sign-in path."],
   },
   {
-    title: 'Unauthenticated signup can hijack any existing client\'s account', type: 'ERROR', urgency: 'P0', status: 'IN_REVIEW', assignee: 'claude',
+    title: 'Unauthenticated signup can hijack any existing client\'s account', type: 'ERROR', urgency: 'P0', status: 'SHIPPED', assignee: 'claude', pr: PR(1680),
     value: 10, effort: 3,
     detail: 'POST /api/account/signup upserted the Client row matched by attacker-supplied email and unconditionally minted a kc_client session, letting anyone who knew a target email (e.g. from a prior consult/guest-booking/kiosk lead) hijack that account with zero verification.',
-    notes: ['Fix: never mint a session for a pre-existing Client row; route pre-existing passwordless records through the email-link invite flow instead; stop overwriting name/phone/DOB on records with prior activity. (PRJ-1034.1)'],
+    notes: ['Fix: never mint a session for a pre-existing Client row; route pre-existing passwordless records through the email-link invite flow instead; stop overwriting name/phone/DOB on records with prior activity. Follow-up: BookingFlow shows a claim-email message instead of a raw 401 for returning guests. (PRJ-1034.1)'],
   },
 ];
 
