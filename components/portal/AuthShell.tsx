@@ -38,7 +38,7 @@ export function AuthShell({
           </span>
         </Link>
         <div className="relative z-10 max-w-sm">
-          <h2 className="font-[family-name:var(--font-display)] text-[2.6rem] leading-[1.04] tracking-[-0.01em]">{panelTitle}</h2>
+          <p className="font-[family-name:var(--font-display)] text-[2.6rem] leading-[1.04] tracking-[-0.01em]">{panelTitle}</p>
           <ul className="mt-8 space-y-3.5 text-[color-mix(in_oklab,var(--color-porcelain)_82%,transparent)]">
             {panelPoints.map((p) => (
               <li key={p} className="flex items-start gap-3">

@@ -2664,6 +2664,18 @@ export const BUILD_BACKLOG: BacklogItem[] = [
     detail: 'Most students showed "-" in the admin Last Login column despite active portal use.',
     notes: ["Root cause: students onboarded via the magic-link activation flow (app/(marketing)/academy/activate) never got lastLoginAt written — only password login and passkey auth did. activateStudent() now records lastLoginAt like every other sign-in path."],
   },
+  {
+    title: 'Gift voucher amount presets have no accessible selected state', type: 'TASK', urgency: 'P1', status: 'IN_REVIEW', assignee: 'claude',
+    value: 6, effort: 1,
+    detail: 'The preset amount buttons on /gift-vouchers carried no aria-pressed, so the visually-selected amount was indistinguishable to a screen reader.',
+    notes: ['Fix: added aria-pressed matching the existing pattern in BookingFlow.tsx. (PRJ-1034.3)'],
+  },
+  {
+    title: 'Reversed heading order (h2 before h1) on every login/signup/reset page', type: 'TASK', urgency: 'P2', status: 'IN_REVIEW', assignee: 'claude',
+    value: 6, effort: 2,
+    detail: 'AuthShell rendered a decorative brand-panel tagline as h2 before the page\'s real h1 in DOM order, across every auth page.',
+    notes: ['Fix: changed the decorative tagline from h2 to a styled p so h1 remains the first heading. (PRJ-1034.9)'],
+  },
 ];
 
 // A content hash over every item's title + status + PR, so ANY change (a new
