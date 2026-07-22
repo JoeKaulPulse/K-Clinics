@@ -58,6 +58,10 @@ export async function notifyBookingConfirmed(bookingId: string): Promise<void> {
     await sendBookingConfirmation(bookingId);
   } catch (e) {
     console.error('[booking-notify] notifyBookingConfirmed failed for', bookingId, e);
+    try {
+      const Sentry = await import('@sentry/nextjs');
+      Sentry.captureException(e, { tags: { area: 'booking-notify', bookingId } });
+    } catch { /* Sentry not available — non-fatal */ }
   }
 }
 
@@ -122,7 +126,13 @@ async function sendBookingConfirmation(bookingId: string): Promise<void> {
     html: tmplBookingConfirmation({ firstName, treatment: booking.treatmentTitle, start: booking.startAt, end: booking.endAt, pricePence: booking.pricePence, manageUrl, formsUrl, arriveEarly: firstVisit, lines, nextNote, clinicianName, locationName, locationAddress }),
     attachments: [{ filename: 'appointment.ics', content: ics, contentType: 'text/calendar' }],
   });
-  if (!clientRes.ok) console.error('[booking-notify] confirmation email failed:', clientRes.error);
+  if (!clientRes.ok) {
+    console.error('[booking-notify] confirmation email failed:', clientRes.error);
+    try {
+      const Sentry = await import('@sentry/nextjs');
+      Sentry.captureMessage(`[booking-notify] confirmation email failed for booking ${booking.id}: ${clientRes.error}`, { level: 'error', tags: { area: 'booking-notify', bookingId: booking.id } });
+    } catch { /* Sentry not available — non-fatal */ }
+  }
 
   const tasks: Promise<unknown>[] = [
     sendEmail({

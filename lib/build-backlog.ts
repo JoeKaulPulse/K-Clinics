@@ -2664,6 +2664,18 @@ export const BUILD_BACKLOG: BacklogItem[] = [
     detail: 'Most students showed "-" in the admin Last Login column despite active portal use.',
     notes: ["Root cause: students onboarded via the magic-link activation flow (app/(marketing)/academy/activate) never got lastLoginAt written — only password login and passkey auth did. activateStudent() now records lastLoginAt like every other sign-in path."],
   },
+  {
+    title: 'Live health check never verifies scheduled cron jobs are actually running', type: 'TASK', urgency: 'P1', status: 'IN_REVIEW', assignee: 'claude',
+    value: 8, effort: 2,
+    detail: 'cron_daily_last/cron_dispatch_last heartbeats were only checked on human-viewed admin pages, never by the /api/health endpoint Vercel Cron polls and alerts on, so a silently-broken cron went undetected.',
+    notes: ['Fix: reused the existing staleness logic from lib/api-health.ts inside /api/health so cron staleness triggers the same Sentry/webhook alert path as other health failures. (PRJ-1034.2)'],
+  },
+  {
+    title: 'Booking confirmation email failures never reach Sentry', type: 'TASK', urgency: 'P2', status: 'IN_REVIEW', assignee: 'claude',
+    value: 5, effort: 1,
+    detail: 'lib/booking-notify.ts only console.error\'d and wrote a FAILED EmailEvent row on send failure, so a Resend outage at booking time went unalerted.',
+    notes: ['Fix: added Sentry.captureException/captureMessage in notifyBookingConfirmed\'s failure paths, tagged area: booking-notify, consistent with app/api/booking/confirm/route.ts. (PRJ-1034.6)'],
+  },
 ];
 
 // A content hash over every item's title + status + PR, so ANY change (a new
