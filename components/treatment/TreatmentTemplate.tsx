@@ -14,6 +14,8 @@ import { site } from '@/lib/site';
 import { pricingForTreatment, formatPence, statusLabel, type ServiceStatus } from '@/lib/services';
 import { getVatNote } from '@/lib/vat';
 import { NewsletterCapture } from '@/components/layout/NewsletterCapture';
+import { getReviewAggregate } from '@/lib/reviews-aggregate';
+import { Stars } from '@/components/ui/Stars';
 
 /** Build the small print under a variant — duration + course price, per-session
  *  cost and the saving vs a single session (so the value of a course is clear). */
@@ -63,7 +65,14 @@ export async function TreatmentTemplate({ t }: { t: Treatment }) {
   const related = t.related.map(getTreatment).filter(Boolean) as Treatment[];
 
   // Pricing + presentation status derived live from the admin catalogue (SSOT).
-  const [pricing, vatNote] = await Promise.all([pricingForTreatment(t.slug), getVatNote()]);
+  // Reviews load alongside — the real aggregate (BLD-573), same source as the
+  // homepage; PRJ-1034.7 surfaces it here too, near the price/CTA, since this is
+  // where the actual buying decision happens.
+  const [pricing, vatNote, aggregate] = await Promise.all([pricingForTreatment(t.slug), getVatNote(), getReviewAggregate()]);
+  const rating = aggregate ? { average: aggregate.average, count: aggregate.count } : null;
+  // Prefer testimonials naming this exact treatment; fall back to the general pool.
+  const treatmentCards = aggregate?.cards.filter((c) => c.treatment === t.title) ?? [];
+  const testimonialCards = (treatmentCards.length ? treatmentCards : aggregate?.cards ?? []).slice(0, 2);
   const fromPence = pricing?.fromPence ?? null;
   const fromOfferPence = pricing?.fromOfferPence ?? null;
   const offerName = pricing?.offerName ?? null;
@@ -292,6 +301,27 @@ export async function TreatmentTemplate({ t }: { t: Treatment }) {
                 <Button href="/pricing" variant="outline">Full price list <ArrowIcon /></Button>
               </div>
               {vatNote && <p className="mt-4 text-xs text-[var(--color-stone)]">{vatNote}</p>}
+              {rating && rating.count > 0 && (
+                <Link href="/reviews" className="mt-6 flex items-center gap-2.5">
+                  <Stars rating={rating.average} size="h-4 w-4" />
+                  <span className="text-sm font-medium text-[var(--color-ink)]">{rating.average.toFixed(1)}</span>
+                  <span className="text-sm text-[var(--color-stone)]">
+                    from {rating.count} verified review{rating.count === 1 ? '' : 's'}
+                  </span>
+                </Link>
+              )}
+              {testimonialCards.length > 0 && (
+                <div className="mt-5 space-y-4">
+                  {testimonialCards.map((c, i) => (
+                    <blockquote key={i} className="rounded-[var(--radius-md)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-5">
+                      <p className="text-sm leading-relaxed text-[var(--color-ink-soft)]">“{c.body}”</p>
+                      <footer className="mt-3 text-xs font-medium text-[var(--color-gold-deep)]">
+                        {c.author}{c.treatment ? ` · ${c.treatment}` : ''}
+                      </footer>
+                    </blockquote>
+                  ))}
+                </div>
+              )}
               <div className="mt-5 flex flex-wrap gap-x-5 gap-y-2 text-sm">
                 <Link href="/gallery" className="font-medium text-[var(--color-gold-deep)] hover:underline">See real results →</Link>
                 <Link href="/reviews" className="font-medium text-[var(--color-gold-deep)] hover:underline">Read verified reviews →</Link>

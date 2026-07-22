@@ -2664,6 +2664,12 @@ export const BUILD_BACKLOG: BacklogItem[] = [
     detail: 'Most students showed "-" in the admin Last Login column despite active portal use.',
     notes: ["Root cause: students onboarded via the magic-link activation flow (app/(marketing)/academy/activate) never got lastLoginAt written — only password login and passkey auth did. activateStudent() now records lastLoginAt like every other sign-in path."],
   },
+  {
+    title: 'Treatment and booking pages show no social proof despite working review data', type: 'TASK', urgency: 'P2', status: 'IN_REVIEW', assignee: 'claude',
+    value: 7, effort: 3,
+    detail: 'The working 4.5-star/25-review aggregate and testimonials carousel were wired into the homepage only -- the treatment and booking pages, where buying decisions actually happen, carried no visible trust signal.',
+    notes: ['Fix: reused the existing Stars badge and testimonial cards on TreatmentTemplate and the book page, near the price/CTA. (PRJ-1034.7)'],
+  },
 ];
 
 // A content hash over every item's title + status + PR, so ANY change (a new
