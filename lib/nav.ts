@@ -180,23 +180,28 @@ export const footerNav = [
       { label: 'Dental Consultations', href: '/consultation#dental' },
       { label: 'Refer a Friend', href: '/refer-a-friend' },
       { label: 'Careers', href: '/careers' },
-      { label: 'Franchise Opportunities', href: '/info/franchise-opportunities' },
       { label: 'Patient Portal', href: '/account' },
       { label: 'Reviews', href: '/reviews' },
       { label: 'Online Assistant', href: '/ai-consultation' },
     ],
   },
   {
-    heading: 'Policies & Terms',
+    // Every /info/[slug] page from lib/info-pages.ts is linked here so each one
+    // is reachable by crawl, not just present in sitemap.ts (PRJ-1034.11).
+    heading: 'Legal & Policies',
     links: [
       { label: 'Terms & Conditions', href: '/info/terms-conditions' },
       { label: 'Website Privacy & Terms', href: '/info/website-privacy-terms' },
-      { label: 'Call Recording Privacy', href: '/info/call-recording-privacy' },
-      { label: 'CCTV Policy', href: '/info/cctv-policy' },
+      { label: 'Privacy Policy', href: '/info/privacy-policy' },
       { label: 'Cancellations / Refunds', href: '/info/cancellations-refunds' },
       { label: 'Complaints Procedure', href: '/info/complaints-procedure' },
       { label: 'Health & Safety', href: '/info/health-and-safety' },
+      { label: 'CCTV Policy', href: '/info/cctv-policy' },
+      { label: 'Call Recording Privacy', href: '/info/call-recording-privacy' },
       { label: 'Accessibility', href: '/info/accessibility' },
+      { label: 'Concierge Services', href: '/info/concierge-services' },
+      { label: 'Franchise Opportunities', href: '/info/franchise-opportunities' },
+      { label: 'Payment Options', href: '/info/payment-option' },
     ],
   },
 ];
