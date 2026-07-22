@@ -44,21 +44,27 @@ export async function POST(req: Request) {
       // BLD-734: email the passwordless account a one-tap sign-in link so they
       // can return without a password (same claim path as guest bookings,
       // BLD-550). Best-effort — the plan is already visible on the live session.
-      try {
-        const { db } = await import('@/lib/db');
-        const { createAccountInvite } = await import('@/lib/client-auth');
-        const c = await db.client.findUnique({ where: { email: parsed.data.email.trim().toLowerCase() }, select: { id: true, firstName: true, email: true } });
-        if (c) {
-          const token = await createAccountInvite(c.id);
-          if (token) {
-            const { site } = await import('@/lib/site');
-            const base = process.env.NEXT_PUBLIC_SITE_URL || site.url;
-            const activateUrl = `${base}/account/activate?token=${token}&id=${c.id}`;
-            const { sendEmail, tmplPortalInvite } = await import('@/lib/email');
-            await sendEmail({ to: c.email, subject: 'Your KClinics plan & account link', html: tmplPortalInvite(c.firstName, activateUrl) });
+      // PRJ-1034.1: only for a genuinely new signup. A pre-existing Client row
+      // never got a live session above (signupClient) and already received its
+      // own claim-confirmation email — sending this one too would duplicate it
+      // and imply the plan is visible before ownership is verified.
+      if (result.isNewAccount) {
+        try {
+          const { db } = await import('@/lib/db');
+          const { createAccountInvite } = await import('@/lib/client-auth');
+          const c = await db.client.findUnique({ where: { email: parsed.data.email.trim().toLowerCase() }, select: { id: true, firstName: true, email: true } });
+          if (c) {
+            const token = await createAccountInvite(c.id);
+            if (token) {
+              const { site } = await import('@/lib/site');
+              const base = process.env.NEXT_PUBLIC_SITE_URL || site.url;
+              const activateUrl = `${base}/account/activate?token=${token}&id=${c.id}`;
+              const { sendEmail, tmplPortalInvite } = await import('@/lib/email');
+              await sendEmail({ to: c.email, subject: 'Your KClinics plan & account link', html: tmplPortalInvite(c.firstName, activateUrl) });
+            }
           }
-        }
-      } catch (e) { console.error('[account/signup] kvision invite email failed (continuing):', (e as Error)?.message); }
+        } catch (e) { console.error('[account/signup] kvision invite email failed (continuing):', (e as Error)?.message); }
+      }
     }
     return NextResponse.json(result, { status: result.ok ? 200 : 409 });
   } catch (err) {
