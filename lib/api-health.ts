@@ -427,16 +427,39 @@ async function checkGithub(): Promise<Outcome> {
   } catch (e) { return netFail(e); }
 }
 
+export type CronStaleness = {
+  daily: Date | null;
+  dispatch: Date | null;
+  dailyOk: boolean;
+  dispatchOk: boolean;
+  /** True when either heartbeat has fallen outside its expected window. */
+  stale: boolean;
+};
+
+// Expected cadence: daily runner every 24h, dispatcher every 15m — see vercel.json.
+const DAILY_MAX_AGE_MS = 26 * 3600000;
+const DISPATCH_MAX_AGE_MS = 30 * 60000;
+
+/** Reads the cron heartbeats (written by app/api/cron/daily + app/api/cron/dispatch)
+ *  and reports whether each is within its expected window. Shared by the
+ *  /admin/api-health traffic light (checkCron, below) and the /api/health probe
+ *  that Vercel Cron polls + alerts on (app/api/health/route.ts), so a silently
+ *  broken cron is caught by both without duplicating the staleness thresholds. */
+export async function getCronStaleness(): Promise<CronStaleness> {
+  const read = async (key: string) => {
+    const r = await db.setting.findUnique({ where: { key } });
+    return r?.value ? new Date(r.value) : null;
+  };
+  const daily = await read('cron_daily_last');
+  const dispatch = await read('cron_dispatch_last');
+  const dailyOk = Boolean(daily && Date.now() - daily.getTime() < DAILY_MAX_AGE_MS);
+  const dispatchOk = Boolean(dispatch && Date.now() - dispatch.getTime() < DISPATCH_MAX_AGE_MS);
+  return { daily, dispatch, dailyOk, dispatchOk, stale: !dailyOk || !dispatchOk };
+}
+
 async function checkCron(): Promise<Outcome> {
   try {
-    const read = async (key: string) => {
-      const r = await db.setting.findUnique({ where: { key } });
-      return r?.value ? new Date(r.value) : null;
-    };
-    const daily = await read('cron_daily_last');
-    const dispatch = await read('cron_dispatch_last');
-    const dailyOk = daily && Date.now() - daily.getTime() < 26 * 3600000;
-    const dispatchOk = dispatch && Date.now() - dispatch.getTime() < 30 * 60000;
+    const { daily, dispatch, dailyOk, dispatchOk } = await getCronStaleness();
     const light: Light = dailyOk && dispatchOk ? 'green' : (daily || dispatch) ? 'amber' : 'red';
     return {
       light,
