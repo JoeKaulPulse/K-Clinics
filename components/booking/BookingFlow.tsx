@@ -559,6 +559,11 @@ function AccountStep({ onAuthed, setError }: { onAuthed: (i: { firstName: string
       const res = await fetch('/api/account/signup', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ firstName: f.firstName, lastName: f.lastName, email: f.email, phone: f.phone, dob: f.dob, password: f.password, gender: f.gender || undefined, marketingOptIn: f.marketingOptIn, consent: f.consent, locale: 'en', company: f.company }) });
       const j = await res.json();
       if (!j.ok) { setError(j.error || 'Could not create your account.'); setBusy(false); return; }
+      // PRJ-1034.1: the security fix mints no session for an email that already
+      // has a (passwordless) account — it emails a claim link instead. Without
+      // a session the next call (submitBooking → /api/booking/start) would 401,
+      // so stop here with a clear message rather than a broken "Could not book".
+      if (j.isNewAccount === false) { setError('This email is already registered. We’ve emailed you a secure link to confirm it’s you — open it, then come back to finish your booking.'); setBusy(false); return; }
       if (f.sms && f.phone) { fetch('/api/account/profile', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ smsReminders: true }) }).catch(() => {}); }
       onAuthed({ firstName: f.firstName, gender: f.gender || null, welcome: !!j.discount?.granted, sms: f.sms && !!f.phone });
     } catch { setError('Network error. Please try again.'); setBusy(false); }
@@ -588,6 +593,10 @@ function AccountStep({ onAuthed, setError }: { onAuthed: (i: { firstName: string
       const res = await fetch('/api/booking/guest', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ firstName: f.firstName, lastName: f.lastName, email: f.email, phone: f.phone, dob: f.dob, gender: f.gender || undefined, marketingOptIn: f.marketingOptIn, consent: f.consent, locale: 'en', company: f.company }) });
       const j = await res.json();
       if (!j.ok) { setError(j.error || 'Could not continue as a guest.'); setBusy(false); return; }
+      // PRJ-1034.1: a returning guest whose email already has a (passwordless)
+      // account gets a claim link emailed, not a live session — proceeding would
+      // 401 at /api/booking/start. Show the claim message instead of "Could not book".
+      if (j.isNewAccount === false) { setError('This email is already registered. We’ve emailed you a secure link to confirm it’s you — open it, then come back to finish your booking.'); setBusy(false); return; }
       if (f.sms && f.phone) { fetch('/api/account/profile', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ smsReminders: true }) }).catch(() => {}); }
       onAuthed({ firstName: f.firstName, gender: f.gender || null, welcome: !!j.discount?.granted, sms: f.sms && !!f.phone });
     } catch { setError('Network error. Please try again.'); setBusy(false); }
