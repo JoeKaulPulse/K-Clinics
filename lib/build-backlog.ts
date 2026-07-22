@@ -2671,6 +2671,18 @@ export const BUILD_BACKLOG: BacklogItem[] = [
     notes: ['Fix: adjusted useHideAtFooter\'s IntersectionObserver threshold/rootMargin (plus a scroll-position fallback) so the button reliably stays hidden at the bottom of the page. Verified with local Playwright screenshots at 375x812 and 1440x900. (PRJ-1034.10)'],
   },
   {
+    title: 'Gift voucher amount presets have no accessible selected state', type: 'TASK', urgency: 'P1', status: 'SHIPPED', assignee: 'claude', pr: PR(1683),
+    value: 6, effort: 1,
+    detail: 'The preset amount buttons on /gift-vouchers carried no aria-pressed, so the visually-selected amount was indistinguishable to a screen reader.',
+    notes: ['Fix: added aria-pressed matching the existing pattern in BookingFlow.tsx. (PRJ-1034.3)'],
+  },
+  {
+    title: 'Reversed heading order (h2 before h1) on every login/signup/reset page', type: 'TASK', urgency: 'P2', status: 'SHIPPED', assignee: 'claude', pr: PR(1683),
+    value: 6, effort: 2,
+    detail: 'AuthShell rendered a decorative brand-panel tagline as h2 before the page\'s real h1 in DOM order, across every auth page.',
+    notes: ['Fix: changed the decorative tagline from h2 to a styled p so h1 remains the first heading. (PRJ-1034.9)'],
+  },
+  {
     title: 'Stripe webhook drops dashboard refunds after the first in-app refund on a charge', type: 'ERROR', urgency: 'P1', status: 'SHIPPED', assignee: 'claude', pr: PR(1682),
     value: 7, effort: 3,
     detail: 'originatedInApp checked whether ANY refund on a charge carried in-app metadata rather than the specific event\'s refund, so a later dashboard-issued refund after an in-app one was silently dropped -- refundedPence went stale, no Xero credit note, no loyalty clawback, no client email.',
