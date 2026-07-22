@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Button, ArrowIcon } from '@/components/ui/Button';
 
 const field = 'w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-porcelain)] px-4 py-3 text-[var(--color-ink)] outline-none focus:border-[var(--color-gold)]';
@@ -13,6 +13,15 @@ export function ApplyForm({ roles }: { roles: { id: string; title: string }[] })
   const [error, setError] = useState('');
   const set = <K extends keyof typeof f>(k: K, v: (typeof f)[K]) => setF((p) => ({ ...p, [k]: v }));
   const roleTitle = roles.find((r) => r.id === f.vacancyId)?.title || 'General application';
+
+  // Seed the Role dropdown from ?role=<vacancyId> so "Apply for this role" on a
+  // specific vacancy card pre-fills the right role instead of always the first
+  // one in the list (PRJ-1034.12). Falls back to roles[0], set above.
+  useEffect(() => {
+    const role = new URLSearchParams(window.location.search).get('role');
+    if (role && roles.some((r) => r.id === role)) set('vacancyId', role);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   async function submit() {
     if (!f.name.trim() || !/\S+@\S+\.\S+/.test(f.email)) { setError('Please enter your name and a valid email.'); return; }

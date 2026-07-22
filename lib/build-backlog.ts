@@ -2664,6 +2664,24 @@ export const BUILD_BACKLOG: BacklogItem[] = [
     detail: 'Most students showed "-" in the admin Last Login column despite active portal use.',
     notes: ["Root cause: students onboarded via the magic-link activation flow (app/(marketing)/academy/activate) never got lastLoginAt written — only password login and passkey auth did. activateStudent() now records lastLoginAt like every other sign-in path."],
   },
+  {
+    title: '12 legal/policy pages are orphaned with zero internal links', type: 'TASK', urgency: 'P2', status: 'IN_REVIEW', assignee: 'claude',
+    value: 5, effort: 2,
+    detail: 'Only 2 of 12 /info/[slug] legal pages were ever linked from a page, despite all 12 being in sitemap.ts -- orphan pages get little to no crawl priority.',
+    notes: ['Fix: added a Legal & Policies list in the Footer linking every /info/[slug] page. (PRJ-1034.11)'],
+  },
+  {
+    title: 'Careers \'Apply for this role\' doesn\'t pass the selected role to the form', type: 'ERROR', urgency: 'P3', status: 'IN_REVIEW', assignee: 'claude',
+    value: 3, effort: 2,
+    detail: 'Every vacancy\'s Apply link pointed to the bare #apply anchor and ApplyForm always defaulted to the first role, misattributing applications for any other vacancy.',
+    notes: ['Fix: the vacancy is now passed through to ApplyForm, which seeds its Role dropdown from it. (PRJ-1034.12)'],
+  },
+  {
+    title: 'Marketing route group has no loading.tsx/Suspense boundaries', type: 'TASK', urgency: 'P2', status: 'IN_REVIEW', assignee: 'claude',
+    value: 6, effort: 3,
+    detail: 'The whole app/(marketing)/ tree, including the DB-backed /book and /search routes, had zero loading.tsx boundaries, blocking on a blank tab instead of streaming a skeleton.',
+    notes: ['Fix: added loading.tsx skeletons for /book and /search. (PRJ-1034.8)'],
+  },
 ];
 
 // A content hash over every item's title + status + PR, so ANY change (a new
