@@ -2664,6 +2664,12 @@ export const BUILD_BACKLOG: BacklogItem[] = [
     detail: 'Most students showed "-" in the admin Last Login column despite active portal use.',
     notes: ["Root cause: students onboarded via the magic-link activation flow (app/(marketing)/academy/activate) never got lastLoginAt written — only password login and passkey auth did. activateStudent() now records lastLoginAt like every other sign-in path."],
   },
+  {
+    title: 'Stripe webhook drops dashboard refunds after the first in-app refund on a charge', type: 'ERROR', urgency: 'P1', status: 'IN_REVIEW', assignee: 'claude',
+    value: 7, effort: 3,
+    detail: 'originatedInApp checked whether ANY refund on a charge carried in-app metadata rather than the specific event\'s refund, so a later dashboard-issued refund after an in-app one was silently dropped -- refundedPence went stale, no Xero credit note, no loyalty clawback, no client email.',
+    notes: ['Fix: match on the specific refund object for each webhook event (or compare charge.amount_refunded against the stored watermark unconditionally) instead of gating on any historical refund\'s metadata, while preserving idempotency. (PRJ-1034.5)'],
+  },
 ];
 
 // A content hash over every item's title + status + PR, so ANY change (a new
