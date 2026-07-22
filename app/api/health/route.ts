@@ -108,12 +108,37 @@ export async function GET(req: Request) {
     if (authed) report.error = (err as Error)?.message?.slice(0, 200) || 'unknown';
   }
 
+  // PRJ-1034.2: cron heartbeats (cron_daily_last/cron_dispatch_last, written by
+  // app/api/cron/daily + app/api/cron/dispatch) were only staleness-checked on
+  // human-viewed admin pages (/admin/status, /admin/api-health) — never here,
+  // so a silently-disabled or misconfigured cron went undetected indefinitely.
+  // Reuse the same thresholds checkCron() already uses (lib/api-health.ts) so a
+  // stale heartbeat fails this probe and rides the alert path below.
+  let cronStale = false;
+  if (report.ok && authed) {
+    try {
+      const { getCronStaleness } = await import('@/lib/api-health');
+      const cron = await getCronStaleness();
+      report.cron = {
+        dailyLastRun: cron.daily?.toISOString() ?? null,
+        dispatchLastRun: cron.dispatch?.toISOString() ?? null,
+        dailyOk: cron.dailyOk,
+        dispatchOk: cron.dispatchOk,
+      };
+      cronStale = cron.stale;
+      if (cronStale) report.ok = false;
+    } catch (e) {
+      // Non-fatal — don't fail the whole health check if the heartbeat read itself errors oddly.
+      report.cron = `error: ${(e as Error)?.message?.slice(0, 120)}`;
+    }
+  }
+
   // BLD-841: nothing scheduled this check before — a production outage was
   // only caught by a manual audit. The Vercel Cron entry in vercel.json now
   // hits this route every 5 minutes with CRON_SECRET; on failure, alert the
   // same way every other cron does (mirrors app/api/cron/daily/route.ts).
   if (!report.ok && authed) {
-    const summary = `[kclinics health] check failed — database:${report.database} env:${report.env}`;
+    const summary = `[kclinics health] check failed — database:${report.database} env:${report.env}${cronStale ? ' — cron heartbeat stale' : ''}`;
     try {
       const Sentry = await import('@sentry/nextjs');
       Sentry.captureMessage(summary, 'error');
