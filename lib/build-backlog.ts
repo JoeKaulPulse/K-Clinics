@@ -2677,6 +2677,12 @@ export const BUILD_BACKLOG: BacklogItem[] = [
     notes: ['Fix: changed the decorative tagline from h2 to a styled p so h1 remains the first heading. (PRJ-1034.9)'],
   },
   {
+    title: 'Stripe webhook drops dashboard refunds after the first in-app refund on a charge', type: 'ERROR', urgency: 'P1', status: 'SHIPPED', assignee: 'claude', pr: PR(1682),
+    value: 7, effort: 3,
+    detail: 'originatedInApp checked whether ANY refund on a charge carried in-app metadata rather than the specific event\'s refund, so a later dashboard-issued refund after an in-app one was silently dropped -- refundedPence went stale, no Xero credit note, no loyalty clawback, no client email.',
+    notes: ['Fix: match on the specific refund object for each webhook event (or compare charge.amount_refunded against the stored watermark unconditionally) instead of gating on any historical refund\'s metadata, while preserving idempotency. (PRJ-1034.5)'],
+  },
+  {
     title: 'Live health check never verifies scheduled cron jobs are actually running', type: 'TASK', urgency: 'P1', status: 'SHIPPED', assignee: 'claude', pr: PR(1681),
     value: 8, effort: 2,
     detail: 'cron_daily_last/cron_dispatch_last heartbeats were only checked on human-viewed admin pages, never by the /api/health endpoint Vercel Cron polls and alerts on, so a silently-broken cron went undetected.',
