@@ -79,7 +79,7 @@ export function GiftVoucherFlow({ physicalEnabled = false, physicalFeePence = 0,
                 <p className={label}>Amount</p>
                 <div className="flex flex-wrap gap-2">
                   {PRESETS.map((p) => (
-                    <button key={p} onClick={() => { set('amount', p); set('custom', ''); }} className={`rounded-full border px-4 py-2 text-sm transition-all ${!f.custom && f.amount === p ? 'border-[var(--color-gold)] bg-[var(--color-gold-deep)] text-white' : 'border-[var(--color-line)] hover:border-[var(--color-stone-soft)]'}`}>{money(p)}</button>
+                    <button key={p} type="button" aria-pressed={!f.custom && f.amount === p} onClick={() => { set('amount', p); set('custom', ''); }} className={`rounded-full border px-4 py-2 text-sm transition-all ${!f.custom && f.amount === p ? 'border-[var(--color-gold)] bg-[var(--color-gold-deep)] text-white' : 'border-[var(--color-line)] hover:border-[var(--color-stone-soft)]'}`}>{money(p)}</button>
                   ))}
                   <input aria-label="Custom gift amount in pounds" value={f.custom} onChange={(e) => set('custom', e.target.value)} placeholder="Custom £" className={`${field} w-28`} />
                 </div>
