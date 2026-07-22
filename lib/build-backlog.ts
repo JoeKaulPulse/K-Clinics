@@ -2730,6 +2730,24 @@ export const BUILD_BACKLOG: BacklogItem[] = [
     detail: 'POST /api/account/signup upserted the Client row matched by attacker-supplied email and unconditionally minted a kc_client session, letting anyone who knew a target email (e.g. from a prior consult/guest-booking/kiosk lead) hijack that account with zero verification.',
     notes: ['Fix: never mint a session for a pre-existing Client row; route pre-existing passwordless records through the email-link invite flow instead; stop overwriting name/phone/DOB on records with prior activity. Follow-up: BookingFlow shows a claim-email message instead of a raw 401 for returning guests. (PRJ-1034.1)'],
   },
+  {
+    title: 'Concurrent in-app refunds can silently drop refund accounting', type: 'ERROR', urgency: 'P1', status: 'IN_REVIEW', assignee: 'claude',
+    value: 8, effort: 4,
+    detail: 'refundBooking() issued the Stripe refund then did a single non-retrying CAS write on refundedPence -- if it lost a race it returned ok:true without retrying, and the webhook could not rescue it either since the in-app refund carries metadata.bookingId. A race between two refund actions could leave real money moved at Stripe with no refundedPence, loyalty clawback, Xero credit note, or client email.',
+    notes: ['Fix: gave refundBooking() the same re-read-and-retry CAS loop already used by the webhook charge.refunded handler (PRJ-939.2); persistent conflict after retries logs to Sentry for manual reconciliation instead of silently dropping the accounting. (BLD-1000)'],
+  },
+  {
+    title: 'Staff \'charge for delivered service\' can double-charge clients who redeemed loyalty points', type: 'ERROR', urgency: 'P1', status: 'IN_REVIEW', assignee: 'claude',
+    value: 7, effort: 2,
+    detail: 'chargeBookingAction() netted giftVoucherPence off the charge server-side but never netted pointsRedeemedPence -- that was only pre-filled client-side, so any caller submitting the full pricePence (edited amount, stale UI, replayed request) charged the card in full even though loyalty points already discounted the booking.',
+    notes: ['Fix: net pointsRedeemedPence server-side alongside the existing voucher netting, mirroring the pattern already used for gift vouchers. (BLD-1001)'],
+  },
+  {
+    title: 'Cancelled appointments still earn loyalty points', type: 'ERROR', urgency: 'P1', status: 'IN_REVIEW', assignee: 'claude',
+    value: 6, effort: 2,
+    detail: 'A late-cancellation fee that needed SCA (card authentication) finalised asynchronously via finalizeBookingCharge, which unconditionally awarded loyalty spend points -- unlike the synchronous late-fee charge path, which deliberately never does, since a cancellation fee is a penalty, not a purchase. The booking had already flipped to CANCELLED by the time the async completion landed.',
+    notes: ['Fix: finalizeBookingCharge now skips awardClientSpend when opts.late is set, matching the synchronous chargeBooking path\'s existing behaviour. (BLD-994, reported by inna.k@kclinics.co.uk)'],
+  },
 ];
 
 // A content hash over every item's title + status + PR, so ANY change (a new

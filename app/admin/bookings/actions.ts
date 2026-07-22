@@ -34,8 +34,14 @@ export async function chargeBookingAction(bookingId: string, amountPence: number
   // reloaded till) collects only the remainder — no UI has to know about the
   // voucher for the arithmetic to hold.
   const voucherOffPence = booking.giftVoucherPence ?? 0;
-  amountPence = Math.round(amountPence) - voucherOffPence;
-  if (amountPence <= 0) return { ok: false, error: 'The applied gift voucher already covers this amount — remove the voucher first to adjust the price.' };
+  // BLD-1001: net loyalty points already redeemed against this booking the same
+  // way — the client pre-fills the amount field net of pointsRedeemedPence
+  // (BookingActions.tsx), but that's only a UI default, not enforced. An edited
+  // amount, a stale UI, or a direct call could still submit the pre-discount
+  // price and double-charge a client who already paid part of it with points.
+  const pointsOffPence = booking.pointsRedeemedPence ?? 0;
+  amountPence = Math.round(amountPence) - voucherOffPence - pointsOffPence;
+  if (amountPence <= 0) return { ok: false, error: 'The applied gift voucher and loyalty points already cover this amount — remove them first to adjust the price.' };
   // Safety gateway: only ever take payment for a delivered treatment. The booking
   // must be marked COMPLETED first — this prevents charging a client before (or
   // instead of) their service. (Late-cancellation / no-show fees go through the

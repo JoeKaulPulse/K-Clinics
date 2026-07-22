@@ -243,19 +243,38 @@ export async function refundBooking(
     }
   }
 
-  const totalRefunded = (booking.refundedPence ?? 0) + amount;
-  const fully = totalRefunded >= (booking.chargedPence ?? 0);
-  // CAS: only the writer that advances refundedPence from the value we read runs
-  // the side-effects. Guards the race where a concurrent webhook echo or a second
-  // in-app click creates a Stripe refund with the same idempotencyKey (no-op at
-  // Stripe) but both callers reach this point — the second writer's updateMany
-  // returns count=0 and we return early, so loyalty and Xero fire exactly once.
-  // Mirrors the same pattern in the charge.refunded webhook handler.
-  const claimed = await db.booking.updateMany({
-    where: { id: booking.id, refundedPence: booking.refundedPence },
-    data: { refundedPence: totalRefunded, refundedAt: new Date(), refundReason: opts.reason?.slice(0, 500) || booking.refundReason || null },
+  // CAS with re-read retry (BLD-1000): only the writer that advances
+  // refundedPence from the value it observed runs the side-effects, guarding
+  // the race where a second concurrent in-app refund call (double-click, two
+  // staff tabs) reaches this point for the same booking — the Stripe refund
+  // above has already gone through by then, so a lost race must retry rather
+  // than silently skip the accounting. The webhook's charge.refunded handler
+  // deliberately ignores this refund (it carries metadata.bookingId), so
+  // nothing else will reconcile it if we give up here. Mirrors the retry loop
+  // in the webhook's own charge.refunded CAS (PRJ-939.2).
+  let bk = booking;
+  let totalRefunded = (bk.refundedPence ?? 0) + amount;
+  let claimed = await db.booking.updateMany({
+    where: { id: bk.id, refundedPence: bk.refundedPence },
+    data: { refundedPence: totalRefunded, refundedAt: new Date(), refundReason: opts.reason?.slice(0, 500) || bk.refundReason || null },
   });
-  if (claimed.count === 0) return { ok: true, refundedPence: totalRefunded };
+  for (let attempt = 0; claimed.count === 0; attempt++) {
+    if (attempt >= 4) {
+      const Sentry = await import('@sentry/nextjs');
+      Sentry.captureMessage(`[refund] CAS conflict persisted for booking ${bk.id} after the Stripe refund succeeded — refundedPence, loyalty and Xero need manual reconciliation`, { level: 'error' });
+      return { ok: true, refundedPence: totalRefunded };
+    }
+    const fresh = await db.booking.findUnique({ where: { id: bk.id }, include: { client: true } });
+    if (!fresh) return { ok: true, refundedPence: totalRefunded };
+    bk = fresh;
+    totalRefunded = (bk.refundedPence ?? 0) + amount;
+    claimed = await db.booking.updateMany({
+      where: { id: bk.id, refundedPence: bk.refundedPence },
+      data: { refundedPence: totalRefunded, refundedAt: new Date(), refundReason: opts.reason?.slice(0, 500) || bk.refundReason || null },
+    });
+  }
+  booking = bk;
+  const fully = totalRefunded >= (booking.chargedPence ?? 0);
 
   // Reverse loyalty points once the booking is fully refunded (best-effort).
   if (fully) {
@@ -348,7 +367,16 @@ export async function finalizeBookingCharge(
     if (!receipt.ok) console.error('[charge] receipt email failed:', receipt.error);
     await db.emailEvent.create({ data: { clientId: booking.clientId, kind: 'MANUAL', to: booking.client.email, subject: 'Payment receipt', status: receipt.ok ? 'SENT' : 'FAILED', providerId: receipt.id, error: receipt.error } }).catch(() => {});
   } catch (e) { console.error('[charge] receipt failed:', (e as Error)?.message); }
-  try { const { awardClientSpend } = await import('./client-loyalty'); await awardClientSpend(bookingId); } catch (e) { console.error('[charge] loyalty failed:', (e as Error)?.message); }
+  // BLD-994: a late-cancellation fee is a penalty, not a purchase — the
+  // synchronous charge path (chargeBooking, above) deliberately never awards
+  // loyalty points for it. This async-completion path (Stripe webhook / SCA
+  // recovery, used when the fee needed card authentication) is the only other
+  // way a charge finalises, so it must carry the same exclusion; otherwise a
+  // late fee that required SCA quietly earns points on an appointment that was
+  // just cancelled, after the booking's status has already flipped to CANCELLED.
+  if (!opts.late) {
+    try { const { awardClientSpend } = await import('./client-loyalty'); await awardClientSpend(bookingId); } catch (e) { console.error('[charge] loyalty failed:', (e as Error)?.message); }
+  }
   try { const { pushBookingSaleToXero } = await import('@/lib/xero'); await pushBookingSaleToXero(bookingId); } catch (e) { console.error('[charge] xero push failed:', (e as Error)?.message); }
   // BLD-455: only send hashed email to Meta CAPI if the client has opted in to marketing.
   try { const { sendPurchase } = await import('./conversions'); await sendPurchase({ bookingId, valuePence: amountReceivedPence, clientId: booking.clientId, email: booking.client?.marketingOptIn ? booking.client.email : null, campaign: booking.attribCampaign, gclid: booking.gclid }); } catch (e) { console.error('[charge] conversion failed:', (e as Error)?.message); }
