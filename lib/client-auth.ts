@@ -23,7 +23,14 @@ export type SignupInput = {
 };
 
 export type SignupResult =
-  | { ok: true; discount: { granted: boolean; code?: string; percent: number; reason?: string } }
+  | {
+      ok: true;
+      discount: { granted: boolean; code?: string; percent: number; reason?: string };
+      // PRJ-1034.1: false when the email matched a Client row that already
+      // existed — no session was minted for this request; callers use this to
+      // avoid sending a second, redundant claim-link email of their own.
+      isNewAccount: boolean;
+    }
   | { ok: false; error: string };
 
 /**
@@ -40,10 +47,27 @@ export async function signupClient(input: SignupInput): Promise<SignupResult> {
   // A guest books without a password (BLD-550); the account is created
   // passwordless and claimed later via the activation email.
   const isGuest = !input.password;
-  const existing = await db.client.findUnique({ where: { email }, select: { passwordHash: true, source: true } });
+  const existing = await db.client.findUnique({
+    where: { email },
+    select: {
+      passwordHash: true, source: true,
+      firstName: true, lastName: true, phone: true, dob: true, gender: true, genderSelfDescribe: true,
+    },
+  });
   if (existing?.passwordHash) {
     return { ok: false, error: 'An account already exists for this email — please sign in instead.' };
   }
+
+  // PRJ-1034.1: `existing` here means a Client row already existed for this
+  // email before this request — created by a consult inquiry, a guest booking,
+  // or a kiosk lead, all of which leave a passwordless Client with no proof
+  // that whoever is submitting *this* request is that same person. Anyone who
+  // simply knew the email could otherwise upsert straight into that row and
+  // walk away with a live session, a password of their choosing, and
+  // overwritten contact details. From here on: no session and no password for
+  // that row, only fill in fields that were blank, and send a claim link
+  // instead of logging the request straight in.
+  const isNewAccount = !existing;
 
   if (!isGuest) {
     const { isBreachedPassword } = await import('@/lib/security/breached-password');
@@ -87,17 +111,21 @@ export async function signupClient(input: SignupInput): Promise<SignupResult> {
   const client = await db.client.upsert({
     where: { email },
     update: {
-      firstName: input.firstName,
-      lastName: input.lastName || undefined,
-      phone: input.phone || undefined,
-      dob: input.dob ? new Date(input.dob) : undefined,
-      gender,
-      genderSelfDescribe,
-      passwordHash,
-      // Guests are portal-active (they need the session to finish booking and to
-      // see their appointment); "unclaimed" is represented by a null passwordHash.
-      // They set a password later via the activation email. (BLD-550)
-      portalActive: true,
+      // PRJ-1034.1: this branch only ever runs for a Client row that already
+      // existed (see `isNewAccount` above). An unauthenticated request must
+      // not overwrite that person's real details, and must not plant a
+      // password on their account — only fill in fields that were previously
+      // blank; anything already set is left untouched.
+      firstName: existing?.firstName ? undefined : input.firstName,
+      lastName: existing?.lastName ? undefined : (input.lastName || undefined),
+      phone: existing?.phone ? undefined : (input.phone || undefined),
+      dob: existing?.dob ? undefined : (input.dob ? new Date(input.dob) : undefined),
+      gender: existing?.gender ? undefined : gender,
+      genderSelfDescribe: existing?.genderSelfDescribe ? undefined : genderSelfDescribe,
+      // No passwordHash and no portalActive: true here — this path never
+      // claims the account on the requester's behalf. Claiming only happens
+      // via the emailed activation link (sendAccountClaimInvite, below),
+      // which flips portalActive itself once the token is verified.
       locale: input.locale === 'uk' ? 'uk' : 'en',
       marketingOptIn: input.marketingOptIn || undefined,
       ...(input.marketingOptIn ? marketingConsentFields('registration') : {}),
@@ -181,14 +209,43 @@ export async function signupClient(input: SignupInput): Promise<SignupResult> {
     }
   }
 
-  await createClientSession({ sub: client.id, email: client.email, firstName: client.firstName, epoch: 0 });
+  // PRJ-1034.1: a live session from this endpoint is only for a signup that
+  // just created its Client row. A pre-existing row (isNewAccount === false)
+  // gets a claim-by-email link instead — mirrors the migrated-account
+  // activation flow below, and never hands out live access on the strength of
+  // an email address alone.
+  if (isNewAccount) {
+    await createClientSession({ sub: client.id, email: client.email, firstName: client.firstName, epoch: 0 });
+  } else {
+    await sendAccountClaimInvite({ id: client.id, email: client.email, firstName: client.firstName });
+  }
 
   return {
     ok: true,
+    isNewAccount,
     discount: grant
       ? { granted: true, code, percent: 15 }
       : { granted: false, percent: 15, reason: 'A welcome offer has already been used for these details.' },
   };
+}
+
+/** PRJ-1034.1: email a claim/confirmation link instead of minting a live
+ *  session, for a signup or guest-booking request whose email matched a
+ *  Client row that already existed. Reuses the same activation token as the
+ *  migrated-account flow below. Best-effort — never throws into the caller;
+ *  the response must still look like a normal, successful signup. */
+async function sendAccountClaimInvite(client: { id: string; email: string; firstName: string }): Promise<void> {
+  try {
+    const token = await createAccountInvite(client.id);
+    if (!token) return;
+    const { site } = await import('@/lib/site');
+    const base = process.env.NEXT_PUBLIC_SITE_URL || site.url;
+    const activateUrl = `${base}/account/activate?token=${token}&id=${client.id}`;
+    const { sendEmail, tmplPortalInvite } = await import('@/lib/email');
+    await sendEmail({ to: client.email, subject: 'Confirm your KClinics account', html: tmplPortalInvite(client.firstName, activateUrl) });
+  } catch (e) {
+    console.error('[signup] claim invite email failed (continuing):', (e as Error)?.message);
+  }
 }
 
 /** Tag a thrown error with the stage it failed at, so the API layer can report

@@ -2665,22 +2665,40 @@ export const BUILD_BACKLOG: BacklogItem[] = [
     notes: ["Root cause: students onboarded via the magic-link activation flow (app/(marketing)/academy/activate) never got lastLoginAt written — only password login and passkey auth did. activateStudent() now records lastLoginAt like every other sign-in path."],
   },
   {
-    title: '12 legal/policy pages are orphaned with zero internal links', type: 'TASK', urgency: 'P2', status: 'IN_REVIEW', assignee: 'claude',
+    title: '12 legal/policy pages are orphaned with zero internal links', type: 'TASK', urgency: 'P2', status: 'SHIPPED', assignee: 'claude', pr: PR(1684),
     value: 5, effort: 2,
     detail: 'Only 2 of 12 /info/[slug] legal pages were ever linked from a page, despite all 12 being in sitemap.ts -- orphan pages get little to no crawl priority.',
     notes: ['Fix: added a Legal & Policies list in the Footer linking every /info/[slug] page. (PRJ-1034.11)'],
   },
   {
-    title: 'Careers \'Apply for this role\' doesn\'t pass the selected role to the form', type: 'ERROR', urgency: 'P3', status: 'IN_REVIEW', assignee: 'claude',
+    title: 'Careers \'Apply for this role\' doesn\'t pass the selected role to the form', type: 'ERROR', urgency: 'P3', status: 'SHIPPED', assignee: 'claude', pr: PR(1684),
     value: 3, effort: 2,
     detail: 'Every vacancy\'s Apply link pointed to the bare #apply anchor and ApplyForm always defaulted to the first role, misattributing applications for any other vacancy.',
     notes: ['Fix: the vacancy is now passed through to ApplyForm, which seeds its Role dropdown from it. (PRJ-1034.12)'],
   },
   {
-    title: 'Marketing route group has no loading.tsx/Suspense boundaries', type: 'TASK', urgency: 'P2', status: 'IN_REVIEW', assignee: 'claude',
+    title: 'Marketing route group has no loading.tsx/Suspense boundaries', type: 'TASK', urgency: 'P2', status: 'SHIPPED', assignee: 'claude', pr: PR(1684),
     value: 6, effort: 3,
     detail: 'The whole app/(marketing)/ tree, including the DB-backed /book and /search routes, had zero loading.tsx boundaries, blocking on a blank tab instead of streaming a skeleton.',
     notes: ['Fix: added loading.tsx skeletons for /book and /search. (PRJ-1034.8)'],
+  },
+  {
+    title: 'Live health check never verifies scheduled cron jobs are actually running', type: 'TASK', urgency: 'P1', status: 'SHIPPED', assignee: 'claude', pr: PR(1681),
+    value: 8, effort: 2,
+    detail: 'cron_daily_last/cron_dispatch_last heartbeats were only checked on human-viewed admin pages, never by the /api/health endpoint Vercel Cron polls and alerts on, so a silently-broken cron went undetected.',
+    notes: ['Fix: reused the existing staleness logic from lib/api-health.ts inside /api/health so cron staleness triggers the same Sentry/webhook alert path as other health failures. (PRJ-1034.2)'],
+  },
+  {
+    title: 'Booking confirmation email failures never reach Sentry', type: 'TASK', urgency: 'P2', status: 'SHIPPED', assignee: 'claude', pr: PR(1681),
+    value: 5, effort: 1,
+    detail: 'lib/booking-notify.ts only console.error\'d and wrote a FAILED EmailEvent row on send failure, so a Resend outage at booking time went unalerted.',
+    notes: ['Fix: added Sentry.captureException/captureMessage in notifyBookingConfirmed\'s failure paths, tagged area: booking-notify, consistent with app/api/booking/confirm/route.ts. (PRJ-1034.6)'],
+  },
+  {
+    title: 'Unauthenticated signup can hijack any existing client\'s account', type: 'ERROR', urgency: 'P0', status: 'SHIPPED', assignee: 'claude', pr: PR(1680),
+    value: 10, effort: 3,
+    detail: 'POST /api/account/signup upserted the Client row matched by attacker-supplied email and unconditionally minted a kc_client session, letting anyone who knew a target email (e.g. from a prior consult/guest-booking/kiosk lead) hijack that account with zero verification.',
+    notes: ['Fix: never mint a session for a pre-existing Client row; route pre-existing passwordless records through the email-link invite flow instead; stop overwriting name/phone/DOB on records with prior activity. Follow-up: BookingFlow shows a claim-email message instead of a raw 401 for returning guests. (PRJ-1034.1)'],
   },
 ];
 
