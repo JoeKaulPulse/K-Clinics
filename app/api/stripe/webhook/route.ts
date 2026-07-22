@@ -258,7 +258,18 @@ export async function POST(req: Request) {
         // metadata.orderId (shop order refunds) and already run every side-effect
         // themselves. Their webhook echo can race ahead of the in-app DB write —
         // without this skip we'd double-log or double-credit gift cards.
-        const originatedInApp = (charge.refunds?.data ?? []).some((r) => Boolean(r.metadata?.bookingId) || Boolean(r.metadata?.orderId));
+        // PRJ-1034.5: this must check only the refund THIS event is reporting, not
+        // "any refund ever seen on the charge" — charge.refunds.data accumulates
+        // every refund on the charge, so once a single in-app refund existed, its
+        // metadata kept matching .some() forever, and every LATER refund on the
+        // same charge (e.g. one raised directly in the Stripe dashboard) was
+        // silently dropped: refundedPence went stale, no Xero credit note, no
+        // loyalty clawback, no client email. Each charge.refunded event's charge
+        // snapshot reflects the refunds that existed AT THAT EVENT, so the most
+        // recently created refund in that snapshot is the one this event is for.
+        const refunds = [...(charge.refunds?.data ?? [])].sort((a, b) => b.created - a.created);
+        const latestRefund = refunds[0];
+        const originatedInApp = Boolean(latestRefund?.metadata?.bookingId) || Boolean(latestRefund?.metadata?.orderId);
         if (originatedInApp) break;
         const booking = await db.booking.findFirst({
           where: { chargePaymentIntentId: piId },
