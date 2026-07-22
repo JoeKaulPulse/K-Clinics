@@ -2664,6 +2664,12 @@ export const BUILD_BACKLOG: BacklogItem[] = [
     detail: 'Most students showed "-" in the admin Last Login column despite active portal use.',
     notes: ["Root cause: students onboarded via the magic-link activation flow (app/(marketing)/academy/activate) never got lastLoginAt written — only password login and passkey auth did. activateStudent() now records lastLoginAt like every other sign-in path."],
   },
+  {
+    title: 'Fixed chat button overlaps footer legal text again (regression of BLD-556)', type: 'ERROR', urgency: 'P2', status: 'IN_REVIEW', assignee: 'claude',
+    value: 6, effort: 3,
+    detail: 'The fixed WhatsApp/live-chat button sat on top of the footer copyright line at the true bottom scroll position on both mobile and desktop -- the BLD-556 IntersectionObserver fade didn\'t reliably hold at the final resting position.',
+    notes: ['Fix: adjusted useHideAtFooter\'s IntersectionObserver threshold/rootMargin (plus a scroll-position fallback) so the button reliably stays hidden at the bottom of the page. Verified with local Playwright screenshots at 375x812 and 1440x900. (PRJ-1034.10)'],
+  },
 ];
 
 // A content hash over every item's title + status + PR, so ANY change (a new
