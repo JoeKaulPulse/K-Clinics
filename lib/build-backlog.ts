@@ -2665,6 +2665,12 @@ export const BUILD_BACKLOG: BacklogItem[] = [
     notes: ["Root cause: students onboarded via the magic-link activation flow (app/(marketing)/academy/activate) never got lastLoginAt written — only password login and passkey auth did. activateStudent() now records lastLoginAt like every other sign-in path."],
   },
   {
+    title: 'Treatment and booking pages show no social proof despite working review data', type: 'TASK', urgency: 'P2', status: 'SHIPPED', assignee: 'claude', pr: PR(1686),
+    value: 7, effort: 3,
+    detail: 'The working 4.5-star/25-review aggregate and testimonials carousel were wired into the homepage only -- the treatment and booking pages, where buying decisions actually happen, carried no visible trust signal.',
+    notes: ['Fix: reused the existing Stars badge and testimonial cards on TreatmentTemplate and the book page, near the price/CTA. (PRJ-1034.7)'],
+  },
+  {
     title: 'Fixed chat button overlaps footer legal text again (regression of BLD-556)', type: 'ERROR', urgency: 'P2', status: 'SHIPPED', assignee: 'claude', pr: PR(1685),
     value: 6, effort: 3,
     detail: 'The fixed WhatsApp/live-chat button sat on top of the footer copyright line at the true bottom scroll position on both mobile and desktop -- the BLD-556 IntersectionObserver fade didn\'t reliably hold at the final resting position.',

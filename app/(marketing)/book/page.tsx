@@ -1,10 +1,13 @@
 import type { Metadata } from 'next';
+import Link from 'next/link';
 import { PageHero } from '@/components/ui/PageHero';
 import { Reveal } from '@/components/motion/Reveal';
 import { BookingFlow } from '@/components/booking/BookingFlow';
 import { site } from '@/lib/site';
 import { getSiteConfig } from '@/lib/site-config';
 import { pageMeta, JsonLd, breadcrumbLd } from '@/lib/seo';
+import { getReviewAggregate } from '@/lib/reviews-aggregate';
+import { Stars } from '@/components/ui/Stars';
 
 export const generateMetadata = (): Promise<Metadata> => pageMeta({
   title: 'Book an Appointment — Islington, London | KClinics',
@@ -23,6 +26,13 @@ export default async function BookPage({ searchParams }: { searchParams: Promise
   // retires the offer (BLD-133 phase 2).
   const preselectDate = /^\d{4}-\d{2}-\d{2}$/.test(date || '') ? (date as string) : '';
   const waitlistToken = wl && /^[A-Za-z0-9-]{1,64}$/.test(wl) ? wl : '';
+
+  // Real review aggregate (BLD-573), same source as the homepage; PRJ-1034.7
+  // surfaces it here too, next to the booking CTA. getReviewAggregate() never
+  // throws (it swallows source failures internally), so no extra guard needed.
+  const aggregate = await getReviewAggregate();
+  const rating = aggregate ? { average: aggregate.average, count: aggregate.count } : null;
+  const testimonialCards = aggregate?.cards.slice(0, 2) ?? [];
 
   // Load everything defensively — if the database is briefly unreachable the
   // primary booking page should degrade to a "call us" view, not 500.
@@ -108,6 +118,27 @@ export default async function BookPage({ searchParams }: { searchParams: Promise
                 </li>
               ))}
             </ul>
+            {rating && rating.count > 0 && (
+              <Link href="/reviews" className="mt-8 flex items-center gap-2.5">
+                <Stars rating={rating.average} size="h-4 w-4" />
+                <span className="text-sm font-medium text-[var(--color-ink)]">{rating.average.toFixed(1)}</span>
+                <span className="text-sm text-[var(--color-stone)]">
+                  from {rating.count} verified review{rating.count === 1 ? '' : 's'}
+                </span>
+              </Link>
+            )}
+            {testimonialCards.length > 0 && (
+              <div className="mt-5 space-y-4">
+                {testimonialCards.map((c, i) => (
+                  <blockquote key={i} className="rounded-[var(--radius-md)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-5">
+                    <p className="text-sm leading-relaxed text-[var(--color-ink-soft)]">“{c.body}”</p>
+                    <footer className="mt-3 text-xs font-medium text-[var(--color-gold-deep)]">
+                      {c.author}{c.treatment ? ` · ${c.treatment}` : ''}
+                    </footer>
+                  </blockquote>
+                ))}
+              </div>
+            )}
             {promoted.length > 0 && (
               <div className="mt-8 rounded-[var(--radius-md)] border border-[var(--color-gold)]/30 bg-[var(--color-gold)]/8 p-4">
                 <p className="text-xs uppercase tracking-[0.16em] text-[var(--color-gold-deep)]">On now</p>
