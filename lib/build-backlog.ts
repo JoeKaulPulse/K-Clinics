@@ -2671,6 +2671,12 @@ export const BUILD_BACKLOG: BacklogItem[] = [
     notes: ['Fix: reused the existing Stars badge and testimonial cards on TreatmentTemplate and the book page, near the price/CTA. (PRJ-1034.7)'],
   },
   {
+    title: 'Fixed chat button overlaps footer legal text again (regression of BLD-556)', type: 'ERROR', urgency: 'P2', status: 'SHIPPED', assignee: 'claude', pr: PR(1685),
+    value: 6, effort: 3,
+    detail: 'The fixed WhatsApp/live-chat button sat on top of the footer copyright line at the true bottom scroll position on both mobile and desktop -- the BLD-556 IntersectionObserver fade didn\'t reliably hold at the final resting position.',
+    notes: ['Fix: adjusted useHideAtFooter\'s IntersectionObserver threshold/rootMargin (plus a scroll-position fallback) so the button reliably stays hidden at the bottom of the page. Verified with local Playwright screenshots at 375x812 and 1440x900. (PRJ-1034.10)'],
+  },
+  {
     title: '12 legal/policy pages are orphaned with zero internal links', type: 'TASK', urgency: 'P2', status: 'SHIPPED', assignee: 'claude', pr: PR(1684),
     value: 5, effort: 2,
     detail: 'Only 2 of 12 /info/[slug] legal pages were ever linked from a page, despite all 12 being in sitemap.ts -- orphan pages get little to no crawl priority.',
