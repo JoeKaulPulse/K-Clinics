@@ -2665,10 +2665,34 @@ export const BUILD_BACKLOG: BacklogItem[] = [
     notes: ["Root cause: students onboarded via the magic-link activation flow (app/(marketing)/academy/activate) never got lastLoginAt written — only password login and passkey auth did. activateStudent() now records lastLoginAt like every other sign-in path."],
   },
   {
-    title: 'Fixed chat button overlaps footer legal text again (regression of BLD-556)', type: 'ERROR', urgency: 'P2', status: 'IN_REVIEW', assignee: 'claude',
+    title: 'Fixed chat button overlaps footer legal text again (regression of BLD-556)', type: 'ERROR', urgency: 'P2', status: 'SHIPPED', assignee: 'claude', pr: PR(1685),
     value: 6, effort: 3,
     detail: 'The fixed WhatsApp/live-chat button sat on top of the footer copyright line at the true bottom scroll position on both mobile and desktop -- the BLD-556 IntersectionObserver fade didn\'t reliably hold at the final resting position.',
     notes: ['Fix: adjusted useHideAtFooter\'s IntersectionObserver threshold/rootMargin (plus a scroll-position fallback) so the button reliably stays hidden at the bottom of the page. Verified with local Playwright screenshots at 375x812 and 1440x900. (PRJ-1034.10)'],
+  },
+  {
+    title: 'Stripe webhook drops dashboard refunds after the first in-app refund on a charge', type: 'ERROR', urgency: 'P1', status: 'SHIPPED', assignee: 'claude', pr: PR(1682),
+    value: 7, effort: 3,
+    detail: 'originatedInApp checked whether ANY refund on a charge carried in-app metadata rather than the specific event\'s refund, so a later dashboard-issued refund after an in-app one was silently dropped -- refundedPence went stale, no Xero credit note, no loyalty clawback, no client email.',
+    notes: ['Fix: match on the specific refund object for each webhook event (or compare charge.amount_refunded against the stored watermark unconditionally) instead of gating on any historical refund\'s metadata, while preserving idempotency. (PRJ-1034.5)'],
+  },
+  {
+    title: 'Live health check never verifies scheduled cron jobs are actually running', type: 'TASK', urgency: 'P1', status: 'SHIPPED', assignee: 'claude', pr: PR(1681),
+    value: 8, effort: 2,
+    detail: 'cron_daily_last/cron_dispatch_last heartbeats were only checked on human-viewed admin pages, never by the /api/health endpoint Vercel Cron polls and alerts on, so a silently-broken cron went undetected.',
+    notes: ['Fix: reused the existing staleness logic from lib/api-health.ts inside /api/health so cron staleness triggers the same Sentry/webhook alert path as other health failures. (PRJ-1034.2)'],
+  },
+  {
+    title: 'Booking confirmation email failures never reach Sentry', type: 'TASK', urgency: 'P2', status: 'SHIPPED', assignee: 'claude', pr: PR(1681),
+    value: 5, effort: 1,
+    detail: 'lib/booking-notify.ts only console.error\'d and wrote a FAILED EmailEvent row on send failure, so a Resend outage at booking time went unalerted.',
+    notes: ['Fix: added Sentry.captureException/captureMessage in notifyBookingConfirmed\'s failure paths, tagged area: booking-notify, consistent with app/api/booking/confirm/route.ts. (PRJ-1034.6)'],
+  },
+  {
+    title: 'Unauthenticated signup can hijack any existing client\'s account', type: 'ERROR', urgency: 'P0', status: 'SHIPPED', assignee: 'claude', pr: PR(1680),
+    value: 10, effort: 3,
+    detail: 'POST /api/account/signup upserted the Client row matched by attacker-supplied email and unconditionally minted a kc_client session, letting anyone who knew a target email (e.g. from a prior consult/guest-booking/kiosk lead) hijack that account with zero verification.',
+    notes: ['Fix: never mint a session for a pre-existing Client row; route pre-existing passwordless records through the email-link invite flow instead; stop overwriting name/phone/DOB on records with prior activity. Follow-up: BookingFlow shows a claim-email message instead of a raw 401 for returning guests. (PRJ-1034.1)'],
   },
 ];
 
