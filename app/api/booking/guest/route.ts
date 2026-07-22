@@ -9,6 +9,12 @@ export const runtime = 'nodejs';
 // client can book without choosing a password. The booking flow's consent/medical
 // steps still apply. We email a one-time activation link so they can claim the
 // account (set a password) later. Mirrors /api/account/signup minus the password.
+// PRJ-1034.1: the "+ session" above is only for a brand-new Client row. If the
+// email matches one that already exists (e.g. an earlier consult/guest booking),
+// signupClient does not mint a session for it — it emails a claim link instead,
+// so the current request cannot instantly take over someone else's account by
+// merely knowing their email. A returning guest without a live session cookie
+// will need to confirm via that email before continuing this booking.
 export async function POST(req: Request) {
   if (!crmEnabled) return NextResponse.json({ ok: false, error: 'Accounts are not enabled in this environment.' }, { status: 503 });
 
@@ -30,28 +36,33 @@ export async function POST(req: Request) {
 
     // Email a claim link so the guest can secure the account later. Best-effort —
     // never block the booking on the email (they already have a live session).
-    try {
-      const { db } = await import('@/lib/db');
-      const c = await db.client.findUnique({
-        where: { email: parsed.data.email.trim().toLowerCase() },
-        select: { id: true, firstName: true, email: true },
-      });
-      if (c) {
-        const token = await createAccountInvite(c.id);
-        if (token) {
-          const { site } = await import('@/lib/site');
-          const base = process.env.NEXT_PUBLIC_SITE_URL || site.url;
-          const activateUrl = `${base}/account/activate?token=${token}&id=${c.id}`;
-          const { sendEmail, tmplPortalInvite } = await import('@/lib/email');
-          await sendEmail({
-            to: c.email,
-            subject: 'Set up your KClinics account',
-            html: tmplPortalInvite(c.firstName, activateUrl),
-          });
+    // PRJ-1034.1: only for a genuinely new account. A pre-existing Client row
+    // never got a live session above (signupClient) and already received its
+    // own claim-confirmation email — sending this one too would duplicate it.
+    if (result.isNewAccount) {
+      try {
+        const { db } = await import('@/lib/db');
+        const c = await db.client.findUnique({
+          where: { email: parsed.data.email.trim().toLowerCase() },
+          select: { id: true, firstName: true, email: true },
+        });
+        if (c) {
+          const token = await createAccountInvite(c.id);
+          if (token) {
+            const { site } = await import('@/lib/site');
+            const base = process.env.NEXT_PUBLIC_SITE_URL || site.url;
+            const activateUrl = `${base}/account/activate?token=${token}&id=${c.id}`;
+            const { sendEmail, tmplPortalInvite } = await import('@/lib/email');
+            await sendEmail({
+              to: c.email,
+              subject: 'Set up your KClinics account',
+              html: tmplPortalInvite(c.firstName, activateUrl),
+            });
+          }
         }
+      } catch (e) {
+        console.error('[booking/guest] claim email failed (continuing):', (e as Error)?.message);
       }
-    } catch (e) {
-      console.error('[booking/guest] claim email failed (continuing):', (e as Error)?.message);
     }
 
     return NextResponse.json(result);
