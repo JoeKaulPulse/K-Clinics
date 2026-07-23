@@ -2747,6 +2747,12 @@ export const BUILD_BACKLOG: BacklogItem[] = [
     detail: 'refundBooking() did a single non-retrying compare-and-swap write on refundedPence; on a lost race it returned ok:true without running loyalty/Xero/email side-effects, even though the Stripe refund had already gone through.',
     notes: ['Fix: refundBooking() now re-reads and retries the CAS write (up to 2 attempts) instead of silently dropping the accounting, mirroring the existing retry pattern in the charge.refunded webhook handler. (BLD-1000)'],
   },
+  {
+    title: 'Kiosk AI error responses from Anthropic never reach Sentry', type: 'ERROR', urgency: 'P1', status: 'SHIPPED', assignee: 'claude', pr: PR(1688),
+    value: 8, effort: 2,
+    detail: 'lib/kiosk-ai.ts swallowed non-2xx Anthropic API failures (rate limit / auth / 5xx) with only console.error, unlike lib/chat-ai.ts and lib/ai-consultation.ts which call Sentry.captureMessage on the identical check -- kiosk AI outages were invisible to on-call.',
+    notes: ['Fix: added Sentry.captureMessage on both the v1 and v2 analysis !res.ok branches, matching the established pattern. (BLD-999)'],
+  },
 ];
 
 // A content hash over every item's title + status + PR, so ANY change (a new
