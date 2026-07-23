@@ -12,11 +12,8 @@ import { ONBOARDING } from '@/lib/onboarding-steps';
 import { getLocale } from '@/lib/locale';
 import { getWeather, uvBand } from '@/lib/weather';
 import { ClockInOut } from '@/components/admin/ClockInOut';
-import { fmtClinicTime, fmtClinicDate } from '@/lib/clinic-time';
 import { LiveClock } from '@/components/admin/DashboardLive';
-import { ArrivalPrep, type NextArrival } from '@/components/admin/ArrivalPrep';
 import { NewBookingButton } from '@/components/admin/NewBookingButton';
-import { decClinical } from '@/lib/clinical-crypto';
 import { resolveView, canSwitchViews, type DashboardView } from '@/lib/dashboard-views';
 import { DashboardShell } from '@/components/admin/dashboard/DashboardShell';
 import { StatTile, CLICKABLE_CARD } from '@/components/admin/dashboard/Widgets';
@@ -28,7 +25,8 @@ import { ContractorView } from '@/components/admin/dashboard/ContractorView';
 import { GaTrafficWidget } from '@/components/admin/dashboard/GaTrafficWidget';
 import { GaRealtimeWidget } from '@/components/admin/dashboard/GaRealtimeWidget';
 import { ComplianceWidget } from '@/components/admin/dashboard/ComplianceWidget';
-import { RoomPrepStatus } from '@/components/admin/rooms/RoomPrepStatus';
+import { NextArrivalWidget } from '@/components/admin/dashboard/NextArrivalWidget';
+import { RoomsTodayWidget } from '@/components/admin/dashboard/RoomsTodayWidget';
 
 export const dynamic = 'force-dynamic';
 
@@ -148,7 +146,13 @@ export default async function AdminOverview() {
   // Load the whole dashboard through a couple of quick retries, so a single
   // transient DB blip doesn't 500 the overview (it recomposes the queries each
   // attempt — safe, as these are all reads).
-  const [o, a, pendingTimeOff, myTasks, stockItems, expiringSoon, ordersToFulfil, retailProducts, todaysBookings, reqConsent, reqPhoto, gReviewAgg, googleUnreplied, buildOpen, buildBlocked, buildUnsynced, failedComms] = await withDbRetry(() => Promise.all([
+  // unchargedCompleted and sameDayRequests only depend on values already known
+  // here (canFinance/canBookings, both resolved above) — not on any other
+  // query's output — so they're folded into this same round trip instead of
+  // being awaited one-by-one afterwards (BLD-1002). Their .catch() behaviour
+  // (sameDayRequests silently falls back to 0; unchargedCompleted has none, so
+  // a failure still propagates, same as before) is preserved unchanged.
+  const [o, a, pendingTimeOff, myTasks, stockItems, expiringSoon, ordersToFulfil, retailProducts, todaysBookings, reqConsent, reqPhoto, gReviewAgg, googleUnreplied, buildOpen, buildBlocked, buildUnsynced, failedComms, unchargedCompleted, sameDayRequests] = await withDbRetry(() => Promise.all([
     getOverview(),
     getAnalytics(),
     canApproveTimeOff ? db.staffTimeOff.count({ where: { status: 'PENDING' } }) : Promise.resolve(0),
@@ -166,15 +170,14 @@ export default async function AdminOverview() {
     canBuild ? db.buildItem.count({ where: { status: 'BLOCKED' } }) : Promise.resolve(0),
     canBuild ? db.buildItem.count({ where: { githubUrl: null } }) : Promise.resolve(0),
     canAutomations ? db.emailEvent.count({ where: { status: 'FAILED', campaignId: null, createdAt: { gte: commsSince } } }) : Promise.resolve(0),
+    // Completed treatments in the last 30 days that haven't been charged (revenue at risk).
+    canFinance ? db.booking.count({ where: { status: 'COMPLETED', chargedAt: null, pricePence: { gt: 0 }, finishedAt: { gte: new Date(Date.now() - 30 * 864e5) } } }) : Promise.resolve(0),
+    canBookings ? db.booking.count({ where: { status: 'REQUESTED' } }).catch(() => 0) : Promise.resolve(0),
   ]));
   const googleAvg = gReviewAgg?._avg.starRating ?? null;
   const googleCount = gReviewAgg?._count._all ?? 0;
   const lowStock = stockItems.filter((i) => i.lowStockAt > 0 && i.currentQty <= i.lowStockAt).length;
   const productsLow = retailProducts.filter((p) => p.stockQty <= p.lowStockThreshold).length;
-  // Completed treatments in the last 30 days that haven't been charged (revenue at risk).
-  const unchargedCompleted = canFinance
-    ? await db.booking.count({ where: { status: 'COMPLETED', chargedAt: null, pricePence: { gt: 0 }, finishedAt: { gte: new Date(Date.now() - 30 * 864e5) } } })
-    : 0;
 
   // Today's appointments still missing consent or a laser before-photo.
   let todayNotReady = 0;
@@ -189,7 +192,6 @@ export default async function AdminOverview() {
     const photoSet = new Set([...photoRows.map((p) => p.bookingId), ...signedRows.filter((s) => s.kind === 'photo_opt_out').map((s) => s.bookingId)]);
     todayNotReady = todaysBookings.filter((b) => (reqConsent && !consentSet.has(b.id)) || (reqPhoto && isLaserTreatment(b.treatmentSlug) && !photoSet.has(b.id))).length;
   }
-  const sameDayRequests = canBookings ? await db.booking.count({ where: { status: 'REQUESTED' } }).catch(() => 0) : 0;
   const attention = [
     { show: canAutomations && failedComms > 0, label: 'Confirmation emails failing', value: failedComms, href: '/admin/automations', tone: 'red' },
     { show: sameDayRequests > 0, label: 'Same-day requests to action', value: sameDayRequests, href: '/admin/bookings?filter=REQUESTED', tone: 'amber' },
@@ -236,43 +238,13 @@ export default async function AdminOverview() {
 
   // ── Front-of-house essentials: the next client arrival (clock/weather above) ──
   const treatments = await loadBookingTreatments();
-  const endOfToday = new Date(now); endOfToday.setHours(23, 59, 59, 999);
-  const nextBk = canBookings
-    ? await db.booking.findFirst({
-        where: { startAt: { gte: now }, status: { in: ['CONFIRMED', 'PENDING'] } },
-        orderBy: { startAt: 'asc' },
-        select: {
-          id: true, startAt: true, treatmentTitle: true, refreshments: true, clientId: true,
-          client: { select: { firstName: true, lastName: true, allergies: true, medicalFlag: true } },
-          practitioner: { select: { name: true } },
-        },
-      }).catch(() => null)
-    : null;
   const canRoomsPrep = sessionCan(session, 'rooms.prep.manage');
   const canClinical = sessionCan(session, 'clients.clinical.view');
-  const nextRoom = nextBk ? await db.resource.findFirst({ where: { kind: 'ROOM', bookings: { some: { id: nextBk.id } } }, select: { id: true, name: true } }).catch(() => null) : null;
-  // The next arrival's room prep state (for the live arrival-prep checklist).
-  const { getRoomPrepFor, getRoomsForDay } = await import('@/lib/room-prep');
-  const nextRoomPrep = nextRoom ? await getRoomPrepFor(nextRoom.id).catch(() => null) : null;
-  const nextArrival: NextArrival | null = nextBk ? {
-    id: nextBk.id,
-    clientId: nextBk.clientId,
-    clientName: [nextBk.client.firstName, nextBk.client.lastName].filter(Boolean).join(' ') || 'Client',
-    treatment: nextBk.treatmentTitle,
-    startIso: nextBk.startAt.toISOString(),
-    timeLabel: fmtClinicTime(nextBk.startAt) + (nextBk.startAt <= endOfToday ? '' : ` · ${fmtClinicDate(nextBk.startAt)}`),
-    practitioner: nextBk.practitioner?.name ?? null,
-    room: nextRoom?.name ?? null,
-    roomId: nextRoom?.id ?? null,
-    roomPrep: nextRoomPrep?.status,
-    canManageRoom: canRoomsPrep,
-    drinks: nextBk.refreshments ?? [],
-    // clients.clinical.view gated — same redaction as ReceptionistView (front-of-house never sees clinical data).
-    allergies: canClinical ? decClinical(nextBk.client.allergies) ?? null : null,
-    medicalFlag: canClinical ? decClinical(nextBk.client.medicalFlag) ?? null : null,
-  } : null;
-  // Rooms board (front-of-house / clinician): availability + prep for the day.
-  const roomsToday = canRoomsPrep ? await getRoomsForDay().catch(() => []) : [];
+  // Next-arrival (booking → room → room-prep, a genuine 3-step dependency
+  // chain) and the rooms-today board are both independent of the query batch
+  // above and of each other, so each streams in through its own <Suspense>
+  // boundary (NextArrivalWidget / RoomsTodayWidget) instead of blocking the
+  // page shell below (BLD-1002).
 
   return (
     <AdminShell user={session?.email} can={can} locale={locale}>
@@ -304,15 +276,9 @@ export default async function AdminOverview() {
 
       {/* Up next · prepare for arrival + day actions — the front-of-house core */}
       <div className="mt-6 grid gap-4 lg:grid-cols-[1.5fr_1fr] [&>*]:min-w-0">
-        {nextArrival ? (
-          <ArrivalPrep a={nextArrival} />
-        ) : (
-          <section className="flex flex-col items-start justify-center rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-6">
-            <p className="eyebrow text-[var(--color-stone)]">Up next</p>
-            <p className="mt-2 font-[family-name:var(--font-display)] text-xl">No upcoming appointments</p>
-            <p className="mt-1 text-sm text-[var(--color-stone)]">Nothing booked ahead right now — enjoy the calm, or take a new booking.</p>
-          </section>
-        )}
+        <Suspense fallback={null}>
+          <NextArrivalWidget canBookings={canBookings} canRoomsPrep={canRoomsPrep} canClinical={canClinical} nowIso={now.toISOString()} />
+        </Suspense>
         <section className="rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-5">
           <p className="eyebrow mb-3 text-[var(--color-stone)]">Quick actions</p>
           {canBookings && <div className="mb-3"><NewBookingButton treatments={treatments} /></div>}
@@ -351,14 +317,10 @@ export default async function AdminOverview() {
       </div>
 
       {/* Rooms today — live availability + prep handoff (front-of-house / clinician) */}
-      {canRoomsPrep && roomsToday.length > 0 && (
-        <section className="mt-6">
-          <div className="mb-3 flex items-center justify-between">
-            <h2 className="font-[family-name:var(--font-display)] text-xl">Rooms today</h2>
-            <span className="text-xs text-[var(--color-stone)]">Tap a room to set its readiness · updates live</span>
-          </div>
-          <RoomPrepStatus initialRooms={roomsToday} initialCanManage={canRoomsPrep} />
-        </section>
+      {canRoomsPrep && (
+        <Suspense fallback={null}>
+          <RoomsTodayWidget canRoomsPrep={canRoomsPrep} />
+        </Suspense>
       )}
 
       {/* KPI row — shared StatTile primitive (accessible SVG trend, unified
