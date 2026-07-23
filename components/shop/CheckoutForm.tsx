@@ -6,6 +6,7 @@ import { Elements, PaymentElement, useElements, useStripe } from '@stripe/react-
 import { getStripe } from '@/lib/stripe-client';
 import { useCart } from '@/lib/cart';
 import { Button, ArrowIcon } from '@/components/ui/Button';
+import { trackPurchase } from '@/lib/analytics-events';
 
 const money = (p: number) => `£${(p / 100).toLocaleString('en-GB', { minimumFractionDigits: p % 100 ? 2 : 0 })}`;
 const field = 'mt-1 w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-3 py-2.5 text-sm';
@@ -104,7 +105,7 @@ export function CheckoutForm() {
           <section className="rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-5">
             <h2 className="mb-3 font-[family-name:var(--font-display)] text-lg">Payment</h2>
             <Elements stripe={getStripe()} options={{ clientSecret, appearance: { theme: 'flat', variables: { colorPrimary: '#a98a6d', fontFamily: 'system-ui, sans-serif', borderRadius: '10px', colorBackground: '#f6ece3' } } }}>
-              <PayStep orderId={orderId} onDone={(no) => { clear(); setOrderNo(no); setStage('done'); }} />
+              <PayStep orderId={orderId} onDone={(no) => { trackPurchase({ valuePence: estTotal, eventId: orderId, metaPurchase: true }); clear(); setOrderNo(no); setStage('done'); }} />
             </Elements>
           </section>
         )}
