@@ -33,9 +33,15 @@ export async function chargeBookingAction(bookingId: string, amountPence: number
   // charge action, so every surface (session checkout, booking detail page, a
   // reloaded till) collects only the remainder — no UI has to know about the
   // voucher for the arithmetic to hold.
+  // BLD-1001: also net off redeemed loyalty points SERVER-SIDE, same as the
+  // voucher above — the client-side prefill in BookingActions.tsx is not a
+  // substitute (a stale UI, an edited amount, or a replayed request would
+  // otherwise charge the card the full pre-discount price, double-charging a
+  // client who already redeemed points as money off this booking).
   const voucherOffPence = booking.giftVoucherPence ?? 0;
-  amountPence = Math.round(amountPence) - voucherOffPence;
-  if (amountPence <= 0) return { ok: false, error: 'The applied gift voucher already covers this amount — remove the voucher first to adjust the price.' };
+  const pointsOffPence = booking.pointsRedeemedPence ?? 0;
+  amountPence = Math.round(amountPence) - voucherOffPence - pointsOffPence;
+  if (amountPence <= 0) return { ok: false, error: 'The applied gift voucher and/or redeemed loyalty points already cover this amount — remove them first to adjust the price.' };
   // Safety gateway: only ever take payment for a delivered treatment. The booking
   // must be marked COMPLETED first — this prevents charging a client before (or
   // instead of) their service. (Late-cancellation / no-show fees go through the
@@ -76,7 +82,11 @@ export async function chargeBookingAction(bookingId: string, amountPence: number
     const disc = opts?.discountReason?.trim()
       ? ` (price adjustment — ${opts.discountReason.trim()}${opts.originalPence && opts.originalPence > amountPence ? `; was £${(opts.originalPence / 100).toFixed(2)}` : ''})`
       : '';
-    const vnote = voucherOffPence > 0 ? ` + gift voucher £${(voucherOffPence / 100).toFixed(2)} already applied` : '';
+    const vnoteParts = [
+      voucherOffPence > 0 ? `gift voucher £${(voucherOffPence / 100).toFixed(2)}` : null,
+      pointsOffPence > 0 ? `loyalty points £${(pointsOffPence / 100).toFixed(2)}` : null,
+    ].filter(Boolean).join(' + ');
+    const vnote = vnoteParts ? ` + ${vnoteParts} already applied` : '';
     await db.interaction.create({ data: { clientId: booking.clientId, type: 'APPOINTMENT', summary: `Charged £${(amountPence / 100).toFixed(2)} for ${booking.treatmentTitle}${disc}${vnote}`, author: session.email } });
     await logAudit({ action: 'PAYMENT_CHARGED', actor: session.email, actorRole: session.role, bookingId, clientId: booking.clientId, summary: `Charged £${(amountPence / 100).toFixed(2)}${disc}${vnote}` });
     // The charged amount is the truest spend signal — credit loyalty points

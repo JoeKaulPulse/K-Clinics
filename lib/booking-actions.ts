@@ -243,19 +243,39 @@ export async function refundBooking(
     }
   }
 
-  const totalRefunded = (booking.refundedPence ?? 0) + amount;
-  const fully = totalRefunded >= (booking.chargedPence ?? 0);
   // CAS: only the writer that advances refundedPence from the value we read runs
-  // the side-effects. Guards the race where a concurrent webhook echo or a second
-  // in-app click creates a Stripe refund with the same idempotencyKey (no-op at
-  // Stripe) but both callers reach this point — the second writer's updateMany
-  // returns count=0 and we return early, so loyalty and Xero fire exactly once.
-  // Mirrors the same pattern in the charge.refunded webhook handler.
-  const claimed = await db.booking.updateMany({
-    where: { id: booking.id, refundedPence: booking.refundedPence },
-    data: { refundedPence: totalRefunded, refundedAt: new Date(), refundReason: opts.reason?.slice(0, 500) || booking.refundReason || null },
-  });
-  if (claimed.count === 0) return { ok: true, refundedPence: totalRefunded };
+  // the side-effects below. Guards the race where a concurrent webhook echo or a
+  // second in-app click creates a Stripe refund with the same idempotencyKey
+  // (no-op at Stripe) but both callers reach this point. Unlike a lost-race
+  // no-op, though, the Stripe refund above HAS already happened — so on a lost
+  // CAS we re-read the booking and retry (up to 2 times), mirroring the
+  // charge.refunded webhook handler's pattern, rather than silently dropping
+  // the loyalty/Xero/email side-effects for this refund.
+  let current = booking;
+  let totalRefunded = (current.refundedPence ?? 0) + amount;
+  let fully = totalRefunded >= (current.chargedPence ?? 0);
+  let claimed = { count: 0 };
+  for (let attempt = 0; ; attempt++) {
+    totalRefunded = (current.refundedPence ?? 0) + amount;
+    fully = totalRefunded >= (current.chargedPence ?? 0);
+    claimed = await db.booking.updateMany({
+      where: { id: current.id, refundedPence: current.refundedPence },
+      data: { refundedPence: totalRefunded, refundedAt: new Date(), refundReason: opts.reason?.slice(0, 500) || current.refundReason || null },
+    });
+    if (claimed.count > 0) break;
+    if (attempt >= 2) {
+      // The Stripe refund already succeeded — this is a reconciliation failure
+      // (we could not record it / run its side-effects), not a payment failure.
+      // Surface it to staff rather than a false ok:true that drops the accounting.
+      return { ok: false, error: `The £${(amount / 100).toFixed(2)} refund was processed at Stripe, but we could not record it here after retrying (another update kept winning the race) — check this booking's refund total and fix it manually.` };
+    }
+    const fresh = await db.booking.findUnique({ where: { id: current.id }, include: { client: true } });
+    if (!fresh) {
+      return { ok: false, error: `The £${(amount / 100).toFixed(2)} refund was processed at Stripe, but the booking could not be re-read to record it — check this booking's refund total and fix it manually.` };
+    }
+    current = fresh;
+  }
+  booking = current;
 
   // Reverse loyalty points once the booking is fully refunded (best-effort).
   if (fully) {
@@ -348,7 +368,12 @@ export async function finalizeBookingCharge(
     if (!receipt.ok) console.error('[charge] receipt email failed:', receipt.error);
     await db.emailEvent.create({ data: { clientId: booking.clientId, kind: 'MANUAL', to: booking.client.email, subject: 'Payment receipt', status: receipt.ok ? 'SENT' : 'FAILED', providerId: receipt.id, error: receipt.error } }).catch(() => {});
   } catch (e) { console.error('[charge] receipt failed:', (e as Error)?.message); }
-  try { const { awardClientSpend } = await import('./client-loyalty'); await awardClientSpend(bookingId); } catch (e) { console.error('[charge] loyalty failed:', (e as Error)?.message); }
+  // BLD-994: a late-cancellation fee is not client spend — chargeBooking()
+  // (the synchronous path) never awards loyalty for it, so this async path
+  // (SCA confirm / webhook) must not either.
+  if (!opts.late) {
+    try { const { awardClientSpend } = await import('./client-loyalty'); await awardClientSpend(bookingId); } catch (e) { console.error('[charge] loyalty failed:', (e as Error)?.message); }
+  }
   try { const { pushBookingSaleToXero } = await import('@/lib/xero'); await pushBookingSaleToXero(bookingId); } catch (e) { console.error('[charge] xero push failed:', (e as Error)?.message); }
   // BLD-455: only send hashed email to Meta CAPI if the client has opted in to marketing.
   try { const { sendPurchase } = await import('./conversions'); await sendPurchase({ bookingId, valuePence: amountReceivedPence, clientId: booking.clientId, email: booking.client?.marketingOptIn ? booking.client.email : null, campaign: booking.attribCampaign, gclid: booking.gclid }); } catch (e) { console.error('[charge] conversion failed:', (e as Error)?.message); }
