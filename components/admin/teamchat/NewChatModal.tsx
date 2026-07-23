@@ -3,10 +3,13 @@
 import { useMemo, useState } from 'react';
 import { Avatar } from './Avatar';
 import { useTeamChat } from './TeamChatProvider';
+import { useDialogBehaviours } from '@/components/ui/Dialog';
 
 // Start a 1:1 or create a group. Uses the shared roster from context.
 export function NewChatModal({ onClose }: { onClose: () => void }) {
   const { roster, meId, startDm, createGroup } = useTeamChat();
+  // Modal behaviours (focus-in, Tab trap, Escape, focus restore) — shared Dialog primitive (BLD-1003).
+  const { panelRef, onKeyDown } = useDialogBehaviours(onClose);
   const [mode, setMode] = useState<'dm' | 'group'>('dm');
   const [q, setQ] = useState('');
   const [name, setName] = useState('');
@@ -24,8 +27,8 @@ export function NewChatModal({ onClose }: { onClose: () => void }) {
   }
 
   return (
-    <div className="fixed inset-0 z-[80] flex items-center justify-center bg-[rgba(42,36,32,0.5)] p-4" onClick={onClose}>
-      <div role="dialog" aria-modal="true" aria-label="New conversation" className="w-full max-w-md rounded-[var(--radius-lg)] bg-[var(--color-porcelain)] p-5 shadow-[var(--shadow-lift)]" onClick={(e) => e.stopPropagation()}>
+    <div className="fixed inset-0 z-[80] flex items-center justify-center bg-[rgba(42,36,32,0.5)] p-4" onClick={onClose} onKeyDown={onKeyDown}>
+      <div ref={panelRef} role="dialog" aria-modal="true" aria-label="New conversation" tabIndex={-1} className="w-full max-w-md rounded-[var(--radius-lg)] bg-[var(--color-porcelain)] p-5 shadow-[var(--shadow-lift)]" onClick={(e) => e.stopPropagation()}>
         <div className="mb-3 flex items-center justify-between">
           <h2 className="font-[family-name:var(--font-display)] text-xl">New conversation</h2>
           <button onClick={onClose} aria-label="Close" className="text-[var(--color-stone)]">✕</button>
