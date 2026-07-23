@@ -2730,6 +2730,23 @@ export const BUILD_BACKLOG: BacklogItem[] = [
     detail: 'POST /api/account/signup upserted the Client row matched by attacker-supplied email and unconditionally minted a kc_client session, letting anyone who knew a target email (e.g. from a prior consult/guest-booking/kiosk lead) hijack that account with zero verification.',
     notes: ['Fix: never mint a session for a pre-existing Client row; route pre-existing passwordless records through the email-link invite flow instead; stop overwriting name/phone/DOB on records with prior activity. Follow-up: BookingFlow shows a claim-email message instead of a raw 401 for returning guests. (PRJ-1034.1)'],
   },
+  {
+    title: 'Cancelled appointments still earn loyalty points', type: 'ERROR', urgency: 'P1', status: 'SHIPPED', assignee: 'claude', pr: PR(1687),
+    detail: 'finalizeBookingCharge() (the async SCA-confirm / Stripe-webhook charge path) awarded loyalty SPEND points unconditionally, even for a late-cancellation fee -- the synchronous chargeBooking() path never did this for late fees.',
+    notes: ['Fix: finalizeBookingCharge() now skips the loyalty award when opts.late is true, matching the synchronous path. (BLD-994)'],
+  },
+  {
+    title: 'Staff \'charge for delivered service\' can double-charge clients who redeemed loyalty points', type: 'ERROR', urgency: 'P1', status: 'SHIPPED', assignee: 'claude', pr: PR(1687),
+    value: 7, effort: 2,
+    detail: 'chargeBookingAction() netted an applied gift voucher off the charge amount server-side, but never netted pointsRedeemedPence -- only pre-filled client-side, so a stale UI / edited amount / replayed request could double-charge a client who already redeemed points as money off the booking.',
+    notes: ['Fix: nets redeemed loyalty points off the charge amount server-side, same as the existing gift-voucher netting. (BLD-1001)'],
+  },
+  {
+    title: 'Concurrent in-app refunds can silently drop refund accounting', type: 'ERROR', urgency: 'P1', status: 'SHIPPED', assignee: 'claude', pr: PR(1687),
+    value: 8, effort: 4,
+    detail: 'refundBooking() did a single non-retrying compare-and-swap write on refundedPence; on a lost race it returned ok:true without running loyalty/Xero/email side-effects, even though the Stripe refund had already gone through.',
+    notes: ['Fix: refundBooking() now re-reads and retries the CAS write (up to 2 attempts) instead of silently dropping the accounting, mirroring the existing retry pattern in the charge.refunded webhook handler. (BLD-1000)'],
+  },
 ];
 
 // A content hash over every item's title + status + PR, so ANY change (a new
