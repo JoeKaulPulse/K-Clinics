@@ -2747,6 +2747,18 @@ export const BUILD_BACKLOG: BacklogItem[] = [
     detail: 'refundBooking() did a single non-retrying compare-and-swap write on refundedPence; on a lost race it returned ok:true without running loyalty/Xero/email side-effects, even though the Stripe refund had already gone through.',
     notes: ['Fix: refundBooking() now re-reads and retries the CAS write (up to 2 attempts) instead of silently dropping the accounting, mirroring the existing retry pattern in the charge.refunded webhook handler. (BLD-1000)'],
   },
+  {
+    title: '/book page awaits three independent data stages sequentially, delaying first paint', type: 'TASK', urgency: 'P1', status: 'IN_REVIEW', assignee: 'claude',
+    value: 8, effort: 3,
+    detail: 'app/(marketing)/book/page.tsx awaited getReviewAggregate(), then the catalogue+offers try/catch, then the signed-in client-personalisation try/catch, one after another, even though none of the three reads another\'s output -- on the site\'s highest-value conversion route.',
+    notes: ['Fix: each stage now runs inside its own async function and all three are kicked off together via Promise.all, combining results only after. The "call us" degraded fallback, the best-effort/never-break-the-page behaviour of client personalisation, and all error logging are unchanged. (BLD-1031)'],
+  },
+  {
+    title: '/admin dashboard runs a string of independent queries sequentially after its main batch', type: 'TASK', urgency: 'P1', status: 'IN_REVIEW', assignee: 'claude',
+    value: 8, effort: 5,
+    detail: 'app/admin/page.tsx ran a 17-query Promise.all, then unchargedCompleted, then sameDayRequests, then can/locale/treatments/roomsToday, then the nextBk -> nextRoom -> nextRoomPrep lookup -- each blocking the next -- even though most only depend on the canX permission booleans resolved before the batch even starts, not on each other\'s results.',
+    notes: ['Fix: folded unchargedCompleted and sameDayRequests into the main query batch, and run sessionPermissions(), getLocale(), loadBookingTreatments(), roomsToday and the nextBk/nextRoom/nextRoomPrep chain concurrently with that batch via one upfront Promise.all. todayNotReady stays sequential after the batch (it genuinely reads todaysBookings/reqConsent/reqPhoto from it); the nextRoom/nextRoomPrep lookup stays sequential internally (it genuinely reads nextBk.id/nextRoom.id) but the chain as a whole no longer waits on anything else. No query logic, filters, or permission gates changed. Suspense-wrapping the slower widgets (stretch goal) was not attempted -- deferred as a larger structural change. (BLD-1002)'],
+  },
 ];
 
 // A content hash over every item's title + status + PR, so ANY change (a new
