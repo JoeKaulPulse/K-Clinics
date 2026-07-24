@@ -138,45 +138,101 @@ export default async function AdminOverview() {
   const canAutomations = sessionCan(session, 'automations.view');
   const canMarketing = sessionCan(session, 'campaigns.view');
   const canCompliance = sessionCan(session, 'compliance.view');
+  // Moved up from just before the old sequential nextRoom/roomsToday reads
+  // (BLD-1002) — both are synchronous permission checks with no data
+  // dependency, so they're needed before the parallel batch below, not after it.
+  const canRoomsPrep = sessionCan(session, 'rooms.prep.manage');
+  const canClinical = sessionCan(session, 'clients.clinical.view');
   const dayStart = new Date(); dayStart.setHours(0, 0, 0, 0);
   const dayEnd = new Date(); dayEnd.setHours(23, 59, 59, 999);
+  const endOfToday = new Date(now); endOfToday.setHours(23, 59, 59, 999);
   // Comms health: transactional emails (booking confirmations/receipts/reminders)
   // have no campaignId; a FAILED row means the send was attempted but the provider
   // isn't configured / the domain isn't verified. Surfaced so a silent delivery
   // outage is noticed without reading the log (booking assessment follow-up #4).
   const commsSince = new Date(Date.now() - 7 * 864e5);
-  // Load the whole dashboard through a couple of quick retries, so a single
-  // transient DB blip doesn't 500 the overview (it recomposes the queries each
-  // attempt — safe, as these are all reads).
-  const [o, a, pendingTimeOff, myTasks, stockItems, expiringSoon, ordersToFulfil, retailProducts, todaysBookings, reqConsent, reqPhoto, gReviewAgg, googleUnreplied, buildOpen, buildBlocked, buildUnsynced, failedComms] = await withDbRetry(() => Promise.all([
-    getOverview(),
-    getAnalytics(),
-    canApproveTimeOff ? db.staffTimeOff.count({ where: { status: 'PENDING' } }) : Promise.resolve(0),
-    session ? db.task.count({ where: { assigneeId: session.sub, status: 'OPEN' } }) : Promise.resolve(0),
-    canInventory ? db.stockItem.findMany({ where: { active: true }, select: { currentQty: true, lowStockAt: true } }) : Promise.resolve([]),
-    canInventory ? db.stockMovement.count({ where: { reason: 'RECEIVED', expiry: { not: null, gte: new Date(), lte: new Date(Date.now() + 90 * 864e5) } } }) : Promise.resolve(0),
-    canFinance ? db.order.count({ where: { status: 'PAID', fulfillment: 'unfulfilled' } }) : Promise.resolve(0),
-    canFinance ? db.product.findMany({ where: { status: 'ACTIVE', trackInventory: true }, select: { stockQty: true, lowStockThreshold: true } }) : Promise.resolve([]),
-    canBookings ? db.booking.findMany({ where: { startAt: { gte: dayStart, lte: dayEnd }, status: { in: ['PENDING', 'CONFIRMED'] } }, select: { id: true, treatmentSlug: true } }) : Promise.resolve([]),
-    import('@/lib/settings').then((m) => m.getSetting('require_consent')),
-    import('@/lib/settings').then((m) => m.getSetting('require_before_photo')),
-    canReviews ? db.googleReview.aggregate({ _avg: { starRating: true }, _count: { _all: true } }) : Promise.resolve(null),
-    canReviews ? db.googleReview.count({ where: { replyComment: null } }) : Promise.resolve(0),
-    canBuild ? db.buildItem.count({ where: { status: { not: 'SHIPPED' } } }) : Promise.resolve(0),
-    canBuild ? db.buildItem.count({ where: { status: 'BLOCKED' } }) : Promise.resolve(0),
-    canBuild ? db.buildItem.count({ where: { githubUrl: null } }) : Promise.resolve(0),
-    canAutomations ? db.emailEvent.count({ where: { status: 'FAILED', campaignId: null, createdAt: { gte: commsSince } } }) : Promise.resolve(0),
-  ]));
+  // Start the room-prep module load now — both the next-arrival chain and the
+  // rooms-today read need it, and neither has to wait for the query batch below.
+  const roomPrepModule = import('@/lib/room-prep');
+
+  // BLD-1002: everything below was previously a chain of sequential awaits
+  // (the 17-query batch, then unchargedCompleted, then sameDayRequests, then
+  // can/locale/treatments, then the nextBk → nextRoom → nextRoomPrep lookup,
+  // then roomsToday) even though most of these don't read each other's
+  // results — they only depend on the canX booleans and `session`/`now`,
+  // already resolved synchronously above. They're now kicked off together.
+  // Two genuine dependency chains stay sequential *inside* their own branch:
+  //   - todayNotReady needs todaysBookings/reqConsent/reqPhoto from the main
+  //     batch, so it's still computed after the batch resolves (unchanged).
+  //   - nextRoom needs nextBk.id and nextRoomPrep needs nextRoom.id, so that
+  //     lookup is a self-contained async chain — but the chain as a whole
+  //     doesn't depend on anything else here, so it runs concurrently with
+  //     everything else instead of after it.
+  const [
+    [o, a, pendingTimeOff, myTasks, stockItems, expiringSoon, ordersToFulfil, retailProducts, todaysBookings, reqConsent, reqPhoto, gReviewAgg, googleUnreplied, buildOpen, buildBlocked, buildUnsynced, failedComms, unchargedCompleted, sameDayRequests],
+    can,
+    locale,
+    treatments,
+    roomsToday,
+    { nextBk, nextRoom, nextRoomPrep },
+  ] = await Promise.all([
+    // Load the whole dashboard through a couple of quick retries, so a single
+    // transient DB blip doesn't 500 the overview (it recomposes the queries
+    // each attempt — safe, as these are all reads). unchargedCompleted and
+    // sameDayRequests joined this batch (BLD-1002) — they were previously
+    // separate awaits after it, but neither reads anything the batch returns,
+    // only the already-known canFinance/canBookings booleans.
+    withDbRetry(() => Promise.all([
+      getOverview(),
+      getAnalytics(),
+      canApproveTimeOff ? db.staffTimeOff.count({ where: { status: 'PENDING' } }) : Promise.resolve(0),
+      session ? db.task.count({ where: { assigneeId: session.sub, status: 'OPEN' } }) : Promise.resolve(0),
+      canInventory ? db.stockItem.findMany({ where: { active: true }, select: { currentQty: true, lowStockAt: true } }) : Promise.resolve([]),
+      canInventory ? db.stockMovement.count({ where: { reason: 'RECEIVED', expiry: { not: null, gte: new Date(), lte: new Date(Date.now() + 90 * 864e5) } } }) : Promise.resolve(0),
+      canFinance ? db.order.count({ where: { status: 'PAID', fulfillment: 'unfulfilled' } }) : Promise.resolve(0),
+      canFinance ? db.product.findMany({ where: { status: 'ACTIVE', trackInventory: true }, select: { stockQty: true, lowStockThreshold: true } }) : Promise.resolve([]),
+      canBookings ? db.booking.findMany({ where: { startAt: { gte: dayStart, lte: dayEnd }, status: { in: ['PENDING', 'CONFIRMED'] } }, select: { id: true, treatmentSlug: true } }) : Promise.resolve([]),
+      import('@/lib/settings').then((m) => m.getSetting('require_consent')),
+      import('@/lib/settings').then((m) => m.getSetting('require_before_photo')),
+      canReviews ? db.googleReview.aggregate({ _avg: { starRating: true }, _count: { _all: true } }) : Promise.resolve(null),
+      canReviews ? db.googleReview.count({ where: { replyComment: null } }) : Promise.resolve(0),
+      canBuild ? db.buildItem.count({ where: { status: { not: 'SHIPPED' } } }) : Promise.resolve(0),
+      canBuild ? db.buildItem.count({ where: { status: 'BLOCKED' } }) : Promise.resolve(0),
+      canBuild ? db.buildItem.count({ where: { githubUrl: null } }) : Promise.resolve(0),
+      canAutomations ? db.emailEvent.count({ where: { status: 'FAILED', campaignId: null, createdAt: { gte: commsSince } } }) : Promise.resolve(0),
+      // Completed treatments in the last 30 days that haven't been charged (revenue at risk).
+      canFinance ? db.booking.count({ where: { status: 'COMPLETED', chargedAt: null, pricePence: { gt: 0 }, finishedAt: { gte: new Date(Date.now() - 30 * 864e5) } } }) : Promise.resolve(0),
+      canBookings ? db.booking.count({ where: { status: 'REQUESTED' } }).catch(() => 0) : Promise.resolve(0),
+    ])),
+    sessionPermissions(),
+    getLocale(),
+    loadBookingTreatments(),
+    canRoomsPrep ? roomPrepModule.then((m) => m.getRoomsForDay()).catch(() => []) : Promise.resolve([]),
+    (async () => {
+      if (!canBookings) return { nextBk: null, nextRoom: null, nextRoomPrep: null };
+      const nextBk = await db.booking.findFirst({
+        where: { startAt: { gte: now }, status: { in: ['CONFIRMED', 'PENDING'] } },
+        orderBy: { startAt: 'asc' },
+        select: {
+          id: true, startAt: true, treatmentTitle: true, refreshments: true, clientId: true,
+          client: { select: { firstName: true, lastName: true, allergies: true, medicalFlag: true } },
+          practitioner: { select: { name: true } },
+        },
+      }).catch(() => null);
+      if (!nextBk) return { nextBk: null, nextRoom: null, nextRoomPrep: null };
+      const nextRoom = await db.resource.findFirst({ where: { kind: 'ROOM', bookings: { some: { id: nextBk.id } } }, select: { id: true, name: true } }).catch(() => null);
+      const nextRoomPrep = nextRoom ? await (await roomPrepModule).getRoomPrepFor(nextRoom.id).catch(() => null) : null;
+      return { nextBk, nextRoom, nextRoomPrep };
+    })(),
+  ]);
   const googleAvg = gReviewAgg?._avg.starRating ?? null;
   const googleCount = gReviewAgg?._count._all ?? 0;
   const lowStock = stockItems.filter((i) => i.lowStockAt > 0 && i.currentQty <= i.lowStockAt).length;
   const productsLow = retailProducts.filter((p) => p.stockQty <= p.lowStockThreshold).length;
-  // Completed treatments in the last 30 days that haven't been charged (revenue at risk).
-  const unchargedCompleted = canFinance
-    ? await db.booking.count({ where: { status: 'COMPLETED', chargedAt: null, pricePence: { gt: 0 }, finishedAt: { gte: new Date(Date.now() - 30 * 864e5) } } })
-    : 0;
 
-  // Today's appointments still missing consent or a laser before-photo.
+  // Today's appointments still missing consent or a laser before-photo. This
+  // stays a sequential await after the batch above — it genuinely depends on
+  // todaysBookings/reqConsent/reqPhoto, which only exist once that batch resolves.
   let todayNotReady = 0;
   if (todaysBookings.length && (reqConsent || reqPhoto)) {
     const ids = todaysBookings.map((b) => b.id);
@@ -189,7 +245,6 @@ export default async function AdminOverview() {
     const photoSet = new Set([...photoRows.map((p) => p.bookingId), ...signedRows.filter((s) => s.kind === 'photo_opt_out').map((s) => s.bookingId)]);
     todayNotReady = todaysBookings.filter((b) => (reqConsent && !consentSet.has(b.id)) || (reqPhoto && isLaserTreatment(b.treatmentSlug) && !photoSet.has(b.id))).length;
   }
-  const sameDayRequests = canBookings ? await db.booking.count({ where: { status: 'REQUESTED' } }).catch(() => 0) : 0;
   const attention = [
     { show: canAutomations && failedComms > 0, label: 'Confirmation emails failing', value: failedComms, href: '/admin/automations', tone: 'red' },
     { show: sameDayRequests > 0, label: 'Same-day requests to action', value: sameDayRequests, href: '/admin/bookings?filter=REQUESTED', tone: 'amber' },
@@ -231,29 +286,9 @@ export default async function AdminOverview() {
       : []),
   ];
 
-  const can = await sessionPermissions();
-  const locale = await getLocale();
-
   // ── Front-of-house essentials: the next client arrival (clock/weather above) ──
-  const treatments = await loadBookingTreatments();
-  const endOfToday = new Date(now); endOfToday.setHours(23, 59, 59, 999);
-  const nextBk = canBookings
-    ? await db.booking.findFirst({
-        where: { startAt: { gte: now }, status: { in: ['CONFIRMED', 'PENDING'] } },
-        orderBy: { startAt: 'asc' },
-        select: {
-          id: true, startAt: true, treatmentTitle: true, refreshments: true, clientId: true,
-          client: { select: { firstName: true, lastName: true, allergies: true, medicalFlag: true } },
-          practitioner: { select: { name: true } },
-        },
-      }).catch(() => null)
-    : null;
-  const canRoomsPrep = sessionCan(session, 'rooms.prep.manage');
-  const canClinical = sessionCan(session, 'clients.clinical.view');
-  const nextRoom = nextBk ? await db.resource.findFirst({ where: { kind: 'ROOM', bookings: { some: { id: nextBk.id } } }, select: { id: true, name: true } }).catch(() => null) : null;
-  // The next arrival's room prep state (for the live arrival-prep checklist).
-  const { getRoomPrepFor, getRoomsForDay } = await import('@/lib/room-prep');
-  const nextRoomPrep = nextRoom ? await getRoomPrepFor(nextRoom.id).catch(() => null) : null;
+  // can, locale, treatments, roomsToday, and the nextBk/nextRoom/nextRoomPrep
+  // chain were all resolved concurrently with the main query batch above (BLD-1002).
   const nextArrival: NextArrival | null = nextBk ? {
     id: nextBk.id,
     clientId: nextBk.clientId,
@@ -271,8 +306,6 @@ export default async function AdminOverview() {
     allergies: canClinical ? decClinical(nextBk.client.allergies) ?? null : null,
     medicalFlag: canClinical ? decClinical(nextBk.client.medicalFlag) ?? null : null,
   } : null;
-  // Rooms board (front-of-house / clinician): availability + prep for the day.
-  const roomsToday = canRoomsPrep ? await getRoomsForDay().catch(() => []) : [];
 
   return (
     <AdminShell user={session?.email} can={can} locale={locale}>
