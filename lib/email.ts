@@ -1054,3 +1054,58 @@ export function tmplFormReminder(o: { firstName: string; treatment: string; star
     <p>With warmth,<br>The KClinics team</p>`,
   });
 }
+
+// ── K Academy live-class templates (BLD-1034) ─────────────────────────────────
+export function tmplLiveClassScheduled(o: { firstName: string; courseTitle: string; classTitle: string; start: Date; joinUrl?: string | null; trainer?: string | null }) {
+  return emailShell({
+    preheader: `A new live session has been scheduled for ${o.courseTitle}`,
+    body: `<h1 style="font-size:24px;margin:0 0 16px;">A live session has been scheduled</h1>
+    <p>Hi ${escape(o.firstName)}, a new live session has been added to your <strong>${escape(o.courseTitle)}</strong> course:</p>
+    <table style="font-family:Helvetica,Arial,sans-serif;font-size:14px;color:#3d352f;line-height:1.9;margin:16px 0;">
+      <tr><td style="color:#91766e;padding-right:16px;">Session</td><td><strong>${escape(o.classTitle)}</strong></td></tr>
+      <tr><td style="color:#91766e;padding-right:16px;">When</td><td>${fmtWhen(o.start)}</td></tr>
+      ${o.trainer ? `<tr><td style="color:#91766e;padding-right:16px;">Trainer</td><td>${escape(o.trainer)}</td></tr>` : ''}
+    </table>
+    ${o.joinUrl ? `<p style="margin:24px 0;">${btn(o.joinUrl, 'Join link')}</p>` : `<p style="font-size:13px;color:#91766e;">The join link will follow before the session starts.</p>`}
+    <p style="margin-top:20px;">With warmth,<br>The K Academy team</p>`,
+  });
+}
+
+export function tmplLiveClassRescheduled(o: { firstName: string; courseTitle: string; classTitle: string; oldStart: Date; newStart: Date; joinUrl?: string | null; trainer?: string | null }) {
+  return emailShell({
+    preheader: `Your ${o.courseTitle} live session has moved`,
+    body: `<h1 style="font-size:24px;margin:0 0 16px;">Live session rescheduled</h1>
+    <p>Hi ${escape(o.firstName)}, the <strong>${escape(o.classTitle)}</strong> session for your <strong>${escape(o.courseTitle)}</strong> course has been moved.</p>
+    <table style="font-family:Helvetica,Arial,sans-serif;font-size:14px;color:#3d352f;line-height:1.9;margin:16px 0;">
+      <tr><td style="color:#91766e;padding-right:16px;">Was</td><td><s>${fmtWhen(o.oldStart)}</s></td></tr>
+      <tr><td style="color:#91766e;padding-right:16px;">Now</td><td><strong>${fmtWhen(o.newStart)}</strong></td></tr>
+      ${o.trainer ? `<tr><td style="color:#91766e;padding-right:16px;">Trainer</td><td>${escape(o.trainer)}</td></tr>` : ''}
+    </table>
+    ${o.joinUrl ? `<p style="margin:24px 0;">${btn(o.joinUrl, 'Join link')}</p>` : ''}
+    <p style="margin-top:20px;">With warmth,<br>The K Academy team</p>`,
+  });
+}
+
+export function tmplLiveClassCancelled(o: { firstName: string; courseTitle: string; classTitle: string; start: Date }) {
+  return emailShell({
+    preheader: `Your ${o.courseTitle} live session has been cancelled`,
+    body: `<h1 style="font-size:24px;margin:0 0 16px;">Live session cancelled</h1>
+    <p>Hi ${escape(o.firstName)}, the <strong>${escape(o.classTitle)}</strong> session for your <strong>${escape(o.courseTitle)}</strong> course, originally scheduled for ${fmtWhen(o.start)}, has been cancelled.</p>
+    <p style="font-size:13px;color:#91766e;">We'll be in touch with a new date if one is needed. Any questions, just reply to this email.</p>
+    <p style="margin-top:20px;">With warmth,<br>The K Academy team</p>`,
+  });
+}
+
+export function tmplLiveClassReminder(o: { firstName: string; courseTitle: string; classTitle: string; start: Date; joinUrl?: string | null; trainer?: string | null }) {
+  return emailShell({
+    preheader: `Your ${o.courseTitle} live session is today`,
+    body: `<h1 style="font-size:24px;margin:0 0 16px;">Your live session is today</h1>
+    <p>Hi ${escape(o.firstName)}, a reminder that <strong>${escape(o.classTitle)}</strong> for your <strong>${escape(o.courseTitle)}</strong> course is today.</p>
+    <table style="font-family:Helvetica,Arial,sans-serif;font-size:14px;color:#3d352f;line-height:1.9;margin:16px 0;">
+      <tr><td style="color:#91766e;padding-right:16px;">When</td><td><strong>${fmtWhen(o.start)}</strong></td></tr>
+      ${o.trainer ? `<tr><td style="color:#91766e;padding-right:16px;">Trainer</td><td>${escape(o.trainer)}</td></tr>` : ''}
+    </table>
+    ${o.joinUrl ? `<p style="margin:24px 0;">${btn(o.joinUrl, 'Join link')}</p>` : `<p style="font-size:13px;color:#91766e;">Keep an eye out for the join link before the session starts.</p>`}
+    <p style="margin-top:20px;">See you there,<br>The K Academy team</p>`,
+  });
+}

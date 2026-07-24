@@ -179,13 +179,32 @@ export async function POST(req: Request) {
         trainer: (b.trainer as string)?.trim() || null,
         description: (b.description as string)?.trim() || null,
       };
-      if (b.id) await db.liveClass.updateMany({ where: { id: String(b.id), tenantId }, data });
-      else await db.liveClass.create({ data: { ...data, tenantId, courseId: String(b.courseId) } });
+      // BLD-1034: creating/rescheduling a live class previously reached zero
+      // enrolled students — notify them, best-effort (never blocks the save).
+      const { notifyLiveClassChange } = await import('@/lib/academy-live-class');
+      if (b.id) {
+        const existing = await db.liveClass.findFirst({ where: { id: String(b.id), tenantId }, select: { courseId: true, startAt: true } });
+        if (!existing) return bad();
+        await db.liveClass.updateMany({ where: { id: String(b.id), tenantId }, data });
+        notifyLiveClassChange({ id: String(b.id), courseId: existing.courseId, title: data.title, startAt: data.startAt, joinUrl: data.joinUrl, trainer: data.trainer }, 'rescheduled', { oldStartAt: existing.startAt }).catch(() => {});
+      } else {
+        const created = await db.liveClass.create({ data: { ...data, tenantId, courseId: String(b.courseId) } });
+        notifyLiveClassChange({ id: created.id, courseId: created.courseId, title: created.title, startAt: created.startAt, joinUrl: created.joinUrl, trainer: created.trainer }, 'created').catch(() => {});
+      }
       return ok();
     }
     case 'removeLiveClass': {
       if (!body.id) return bad();
-      await db.liveClass.deleteMany({ where: { id: body.id, tenantId } });
+      // BLD-1034: read the row (needed to build the cancellation notice) before
+      // deleting; only notify if a row actually got deleted, so a race that
+      // already removed it (or a bad id) never sends a false cancellation.
+      const existing = await db.liveClass.findFirst({ where: { id: body.id, tenantId }, select: { id: true, courseId: true, title: true, startAt: true, joinUrl: true, trainer: true } });
+      if (!existing) return bad();
+      const del = await db.liveClass.deleteMany({ where: { id: body.id, tenantId } });
+      if (del.count > 0) {
+        const { notifyLiveClassChange } = await import('@/lib/academy-live-class');
+        notifyLiveClassChange(existing, 'cancelled').catch(() => {});
+      }
       return ok();
     }
     case 'setStudentActive': {
