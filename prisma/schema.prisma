@@ -53,6 +53,7 @@ enum EmailKind {
   NPS_PROMOTER
   NPS_DETRACTOR
   BOOKING_INTENT
+  LIVE_CLASS // BLD-1034: academy live-class create/reschedule/cancel/reminder notices
 }
 
 enum EmailStatus {
