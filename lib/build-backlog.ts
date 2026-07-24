@@ -2760,6 +2760,18 @@ export const BUILD_BACKLOG: BacklogItem[] = [
     notes: ['Fix: BlockEditor.tsx now passes ariaLabel={`${BLOCK_LABELS[b.type]} block content`} (e.g. "Paragraph block content", "Heading block content") to RichTextField. RichTextField.tsx\'s rt-field div gained focus-visible:ring-2 focus-visible:ring-[var(--color-gold)], matching the ring color/utility pattern used across the admin (SearchBox.tsx, NewsletterForm.tsx, AddTreatment.tsx, PosTerminal.tsx, etc). Branch claude/a11y-modal-richtext-1003-1033. (BLD-1033)'],
   },
   {
+    title: '/book page awaits three independent data stages sequentially, delaying first paint', type: 'TASK', urgency: 'P1', status: 'IN_REVIEW', assignee: 'claude',
+    value: 8, effort: 3,
+    detail: 'app/(marketing)/book/page.tsx awaited getReviewAggregate(), then the catalogue+offers try/catch, then the signed-in client-personalisation try/catch, one after another, even though none of the three reads another\'s output -- on the site\'s highest-value conversion route.',
+    notes: ['Fix: each stage now runs inside its own async function and all three are kicked off together via Promise.all, combining results only after. The "call us" degraded fallback, the best-effort/never-break-the-page behaviour of client personalisation, and all error logging are unchanged. (BLD-1031)'],
+  },
+  {
+    title: '/admin dashboard runs a string of independent queries sequentially after its main batch', type: 'TASK', urgency: 'P1', status: 'IN_REVIEW', assignee: 'claude',
+    value: 8, effort: 5,
+    detail: 'app/admin/page.tsx ran a 17-query Promise.all, then unchargedCompleted, then sameDayRequests, then can/locale/treatments/roomsToday, then the nextBk -> nextRoom -> nextRoomPrep lookup -- each blocking the next -- even though most only depend on the canX permission booleans resolved before the batch even starts, not on each other\'s results.',
+    notes: ['Fix: folded unchargedCompleted and sameDayRequests into the main query batch, and run sessionPermissions(), getLocale(), loadBookingTreatments(), roomsToday and the nextBk/nextRoom/nextRoomPrep chain concurrently with that batch via one upfront Promise.all. todayNotReady stays sequential after the batch (it genuinely reads todaysBookings/reqConsent/reqPhoto from it); the nextRoom/nextRoomPrep lookup stays sequential internally (it genuinely reads nextBk.id/nextRoom.id) but the chain as a whole no longer waits on anything else. No query logic, filters, or permission gates changed. Suspense-wrapping the slower widgets (stretch goal) was not attempted -- deferred as a larger structural change. (BLD-1002)'],
+  },
+  {
     title: 'Shop checkout never fires a GA4/Meta purchase conversion', type: 'ERROR', urgency: 'P1', status: 'IN_REVIEW', assignee: 'claude',
     value: 7, effort: 2,
     detail: 'CheckoutForm.tsx never called trackPurchase and neither the shop confirm route nor finalizeOrder() ever called sendPurchase, unlike bookings and gift vouchers -- every shop order converted with zero ad-attribution data reaching GA4 or Meta.',

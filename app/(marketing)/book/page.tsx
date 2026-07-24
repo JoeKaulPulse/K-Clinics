@@ -30,49 +30,59 @@ export default async function BookPage({ searchParams }: { searchParams: Promise
   // Real review aggregate (BLD-573), same source as the homepage; PRJ-1034.7
   // surfaces it here too, next to the booking CTA. getReviewAggregate() never
   // throws (it swallows source failures internally), so no extra guard needed.
-  const aggregate = await getReviewAggregate();
-  const rating = aggregate ? { average: aggregate.average, count: aggregate.count } : null;
-  const testimonialCards = aggregate?.cards.slice(0, 2) ?? [];
-
-  // Load everything defensively — if the database is briefly unreachable the
-  // primary booking page should degrade to a "call us" view, not 500.
+  //
+  // BLD-1031: the review aggregate, the catalogue+offers load, and the
+  // signed-in client personalisation are three independent data stages —
+  // none reads another's output — so they're kicked off together and
+  // awaited as a batch instead of one after another. Each stage keeps its
+  // original try/catch and default/degraded fallback; only the *scheduling*
+  // changed.
   type CatItem = Awaited<ReturnType<(typeof import('@/lib/services'))['bookingCatalogue']>>[number];
-  let catalogue: CatItem[] = [];
-  let promoted: Awaited<ReturnType<(typeof import('@/lib/services'))['liveOffers']>> = [];
-  let clientInfo = { signedIn: false, firstName: '', email: '', gender: null as string | null, smsReminders: false, hasPhone: false, welcomeEligible: true };
-  let degraded = false;
-  try {
-    const { bookingCatalogue, liveOffers } = await import('@/lib/services');
-    const { withDbRetry } = await import('@/lib/db');
+  type ClientInfo = { signedIn: boolean; firstName: string; email: string; gender: string | null; smsReminders: boolean; hasPhone: boolean; welcomeEligible: boolean };
 
-    // The catalogue is the one thing the page can't render without — load it with
-    // a couple of quick retries so a transient DB blip (cold start / connection
-    // spike) doesn't drop the whole widget to the "call us" fallback. Offers are
-    // best-effort: if they fail we simply don't show the promo strip.
-    const [catalogueAll, promotedLive] = await Promise.all([
-      withDbRetry(() => bookingCatalogue()),
-      withDbRetry(() => liveOffers(true)).catch(() => [] as typeof promoted),
-    ]);
-    promoted = promotedLive;
+  const loadAggregate = async () => getReviewAggregate();
 
-    // Dentistry isn't bookable until a GDC-registered dentist is in post —
-    // including dental consultations. Exclude the whole dentistry category (not
-    // just known dentistry treatment slugs) so a stray dental consultation
-    // service can't be booked directly; it routes to "register interest".
-    catalogue = (await getSiteConfig()).dentistryLive ? catalogueAll : await (async () => {
-      const { dentistry } = await import('@/lib/treatments');
-      const dentistrySlugs = new Set(dentistry.map((t) => t.slug));
-      return catalogueAll.filter((s) => s.category !== 'dentistry' && !dentistrySlugs.has(s.treatmentSlug));
-    })();
-  } catch (e) {
-    console.error('[book] catalogue load failed — showing call-us fallback:', (e as Error)?.message);
-    degraded = true;
-  }
+  const loadCatalogue = async (): Promise<{ catalogue: CatItem[]; promoted: Awaited<ReturnType<(typeof import('@/lib/services'))['liveOffers']>>; degraded: boolean }> => {
+    let catalogue: CatItem[] = [];
+    let promoted: Awaited<ReturnType<(typeof import('@/lib/services'))['liveOffers']>> = [];
+    let degraded = false;
+    try {
+      const { bookingCatalogue, liveOffers } = await import('@/lib/services');
+      const { withDbRetry } = await import('@/lib/db');
+
+      // The catalogue is the one thing the page can't render without — load it with
+      // a couple of quick retries so a transient DB blip (cold start / connection
+      // spike) doesn't drop the whole widget to the "call us" fallback. Offers are
+      // best-effort: if they fail we simply don't show the promo strip.
+      const [catalogueAll, promotedLive] = await Promise.all([
+        withDbRetry(() => bookingCatalogue()),
+        withDbRetry(() => liveOffers(true)).catch(() => [] as typeof promoted),
+      ]);
+      promoted = promotedLive;
+
+      // Dentistry isn't bookable until a GDC-registered dentist is in post —
+      // including dental consultations. Exclude the whole dentistry category (not
+      // just known dentistry treatment slugs) so a stray dental consultation
+      // service can't be booked directly; it routes to "register interest".
+      catalogue = (await getSiteConfig()).dentistryLive ? catalogueAll : await (async () => {
+        const { dentistry } = await import('@/lib/treatments');
+        const dentistrySlugs = new Set(dentistry.map((t) => t.slug));
+        return catalogueAll.filter((s) => s.category !== 'dentistry' && !dentistrySlugs.has(s.treatmentSlug));
+      })();
+    } catch (e) {
+      console.error('[book] catalogue load failed — showing call-us fallback:', (e as Error)?.message);
+      degraded = true;
+    }
+    return { catalogue, promoted, degraded };
+  };
 
   // Signed-in personalisation is best-effort and must never break the page or
   // trigger the fallback — if the client lookup blips, we just render the
-  // signed-out flow (they can still book).
-  if (!degraded) {
+  // signed-out flow (they can still book). It no longer waits on the
+  // catalogue's outcome: if the catalogue ends up degraded, this result is
+  // simply unused by the render below (see the `degraded` branch).
+  const loadClientInfo = async (): Promise<ClientInfo> => {
+    let clientInfo: ClientInfo = { signedIn: false, firstName: '', email: '', gender: null, smsReminders: false, hasPhone: false, welcomeEligible: true };
     try {
       const { getCurrentClient } = await import('@/lib/client-auth');
       const { db } = await import('@/lib/db');
@@ -84,7 +94,16 @@ export default async function BookPage({ searchParams }: { searchParams: Promise
     } catch (e) {
       console.error('[book] client personalisation skipped (non-fatal):', (e as Error)?.message);
     }
-  }
+    return clientInfo;
+  };
+
+  const [aggregate, { catalogue, promoted, degraded }, clientInfo] = await Promise.all([
+    loadAggregate(),
+    loadCatalogue(),
+    loadClientInfo(),
+  ]);
+  const rating = aggregate ? { average: aggregate.average, count: aggregate.count } : null;
+  const testimonialCards = aggregate?.cards.slice(0, 2) ?? [];
 
   const points = [
     'Create your free account for 15% off your first visit',
