@@ -2,6 +2,7 @@
 
 import Script from 'next/script';
 import { useEffect, useState } from 'react';
+import { usePathname } from 'next/navigation';
 import { getConsent, type ConsentValue } from '@/components/legal/CookieConsent';
 
 // Marketing/analytics pixels — loaded only after the visitor opts in via the
@@ -9,8 +10,14 @@ import { getConsent, type ConsentValue } from '@/components/legal/CookieConsent'
 // consent. Re-evaluates live when consent changes (kc-consent event).
 const safe = (s: string) => s.replace(/[^A-Za-z0-9_-]/g, '');
 
+// BLD-1051: /booking/manage carries Booking.manageToken (a bearer credential)
+// in the query string. GA4/Meta's automatic pageview reports the full URL, so
+// this page is excluded the same way BehaviorRecorder excludes booking pages.
+const NO_TRACK_PATH = /^\/booking\/manage(\/|$)/;
+
 export function TrackingScripts({ ga4Id, googleAdsId, metaPixelId }: { ga4Id: string; googleAdsId: string; metaPixelId: string }) {
   const [consent, setConsent] = useState<ConsentValue | null>(null);
+  const pathname = usePathname();
 
   useEffect(() => {
     setConsent(getConsent());
@@ -18,6 +25,8 @@ export function TrackingScripts({ ga4Id, googleAdsId, metaPixelId }: { ga4Id: st
     window.addEventListener('kc-consent', onConsent);
     return () => window.removeEventListener('kc-consent', onConsent);
   }, []);
+
+  if (NO_TRACK_PATH.test(pathname ?? '')) return null;
 
   const analytics = !!consent?.analytics;
   const marketing = !!consent?.marketing;
