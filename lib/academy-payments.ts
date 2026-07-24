@@ -303,6 +303,7 @@ export async function finalizeEnrolmentPayment(piId: string, amountReceivedPence
   }
   await notifyPaymentReceived(payment.enrolmentId, payment.amountPence).catch(() => {});
   await sendPaymentReceipt(payment.enrolmentId, payment.amountPence).catch(() => {});
+  await sendEnrolmentPurchaseConversion(payment.id, payment.enrolmentId, payment.amountPence).catch(() => {});
   await logAudit({
     action: 'PAYMENT_CHARGED',
     actor: 'system',
@@ -311,6 +312,26 @@ export async function finalizeEnrolmentPayment(piId: string, amountReceivedPence
     meta: { amountPence: payment.amountPence, piId, methodType },
   }).catch(() => {});
   return { ok: true, enrolmentId: payment.enrolmentId, courseSlug: updated?.courseSlug };
+}
+
+/** BLD-1036: report the sale to GA4 + Meta server-side (best-effort; hashed
+ *  email only). AcademyStudent carries no marketing-consent field of its own —
+ *  consent lives on the linked CRM Client (student.clientId), so an unlinked
+ *  student (or one whose Client hasn't opted in / has unsubscribed) defaults to
+ *  no email, same default-closed stance as the gift-voucher/booking purchase
+ *  events. Deduped against the browser pixel by payment id; only reached from
+ *  the tx.claimed branch above, so it fires exactly once per payment regardless
+ *  of whether the webhook or the synchronous confirm endpoint claims it. */
+async function sendEnrolmentPurchaseConversion(paymentId: string, enrolmentId: string, amountPence: number): Promise<void> {
+  const e = await db.enrolment.findUnique({ where: { id: enrolmentId }, select: { applicantEmail: true, student: { select: { clientId: true } } } });
+  let consentedEmail: string | null = null;
+  const clientId = e?.student?.clientId ?? null;
+  if (clientId) {
+    const buyer = await db.client.findUnique({ where: { id: clientId }, select: { marketingOptIn: true, unsubscribed: true } });
+    if (buyer?.marketingOptIn && !buyer.unsubscribed) consentedEmail = e?.applicantEmail ?? null;
+  }
+  const { sendPurchase } = await import('@/lib/conversions');
+  await sendPurchase({ bookingId: paymentId, valuePence: amountPence, clientId, email: consentedEmail });
 }
 
 /** Email the learner a payment confirmation with any outstanding balance. Best-effort. */

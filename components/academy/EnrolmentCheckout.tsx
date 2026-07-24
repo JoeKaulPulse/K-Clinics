@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Elements, PaymentElement, useElements, useStripe } from '@stripe/react-stripe-js';
 import { getStripe } from '@/lib/stripe-client';
+import { trackPurchase } from '@/lib/analytics-events';
 
 const money = (p: number) => `£${(p / 100).toLocaleString('en-GB', { minimumFractionDigits: p % 100 ? 2 : 0 })}`;
 const fmtDate = (iso: string) => new Date(iso).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
@@ -104,7 +105,7 @@ export function EnrolmentCheckout(props: {
             <button onClick={() => { setStage('choose'); setError(''); }} className="text-xs text-[var(--color-stone)] hover:underline">← Change</button>
           </div>
           <Elements stripe={getStripe()} options={{ clientSecret, appearance: { theme: 'flat', variables: { colorPrimary: '#a98a6d', fontFamily: 'system-ui, sans-serif', borderRadius: '10px', colorBackground: '#f6ece3' } } }}>
-            <PayStep paymentId={paymentId} onDone={() => { setStage('done'); router.refresh(); }} />
+            <PayStep paymentId={paymentId} onDone={() => { trackPurchase({ valuePence: chargePence, eventId: paymentId, metaPurchase: true }); setStage('done'); router.refresh(); }} />
           </Elements>
         </div>
       )}
