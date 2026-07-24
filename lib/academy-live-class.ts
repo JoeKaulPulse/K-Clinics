@@ -31,7 +31,12 @@ export async function notifyLiveClassChange(
     const course = await db.course.findUnique({ where: { id: liveClass.courseId }, select: { title: true } });
     const courseTitle = course?.title || 'your course';
     const enrolments = await db.enrolment.findMany({
-      where: { courseId: liveClass.courseId, status: 'ENROLLED' },
+      // Course access — not just cohort-confirmed. A self-serve Stripe payment
+      // lands the learner in PAID (applyPaidPayment never sets ENROLLED, and
+      // nothing auto-promotes PAID→ENROLLED), and the whole LMS treats
+      // PAID/ENROLLED as "has access" (lib/lms.ts, flashcards, portfolio…), so
+      // filtering to ENROLLED only would miss every paying student. (BLD-1034)
+      where: { courseId: liveClass.courseId, status: { in: ['PAID', 'ENROLLED'] } },
       select: { applicantName: true, applicantEmail: true },
     });
     for (const e of enrolments) {
@@ -76,7 +81,7 @@ export async function sendLiveClassSameDayReminders(): Promise<{ sent: number; e
     for (const lc of classes) {
       const courseTitle = lc.course?.title || 'your course';
       const enrolments = await db.enrolment.findMany({
-        where: { courseId: lc.courseId, status: 'ENROLLED' },
+        where: { courseId: lc.courseId, status: { in: ['PAID', 'ENROLLED'] } },
         select: { applicantName: true, applicantEmail: true },
       });
       for (const e of enrolments) {
