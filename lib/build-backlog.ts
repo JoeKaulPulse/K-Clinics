@@ -2748,6 +2748,18 @@ export const BUILD_BACKLOG: BacklogItem[] = [
     notes: ['Fix: refundBooking() now re-reads and retries the CAS write (up to 2 attempts) instead of silently dropping the accounting, mirroring the existing retry pattern in the charge.refunded webhook handler. (BLD-1000)'],
   },
   {
+    title: 'Team-chat "New conversation" modal has no keyboard trap or Escape handling', type: 'TASK', urgency: 'P1', status: 'IN_REVIEW', assignee: 'claude',
+    value: 6, effort: 1,
+    detail: 'NewChatModal.tsx is a hand-rolled role="dialog" aria-modal="true" panel with backdrop click-to-close, but no focus trap, no Escape-to-close, no initial-focus move into the panel, and no focus-return to the opener on close -- a keyboard or screen-reader user could tab out of the dialog into the page behind it.',
+    notes: ['Fix: wired the existing useDialogBehaviours hook (components/ui/Dialog.tsx) into NewChatModal.tsx -- panelRef + tabIndex={-1} on the role="dialog" panel, onKeyDown on the overlay. Both call sites (ChatLauncher.tsx, MessagesPage.tsx) already conditionally mount the modal, so active is always true. Branch claude/a11y-modal-richtext-1003-1033. (BLD-1003)'],
+  },
+  {
+    title: 'Rich-text block editor field has no accessible name or visible focus ring', type: 'TASK', urgency: 'P1', status: 'IN_REVIEW', assignee: 'claude',
+    value: 5, effort: 1,
+    detail: 'RichTextField.tsx already accepted an ariaLabel prop and applied it to its contentEditable div, but its only caller (BlockEditor.tsx) never passed one, so every block content field was an unlabelled textbox to a screen reader. Separately, the field carried outline-none with no focus-visible replacement, so Tailwind\'s utilities layer beat the @layer base :focus-visible rule in app/globals.css and keyboard focus was invisible.',
+    notes: ['Fix: BlockEditor.tsx now passes ariaLabel={`${BLOCK_LABELS[b.type]} block content`} (e.g. "Paragraph block content", "Heading block content") to RichTextField. RichTextField.tsx\'s rt-field div gained focus-visible:ring-2 focus-visible:ring-[var(--color-gold)], matching the ring color/utility pattern used across the admin (SearchBox.tsx, NewsletterForm.tsx, AddTreatment.tsx, PosTerminal.tsx, etc). Branch claude/a11y-modal-richtext-1003-1033. (BLD-1033)'],
+  },
+  {
     title: '/book page awaits three independent data stages sequentially, delaying first paint', type: 'TASK', urgency: 'P1', status: 'IN_REVIEW', assignee: 'claude',
     value: 8, effort: 3,
     detail: 'app/(marketing)/book/page.tsx awaited getReviewAggregate(), then the catalogue+offers try/catch, then the signed-in client-personalisation try/catch, one after another, even though none of the three reads another\'s output -- on the site\'s highest-value conversion route.',
