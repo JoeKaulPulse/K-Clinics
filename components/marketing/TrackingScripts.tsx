@@ -10,10 +10,14 @@ import { getConsent, type ConsentValue } from '@/components/legal/CookieConsent'
 // consent. Re-evaluates live when consent changes (kc-consent event).
 const safe = (s: string) => s.replace(/[^A-Za-z0-9_-]/g, '');
 
-// BLD-1051: /booking/manage carries Booking.manageToken (a bearer credential)
-// in the query string. GA4/Meta's automatic pageview reports the full URL, so
-// this page is excluded the same way BehaviorRecorder excludes booking pages.
-const NO_TRACK_PATH = /^\/booking\/manage(\/|$)/;
+// BLD-1051: the /booking/* pages carry bearer credentials in the query string —
+// /booking/manage?t= and /booking/card?t= are both Booking.manageToken (the card
+// page also mints a Stripe SetupIntent from it), and /booking/pay?pi= carries the
+// PaymentIntent reference. GA4/Meta's automatic pageview reports the full URL, so
+// the whole subtree is excluded, matching BehaviorRecorder's existing exclusion.
+// Note: /book (the acquisition funnel) is deliberately NOT excluded — it carries
+// no credential and is where trackPurchase fires.
+const NO_TRACK_PATH = /^\/booking(\/|$)/;
 
 export function TrackingScripts({ ga4Id, googleAdsId, metaPixelId }: { ga4Id: string; googleAdsId: string; metaPixelId: string }) {
   const [consent, setConsent] = useState<ConsentValue | null>(null);
