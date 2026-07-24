@@ -141,6 +141,7 @@ function BlockView({ block: b, active, setActive, update, convert, taRef }: {
         )}
         <RichTextField className={`be-input ${cls}`} value={b.text}
           placeholder={b.type === 'heading' ? 'Heading' : b.type === 'callout' ? 'A highlighted note…' : b.type === 'quote' ? 'A pull quote…' : 'Write something, or “/” for blocks…'}
+          ariaLabel={`${BLOCK_LABELS[b.type]} block content`}
           onChange={(v) => update({ text: v })} />
         {b.type === 'quote' && (
           <input className="be-cite-input" value={b.cite || ''} placeholder="Attribution (optional)" aria-label="Attribution"
