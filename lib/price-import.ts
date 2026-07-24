@@ -18,7 +18,8 @@ export type ParseResult = { variants: ParsedVariant[]; rowCount: number; warning
 function parseMoney(s: string | undefined): number | null {
   if (s == null) return null;
   const txt = String(s).trim();
-  if (!txt || /consult/i.test(txt)) return 0; // "on consultation"
+  if (!txt) return null;                         // genuinely blank cell — skip, don't price at £0
+  if (/consult|poa/i.test(txt)) return 0;         // "on consultation" / "price on application"
   const m = txt.replace(/[£,]/g, '').match(/-?\d+(\.\d+)?/);
   return m ? Math.round(parseFloat(m[0]) * 100) : null;
 }

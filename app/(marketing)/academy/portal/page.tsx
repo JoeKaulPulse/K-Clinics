@@ -243,8 +243,10 @@ export default async function AcademyPortalPage() {
                       )
                     ) : e.status === 'OFFERED' ? (
                       <AButton href={`/academy/pay/${e.id}`} size="sm">Accept &amp; pay →</AButton>
+                    ) : active ? (
+                      <AButton href="/contact" variant="secondary" size="sm">Content coming soon — contact us →</AButton>
                     ) : (
-                      <span className="text-xs text-[var(--color-stone)]">{active ? 'Content coming soon' : 'Awaiting confirmation'}</span>
+                      <span className="text-xs text-[var(--color-stone)]">Awaiting confirmation</span>
                     )}
                   </div>
                 </Card>
