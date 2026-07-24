@@ -173,6 +173,23 @@ export async function finalizeOrder(orderId: string): Promise<{ ok: boolean; num
     await sendEmail({ to: order.email, subject: `Your KClinics order ${order.number}`, html: emailShell({ body, preheader: `Order ${order.number} confirmed` }) });
   } catch { /* non-fatal */ }
 
+  // BLD-1005: report the sale to GA4 + Meta server-side (best-effort; hashed
+  // email only). This is guest checkout by default (no marketing-opt-in signal
+  // to check), so email only goes out if the order is linked to a logged-in,
+  // opted-in, non-unsubscribed client — same default-closed stance as the
+  // gift-voucher purchase event. Lives here (not the confirm route) so it also
+  // covers the webhook backstop and the fully-gift-card-covered checkout path,
+  // deduped by order id against the browser pixel.
+  try {
+    const { sendPurchase } = await import('@/lib/conversions');
+    let consentedEmail: string | null = null;
+    if (order.clientId) {
+      const buyer = await db.client.findUnique({ where: { id: order.clientId }, select: { marketingOptIn: true, unsubscribed: true } });
+      if (buyer?.marketingOptIn && !buyer.unsubscribed) consentedEmail = order.email;
+    }
+    await sendPurchase({ bookingId: order.id, valuePence: order.totalPence, clientId: order.clientId, email: consentedEmail });
+  } catch (e) { console.error('[shop] conversion send failed:', (e as Error)?.message); }
+
   return { ok: true, number: order.number };
 }
 

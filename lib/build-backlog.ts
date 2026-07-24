@@ -2759,6 +2759,18 @@ export const BUILD_BACKLOG: BacklogItem[] = [
     detail: 'RichTextField.tsx already accepted an ariaLabel prop and applied it to its contentEditable div, but its only caller (BlockEditor.tsx) never passed one, so every block content field was an unlabelled textbox to a screen reader. Separately, the field carried outline-none with no focus-visible replacement, so Tailwind\'s utilities layer beat the @layer base :focus-visible rule in app/globals.css and keyboard focus was invisible.',
     notes: ['Fix: BlockEditor.tsx now passes ariaLabel={`${BLOCK_LABELS[b.type]} block content`} (e.g. "Paragraph block content", "Heading block content") to RichTextField. RichTextField.tsx\'s rt-field div gained focus-visible:ring-2 focus-visible:ring-[var(--color-gold)], matching the ring color/utility pattern used across the admin (SearchBox.tsx, NewsletterForm.tsx, AddTreatment.tsx, PosTerminal.tsx, etc). Branch claude/a11y-modal-richtext-1003-1033. (BLD-1033)'],
   },
+  {
+    title: 'Shop checkout never fires a GA4/Meta purchase conversion', type: 'ERROR', urgency: 'P1', status: 'IN_REVIEW', assignee: 'claude',
+    value: 7, effort: 2,
+    detail: 'CheckoutForm.tsx never called trackPurchase and neither the shop confirm route nor finalizeOrder() ever called sendPurchase, unlike bookings and gift vouchers -- every shop order converted with zero ad-attribution data reaching GA4 or Meta.',
+    notes: ['Fix: components/shop/CheckoutForm.tsx PayStep onDone now fires trackPurchase (browser, Meta Purchase) deduped by orderId; app/api/shop/confirm/route.ts returns totalPence so the client has a value to report. Server-side, lib/shop.ts finalizeOrder() now calls sendPurchase after the atomic PAID claim, so it fires exactly once regardless of whether the confirm route, the Stripe webhook backstop, or the fully-gift-card-covered checkout path finalises the order. Shop checkout is guest-first (Order.clientId is only set for a logged-in portal session) -- email is only passed to Meta/GA4 when the order is linked to a client with marketingOptIn and not unsubscribed, defaulting to no email otherwise, same stance as the existing gift-voucher purchase event. (BLD-1005)'],
+  },
+  {
+    title: 'Academy enrolment payments never fire a GA4/Meta purchase conversion', type: 'ERROR', urgency: 'P1', status: 'IN_REVIEW', assignee: 'claude',
+    value: 8, effort: 3,
+    detail: 'Unlike bookings and gift vouchers, neither app/api/academy/pay/confirm/route.ts nor lib/academy-payments.ts finalizeEnrolmentPayment() called trackPurchase/sendPurchase, so course-fee and deposit payments never reached ad-attribution tracking.',
+    notes: ['Fix: components/academy/EnrolmentCheckout.tsx PayStep onDone now fires trackPurchase (browser, Meta Purchase) deduped by paymentId. Server-side, lib/academy-payments.ts adds sendEnrolmentPurchaseConversion(), called from finalizeEnrolmentPayment() only on the tx.claimed branch so it fires exactly once whether the Stripe webhook or the synchronous confirm endpoint claims the payment. AcademyStudent has no marketing-consent field of its own -- consent is read off the linked CRM Client via student.clientId, and email is only passed to Meta/GA4 when that Client has marketingOptIn and is not unsubscribed, defaulting to no email for an unlinked student. (BLD-1036)'],
+  },
 ];
 
 // A content hash over every item's title + status + PR, so ANY change (a new
