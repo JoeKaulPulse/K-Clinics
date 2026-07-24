@@ -13,7 +13,7 @@ export async function POST(req: Request) {
   const { db } = await import('@/lib/db');
   const order = await db.order.findUnique({ where: { id: body.orderId } });
   if (!order) return NextResponse.json({ ok: false, error: 'Order not found.' }, { status: 404 });
-  if (order.status === 'PAID' || order.status === 'FULFILLED') return NextResponse.json({ ok: true, number: order.number });
+  if (order.status === 'PAID' || order.status === 'FULFILLED') return NextResponse.json({ ok: true, number: order.number, totalPence: order.totalPence });
 
   // BLD-411: an order without a stripePaymentIntentId means the DB write after
   // Stripe returned failed — there is no payment evidence, so reject immediately.
@@ -34,5 +34,5 @@ export async function POST(req: Request) {
 
   const { finalizeOrder } = await import('@/lib/shop');
   const r = await finalizeOrder(order.id);
-  return r.ok ? NextResponse.json({ ok: true, number: r.number }) : NextResponse.json({ ok: false }, { status: 500 });
+  return r.ok ? NextResponse.json({ ok: true, number: r.number, totalPence: order.totalPence }) : NextResponse.json({ ok: false }, { status: 500 });
 }
