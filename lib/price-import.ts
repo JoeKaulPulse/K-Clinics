@@ -18,7 +18,12 @@ export type ParseResult = { variants: ParsedVariant[]; rowCount: number; warning
 function parseMoney(s: string | undefined): number | null {
   if (s == null) return null;
   const txt = String(s).trim();
-  if (!txt || /consult/i.test(txt)) return 0; // "on consultation"
+  if (!txt) return null;                         // genuinely blank cell — skip, don't price at £0
+  // "on consultation" / "price on application". POA must be word-bounded: an
+  // unanchored /poa/ also matches inside real treatment copy ("Lipoatrophy
+  // correction", "Hypoallergenic 1ml"), which would silently price those rows
+  // at £0 instead of skipping them with a warning — the exact BLD-1054 failure.
+  if (/consult/i.test(txt) || /\bpoa\b/i.test(txt)) return 0;
   const m = txt.replace(/[£,]/g, '').match(/-?\d+(\.\d+)?/);
   return m ? Math.round(parseFloat(m[0]) * 100) : null;
 }

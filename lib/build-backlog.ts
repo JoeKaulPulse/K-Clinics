@@ -2790,6 +2790,24 @@ export const BUILD_BACKLOG: BacklogItem[] = [
     notes: ['Fix: components/academy/EnrolmentCheckout.tsx PayStep onDone now fires trackPurchase (browser, Meta Purchase) deduped by paymentId. Server-side, lib/academy-payments.ts adds sendEnrolmentPurchaseConversion(), called from finalizeEnrolmentPayment() only on the tx.claimed branch so it fires exactly once whether the Stripe webhook or the synchronous confirm endpoint claims the payment. AcademyStudent has no marketing-consent field of its own -- consent is read off the linked CRM Client via student.clientId, and email is only passed to Meta/GA4 when that Client has marketingOptIn and is not unsubscribed, defaulting to no email for an unlinked student. (BLD-1036)'],
   },
   {
+    title: 'Form error text uses a non-AA-contrast color token on light surfaces', type: 'TASK', urgency: 'P1', status: 'IN_REVIEW', assignee: 'claude',
+    value: 6, effort: 1,
+    detail: 'text-[var(--color-blush)] (#cdb4a3, ~1.7:1 contrast) is used for error copy on light porcelain/bone backgrounds in components/kiosk/KioskShell.tsx:104 and components/kiosk/ClaimReward.tsx:65, well below WCAG AA\'s 4.5:1 minimum. app/globals.css already defines --color-blush-deep, explicitly annotated \'error/destructive text on light surfaces\', and it\'s used correctly elsewhere (e.g. BookingFlow.tsx).',
+    notes: ['Fix: swapped both error messages (KioskShell.tsx email-plan error, ClaimReward.tsx claim error) from --color-blush to --color-blush-deep. No layout/behaviour change. (BLD-1058)'],
+  },
+  {
+    title: 'Paying academy students hit a dead-end \'Content coming soon\' label with no action', type: 'ERROR', urgency: 'P1', status: 'IN_REVIEW', assignee: 'claude',
+    value: 6, effort: 2,
+    detail: 'app/(marketing)/academy/portal/page.tsx shows a static, non-interactive \'Content coming soon\' label (no link, no ETA, no contact CTA) for any paid/enrolled trainee whose course has zero lessons/quizzes uploaded -- a directly reachable state whenever an admin creates a course and takes payment before uploading modules (courseProgress() in lib/lms.ts).',
+    notes: ['Fix: replaced the static label with a real action -- an AButton linking to /contact -- for the active-but-no-content case, keeping the plain \'Awaiting confirmation\' label only for the not-yet-active case. (BLD-1055)'],
+  },
+  {
+    title: 'Price-list importer silently turns blank price cells into live £0 bookable prices', type: 'ERROR', urgency: 'P1', status: 'IN_REVIEW', assignee: 'claude',
+    value: 7, effort: 2,
+    detail: 'parseMoney() in lib/price-import.ts returns 0 (not null) for a blank price cell, the same as it does for an explicit \'on consultation\' note. A genuinely missing column is skipped with a warning, but a blank cell in an existing price column is not -- it silently becomes a real pricePence:0 variant with no warning, and the commit route deletes+recreates ServiceVariant rows live from it. The admin preview only shows 3 sample rows per section, so a mis-parsed row further down is invisible before commit, and a pricePence:0 variant is real and bookable.',
+    notes: ['Fix: parseMoney() now returns null for a genuinely blank cell (skipped with a warning, same as a missing column) and only returns 0 for text matching /consult/i or a word-bounded /\\bpoa\\b/i. Pre-merge review corrected the POA rule: an unanchored /poa/ also matched inside real treatment copy ("Lipoatrophy correction", "Hypoallergenic 1ml"), turning rows that main skipped with a warning into silent, warning-free GBP 0 bookable prices -- the exact failure this item exists to remove. The bulk .xlsx importer (app/api/admin/services/import-xlsx/route.ts, components/admin/PriceListUpload.tsx) now surfaces every zero-priced row per section (not just the first 3 samples) and requires an explicit \'Import at £0 anyway\' confirmation per section before commit; the commit route re-derives zero-price rows from the freshly re-parsed raw text server-side rather than trusting the client\'s confirmZero flag alone. (BLD-1054)'],
+  },
+  {
     title: 'Booking-management token leaks into GA4/Google Ads via URL tracking', type: 'ERROR', urgency: 'P1', status: 'IN_REVIEW', assignee: 'claude',
     value: 9, effort: 2,
     detail: 'SMS/email \'manage your booking\' links carry Booking.manageToken (a bearer credential with no other auth) in the query string. TrackingScripts.tsx mounts GA4 automatic pageview tracking unconditionally across the whole marketing route group with no exclusion for this page, unlike BehaviorRecorder which already excludes /booking|/account|/admin -- so GA4 reports the full URL including the token, and anyone with GA4 reporting access can lift tokens and view/reschedule/cancel other clients\' bookings.',

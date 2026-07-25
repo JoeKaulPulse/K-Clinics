@@ -2,7 +2,7 @@
 
 import { useRef, useState } from 'react';
 
-type Section = { header: string; slugGuess: string | null; raw: string; count: number; samples: string[]; treatmentSlug: string; include: boolean };
+type Section = { header: string; slugGuess: string | null; raw: string; count: number; samples: string[]; zeroPriceNames: string[]; treatmentSlug: string; include: boolean; confirmZero: boolean };
 const field = 'rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-porcelain)] px-2 py-1.5 text-sm outline-none focus:border-[var(--color-gold)]';
 
 export function PriceListUpload({ treatments, onImported }: { treatments: { slug: string; title: string }[]; onImported: () => void }) {
@@ -18,18 +18,23 @@ export function PriceListUpload({ treatments, onImported }: { treatments: { slug
     const data = await res.json().catch(() => ({}));
     setBusy(false);
     if (!res.ok || !data.ok) { setMsg({ kind: 'err', text: data.error || 'Could not read the file.' }); return; }
-    setSections((data.sections as Section[]).map((s) => ({ ...s, treatmentSlug: s.slugGuess || '', include: !!s.slugGuess })));
+    setSections((data.sections as Section[]).map((s) => ({ ...s, treatmentSlug: s.slugGuess || '', include: !!s.slugGuess, confirmZero: false })));
     if (!data.sections.length) setMsg({ kind: 'err', text: 'No priced sections were found in that spreadsheet.' });
   }
 
   async function commit() {
     const chosen = sections.filter((s) => s.include && s.treatmentSlug);
     if (!chosen.length) { setMsg({ kind: 'err', text: 'Tick at least one section and pick its treatment.' }); return; }
+    const unconfirmedZero = chosen.filter((s) => s.zeroPriceNames.length > 0 && !s.confirmZero);
+    if (unconfirmedZero.length) {
+      setMsg({ kind: 'err', text: `Confirm the £0 prices in: ${unconfirmedZero.map((s) => s.header).join(', ')} — tick "Import at £0 anyway" or fix the spreadsheet.` });
+      return;
+    }
     if (!confirm(`Import ${chosen.length} section(s)? This replaces the variants on each linked service with the spreadsheet’s prices.`)) return;
     setBusy(true); setMsg(null);
     const res = await fetch('/api/admin/services/import-xlsx', {
       method: 'POST', headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ op: 'commit', sections: chosen.map((s) => ({ treatmentSlug: s.treatmentSlug, serviceName: s.header, raw: s.raw })) }),
+      body: JSON.stringify({ op: 'commit', sections: chosen.map((s) => ({ treatmentSlug: s.treatmentSlug, serviceName: s.header, raw: s.raw, confirmZero: s.confirmZero })) }),
     });
     const data = await res.json().catch(() => ({}));
     setBusy(false);
@@ -59,14 +64,25 @@ export function PriceListUpload({ treatments, onImported }: { treatments: { slug
               <span></span><span>Spreadsheet section</span><span>Link to treatment</span><span>Prices</span>
             </div>
             {sections.map((s, i) => (
-              <div key={i} className="grid grid-cols-[auto_1.4fr_1.6fr_auto] items-center gap-3 border-b border-[var(--color-line)] px-3 py-2 last:border-0">
-                <input type="checkbox" checked={s.include} onChange={(e) => set(i, { include: e.target.checked })} />
-                <span><span className="font-medium">{s.header}</span><span className="block text-xs text-[var(--color-stone)]">{s.samples[0]}</span></span>
-                <select className={`${field} w-full`} value={s.treatmentSlug} onChange={(e) => set(i, { treatmentSlug: e.target.value, include: !!e.target.value })}>
-                  <option value="">— skip —</option>
-                  {treatments.map((t) => <option key={t.slug} value={t.slug}>{t.title}</option>)}
-                </select>
-                <span className="text-right text-sm text-[var(--color-stone)]">{s.count}</span>
+              <div key={i} className="border-b border-[var(--color-line)] px-3 py-2 last:border-0">
+                <div className="grid grid-cols-[auto_1.4fr_1.6fr_auto] items-center gap-3">
+                  <input type="checkbox" checked={s.include} onChange={(e) => set(i, { include: e.target.checked })} />
+                  <span><span className="font-medium">{s.header}</span><span className="block text-xs text-[var(--color-stone)]">{s.samples[0]}</span></span>
+                  <select className={`${field} w-full`} value={s.treatmentSlug} onChange={(e) => set(i, { treatmentSlug: e.target.value, include: !!e.target.value })}>
+                    <option value="">— skip —</option>
+                    {treatments.map((t) => <option key={t.slug} value={t.slug}>{t.title}</option>)}
+                  </select>
+                  <span className="text-right text-sm text-[var(--color-stone)]">{s.count}</span>
+                </div>
+                {s.include && s.zeroPriceNames.length > 0 && (
+                  <div className="mt-2 rounded-[var(--radius-sm)] border border-[#c0392b]/30 bg-[#c0392b]/5 p-2 text-xs text-[#c0392b]">
+                    <p className="font-medium">{s.zeroPriceNames.length} row(s) parsed as £0: {s.zeroPriceNames.join(', ')}</p>
+                    <label className="mt-1 flex items-center gap-1.5">
+                      <input type="checkbox" checked={s.confirmZero} onChange={(e) => set(i, { confirmZero: e.target.checked })} />
+                      Import at £0 anyway (otherwise check the spreadsheet — a blank price cell now skips the row instead of importing at £0)
+                    </label>
+                  </div>
+                )}
               </div>
             ))}
           </div>

@@ -101,7 +101,7 @@ function KioskCapture() {
           {status === 'busy' ? 'Sending…' : 'Send my plan'}
         </button>
       </div>
-      {status === 'error' && <p className="mt-2 text-sm text-[var(--color-blush)]">Please enter a valid email and try again.</p>}
+      {status === 'error' && <p className="mt-2 text-sm text-[var(--color-blush-deep)]">Please enter a valid email and try again.</p>}
     </div>
   );
 }
