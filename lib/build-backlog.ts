@@ -2825,6 +2825,12 @@ export const BUILD_BACKLOG: BacklogItem[] = [
     detail: 'app/api/kiosk/sessions/[token]/photo-view/route.ts serves the visitor\'s actual face photo gated only by the kiosk session token, while sibling routes (frame, stream) require an additional secret because lib/kiosk.ts itself documents the token as brute-forceable. This also contradicts the deliberate privacy design in kiosk/results/[id]/route.ts, which omits the photo URL. No rate limiting on the endpoint either.',
     notes: ['Fix: photo-view now requires the session secret via secretMatches (same as frame/stream) plus a 30-req/60s rate limit keyed on the token. buildKioskStreamPayload() only embeds a working (secret-bearing) relay URL for callers that already proved they hold the secret -- the secret-gated SSE stream route passes its validated secret through; the unauthenticated token-only status poll (app/api/kiosk/sessions/[token]/route.ts) gets photoUrls/bestPhotoUrl omitted rather than dead (or, worse, secret-leaking) links. Verified all three real consumers (KioskDisplay/RevealScene via the SSE stream, the phone-side result view, the public /kiosk/result share page) never relied on the token-only poll for photo URLs. (BLD-1052)'],
   },
+  {
+    title: 'sharp (image optimizer) ships a high-severity libvips CVE, pulled in transitively via next', type: 'ERROR', urgency: 'P1', status: 'IN_REVIEW', assignee: 'claude',
+    value: 7, effort: 1,
+    detail: 'npm audit flags the installed sharp@0.34.5 (pulled in transitively via next@16.2.11\'s image optimizer) as high severity: GHSA-f88m-g3jw-g9cj, libvips CVE-2026-33327/33328/35590/35591, fixed in sharp>=0.35.0. This is a live-runtime dependency -- Next\'s image optimizer processes remote/uploaded images at request time -- not a dev-only tool, and npm audit fix --force would try to downgrade next, which is the wrong fix.',
+    notes: ['Fix: added "sharp": ">=0.35.0" to the existing package.json overrides block (alongside postcss/@hono/node-server/undici) and regenerated package-lock.json via npm install, without touching next or any other dependency. Confirmed sharp@0.35.3 is now installed (npm ls sharp) and the GHSA-f88m-g3jw-g9cj advisory no longer appears in npm audit output; tsc --noEmit and npm run build both pass with the pinned version. (BLD-1007)'],
+  },
 ];
 
 // A content hash over every item's title + status + PR, so ANY change (a new
