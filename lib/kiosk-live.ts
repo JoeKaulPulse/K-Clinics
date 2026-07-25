@@ -113,8 +113,13 @@ export type KioskSessionLite = {
 
 /** Build the wire payload from a session row (with included result). The mirror
  *  frame is exposed only during posing/countdown; the result only at reveal+
- *  (or once status is ANALYZED/SHARED — covers the v1 fallback flow). */
-export function buildKioskStreamPayload(s: KioskSessionLite): KioskStreamPayload {
+ *  (or once status is ANALYZED/SHARED — covers the v1 fallback flow).
+ *  BLD-1052: photo-view now requires the session secret (like frame/stream), so
+ *  the relay URLs only carry a working `s=` param when the caller already proved
+ *  it holds the secret (pass it through from a secret-gated caller, e.g. the SSE
+ *  stream route). Callers without a validated secret — e.g. the token-only
+ *  status poll — get relay URLs omitted rather than dead links. */
+export function buildKioskStreamPayload(s: KioskSessionLite, secret?: string): KioskStreamPayload {
   const showFrame = (FRAME_STAGES as readonly string[]).includes(s.stage);
   const revealed =
     !!s.result &&
@@ -129,7 +134,11 @@ export function buildKioskStreamPayload(s: KioskSessionLite): KioskStreamPayload
     frameAt: showFrame && s.liveFrameAt ? s.liveFrameAt.toISOString() : null,
     // BLD-798: selfies are stored PRIVATE — the wire carries relay URLs
     // (session-token-authenticated, no-store) instead of raw blob URLs.
-    photoUrls: (s.photoUrls ?? []).map((_, i) => `/api/kiosk/sessions/${s.token}/photo-view?i=${i}`),
+    // BLD-1052: relay now also requires the session secret, so omit these
+    // entirely unless the caller has already proven it holds one.
+    photoUrls: secret
+      ? (s.photoUrls ?? []).map((_, i) => `/api/kiosk/sessions/${s.token}/photo-view?i=${i}&s=${encodeURIComponent(secret)}`)
+      : [],
   };
   if (revealed && s.result) {
     payload.result = {
@@ -144,8 +153,8 @@ export function buildKioskStreamPayload(s: KioskSessionLite): KioskStreamPayload
         : [],
       // BLD-798: same relay treatment — resolve the best photo back to its
       // index in photoUrls (v1 single-photo results map to index 0).
-      bestPhotoUrl: s.result.bestPhotoUrl
-        ? `/api/kiosk/sessions/${s.token}/photo-view?i=${Math.max(0, (s.photoUrls ?? []).indexOf(s.result.bestPhotoUrl))}`
+      bestPhotoUrl: s.result.bestPhotoUrl && secret
+        ? `/api/kiosk/sessions/${s.token}/photo-view?i=${Math.max(0, (s.photoUrls ?? []).indexOf(s.result.bestPhotoUrl))}&s=${encodeURIComponent(secret)}`
         : null,
       shareSlug: s.result.shareSlug,
     };
