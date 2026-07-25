@@ -48,7 +48,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ token: s
   const inner = sseSnapshotStream({
     load: async () => {
       const session = await db.kioskSession.findUnique({ where: { token }, select: KIOSK_STREAM_SELECT });
-      return session ? buildKioskStreamPayload(session) : null;
+      return session ? buildKioskStreamPayload(session, provided ?? undefined) : null;
     },
     pollMs: POLL_MS,
     heartbeatMs: HEARTBEAT_MS,

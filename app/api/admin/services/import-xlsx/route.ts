@@ -31,6 +31,10 @@ export async function POST(req: Request) {
         sections: sections.map((s) => ({
           header: s.header, slugGuess: s.slugGuess, raw: s.raw, count: s.variants.length,
           samples: s.variants.slice(0, 3).map((v) => `${v.name} — £${(v.pricePence / 100).toLocaleString('en-GB')}`),
+          // BLD-1054: a real £0 price is unusual (blank cells are now skipped
+          // rather than silently parsed as £0) — surface every zero-priced row,
+          // not just the first 3 samples, so the admin can confirm before commit.
+          zeroPriceNames: s.variants.filter((v) => v.pricePence === 0).map((v) => v.name),
         })),
       });
     } catch (e) {
@@ -45,11 +49,18 @@ export async function POST(req: Request) {
   const { logAudit } = await import('@/lib/audit');
 
   let services = 0, variantCount = 0; const skipped: string[] = [];
-  for (const sec of body.sections as { treatmentSlug?: string; serviceName?: string; raw?: string }[]) {
+  for (const sec of body.sections as { treatmentSlug?: string; serviceName?: string; raw?: string; confirmZero?: boolean }[]) {
     const treatmentSlug = String(sec.treatmentSlug || '').trim();
     if (!treatmentSlug || !sec.raw) { skipped.push(sec.serviceName || sec.treatmentSlug || '?'); continue; }
     const { variants } = parsePriceMatrix(sec.raw);
     if (!variants.length) { skipped.push(sec.serviceName || treatmentSlug); continue; }
+    // BLD-1054: a £0 price is real and bookable once committed — require the
+    // admin to have explicitly acknowledged it (re-checked server-side against
+    // the freshly re-parsed rows, not just trusted from the earlier preview).
+    if (variants.some((v) => v.pricePence === 0) && !sec.confirmZero) {
+      skipped.push(`${sec.serviceName || treatmentSlug} (has £0 prices — confirm to import)`);
+      continue;
+    }
     const category = getTreatment(treatmentSlug)?.category === 'dentistry' ? 'dentistry' : 'aesthetics';
     const name = (sec.serviceName || getTreatment(treatmentSlug)?.title || treatmentSlug).slice(0, 120);
 
