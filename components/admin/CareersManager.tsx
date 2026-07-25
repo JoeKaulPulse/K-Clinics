@@ -9,6 +9,10 @@ type App = { id: string; roleTitle: string; name: string; email: string; phone: 
 const field = 'rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-2.5 py-1.5 text-sm';
 const STATUSES = ['NEW', 'REVIEWING', 'INTERVIEW', 'OFFERED', 'REJECTED', 'HIRED'];
 const fmt = (iso: string) => new Date(iso).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+// Defense in depth: the apply route rejects non-http(s) schemes at write time,
+// but rows from before that check (or a future gap) could still hold a
+// javascript:/data: URL — re-check the scheme before it's ever used as an href.
+const isSafeHref = (u: string) => /^https?:\/\//i.test(u);
 
 async function post(payload: object) {
   return fetch('/api/admin/careers', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
@@ -39,7 +43,7 @@ function Applications({ applications }: { applications: App[] }) {
                   <td className="py-2 pr-2">
                     <span className="font-medium">{a.name}</span>
                     <span className="block text-xs text-[var(--color-stone)]">{a.email}{a.phone ? ` · ${a.phone}` : ''} · {fmt(a.createdAt)}</span>
-                    {a.cvUrl && <a href={a.cvUrl} target="_blank" rel="noopener" className="text-xs text-[var(--color-gold-deep)] hover:underline">CV / portfolio ↗</a>}
+                    {a.cvUrl && isSafeHref(a.cvUrl) && <a href={a.cvUrl} target="_blank" rel="noopener" className="text-xs text-[var(--color-gold-deep)] hover:underline">CV / portfolio ↗</a>}
                     {a.coverNote && <span className="mt-1 block max-w-md text-xs text-[var(--color-stone)]">{a.coverNote}</span>}
                   </td>
                   <td className="px-2">{a.roleTitle}</td>

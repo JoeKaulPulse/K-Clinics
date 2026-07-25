@@ -99,7 +99,8 @@ function PageEditor({ p }: { p: PageScore }) {
   async function save() {
     setBusy('save'); setMsg('');
     const res = await post({ op: 'save', path: p.path, ...f });
-    setMsg(res.ok ? 'Saved ✓ — overrides apply on the next page render.' : 'Could not save.');
+    const j = await res.json().catch(() => ({}));
+    setMsg(j.ok ? 'Saved ✓ — overrides apply on the next page render.' : (j.error || 'Could not save.'));
     setBusy(''); router.refresh();
   }
   async function clear() {

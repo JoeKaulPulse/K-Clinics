@@ -1,8 +1,28 @@
 import { NextResponse } from 'next/server';
 import { crmEnabled } from '@/lib/crm';
 import { getSecret } from '@/lib/secrets';
+import { site } from '@/lib/site';
 
 export const runtime = 'nodejs';
+
+// A pasted canonical override must resolve to an absolute, same-host https
+// URL — pageMeta() (lib/seo.tsx) uses it verbatim as `alternates.canonical`,
+// so a relative path, typo or foreign host would ship a broken or
+// cross-domain canonical tag on the live page. Accepts a site-relative path
+// ("/x") or a full URL, as long as it resolves onto site.url's host.
+function normalizeCanonical(raw: string): { ok: true; value: string } | { ok: false; error: string } {
+  const base = new URL(site.url);
+  let url: URL;
+  try {
+    url = new URL(raw, site.url);
+  } catch {
+    return { ok: false, error: `Canonical URL must be an absolute ${base.origin} URL or a path starting with "/".` };
+  }
+  if (url.protocol !== 'https:' || url.hostname !== base.hostname) {
+    return { ok: false, error: `Canonical URL must be on ${base.origin}, e.g. ${base.origin}/your-page.` };
+  }
+  return { ok: true, value: url.toString() };
+}
 
 export async function POST(req: Request) {
   if (!crmEnabled) return NextResponse.json({ ok: false }, { status: 503 });
@@ -16,10 +36,17 @@ export async function POST(req: Request) {
   if (body.op === 'save') {
     const path = String(body.path || '').trim();
     if (!path.startsWith('/')) return NextResponse.json({ ok: false, error: 'Invalid path.' }, { status: 400 });
+    const canonicalRaw = (body.canonical as string)?.trim() || '';
+    let canonical: string | null = null;
+    if (canonicalRaw) {
+      const normalized = normalizeCanonical(canonicalRaw);
+      if (!normalized.ok) return NextResponse.json({ ok: false, error: normalized.error }, { status: 400 });
+      canonical = normalized.value;
+    }
     const data = {
       title: (body.title as string)?.trim() || null,
       description: (body.description as string)?.trim() || null,
-      canonical: (body.canonical as string)?.trim() || null,
+      canonical,
       focusKeyword: (body.focusKeyword as string)?.trim() || null,
       ogImage: (body.ogImage as string)?.trim() || null,
       noindex: !!body.noindex,

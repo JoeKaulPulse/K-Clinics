@@ -2825,6 +2825,18 @@ export const BUILD_BACKLOG: BacklogItem[] = [
     detail: 'app/api/kiosk/sessions/[token]/photo-view/route.ts serves the visitor\'s actual face photo gated only by the kiosk session token, while sibling routes (frame, stream) require an additional secret because lib/kiosk.ts itself documents the token as brute-forceable. This also contradicts the deliberate privacy design in kiosk/results/[id]/route.ts, which omits the photo URL. No rate limiting on the endpoint either.',
     notes: ['Fix: photo-view now requires the session secret via secretMatches (same as frame/stream) plus a 30-req/60s rate limit keyed on the token. buildKioskStreamPayload() only embeds a working (secret-bearing) relay URL for callers that already proved they hold the secret -- the secret-gated SSE stream route passes its validated secret through; the unauthenticated token-only status poll (app/api/kiosk/sessions/[token]/route.ts) gets photoUrls/bestPhotoUrl omitted rather than dead (or, worse, secret-leaking) links. Verified all three real consumers (KioskDisplay/RevealScene via the SSE stream, the phone-side result view, the public /kiosk/result share page) never relied on the token-only poll for photo URLs. (BLD-1052)'],
   },
+  {
+    title: 'Careers apply form accepts javascript: CV links that execute in the admin session that opens them', type: 'ERROR', urgency: 'P1', status: 'IN_REVIEW', assignee: 'claude',
+    value: 8, effort: 1,
+    detail: 'app/api/careers/apply/route.ts validated cvUrl with z.string().max(500) only -- no url()/scheme check -- on the public, unauthenticated, honeypotted careers application form. The value is stored (JobApplication.cvUrl) and rendered as <a href={a.cvUrl} target="_blank" rel="noopener"> in components/admin/CareersManager.tsx with no scheme filtering, so an applicant submitting a javascript: URL as their CV link gets it executed in the clicking staff member\'s authenticated admin session when they open it. The email notification path was already safe (HTML-escaped, text only) -- only the admin-table link was exposed.',
+    notes: ['Fix: cvUrl in app/api/careers/apply/route.ts is now validated with z.string().max(500).url() plus a refine requiring an http or https prefix, so javascript:/data:/other schemes are rejected at write time (plain .url() alone still accepts them, since they are well-formed URLs). components/admin/CareersManager.tsx also re-checks the scheme before rendering the href -- defense in depth for any row written before this fix. (BLD-1040)'],
+  },
+  {
+    title: 'Admin SEO canonical override accepted any string, risking broken or cross-domain canonical tags', type: 'ERROR', urgency: 'P2', status: 'IN_REVIEW', assignee: 'claude',
+    value: 5, effort: 1,
+    detail: 'app/api/admin/seo/route.ts only trimmed body.canonical before saving to PageSeo; lib/seo.tsx pageMeta() then used it verbatim as alternates.canonical with no check that it was an absolute URL, same-domain, or well-formed. A relative path, typo, or wrong host pasted into the admin SEO panel would silently ship a broken or cross-domain canonical tag on the live page.',
+    notes: ['Fix: app/api/admin/seo/route.ts now resolves the canonical override against site.url (lib/site.ts) -- a site-relative path or a full URL is accepted only if it resolves to an https kclinics.co.uk address, otherwise the save is rejected with a 400 and a clear error message. components/admin/SeoDashboard.tsx now shows that returned error message instead of a generic "Could not save." (BLD-1060)'],
+  },
 ];
 
 // A content hash over every item's title + status + PR, so ANY change (a new
