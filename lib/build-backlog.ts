@@ -2825,6 +2825,20 @@ export const BUILD_BACKLOG: BacklogItem[] = [
     detail: 'app/api/kiosk/sessions/[token]/photo-view/route.ts serves the visitor\'s actual face photo gated only by the kiosk session token, while sibling routes (frame, stream) require an additional secret because lib/kiosk.ts itself documents the token as brute-forceable. This also contradicts the deliberate privacy design in kiosk/results/[id]/route.ts, which omits the photo URL. No rate limiting on the endpoint either.',
     notes: ['Fix: photo-view now requires the session secret via secretMatches (same as frame/stream) plus a 30-req/60s rate limit keyed on the token. buildKioskStreamPayload() only embeds a working (secret-bearing) relay URL for callers that already proved they hold the secret -- the secret-gated SSE stream route passes its validated secret through; the unauthenticated token-only status poll (app/api/kiosk/sessions/[token]/route.ts) gets photoUrls/bestPhotoUrl omitted rather than dead (or, worse, secret-leaking) links. Verified all three real consumers (KioskDisplay/RevealScene via the SSE stream, the phone-side result view, the public /kiosk/result share page) never relied on the token-only poll for photo URLs. (BLD-1052)'],
   },
+  {
+    title: 'Daily birthday/win-back automations run unbounded client.findMany scans',
+    type: 'ERROR', urgency: 'P2', status: 'IN_REVIEW', assignee: 'claude',
+    value: 6, effort: 3,
+    detail: 'birthdays() in lib/automations.ts loaded every Client row with any dob set, then filtered month/day in JS -- only ~1/365th of the loaded rows ever matched. winBacks() had no take cap on its findMany (unbounded growth as the client base grows) and called the sentRecently() helper once per row inside its loop, an N+1 query pattern.',
+    notes: ['Fix: birthdays() now filters month/day in SQL via a $queryRaw SELECT id FROM "Client" WHERE dob IS NOT NULL AND EXTRACT(MONTH FROM dob) = ... AND EXTRACT(DAY FROM dob) = ..., then findMany only the matching ids -- confirmed via prisma/schema.prisma that model Client has no @@map/@map override, so the physical table/column names are the Prisma defaults ("Client", dob). winBacks() now takes take: 500 with orderBy: { lastVisitAt: \'asc\' } (oldest-lapsed-first; a client not reached today is still lapsed tomorrow, so nothing is permanently missed, just spread across runs) and replaces the per-row sentRecently() call with one bulk emailEvent.findMany pre-fetch keyed by clientId, built into a Set checked in the loop. Files: lib/automations.ts. (PRJ-1043.12)'],
+  },
+  {
+    title: 'Google Calendar sync only prunes past stale busy-blocks, so a deleted future event leaves a phantom availability hold forever',
+    type: 'ERROR', urgency: 'P2', status: 'IN_REVIEW', assignee: 'claude',
+    value: 7, effort: 3,
+    detail: 'syncStaffCalendar() in lib/google-calendar.ts upserts every event Google returns into StaffTimeOff (kind GCAL_BUSY, keyed by gcalEventId), but its only prune was deleteMany({ endAt: { lt: now } }) -- past blocks only. If a clinician deletes or moves a FUTURE event on Google\'s side, the old GCAL_BUSY row is never in data.items again on the next sync, but the past-only prune never touches it, so it wrongly blocks availability indefinitely.',
+    notes: ['Fix: each sync run now tracks the gcalEventIds actually kept (present, non-cancelled, non-transparent, within the fetched [timeMin, timeMax] window) in a Set, then the prune deletes any GCAL_BUSY row for that staffId whose startAt falls within that same window but whose gcalEventId is NOT in the kept set (phantom hold for an event no longer on Google\'s side), OR-ed with the original past-only condition (endAt < now) so leftover blocks outside the window still age out. An empty kept set (Google reports zero events this run) correctly clears every previously-synced GCAL_BUSY row in the window via notIn: [], since they are then all genuinely stale. Files: lib/google-calendar.ts. (PRJ-1043.14)'],
+  },
 ];
 
 // A content hash over every item's title + status + PR, so ANY change (a new

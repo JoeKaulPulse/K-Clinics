@@ -263,10 +263,19 @@ async function sentRecently(clientId: string, kind: 'BIRTHDAY' | 'WIN_BACK', sin
 
 async function birthdays(t: Tally) {
   const today = new Date();
-  const clients = await db.client.findMany({ where: { dob: { not: null } } });
+  const month = today.getMonth() + 1;
+  const day = today.getDate();
+  // BLD-1043.12: filter month/day in SQL — the previous findMany({dob: {not:
+  // null}}) loaded every client with any DOB into memory to filter in JS, when
+  // only ~1/365th of rows actually match.
+  const matches = await db.$queryRaw<{ id: string }[]>`
+    SELECT id FROM "Client"
+    WHERE dob IS NOT NULL AND EXTRACT(MONTH FROM dob) = ${month} AND EXTRACT(DAY FROM dob) = ${day}
+  `;
+  if (matches.length === 0) return;
+  const clients = await db.client.findMany({ where: { id: { in: matches.map((m) => m.id) } } });
   for (const c of clients) {
     if (!c.dob || !canEmail(c)) continue;
-    if (c.dob.getMonth() !== today.getMonth() || c.dob.getDate() !== today.getDate()) continue;
     if (await sentRecently(c.id, 'BIRTHDAY', 350)) continue;
     const res = await sendEmail({ to: c.email, subject: `Happy birthday, ${c.firstName} — a gift from KClinics`, html: tmplBirthday(c.firstName, unsub(c.unsubToken)) });
     await logEvent(c.id, 'BIRTHDAY', c.email, 'Birthday greeting', res);
@@ -364,12 +373,29 @@ async function rebookNudge(t: Tally) {
 
 async function winBacks(t: Tally) {
   const cutoff = new Date(); cutoff.setMonth(cutoff.getMonth() - WIN_BACK_MONTHS);
+  // BLD-1043.12: bounded per run (oldest-lapsed-first — clients not reached
+  // today are still lapsed tomorrow, so nothing is permanently missed, just
+  // spread across runs) and a single bulk pre-fetch of recent WIN_BACK sends
+  // instead of one sentRecently() query per row (N+1).
   const clients = await db.client.findMany({
     where: { lastVisitAt: { not: null, lte: cutoff } },
+    orderBy: { lastVisitAt: 'asc' },
+    take: 500,
   });
+  if (clients.length === 0) return;
+  const recentSends = await db.emailEvent.findMany({
+    where: {
+      clientId: { in: clients.map((c) => c.id) },
+      kind: 'WIN_BACK',
+      status: 'SENT',
+      createdAt: { gte: new Date(Date.now() - 90 * 864e5) },
+    },
+    select: { clientId: true },
+  });
+  const recentlySent = new Set(recentSends.map((e) => e.clientId).filter((id): id is string => Boolean(id)));
   for (const c of clients) {
     if (!canEmail(c)) continue;
-    if (await sentRecently(c.id, 'WIN_BACK', 90)) continue;
+    if (recentlySent.has(c.id)) continue;
     const res = await sendEmail({ to: c.email, subject: `We've missed you, ${c.firstName}`, html: tmplWinBack(c.firstName, unsub(c.unsubToken)) });
     await logEvent(c.id, 'WIN_BACK', c.email, 'Win-back', res);
     res.ok ? t.winBacks++ : t.errors++;

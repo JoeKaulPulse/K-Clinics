@@ -115,12 +115,14 @@ export async function syncStaffCalendar(staffId: string, days = 60): Promise<{ o
   const data = (await res.json()) as { items?: { id: string; status?: string; transparency?: string; start?: { dateTime?: string; date?: string }; end?: { dateTime?: string; date?: string }; summary?: string }[] };
 
   let imported = 0;
+  const keptIds = new Set<string>();
   for (const ev of data.items ?? []) {
     if (ev.status === 'cancelled' || ev.transparency === 'transparent') continue; // free/declined
     const startAt = ev.start?.dateTime ? new Date(ev.start.dateTime) : ev.start?.date ? new Date(ev.start.date) : null;
     const endAt = ev.end?.dateTime ? new Date(ev.end.dateTime) : ev.end?.date ? new Date(ev.end.date) : null;
     if (!startAt || !endAt) continue;
     const gcalEventId = `${staffId}:${ev.id}`;
+    keptIds.add(gcalEventId);
     await db.staffTimeOff.upsert({
       where: { gcalEventId },
       update: { startAt, endAt, reason: ev.summary || 'Busy (Google Calendar)' },
@@ -128,9 +130,23 @@ export async function syncStaffCalendar(staffId: string, days = 60): Promise<{ o
     });
     imported++;
   }
-  // Remove stale GCAL_BUSY blocks no longer present (in the synced window, future).
-  // Kept simple: prune past GCAL_BUSY entries.
-  await db.staffTimeOff.deleteMany({ where: { staffId, kind: 'GCAL_BUSY', endAt: { lt: new Date() } } });
+  // PRJ-1043.14: remove stale GCAL_BUSY blocks in the synced window that are no
+  // longer present on Google's side (deleted/moved events) — both past AND
+  // future — plus any leftover purely-past block outside the window. Previously
+  // this only pruned endAt < now, so a FUTURE event deleted on Google's side left
+  // a phantom availability hold forever (or until it happened to lapse into the
+  // past). If Google reports zero events in the window, keptIds is empty and
+  // notIn: [] matches everything in range — correct, since all previously-synced
+  // GCAL_BUSY rows in that window are then genuinely stale.
+  await db.staffTimeOff.deleteMany({
+    where: {
+      staffId, kind: 'GCAL_BUSY',
+      OR: [
+        { startAt: { gte: new Date(timeMin), lte: new Date(timeMax) }, gcalEventId: { notIn: [...keptIds] } },
+        { endAt: { lt: new Date() } },
+      ],
+    },
+  });
 
   return { ok: true, imported };
 }
