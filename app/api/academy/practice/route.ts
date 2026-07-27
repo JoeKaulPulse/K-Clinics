@@ -13,10 +13,14 @@ export async function POST(req: Request) {
 
   const b = (await req.json().catch(() => ({}))) as Record<string, unknown>;
   const bank = await import('@/lib/exam-bank');
+  const { studentCanAccess } = await import('@/lib/lms');
 
   if (b.action === 'start') {
+    const courseId = b.courseId ? String(b.courseId) : '';
+    if (!courseId) return NextResponse.json({ ok: false, error: 'Missing course.' }, { status: 400 });
+    if (!(await studentCanAccess(student.id, courseId))) return NextResponse.json({ ok: false, error: 'Not enrolled.' }, { status: 403 });
     const questions = await bank.generatePractice({
-      courseId: b.courseId ? String(b.courseId) : undefined,
+      courseId,
       topic: b.topic ? String(b.topic) : undefined,
       count: Number(b.count) || 10,
     });
@@ -24,16 +28,40 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: true, questions });
   }
   if (b.action === 'check') {
+    const questionId = String(b.questionId || '');
+    const questionCourseId = await bank.questionCourseId(questionId);
+    if (!questionCourseId || !(await studentCanAccess(student.id, questionCourseId))) {
+      return NextResponse.json({ ok: false, error: 'Not enrolled.' }, { status: 403 });
+    }
     const answer = Array.isArray(b.answer) ? (b.answer as unknown[]).map(Number).filter((n) => Number.isInteger(n)) : [];
-    const res = await bank.checkPracticeAnswer(String(b.questionId || ''), answer);
+    const res = await bank.checkPracticeAnswer(questionId, answer);
     return NextResponse.json(res, { status: res.ok ? 200 : 400 });
   }
   if (b.action === 'submit') {
+    const courseId = b.courseId ? String(b.courseId) : '';
+    if (!courseId) return NextResponse.json({ ok: false, error: 'Missing course.' }, { status: 400 });
+    if (!(await studentCanAccess(student.id, courseId))) return NextResponse.json({ ok: false, error: 'Not enrolled.' }, { status: 403 });
+    // The client sends what it selected per question; correctness is re-derived
+    // here from the server-side answer keys (same trust model as the quiz API),
+    // so neither the score nor the question ids can be fabricated.
+    const rawAnswers = Array.isArray(b.answers) ? (b.answers as unknown[]).slice(0, 30) : [];
+    const seen = new Set<string>();
+    const submitted: { questionId: string; answer: number[] }[] = [];
+    for (const a of rawAnswers) {
+      if (!a || typeof a !== 'object') continue;
+      const rec = a as Record<string, unknown>;
+      if (typeof rec.questionId !== 'string' || !rec.questionId) continue;
+      if (seen.has(rec.questionId)) continue;
+      seen.add(rec.questionId);
+      const answer = Array.isArray(rec.answer) ? (rec.answer as unknown[]).map(Number).filter((n) => Number.isInteger(n) && n >= 0 && n < 100) : [];
+      submitted.push({ questionId: rec.questionId, answer });
+    }
+    const { total, correct } = await bank.gradePracticeAnswers(courseId, submitted);
     const res = await bank.recordPractice(student.id, {
-      courseId: b.courseId ? String(b.courseId) : null,
+      courseId,
       topic: b.topic ? String(b.topic) : null,
-      total: Number(b.total) || 0,
-      correct: Number(b.correct) || 0,
+      total,
+      correct,
     });
     return NextResponse.json({ ok: true, ...res });
   }
