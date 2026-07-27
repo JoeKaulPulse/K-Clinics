@@ -139,25 +139,56 @@ export async function createManualBooking(input: {
         create: { firstName: input.firstName, lastName: input.lastName || null, email: input.email.toLowerCase(), phone: input.phone || null, source: 'staff-booking' },
       });
 
-  const booking = await db.booking.create({
-    data: {
-      clientId: client.id,
-      treatmentSlug: input.treatmentSlug,
-      treatmentTitle: bookingTitle,
-      startAt: start,
-      endAt: end,
-      durationMin,
-      bufferMin: bufferMin ?? 0,
-      pricePence: totalPence,
-      status: 'CONFIRMED',
-      notes: input.notes || null,
-      practitionerId,
-      resources: resourceIds.length ? { connect: resourceIds.map((id) => ({ id })) } : undefined,
-      // Primary line item so the itemised receipt + billing reflect the exact
-      // service/area chosen (not just the category).
-      items: { create: [{ variantId: chosenVariantId, treatmentSlug: input.treatmentSlug, label: itemLabel, sessions, durationMin, pricePence: totalPence, isAddon: false }] },
-    },
-  });
+  // Hold the slot ATOMICALLY — re-check for overlapping bookings inside a
+  // Serializable transaction (mirrors app/api/booking/create + booking/start)
+  // so a concurrent public/portal booking can't grab the same clinician/room
+  // between the isSlotFree pre-check above and this write (PRJ-1043.9).
+  // input.override is a deliberate staff bypass ("book anyway") — the pre-check
+  // above already skips isSlotFree for it, so skip the re-check here too.
+  const endBuffered = new Date(end.getTime() + (bufferMin ?? 0) * 60_000);
+  let booking: { id: string; manageToken: string } | null = null;
+  try {
+    booking = await db.$transaction(async (tx) => {
+      if (!input.override) {
+        const overlapping = await tx.booking.findMany({
+          where: { status: { in: ['PENDING', 'CONFIRMED'] }, startAt: { lt: endBuffered }, endAt: { gt: start } },
+          select: { practitionerId: true, resources: { select: { id: true } } },
+        });
+        const practitionerClash = !!practitionerId && overlapping.some((b) => b.practitionerId === practitionerId);
+        const resourceClash = resourceIds.length > 0 && overlapping.some((b) => b.resources.some((r) => resourceIds.includes(r.id)));
+        if (practitionerClash || resourceClash) return null;
+      }
+      return tx.booking.create({
+        data: {
+          clientId: client.id,
+          treatmentSlug: input.treatmentSlug,
+          treatmentTitle: bookingTitle,
+          startAt: start,
+          endAt: end,
+          durationMin,
+          bufferMin: bufferMin ?? 0,
+          pricePence: totalPence,
+          status: 'CONFIRMED',
+          notes: input.notes || null,
+          practitionerId,
+          resources: resourceIds.length ? { connect: resourceIds.map((id) => ({ id })) } : undefined,
+          // Primary line item so the itemised receipt + billing reflect the exact
+          // service/area chosen (not just the category).
+          items: { create: [{ variantId: chosenVariantId, treatmentSlug: input.treatmentSlug, label: itemLabel, sessions, durationMin, pricePence: totalPence, isAddon: false }] },
+        },
+        select: { id: true, manageToken: true },
+      });
+    }, { isolationLevel: 'Serializable' });
+  } catch (e) {
+    const err = e as { code?: string; message?: string };
+    if (err.code === 'P2034' || /write conflict|deadlock|could not serialize/i.test(err.message || '')) {
+      return { ok: false, error: 'That slot clashes with an existing appointment, closure, or has no free room/clinician. Tick “book anyway” to override.', clash: true };
+    }
+    throw e;
+  }
+  if (!booking) {
+    return { ok: false, error: 'That slot clashes with an existing appointment, closure, or has no free room/clinician. Tick “book anyway” to override.', clash: true };
+  }
   await db.interaction.create({
     data: { clientId: client.id, type: 'APPOINTMENT', summary: `Booking created by staff: ${bookingTitle}`, author: session.email },
   });

@@ -580,9 +580,9 @@ export async function rescheduleBooking(
   // "one appointment at a time" check, so a slot that is clearly free on the
   // calendar is refused. So for staff we check only a true clash on THIS booking's
   // own clinician or room(s); for client self-service we keep the strict gate.
+  const resourceIds = booking.resources.map((r) => r.id);
+  const newBusyEndMs = newEnd.getTime() + booking.bufferMin * 60_000;
   if (opts.admin) {
-    const resourceIds = booking.resources.map((r) => r.id);
-    const newBusyEndMs = newEnd.getTime() + booking.bufferMin * 60_000;
     // Nothing exclusive to clash on (no clinician, no room/equipment) → any future
     // time is fine (this is the consultation case BLD-502 was about).
     if (booking.practitionerId || resourceIds.length) {
@@ -615,25 +615,74 @@ export async function rescheduleBooking(
   let charged = 0;
   let requiresAction = false;
 
+  // Atomically re-check for a clash immediately before committing the move — the
+  // pre-check above (either branch) can't see a concurrent reschedule/approval
+  // that lands between that read and this write (PRJ-1043.7). Mirrors
+  // app/api/booking/create + app/api/booking/start: a Serializable transaction
+  // re-reads overlapping bookings on THIS booking's own clinician/room(s) and
+  // aborts the write if another booking has since claimed the slot.
+  let rescheduled: { id: string } | null = null;
+  try {
+    rescheduled = await db.$transaction(async (tx) => {
+      if (booking.practitionerId || resourceIds.length) {
+        const windowStart = new Date(newStart.getTime() - 24 * 60 * 60 * 1000);
+        const candidates = await tx.booking.findMany({
+          where: {
+            id: { not: bookingId },
+            status: { in: ['PENDING', 'CONFIRMED'] },
+            startAt: { gte: windowStart, lte: new Date(newBusyEndMs) },
+            OR: [
+              ...(booking.practitionerId ? [{ practitionerId: booking.practitionerId }] : []),
+              ...(resourceIds.length ? [{ resources: { some: { id: { in: resourceIds } } } }] : []),
+            ],
+          },
+          select: { startAt: true, endAt: true, bufferMin: true },
+        });
+        const clash = candidates.some((b) => newStart.getTime() < b.endAt.getTime() + b.bufferMin * 60_000 && newBusyEndMs > b.startAt.getTime());
+        if (clash) return null;
+      }
+      return tx.booking.update({
+        where: { id: booking.id },
+        data: { startAt: newStart, endAt: newEnd, rescheduleCount: { increment: 1 } },
+        select: { id: true },
+      });
+    }, { isolationLevel: 'Serializable' });
+  } catch (e) {
+    const err = e as { code?: string; message?: string };
+    if (err.code === 'P2034' || /write conflict|deadlock|could not serialize/i.test(err.message || '')) {
+      return { ok: false, code: 'SLOT_TAKEN', error: 'That time is no longer available. Please choose another slot.' };
+    }
+    throw e;
+  }
+  if (!rescheduled) {
+    return { ok: false, code: 'SLOT_TAKEN', error: 'That time is no longer available. Please choose another slot.' };
+  }
+
   // 4th+ reschedule incurs the full booking price — client self-service only;
   // a staff/admin reschedule never charges a fee. BLD-733: net off any loyalty
   // points already redeemed as money off, so a client who redeemed points isn't
   // billed the pre-discount price.
+  // This runs AFTER the slot is atomically claimed above: charging first would
+  // mean a client whose slot was taken in the race window (the Stripe call is
+  // seconds long, which widens it) is billed the full price for a reschedule
+  // that then fails with SLOT_TAKEN. If the charge itself hard-fails we undo the
+  // move, so the original "no reschedule without payment" rule still holds.
   if (!opts.admin && booking.rescheduleCount >= MAX_FREE_RESCHEDULES && booking.pricePence > 0) {
     const rescheduleFeePence = Math.max(0, booking.pricePence - (booking.pointsRedeemedPence ?? 0));
     const res = await chargeBooking(booking, rescheduleFeePence, { late: false });
     if (!res.ok) {
       if (res.requiresAction) requiresAction = true;
-      else return { ok: false, error: res.error || 'Payment required for this reschedule could not be processed.' };
+      else {
+        await db.booking.update({
+          where: { id: booking.id },
+          data: { startAt: booking.startAt, endAt: booking.endAt, rescheduleCount: booking.rescheduleCount },
+        }).catch(() => {});
+        return { ok: false, error: res.error || 'Payment required for this reschedule could not be processed.' };
+      }
     } else {
       charged = rescheduleFeePence;
     }
   }
-
-  await db.booking.update({
-    where: { id: booking.id },
-    data: { startAt: newStart, endAt: newEnd, rescheduleCount: { increment: 1 } },
-  });
 
   await db.interaction.create({
     data: {
