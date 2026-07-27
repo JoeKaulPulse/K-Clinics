@@ -146,7 +146,7 @@ export async function approveBookingRequestAction(bookingId: string): Promise<{ 
   const session = await getSession();
   if (!session || !sessionCan(session, 'bookings.manage')) return { ok: false, error: 'You don’t have permission to manage bookings.' };
   const { db } = await import('@/lib/db');
-  const b = await db.booking.findUnique({ where: { id: bookingId }, select: { status: true, clientId: true, startAt: true, durationMin: true, treatmentSlug: true, locationId: true } });
+  const b = await db.booking.findUnique({ where: { id: bookingId }, select: { status: true, clientId: true, startAt: true, endAt: true, durationMin: true, bufferMin: true, treatmentSlug: true, locationId: true, practitionerId: true, resources: { select: { id: true } } } });
   if (!b) return { ok: false, error: 'Booking not found.' };
   if (b.status !== 'REQUESTED') return { ok: false, error: 'This request has already been actioned.' };
   const { isSlotFree } = await import('@/lib/availability');
@@ -154,7 +154,35 @@ export async function approveBookingRequestAction(bookingId: string): Promise<{ 
   // and clinician must still be genuinely free right now.
   const free = await isSlotFree(b.startAt.toISOString(), b.durationMin, b.treatmentSlug, b.locationId, { leadMinutes: 0 });
   if (!free) return { ok: false, error: 'That time is no longer free. Reschedule with the client, or decline the request.', clash: true };
-  await db.booking.update({ where: { id: bookingId }, data: { status: 'CONFIRMED' } });
+  // Atomically re-check for a clash immediately before confirming — isSlotFree
+  // doesn't take a tx client, so two staff approving the same slot could both
+  // pass the check above and both confirm (PRJ-1043.8). Mirrors
+  // app/api/booking/create: a Serializable transaction re-reads overlapping
+  // bookings on THIS booking's own clinician/room(s) right before the write.
+  const resourceIds = b.resources.map((r) => r.id);
+  const endBuffered = new Date(b.endAt.getTime() + b.bufferMin * 60_000);
+  let confirmed: { id: string } | null = null;
+  try {
+    confirmed = await db.$transaction(async (tx) => {
+      const overlapping = await tx.booking.findMany({
+        where: { id: { not: bookingId }, status: { in: ['PENDING', 'CONFIRMED'] }, startAt: { lt: endBuffered }, endAt: { gt: b.startAt } },
+        select: { practitionerId: true, resources: { select: { id: true } } },
+      });
+      const practitionerClash = !!b.practitionerId && overlapping.some((o) => o.practitionerId === b.practitionerId);
+      const resourceClash = resourceIds.length > 0 && overlapping.some((o) => o.resources.some((r) => resourceIds.includes(r.id)));
+      if (practitionerClash || resourceClash) return null;
+      return tx.booking.update({ where: { id: bookingId }, data: { status: 'CONFIRMED' }, select: { id: true } });
+    }, { isolationLevel: 'Serializable' });
+  } catch (e) {
+    const err = e as { code?: string; message?: string };
+    if (err.code === 'P2034' || /write conflict|deadlock|could not serialize/i.test(err.message || '')) {
+      return { ok: false, error: 'That time is no longer free. Reschedule with the client, or decline the request.', clash: true };
+    }
+    throw e;
+  }
+  if (!confirmed) {
+    return { ok: false, error: 'That time is no longer free. Reschedule with the client, or decline the request.', clash: true };
+  }
   await db.interaction.create({ data: { clientId: b.clientId, type: 'APPOINTMENT', summary: 'Same-day request approved', author: session.email } });
   try { const { notifyBookingConfirmed } = await import('@/lib/booking-notify'); await notifyBookingConfirmed(bookingId); } catch { /* best-effort */ }
   const { logAudit } = await import('@/lib/audit');
