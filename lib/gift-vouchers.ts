@@ -157,28 +157,44 @@ export async function confirmVoucher(voucherId: string): Promise<{ ok: boolean; 
   return { ok: true, code: v.code };
 }
 
-async function sendVoucherEmails(voucherId: string, sendToRecipient: boolean) {
+/** `recipientOk` reports whether the recipient was actually notified — the
+ *  purchaser receipt is a secondary courtesy and never affects it. `true` when
+ *  there's nothing to deliver (no recipient send requested/possible), matching
+ *  the existing semantics where `delivered` is set immediately in that case. */
+async function sendVoucherEmails(voucherId: string, sendToRecipient: boolean): Promise<{ recipientOk: boolean }> {
   const v = await db.giftVoucher.findUnique({ where: { id: voucherId } });
-  if (!v) return;
+  if (!v) return { recipientOk: true };
   const { sendEmail, tmplCustomGiftCard, tmplGiftVoucherReceipt } = await import('@/lib/email');
   const what = v.packageName || `gift card — ${money(v.amountPence)}`;
   const tasks: Promise<unknown>[] = [
     sendEmail({ to: v.purchaserEmail, subject: `Your KClinics ${v.packageName ? 'gift' : 'gift card'} — ${v.packageName || money(v.amountPence)}`, html: tmplGiftVoucherReceipt({ purchaserName: v.purchaserName, amount: money(v.amountPence), code: v.code, recipientName: v.recipientName, scheduled: !sendToRecipient && !!v.deliverAt, deliverAt: v.deliverAt, designId: v.design, packageName: v.packageName }) }),
   ];
-  if (sendToRecipient && v.recipientEmail) {
-    tasks.push(sendEmail({ to: v.recipientEmail, subject: `${v.purchaserName} sent you a KClinics ${what} 🎁`, html: tmplCustomGiftCard({ recipientName: v.recipientName || 'there', fromName: v.purchaserName, amount: money(v.amountPence), code: v.code, message: v.message, designId: v.design, viewUrl: `${baseUrl()}/gift/${v.code}`, claimUrl: `${baseUrl()}/account/gift-cards?code=${v.code}`, packageName: v.packageName }) }));
+  const hasRecipientSend = sendToRecipient && !!v.recipientEmail;
+  let recipientTaskIndex = -1;
+  if (hasRecipientSend) {
+    recipientTaskIndex = tasks.length;
+    tasks.push(sendEmail({ to: v.recipientEmail!, subject: `${v.purchaserName} sent you a KClinics ${what} 🎁`, html: tmplCustomGiftCard({ recipientName: v.recipientName || 'there', fromName: v.purchaserName, amount: money(v.amountPence), code: v.code, message: v.message, designId: v.design, viewUrl: `${baseUrl()}/gift/${v.code}`, claimUrl: `${baseUrl()}/account/gift-cards?code=${v.code}`, packageName: v.packageName }) }));
   }
-  await Promise.allSettled(tasks);
+  const results = await Promise.allSettled(tasks);
+  if (!hasRecipientSend) return { recipientOk: true };
+  return { recipientOk: results[recipientTaskIndex]?.status === 'fulfilled' };
 }
 
-/** Cron: deliver scheduled vouchers whose date has arrived. */
+/** Cron: deliver scheduled vouchers whose date has arrived. Only marks
+ *  `delivered: true` once the recipient email actually sent (PRJ-1043.6) — a
+ *  failed send leaves it false so the next cron run retries, instead of
+ *  silently losing the notification forever. */
 export async function deliverDueVouchers(): Promise<number> {
   const due = await db.giftVoucher.findMany({ where: { status: 'ACTIVE', delivered: false, deliverAt: { lte: new Date() }, recipientEmail: { not: null } } });
   let sent = 0;
   for (const v of due) {
-    await sendVoucherEmails(v.id, true).catch(() => {});
-    await db.giftVoucher.update({ where: { id: v.id }, data: { delivered: true } });
-    sent++;
+    const { recipientOk } = await sendVoucherEmails(v.id, true).catch(() => ({ recipientOk: false }));
+    if (recipientOk) {
+      await db.giftVoucher.update({ where: { id: v.id }, data: { delivered: true } });
+      sent++;
+    } else {
+      console.error('[gift-vouchers] scheduled delivery failed, will retry:', v.id);
+    }
   }
   return sent;
 }
