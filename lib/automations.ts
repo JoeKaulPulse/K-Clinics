@@ -373,29 +373,29 @@ async function rebookNudge(t: Tally) {
 
 async function winBacks(t: Tally) {
   const cutoff = new Date(); cutoff.setMonth(cutoff.getMonth() - WIN_BACK_MONTHS);
-  // BLD-1043.12: bounded per run (oldest-lapsed-first — clients not reached
-  // today are still lapsed tomorrow, so nothing is permanently missed, just
-  // spread across runs) and a single bulk pre-fetch of recent WIN_BACK sends
-  // instead of one sentRecently() query per row (N+1).
+  // BLD-1043.12: bounded per run, with every skip condition applied in SQL —
+  // which is what makes the bound safe. `lastVisitAt` doesn't change when a
+  // win-back is sent, so the oldest-lapsed-first ordering is STABLE: any client
+  // fetched into the 500 and then skipped in JS (already win-backed, no
+  // marketing consent, unsubscribed) would sit at the head of the list on every
+  // future run and permanently starve everyone behind it. Filtering in the
+  // `where` clause instead means each run picks 500 genuinely sendable clients
+  // and real progress is made. The relation filter also replaces the per-row
+  // sentRecently() query (N+1). canEmail() below stays as defence-in-depth.
+  const since = new Date(Date.now() - 90 * 864e5);
   const clients = await db.client.findMany({
-    where: { lastVisitAt: { not: null, lte: cutoff } },
+    where: {
+      lastVisitAt: { not: null, lte: cutoff },
+      marketingOptIn: true,
+      unsubscribed: false,
+      marketingConsentAt: { not: null },
+      emails: { none: { kind: 'WIN_BACK', status: 'SENT', createdAt: { gte: since } } },
+    },
     orderBy: { lastVisitAt: 'asc' },
     take: 500,
   });
-  if (clients.length === 0) return;
-  const recentSends = await db.emailEvent.findMany({
-    where: {
-      clientId: { in: clients.map((c) => c.id) },
-      kind: 'WIN_BACK',
-      status: 'SENT',
-      createdAt: { gte: new Date(Date.now() - 90 * 864e5) },
-    },
-    select: { clientId: true },
-  });
-  const recentlySent = new Set(recentSends.map((e) => e.clientId).filter((id): id is string => Boolean(id)));
   for (const c of clients) {
     if (!canEmail(c)) continue;
-    if (recentlySent.has(c.id)) continue;
     const res = await sendEmail({ to: c.email, subject: `We've missed you, ${c.firstName}`, html: tmplWinBack(c.firstName, unsub(c.unsubToken)) });
     await logEvent(c.id, 'WIN_BACK', c.email, 'Win-back', res);
     res.ok ? t.winBacks++ : t.errors++;
