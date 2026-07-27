@@ -292,7 +292,16 @@ export async function popularDays(durationMin: number, treatmentSlug?: string, l
   // Run them concurrently (per-request getSetting cache dedupes the shared reads)
   // then take the soonest `limit` with availability, preserving order.
   const candidates = days.slice(0, 12);
-  const have = await Promise.all(candidates.map((d) => freeSlots(d, durationMin, treatmentSlug, locationId)));
+  // PRJ-1032.13: freeSlots does ~4 reads each, so running all 12 candidates
+  // concurrently bursts ~40-48 in-flight queries on this hot conversion path.
+  // Batch them to cap peak pool pressure while keeping overall latency low.
+  const BATCH_SIZE = 4;
+  const have: string[][] = [];
+  for (let i = 0; i < candidates.length; i += BATCH_SIZE) {
+    const batch = candidates.slice(i, i + BATCH_SIZE);
+    const batchResults = await Promise.all(batch.map((d) => freeSlots(d, durationMin, treatmentSlug, locationId)));
+    have.push(...batchResults);
+  }
   for (let i = 0; i < candidates.length && out.length < limit; i++) {
     if (have[i].length) out.push(candidates[i]);
   }

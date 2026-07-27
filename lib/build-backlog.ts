@@ -2826,6 +2826,18 @@ export const BUILD_BACKLOG: BacklogItem[] = [
     notes: ['Fix: photo-view now requires the session secret via secretMatches (same as frame/stream) plus a 30-req/60s rate limit keyed on the token. buildKioskStreamPayload() only embeds a working (secret-bearing) relay URL for callers that already proved they hold the secret -- the secret-gated SSE stream route passes its validated secret through; the unauthenticated token-only status poll (app/api/kiosk/sessions/[token]/route.ts) gets photoUrls/bestPhotoUrl omitted rather than dead (or, worse, secret-leaking) links. Verified all three real consumers (KioskDisplay/RevealScene via the SSE stream, the phone-side result view, the public /kiosk/result share page) never relied on the token-only poll for photo URLs. (BLD-1052)'],
   },
   {
+    title: 'CRM client search runs an unindexed substring scan with 3 sequential queries', type: 'ERROR', urgency: 'P1', status: 'IN_REVIEW', assignee: 'claude',
+    value: 7, effort: 2,
+    detail: 'listClients() in lib/crm-data.ts filters firstName/lastName/email/phone with case-insensitive \'contains\' (leading-wildcard ILIKE), which a plain btree index cannot serve -- prisma/schema.prisma only had ordinary btree indexes on Client. It also ran its count/findMany/count sequence one after another instead of in parallel, unlike getOverview() ~20 lines above in the same file.',
+    notes: ['Fix: added pg_trgm GIN indexes on Client.firstName, lastName, email and phone (prisma/schema.prisma), enabling the postgresqlExtensions preview feature and the pg_trgm datasource extension to support them -- purely additive (new indexes only, no drops or renames) and does not add any @unique constraint, so it clears both the no-accept-data-loss deploy gate and the no-new-unique-on-existing-table gate. Also changed listClients()\'s total/rows/hiddenTest queries to run concurrently via Promise.all (matching getOverview()\'s existing pattern), with a rare-case fallback re-fetch if the requested page lands past the last page once the count resolves, so pagination behaviour is unchanged. (BLD-1056)'],
+  },
+  {
+    title: '/api/booking/popular-days fans out ~48 concurrent DB queries per funnel treatment-select', type: 'TASK', urgency: 'P3', status: 'IN_REVIEW', assignee: 'claude',
+    value: 4, effort: 1,
+    detail: 'popularDays() in lib/availability.ts ran all 12 candidate days through freeSlots (~4 reads each) in one Promise.all, bursting ~40-48 in-flight queries on the booking conversion path (components/booking/BookingFlow.tsx\'s treatment-select step). Already bounded and using withDbRetry gracefully, so not broken, just pooler-pressure-heavy for a hot path.',
+    notes: ['Fix: batched the 12 candidates into groups of 4 processed sequentially (Promise.all per batch), capping peak concurrent queries at ~16 instead of ~48. Return shape and caller behaviour unchanged. (PRJ-1032.13)'],
+  },
+  {
     title: 'Admin sidebar logo lockup has a strap-line, violating the no-strap-line brand rule', type: 'TASK', urgency: 'P2', status: 'IN_REVIEW', assignee: 'claude',
     value: 3, effort: 1,
     detail: 'components/admin/AdminShell.tsx rendered \'{locationLabel} - CRM\' directly beneath the K monogram + CLINICS wordmark inside the logo lockup\'s own flex container -- a strap-line under the logo, which docs/BRAND_GUIDELINES.md forbids. components/live/LiveCompanion.tsx already implements the identical lockup correctly: the descriptor is a separate, spaced-apart sibling paragraph outside the logo\'s own wrapper.',

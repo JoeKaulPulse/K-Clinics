@@ -162,19 +162,38 @@ export async function listClients(opts: { q?: string; sort?: string; dir?: 'asc'
   const SORTS: Record<string, string> = { name: 'firstName', email: 'email', created: 'createdAt', visit: 'lastVisitAt' };
   const field = SORTS[sort] || 'createdAt';
   const where = and.length ? { AND: and } : undefined;
-  const total = await db.client.count({ where });
+  const select = { id: true, firstName: true, lastName: true, email: true, phone: true, marketingOptIn: true, source: true, tags: true, createdAt: true, lastVisitAt: true } as const;
+  // Requested page, clamped only to a sane minimum here — the upper bound
+  // (against total pages) isn't known until the count below resolves. Fire
+  // it off speculatively alongside the counts (matches getOverview's
+  // Promise.all pattern above) rather than serialising on the count first.
+  const reqPage = Math.max(opts.page ?? 1, 1);
+  const [total, rows, hiddenTest] = await Promise.all([
+    db.client.count({ where }),
+    db.client.findMany({
+      where,
+      orderBy: { [field]: dir },
+      skip: (reqPage - 1) * perPage,
+      take: perPage,
+      select,
+    }),
+    // Count of records being hidden, so the list can offer a one-click reveal.
+    hidingTest ? db.client.count({ where: { tags: { has: 'likely-test' } } }) : Promise.resolve(0),
+  ]);
   const pages = Math.max(1, Math.ceil(total / perPage));
-  const page = Math.min(Math.max(opts.page ?? 1, 1), pages);
-  const rows = await db.client.findMany({
+  const page = Math.min(reqPage, pages);
+  // Rare edge case: the requested page landed past the last page (e.g. the
+  // result set shrank between loads). The speculative fetch above is now
+  // known to be empty/wrong, so re-fetch the true last page instead of
+  // returning a mismatched (page, rows) pair.
+  const finalRows = page === reqPage ? rows : await db.client.findMany({
     where,
     orderBy: { [field]: dir },
     skip: (page - 1) * perPage,
     take: perPage,
-    select: { id: true, firstName: true, lastName: true, email: true, phone: true, marketingOptIn: true, source: true, tags: true, createdAt: true, lastVisitAt: true },
+    select,
   });
-  // Count of records being hidden, so the list can offer a one-click reveal.
-  const hiddenTest = hidingTest ? await db.client.count({ where: { tags: { has: 'likely-test' } } }) : 0;
-  return { rows, total, page, perPage, pages, hiddenTest };
+  return { rows: finalRows, total, page, perPage, pages, hiddenTest };
 }
 
 export async function getClient(id: string) {

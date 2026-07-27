@@ -2,11 +2,13 @@
 // Postgres in production (Neon/Supabase). `prisma db push` to sync.
 
 generator client {
-  provider = "prisma-client-js"
+  provider        = "prisma-client-js"
+  previewFeatures = ["postgresqlExtensions"]
 }
 
 datasource db {
-  provider = "postgresql"
+  provider   = "postgresql"
+  extensions = [pgTrgm(map: "pg_trgm")]
 }
 
 enum ConsultStatus {
@@ -380,6 +382,13 @@ model Client {
 
   @@index([createdAt])
   @@index([dob])
+  // BLD-1056: listClients() searches these 4 columns with a leading-wildcard
+  // ILIKE ('contains', case-insensitive) — a plain btree index can't serve
+  // that, so add pg_trgm GIN indexes to speed up the substring scan.
+  @@index([firstName(ops: raw("gin_trgm_ops"))], type: Gin)
+  @@index([lastName(ops: raw("gin_trgm_ops"))], type: Gin)
+  @@index([email(ops: raw("gin_trgm_ops"))], type: Gin)
+  @@index([phone(ops: raw("gin_trgm_ops"))], type: Gin)
 }
 
 // ── Telephony (yay.com VoIP) ────────────────────────────────────────────────
