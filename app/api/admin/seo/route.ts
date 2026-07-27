@@ -1,6 +1,23 @@
 import { NextResponse } from 'next/server';
 import { crmEnabled } from '@/lib/crm';
 import { getSecret } from '@/lib/secrets';
+import { site } from '@/lib/site';
+
+// BLD-1060: a canonical override must be empty (no override) or an absolute,
+// well-formed URL on the site's own domain -- never a relative path, typo, or
+// a different host, which would silently ship a broken/cross-domain
+// <link rel="canonical"> live (lib/seo.tsx's pageMeta() uses it verbatim).
+function isValidCanonical(u: string): boolean {
+  let parsed: URL;
+  try {
+    parsed = new URL(u);
+  } catch {
+    return false;
+  }
+  if (!/^https?:$/.test(parsed.protocol)) return false;
+  const siteHost = new URL(site.url).hostname.replace(/^www\./, '');
+  return parsed.hostname.replace(/^www\./, '') === siteHost;
+}
 
 export const runtime = 'nodejs';
 
@@ -16,10 +33,14 @@ export async function POST(req: Request) {
   if (body.op === 'save') {
     const path = String(body.path || '').trim();
     if (!path.startsWith('/')) return NextResponse.json({ ok: false, error: 'Invalid path.' }, { status: 400 });
+    const canonical = (body.canonical as string)?.trim() || null;
+    if (canonical && !isValidCanonical(canonical)) {
+      return NextResponse.json({ ok: false, error: `Canonical must be a full https://${new URL(site.url).hostname} URL (or left blank).` }, { status: 400 });
+    }
     const data = {
       title: (body.title as string)?.trim() || null,
       description: (body.description as string)?.trim() || null,
-      canonical: (body.canonical as string)?.trim() || null,
+      canonical,
       focusKeyword: (body.focusKeyword as string)?.trim() || null,
       ogImage: (body.ogImage as string)?.trim() || null,
       noindex: !!body.noindex,

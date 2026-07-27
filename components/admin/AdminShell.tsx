@@ -200,11 +200,16 @@ export function AdminShell({
   }
 
   // Brand lockup — shared by the desktop sidebar and the mobile drawer header.
+  // BLD-1057: the logo mark stays a clean lockup with no strap-line beneath
+  // it (docs/BRAND_GUIDELINES.md); the location/CRM descriptor is a separate
+  // sibling paragraph, spaced apart — same pattern as LiveCompanion.tsx.
   const brand = (
-    <div className="inline-flex flex-col items-center text-[var(--color-ink)]">
-      <span className="block h-9 w-[1.35rem]"><KMark /></span>
-      <span className="mt-3 block h-[0.62rem] w-[6.75rem]"><ClinicsWordmark /></span>
-      <p className="mt-3 pl-[0.3em] text-center text-[0.66rem] font-medium uppercase tracking-[0.3em] text-[var(--color-stone)]">
+    <div className="flex flex-col items-center text-[var(--color-ink)]">
+      <span className="inline-flex flex-col items-center" aria-label="KClinics">
+        <span className="block h-9 w-[1.35rem]"><KMark /></span>
+        <span className="mt-3 block h-[0.62rem] w-[6.75rem]"><ClinicsWordmark /></span>
+      </span>
+      <p className="mt-6 pl-[0.3em] text-center text-[0.66rem] font-medium uppercase tracking-[0.3em] text-[var(--color-stone)]">
         {locationLabel}
         <span className="text-[var(--color-stone)]"> · CRM</span>
       </p>

@@ -103,8 +103,13 @@ export const primaryNav: NavGroup[] = [
         heading: 'Fund Your Training',
         links: [
           { label: 'Funding & Finance', href: '/academy/funding', description: 'Government, council & monthly plans' },
-          { label: 'Check Your Eligibility', href: '/academy/funding#eligibility', description: 'See what you qualify for' },
-          { label: 'Buy Now, Pay Later', href: '/academy/funding#bnpl', description: 'Spread the cost with Clearpay' },
+          // BLD-1061: the page's real section id is #check (app/(marketing)/academy/funding/page.tsx),
+          // not #eligibility -- pointing the link at the id that actually exists rather than
+          // renaming the section, since #check already has other in-page inbound links.
+          { label: 'Check Your Eligibility', href: '/academy/funding#check', description: 'See what you qualify for' },
+          // BLD-1061: the "Buy Now, Pay Later -- Spread the cost with Clearpay" entry was removed --
+          // the funding page has no #bnpl section and never mentions Clearpay/BNPL. Adding real
+          // BNPL content is a separate, larger task requiring real copy.
         ],
       },
       {
