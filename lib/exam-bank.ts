@@ -38,6 +38,13 @@ export async function generatePractice({ courseId, topic, count = 10 }: { course
   return rows.slice(0, Math.max(1, Math.min(count, 30))).map((q) => ({ id: q.id, prompt: q.prompt, type: q.type, options: strArr(q.options), tip: q.tip }));
 }
 
+/** The course a practice question belongs to, for enrolment checks before grading. */
+export async function questionCourseId(questionId: string): Promise<string | null> {
+  if (!questionId) return null;
+  const q = await db.examQuestion.findUnique({ where: { id: questionId }, select: { courseId: true } });
+  return q?.courseId ?? null;
+}
+
 /** Grade a single practice question for immediate feedback (records nothing). */
 export async function checkPracticeAnswer(questionId: string, answer: number[]): Promise<{ ok: boolean; correct?: boolean; correctIndices?: number[]; explanation?: string | null; error?: string }> {
   const q = await db.examQuestion.findUnique({ where: { id: questionId }, select: { correct: true, explanation: true } });

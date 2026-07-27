@@ -29,6 +29,7 @@ export function PracticeRunner({ courses }: { courses: Course[] }) {
   const [err, setErr] = useState('');
   const [scorePct, setScorePct] = useState(0);
   const [badgeQueue, setBadgeQueue] = useState<AwardedBadge[]>([]);
+  const [answers, setAnswers] = useState<{ questionId: string; correct: boolean }[]>([]);
 
   if (courses.length === 0) {
     return <p className="text-sm text-[var(--color-stone)]">No practice questions are available for your courses yet. Your tutor is adding them — check back soon.</p>;
@@ -39,7 +40,7 @@ export function PracticeRunner({ courses }: { courses: Course[] }) {
     const r = await api({ action: 'start', courseId, count });
     setBusy(false);
     if (!r.ok) { setErr(r.error || 'Could not start practice.'); return; }
-    setQuestions(r.questions); setQi(0); setSelected([]); setChecked(null); setShowTip(false); setCorrectCount(0); setPhase('run');
+    setQuestions(r.questions); setQi(0); setSelected([]); setChecked(null); setShowTip(false); setCorrectCount(0); setAnswers([]); setPhase('run');
   }
 
   const q = questions[qi];
@@ -55,12 +56,13 @@ export function PracticeRunner({ courses }: { courses: Course[] }) {
     const res: Checked = { correct: !!r.correct, correctIndices: r.correctIndices ?? [], explanation: r.explanation ?? null };
     if (res.correct) setCorrectCount((c) => c + 1);
     setChecked(res);
+    setAnswers((a) => [...a, { questionId: q.id, correct: res.correct }]);
   }
 
   async function next() {
     if (!last) { setQi((i) => i + 1); setSelected([]); setChecked(null); setShowTip(false); return; }
     setBusy(true);
-    const r = await api({ action: 'submit', courseId, total: questions.length, correct: correctCount });
+    const r = await api({ action: 'submit', courseId, answers });
     setBusy(false);
     setScorePct(typeof r.scorePct === 'number' ? r.scorePct : Math.round((correctCount / questions.length) * 100));
     setBadgeQueue(Array.isArray(r.newBadges) ? r.newBadges : []);
