@@ -263,10 +263,19 @@ async function sentRecently(clientId: string, kind: 'BIRTHDAY' | 'WIN_BACK', sin
 
 async function birthdays(t: Tally) {
   const today = new Date();
-  const clients = await db.client.findMany({ where: { dob: { not: null } } });
+  const month = today.getMonth() + 1;
+  const day = today.getDate();
+  // BLD-1043.12: filter month/day in SQL — the previous findMany({dob: {not:
+  // null}}) loaded every client with any DOB into memory to filter in JS, when
+  // only ~1/365th of rows actually match.
+  const matches = await db.$queryRaw<{ id: string }[]>`
+    SELECT id FROM "Client"
+    WHERE dob IS NOT NULL AND EXTRACT(MONTH FROM dob) = ${month} AND EXTRACT(DAY FROM dob) = ${day}
+  `;
+  if (matches.length === 0) return;
+  const clients = await db.client.findMany({ where: { id: { in: matches.map((m) => m.id) } } });
   for (const c of clients) {
     if (!c.dob || !canEmail(c)) continue;
-    if (c.dob.getMonth() !== today.getMonth() || c.dob.getDate() !== today.getDate()) continue;
     if (await sentRecently(c.id, 'BIRTHDAY', 350)) continue;
     const res = await sendEmail({ to: c.email, subject: `Happy birthday, ${c.firstName} — a gift from KClinics`, html: tmplBirthday(c.firstName, unsub(c.unsubToken)) });
     await logEvent(c.id, 'BIRTHDAY', c.email, 'Birthday greeting', res);
@@ -364,12 +373,29 @@ async function rebookNudge(t: Tally) {
 
 async function winBacks(t: Tally) {
   const cutoff = new Date(); cutoff.setMonth(cutoff.getMonth() - WIN_BACK_MONTHS);
+  // BLD-1043.12: bounded per run, with every skip condition applied in SQL —
+  // which is what makes the bound safe. `lastVisitAt` doesn't change when a
+  // win-back is sent, so the oldest-lapsed-first ordering is STABLE: any client
+  // fetched into the 500 and then skipped in JS (already win-backed, no
+  // marketing consent, unsubscribed) would sit at the head of the list on every
+  // future run and permanently starve everyone behind it. Filtering in the
+  // `where` clause instead means each run picks 500 genuinely sendable clients
+  // and real progress is made. The relation filter also replaces the per-row
+  // sentRecently() query (N+1). canEmail() below stays as defence-in-depth.
+  const since = new Date(Date.now() - 90 * 864e5);
   const clients = await db.client.findMany({
-    where: { lastVisitAt: { not: null, lte: cutoff } },
+    where: {
+      lastVisitAt: { not: null, lte: cutoff },
+      marketingOptIn: true,
+      unsubscribed: false,
+      marketingConsentAt: { not: null },
+      emails: { none: { kind: 'WIN_BACK', status: 'SENT', createdAt: { gte: since } } },
+    },
+    orderBy: { lastVisitAt: 'asc' },
+    take: 500,
   });
   for (const c of clients) {
     if (!canEmail(c)) continue;
-    if (await sentRecently(c.id, 'WIN_BACK', 90)) continue;
     const res = await sendEmail({ to: c.email, subject: `We've missed you, ${c.firstName}`, html: tmplWinBack(c.firstName, unsub(c.unsubToken)) });
     await logEvent(c.id, 'WIN_BACK', c.email, 'Win-back', res);
     res.ok ? t.winBacks++ : t.errors++;

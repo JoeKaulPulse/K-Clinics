@@ -3012,6 +3012,12 @@ model ProcessedStripeEvent {
   id         String   @id // Stripe event.id (evt_...)
   type       String
   receivedAt DateTime @default(now())
+  // PRJ-1043.2: 'PROCESSING' is claimed before the handler runs; flipped to
+  // 'DONE' only after it succeeds. A redelivery hitting a row still at
+  // 'PROCESSING' means the prior attempt failed, so the handler re-runs instead
+  // of being silently dropped. Existing rows backfill to 'DONE' (safe default —
+  // historical events are treated as already-completed).
+  status     String   @default("DONE")
 
   @@index([receivedAt])
 }

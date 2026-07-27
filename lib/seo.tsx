@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import { site } from './site';
+import { aesthetics, dentistry } from './treatments';
 
 const base = site.url;
 
@@ -127,18 +128,14 @@ export function organizationLd() {
     currenciesAccepted: 'GBP',
     paymentAccepted: 'Cash, Credit Card, Debit Card, Apple Pay, Google Pay',
     medicalSpecialty: ['Dermatology', ...(site.dentistryLive ? ['CosmeticDentistry'] : [])],
+    // BLD-1039: generated from the real treatment catalogue (lib/treatments.ts)
+    // instead of a hardcoded 4+3 shortlist, so schema.org / AI answer engines see
+    // the full live service breadth. Dentistry services are advertised only once
+    // live, matching @type / medicalSpecialty above and the "coming soon"
+    // dentistry pages.
     availableService: [
-      { '@type': 'MedicalProcedure', name: 'Laser Hair Removal' },
-      { '@type': 'MedicalProcedure', name: 'Anti-Wrinkle Injections' },
-      { '@type': 'MedicalProcedure', name: 'Dermal Fillers' },
-      { '@type': 'MedicalProcedure', name: 'HIFU Non-Surgical Lifting' },
-      // Dentistry services are advertised only once live, matching @type /
-      // medicalSpecialty above and the "coming soon" dentistry pages.
-      ...(site.dentistryLive ? [
-        { '@type': 'Dentistry', name: 'Porcelain Veneers' },
-        { '@type': 'Dentistry', name: 'Teeth Whitening' },
-        { '@type': 'Dentistry', name: 'Dental Implants' },
-      ] : []),
+      ...aesthetics.map((t) => ({ '@type': 'MedicalProcedure', name: t.title })),
+      ...(site.dentistryLive ? dentistry.map((t) => ({ '@type': 'Dentistry', name: t.title })) : []),
     ],
     knowsAbout: [
       'Aesthetic medicine',

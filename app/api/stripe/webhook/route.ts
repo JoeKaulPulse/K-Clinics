@@ -22,19 +22,28 @@ export async function POST(req: Request) {
 
   const { db } = await import('@/lib/db');
 
-  // BLD-714: idempotency ledger. Claim this event id before running any handler.
-  // A redelivery / replay fails the primary-key insert (P2002) and is acked with
-  // 200 so Stripe stops retrying — without re-running side effects. A store error
-  // must never drop a genuine event, so we fail OPEN (proceed): the handlers are
-  // themselves idempotent (CAS on booking/order state), so this is
-  // defence-in-depth, not the sole guard.
+  // BLD-714 / PRJ-1043.2: idempotency ledger. Claim this event id before running
+  // any handler. A redelivery / replay fails the primary-key insert (P2002); if
+  // that prior attempt already reached 'DONE' it's acked with 200 so Stripe stops
+  // retrying — without re-running side effects. But if a CRITICAL event's handler
+  // threw last time, the row was left at 'PROCESSING' and this route already
+  // returned 500 to ask Stripe to redeliver — so a P2002 hit while still
+  // 'PROCESSING' must fall through and re-run the handler (every handler below is
+  // idempotent — CAS on booking/order/enrolment state — so re-running is safe).
+  // A store error must never drop a genuine event, so we fail OPEN (proceed).
   try {
-    await db.processedStripeEvent.create({ data: { id: event.id, type: event.type } });
+    await db.processedStripeEvent.create({ data: { id: event.id, type: event.type, status: 'PROCESSING' } });
   } catch (e) {
     if ((e as { code?: string })?.code === 'P2002') {
-      return NextResponse.json({ ok: true, duplicate: true });
+      const existing = await db.processedStripeEvent.findUnique({ where: { id: event.id }, select: { status: true } });
+      if (existing?.status === 'DONE') {
+        return NextResponse.json({ ok: true, duplicate: true });
+      }
+      // status is 'PROCESSING' (or the row vanished between create/find) — a
+      // prior attempt did not complete successfully. Fall through and re-run.
+    } else {
+      console.error('[webhook] idempotency-ledger write failed (continuing):', (e as Error)?.message);
     }
-    console.error('[webhook] idempotency-ledger write failed (continuing):', (e as Error)?.message);
   }
 
   try {
@@ -448,6 +457,12 @@ export async function POST(req: Request) {
       pmtKind === 'course_prepaid';
     if (critical) return NextResponse.json({ received: false, error: 'Handler failed' }, { status: 500 });
   }
+
+  // PRJ-1043.2: only reached on genuine success, or a non-critical event type's
+  // failure (the critical branch above already returned 500 without reaching
+  // here). Mark the ledger row DONE so a later redelivery short-circuits instead
+  // of re-running the handler.
+  await db.processedStripeEvent.update({ where: { id: event.id }, data: { status: 'DONE' } }).catch(() => {});
 
   return NextResponse.json({ received: true });
 }
