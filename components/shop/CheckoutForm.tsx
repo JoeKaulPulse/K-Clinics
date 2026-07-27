@@ -124,18 +124,26 @@ function PayStep({ orderId, onDone }: { orderId: string; onDone: (no: string, va
   async function pay() {
     if (!stripe || !elements) return;
     setBusy(true); setErr('');
-    const { error } = await stripe.confirmPayment({ elements, redirect: 'if_required' });
-    if (error) { setErr(error.message || 'Payment failed.'); setBusy(false); return; }
-    const res = await fetch('/api/shop/confirm', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ orderId }) });
-    const j = await res.json().catch(() => ({}));
-    setBusy(false);
-    if (j.ok) onDone(j.number, j.totalPence ?? 0); else setErr(j.error || 'Could not confirm your order.');
+    // The button is disabled while busy, so a thrown confirm/fetch must still
+    // clear it — otherwise the buyer is stuck on a dead "Processing…" button
+    // with no message after their card has been charged (PRJ-1060.4).
+    try {
+      const { error } = await stripe.confirmPayment({ elements, redirect: 'if_required' });
+      if (error) { setErr(error.message || 'Payment failed.'); setBusy(false); return; }
+      const res = await fetch('/api/shop/confirm', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ orderId }) });
+      const j = await res.json().catch(() => ({}));
+      setBusy(false);
+      if (j.ok) onDone(j.number, j.totalPence ?? 0); else setErr(j.error || 'Could not confirm your order.');
+    } catch {
+      setErr('We couldn’t confirm your order. Check your email before paying again — if the payment went through, the order is confirmed.');
+      setBusy(false);
+    }
   }
   return (
     <div>
       <PaymentElement />
       {err && <p role="alert" aria-live="assertive" className="mt-3 text-sm text-[var(--color-blush-deep)]">{err}</p>}
-      <Button onClick={() => !busy && pay()} variant="gold" size="lg" className="mt-4 w-full">{busy ? 'Processing…' : 'Pay now'}</Button>
+      <Button onClick={() => !busy && pay()} disabled={busy} variant="gold" size="lg" className="mt-4 w-full">{busy ? 'Processing…' : 'Pay now'}</Button>
     </div>
   );
 }

@@ -50,7 +50,7 @@ function Modal({ treatments, isAdmin, onClose }: { treatments: Treatment[]; isAd
   const [matches, setMatches] = useState<Found[]>([]);
   const [selected, setSelected] = useState<Found | null>(null);
   const [selectedGroup, setSelectedGroup] = useState(firstGroup);
-  const [d, setD] = useState({ firstName: '', lastName: '', email: '', phone: '', treatmentSlug: firstSlug, variantId: treatments.find((t) => t.slug === firstSlug)?.variants?.[0]?.id ?? '', asConsultation: false, sessions: 1, date: '', time: '10:00', notes: '', overridePrice: false, overridePriceValue: '' });
+  const [d, setD] = useState({ firstName: '', lastName: '', email: '', phone: '', dob: '', treatmentSlug: firstSlug, variantId: treatments.find((t) => t.slug === firstSlug)?.variants?.[0]?.id ?? '', asConsultation: false, sessions: 1, date: '', time: '10:00', notes: '', overridePrice: false, overridePriceValue: '' });
   const set = <K extends keyof typeof d>(k: K, v: (typeof d)[K]) => setD((p) => ({ ...p, [k]: v }));
   // The standalone "Consultation" category is already a consultation; the toggle
   // is for booking a *real* treatment category as a consultation (BLD-208).
@@ -98,6 +98,7 @@ function Modal({ treatments, isAdmin, onClose }: { treatments: Treatment[]; isAd
         lastName: selected?.lastName || d.lastName,
         email: selected?.email || d.email,
         phone: selected?.phone || d.phone,
+        dob: selected ? undefined : (d.dob || undefined),
         treatmentSlug: d.treatmentSlug, variantId: d.asConsultation ? undefined : (d.variantId || undefined), asConsultation: d.asConsultation, sessions: d.sessions, startISO, notes: d.notes, override, overridePricePence,
       });
       if (r.ok) setResult(r as Result);
@@ -154,6 +155,10 @@ function Modal({ treatments, isAdmin, onClose }: { treatments: Treatment[]; isAd
                 </div>
                 <input className={f} type="email" placeholder="Email (for confirmation + reminders)" aria-label="Email" value={d.email} onChange={(e) => set('email', e.target.value)} />
                 <input className={f} type="tel" placeholder="Phone (for reminders)" aria-label="Phone" value={d.phone} onChange={(e) => set('phone', e.target.value)} />
+                <label className="block text-xs text-[var(--color-stone)]">
+                  Date of birth
+                  <input className={f + ' mt-1'} type="date" aria-label="Date of birth" max={new Date().toISOString().slice(0, 10)} value={d.dob} onChange={(e) => set('dob', e.target.value)} />
+                </label>
               </div>
             )}
 
