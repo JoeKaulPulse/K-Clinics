@@ -135,7 +135,7 @@ function PayStep({ orderId, onDone }: { orderId: string; onDone: (no: string, va
     <div>
       <PaymentElement />
       {err && <p role="alert" aria-live="assertive" className="mt-3 text-sm text-[var(--color-blush-deep)]">{err}</p>}
-      <Button onClick={() => !busy && pay()} variant="gold" size="lg" className="mt-4 w-full">{busy ? 'Processing…' : 'Pay now'}</Button>
+      <Button onClick={() => !busy && pay()} disabled={busy} variant="gold" size="lg" className="mt-4 w-full">{busy ? 'Processing…' : 'Pay now'}</Button>
     </div>
   );
 }

@@ -172,7 +172,7 @@ function PayStep({ voucherId, clientSecret, onDone, onError }: { voucherId: stri
   return (
     <div>
       <PaymentElement />
-      <div className="mt-6 flex justify-end"><Button onClick={pay} variant="gold" size="lg">{busy ? 'Processing…' : 'Pay & send'} <ArrowIcon /></Button></div>
+      <div className="mt-6 flex justify-end"><Button onClick={() => !busy && pay()} disabled={busy} variant="gold" size="lg">{busy ? 'Processing…' : 'Pay & send'} <ArrowIcon /></Button></div>
     </div>
   );
 }

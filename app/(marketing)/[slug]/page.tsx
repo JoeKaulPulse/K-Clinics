@@ -40,11 +40,15 @@ export default async function TreatmentPage({ params }: { params: Promise<{ slug
     const categoryHref = t.category === 'aesthetics' ? '/treatments' : '/dentistry';
     const categoryLabel = t.category === 'aesthetics' ? 'Aesthetics' : 'Dentistry';
     const fromPence = await lowestPenceForTreatment(t.slug);
+    // serviceLd() returns an array (Procedure + Offer/Service) when pricePence is
+    // set, a single object otherwise — always spread so it never nests as one
+    // element (PRJ-1060.1).
+    const sld = serviceLd({ name: t.title, description: t.metaDescription, path: `/${t.slug}`, category: t.category, pricePence: fromPence });
     return (
       <>
         <JsonLd
           data={[
-            serviceLd({ name: t.title, description: t.metaDescription, path: `/${t.slug}`, category: t.category, pricePence: fromPence }),
+            ...(Array.isArray(sld) ? sld : [sld]),
             ...(t.faqs.length ? [faqLd(t.faqs)] : []), // never emit an empty FAQPage
             breadcrumbLd([{ name: 'Home', path: '/' }, { name: categoryLabel, path: categoryHref }, { name: t.title, path: `/${t.slug}` }]),
           ]}

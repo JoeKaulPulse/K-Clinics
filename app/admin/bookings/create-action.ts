@@ -32,6 +32,9 @@ export async function createManualBooking(input: {
   lastName?: string;
   email: string;
   phone?: string;
+  /** New-client date of birth, ISO date string (BLD-1065). Never overwrites an
+   *  existing client's saved dob — see the no-clobber upsert below. */
+  dob?: string;
   treatmentSlug: string;
   variantId?: string;
   /** Book this treatment category as a consultation (BLD-208): 15 min, £0. */
@@ -60,6 +63,8 @@ export async function createManualBooking(input: {
   if (!input.clientId && (!input.email || !input.firstName)) return { ok: false, error: 'Name and email are required for a new client.' };
   const start = new Date(input.startISO);
   if (isNaN(+start)) return { ok: false, error: 'Invalid date/time.' };
+  const dob = input.dob ? new Date(input.dob) : null;
+  if (input.dob && isNaN(+(dob as Date))) return { ok: false, error: 'Invalid date of birth.' };
   // BLD-812: only admins/owners may override the treatment price.
   if (input.overridePricePence != null && !sessionIsAdmin(session)) {
     return { ok: false, error: 'Only an admin can override the price.' };
@@ -131,12 +136,19 @@ export async function createManualBooking(input: {
   // Assign a competent, available clinician (so it shows in their day) + hold resources.
   const practitionerId = await pickPractitioner(input.startISO, durationMin, input.treatmentSlug);
   const resourceIds = await assignResources(input.startISO, durationMin, input.treatmentSlug);
+  // BLD-1065: capture dob for a genuinely new client. Never clobber an existing
+  // client's saved dob (BLD-712 no-clobber convention, mirrors app/api/consult).
+  let dobNoClobber: Date | undefined;
+  if (dob && !input.clientId) {
+    const existing = await db.client.findUnique({ where: { email: input.email.toLowerCase() }, select: { dob: true } });
+    if (!existing?.dob) dobNoClobber = dob;
+  }
   const client = input.clientId
     ? await db.client.update({ where: { id: input.clientId }, data: { phone: input.phone || undefined, lastName: input.lastName || undefined } })
     : await db.client.upsert({
         where: { email: input.email.toLowerCase() },
-        update: { firstName: input.firstName, lastName: input.lastName || undefined, phone: input.phone || undefined },
-        create: { firstName: input.firstName, lastName: input.lastName || null, email: input.email.toLowerCase(), phone: input.phone || null, source: 'staff-booking' },
+        update: { firstName: input.firstName, lastName: input.lastName || undefined, phone: input.phone || undefined, dob: dobNoClobber },
+        create: { firstName: input.firstName, lastName: input.lastName || null, email: input.email.toLowerCase(), phone: input.phone || null, dob: dob || null, source: 'staff-booking' },
       });
 
   // Hold the slot ATOMICALLY — re-check for overlapping bookings inside a
