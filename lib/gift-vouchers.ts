@@ -2,6 +2,7 @@ import 'server-only';
 import crypto from 'crypto';
 import { db } from '@/lib/db';
 import { site } from '@/lib/site';
+import type { SendResult } from '@/lib/email';
 
 export const VOUCHER_PRESETS = [2500, 5000, 7500, 10000, 15000, 25000];
 export const VOUCHER_MIN = 1000;   // £10
@@ -160,15 +161,20 @@ export async function confirmVoucher(voucherId: string): Promise<{ ok: boolean; 
 /** `recipientOk` reports whether the recipient was actually notified — the
  *  purchaser receipt is a secondary courtesy and never affects it. `true` when
  *  there's nothing to deliver (no recipient send requested/possible), matching
- *  the existing semantics where `delivered` is set immediately in that case. */
-async function sendVoucherEmails(voucherId: string, sendToRecipient: boolean): Promise<{ recipientOk: boolean }> {
+ *  the existing semantics where `delivered` is set immediately in that case.
+ *  `purchaserReceipt: false` sends only the recipient's copy — used by the
+ *  scheduled-delivery retry, where the purchaser already got their receipt (with
+ *  the "scheduled for …" line) when the voucher was confirmed, so re-sending it
+ *  on every cron attempt would spam them. */
+async function sendVoucherEmails(voucherId: string, sendToRecipient: boolean, opts: { purchaserReceipt?: boolean } = {}): Promise<{ recipientOk: boolean }> {
   const v = await db.giftVoucher.findUnique({ where: { id: voucherId } });
   if (!v) return { recipientOk: true };
   const { sendEmail, tmplCustomGiftCard, tmplGiftVoucherReceipt } = await import('@/lib/email');
   const what = v.packageName || `gift card — ${money(v.amountPence)}`;
-  const tasks: Promise<unknown>[] = [
-    sendEmail({ to: v.purchaserEmail, subject: `Your KClinics ${v.packageName ? 'gift' : 'gift card'} — ${v.packageName || money(v.amountPence)}`, html: tmplGiftVoucherReceipt({ purchaserName: v.purchaserName, amount: money(v.amountPence), code: v.code, recipientName: v.recipientName, scheduled: !sendToRecipient && !!v.deliverAt, deliverAt: v.deliverAt, designId: v.design, packageName: v.packageName }) }),
-  ];
+  const tasks: Promise<SendResult>[] = [];
+  if (opts.purchaserReceipt !== false) {
+    tasks.push(sendEmail({ to: v.purchaserEmail, subject: `Your KClinics ${v.packageName ? 'gift' : 'gift card'} — ${v.packageName || money(v.amountPence)}`, html: tmplGiftVoucherReceipt({ purchaserName: v.purchaserName, amount: money(v.amountPence), code: v.code, recipientName: v.recipientName, scheduled: !sendToRecipient && !!v.deliverAt, deliverAt: v.deliverAt, designId: v.design, packageName: v.packageName }) }));
+  }
   const hasRecipientSend = sendToRecipient && !!v.recipientEmail;
   let recipientTaskIndex = -1;
   if (hasRecipientSend) {
@@ -177,7 +183,11 @@ async function sendVoucherEmails(voucherId: string, sendToRecipient: boolean): P
   }
   const results = await Promise.allSettled(tasks);
   if (!hasRecipientSend) return { recipientOk: true };
-  return { recipientOk: results[recipientTaskIndex]?.status === 'fulfilled' };
+  // sendEmail never throws — it RESOLVES with { ok: false, error } on a provider
+  // failure, timeout or missing API key. So "fulfilled" alone proves nothing;
+  // the send only counted if the resolved result says ok.
+  const r = results[recipientTaskIndex];
+  return { recipientOk: r?.status === 'fulfilled' && r.value.ok === true };
 }
 
 /** Cron: deliver scheduled vouchers whose date has arrived. Only marks
@@ -188,7 +198,7 @@ export async function deliverDueVouchers(): Promise<number> {
   const due = await db.giftVoucher.findMany({ where: { status: 'ACTIVE', delivered: false, deliverAt: { lte: new Date() }, recipientEmail: { not: null } } });
   let sent = 0;
   for (const v of due) {
-    const { recipientOk } = await sendVoucherEmails(v.id, true).catch(() => ({ recipientOk: false }));
+    const { recipientOk } = await sendVoucherEmails(v.id, true, { purchaserReceipt: false }).catch(() => ({ recipientOk: false }));
     if (recipientOk) {
       await db.giftVoucher.update({ where: { id: v.id }, data: { delivered: true } });
       sent++;
