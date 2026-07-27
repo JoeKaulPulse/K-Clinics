@@ -57,7 +57,13 @@ const redirects = async () => [
   { source: '/about-kclinics', destination: '/about', permanent: true },
   { source: '/our-clinics', destination: '/contact', permanent: true },
   { source: '/cosmetology-all-treatments', destination: '/treatments', permanent: true },
-  { source: '/dentistry-all-treatments', destination: '/dentistry', permanent: true },
+  // BLD-1008: was pointed at /dentistry, but that page (and next.config.mjs
+  // redirects can't read the DB-backed site.dentistryLive flag at build time
+  // to check this) currently serves noindex/nofollow while dentistryLive is
+  // off, which would send this redirect's link equity to a non-indexable
+  // page. Point it at /treatments (aesthetics catalogue, always indexable)
+  // instead until dentistryLive flips true, then retarget back to /dentistry.
+  { source: '/dentistry-all-treatments', destination: '/treatments', permanent: true },
   { source: '/kclinics-beauty-points', destination: '/membership', permanent: true },
   { source: '/personalized-high-end-treatments', destination: '/about', permanent: true },
   { source: '/individualised-treatment-plans', destination: '/about', permanent: true },
