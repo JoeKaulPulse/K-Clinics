@@ -2,6 +2,7 @@ import 'server-only';
 import { db } from '@/lib/db';
 import { encryptJson, decryptJson } from '@/lib/crypto';
 import { site } from '@/lib/site';
+import type { Prisma } from '@prisma/client';
 
 // The staff Google refresh token is a long-lived credential, so it is encrypted
 // at rest via the keyring (mirrors AdminUser.totpSecret) rather than stored
@@ -109,18 +110,38 @@ export async function syncStaffCalendar(staffId: string, days = 60): Promise<{ o
   const timeMin = new Date().toISOString();
   const timeMax = new Date(Date.now() + days * 864e5).toISOString();
   const calId = encodeURIComponent(staff.googleCalendarId || 'primary');
-  const url = `https://www.googleapis.com/calendar/v3/calendars/${calId}/events?timeMin=${timeMin}&timeMax=${timeMax}&singleEvents=true&orderBy=startTime&maxResults=250`;
-  const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` }, signal: AbortSignal.timeout(10_000) });
-  if (!res.ok) return { ok: false, imported: 0, error: `Calendar fetch ${res.status}` };
-  const data = (await res.json()) as { items?: { id: string; status?: string; transparency?: string; start?: { dateTime?: string; date?: string }; end?: { dateTime?: string; date?: string }; summary?: string }[] };
+  type GCalEvent = { id: string; status?: string; transparency?: string; start?: { dateTime?: string; date?: string }; end?: { dateTime?: string; date?: string }; summary?: string };
+  // The prune below deletes in-window blocks that Google did NOT return, so the
+  // event list has to be complete. A single 250-result page isn't: a busy 60-day
+  // calendar overflows it, and pruning from a truncated list would delete real
+  // busy blocks and advertise times the clinician is not actually free. Follow
+  // nextPageToken (bounded), and if pages still remain, mark the list incomplete
+  // and fall back to the past-only prune.
+  const MAX_PAGES = 10;
+  const items: GCalEvent[] = [];
+  let pageToken: string | undefined;
+  let fetchedPages = 0;
+  do {
+    const url = `https://www.googleapis.com/calendar/v3/calendars/${calId}/events?timeMin=${timeMin}&timeMax=${timeMax}&singleEvents=true&orderBy=startTime&maxResults=250${pageToken ? `&pageToken=${encodeURIComponent(pageToken)}` : ''}`;
+    const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` }, signal: AbortSignal.timeout(10_000) });
+    if (!res.ok) return { ok: false, imported: 0, error: `Calendar fetch ${res.status}` };
+    const data = (await res.json()) as { items?: GCalEvent[]; nextPageToken?: string };
+    items.push(...(data.items ?? []));
+    pageToken = data.nextPageToken;
+    fetchedPages++;
+  } while (pageToken && fetchedPages < MAX_PAGES);
+  const listComplete = !pageToken;
+  if (!listComplete) console.warn(`[gcal] ${staffId}: more than ${MAX_PAGES * 250} events in the window — skipping the stale-block prune this run`);
 
   let imported = 0;
-  for (const ev of data.items ?? []) {
+  const keptIds = new Set<string>();
+  for (const ev of items) {
     if (ev.status === 'cancelled' || ev.transparency === 'transparent') continue; // free/declined
     const startAt = ev.start?.dateTime ? new Date(ev.start.dateTime) : ev.start?.date ? new Date(ev.start.date) : null;
     const endAt = ev.end?.dateTime ? new Date(ev.end.dateTime) : ev.end?.date ? new Date(ev.end.date) : null;
     if (!startAt || !endAt) continue;
     const gcalEventId = `${staffId}:${ev.id}`;
+    keptIds.add(gcalEventId);
     await db.staffTimeOff.upsert({
       where: { gcalEventId },
       update: { startAt, endAt, reason: ev.summary || 'Busy (Google Calendar)' },
@@ -128,9 +149,25 @@ export async function syncStaffCalendar(staffId: string, days = 60): Promise<{ o
     });
     imported++;
   }
-  // Remove stale GCAL_BUSY blocks no longer present (in the synced window, future).
-  // Kept simple: prune past GCAL_BUSY entries.
-  await db.staffTimeOff.deleteMany({ where: { staffId, kind: 'GCAL_BUSY', endAt: { lt: new Date() } } });
+  // PRJ-1043.14: remove stale GCAL_BUSY blocks in the synced window that are no
+  // longer present on Google's side (deleted/moved events) — both past AND
+  // future — plus any leftover purely-past block outside the window. Previously
+  // this only pruned endAt < now, so a FUTURE event deleted on Google's side left
+  // a phantom availability hold forever (or until it happened to lapse into the
+  // past). The in-window branch runs ONLY when the event list is complete (see
+  // the pagination above) — pruning against a partial list would delete genuine
+  // busy blocks. If Google reports zero events in a complete list, every
+  // previously-synced GCAL_BUSY row in the window is genuinely stale, so the
+  // whole range is pruned (the gcalEventId filter is simply omitted).
+  const stale: Prisma.StaffTimeOffWhereInput[] = [{ endAt: { lt: new Date() } }];
+  if (listComplete) {
+    const kept = [...keptIds];
+    stale.push({
+      startAt: { gte: new Date(timeMin), lte: new Date(timeMax) },
+      ...(kept.length ? { gcalEventId: { notIn: kept } } : {}),
+    });
+  }
+  await db.staffTimeOff.deleteMany({ where: { staffId, kind: 'GCAL_BUSY', OR: stale } });
 
   return { ok: true, imported };
 }
