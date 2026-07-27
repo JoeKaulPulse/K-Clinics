@@ -11,7 +11,13 @@ const schema = z.object({
   email: z.string().email(),
   phone: z.string().max(40).optional().or(z.literal('')),
   coverNote: z.string().max(4000).optional().or(z.literal('')),
-  cvUrl: z.string().max(500).optional().or(z.literal('')),
+  cvUrl: z
+    .string()
+    .max(500)
+    .url()
+    .refine((u) => /^https?:\/\//i.test(u), 'CV link must be an http(s) URL')
+    .optional()
+    .or(z.literal('')),
   company: z.string().max(0).optional().or(z.literal('')), // honeypot
 });
 

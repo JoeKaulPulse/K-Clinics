@@ -18,7 +18,11 @@ import { THEME_NO_FLASH_SCRIPT } from '@/lib/admin-theme';
 export const metadata: Metadata = {
   metadataBase: new URL(site.url),
   title: {
-    default: `${site.name} — ${site.tagline} | Islington, London`,
+    // BLD-1053: kept under ~55 chars (was 75, truncating "Islington, London" in
+    // the SERP) while preserving the locality signal. Hardcoded rather than
+    // built from site.tagline, which is also used verbatim in app/manifest.ts
+    // and app/opengraph-image.tsx and shouldn't be shortened there.
+    default: `${site.name} — Aesthetics & Dentistry | Islington, London`,
     template: `%s | ${site.name} London`,
   },
   description: site.description,

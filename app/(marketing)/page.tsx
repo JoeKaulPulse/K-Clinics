@@ -33,7 +33,10 @@ export const revalidate = 3600;
 // Home page is the most-shared URL — give it explicit canonical + OG/Twitter
 // (it otherwise inherits only the layout defaults, with no social tags).
 export const generateMetadata = () => pageMeta({
-  title: `${site.name} — ${site.tagline} | Islington, London`,
+  // BLD-1053: shortened from 75 to 53 chars so Google stops truncating
+  // "Islington, London" in the SERP; kept in sync with app/layout.tsx's
+  // default title.
+  title: `${site.name} — Aesthetics & Dentistry | Islington, London`,
   // Dedicated ~155-char meta description: site.description is 182 chars and gets
   // truncated in search results (BLD-559). Keeps the key terms + location.
   description: 'Advanced laser, skin aesthetics and aesthetic dentistry in Islington, London. Precision treatments from qualified clinicians, in a calm, design-led clinic.',
