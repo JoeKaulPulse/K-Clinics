@@ -77,28 +77,51 @@ export async function POST(req: Request) {
   }
   if (!convo) return new Response('ok'); // nothing to attach to — drop quietly
 
-  // De-duplicate redelivered webhooks by the email Message-ID.
-  const externalId = String((data.message_id as string) || (data.id as string) || (headers['message-id'] as string) || (headers['Message-ID'] as string) || '').slice(0, 200) || null;
-  if (externalId) {
-    const seen = await db.chatMessage.findFirst({ where: { externalId }, select: { id: true } });
-    if (seen) return new Response('ok');
-  }
-
+  // De-duplicate redelivered webhooks by the email Message-ID. externalId has no
+  // @unique constraint (schema gate forbids adding one to an existing table), so
+  // two concurrent redeliveries could both pass a bare findFirst-then-create check
+  // and double-post. PRJ-1043.13: run the check + insert + conversation bump in one
+  // Serializable transaction — Postgres SSI detects the write-skew between the two
+  // transactions' predicate-scan on externalId and aborts the loser (mirrors
+  // app/api/booking/create/route.ts). Only needed when there's an externalId to
+  // dedupe against.
   const raw = String((data.text as string) || (data.html as string)?.replace(/<[^>]+>/g, ' ') || '').slice(0, 8000);
   const message = stripQuotedReply(raw).slice(0, 4000);
   if (!message) return new Response('ok');
 
-  await db.chatMessage.create({ data: { conversationId: convo.id, sender: 'VISITOR', body: message, via: 'email', externalId } });
-  await db.chatConversation.update({
-    where: { id: convo.id },
-    data: { status: 'OPEN', mode: 'STAFF', lastMessageAt: new Date(), lastVisitorSeenAt: new Date(), staffUnread: { increment: 1 } },
-  });
+  const externalId = String((data.message_id as string) || (data.id as string) || (headers['message-id'] as string) || (headers['Message-ID'] as string) || '').slice(0, 200) || null;
+  const convoId = convo.id; // narrow once — `convo` is a `let` and TS won't carry the null-check into the closure below
+
+  let inserted = false;
+  try {
+    inserted = await db.$transaction(async (tx) => {
+      if (externalId) {
+        const seen = await tx.chatMessage.findFirst({ where: { externalId }, select: { id: true } });
+        if (seen) return false;
+      }
+      await tx.chatMessage.create({ data: { conversationId: convoId, sender: 'VISITOR', body: message, via: 'email', externalId } });
+      await tx.chatConversation.update({
+        where: { id: convoId },
+        data: { status: 'OPEN', mode: 'STAFF', lastMessageAt: new Date(), lastVisitorSeenAt: new Date(), staffUnread: { increment: 1 } },
+      });
+      return true;
+    }, { isolationLevel: 'Serializable' });
+  } catch (e) {
+    const err = e as { code?: string; message?: string };
+    if (err.code === 'P2034' || /write conflict|deadlock|could not serialize/i.test(err.message || '')) {
+      // The other concurrent redelivery already inserted it — quietly no-op,
+      // matching the existing "duplicate, drop" behaviour above.
+      return new Response('ok');
+    }
+    throw e;
+  }
+  if (!inserted) return new Response('ok'); // duplicate — matches the pre-transaction `seen` short-circuit
   try {
     const { notifyStaffByPermission } = await import('@/lib/notifications');
     await notifyStaffByPermission('clients.view', {
       kind: 'comment', category: 'messages', priority: 'high',
       title: 'New chat message (email reply)', body: message.slice(0, 140),
-      href: `/admin/chat?c=${convo.id}`, groupKey: `chat:${convo.id}`,
+      href: `/admin/chat?c=${convoId}`, groupKey: `chat:${convoId}`,
     });
   } catch { /* non-fatal */ }
   return new Response('ok');
