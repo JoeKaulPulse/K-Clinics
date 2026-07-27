@@ -63,8 +63,14 @@ export async function createManualBooking(input: {
   if (!input.clientId && (!input.email || !input.firstName)) return { ok: false, error: 'Name and email are required for a new client.' };
   const start = new Date(input.startISO);
   if (isNaN(+start)) return { ok: false, error: 'Invalid date/time.' };
+  // BLD-1065: hold dob to the same rule the public forms use (lib/validation.ts):
+  // a real date, in the past, after 1900. "Parses at all" is too loose for a
+  // typed-in field — a slip like 0202 or a future year would be stored and then
+  // drive birthday automations and age checks off wrong data.
   const dob = input.dob ? new Date(input.dob) : null;
-  if (input.dob && isNaN(+(dob as Date))) return { ok: false, error: 'Invalid date of birth.' };
+  if (dob && (isNaN(+dob) || dob >= new Date() || dob.getFullYear() <= 1900)) {
+    return { ok: false, error: 'Enter a valid date of birth — a past date after 1900.' };
+  }
   // BLD-812: only admins/owners may override the treatment price.
   if (input.overridePricePence != null && !sessionIsAdmin(session)) {
     return { ok: false, error: 'Only an admin can override the price.' };

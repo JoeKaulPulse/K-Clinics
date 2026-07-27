@@ -157,7 +157,7 @@ function Modal({ treatments, isAdmin, onClose }: { treatments: Treatment[]; isAd
                 <input className={f} type="tel" placeholder="Phone (for reminders)" aria-label="Phone" value={d.phone} onChange={(e) => set('phone', e.target.value)} />
                 <label className="block text-xs text-[var(--color-stone)]">
                   Date of birth
-                  <input className={f + ' mt-1'} type="date" aria-label="Date of birth" value={d.dob} onChange={(e) => set('dob', e.target.value)} />
+                  <input className={f + ' mt-1'} type="date" aria-label="Date of birth" max={new Date().toISOString().slice(0, 10)} value={d.dob} onChange={(e) => set('dob', e.target.value)} />
                 </label>
               </div>
             )}

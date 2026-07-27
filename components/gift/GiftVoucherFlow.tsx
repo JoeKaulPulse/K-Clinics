@@ -163,11 +163,21 @@ function PayStep({ voucherId, clientSecret, onDone, onError }: { voucherId: stri
   async function pay() {
     if (!stripe || !elements) return;
     setBusy(true); onError('');
-    const { error } = await stripe.confirmPayment({ elements, redirect: 'if_required' });
-    if (error) { onError(error.message || 'Payment failed.'); setBusy(false); return; }
-    const res = await fetch('/api/gift-vouchers/confirm', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ voucherId, clientSecret }) });
-    const j = await res.json();
-    if (j.ok) onDone(j.code || ''); else { onError(j.error || 'Could not confirm.'); setBusy(false); }
+    // Every exit from here must clear `busy` (or move the flow to 'done'): the
+    // button is disabled while busy, so a thrown fetch/JSON error would otherwise
+    // leave the buyer on a dead "Processing…" button with no message, after their
+    // card has already been charged (PRJ-1060.4).
+    try {
+      const { error } = await stripe.confirmPayment({ elements, redirect: 'if_required' });
+      if (error) { onError(error.message || 'Payment failed.'); setBusy(false); return; }
+      const res = await fetch('/api/gift-vouchers/confirm', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ voucherId, clientSecret }) });
+      const j = await res.json().catch(() => ({} as { ok?: boolean; code?: string; error?: string }));
+      if (j.ok) { onDone(j.code || ''); return; }
+      onError(j.error || 'Could not confirm.'); setBusy(false);
+    } catch {
+      onError('We couldn’t confirm the voucher. Check your email before paying again — if the payment went through, the voucher is on its way.');
+      setBusy(false);
+    }
   }
   return (
     <div>
