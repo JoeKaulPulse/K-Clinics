@@ -55,6 +55,27 @@ export async function checkPracticeAnswer(questionId: string, answer: number[]):
   return { ok: true, correct, correctIndices, explanation: q.explanation };
 }
 
+/** Re-grade a finished practice run server-side against the stored answer keys.
+ *  Only ids that are really active questions on `courseId` count, and each id
+ *  counts once — so a client cannot invent question ids or claim correctness. */
+export async function gradePracticeAnswers(courseId: string, answers: { questionId: string; answer: number[] }[]): Promise<{ total: number; correct: number }> {
+  const ids = [...new Set(answers.map((a) => a.questionId))];
+  if (ids.length === 0) return { total: 0, correct: 0 };
+  const rows = await db.examQuestion.findMany({ where: { id: { in: ids }, courseId, active: true }, select: { id: true, correct: true } });
+  const keyById = new Map(rows.map((r) => [r.id, numArr(r.correct).slice().sort()]));
+  const seen = new Set<string>();
+  let total = 0, correct = 0;
+  for (const a of answers) {
+    const key = keyById.get(a.questionId);
+    if (!key || seen.has(a.questionId)) continue;
+    seen.add(a.questionId);
+    total++;
+    const given = a.answer.slice().sort();
+    if (key.length === given.length && key.every((v, i) => v === given[i])) correct++;
+  }
+  return { total, correct };
+}
+
 /** Record a finished practice run (feeds progress + future leaderboards). */
 export async function recordPractice(studentId: string, { courseId, topic, total, correct }: { courseId?: string | null; topic?: string | null; total: number; correct: number }): Promise<{ scorePct: number; newBadges: { key: string; name: string; icon: string }[] }> {
   const t = Math.max(0, Math.min(Math.round(total) || 0, 100));

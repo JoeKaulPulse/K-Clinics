@@ -41,20 +41,22 @@ export async function POST(req: Request) {
     const courseId = b.courseId ? String(b.courseId) : '';
     if (!courseId) return NextResponse.json({ ok: false, error: 'Missing course.' }, { status: 400 });
     if (!(await studentCanAccess(student.id, courseId))) return NextResponse.json({ ok: false, error: 'Not enrolled.' }, { status: 403 });
+    // The client sends what it selected per question; correctness is re-derived
+    // here from the server-side answer keys (same trust model as the quiz API),
+    // so neither the score nor the question ids can be fabricated.
     const rawAnswers = Array.isArray(b.answers) ? (b.answers as unknown[]).slice(0, 30) : [];
     const seen = new Set<string>();
-    const uniqueAnswers: { questionId: string; correct: boolean }[] = [];
+    const submitted: { questionId: string; answer: number[] }[] = [];
     for (const a of rawAnswers) {
       if (!a || typeof a !== 'object') continue;
       const rec = a as Record<string, unknown>;
       if (typeof rec.questionId !== 'string' || !rec.questionId) continue;
-      if (typeof rec.correct !== 'boolean') continue;
       if (seen.has(rec.questionId)) continue;
       seen.add(rec.questionId);
-      uniqueAnswers.push({ questionId: rec.questionId, correct: rec.correct });
+      const answer = Array.isArray(rec.answer) ? (rec.answer as unknown[]).map(Number).filter((n) => Number.isInteger(n) && n >= 0 && n < 100) : [];
+      submitted.push({ questionId: rec.questionId, answer });
     }
-    const total = uniqueAnswers.length;
-    const correct = uniqueAnswers.filter((a) => a.correct).length;
+    const { total, correct } = await bank.gradePracticeAnswers(courseId, submitted);
     const res = await bank.recordPractice(student.id, {
       courseId,
       topic: b.topic ? String(b.topic) : null,

@@ -29,7 +29,7 @@ export function PracticeRunner({ courses }: { courses: Course[] }) {
   const [err, setErr] = useState('');
   const [scorePct, setScorePct] = useState(0);
   const [badgeQueue, setBadgeQueue] = useState<AwardedBadge[]>([]);
-  const [answers, setAnswers] = useState<{ questionId: string; correct: boolean }[]>([]);
+  const [answers, setAnswers] = useState<{ questionId: string; answer: number[] }[]>([]);
 
   if (courses.length === 0) {
     return <p className="text-sm text-[var(--color-stone)]">No practice questions are available for your courses yet. Your tutor is adding them — check back soon.</p>;
@@ -56,7 +56,7 @@ export function PracticeRunner({ courses }: { courses: Course[] }) {
     const res: Checked = { correct: !!r.correct, correctIndices: r.correctIndices ?? [], explanation: r.explanation ?? null };
     if (res.correct) setCorrectCount((c) => c + 1);
     setChecked(res);
-    setAnswers((a) => [...a, { questionId: q.id, correct: res.correct }]);
+    setAnswers((a) => [...a, { questionId: q.id, answer: selected }]);
   }
 
   async function next() {
