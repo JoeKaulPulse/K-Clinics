@@ -2825,6 +2825,36 @@ export const BUILD_BACKLOG: BacklogItem[] = [
     detail: 'app/api/kiosk/sessions/[token]/photo-view/route.ts serves the visitor\'s actual face photo gated only by the kiosk session token, while sibling routes (frame, stream) require an additional secret because lib/kiosk.ts itself documents the token as brute-forceable. This also contradicts the deliberate privacy design in kiosk/results/[id]/route.ts, which omits the photo URL. No rate limiting on the endpoint either.',
     notes: ['Fix: photo-view now requires the session secret via secretMatches (same as frame/stream) plus a 30-req/60s rate limit keyed on the token. buildKioskStreamPayload() only embeds a working (secret-bearing) relay URL for callers that already proved they hold the secret -- the secret-gated SSE stream route passes its validated secret through; the unauthenticated token-only status poll (app/api/kiosk/sessions/[token]/route.ts) gets photoUrls/bestPhotoUrl omitted rather than dead (or, worse, secret-leaking) links. Verified all three real consumers (KioskDisplay/RevealScene via the SSE stream, the phone-side result view, the public /kiosk/result share page) never relied on the token-only poll for photo URLs. (BLD-1052)'],
   },
+  {
+    title: 'Careers CV/portfolio link is unvalidated and rendered as a raw href in the admin panel -- stored XSS risk against staff', type: 'ERROR', urgency: 'P2', status: 'IN_REVIEW', assignee: 'claude',
+    value: 6, effort: 1,
+    detail: 'app/api/careers/apply/route.ts validated cvUrl as z.string().max(500) only (no .url()/scheme check), from a public, unauthenticated, honeypotted-but-otherwise-open form. It is stored and rendered as <a href={a.cvUrl} target="_blank" rel="noopener"> in components/admin/CareersManager.tsx with no scheme filtering -- an applicant could submit cvUrl: "javascript:..." which would execute when a staff member clicked it.',
+    notes: ['Fix: cvUrl now requires z.string().max(500).url() plus a refine() enforcing an http(s) scheme, rejecting the request with the existing 400 validation-error path instead of storing an arbitrary-scheme URL. (BLD-1040)'],
+  },
+  {
+    title: 'Legacy SEO redirect sends preserved link equity to a noindex page', type: 'TASK', urgency: 'P2', status: 'IN_REVIEW', assignee: 'claude',
+    value: 4, effort: 1,
+    detail: 'next.config.mjs permanently redirected /dentistry-all-treatments to /dentistry "to preserve SEO equity from the legacy site," but /dentistry currently serves noindex/nofollow while site.dentistryLive is false -- inbound legacy link equity hitting that redirect landed on a dead end, contradicting the redirect\'s own stated purpose.',
+    notes: ['Fix: retargeted the redirect to /treatments (always-indexable aesthetics catalogue) with a comment to point it back at /dentistry once dentistryLive flips true -- next.config.mjs redirects are static at build time and cannot read the DB-backed flag, so this needs a manual follow-up rather than a dynamic check. (BLD-1008)'],
+  },
+  {
+    title: 'Admin SEO canonical-URL override has no validation before publishing live', type: 'TASK', urgency: 'P2', status: 'IN_REVIEW', assignee: 'claude',
+    value: 4, effort: 1,
+    detail: 'app/api/admin/seo/route.ts only trimmed body.canonical before saving to PageSeo; lib/seo.tsx\'s pageMeta() then used it verbatim as alternates.canonical with no check that it was an absolute, same-domain, well-formed URL. A relative path, typo, or wrong host pasted into the admin SEO panel would have silently shipped a broken or cross-domain canonical tag on the live page.',
+    notes: ['Fix: canonical must now be empty (no override) or a well-formed absolute https? URL on the site\'s own domain (lib/site.ts\'s site.url, www-prefix-insensitive) -- anything else returns a 400 with a clear error instead of saving. (BLD-1060)'],
+  },
+  {
+    title: 'Homepage <title> exceeds SERP display length, truncating the locality signal', type: 'TASK', urgency: 'P2', status: 'IN_REVIEW', assignee: 'claude',
+    value: 4, effort: 1,
+    detail: 'Homepage title ("KClinics -- Aesthetics & Aesthetic Dentistry, Reimagined | Islington, London") was 75 characters, set redundantly in both app/layout.tsx (root default) and app/(marketing)/page.tsx (generateMetadata). Google typically truncates around ~55-60 chars/600px, cutting off "Islington, London" -- the locality signal -- from the site\'s single most important page.',
+    notes: ['Fix: shortened both to "KClinics -- Aesthetics & Dentistry | Islington, London" (53 chars), keeping the two in sync as before. No other metadata fields changed. (BLD-1053)'],
+  },
+  {
+    title: 'LocalBusiness JSON-LD availableService list is a hardcoded shortlist, not the real 40+ treatment catalogue', type: 'TASK', urgency: 'P2', status: 'IN_REVIEW', assignee: 'claude',
+    value: 3, effort: 1,
+    detail: 'lib/seo.tsx\'s organizationLd listed only 4 aesthetic + 3 dentistry procedures as MedicalProcedure/Dentistry items, while lib/treatments.ts defines 40+ live treatments -- the schema under-represented actual service breadth to crawlers and AI answer engines.',
+    notes: ['Fix: availableService is now generated from the real aesthetics/dentistry arrays in lib/treatments.ts instead of a hardcoded list, keeping the existing dentistryLive gate on the Dentistry entries. Same JSON-LD shape/property names, just a data-source swap. (BLD-1039)'],
+  },
 ];
 
 // A content hash over every item's title + status + PR, so ANY change (a new
