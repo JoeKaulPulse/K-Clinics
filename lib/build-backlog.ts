@@ -2826,6 +2826,36 @@ export const BUILD_BACKLOG: BacklogItem[] = [
     notes: ['Fix: photo-view now requires the session secret via secretMatches (same as frame/stream) plus a 30-req/60s rate limit keyed on the token. buildKioskStreamPayload() only embeds a working (secret-bearing) relay URL for callers that already proved they hold the secret -- the secret-gated SSE stream route passes its validated secret through; the unauthenticated token-only status poll (app/api/kiosk/sessions/[token]/route.ts) gets photoUrls/bestPhotoUrl omitted rather than dead (or, worse, secret-leaking) links. Verified all three real consumers (KioskDisplay/RevealScene via the SSE stream, the phone-side result view, the public /kiosk/result share page) never relied on the token-only poll for photo URLs. (BLD-1052)'],
   },
   {
+    title: 'Admin sidebar logo lockup has a strap-line, violating the no-strap-line brand rule', type: 'TASK', urgency: 'P2', status: 'IN_REVIEW', assignee: 'claude',
+    value: 3, effort: 1,
+    detail: 'components/admin/AdminShell.tsx rendered \'{locationLabel} - CRM\' directly beneath the K monogram + CLINICS wordmark inside the logo lockup\'s own flex container -- a strap-line under the logo, which docs/BRAND_GUIDELINES.md forbids. components/live/LiveCompanion.tsx already implements the identical lockup correctly: the descriptor is a separate, spaced-apart sibling paragraph outside the logo\'s own wrapper.',
+    notes: ['Fix: wrapped the KMark + ClinicsWordmark pair in their own inner lockup span (matching LiveCompanion.tsx\'s header pattern) and moved the location/CRM paragraph out to be a sibling of that span with mt-6 spacing, mirroring LiveCompanion\'s header + mt-6 descriptor. Logo mark files and the location/CRM text itself are unchanged -- only the structural relationship moved. (BLD-1057)'],
+  },
+  {
+    title: 'Admin \'Refund\' link uses a decorative-only color token as text, failing contrast', type: 'TASK', urgency: 'P2', status: 'IN_REVIEW', assignee: 'claude',
+    value: 4, effort: 1,
+    detail: 'app/globals.css documents --color-stone-soft as \'decorative/borders only -- NOT for text on light\' (~2.15:1 contrast), yet components/admin/AcademyManager.tsx used it for the \'Refund\' action link text on a light background, well under WCAG AA\'s 4.5:1.',
+    notes: ['Fix: switched the Refund link (components/admin/AcademyManager.tsx) from text-[var(--color-stone-soft)] to text-[var(--color-blush-deep)] -- the same destructive/error-on-light token already used one line below it for the \'Remove payment\' link, and documented in app/globals.css as the correct choice for error/destructive text on light surfaces. app/globals.css\'s own comment for --color-stone-soft only says it is decorative-only; it does not point to --color-stone as an alternative, so blush-deep (matching the adjacent destructive action) was used instead. (BLD-1059)'],
+  },
+  {
+    title: 'Fixed back-to-top button overlaps the live-chat launcher on desktop', type: 'TASK', urgency: 'P2', status: 'IN_REVIEW', assignee: 'claude',
+    value: 4, effort: 1,
+    detail: 'components/motion/BackToTop.tsx (bottom-6/8 right-6/8, z-40) and components/chat/LiveChat.tsx (bottom-5 right-5, z-40) both float in the same bottom-right corner. BackToTop\'s visibility logic only excluded the mobile-only WhatsApp button, not LiveChat, so on any md+ page with more than ~1400px of scroll both buttons rendered stacked on top of each other well before the footer-hide behaviour kicked in.',
+    notes: ['Fix: components/motion/BackToTop.tsx now sits at bottom-24 (md) / lg:bottom-28 (lg), well clear of LiveChat\'s ~52px-tall launcher at bottom-5/right-5, instead of bottom-6/lg:bottom-8. Horizontal offset (right-6/lg:right-8) is unchanged since the two no longer overlap vertically. (BLD-1010)'],
+  },
+  {
+    title: 'Academy funding page mega-menu links point to sections that do not exist', type: 'TASK', urgency: 'P2', status: 'IN_REVIEW', assignee: 'claude',
+    value: 4, effort: 1,
+    detail: 'lib/nav.ts\'s Academy -> \'Fund Your Training\' column linked to /academy/funding#eligibility (\'Check Your Eligibility\') and /academy/funding#bnpl (\'Buy Now, Pay Later -- Spread the cost with Clearpay\'), but app/(marketing)/academy/funding/page.tsx has no id="eligibility" (the real wizard section uses id="check") and no #bnpl section exists at all -- the page never mentions Clearpay/BNPL anywhere.',
+    notes: ['Fix decision: updated lib/nav.ts\'s link to /academy/funding#check rather than renaming the section id to #eligibility. The page already has four other in-page links pointing at #check (two Button hrefs and a Link, all on the same page), and its visible heading (\'What could you use?\', eyebrow \'Check your options\') does not literally read \'Check Your Eligibility\', so the id was not the more-correct name to rename to -- pointing the nav link at the id that already exists was the smaller, safer change. Removed the \'Buy Now, Pay Later -- Spread the cost with Clearpay\' entry entirely rather than fabricating a #bnpl section or BNPL copy the page does not support -- inventing financing claims was out of scope and risky. Real BNPL content for the funding page is a separate, larger task requiring real marketing copy. (BLD-1061)'],
+  },
+  {
+    title: 'YouTube and Google Maps embeds load before cookie consent', type: 'ERROR', urgency: 'P2', status: 'IN_REVIEW', assignee: 'claude',
+    value: 6, effort: 2,
+    detail: 'components/cms/SectionRenderer.tsx embedded youtube.com/embed (the cookie-setting domain, not youtube-nocookie.com) and a raw Google Maps iframe with no consent check anywhere in the file, while GA4/Meta/Sentry are all correctly gated in components/marketing/TrackingScripts.tsx.',
+    notes: ['Fix: (a) the video embedUrl() helper in SectionRenderer.tsx now builds youtube-nocookie.com/embed/ URLs instead of youtube.com/embed/ -- a drop-in domain swap, same player behaviour, no cookies set until the visitor interacts with it. (b) added components/cms/ConsentGatedMap.tsx, a small client component using the same getConsent()/kc-consent pattern as TrackingScripts.tsx, and wired it into SectionRenderer.tsx\'s MapSection in place of the raw iframe. The Maps iframe only renders once marketing consent has been given (same bucket as the Google Ads/Meta pixels); before that it shows a placeholder with a \'Cookie settings\' button (reopens the existing CookieConsent banner via the kc-open-consent event) and a direct \'Open in Google Maps\' link using the site\'s existing mapLink. (BLD-1009)'],
+  },
+  {
     title: 'Careers CV/portfolio link is unvalidated and rendered as a raw href in the admin panel -- stored XSS risk against staff', type: 'ERROR', urgency: 'P2', status: 'IN_REVIEW', assignee: 'claude',
     value: 6, effort: 1,
     detail: 'app/api/careers/apply/route.ts validated cvUrl as z.string().max(500) only (no .url()/scheme check), from a public, unauthenticated, honeypotted-but-otherwise-open form. It is stored and rendered as <a href={a.cvUrl} target="_blank" rel="noopener"> in components/admin/CareersManager.tsx with no scheme filtering -- an applicant could submit cvUrl: "javascript:..." which would execute when a staff member clicked it.',

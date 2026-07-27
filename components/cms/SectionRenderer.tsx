@@ -13,6 +13,7 @@ import { EnquiryForm } from '@/components/contact/EnquiryForm';
 import { PersonalizedRail } from '@/components/marketing/PersonalizedRail';
 import { AbBlock } from '@/components/marketing/AbBlock';
 import { getSiteConfig } from '@/lib/site-config';
+import { ConsentGatedMap } from '@/components/cms/ConsentGatedMap';
 
 // Renders an array of CMS sections as native, on-brand markup. Server component.
 export function SectionRenderer({ sections, includeHidden = false }: { sections: Section[]; includeHidden?: boolean }) {
@@ -61,7 +62,9 @@ const arr = <T,>(v: unknown): T[] => (Array.isArray(v) ? (v as T[]) : []);
 const paras = (s: string) => s.split(/\n{2,}/).map((p) => p.trim()).filter(Boolean);
 function embedUrl(u: string): string {
   const yt = u.match(/(?:youtu\.be\/|youtube\.com\/(?:watch\?v=|embed\/|shorts\/))([\w-]+)/);
-  if (yt) return `https://www.youtube.com/embed/${yt[1]}`;
+  // BLD-1009: youtube-nocookie.com sets no cookies until the visitor
+  // interacts with the player, unlike youtube.com/embed.
+  if (yt) return `https://www.youtube-nocookie.com/embed/${yt[1]}`;
   const vimeo = u.match(/vimeo\.com\/(\d+)/);
   if (vimeo) return `https://player.vimeo.com/video/${vimeo[1]}`;
   return /^https?:\/\//.test(u) ? u : '';
@@ -428,7 +431,7 @@ async function MapSection({ data }: { data: Record<string, unknown> }) {
   return (
     <section className="container-lux section-sm">
       <div className={`overflow-hidden rounded-[var(--radius-2xl)] border border-[var(--color-line)] shadow-[var(--shadow-soft)] ${h}`}>
-        <iframe title="KClinics location map" src={c.mapEmbed} loading="lazy" referrerPolicy="no-referrer-when-downgrade" className={`w-full grayscale-[0.2] ${h}`} />
+        <ConsentGatedMap src={c.mapEmbed} mapLink={c.mapLink} className={`w-full grayscale-[0.2] ${h}`} />
       </div>
     </section>
   );
