@@ -2,6 +2,7 @@ import 'server-only';
 import { db } from '@/lib/db';
 import { currentTenantId } from '@/lib/tenant';
 import { scoreAndBadge } from '@/lib/academy-gamification';
+import { studentCanAccess } from '@/lib/lms';
 
 // ── BLD-539: "spot the mistake" demo walkthroughs ────────────────────────────
 // Staff mark time windows where the practitioner does something wrong; learners
@@ -30,6 +31,7 @@ export async function listDemos(courseIds: string[], studentId: string): Promise
 export async function getDemoPlay(id: string, studentId: string): Promise<DemoPlay | null> {
   const r = await db.demoVideo.findFirst({ where: { id, active: true }, include: { _count: { select: { mistakes: true } } } });
   if (!r || r._count.mistakes === 0) return null;
+  if (r.courseId && !(await studentCanAccess(studentId, r.courseId))) return null;
   const a = await db.demoAttempt.findUnique({ where: { studentId_videoId: { studentId, videoId: id } }, select: { scorePct: true } }).catch(() => null);
   return { id: r.id, title: r.title, description: r.description, videoUrl: r.videoUrl, captionsUrl: r.captionsUrl, durationSec: r.durationSec, mistakeCount: r._count.mistakes, best: a?.scorePct ?? null };
 }
@@ -41,6 +43,7 @@ export async function gradeDemo(studentId: string, videoId: string, presses: unk
     select: { id: true, courseId: true, mistakes: { select: { atSec: true, windowSec: true, label: true }, orderBy: { atSec: 'asc' } } },
   });
   if (!v) return { ok: false, error: 'Demo not found.' };
+  if (v.courseId && !(await studentCanAccess(studentId, v.courseId))) return { ok: false, error: 'Demo not found.' };
   const mistakes = v.mistakes;
   const total = mistakes.length;
   if (total === 0) return { ok: false, error: 'This demo has no marked mistakes yet.' };
