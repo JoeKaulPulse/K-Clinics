@@ -615,21 +615,6 @@ export async function rescheduleBooking(
   let charged = 0;
   let requiresAction = false;
 
-  // 4th+ reschedule incurs the full booking price — client self-service only;
-  // a staff/admin reschedule never charges a fee. BLD-733: net off any loyalty
-  // points already redeemed as money off, so a client who redeemed points isn't
-  // billed the pre-discount price.
-  if (!opts.admin && booking.rescheduleCount >= MAX_FREE_RESCHEDULES && booking.pricePence > 0) {
-    const rescheduleFeePence = Math.max(0, booking.pricePence - (booking.pointsRedeemedPence ?? 0));
-    const res = await chargeBooking(booking, rescheduleFeePence, { late: false });
-    if (!res.ok) {
-      if (res.requiresAction) requiresAction = true;
-      else return { ok: false, error: res.error || 'Payment required for this reschedule could not be processed.' };
-    } else {
-      charged = rescheduleFeePence;
-    }
-  }
-
   // Atomically re-check for a clash immediately before committing the move — the
   // pre-check above (either branch) can't see a concurrent reschedule/approval
   // that lands between that read and this write (PRJ-1043.7). Mirrors
@@ -671,6 +656,32 @@ export async function rescheduleBooking(
   }
   if (!rescheduled) {
     return { ok: false, code: 'SLOT_TAKEN', error: 'That time is no longer available. Please choose another slot.' };
+  }
+
+  // 4th+ reschedule incurs the full booking price — client self-service only;
+  // a staff/admin reschedule never charges a fee. BLD-733: net off any loyalty
+  // points already redeemed as money off, so a client who redeemed points isn't
+  // billed the pre-discount price.
+  // This runs AFTER the slot is atomically claimed above: charging first would
+  // mean a client whose slot was taken in the race window (the Stripe call is
+  // seconds long, which widens it) is billed the full price for a reschedule
+  // that then fails with SLOT_TAKEN. If the charge itself hard-fails we undo the
+  // move, so the original "no reschedule without payment" rule still holds.
+  if (!opts.admin && booking.rescheduleCount >= MAX_FREE_RESCHEDULES && booking.pricePence > 0) {
+    const rescheduleFeePence = Math.max(0, booking.pricePence - (booking.pointsRedeemedPence ?? 0));
+    const res = await chargeBooking(booking, rescheduleFeePence, { late: false });
+    if (!res.ok) {
+      if (res.requiresAction) requiresAction = true;
+      else {
+        await db.booking.update({
+          where: { id: booking.id },
+          data: { startAt: booking.startAt, endAt: booking.endAt, rescheduleCount: booking.rescheduleCount },
+        }).catch(() => {});
+        return { ok: false, error: res.error || 'Payment required for this reschedule could not be processed.' };
+      }
+    } else {
+      charged = rescheduleFeePence;
+    }
   }
 
   await db.interaction.create({
