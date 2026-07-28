@@ -62,6 +62,12 @@ export async function POST(req: Request) {
   const { getClientSession } = await import('@/lib/auth');
   const clientId = (await getClientSession())?.sub ?? null;
 
+  // Cookie-banner consent, captured now so the deferred Purchase conversion in
+  // finalizeOrder() (which can run from the Stripe webhook backstop, with no
+  // request/cookie context of its own) can honour it later.
+  const { consentFromCookieHeader } = await import('@/lib/attribution');
+  const { analyticsConsent, marketingConsent } = consentFromCookieHeader(req.headers.get('cookie'));
+
   // Re-credit the reserved gift-card balance if the order can't be created, or
   // can't proceed to payment. Defined BEFORE the order.create call below so a
   // failure creating the order itself can also be unwound (BLD-739) — otherwise
@@ -81,6 +87,7 @@ export async function POST(req: Request) {
         shipLine1: method === 'ship' ? String(body.shipLine1).slice(0, 160) : null, shipLine2: method === 'ship' ? (body.shipLine2 ? String(body.shipLine2).slice(0, 160) : null) : null,
         shipCity: method === 'ship' ? (body.shipCity ? String(body.shipCity).slice(0, 80) : null) : null, shipPostcode: method === 'ship' ? String(body.shipPostcode).slice(0, 12) : null,
         subtotalPence: cart.subtotalPence, shippingPence, giftCardCode, giftCardPence, totalPence, ageVerified,
+        analyticsConsent, marketingConsent,
         items: { create: cart.lines.map((l) => ({ productId: l.productId, name: l.name, sku: l.sku, unitPence: l.unitPence, qty: l.qty, ageRestricted: l.ageRestricted })) },
       },
     });

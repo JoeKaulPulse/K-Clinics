@@ -701,6 +701,14 @@ model Booking {
   marketingCampaign   MarketingCampaign? @relation(fields: [marketingCampaignId], references: [id], onDelete: SetNull)
   marketingCampaignId String?
 
+  // Cookie-banner consent captured at booking time (kc_analytics_consent /
+  // kc_marketing_consent), so the deferred server-side GA4/Meta conversion sent
+  // when the card is later charged (lib/conversions.ts) can honour rejection —
+  // that charge often runs from a webhook with no request/cookie context of its
+  // own. Defaults false (fail closed) for bookings created before this existed.
+  analyticsConsent Boolean @default(false)
+  marketingConsent Boolean @default(false)
+
   auditEvents AuditEvent[]
   reviews     Review[]
   items       BookingItem[] // line items: primary treatment + any upsell add-ons
@@ -3779,6 +3787,13 @@ model Order {
   paidAt                DateTime?
   createdAt             DateTime    @default(now())
   updatedAt             DateTime    @updatedAt
+  // Cookie-banner consent captured at checkout (kc_analytics_consent /
+  // kc_marketing_consent), read back when finalizeOrder() reports the sale to
+  // GA4/Meta (lib/conversions.ts) — that can run from the Stripe webhook
+  // backstop with no request/cookie context of its own. Defaults false (fail
+  // closed) for orders placed before this existed.
+  analyticsConsent      Boolean     @default(false)
+  marketingConsent      Boolean     @default(false)
 
   items OrderItem[]
 

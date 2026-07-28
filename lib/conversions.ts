@@ -27,10 +27,18 @@ export async function conversionStatus(): Promise<{ ga4: boolean; meta: boolean 
   return { ga4: Boolean(ids.ga4Id && secrets.ga4ApiSecret), meta: Boolean(ids.metaPixelId && secrets.metaCapiToken) };
 }
 
-type PurchaseInput = { bookingId: string; valuePence: number; clientId?: string | null; email?: string | null; campaign?: string | null; gclid?: string | null };
+// GA4 is analytics-purpose, Meta is marketing-purpose (same split as the browser
+// pixels in lib/analytics-events.ts / components/marketing/TrackingScripts.tsx) —
+// every send* function below takes the visitor's cookie-banner choice and skips
+// the platform they didn't consent to. Omitted/undefined = not consented (fail
+// closed), so a call site that forgets to thread consent through never over-sends.
+type ConsentInput = { analyticsConsent?: boolean; marketingConsent?: boolean };
 
-/** Fire a Purchase conversion to GA4 + Meta, and (when a GCLID was captured) an
- *  offline conversion to Google Ads for value-based bidding. Best-effort. */
+type PurchaseInput = ConsentInput & { bookingId: string; valuePence: number; clientId?: string | null; email?: string | null; campaign?: string | null; gclid?: string | null };
+
+/** Fire a Purchase conversion to GA4 + Meta (each gated on its own consent
+ *  purpose), and (when a GCLID was captured) an offline conversion to Google
+ *  Ads for value-based bidding. Best-effort. */
 export async function sendPurchase(input: PurchaseInput): Promise<void> {
   if (!crmEnabled || input.valuePence <= 0) return;
   try {
@@ -38,20 +46,22 @@ export async function sendPurchase(input: PurchaseInput): Promise<void> {
     const value = input.valuePence / 100;
     const clientId = input.clientId || input.bookingId;
     await Promise.allSettled([
-      ids.ga4Id && secrets.ga4ApiSecret ? ga4Purchase(ids.ga4Id, secrets.ga4ApiSecret, clientId, value, input) : null,
-      ids.metaPixelId && secrets.metaCapiToken ? metaPurchase(ids.metaPixelId, secrets.metaCapiToken, value, input) : null,
+      input.analyticsConsent && ids.ga4Id && secrets.ga4ApiSecret ? ga4Purchase(ids.ga4Id, secrets.ga4ApiSecret, clientId, value, input) : null,
+      input.marketingConsent && ids.metaPixelId && secrets.metaCapiToken ? metaPurchase(ids.metaPixelId, secrets.metaCapiToken, value, input) : null,
       // Google Ads offline conversion (no-ops unless a GCLID + conversion action are present).
-      input.gclid ? uploadGoogleAdsConversion({ gclid: input.gclid, valuePence: input.valuePence, bookingId: input.bookingId }) : null,
+      // Ad-platform, same purpose as Meta — gated on marketing consent too.
+      input.marketingConsent && input.gclid ? uploadGoogleAdsConversion({ gclid: input.gclid, valuePence: input.valuePence, bookingId: input.bookingId }) : null,
     ].filter(Boolean) as Promise<unknown>[]);
   } catch (e) {
     console.error('[conversions] send failed:', (e as Error)?.message);
   }
 }
 
-/** Fire a GA4 `refund` conversion (best-effort) so ad/analytics ROAS nets out
- *  refunds. (Meta has no standard refund event, so we skip it there.) */
-export async function sendRefund(input: { bookingId: string; valuePence: number; clientId?: string | null }): Promise<void> {
-  if (!crmEnabled || input.valuePence <= 0) return;
+/** Fire a GA4 `refund` conversion (best-effort, analytics-consent gated) so
+ *  ad/analytics ROAS nets out refunds. (Meta has no standard refund event, so
+ *  we skip it there.) */
+export async function sendRefund(input: ConsentInput & { bookingId: string; valuePence: number; clientId?: string | null }): Promise<void> {
+  if (!crmEnabled || input.valuePence <= 0 || !input.analyticsConsent) return;
   try {
     const [ids, secrets] = await Promise.all([readJson(TRACKING_KEY), readJson(SECRETS_KEY)]);
     if (!ids.ga4Id || !secrets.ga4ApiSecret) return;
@@ -109,14 +119,14 @@ async function metaPurchase(pixelId: string, token: string, value: number, input
 
 /** Lead — an enquiry/consultation request (top of funnel; no monetary value).
  *  Best-effort, never throws. `eventId` de-dupes with the browser Pixel. */
-export async function sendLead(input: { eventId: string; clientId?: string | null; email?: string | null; sourceUrl?: string | null }): Promise<void> {
+export async function sendLead(input: ConsentInput & { eventId: string; clientId?: string | null; email?: string | null; sourceUrl?: string | null }): Promise<void> {
   if (!crmEnabled) return;
   try {
     const [ids, secrets] = await Promise.all([readJson(TRACKING_KEY), readJson(SECRETS_KEY)]);
     const clientId = input.clientId || input.eventId;
     await Promise.allSettled([
-      ids.metaPixelId && secrets.metaCapiToken ? metaEvent(ids.metaPixelId, secrets.metaCapiToken, 'Lead', input.eventId, { email: input.email, sourceUrl: input.sourceUrl }) : null,
-      ids.ga4Id && secrets.ga4ApiSecret ? ga4Event(ids.ga4Id, secrets.ga4ApiSecret, clientId, 'generate_lead', { currency: 'GBP', value: 0 }) : null,
+      input.marketingConsent && ids.metaPixelId && secrets.metaCapiToken ? metaEvent(ids.metaPixelId, secrets.metaCapiToken, 'Lead', input.eventId, { email: input.email, sourceUrl: input.sourceUrl }) : null,
+      input.analyticsConsent && ids.ga4Id && secrets.ga4ApiSecret ? ga4Event(ids.ga4Id, secrets.ga4ApiSecret, clientId, 'generate_lead', { currency: 'GBP', value: 0 }) : null,
     ].filter(Boolean) as Promise<unknown>[]);
   } catch (e) {
     console.error('[conversions] lead failed:', (e as Error)?.message);
@@ -125,15 +135,15 @@ export async function sendLead(input: { eventId: string; clientId?: string | nul
 
 /** Schedule — a booking was placed (pre-charge). De-dupes with the browser Pixel
  *  via the booking id; the matching Purchase fires later when the card is charged. */
-export async function sendSchedule(input: { bookingId: string; valuePence: number; clientId?: string | null; email?: string | null; campaign?: string | null }): Promise<void> {
+export async function sendSchedule(input: ConsentInput & { bookingId: string; valuePence: number; clientId?: string | null; email?: string | null; campaign?: string | null }): Promise<void> {
   if (!crmEnabled) return;
   try {
     const [ids, secrets] = await Promise.all([readJson(TRACKING_KEY), readJson(SECRETS_KEY)]);
     const value = Math.max(0, input.valuePence) / 100;
     const clientId = input.clientId || input.bookingId;
     await Promise.allSettled([
-      ids.metaPixelId && secrets.metaCapiToken ? metaEvent(ids.metaPixelId, secrets.metaCapiToken, 'Schedule', input.bookingId, { value, email: input.email }) : null,
-      ids.ga4Id && secrets.ga4ApiSecret ? ga4Event(ids.ga4Id, secrets.ga4ApiSecret, clientId, 'begin_checkout', { currency: 'GBP', value, ...(input.campaign ? { campaign: input.campaign } : {}) }) : null,
+      input.marketingConsent && ids.metaPixelId && secrets.metaCapiToken ? metaEvent(ids.metaPixelId, secrets.metaCapiToken, 'Schedule', input.bookingId, { value, email: input.email }) : null,
+      input.analyticsConsent && ids.ga4Id && secrets.ga4ApiSecret ? ga4Event(ids.ga4Id, secrets.ga4ApiSecret, clientId, 'begin_checkout', { currency: 'GBP', value, ...(input.campaign ? { campaign: input.campaign } : {}) }) : null,
     ].filter(Boolean) as Promise<unknown>[]);
   } catch (e) {
     console.error('[conversions] schedule failed:', (e as Error)?.message);

@@ -22,16 +22,25 @@ export function getConsent(): ConsentValue | null {
   }
 }
 
-function save(v: ConsentValue) {
-  localStorage.setItem(KEY, JSON.stringify(v));
-  // Mirror the analytics choice into a readable first-party cookie so the SERVER
-  // can verify consent before storing behavioural data (session replay): cookies
-  // are sent with requests, localStorage is not. Necessary-purpose by nature.
+// Mirror both choices into readable first-party cookies so the SERVER can
+// verify consent too — for behavioural data (session replay, analytics cookie)
+// and for gating the server-side GA4/Meta conversion sends in lib/conversions.ts
+// (marketing cookie) — cookies are sent with requests, localStorage is not.
+// Necessary-purpose by nature: it only ever restates the visitor's own choice.
+function mirrorConsentCookies(v: ConsentValue) {
   try {
     document.cookie = v.analytics
       ? `kc_analytics_consent=1; path=/; max-age=${60 * 60 * 24 * 365}; SameSite=Lax`
       : 'kc_analytics_consent=; path=/; max-age=0; SameSite=Lax';
+    document.cookie = v.marketing
+      ? `kc_marketing_consent=1; path=/; max-age=${60 * 60 * 24 * 365}; SameSite=Lax`
+      : 'kc_marketing_consent=; path=/; max-age=0; SameSite=Lax';
   } catch { /* non-browser */ }
+}
+
+function save(v: ConsentValue) {
+  localStorage.setItem(KEY, JSON.stringify(v));
+  mirrorConsentCookies(v);
   window.dispatchEvent(new CustomEvent('kc-consent', { detail: v }));
 }
 
@@ -46,7 +55,14 @@ export function CookieConsent() {
   const prevFocusRef = useRef<HTMLElement | null>(null);
 
   useEffect(() => {
-    if (!getConsent()) setShow(true);
+    const stored = getConsent();
+    if (!stored) setShow(true);
+    // Re-mirror a stored choice on every load. The banner only writes the
+    // cookies when it is interacted with, and it never reappears once a choice
+    // is in localStorage — so visitors who chose before a given mirror cookie
+    // existed would otherwise never get it, and the server would read their
+    // consent as "not given" forever.
+    else mirrorConsentCookies(stored);
     // Allow re-opening from a footer "Cookie settings" link.
     const open = () => { setCustomise(true); setShow(true); };
     window.addEventListener('kc-open-consent', open);

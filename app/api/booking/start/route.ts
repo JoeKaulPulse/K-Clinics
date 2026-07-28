@@ -226,7 +226,7 @@ export async function POST(req: Request) {
     // saw same-day conversions.
     try {
       const { sendSchedule } = await import('@/lib/conversions');
-      await sendSchedule({ bookingId: booking.id, valuePence: totalPrice, clientId: client.id, email: dobRow?.marketingOptIn ? client.email : null, campaign: booking.attribCampaign });
+      await sendSchedule({ bookingId: booking.id, valuePence: totalPrice, clientId: client.id, email: dobRow?.marketingOptIn ? client.email : null, campaign: booking.attribCampaign, analyticsConsent: booking.analyticsConsent, marketingConsent: booking.marketingConsent });
     } catch { /* best-effort */ }
     return NextResponse.json({ ok: true, requested: true, bookingId: booking.id, manageToken: booking.manageToken });
   }
@@ -249,7 +249,7 @@ export async function POST(req: Request) {
   // later when the card is charged. Email only on marketing opt-in.
   try {
     const { sendSchedule } = await import('@/lib/conversions');
-    await sendSchedule({ bookingId: booking.id, valuePence: totalPrice, clientId: client.id, email: dobRow?.marketingOptIn ? client.email : null, campaign: booking.attribCampaign });
+    await sendSchedule({ bookingId: booking.id, valuePence: totalPrice, clientId: client.id, email: dobRow?.marketingOptIn ? client.email : null, campaign: booking.attribCampaign, analyticsConsent: booking.analyticsConsent, marketingConsent: booking.marketingConsent });
   } catch { /* best-effort */ }
 
   // BLD-133: if this booking came from a waitlist claim link, retire the offer.

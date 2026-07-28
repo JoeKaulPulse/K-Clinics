@@ -38,8 +38,10 @@ export async function POST(req: Request) {
     if (result.ok && isKVision) {
       try {
         const { sendLead } = await import('@/lib/conversions');
+        const { consentFromCookieHeader } = await import('@/lib/attribution');
         const eventId = (parsed.data as { eventId?: string }).eventId || globalThis.crypto.randomUUID();
-        await sendLead({ eventId, email: null, sourceUrl: req.headers.get('referer') });
+        const { analyticsConsent, marketingConsent } = consentFromCookieHeader(req.headers.get('cookie'));
+        await sendLead({ eventId, email: null, sourceUrl: req.headers.get('referer'), analyticsConsent, marketingConsent });
       } catch { /* best-effort */ }
       // BLD-734: email the passwordless account a one-tap sign-in link so they
       // can return without a password (same claim path as guest bookings,
