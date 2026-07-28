@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import * as Sentry from '@sentry/nextjs';
 import { crmEnabled } from '@/lib/crm';
 import { z } from 'zod';
 
@@ -20,6 +21,7 @@ export async function POST(req: Request) {
     return NextResponse.json(result, { status: result.ok ? 200 : 400 });
   } catch (err) {
     console.error('[reset] failed:', err);
+    Sentry.captureException(err, { tags: { area: 'account/reset' } });
     return NextResponse.json({ ok: false, error: 'Something went wrong. Please try again.' }, { status: 500 });
   }
 }

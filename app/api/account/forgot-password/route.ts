@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import * as Sentry from '@sentry/nextjs';
 import { crmEnabled } from '@/lib/crm';
 import { z } from 'zod';
 
@@ -17,6 +18,7 @@ export async function POST(req: Request) {
     await requestPasswordReset(parsed.data.email);
   } catch (err) {
     console.error('[forgot-password] failed:', err);
+    Sentry.captureException(err, { tags: { area: 'account/forgot-password' } });
   }
   // Always succeed to avoid leaking which emails are registered.
   return NextResponse.json({ ok: true });
