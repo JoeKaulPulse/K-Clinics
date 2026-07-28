@@ -22,14 +22,13 @@ export const PAGE_SEEDS: Record<string, () => Section[]> = {
   ],
 
   '/finance': () => [
-    s('hero', { eyebrow: 'Cost & finance', title: 'Care that fits your budget.', lede: 'Exceptional treatment shouldn’t mean compromise. We keep pricing transparent and offer flexible ways to pay — including Buy Now, Pay Later — so you can move forward with confidence.', ctaPrimaryLabel: 'See the full price list', ctaPrimaryHref: '/pricing', ctaSecondaryLabel: 'Buy Now, Pay Later', ctaSecondaryHref: '#buy-now-pay-later' }),
+    s('hero', { eyebrow: 'Cost & finance', title: 'Care that fits your budget.', lede: 'Exceptional treatment shouldn’t mean compromise. We keep pricing transparent and offer flexible ways to pay, so you can move forward with confidence.', ctaPrimaryLabel: 'See the full price list', ctaPrimaryHref: '/pricing' }),
     s('featureGrid', { heading: 'Flexible ways to pay.', columns: '2', items: [
       { title: 'Transparent pricing', text: 'Every treatment and course price is published up front — no hidden fees, ever. You’ll always know the full cost before you commit.' },
       { title: 'Pay as you go', text: 'Pay per session as you progress through a course, so you can spread the cost naturally over your treatment plan.' },
       { title: 'Consultation credited', text: 'Where a consultation fee applies (e.g. dental implants), it’s credited towards the cost of your treatment when you proceed.' },
       { title: '0% interest-free options', text: 'On eligible higher-value treatments we offer flexible, interest-free payment plans so you can focus on your care, not the cost.' },
     ] }),
-    s('imageText', { eyebrow: 'Buy now, pay later', heading: 'Spread the cost, interest-free.', body: 'Split your treatment into smaller, manageable instalments at checkout with Clearpay or Klarna. Quick to set up, with no impact on the care you receive.\n\n• Choose Clearpay or Klarna when you pay.\n• Pay in interest-free instalments over a few weeks or months.\n• A soft check at sign-up — your treatment plan stays exactly the same.\n\nBuy Now, Pay Later is provided by Clearpay and Klarna, not by KClinics. Subject to status and eligibility; 18+, UK residents.', side: 'right' }),
     s('cta', { heading: 'Questions about paying?', text: 'Our team will happily talk you through the options and what suits you best.', ctaLabel: 'View pricing', ctaHref: '/pricing', tone: 'bone' }),
   ],
 

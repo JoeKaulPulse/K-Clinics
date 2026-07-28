@@ -35,7 +35,7 @@ export default async function AiConsultationPage() {
           {[
             { n: '1', t: 'Upload a photo', d: 'A clear, front-on photo of your face, skin, smile, hair or body in soft, even light. Never intimate areas. Add up to four.' },
             { n: '2', t: 'Our AI analyses it', d: 'It reads concerns across skin, smile and hair and matches them to our treatments — cosmetic guidance, not a medical diagnosis.' },
-            { n: '3', t: 'Get a plan you can book', d: 'A phased, dated plan built to your budget, with prices and Clearpay — book any step in a tap. A clinician confirms everything in clinic.' },
+            { n: '3', t: 'Get a plan you can book', d: 'A phased, dated plan built to your budget, with prices upfront — book any step in a tap. A clinician confirms everything in clinic.' },
           ].map((s) => (
             <li key={s.n} className="rounded-[var(--radius-xl)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-7">
               <span className="grid h-10 w-10 place-items-center rounded-full bg-[var(--color-ink)] font-[family-name:var(--font-display)] text-lg text-[var(--color-porcelain)]">{s.n}</span>
