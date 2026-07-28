@@ -246,15 +246,21 @@ async function maybeQualifyReferral(clientId: string, bookingId: string, spendPe
   const priorSpend = await db.clientPoints.findFirst({
     where: { clientId, category: 'SPEND', bookingId: { not: bookingId } },
   });
+  // Both EXPIRED transitions are guarded on JOINED for the same reason as the
+  // QUALIFIED claim below: an unconditional update here would clobber a status
+  // a concurrent caller had already moved on (writing EXPIRED over a QUALIFIED
+  // referral whose points were already paid, leaving the row permanently
+  // misreported on the admin referrals view). Whoever writes first owns the
+  // outcome; a loser simply returns.
   if (priorSpend) {
     // They've already had a first treatment that didn't qualify — close it out.
-    await db.referral.update({ where: { id: ref.id }, data: { status: 'EXPIRED' } });
+    await db.referral.updateMany({ where: { id: ref.id, status: 'JOINED' }, data: { status: 'EXPIRED' } });
     return;
   }
 
   if (spendPence < LOYALTY.referralThresholdPence) {
     // First treatment was under £100 — referral doesn't qualify.
-    await db.referral.update({ where: { id: ref.id }, data: { status: 'EXPIRED' } });
+    await db.referral.updateMany({ where: { id: ref.id, status: 'JOINED' }, data: { status: 'EXPIRED' } });
     return;
   }
 
