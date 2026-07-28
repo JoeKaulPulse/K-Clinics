@@ -39,7 +39,9 @@ export async function POST(req: Request) {
       select: { marketingOptIn: true, unsubscribed: true },
     });
     const consentedEmail = purchaser?.marketingOptIn && !purchaser.unsubscribed ? voucher.purchaserEmail : null;
-    sendPurchase({ bookingId: parsed.data.voucherId, valuePence: totalPence, email: consentedEmail }).catch(() => {});
+    const { consentFromCookieHeader } = await import('@/lib/attribution');
+    const { analyticsConsent, marketingConsent } = consentFromCookieHeader(req.headers.get('cookie'));
+    sendPurchase({ bookingId: parsed.data.voucherId, valuePence: totalPence, email: consentedEmail, analyticsConsent, marketingConsent }).catch(() => {});
   }
   return NextResponse.json(res, { status: res.ok ? 200 : 400 });
 }

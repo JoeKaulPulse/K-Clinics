@@ -116,11 +116,14 @@ export async function POST(req: Request) {
     // with the browser pixel via the shared eventId. Email only on marketing opt-in.
     try {
       const { sendLead } = await import('@/lib/conversions');
+      const { consentFromCookieHeader } = await import('@/lib/attribution');
+      const { analyticsConsent, marketingConsent } = consentFromCookieHeader(req.headers.get('cookie'));
       await sendLead({
         eventId,
         clientId: client.id,
         email: data.marketingOptIn ? data.email : null,
         sourceUrl: req.headers.get('referer'),
+        analyticsConsent, marketingConsent,
       });
     } catch { /* best-effort */ }
 

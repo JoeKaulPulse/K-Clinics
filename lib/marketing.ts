@@ -25,18 +25,25 @@ export async function resolveCampaignId(attrib: Attribution | null): Promise<str
   return c?.id ?? null;
 }
 
-/** Read the first-touch attribution cookie and shape it for a Booking.create —
- *  resolving the matching campaign. Returns {} when there's nothing to attribute. */
+/** Read the first-touch attribution cookie plus the cookie-banner consent
+ *  choice, and shape it for a Booking.create — resolving the matching
+ *  campaign. The consent flags are always returned (default false — no cookie
+ *  banner interaction yet) so a later deferred conversion send always has an
+ *  explicit answer to check, even with no attribution cookie present. */
 export async function bookingAttribution(): Promise<{
   attribSource?: string | null; attribMedium?: string | null; attribCampaign?: string | null;
   attribLanding?: string | null; gclid?: string | null; marketingCampaignId?: string | null;
+  analyticsConsent: boolean; marketingConsent: boolean;
 }> {
+  const { cookies } = await import('next/headers');
+  const { ANALYTICS_CONSENT_COOKIE, MARKETING_CONSENT_COOKIE } = await import('@/lib/attribution');
+  const jar = await cookies();
+  const analyticsConsent = jar.get(ANALYTICS_CONSENT_COOKIE)?.value === '1';
+  const marketingConsent = jar.get(MARKETING_CONSENT_COOKIE)?.value === '1';
   try {
-    const { cookies } = await import('next/headers');
     const { ATTRIB_COOKIE, parseAttribution } = await import('@/lib/attribution');
-    const jar = await cookies();
     const attrib = parseAttribution(jar.get(ATTRIB_COOKIE)?.value);
-    if (!attrib) return {};
+    if (!attrib) return { analyticsConsent, marketingConsent };
     return {
       attribSource: attrib.source ?? null,
       attribMedium: attrib.medium ?? null,
@@ -44,9 +51,10 @@ export async function bookingAttribution(): Promise<{
       attribLanding: attrib.landing ?? null,
       gclid: attrib.gclid ?? null,
       marketingCampaignId: await resolveCampaignId(attrib),
+      analyticsConsent, marketingConsent,
     };
   } catch {
-    return {};
+    return { analyticsConsent, marketingConsent };
   }
 }
 

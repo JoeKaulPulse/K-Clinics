@@ -34,3 +34,21 @@ export function parseAttribution(raw?: string | null): Attribution | null {
     return null;
   }
 }
+
+// First-party cookie-consent banner (components/legal/CookieConsent.tsx) mirrors
+// the visitor's choice into these two cookies so the SERVER can honour rejection
+// too, not just the browser pixels (lib/analytics-events.ts). Analytics gates the
+// GA4 side of server-side conversions (lib/conversions.ts); marketing gates Meta.
+export const ANALYTICS_CONSENT_COOKIE = 'kc_analytics_consent';
+export const MARKETING_CONSENT_COOKIE = 'kc_marketing_consent';
+
+/** Read both consent cookies from a raw `Cookie` request header (fetch API
+ *  `Request`, which has no `.cookies` jar). Missing/rejected = false — fail
+ *  closed, matching the "no pre-ticked boxes" default the banner itself uses. */
+export function consentFromCookieHeader(cookieHeader?: string | null): { analyticsConsent: boolean; marketingConsent: boolean } {
+  const header = cookieHeader || '';
+  return {
+    analyticsConsent: new RegExp(`(?:^|;\\s*)${ANALYTICS_CONSENT_COOKIE}=1(?:;|$)`).test(header),
+    marketingConsent: new RegExp(`(?:^|;\\s*)${MARKETING_CONSENT_COOKIE}=1(?:;|$)`).test(header),
+  };
+}

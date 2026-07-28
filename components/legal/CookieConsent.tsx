@@ -24,13 +24,18 @@ export function getConsent(): ConsentValue | null {
 
 function save(v: ConsentValue) {
   localStorage.setItem(KEY, JSON.stringify(v));
-  // Mirror the analytics choice into a readable first-party cookie so the SERVER
-  // can verify consent before storing behavioural data (session replay): cookies
-  // are sent with requests, localStorage is not. Necessary-purpose by nature.
+  // Mirror both choices into readable first-party cookies so the SERVER can
+  // verify consent too — for behavioural data (session replay, analytics
+  // cookie) and for gating the server-side GA4/Meta conversion sends in
+  // lib/conversions.ts (marketing cookie) — cookies are sent with requests,
+  // localStorage is not. Necessary-purpose by nature.
   try {
     document.cookie = v.analytics
       ? `kc_analytics_consent=1; path=/; max-age=${60 * 60 * 24 * 365}; SameSite=Lax`
       : 'kc_analytics_consent=; path=/; max-age=0; SameSite=Lax';
+    document.cookie = v.marketing
+      ? `kc_marketing_consent=1; path=/; max-age=${60 * 60 * 24 * 365}; SameSite=Lax`
+      : 'kc_marketing_consent=; path=/; max-age=0; SameSite=Lax';
   } catch { /* non-browser */ }
   window.dispatchEvent(new CustomEvent('kc-consent', { detail: v }));
 }
