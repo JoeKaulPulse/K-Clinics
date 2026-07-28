@@ -259,7 +259,20 @@ async function maybeQualifyReferral(clientId: string, bookingId: string, spendPe
   }
 
   // Qualify: credit both sides.
-  await db.referral.update({ where: { id: ref.id }, data: { status: 'QUALIFIED', qualifiedAt: new Date(), rewardedAt: new Date() } });
+  // PRJ-1060.8: two concurrent qualifying events for the same referral (e.g.
+  // two bookings for the referred client racing each other, or a webhook and
+  // a cron sweep both landing on this call) could both read status === 'JOINED'
+  // above and both fall through to here, double-crediting both sides. Guard
+  // with a conditional update (CAS) on the not-yet-qualified state, same
+  // pattern as the refundedPence CAS in lib/booking-actions.ts (BLD-1000):
+  // only the caller whose write actually flips JOINED -> QUALIFIED pays out;
+  // a concurrent loser sees count === 0 and returns without awarding twice.
+  const claimed = await db.referral.updateMany({
+    where: { id: ref.id, status: 'JOINED' },
+    data: { status: 'QUALIFIED', qualifiedAt: new Date(), rewardedAt: new Date() },
+  });
+  if (claimed.count === 0) return; // lost the race — another call already qualified and paid this referral
+
   await awardClientPoints({ clientId: ref.referrerId, points: LOYALTY.referralReward, category: 'REFERRAL', reason: 'A friend you referred completed their first treatment', referralId: ref.id });
   await awardClientPoints({ clientId, points: LOYALTY.referralReward, category: 'REFERRAL', reason: 'Welcome bonus for joining via a friend', referralId: ref.id });
 
