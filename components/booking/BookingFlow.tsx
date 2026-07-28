@@ -363,6 +363,9 @@ export function BookingFlow({ catalogue, client, preselect = null, preselectDate
                     </p>
                   )}
                   <p className={label}>Available times</p>
+                  {/* PRJ-1069.2: role=status announces loading/result state so screen-reader
+                      users aren't left in silence while slots load. */}
+                  <div role="status" aria-live="polite">
                   {loadingSlots ? <p className="text-sm text-[var(--color-stone)]">Finding available times…</p>
                     : slots.length === 0 ? (
                       <div>
@@ -387,6 +390,7 @@ export function BookingFlow({ catalogue, client, preselect = null, preselectDate
                         {preferred.length > 0 && <p className="mt-2 text-xs text-[var(--color-stone)]"><span className="text-[var(--color-gold)]">★</span> Recommended — these times fit neatly around the day’s other appointments, so you’re often seen more promptly.</p>}
                       </>
                     )}
+                  </div>
                 </div>
               )}
               {/* BLD-838: optional email capture — anonymous visitors only (signed-in
@@ -512,7 +516,7 @@ export function BookingFlow({ catalogue, client, preselect = null, preselectDate
 
       {stage !== 'card' && !(stage === 'account' && authed) && (
         <div className="mt-8 flex items-center justify-between gap-4">
-          <button type="button" onClick={() => goBack()} className="text-sm font-medium text-[var(--color-stone)] hover:text-[var(--color-ink)]">← Back</button>
+          <button type="button" onClick={() => goBack()} className="min-h-11 rounded-full px-4 py-2 text-sm font-medium text-[var(--color-stone)] hover:text-[var(--color-ink)]">← Back</button>
           {stage === 'variant' && <Button onClick={() => variant && setStage('time')} variant={variant ? 'gold' : 'outline'} disabled={!variant}>Continue <ArrowIcon /></Button>}
           {stage === 'time' && <Button onClick={() => { if (!slot) return; setStage('upsell'); try { (window as Window & { gtag?: (...a: unknown[]) => void }).gtag?.('event', 'begin_checkout', { currency: 'GBP', value: orderTotal / 100, items: [{ item_id: variantId, item_name: service?.name, item_category: service?.category }] }); } catch { /* analytics best-effort */ } }} variant={slot ? 'gold' : 'outline'} disabled={!slot}>Continue <ArrowIcon /></Button>}
           {stage === 'upsell' && <Button onClick={() => { if (!aftercareAck) { setError('Please confirm you’ve read and agree to the aftercare instructions.'); return; } if (!ageDeclare) { setError('Please confirm you are 18 or over.'); return; } setError(''); if (!authed) { setStage('account'); return; } if (!submitting) submitBooking(); }} variant={aftercareAck && ageDeclare ? 'gold' : 'outline'}>{submitting ? 'Securing…' : !authed ? 'Continue' : isSameDay ? 'Request appointment' : 'Continue to confirm'} <ArrowIcon /></Button>}

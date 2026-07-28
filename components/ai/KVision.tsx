@@ -307,7 +307,7 @@ function Heading({ kicker, title }: { kicker: string; title: string }) {
 function NavRow({ onBack, next }: { onBack: () => void; next: { label: string; onClick: () => void; disabled?: boolean } }) {
   return (
     <div className="mt-8 flex items-center justify-between gap-4">
-      <button onClick={onBack} className="text-sm text-[#cdbfae] hover:text-[#f4ece1]">← Back</button>
+      <button onClick={onBack} className="min-h-11 rounded-full px-4 py-2 text-sm text-[#cdbfae] hover:text-[#f4ece1]">← Back</button>
       <button onClick={next.onClick} disabled={next.disabled} className="rounded-full bg-[var(--color-gold,#c8a96a)] px-6 py-3 text-sm font-medium text-[#0c0b0a] transition-transform hover:scale-[1.03] disabled:opacity-40">{next.label}</button>
     </div>
   );
@@ -409,7 +409,7 @@ function AuthStep({ onDone, onError, onBack }: { onDone: (firstName?: string) =>
   }
   return (
     <motion.div {...fade} className="mx-auto max-w-md">
-      <button onClick={onBack} className="mb-5 text-sm text-[#cdbfae] hover:text-[#f4ece1]">← Back to photos</button>
+      <button onClick={onBack} className="mb-5 min-h-11 rounded-full px-4 py-2 text-sm text-[#cdbfae] hover:text-[#f4ece1]">← Back to photos</button>
       <Heading kicker="Your plan is ready" title={mode === 'signup' ? 'Enter your email to reveal it' : 'Welcome back — sign in to reveal it'} />
       <p className="mt-3 text-sm text-[#cdbfae]">{mode === 'signup' ? 'No password to set up — we’ll show your personalised plan now and email you a one-tap link to get back in, plus 15% off your first visit.' : 'Sign in to reveal your personalised plan.'}</p>
       <div className="mt-6 space-y-3">
