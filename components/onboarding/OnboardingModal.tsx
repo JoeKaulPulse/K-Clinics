@@ -104,7 +104,7 @@ export function OnboardingModal({ title, intro, steps, initial, endpoint, onClos
           </AnimatePresence>
 
           <div className="mt-8 flex items-center justify-between">
-            <button onClick={() => (i > 0 ? setI(i - 1) : onClose(false))} className="text-sm text-[var(--color-stone)] hover:underline">{i > 0 ? 'Back' : 'Later'}</button>
+            <button onClick={() => (i > 0 ? setI(i - 1) : onClose(false))} className="min-h-11 rounded-full px-4 py-2 text-sm text-[var(--color-stone)] hover:underline">{i > 0 ? 'Back' : 'Later'}</button>
             <button onClick={next} disabled={busy} className="rounded-full bg-[var(--color-ink)] px-6 py-2.5 text-sm text-[var(--color-porcelain)] disabled:opacity-50">{busy ? 'Saving…' : last ? 'Finish' : 'Next'}</button>
           </div>
         </div>
