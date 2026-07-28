@@ -61,16 +61,17 @@ export function nextTier(tiers: Tier[], pence: number): Tier | null {
 }
 
 /** Realised spend over the trailing 12 months: amounts actually charged for
- *  this client's treatments plus any paid retail orders linked to them. */
+ *  this client's treatments (net of any refunds) plus any paid retail orders
+ *  linked to them. */
 export async function rolling12moSpendPence(clientId: string): Promise<number> {
   const since = new Date(Date.now() - 365 * 86400000);
-  const bookings = await db.booking.aggregate({ _sum: { chargedPence: true }, where: { clientId, chargedAt: { gte: since } } });
-  let total = bookings._sum.chargedPence ?? 0;
+  const bookings = await db.booking.aggregate({ _sum: { chargedPence: true, refundedPence: true }, where: { clientId, chargedAt: { gte: since } } });
+  let total = (bookings._sum.chargedPence ?? 0) - (bookings._sum.refundedPence ?? 0);
   try {
     const orders = await db.order.aggregate({ _sum: { totalPence: true }, where: { clientId, status: { in: ['PAID', 'FULFILLED'] }, createdAt: { gte: since } } });
     total += orders._sum.totalPence ?? 0;
   } catch { /* orders may not link a client — treatment spend still counts */ }
-  return total;
+  return Math.max(0, total);
 }
 
 export type MembershipStatus = {

@@ -2808,6 +2808,12 @@ export const BUILD_BACKLOG: BacklogItem[] = [
     notes: ['Fix: replaced the static label with a real action -- an AButton linking to /contact -- for the active-but-no-content case, keeping the plain \'Awaiting confirmation\' label only for the not-yet-active case. (BLD-1055)'],
   },
   {
+    title: 'Membership tier calculation counts refunded revenue toward spend', type: 'ERROR', urgency: 'P1', status: 'IN_REVIEW', assignee: 'claude',
+    value: 6, effort: 2,
+    detail: 'rolling12moSpendPence() in lib/membership.ts summed Booking.chargedPence over the trailing 12 months but never subtracted Booking.refundedPence, so a fully or partially refunded treatment still counted its full charge toward a client\'s K Circle spend -- a client could reach Silver/Gold/Platinum (and keep the faster points multiplier, early access, retail discount) on revenue the clinic never actually kept.',
+    notes: ['Fix: rolling12moSpendPence() now aggregates both chargedPence and refundedPence over the window and nets them (chargedPence - refundedPence, floored at 0) before adding paid retail-order spend, so a refund immediately lowers the rolling total the next time the tier is recomputed. reverseSpendPoints() (lib/client-loyalty.ts) already calls recomputeClientTier() right after a refund, so the corrected tier takes effect on that same request, not just on the nightly recomputeActiveTiers() cron. No schema change; Order refunds already excluded via the existing PAID/FULFILLED status filter. (PRJ-1060.7)'],
+  },
+  {
     title: 'Price-list importer silently turns blank price cells into live £0 bookable prices', type: 'ERROR', urgency: 'P1', status: 'IN_REVIEW', assignee: 'claude',
     value: 7, effort: 2,
     detail: 'parseMoney() in lib/price-import.ts returns 0 (not null) for a blank price cell, the same as it does for an explicit \'on consultation\' note. A genuinely missing column is skipped with a warning, but a blank cell in an existing price column is not -- it silently becomes a real pricePence:0 variant with no warning, and the commit route deletes+recreates ServiceVariant rows live from it. The admin preview only shows 3 sample rows per section, so a mis-parsed row further down is invisible before commit, and a pricePence:0 variant is real and bookable.',
