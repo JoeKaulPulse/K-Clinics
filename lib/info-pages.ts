@@ -170,7 +170,7 @@ export const infoPages: InfoPage[] = [
     slug: "payment-option",
     title: "Payment Options",
     intro: "At KClinics, we strive to ensure that every client feels as comfortable as possible at every stage of their interaction with us, including the payment process. Because we recognize how important financial flexibility is, we provide a range of payment choices to meet your needs. Our payment process is easy, clear and safe, so you can concentrate on what really counts — your beauty and well-being.",
-    blocks: [{"heading":"Bank Cards","body":"We accept all major debit and credit cards, including Visa and Mastercard. Your transactions are processed quickly, reliably and securely, whether you make your payment online or in person at the clinic."},{"heading":"Klarna","body":"Klarna’s Pay in 3/Pay in 30 days are unregulated credit agreements. Borrowing more than you can afford or paying late may negatively impact your financial status and ability to obtain credit. 18+, UK residents only. Subject to status. Ts&Cs and late fees apply."}],
+    blocks: [{"heading":"Bank Cards","body":"We accept all major debit and credit cards, including Visa and Mastercard. Your transactions are processed quickly, reliably and securely, whether you make your payment online or in person at the clinic."}],
   },
 ];
 
