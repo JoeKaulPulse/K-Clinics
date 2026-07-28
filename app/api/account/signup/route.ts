@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import * as Sentry from '@sentry/nextjs';
 import { clientSignupSchema, kVisionSignupSchema } from '@/lib/validation';
 import { crmEnabled } from '@/lib/crm';
 
@@ -71,6 +72,7 @@ export async function POST(req: Request) {
     return NextResponse.json(result, { status: result.ok ? 200 : 409 });
   } catch (err) {
     console.error('[account/signup] failed:', err);
+    Sentry.captureException(err, { tags: { area: 'account/signup' } });
     // Surface the underlying cause off-production to make issues diagnosable.
     const detail = process.env.VERCEL_ENV && process.env.VERCEL_ENV !== 'production'
       ? ` (${(err as Error)?.message?.slice(0, 160)})`
