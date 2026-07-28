@@ -35,13 +35,17 @@ export async function bookingAttribution(): Promise<{
   attribLanding?: string | null; gclid?: string | null; marketingCampaignId?: string | null;
   analyticsConsent: boolean; marketingConsent: boolean;
 }> {
-  const { cookies } = await import('next/headers');
-  const { ANALYTICS_CONSENT_COOKIE, MARKETING_CONSENT_COOKIE } = await import('@/lib/attribution');
-  const jar = await cookies();
-  const analyticsConsent = jar.get(ANALYTICS_CONSENT_COOKIE)?.value === '1';
-  const marketingConsent = jar.get(MARKETING_CONSENT_COOKIE)?.value === '1';
+  // Everything here stays inside the try: cookies() throws outside a request
+  // scope, and this runs on the booking-creation path — a throw would fail the
+  // booking itself rather than just losing the attribution/consent signal.
+  let analyticsConsent = false;
+  let marketingConsent = false;
   try {
-    const { ATTRIB_COOKIE, parseAttribution } = await import('@/lib/attribution');
+    const { cookies } = await import('next/headers');
+    const { ATTRIB_COOKIE, parseAttribution, ANALYTICS_CONSENT_COOKIE, MARKETING_CONSENT_COOKIE } = await import('@/lib/attribution');
+    const jar = await cookies();
+    analyticsConsent = jar.get(ANALYTICS_CONSENT_COOKIE)?.value === '1';
+    marketingConsent = jar.get(MARKETING_CONSENT_COOKIE)?.value === '1';
     const attrib = parseAttribution(jar.get(ATTRIB_COOKIE)?.value);
     if (!attrib) return { analyticsConsent, marketingConsent };
     return {
