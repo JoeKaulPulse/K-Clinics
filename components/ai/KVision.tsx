@@ -121,7 +121,7 @@ export function KVision({ signedIn, firstName, enabled }: { signedIn: boolean; f
           {stage === 'budget' && (
             <motion.div key="budget" {...fade} className="mx-auto max-w-2xl">
               <Heading kicker="Step 1" title="What’s your budget?" />
-              <p className="mt-3 text-sm text-[#cdbfae]">So we only recommend a plan that works for you. You can always add more later — and spread the cost with Clearpay.</p>
+              <p className="mt-3 text-sm text-[#cdbfae]">So we only recommend a plan that works for you. You can always add more later.</p>
               <div className="mt-6 grid gap-2 sm:grid-cols-2">
                 {BUDGETS.map((b) => {
                   const on = budget?.label === b.label;
@@ -273,11 +273,11 @@ function Results({ result, budget, onRestart }: { result: Result; budget: Budget
         <div>
           <p className="text-sm text-[#9a8f80]">Plan total{budget?.pence ? (result.aboveBudget ? ` · above your ${budget.label} budget` : ` · within your ${budget.label} budget`) : ''}</p>
           <p className="font-[family-name:var(--font-display)] text-2xl">{result.phases.some((p) => p.treatments.some((t) => t.estimated)) && result.planTotalPence > 0 ? `from ${money(result.planTotalPence)}` : money(result.planTotalPence)}</p>
-          {result.aboveBudget && <p className="mt-1 text-xs text-[#cdbfae]">This is the smallest effective plan for what we saw — it sits a little above your chosen budget. You can start with one step, or spread the cost with Clearpay.</p>}
+          {result.aboveBudget && <p className="mt-1 text-xs text-[#cdbfae]">This is the smallest effective plan for what we saw — it sits a little above your chosen budget. You can start with one step and add the rest later.</p>}
         </div>
         {result.phases[0]?.treatments[0] && <a href={result.phases[0].treatments[0].href} className="rounded-full bg-[var(--color-gold,#c8a96a)] px-7 py-3 text-sm font-medium text-[#0c0b0a] transition-transform hover:scale-[1.03]">Book your first step →</a>}
       </div>
-      <p className="mt-3 text-center text-xs text-[#9a8f80]">Spread the cost with Clearpay. Personalised cosmetic guidance, not a medical diagnosis — confirmed at your consultation and patch test.</p>
+      <p className="mt-3 text-center text-xs text-[#9a8f80]">Personalised cosmetic guidance, not a medical diagnosis — confirmed at your consultation and patch test.</p>
 
       {/* Worth considering (above budget) */}
       {result.extras.length > 0 && (
