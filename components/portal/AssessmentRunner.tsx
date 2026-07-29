@@ -157,7 +157,7 @@ export function AssessmentRunner({ q, locale = 'en' }: { q: Questionnaire; local
 
       {/* Nav */}
       <div className="mx-auto flex w-full max-w-2xl items-center justify-between px-6 pb-10">
-        <button onClick={() => go(-1)} className={`text-sm font-medium text-[var(--color-stone)] transition-opacity ${i < 0 ? 'pointer-events-none opacity-0' : 'hover:text-[var(--color-ink)]'}`}>{t('assess.back')}</button>
+        <button onClick={() => go(-1)} className={`min-h-11 rounded-full px-4 py-2 text-sm font-medium text-[var(--color-stone)] transition-opacity ${i < 0 ? 'pointer-events-none opacity-0' : 'hover:text-[var(--color-ink)]'}`}>{t('assess.back')}</button>
         {i >= 0 && i < total && (
           <button
             onClick={() => answeredOk(current) && go(1)}

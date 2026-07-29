@@ -12,7 +12,7 @@ export function PaymentMarks({ className = '' }: { className?: string }) {
   // are aria-hidden. This avoids aria-label on role-less <span>s (WCAG
   // aria-prohibited-attr) while announcing the accepted methods once.
   return (
-    <div className={`flex flex-wrap items-center gap-1.5 ${className}`} role="img" aria-label="Accepted payment methods: Visa, Mastercard, American Express, Apple Pay, Google Pay, Clearpay and Klarna">
+    <div className={`flex flex-wrap items-center gap-1.5 ${className}`} role="img" aria-label="Accepted payment methods: Visa, Mastercard, American Express, Apple Pay and Google Pay">
       {/* Visa */}
       <span className={wrap} aria-hidden><span className={`${word} italic tracking-[0.04em]`}>VISA</span></span>
       {/* Mastercard */}
@@ -35,9 +35,6 @@ export function PaymentMarks({ className = '' }: { className?: string }) {
       <span className={wrap} aria-hidden>
         <span className={`${word} mr-1`}>G</span><span className={word}>Pay</span>
       </span>
-      {/* Clearpay / Klarna (Buy now, pay later) */}
-      <span className={wrap} aria-hidden><span className={word}>Clearpay</span></span>
-      <span className={wrap} aria-hidden><span className={word}>Klarna</span></span>
     </div>
   );
 }
