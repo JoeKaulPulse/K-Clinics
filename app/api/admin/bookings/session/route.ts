@@ -32,7 +32,7 @@ export async function POST(req: Request) {
   type Data = import('@/lib/appointment-session').SessionData;
   type Touchpoints = import('@/lib/appointment-session').Touchpoint[];
 
-  const booking = await db.booking.findUnique({ where: { id: bookingId }, select: { id: true, clientId: true, status: true, finishedAt: true, chargedAt: true, giftVoucherCode: true, giftVoucherPence: true } });
+  const booking = await db.booking.findUnique({ where: { id: bookingId }, select: { id: true, clientId: true, status: true, finishedAt: true, chargedAt: true, prepaidAt: true, giftVoucherCode: true, giftVoucherPence: true } });
   if (!booking) return bad('Booking not found.', 404);
   // BLD-336: never run appointment-session actions against a cancelled booking.
   if (booking.status === 'CANCELLED') return bad('This booking was cancelled — no session actions are allowed.', 409);
@@ -182,8 +182,8 @@ export async function POST(req: Request) {
       // BLD-882: the link charges only the post-voucher remainder.
       const amountPence = grossPence - voucherOffPence;
       if (amountPence <= 0) return bad(VOUCHER_COVERS);
-      const b = await db.booking.findUnique({ where: { id: bookingId }, select: { treatmentTitle: true, chargedAt: true } });
-      if (b?.chargedAt) return bad('This booking is already paid.');
+      const b = await db.booking.findUnique({ where: { id: bookingId }, select: { treatmentTitle: true, chargedAt: true, prepaidAt: true } });
+      if (b?.chargedAt || b?.prepaidAt) return bad('This booking is already paid.');
       const { stripe } = await import('@/lib/stripe');
       const base = (process.env.NEXT_PUBLIC_SITE_URL || (await import('@/lib/site')).site.url).replace(/\/$/, '');
       const checkout = await stripe().checkout.sessions.create({
@@ -215,8 +215,8 @@ export async function POST(req: Request) {
       // BLD-882: the terminal captures only the post-voucher remainder.
       const amountPence = grossPence - voucherOffPence;
       if (amountPence <= 0) return bad(VOUCHER_COVERS);
-      const paid = await db.booking.findUnique({ where: { id: bookingId }, select: { chargedAt: true } });
-      if (paid?.chargedAt) return bad('This booking is already paid.');
+      const paid = await db.booking.findUnique({ where: { id: bookingId }, select: { chargedAt: true, prepaidAt: true } });
+      if (paid?.chargedAt || paid?.prepaidAt) return bad('This booking is already paid.');
       const deviceId = String(body.deviceId || '');
       const device = deviceId ? await db.device.findUnique({ where: { id: deviceId }, select: { provider: true, externalId: true } }) : null;
       const { captureOnTerminal } = await import('@/lib/terminal');
@@ -243,7 +243,7 @@ export async function POST(req: Request) {
       if (amountPence <= 0) return bad(VOUCHER_COVERS);
       const channel = String(body.channel || 'external').toLowerCase().replace(/[^a-z0-9_-]/g, '').slice(0, 24) || 'external';
       const updated = await db.booking.updateMany({
-        where: { id: bookingId, chargedAt: null },
+        where: { id: bookingId, chargedAt: null, prepaidAt: null },
         data: { chargedPence: amountPence, chargedAt: new Date(), chargePaymentIntentId: `ext_${channel}` },
       });
       if (updated.count === 0) return bad('This booking is already paid.');
@@ -274,7 +274,7 @@ export async function POST(req: Request) {
       if (amountPence <= 0) return bad('Enter the amount being collected first.');
       const code = String(body.code || '').trim().toUpperCase();
       if (!code) return bad('Enter the voucher code.');
-      if (booking.chargedAt) return bad('This booking is already paid.');
+      if (booking.chargedAt || booking.prepaidAt) return bad('This booking is already paid.');
       if ((booking.giftVoucherPence ?? 0) > 0) return bad('A voucher is already applied to this booking — remove it first to use a different one.');
       const { reserveVoucher, undoVoucherReservation, VOUCHER_INVALID_ERROR } = await import('@/lib/gift-vouchers');
       const { reservedPence } = await reserveVoucher(code, amountPence);
@@ -285,7 +285,7 @@ export async function POST(req: Request) {
       if (reservedPence >= amountPence) {
         // Fully covered — settle now, mirroring the 'external' channel.
         const updated = await db.booking.updateMany({
-          where: { id: bookingId, chargedAt: null, giftVoucherPence: 0 },
+          where: { id: bookingId, chargedAt: null, prepaidAt: null, giftVoucherPence: 0 },
           data: { chargedPence: amountPence, chargedAt: new Date(), chargePaymentIntentId: 'ext_gift-voucher', giftVoucherCode: code, giftVoucherPence: amountPence },
         });
         if (updated.count === 0) { await undoVoucherReservation(code, reservedPence); return bad('This booking was just paid on another screen.'); }

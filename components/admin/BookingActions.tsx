@@ -83,15 +83,25 @@ export function BookingActions({
         </div>
       )}
 
+      {/* BLD-1119: a course pre-paid in full upfront via BNPL (Klarna/Clearpay)
+          has nothing left to take — hide the charge UI entirely instead of
+          offering a "Charge card on file" action that would bill the client
+          a second time. */}
+      {prepaid && !charged && (
+        <div className="rounded-[var(--radius-md)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-4">
+          <p className="text-sm text-[var(--color-jade)]">Pre-paid in full via BNPL (Klarna/Clearpay) — nothing left to charge.</p>
+        </div>
+      )}
+
       {/* Charge — gated behind completion so a client is never charged before
           their treatment is delivered. */}
-      {canCharge && active && !charged && (
+      {canCharge && active && !charged && !prepaid && (
         <div className="rounded-[var(--radius-md)] border border-dashed border-[var(--color-line)] bg-[var(--color-bone)] p-4">
           <p className="text-sm font-medium text-[var(--color-stone)]">Take payment</p>
           <p className="mt-1 text-xs text-[var(--color-stone)]">Available once the appointment is marked <strong>completed</strong> — this prevents charging before the treatment is delivered.</p>
         </div>
       )}
-      {canCharge && completed && !charged && (
+      {canCharge && completed && !charged && !prepaid && (
         <div className="rounded-[var(--radius-md)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-4">
           <p className="mb-2 text-sm font-medium">Charge card on file</p>
           <div className="flex flex-wrap items-center gap-2">

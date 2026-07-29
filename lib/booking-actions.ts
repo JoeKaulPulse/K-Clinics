@@ -104,9 +104,14 @@ export async function chargeBooking(
   // BLD-147/246: idempotency. Cheap early-out on caller-supplied data; then re-fetch
   // from DB so two concurrent staff actions that both read chargedAt:null don't both
   // reach Stripe and create two PaymentIntents.
-  if (booking.chargedAt) return { ok: true };
-  const fresh = await db.booking.findUnique({ where: { id: booking.id }, select: { chargedAt: true } });
-  if (fresh?.chargedAt) return { ok: true };
+  // BLD-1119: a course pre-paid in full upfront via BNPL (Klarna/Clearpay, see
+  // courseTotalPence above) sets prepaidAt instead of chargedAt and never touches
+  // the card on file — treat it as equally "already paid" so a late-cancellation
+  // fee, a 4th-reschedule fee or a staff "charge now" can never bill that card a
+  // second time for a course the client already paid in full.
+  if (booking.chargedAt || booking.prepaidAt) return { ok: true };
+  const fresh = await db.booking.findUnique({ where: { id: booking.id }, select: { chargedAt: true, prepaidAt: true } });
+  if (fresh?.chargedAt || fresh?.prepaidAt) return { ok: true };
 
   try {
     const pi = await stripe().paymentIntents.create({
@@ -337,8 +342,11 @@ export async function finalizeBookingCharge(
   amountReceivedPence: number,
   opts: { late?: boolean } = {},
 ): Promise<boolean> {
+  // BLD-1119: also refuse to finalise against a booking pre-paid in full via
+  // BNPL (prepaidAt) — the authoritative guard for the webhook/SCA-recovery/
+  // terminal-capture paths, mirroring chargeBooking()'s own idempotency check.
   const updated = await db.booking.updateMany({
-    where: { id: bookingId, chargedAt: null },
+    where: { id: bookingId, chargedAt: null, prepaidAt: null },
     data: { chargePaymentIntentId: piId, chargedPence: amountReceivedPence, chargedAt: new Date() },
   });
   if (updated.count === 0) return false; // already finalised elsewhere — no-op

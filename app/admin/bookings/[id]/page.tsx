@@ -362,6 +362,7 @@ export default async function BookingDetail({ params }: { params: Promise<{ id: 
               canManage={sessionCan(session, 'bookings.manage')}
               canCharge={sessionCan(session, 'bookings.charge')}
               pointsRedeemedPence={b.pointsRedeemedPence}
+              prepaid={Boolean(b.prepaidAt)}
             />
           </div>
         </section>

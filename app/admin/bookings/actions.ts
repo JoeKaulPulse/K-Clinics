@@ -28,7 +28,10 @@ export async function chargeBookingAction(bookingId: string, amountPence: number
   const { chargeBooking } = await import('@/lib/booking-actions');
   const booking = await db.booking.findUnique({ where: { id: bookingId }, include: { client: true } });
   if (!booking) return { ok: false, error: 'Not found' };
-  if (booking.chargedAt) return { ok: false, error: 'Already charged' };
+  // BLD-1119: a BNPL/Klarna/Clearpay course pre-payment sets prepaidAt, not
+  // chargedAt, and never touches the card on file — treat it the same as an
+  // existing charge so staff can't bill that card a second time.
+  if (booking.chargedAt || booking.prepaidAt) return { ok: false, error: 'Already charged' };
   // BLD-882: net an applied gift voucher SERVER-SIDE, here in the one shared
   // charge action, so every surface (session checkout, booking detail page, a
   // reloaded till) collects only the remainder — no UI has to know about the
