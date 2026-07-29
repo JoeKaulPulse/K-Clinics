@@ -1,7 +1,7 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { verifyToken, verifyClientToken, verifyAcademyToken, SESSION_COOKIE, CLIENT_SESSION_COOKIE, ACADEMY_SESSION_COOKIE } from '@/lib/auth-edge';
 import { isSameOrigin } from '@/lib/security/origin';
-import { ATTRIB_COOKIE, ATTRIB_MAX_AGE, attributionFromUrl } from '@/lib/attribution';
+import { ATTRIB_COOKIE, ATTRIB_MAX_AGE, attributionFromUrl, ANALYTICS_CONSENT_COOKIE, MARKETING_CONSENT_COOKIE } from '@/lib/attribution';
 import { SEG_COOKIE, SEG_MAX_AGE, segmentFromUrl } from '@/lib/personalize';
 import { THEME_NO_FLASH_SCRIPT } from '@/lib/admin-theme';
 
@@ -254,18 +254,33 @@ export async function middleware(req: NextRequest) {
 
   // Public marketing pages. Attribution and audience-segment cookies are
   // non-essential (PECR reg. 6): only set them once the visitor has consented.
-  // The consent banner mirrors the choice into a server-readable first-party
-  // cookie (kc_analytics_consent=1), so we can gate at the edge — pre-consent we
-  // set nothing (BLD-464). Strictly-necessary cookies above are unaffected.
+  // The consent banner mirrors the choice into server-readable first-party
+  // cookies, so we can gate at the edge — pre-consent we set nothing (BLD-464).
+  // kc_attrib is itself an ad-attribution mechanism (it carries gclid/UTM data
+  // later uploaded to Google Ads / read for Meta CAPI sends in lib/conversions.ts),
+  // so it is gated on MARKETING consent specifically — not the broader analytics
+  // flag it was previously (mis-)gated on (PRJ-1060.11). The segment cookie below
+  // is content personalisation only, so it stays on the analytics flag.
+  // Strictly-necessary cookies above are unaffected.
   const res = NextResponse.next();
-  const consented = req.cookies.get('kc_analytics_consent')?.value === '1';
-  if (consented) {
+  const analyticsConsented = req.cookies.get(ANALYTICS_CONSENT_COOKIE)?.value === '1';
+  const marketingConsented = req.cookies.get(MARKETING_CONSENT_COOKIE)?.value === '1';
+  if (marketingConsented) {
     // First-touch marketing attribution from ad/UTM params (campaign tags only —
     // no personal data).
     const attrib = attributionFromUrl(req.nextUrl);
     if (attrib && !req.cookies.get(ATTRIB_COOKIE)) {
       res.cookies.set(ATTRIB_COOKIE, JSON.stringify(attrib), { httpOnly: true, sameSite: 'lax', secure: process.env.NODE_ENV === 'production', path: '/', maxAge: ATTRIB_MAX_AGE });
     }
+  } else if (req.cookies.get(ATTRIB_COOKIE)) {
+    // Fail closed: a cookie set before this fix (or before consent was ever
+    // withdrawn/answered) must not linger and be read back for a later ad-platform
+    // send once marketing consent is missing — clear it here so nothing is
+    // retained without the affirmative consent that Meta/Google Ads sends already
+    // require in lib/conversions.ts.
+    res.cookies.set(ATTRIB_COOKIE, '', { httpOnly: true, sameSite: 'lax', secure: process.env.NODE_ENV === 'production', path: '/', maxAge: 0 });
+  }
+  if (analyticsConsented) {
     // Audience personalisation: remember the ad-declared segment (content only,
     // no personal data) so the personalised rail adapts across the visit.
     const seg = segmentFromUrl(req.nextUrl);
