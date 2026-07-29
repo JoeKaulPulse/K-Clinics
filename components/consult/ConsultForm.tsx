@@ -226,7 +226,7 @@ export function ConsultForm() {
         <button
           type="button"
           onClick={() => setStep((s) => Math.max(0, s - 1))}
-          className={`text-sm font-medium text-[var(--color-stone)] transition-opacity ${step === 0 ? 'pointer-events-none opacity-0' : 'hover:text-[var(--color-ink)]'}`}
+          className={`min-h-11 rounded-full px-4 py-2 text-sm font-medium text-[var(--color-stone)] transition-opacity ${step === 0 ? 'pointer-events-none opacity-0' : 'hover:text-[var(--color-ink)]'}`}
         >
           ← Back
         </button>

@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import * as Sentry from '@sentry/nextjs';
 import { crmEnabled } from '@/lib/crm';
 import { z } from 'zod';
 
@@ -17,6 +18,7 @@ export async function POST(req: Request) {
     await requestAcademyPasswordReset(parsed.data.email);
   } catch (err) {
     console.error('[academy/forgot-password] failed:', err);
+    Sentry.captureException(err, { tags: { area: 'academy/forgot-password' } });
   }
   return NextResponse.json({ ok: true });
 }
