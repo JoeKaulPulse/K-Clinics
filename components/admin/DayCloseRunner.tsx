@@ -336,7 +336,7 @@ export function DayCloseRunner({
         {/* Nav */}
         {status !== 'done' && (
           <div className="mx-auto flex w-full max-w-2xl items-center justify-between px-6 pb-10">
-            <button onClick={() => go(-1)} className={`text-sm font-medium text-[var(--color-stone)] transition-opacity ${i < 0 ? 'pointer-events-none opacity-0' : 'hover:text-[var(--color-ink)]'}`}>Back</button>
+            <button onClick={() => go(-1)} className={`min-h-11 rounded-full px-4 py-2 text-sm font-medium text-[var(--color-stone)] transition-opacity ${i < 0 ? 'pointer-events-none opacity-0' : 'hover:text-[var(--color-ink)]'}`}>Back</button>
             {i >= 0 && i < total && (
               <button onClick={() => canAdvance(current) && go(1)} disabled={!canAdvance(current)} className="rounded-full bg-[var(--color-ink)] px-6 py-2.5 text-sm font-medium text-[var(--color-porcelain)] transition-opacity disabled:opacity-40">
                 Continue →

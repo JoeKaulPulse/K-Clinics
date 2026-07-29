@@ -207,7 +207,7 @@ export function ImmersiveCourse({ learning, slug, mode = 'learn', xp = 0, regist
 
       {/* Back link (review only) */}
       {idx > 0 && step.kind !== 'done' && (
-        <button onClick={() => go(idx - 1)} className="absolute bottom-4 left-4 text-xs text-white/40 transition-colors hover:text-white/80 sm:bottom-6 sm:left-6">← Back</button>
+        <button onClick={() => go(idx - 1)} className="absolute bottom-4 left-4 min-h-11 rounded-full px-4 py-2 text-xs text-white/40 transition-colors hover:text-white/80 sm:bottom-6 sm:left-6">← Back</button>
       )}
 
       {/* Mascot celebrations */}
