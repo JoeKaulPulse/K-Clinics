@@ -95,7 +95,10 @@ export async function POST(req: Request) {
     if (!convo.visitorEmail) {
       email = clean(b.email, 160).toLowerCase();
       if (!email) return NextResponse.json({ ok: false, error: 'Enter your email so we can send it.' }, { status: 400 });
-      if (!/\S+@\S+\.\S+/.test(email)) return NextResponse.json({ ok: false, error: 'Enter a valid email address.' }, { status: 400 });
+      // Anchored: an unanchored test only needs SOME substring to look like an
+      // address, so "Real Name <a@b.co> anything" or a value with an embedded
+      // newline would pass and be stored as visitorEmail / handed to the mailer.
+      if (!/^\S+@\S+\.\S+$/.test(email)) return NextResponse.json({ ok: false, error: 'Enter a valid email address.' }, { status: 400 });
     }
     const { emailChatTranscript } = await import('@/lib/chat-email');
     const r = await emailChatTranscript(convo.id, { actor: 'visitor', toOverride: convo.visitorEmail ? undefined : email });
