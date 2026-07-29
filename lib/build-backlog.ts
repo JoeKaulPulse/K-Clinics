@@ -3002,6 +3002,18 @@ export const BUILD_BACKLOG: BacklogItem[] = [
     notes: ['Fix: replaced the plain db.referral.update(...QUALIFIED...) with a conditional db.referral.updateMany({ where: { id: ref.id, status: \'JOINED\' }, data: {...QUALIFIED...} }) and only proceed to awardClientPoints (both sides) plus the reward emails when claimed.count === 1. Same CAS-then-check-rowsAffected pattern as the refundedPence claim in lib/booking-actions.ts refundBooking() (BLD-1000) and the loyalty/payment idempotency guards from BLD-994/1001 -- no new @unique constraint added, so the additive-schema deploy gate is unaffected. A concurrent loser now sees count === 0 and returns without a second award. (PRJ-1060.8)'],
   },
   {
+    title: 'Live external-provider health probes never run automatically', type: 'ERROR', urgency: 'P2', status: 'IN_REVIEW', assignee: 'claude',
+    value: 6, effort: 1,
+    detail: 'lib/api-health.ts has a full probe registry for external providers (Stripe, Resend, Twilio, Anthropic, Xero, Meta, etc.), exposed at app/api/admin/api-health/route.ts with the standard CRON_SECRET bearer auth (lib/cron-auth.ts, same mechanism /api/cron/daily uses), but vercel.json only scheduled /api/health (a lightweight DB/schema check) -- never /api/admin/api-health -- so the real provider probes only ran when a human opened /admin/api-health or curled it directly.',
+    notes: ['Fix: added a vercel.json cron entry scheduling /api/admin/api-health every 30 minutes (*/30 * * * *), matching the maxDuration:60 mirror pattern already used for the other cron routes (BLD-841 precedent). The route already handles a bare GET with no query params -- it runs all probes live and returns the report -- so this is a drop-in wire-up with no route changes needed. (PRJ-1060.12)'],
+  },
+  {
+    title: 'optimizePackageImports misconfigured for motion -- tree-shaking not applied site-wide', type: 'ERROR', urgency: 'P2', status: 'IN_REVIEW', assignee: 'claude',
+    value: 5, effort: 1,
+    detail: 'next.config.mjs listed experimental.optimizePackageImports: [\'motion\'], but every import site in the repo (47 files under components/) pulls from the motion/react subpath export, e.g. import { MotionConfig } from \'motion/react\' -- never the bare motion specifier. Next.js/Turbopack matches optimizePackageImports entries against the exact import specifier used in code, so \'motion\' never matched anything and the whole optimisation silently did nothing, shipping the full unshaken motion/react bundle to every client.',
+    notes: ['Fix: changed the config entry to \'motion/react\' (the exact specifier actually imported), confirmed by grepping every "from \'motion...\'" import in the codebase. Verified with npx tsc --noEmit and a full npm run build afterward. (PRJ-1060.3)'],
+  },
+  {
     title: 'kc_attrib ad-attribution cookie ignores cookie-consent choice', type: 'ERROR', urgency: 'P1', status: 'IN_REVIEW', assignee: 'claude',
     value: 7, effort: 2,
     detail: 'middleware.ts set the kc_attrib cookie (first-touch UTM/gclid/campaign data, later read by lib/marketing.ts bookingAttribution() and uploaded to Google Ads / sent to Meta CAPI via lib/conversions.ts) gated on kc_analytics_consent rather than kc_marketing_consent. kc_attrib is itself an ad-attribution mechanism, so a visitor who accepted analytics but rejected marketing (or vice versa) got the wrong outcome: attribution data captured without marketing consent, or legitimately-consented attribution never captured at all -- the same PECR/UK-GDPR gap PRJ-1034.4 already closed for the server-side GA4/Meta conversion sends, just one layer further back at the point the cookie itself is written.',
