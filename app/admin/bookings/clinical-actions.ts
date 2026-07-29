@@ -41,9 +41,13 @@ export async function addTreatmentToBooking(bookingId: string, variantId: string
   const { db } = await import('@/lib/db');
   const { logAudit } = await import('@/lib/audit');
 
-  const booking = await db.booking.findUnique({ where: { id: bookingId }, select: { status: true, chargedAt: true, clientId: true } });
+  const booking = await db.booking.findUnique({ where: { id: bookingId }, select: { status: true, chargedAt: true, prepaidAt: true, clientId: true } });
   if (!booking) return { ok: false, error: 'Booking not found.' };
   if (booking.chargedAt) return { ok: false, error: 'This appointment is already paid — add the treatment to a new booking instead.' };
+  // BLD-1119: a BNPL course pre-payment covers the course total only, and every
+  // charge surface refuses a pre-paid booking (no card can be billed twice) — so an
+  // add-on booked onto it could never be collected. Bill extras on a new booking.
+  if (booking.prepaidAt) return { ok: false, error: 'This course was pre-paid in full (Klarna/Clearpay) — extras can’t be collected on it. Add the treatment to a new booking instead.' };
   if (booking.status === 'CANCELLED' || booking.status === 'NO_SHOW') return { ok: false, error: 'This appointment is cancelled.' };
 
   const { getVariant } = await import('@/lib/services');

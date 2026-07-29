@@ -31,7 +31,8 @@ export async function chargeBookingAction(bookingId: string, amountPence: number
   // BLD-1119: a BNPL/Klarna/Clearpay course pre-payment sets prepaidAt, not
   // chargedAt, and never touches the card on file — treat it the same as an
   // existing charge so staff can't bill that card a second time.
-  if (booking.chargedAt || booking.prepaidAt) return { ok: false, error: 'Already charged' };
+  if (booking.chargedAt) return { ok: false, error: 'Already charged' };
+  if (booking.prepaidAt) return { ok: false, error: 'This course was pre-paid in full (Klarna/Clearpay) — there is nothing left to charge.' };
   // BLD-882: net an applied gift voucher SERVER-SIDE, here in the one shared
   // charge action, so every surface (session checkout, booking detail page, a
   // reloaded till) collects only the remainder — no UI has to know about the

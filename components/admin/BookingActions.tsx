@@ -198,8 +198,13 @@ export function BookingActions({
       {canManage && active && (
         <div className="rounded-[var(--radius-md)] border border-[var(--color-line)] p-4">
           <p className="mb-2 text-sm font-medium">Cancel booking</p>
-          {within24h && (
+          {within24h && !prepaid && (
             <p className="mb-2 text-xs text-[var(--color-stone)]">Within 24h — the full fee ({money(pricePence)}) will be charged unless waived.</p>
+          )}
+          {/* BLD-1119: a pre-paid course has no card charge to make, so no late fee
+              can be taken — don't tell staff (and through them the client) one will be. */}
+          {within24h && prepaid && (
+            <p className="mb-2 text-xs text-[var(--color-stone)]">Within 24h — but this course is pre-paid in full, so no late-cancellation fee will be taken.</p>
           )}
           <input value={reason} onChange={(e) => setReason(e.target.value)} placeholder="Reason (optional)" aria-label="Cancellation reason"
             className="mb-2 w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-porcelain)] px-3 py-2 text-sm outline-none focus:border-[var(--color-gold)]" />

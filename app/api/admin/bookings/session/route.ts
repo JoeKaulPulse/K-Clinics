@@ -295,8 +295,11 @@ export async function POST(req: Request) {
       }
       // Partial cover — record the application; the guarded update means a race
       // (second voucher, or a charge landing meanwhile) re-credits and errors.
+      // BLD-1119: prepaidAt: null here too — the stale check above can't see a BNPL
+      // pre-payment that lands mid-request, and this must not reserve voucher value
+      // against a booking with nothing left to collect. Losing the CAS re-credits.
       const updated = await db.booking.updateMany({
-        where: { id: bookingId, chargedAt: null, giftVoucherPence: 0 },
+        where: { id: bookingId, chargedAt: null, prepaidAt: null, giftVoucherPence: 0 },
         data: { giftVoucherCode: code, giftVoucherPence: reservedPence },
       });
       if (updated.count === 0) { await undoVoucherReservation(code, reservedPence); return bad('This booking was just updated on another screen — try again.'); }
