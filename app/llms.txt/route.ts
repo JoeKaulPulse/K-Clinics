@@ -46,7 +46,7 @@ ${site.hours.map((h) => `- ${h.day}: ${h.open === 'Closed' ? 'Closed' : `${h.ope
 - New clients enjoy 15% off their first visit (aesthetic or dental).
 - Booking is online: pick a treatment & time, save a card securely — charged only once the treatment is delivered.
 - Free cancellation up to 24 hours before an appointment; within 24 hours the full fee applies.
-- Finance: pay-as-you-go courses, 0% interest-free options and Buy Now, Pay Later via Clearpay & Klarna.
+- Finance: pay-as-you-go courses and 0% interest-free options on eligible treatments.
 - Location & transport: ${site.address.street}, ${site.address.locality}, ${site.address.postalCode} — minutes from Farringdon, Barbican and Old Street; step-free access.
 - Dentistry is ${site.dentistryLive ? 'open and bookable' : 'opening soon (register interest on the dentistry page)'}.
 

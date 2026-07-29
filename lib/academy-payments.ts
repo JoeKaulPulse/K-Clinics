@@ -1,4 +1,5 @@
 import 'server-only';
+import * as Sentry from '@sentry/nextjs';
 import { db } from '@/lib/db';
 import { logAudit } from '@/lib/audit';
 import { getActivePromo } from '@/lib/academy-utils';
@@ -279,6 +280,11 @@ export async function finalizeEnrolmentPayment(piId: string, amountReceivedPence
   if (!payment) return { ok: false };
   if (currency !== 'gbp' || amountReceivedPence < payment.amountPence) {
     console.error('[academy-pay] not finalising — amount/currency mismatch:', { piId, received: amountReceivedPence, expected: payment.amountPence, currency });
+    Sentry.captureMessage('[academy-pay] not finalising — amount/currency mismatch', {
+      level: 'error',
+      tags: { area: 'academy-payments' },
+      extra: { piId, paymentId: payment.id, enrolmentId: payment.enrolmentId, expectedAmountPence: payment.amountPence, receivedAmountPence: amountReceivedPence, expectedCurrency: 'gbp', receivedCurrency: currency },
+    });
     return { ok: false };
   }
   // Claim + apply ATOMICALLY (BLD-885): the claim (PENDING → PAID) and the

@@ -11,9 +11,9 @@ export const revalidate = 3600;
 export const generateMetadata = (): Promise<Metadata> => pageMeta({
   title: 'Cost & Finance — Flexible Payment Options | KClinics London',
   description:
-    'Spread the cost of your treatment at KClinics, Islington. Transparent pricing, pay-as-you-go courses, 0% interest-free options and Buy Now, Pay Later with Clearpay and Klarna.',
+    'Transparent, published pricing at KClinics, Islington — pay-as-you-go treatment courses and 0% interest-free options on eligible treatments.',
   path: '/finance',
-  keywords: ['pay monthly aesthetics London', 'buy now pay later clinic', '0% finance treatment', 'Clearpay Klarna clinic'],
+  keywords: ['pay monthly aesthetics London', '0% finance treatment'],
 });
 
 const WAYS = [
@@ -36,12 +36,11 @@ export default async function FinancePage() {
       <PageHero
         eyebrow="Cost & finance"
         title="Care that fits your budget."
-        lede="Exceptional treatment shouldn’t mean compromise. We keep pricing transparent and offer flexible ways to pay — including Buy Now, Pay Later — so you can move forward with confidence."
+        lede="Exceptional treatment shouldn’t mean compromise. We keep pricing transparent and offer flexible ways to pay, so you can move forward with confidence."
         gradient={['#3d352f', '#a98a6d']}
       >
         <div className="flex flex-wrap gap-3">
           <Button href="/pricing" variant="gold">See the full price list <ArrowIcon /></Button>
-          <Button href="#buy-now-pay-later" variant="outline">Buy Now, Pay Later</Button>
         </div>
       </PageHero>
 
@@ -56,37 +55,6 @@ export default async function FinancePage() {
             </StaggerItem>
           ))}
         </Stagger>
-      </section>
-
-      {/* Buy Now, Pay Later */}
-      <section id="buy-now-pay-later" className="bg-[var(--color-bone)] section scroll-mt-28">
-        <div className="container-lux grid gap-10 lg:grid-cols-[1fr_0.9fr] lg:items-center">
-          <Reveal>
-            <p className="eyebrow mb-3">Buy now, pay later</p>
-            <h2 className="text-title">Spread the cost, interest-free.</h2>
-            <p className="mt-5 text-lede leading-relaxed text-[var(--color-stone)]">
-              Split your treatment into smaller, manageable instalments at checkout with <strong className="text-[var(--color-ink)]">Clearpay</strong> or <strong className="text-[var(--color-ink)]">Klarna</strong>. Quick to set up, with no impact on the care you receive.
-            </p>
-            <ul className="mt-6 space-y-3 text-[var(--color-ink-soft)]">
-              <li className="flex items-start gap-3"><span className="mt-1 text-[var(--color-gold)]">✦</span> Choose Clearpay or Klarna when you pay.</li>
-              <li className="flex items-start gap-3"><span className="mt-1 text-[var(--color-gold)]">✦</span> Pay in interest-free instalments over a few weeks or months.</li>
-              <li className="flex items-start gap-3"><span className="mt-1 text-[var(--color-gold)]">✦</span> A soft check at sign-up — your treatment plan stays exactly the same.</li>
-            </ul>
-            <p className="mt-6 text-xs text-[var(--color-stone)]">
-              Buy Now, Pay Later is provided by Clearpay and Klarna, not by KClinics. Subject to status and eligibility; 18+, UK residents. Missed payments may affect your ability to use these services and could incur fees charged by the provider. Please review each provider’s terms before you commit.
-            </p>
-          </Reveal>
-          <Reveal delay={0.1}>
-            <div className="rounded-[var(--radius-2xl)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-8 text-center">
-              <p className="font-[family-name:var(--font-display)] text-2xl">Worked example</p>
-              <p className="mt-2 text-sm text-[var(--color-stone)]">A £400 course of treatment</p>
-              <p className="mt-6 font-[family-name:var(--font-display)] text-5xl text-gold-gradient">4 × £100</p>
-              <p className="mt-2 text-sm text-[var(--color-stone)]">interest-free, paid fortnightly with Clearpay</p>
-              <p className="mt-6 text-xs text-[var(--color-stone)]">Illustrative only. Actual instalments depend on the provider, your basket and eligibility.</p>
-              <div className="mt-7"><Button href="/book" variant="gold">Book & choose your plan <ArrowIcon /></Button></div>
-            </div>
-          </Reveal>
-        </div>
       </section>
 
       <section className="container-lux section">
