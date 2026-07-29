@@ -73,7 +73,7 @@ export function TreatmentFinder({ gender, prices = {} }: { gender?: string | nul
               ))}
             </div>
             <div className="mt-7 flex items-center justify-between">
-              <button onClick={() => go(-1)} className={`text-sm font-medium text-[var(--color-stone)] ${step === 0 ? 'pointer-events-none opacity-0' : 'hover:text-[var(--color-ink)]'}`}>← Back</button>
+              <button onClick={() => go(-1)} className={`min-h-11 rounded-full px-4 py-2 text-sm font-medium text-[var(--color-stone)] ${step === 0 ? 'pointer-events-none opacity-0' : 'hover:text-[var(--color-ink)]'}`}>← Back</button>
               {q.multi && (
                 <button onClick={() => go(1)} className="rounded-full bg-[var(--color-ink)] px-6 py-2.5 text-sm font-medium text-[var(--color-porcelain)]">Continue →</button>
               )}
