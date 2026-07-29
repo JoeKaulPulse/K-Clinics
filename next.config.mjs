@@ -91,8 +91,12 @@ const nextConfig = {
   reactStrictMode: true,
   poweredByHeader: false,
   compress: true,
-  // Tree-shake large client libraries → smaller client bundles.
-  experimental: { optimizePackageImports: ['motion'] },
+  // Tree-shake large client libraries → smaller client bundles. Every import
+  // site in this repo pulls from the `motion/react` subpath export (never the
+  // bare `motion` package specifier — see components/motion/*), so that's the
+  // exact specifier optimizePackageImports must list; `motion` alone never
+  // matched any import and silently did nothing.
+  experimental: { optimizePackageImports: ['motion/react'] },
   // Pin the workspace root to THIS directory. Stray lockfiles above the project
   // (e.g. /vercel/package-lock.json on Vercel builders, /home/user/… in dev
   // containers) make Next infer the wrong root. With the wrong root, Turbopack
