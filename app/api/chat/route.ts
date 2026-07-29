@@ -71,15 +71,35 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: true });
   }
 
-  // Visitor asks us to email them the chat ("email me this chat"). They can
-  // supply an email if they didn't leave one earlier.
+  // Visitor asks us to email them the chat ("email me this chat"). The
+  // recipient is always the conversation's OWN established address — once a
+  // conversation has a visitorEmail (left at chat start, or set by an earlier
+  // call here), no later call can redirect the send elsewhere. Only a brand
+  // new conversation with no email yet may supply one, and it sticks for good
+  // (PRJ-1069.9: this previously accepted a client-supplied `email` on every
+  // call with no such lock, and no dedicated rate limit — an attacker could
+  // open a conversation, author whatever they liked as their own visitor
+  // messages, then point delivery at any victim address, turning this into an
+  // open relay riding the clinic's own sending domain/reputation). The email
+  // body is always rendered server-side from this conversation's own stored
+  // messages, never from client-supplied text.
   if (b.op === 'emailTranscript') {
+    if (!(await enforceRateLimit(req, 'chat-transcript-email', 5, 3600))) {
+      return NextResponse.json({ ok: false, error: 'Please try again later.' }, { status: 429 });
+    }
     const token = clean(b.token, 60);
     if (!token) return NextResponse.json({ ok: false, error: 'Bad request.' }, { status: 400 });
     const convo = await db.chatConversation.findUnique({ where: { token }, select: { id: true, visitorEmail: true } });
     if (!convo) return NextResponse.json({ ok: false, error: 'Conversation not found.' }, { status: 404 });
-    const email = clean(b.email, 160).toLowerCase();
-    if (!convo.visitorEmail && !email) return NextResponse.json({ ok: false, error: 'Enter your email so we can send it.' }, { status: 400 });
+    let email = '';
+    if (!convo.visitorEmail) {
+      email = clean(b.email, 160).toLowerCase();
+      if (!email) return NextResponse.json({ ok: false, error: 'Enter your email so we can send it.' }, { status: 400 });
+      // Anchored: an unanchored test only needs SOME substring to look like an
+      // address, so "Real Name <a@b.co> anything" or a value with an embedded
+      // newline would pass and be stored as visitorEmail / handed to the mailer.
+      if (!/^\S+@\S+\.\S+$/.test(email)) return NextResponse.json({ ok: false, error: 'Enter a valid email address.' }, { status: 400 });
+    }
     const { emailChatTranscript } = await import('@/lib/chat-email');
     const r = await emailChatTranscript(convo.id, { actor: 'visitor', toOverride: convo.visitorEmail ? undefined : email });
     return NextResponse.json(r, { status: r.ok ? 200 : 400 });
