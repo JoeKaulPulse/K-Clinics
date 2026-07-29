@@ -201,7 +201,7 @@ export default async function AdminOverview() {
       canBuild ? db.buildItem.count({ where: { githubUrl: null } }) : Promise.resolve(0),
       canAutomations ? db.emailEvent.count({ where: { status: 'FAILED', campaignId: null, createdAt: { gte: commsSince } } }) : Promise.resolve(0),
       // Completed treatments in the last 30 days that haven't been charged (revenue at risk).
-      canFinance ? db.booking.count({ where: { status: 'COMPLETED', chargedAt: null, pricePence: { gt: 0 }, finishedAt: { gte: new Date(Date.now() - 30 * 864e5) } } }) : Promise.resolve(0),
+      canFinance ? db.booking.count({ where: { status: 'COMPLETED', chargedAt: null, prepaidAt: null, pricePence: { gt: 0 }, finishedAt: { gte: new Date(Date.now() - 30 * 864e5) } } }) : Promise.resolve(0),
       canBookings ? db.booking.count({ where: { status: 'REQUESTED' } }).catch(() => 0) : Promise.resolve(0),
     ])),
     sessionPermissions(),

@@ -41,6 +41,16 @@ export async function POST(req: Request) {
   if (!course || course.pence <= 0) {
     return NextResponse.json({ ok: false, error: 'This booking has no payable course total (on-consultation pricing). Set a price first.' }, { status: 409 });
   }
+  // BLD-1119: the pre-payment must settle the booking IN FULL. courseTotalPence is
+  // the primary line item only, so if the booking price is higher (add-on
+  // treatments on top of the course) this link would leave a remainder that no
+  // charge surface can then collect — prepaidAt makes every one of them refuse.
+  if (booking.pricePence > course.pence) {
+    return NextResponse.json({
+      ok: false,
+      error: `This booking totals £${(booking.pricePence / 100).toFixed(2)} but the course itself is £${(course.pence / 100).toFixed(2)} — the extras on top can’t be collected once the course is pre-paid. Remove the add-on treatments here and bill them on a separate booking, then send the pre-payment link.`,
+    }, { status: 409 });
+  }
 
   const base = (process.env.NEXT_PUBLIC_SITE_URL || (await import('@/lib/site')).site.url).replace(/\/$/, '');
   const name = course.sessions > 1 ? `Course of ${course.sessions} × ${booking.treatmentTitle}` : booking.treatmentTitle;

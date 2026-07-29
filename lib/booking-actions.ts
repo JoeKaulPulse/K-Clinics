@@ -96,7 +96,11 @@ export async function chargeBooking(
   booking: BookingWithClient,
   amountPence: number,
   opts: { late?: boolean } = {},
-): Promise<{ ok: boolean; requiresAction?: boolean; error?: string }> {
+  // `alreadyPaid` means this call took NO money because the booking was already
+  // settled (an earlier charge, or a BNPL course pre-payment). Callers that
+  // report a fee to the client must treat it as "nothing charged", not as a
+  // successful charge (BLD-1119).
+): Promise<{ ok: boolean; requiresAction?: boolean; alreadyPaid?: boolean; error?: string }> {
   if (amountPence <= 0) return { ok: true }; // nothing to charge (on-consultation £0)
   if (!booking.stripeCustomerId || !booking.stripePaymentMethodId) {
     return { ok: false, error: 'No saved card for this booking.' };
@@ -104,9 +108,19 @@ export async function chargeBooking(
   // BLD-147/246: idempotency. Cheap early-out on caller-supplied data; then re-fetch
   // from DB so two concurrent staff actions that both read chargedAt:null don't both
   // reach Stripe and create two PaymentIntents.
-  if (booking.chargedAt) return { ok: true };
-  const fresh = await db.booking.findUnique({ where: { id: booking.id }, select: { chargedAt: true } });
-  if (fresh?.chargedAt) return { ok: true };
+  // BLD-1119: a course pre-paid in full upfront via BNPL (Klarna/Clearpay, see
+  // courseTotalPence above) records the money on prepaidAt/prepaidPence, and never
+  // touches the card on file — treat prepaidAt as equally "already paid" so a
+  // late-cancellation fee, a 4th-reschedule fee or a staff "charge now" can never
+  // bill that card for a course the client has already paid in full.
+  // Note (verified in review): today the SAME webhook event also sets chargedAt,
+  // because the pre-payment PaymentIntent carries metadata.bookingId and so runs
+  // the generic finalizeBookingCharge branch just before the course_prepaid branch.
+  // So on current data this guard is a no-op — it is what keeps the double charge
+  // closed if that double-recording is ever cleaned up.
+  if (booking.chargedAt || booking.prepaidAt) return { ok: true, alreadyPaid: true };
+  const fresh = await db.booking.findUnique({ where: { id: booking.id }, select: { chargedAt: true, prepaidAt: true } });
+  if (fresh?.chargedAt || fresh?.prepaidAt) return { ok: true, alreadyPaid: true };
 
   try {
     const pi = await stripe().paymentIntents.create({
@@ -337,11 +351,36 @@ export async function finalizeBookingCharge(
   amountReceivedPence: number,
   opts: { late?: boolean } = {},
 ): Promise<boolean> {
+  // BLD-1119: also refuse to finalise against a booking pre-paid in full via
+  // BNPL (prepaidAt) — the authoritative guard for the webhook/SCA-recovery/
+  // terminal-capture paths, mirroring chargeBooking()'s own idempotency check.
   const updated = await db.booking.updateMany({
-    where: { id: bookingId, chargedAt: null },
+    where: { id: bookingId, chargedAt: null, prepaidAt: null },
     data: { chargePaymentIntentId: piId, chargedPence: amountReceivedPence, chargedAt: new Date() },
   });
-  if (updated.count === 0) return false; // already finalised elsewhere — no-op
+  if (updated.count === 0) {
+    // Normally this is the ordinary no-op: another caller (webhook redelivery, SCA
+    // confirm) already finalised the charge. But with the BLD-1119 prepaidAt guard
+    // there is a second, money-critical case: a payment really was captured at
+    // Stripe against a booking that is ALREADY pre-paid in full, so we refuse to
+    // record it and no receipt/loyalty/Xero runs. Never let that be silent — the
+    // client has paid twice and needs a refund.
+    const b = await db.booking.findUnique({ where: { id: bookingId }, select: { chargedAt: true, prepaidAt: true, clientId: true } }).catch(() => null);
+    if (b && !b.chargedAt && b.prepaidAt) {
+      const amount = `£${(amountReceivedPence / 100).toFixed(2)}`;
+      console.error('[charge] payment captured on an already pre-paid booking — refund required:', { bookingId, piId, amountReceivedPence });
+      try {
+        const Sentry = await import('@sentry/nextjs');
+        Sentry.captureException(new Error('Payment captured on a BNPL pre-paid booking — refund required'), { tags: { area: 'booking-charge', stage: 'prepaid-overpayment' }, extra: { bookingId, piId, amountReceivedPence } });
+      } catch { /* non-fatal */ }
+      await logAudit({ action: 'PAYMENT_CHARGED', actor: 'system', bookingId, clientId: b.clientId, summary: `${amount} received (${piId}) for a course already pre-paid in full — REFUND REQUIRED, not recorded as this booking's charge`, meta: { piId, amountReceivedPence, prepaidOverpayment: true } }).catch(() => {});
+      try {
+        const { notifyStaffByPermission } = await import('@/lib/notifications');
+        await notifyStaffByPermission('finance.view', { kind: 'status', category: 'finance', priority: 'urgent', title: 'Duplicate payment on a pre-paid course', body: `${amount} was taken for a booking already pre-paid via BNPL — refund it in Stripe.`, href: `/admin/bookings/${bookingId}` });
+      } catch { /* non-fatal */ }
+    }
+    return false; // already finalised elsewhere (or refused above) — no-op
+  }
 
   const booking = await db.booking.findUnique({ where: { id: bookingId }, include: { client: true } });
   if (!booking) return true;
@@ -433,10 +472,16 @@ export async function cancelBooking(
   let charged = 0;
   let requiresAction = false;
   let feeFailed = false;
+  // BLD-1119: the booking was ALREADY paid in full (a BNPL course pre-payment, or
+  // an earlier charge), so chargeBooking correctly took nothing. Keep `charged` at
+  // 0 — otherwise the client's cancellation email and the client record both claim
+  // a late fee was taken when no money moved.
+  let alreadyPaid = false;
 
   if (shouldCharge) {
     const res = await chargeBooking(booking, chargeablePence, { late: true });
-    if (res.ok) charged = chargeablePence;
+    if (res.alreadyPaid) alreadyPaid = true;
+    else if (res.ok) charged = chargeablePence;
     else if (res.requiresAction) requiresAction = true;
     else feeFailed = true; // charge declined — cancel anyway, but flag for follow-up.
   }
@@ -461,7 +506,7 @@ export async function cancelBooking(
     data: { status: 'CANCELLED', completedAt: new Date() },
   }).catch(() => {});
   await db.interaction.create({
-    data: { clientId: booking.clientId, type: 'APPOINTMENT', summary: `Cancelled ${booking.treatmentTitle}${late ? ' (within 24h)' : ''}${charged ? ` — charged £${(charged / 100).toFixed(2)}` : feeFailed ? ' — LATE FEE FAILED (follow up)' : opts.waiveFee && late ? ' — fee waived' : ''}`, author: opts.by },
+    data: { clientId: booking.clientId, type: 'APPOINTMENT', summary: `Cancelled ${booking.treatmentTitle}${late ? ' (within 24h)' : ''}${charged ? ` — charged £${(charged / 100).toFixed(2)}` : feeFailed ? ' — LATE FEE FAILED (follow up)' : alreadyPaid ? ' — no fee taken (already paid in full)' : opts.waiveFee && late ? ' — fee waived' : ''}`, author: opts.by },
   });
 
   // BLD-133: the slot just freed — offer it to the first matching waitlister.
@@ -483,7 +528,12 @@ export async function cancelBooking(
   // points back as well, repeatably). charged === 0 covers every case where the
   // points weren't consumed: no fee due, the charge failed, or it needs further
   // action from the client.
-  if (charged === 0) {
+  // BLD-1119: `alreadyPaid` is excluded deliberately. There the booking was
+  // already settled (earlier charge / BNPL course pre-payment) and the redeemed
+  // points were consumed against THAT payment, so returning them here would hand
+  // the client the discount and the points back — the same trap as BLD-915. This
+  // keeps the pre-BLD-1119 behaviour for those bookings unchanged.
+  if (charged === 0 && !alreadyPaid) {
     try {
       const { refundBookingPoints } = await import('@/lib/client-loyalty');
       await refundBookingPoints(booking.id);
@@ -669,6 +719,10 @@ export async function rescheduleBooking(
   // move, so the original "no reschedule without payment" rule still holds.
   if (!opts.admin && booking.rescheduleCount >= MAX_FREE_RESCHEDULES && booking.pricePence > 0) {
     const rescheduleFeePence = Math.max(0, booking.pricePence - (booking.pointsRedeemedPence ?? 0));
+    // BLD-1119: res.alreadyPaid means the booking was already paid in full (BNPL
+    // course pre-payment / an earlier charge) and nothing was taken — the move
+    // stands, but `charged` stays 0 so the client's confirmation email and the
+    // record don't claim a reschedule fee that was never collected.
     const res = await chargeBooking(booking, rescheduleFeePence, { late: false });
     if (!res.ok) {
       if (res.requiresAction) requiresAction = true;
@@ -679,7 +733,7 @@ export async function rescheduleBooking(
         }).catch(() => {});
         return { ok: false, error: res.error || 'Payment required for this reschedule could not be processed.' };
       }
-    } else {
+    } else if (!res.alreadyPaid) {
       charged = rescheduleFeePence;
     }
   }

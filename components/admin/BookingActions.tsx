@@ -83,15 +83,25 @@ export function BookingActions({
         </div>
       )}
 
+      {/* BLD-1119: a course pre-paid in full upfront via BNPL (Klarna/Clearpay)
+          has nothing left to take — hide the charge UI entirely instead of
+          offering a "Charge card on file" action that would bill the client
+          a second time. */}
+      {prepaid && !charged && (
+        <div className="rounded-[var(--radius-md)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-4">
+          <p className="text-sm text-[var(--color-jade)]">Pre-paid in full via BNPL (Klarna/Clearpay) — nothing left to charge.</p>
+        </div>
+      )}
+
       {/* Charge — gated behind completion so a client is never charged before
           their treatment is delivered. */}
-      {canCharge && active && !charged && (
+      {canCharge && active && !charged && !prepaid && (
         <div className="rounded-[var(--radius-md)] border border-dashed border-[var(--color-line)] bg-[var(--color-bone)] p-4">
           <p className="text-sm font-medium text-[var(--color-stone)]">Take payment</p>
           <p className="mt-1 text-xs text-[var(--color-stone)]">Available once the appointment is marked <strong>completed</strong> — this prevents charging before the treatment is delivered.</p>
         </div>
       )}
-      {canCharge && completed && !charged && (
+      {canCharge && completed && !charged && !prepaid && (
         <div className="rounded-[var(--radius-md)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-4">
           <p className="mb-2 text-sm font-medium">Charge card on file</p>
           <div className="flex flex-wrap items-center gap-2">
@@ -188,8 +198,13 @@ export function BookingActions({
       {canManage && active && (
         <div className="rounded-[var(--radius-md)] border border-[var(--color-line)] p-4">
           <p className="mb-2 text-sm font-medium">Cancel booking</p>
-          {within24h && (
+          {within24h && !prepaid && (
             <p className="mb-2 text-xs text-[var(--color-stone)]">Within 24h — the full fee ({money(pricePence)}) will be charged unless waived.</p>
+          )}
+          {/* BLD-1119: a pre-paid course has no card charge to make, so no late fee
+              can be taken — don't tell staff (and through them the client) one will be. */}
+          {within24h && prepaid && (
+            <p className="mb-2 text-xs text-[var(--color-stone)]">Within 24h — but this course is pre-paid in full, so no late-cancellation fee will be taken.</p>
           )}
           <input value={reason} onChange={(e) => setReason(e.target.value)} placeholder="Reason (optional)" aria-label="Cancellation reason"
             className="mb-2 w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-porcelain)] px-3 py-2 text-sm outline-none focus:border-[var(--color-gold)]" />

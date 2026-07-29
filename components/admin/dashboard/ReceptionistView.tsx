@@ -42,7 +42,7 @@ export async function ReceptionistView({ session }: { session: Session }) {
       },
     }).catch(() => []),
     canRooms ? getRoomsForDay({ now }).catch(() => []) : Promise.resolve([]),
-    canCharge ? db.booking.count({ where: { status: 'COMPLETED', chargedAt: null, pricePence: { gt: 0 }, startAt: { gte: start, lte: end } } }).catch(() => 0) : Promise.resolve(0),
+    canCharge ? db.booking.count({ where: { status: 'COMPLETED', chargedAt: null, prepaidAt: null, pricePence: { gt: 0 }, startAt: { gte: start, lte: end } } }).catch(() => 0) : Promise.resolve(0),
   ]);
 
   type Bk = (typeof todays)[number];

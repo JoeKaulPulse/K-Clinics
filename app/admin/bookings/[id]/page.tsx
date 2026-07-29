@@ -148,7 +148,10 @@ export default async function BookingDetail({ params }: { params: Promise<{ id: 
   const primaryItem = await db.bookingItem.findFirst({ where: { bookingId: id, isAddon: false }, orderBy: { createdAt: 'asc' }, select: { sessions: true } }).catch(() => null);
   const courseSessions = primaryItem?.sessions ?? 1;
   const perSessionPence = courseSessions > 1 && basePence > 0 ? Math.round(basePence / courseSessions) : basePence;
-  const canAddTreatment = canManageBk && !b.chargedAt && !['CANCELLED', 'NO_SHOW'].includes(b.status);
+  // BLD-1119: !b.prepaidAt as well as !b.chargedAt — an add-on on a BNPL pre-paid
+  // course can never be collected (every charge surface refuses a pre-paid
+  // booking), so don't offer the picker; extras go on a new booking.
+  const canAddTreatment = canManageBk && !b.chargedAt && !b.prepaidAt && !['CANCELLED', 'NO_SHOW'].includes(b.status);
   let variantOptions: { id: string; label: string; pricePence: number }[] = [];
   if (canAddTreatment) {
     const { listServices } = await import('@/lib/services');
@@ -362,6 +365,7 @@ export default async function BookingDetail({ params }: { params: Promise<{ id: 
               canManage={sessionCan(session, 'bookings.manage')}
               canCharge={sessionCan(session, 'bookings.charge')}
               pointsRedeemedPence={b.pointsRedeemedPence}
+              prepaid={Boolean(b.prepaidAt)}
             />
           </div>
         </section>
