@@ -364,8 +364,14 @@ export function BookingFlow({ catalogue, client, preselect = null, preselectDate
                   )}
                   <p className={label}>Available times</p>
                   {/* PRJ-1069.2: role=status announces loading/result state so screen-reader
-                      users aren't left in silence while slots load. */}
-                  <div role="status" aria-live="polite">
+                      users aren't left in silence while slots load. aria-atomic is
+                      forced to false: role=status implies aria-atomic="true", which
+                      would re-read the ENTIRE slot list every time any node inside it
+                      mutates — including picking a time (aria-pressed flips and the
+                      recommended ★ is added/removed on the button). With it false,
+                      only the changed part is announced, so loading→results is still
+                      announced but selecting a time is not a 20-slot re-read. */}
+                  <div role="status" aria-live="polite" aria-atomic="false">
                   {loadingSlots ? <p className="text-sm text-[var(--color-stone)]">Finding available times…</p>
                     : slots.length === 0 ? (
                       <div>
