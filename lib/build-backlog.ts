@@ -3007,6 +3007,18 @@ export const BUILD_BACKLOG: BacklogItem[] = [
     detail: 'Several near-identical inline "Back" buttons across multi-step flows (booking, treatment finder, consultation form, AI vision plan builder, academy lesson player, onboarding wizard, day-close and patient assessment wizards) were plain text links with no padding -- text-sm/text-xs with no hit-area sizing -- well under the ~44x44px mobile tap target (WCAG 2.5.5).',
     notes: ['Fix: added min-h-11 rounded-full px-4 py-2 (the touch-target pattern already used for the same "Back" text in components/consent/ConsentSigner.tsx) to every bare-text Back button: components/booking/BookingFlow.tsx, components/finder/TreatmentFinder.tsx, components/consult/ConsultForm.tsx, components/admin/DayCloseRunner.tsx, components/portal/AssessmentRunner.tsx, components/ai/KVision.tsx (NavRow + AuthStep), components/academy/ImmersiveCourse.tsx, components/onboarding/OnboardingModal.tsx. Text size/colour unchanged -- rounded-full has no visible border/background here, so only the tap target grew. (PRJ-1069.6)'],
   },
+  {
+    title: 'Academy payment amount/currency mismatch never reaches Sentry', type: 'ERROR', urgency: 'P2', status: 'IN_REVIEW', assignee: 'claude',
+    value: 6, effort: 1,
+    detail: 'finalizeEnrolmentPayment() in lib/academy-payments.ts detects a Stripe PaymentIntent whose received amount or currency does not match the expected charge -- a signal of tampering or a pricing bug -- but only wrote console.error. Nothing surfaced the condition to Sentry, so it was invisible outside a manual log trawl.',
+    notes: ['Fix: added a Sentry.captureMessage call (level error, tags: { area: "academy-payments" }) alongside the existing console.error, with the mismatch context -- piId, paymentId, enrolmentId, expected and received amount, expected and received currency -- as extra data. Mirrors the pattern already used for the analogous anthropic-call-failed checks in lib/chat-ai.ts and lib/ai-consultation.ts. File: lib/academy-payments.ts. (PRJ-1069.1)'],
+  },
+  {
+    title: 'Login/signup/password-reset failures logged to console only, never reach Sentry', type: 'ERROR', urgency: 'P2', status: 'IN_REVIEW', assignee: 'claude',
+    value: 6, effort: 2,
+    detail: 'The genuine-unexpected-error catch blocks in the client and academy account routes (login, signup, forgot-password, reset) -- app/api/account/login, app/api/account/signup, app/api/account/forgot-password, app/api/account/reset, app/api/academy/account/forgot-password, app/api/academy/account/reset-password -- only wrote console.error when the underlying auth/db call threw. Routine user-input rejections (wrong password, validation failures) already return ok:false without throwing and were correctly left alone; the gap was that a real backend failure in these flows was invisible in Sentry.',
+    notes: ['Fix: added Sentry.captureException(err, { tags: { area: "<route>" } }) next to the existing console.error in each of the six catch blocks, matching the tags shape used across app/api (e.g. app/api/booking/reschedule, app/api/shop/checkout). Left the wrong-password/wrong-credentials branches (which return ok:false without throwing, e.g. app/api/account/login\'s loginClient result and app/api/admin/login\'s password check) untouched -- those stay console/audit-log only by design, not Sentry noise. Files: app/api/account/login/route.ts, app/api/account/signup/route.ts, app/api/account/forgot-password/route.ts, app/api/account/reset/route.ts, app/api/academy/account/forgot-password/route.ts, app/api/academy/account/reset-password/route.ts. (PRJ-1069.5)'],
+  },
 ];
 
 // A content hash over every item's title + status + PR, so ANY change (a new
