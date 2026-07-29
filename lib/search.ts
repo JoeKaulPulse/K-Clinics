@@ -20,7 +20,7 @@ const PAGES: { title: string; href: string; keywords: string }[] = [
   { title: 'Packages', href: '/packages', keywords: 'packages bundles courses' },
   { title: 'Membership', href: '/membership', keywords: 'membership plan subscription' },
   { title: 'Gift vouchers', href: '/gift-vouchers', keywords: 'gift voucher card present' },
-  { title: 'Finance & payment plans', href: '/finance', keywords: 'finance payment plan instalments klarna 0%' },
+  { title: 'Finance & payment plans', href: '/finance', keywords: 'finance payment plan pay as you go 0%' },
   { title: 'Book an appointment', href: '/book', keywords: 'book booking appointment reserve' },
   { title: 'Contact us', href: '/contact', keywords: 'contact phone email address location enquiry' },
   { title: 'About KClinics', href: '/about', keywords: 'about clinic story team values' },

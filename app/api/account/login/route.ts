@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import * as Sentry from '@sentry/nextjs';
 import { clientLoginSchema } from '@/lib/validation';
 import { crmEnabled } from '@/lib/crm';
 
@@ -44,6 +45,7 @@ export async function POST(req: Request) {
     return res;
   } catch (err) {
     console.error('[account/login] failed:', err);
+    Sentry.captureException(err, { tags: { area: 'account/login' } });
     // Surface a safe diagnostic category (which stage threw) without leaking
     // any detail — helps pin down config/schema issues from the UI.
     const stage = (err as Error & { stage?: string })?.stage;

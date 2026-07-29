@@ -121,7 +121,7 @@ export function KVision({ signedIn, firstName, enabled }: { signedIn: boolean; f
           {stage === 'budget' && (
             <motion.div key="budget" {...fade} className="mx-auto max-w-2xl">
               <Heading kicker="Step 1" title="What’s your budget?" />
-              <p className="mt-3 text-sm text-[#cdbfae]">So we only recommend a plan that works for you. You can always add more later — and spread the cost with Clearpay.</p>
+              <p className="mt-3 text-sm text-[#cdbfae]">So we only recommend a plan that works for you. You can always add more later.</p>
               <div className="mt-6 grid gap-2 sm:grid-cols-2">
                 {BUDGETS.map((b) => {
                   const on = budget?.label === b.label;
@@ -273,11 +273,11 @@ function Results({ result, budget, onRestart }: { result: Result; budget: Budget
         <div>
           <p className="text-sm text-[#9a8f80]">Plan total{budget?.pence ? (result.aboveBudget ? ` · above your ${budget.label} budget` : ` · within your ${budget.label} budget`) : ''}</p>
           <p className="font-[family-name:var(--font-display)] text-2xl">{result.phases.some((p) => p.treatments.some((t) => t.estimated)) && result.planTotalPence > 0 ? `from ${money(result.planTotalPence)}` : money(result.planTotalPence)}</p>
-          {result.aboveBudget && <p className="mt-1 text-xs text-[#cdbfae]">This is the smallest effective plan for what we saw — it sits a little above your chosen budget. You can start with one step, or spread the cost with Clearpay.</p>}
+          {result.aboveBudget && <p className="mt-1 text-xs text-[#cdbfae]">This is the smallest effective plan for what we saw — it sits a little above your chosen budget. You can start with one step and add the rest later.</p>}
         </div>
         {result.phases[0]?.treatments[0] && <a href={result.phases[0].treatments[0].href} className="rounded-full bg-[var(--color-gold,#c8a96a)] px-7 py-3 text-sm font-medium text-[#0c0b0a] transition-transform hover:scale-[1.03]">Book your first step →</a>}
       </div>
-      <p className="mt-3 text-center text-xs text-[#9a8f80]">Spread the cost with Clearpay. Personalised cosmetic guidance, not a medical diagnosis — confirmed at your consultation and patch test.</p>
+      <p className="mt-3 text-center text-xs text-[#9a8f80]">Personalised cosmetic guidance, not a medical diagnosis — confirmed at your consultation and patch test.</p>
 
       {/* Worth considering (above budget) */}
       {result.extras.length > 0 && (
@@ -307,7 +307,7 @@ function Heading({ kicker, title }: { kicker: string; title: string }) {
 function NavRow({ onBack, next }: { onBack: () => void; next: { label: string; onClick: () => void; disabled?: boolean } }) {
   return (
     <div className="mt-8 flex items-center justify-between gap-4">
-      <button onClick={onBack} className="text-sm text-[#cdbfae] hover:text-[#f4ece1]">← Back</button>
+      <button onClick={onBack} className="min-h-11 rounded-full px-4 py-2 text-sm text-[#cdbfae] hover:text-[#f4ece1]">← Back</button>
       <button onClick={next.onClick} disabled={next.disabled} className="rounded-full bg-[var(--color-gold,#c8a96a)] px-6 py-3 text-sm font-medium text-[#0c0b0a] transition-transform hover:scale-[1.03] disabled:opacity-40">{next.label}</button>
     </div>
   );
@@ -409,7 +409,7 @@ function AuthStep({ onDone, onError, onBack }: { onDone: (firstName?: string) =>
   }
   return (
     <motion.div {...fade} className="mx-auto max-w-md">
-      <button onClick={onBack} className="mb-5 text-sm text-[#cdbfae] hover:text-[#f4ece1]">← Back to photos</button>
+      <button onClick={onBack} className="mb-5 min-h-11 rounded-full px-4 py-2 text-sm text-[#cdbfae] hover:text-[#f4ece1]">← Back to photos</button>
       <Heading kicker="Your plan is ready" title={mode === 'signup' ? 'Enter your email to reveal it' : 'Welcome back — sign in to reveal it'} />
       <p className="mt-3 text-sm text-[#cdbfae]">{mode === 'signup' ? 'No password to set up — we’ll show your personalised plan now and email you a one-tap link to get back in, plus 15% off your first visit.' : 'Sign in to reveal your personalised plan.'}</p>
       <div className="mt-6 space-y-3">

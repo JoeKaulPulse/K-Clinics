@@ -146,8 +146,10 @@ export const primaryNav: NavGroup[] = [
       {
         heading: 'Ways to Pay & Gifting',
         links: [
+          // BLD-1006: removed the "Buy Now, Pay Later -- 0% options with Klarna &
+          // Clearpay" entry -- the real booking checkout only ever saves a card and
+          // charges later (no BNPL option), so the promise was false. See page.tsx.
           { label: 'Cost & Finance', href: '/finance', description: 'Transparent pricing' },
-          { label: 'Buy Now, Pay Later', href: '/finance#buy-now-pay-later', description: '0% options with Klarna & Clearpay' },
           { label: 'Membership & Rewards', href: '/membership', description: 'Beauty Points & member perks' },
           { label: 'Gift Vouchers', href: '/gift-vouchers', description: 'Design-your-own gift cards' },
           { label: 'Group & Party Bookings', href: '/group-bookings', description: 'Celebrate together' },
@@ -168,7 +170,6 @@ export const footerNav = [
       { label: 'Cost & Finance', href: '/finance' },
       { label: 'Special Offers', href: '/offers' },
       { label: 'Before & After Gallery', href: '/gallery' },
-      { label: 'Buy Now, Pay Later', href: '/finance#buy-now-pay-later' },
       { label: 'Academy Funding', href: '/academy/funding' },
       { label: 'FAQs', href: '/faq' },
       { label: 'Blog', href: '/journal' },
