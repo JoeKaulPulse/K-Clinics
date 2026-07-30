@@ -63,18 +63,20 @@ export default async function PerformancePage() {
         ) : ga4.byChannel.length === 0 ? (
           <p className="text-sm text-[var(--color-stone)]">No GA4 traffic recorded in the last 90 days.</p>
         ) : (
-          <table className="w-full text-sm">
-            <thead><tr className="text-left text-xs uppercase tracking-wide text-[var(--color-stone)]"><th className="pb-2">Channel</th><th className="pb-2 text-right">Sessions</th><th className="pb-2 text-right">Conversions</th></tr></thead>
-            <tbody>
-              {ga4.byChannel.map((c) => (
-                <tr key={c.source} className="border-t border-[var(--color-line)]">
-                  <td className="py-2">{c.source}</td>
-                  <td className="py-2 text-right tabular-nums">{c.sessions.toLocaleString('en-GB')}</td>
-                  <td className="py-2 text-right tabular-nums">{c.conversions.toLocaleString('en-GB')}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead><tr className="text-left text-xs uppercase tracking-wide text-[var(--color-stone)]"><th className="pb-2">Channel</th><th className="pb-2 text-right">Sessions</th><th className="pb-2 text-right">Conversions</th></tr></thead>
+              <tbody>
+                {ga4.byChannel.map((c) => (
+                  <tr key={c.source} className="border-t border-[var(--color-line)]">
+                    <td className="py-2">{c.source}</td>
+                    <td className="py-2 text-right tabular-nums">{c.sessions.toLocaleString('en-GB')}</td>
+                    <td className="py-2 text-right tabular-nums">{c.conversions.toLocaleString('en-GB')}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         )}
       </section>
 
@@ -111,18 +113,20 @@ function Table({ title, rows, empty }: { title: string; rows: { label: string; b
       {rows.length === 0 ? (
         <p className="text-sm text-[var(--color-stone)]">{empty}</p>
       ) : (
-        <table className="w-full text-sm">
-          <thead><tr className="text-left text-xs uppercase tracking-wide text-[var(--color-stone)]"><th className="pb-2">Name</th><th className="pb-2">Bookings</th><th className="pb-2 text-right">Revenue</th></tr></thead>
-          <tbody>
-            {rows.map((r, i) => (
-              <tr key={i} className="border-t border-[var(--color-line)]">
-                <td className="py-2 capitalize">{r.href ? <Link href={r.href} className="hover:text-[var(--color-gold-deep)]">{r.label}</Link> : r.label}</td>
-                <td className="py-2">{r.bookings}</td>
-                <td className="py-2 text-right font-medium">{money(r.revenuePence)}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead><tr className="text-left text-xs uppercase tracking-wide text-[var(--color-stone)]"><th className="pb-2">Name</th><th className="pb-2">Bookings</th><th className="pb-2 text-right">Revenue</th></tr></thead>
+            <tbody>
+              {rows.map((r, i) => (
+                <tr key={i} className="border-t border-[var(--color-line)]">
+                  <td className="py-2 capitalize">{r.href ? <Link href={r.href} className="hover:text-[var(--color-gold-deep)]">{r.label}</Link> : r.label}</td>
+                  <td className="py-2">{r.bookings}</td>
+                  <td className="py-2 text-right font-medium">{money(r.revenuePence)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       )}
     </section>
   );

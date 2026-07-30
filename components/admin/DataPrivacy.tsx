@@ -55,7 +55,7 @@ export function DataPrivacy({ clientId, canDelete = false }: { clientId: string;
             <p className="text-xs text-[var(--color-ink)]">This pseudonymises the client’s personal data (keeping financial records for legal retention) and deletes free-text notes. It can’t be undone. Type <strong>ERASE</strong> to confirm.</p>
             <input value={confirm} onChange={(e) => setConfirm(e.target.value)} placeholder="ERASE" aria-label="Type ERASE to confirm" className="w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-3 py-2 text-sm outline-none focus:border-[var(--color-blush)]" />
             <div className="flex gap-2">
-              <button onClick={erase} disabled={confirm !== 'ERASE' || pending} className="rounded-full bg-[var(--color-blush)] px-4 py-2 text-xs text-white disabled:opacity-40">{pending ? 'Erasing…' : 'Erase'}</button>
+              <button onClick={erase} disabled={confirm !== 'ERASE' || pending} className="rounded-full bg-[var(--color-blush-deep)] px-4 py-2 text-xs text-white disabled:opacity-40">{pending ? 'Erasing…' : 'Erase'}</button>
               <button onClick={() => { setOpen(false); setConfirm(''); }} className="px-3 py-2 text-xs text-[var(--color-stone)]">Cancel</button>
             </div>
           </div>
@@ -88,7 +88,7 @@ export function DataPrivacy({ clientId, canDelete = false }: { clientId: string;
                 />
                 {delErr && <p className="text-xs text-[var(--color-blush-deep)]">{delErr}</p>}
                 <div className="flex gap-2">
-                  <button onClick={destroy} disabled={delConfirm !== 'DELETE' || deleting} className="rounded-full bg-[var(--color-blush)] px-4 py-2 text-xs font-medium text-white disabled:opacity-40">{deleting ? 'Deleting…' : 'Delete permanently'}</button>
+                  <button onClick={destroy} disabled={delConfirm !== 'DELETE' || deleting} className="rounded-full bg-[var(--color-blush-deep)] px-4 py-2 text-xs font-medium text-white disabled:opacity-40">{deleting ? 'Deleting…' : 'Delete permanently'}</button>
                   <button onClick={() => { setDelOpen(false); setDelConfirm(''); setDelErr(''); }} className="px-3 py-2 text-xs text-[var(--color-stone)]">Cancel</button>
                 </div>
               </div>

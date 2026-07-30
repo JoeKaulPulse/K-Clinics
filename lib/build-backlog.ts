@@ -3064,6 +3064,36 @@ export const BUILD_BACKLOG: BacklogItem[] = [
       'Correction to the premise, recorded for accuracy: the pre-payment PaymentIntent minted by app/api/admin/bookings/bnpl-link carries metadata.bookingId as well as kind: course_prepaid, so payment_intent.succeeded in app/api/stripe/webhook ALSO runs its generic booking branch for it -- finalizeBookingCharge() sets chargedAt/chargedPence (and sends a receipt, awards loyalty, raises the Xero invoice) moments before the course_prepaid branch sets prepaidAt, in the same event and in that order. In live data prepaidAt therefore never exists without chargedAt, which means the double-charge described above was in practice already blocked by the pre-existing chargedAt guards, and BNPL money does reach day-close and the CRM revenue figures. The prepaidAt guards are still correct and are a no-op on today data; they are the precondition for ever cleaning up that double-recording (skipping finalizeBookingCharge for kind: course_prepaid), which is exactly what would open the hole for real. (BLD-1119)',
       'Remaining gaps found during review, NOT changed here: the course_prepaid webhook claim gates on prepaidVia: null only, so a pre-payment landing on a booking already charged on card is recorded rather than flagged for a refund (the new finalizeBookingCharge alert covers only the reverse order); the pre-payment link ignores pointsRedeemedPence and giftVoucherPence, so a client who redeemed points or a gift voucher on a course still pays the full course price via BNPL; and the POS/session checkout screen has no prepaid awareness in its snapshot, so on a booking that is prepaid but somehow not charged it would offer payment buttons that every server op now refuses (safe, but a dead end for staff). (BLD-1119)'],
   },
+  {
+    title: 'Cron/health failure alert webhook is fire-and-forget, may silently never send', type: 'ERROR', urgency: 'P1', status: 'IN_REVIEW', assignee: 'claude',
+    value: 7, effort: 1,
+    detail: 'app/api/cron/daily/route.ts and app/api/health/route.ts POST the Slack/Discord ops alert with fetch(webhookUrl, {...}).catch(() => {}) without awaiting it before the route returns. On Vercel\'s serverless runtime the function can freeze once the response is sent, so the pending request may never complete. The identical alert in app/api/cron/dispatch/route.ts and app/api/cron/kiosk-cleanup/route.ts correctly awaits the call, so the two most consequential alert paths (daily-automations failure summary, and /api/health detecting a live outage) were the ones at risk of silently dropping the ops notification.',
+    notes: ['Fix: added await to both fetch(webhookUrl, ...) calls (app/api/cron/daily/route.ts, app/api/health/route.ts), matching the pattern already used in app/api/cron/dispatch/route.ts and app/api/cron/kiosk-cleanup/route.ts. Both enclosing route handlers were already async, so no other change was needed. tsc passes; DB-dependent prebuild steps could not run in the sandbox (no reachable Postgres), so npm run build was verified with DB_SYNC_NONFATAL=true to isolate the Next.js compile from that unrelated sandbox limitation -- the change carries no schema changes. (BLD-1137)'],
+  },
+  {
+    title: 'Admin SAR export has no rate limit, unlike every other export endpoint', type: 'ERROR', urgency: 'P1', status: 'IN_REVIEW', assignee: 'claude',
+    value: 8, effort: 1,
+    detail: 'app/api/admin/clients/[id]/export/route.ts GETs a client\'s full record (incl. decrypted clinical data when the actor holds clients.clinical.view) gated only by sessionCan(session, "clients.export") -- no enforceRateLimit call. Contrast with app/api/account/export/route.ts (5/hr limit) and app/api/admin/export/route.ts (WebAuthn step-up + 6/hr limit) for the same class of operation. A compromised/rogue staff session with clients.export can script-loop client IDs and bulk-exfiltrate every client\'s health record with only a per-export audit row after the fact.',
+    notes: ['Fix: added enforceRateLimit(req, "admin-client-export", 30, 3600, "admin") to app/api/admin/clients/[id]/export/route.ts, matching the guard pattern already used on the sibling export endpoints (returns 429 once exceeded). 30/hr is looser than the full-database export\'s 6/hr since exporting individual clients over a working day is routine staff use, but it closes off unbounded scripted looping through client IDs. (BLD-1134)'],
+  },
+  {
+    title: 'GDPR erase/delete buttons use a low-contrast color combination', type: 'TASK', urgency: 'P1', status: 'IN_REVIEW', assignee: 'claude',
+    value: 6, effort: 1,
+    detail: '--color-blush (#cdb4a3) used as a solid background with text-white gives roughly 2:1 contrast against a 4.5:1 AA requirement. Hit the "Erase" button and "Delete permanently" button in components/admin/DataPrivacy.tsx -- both safety-critical data-erasure actions.',
+    notes: ['Fix: swapped both buttons\' background from --color-blush to --color-blush-deep (#8b4a4a, the palette\'s documented AA destructive color, already used correctly for text/border on the same panel). File: components/admin/DataPrivacy.tsx. (BLD-1120)'],
+  },
+  {
+    title: 'Admin analytics/SEO tables clip instead of scrolling on narrow screens', type: 'TASK', urgency: 'P1', status: 'IN_REVIEW', assignee: 'claude',
+    value: 6, effort: 2,
+    detail: 'app/admin/seo/page.tsx, app/admin/marketing/performance/page.tsx and app/admin/marketing/analytics/page.tsx render bare <table> elements with no overflow-x-auto wrapper. app/globals.css sets body { overflow-x: clip } globally, so on a narrow admin viewport any table wider than its column reserves gets its extra columns cut off with no way to see them.',
+    notes: ['Fix: wrapped all six affected tables in a div className="overflow-x-auto" -- app/admin/seo/page.tsx (1), app/admin/marketing/performance/page.tsx (2), app/admin/marketing/analytics/page.tsx (3). No visual change on wide viewports; narrow viewports now scroll horizontally within the table instead of losing columns. (BLD-1125)'],
+  },
+  {
+    title: 'POS quantity steppers are under the touch-target minimum', type: 'TASK', urgency: 'P2', status: 'IN_REVIEW', assignee: 'claude',
+    value: 5, effort: 1,
+    detail: 'components/admin/PosTerminal.tsx renders the basket +/- buttons at h-7 w-7 (28px) on a touchscreen retail terminal, well under the ~44px guideline used elsewhere in the app. Repeated taps to adjust quantity are error-prone on a tablet.',
+    notes: ['Fix: bumped both stepper buttons from h-7 w-7 to h-11 w-11 (44px), matching the touch-target size used for other stepper/action controls in the admin. File: components/admin/PosTerminal.tsx. (BLD-1129)'],
+  },
 ];
 
 // A content hash over every item's title + status + PR, so ANY change (a new
