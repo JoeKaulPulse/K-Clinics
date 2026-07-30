@@ -141,9 +141,9 @@ export function PosTerminal({ products }: { products: P[] }) {
               <li key={l.p.id} className="flex items-center justify-between gap-2 py-2 text-sm">
                 <span className="min-w-0 flex-1 truncate">{l.p.name}</span>
                 <div className="flex items-center gap-2">
-                  <button onClick={() => sub(l.p.id)} className="h-7 w-7 rounded-full border border-[var(--color-line)]">−</button>
+                  <button onClick={() => sub(l.p.id)} className="h-11 w-11 rounded-full border border-[var(--color-line)]">−</button>
                   <span className="w-5 text-center">{l.qty}</span>
-                  <button onClick={() => add(l.p.id)} className="h-7 w-7 rounded-full border border-[var(--color-line)]">+</button>
+                  <button onClick={() => add(l.p.id)} className="h-11 w-11 rounded-full border border-[var(--color-line)]">+</button>
                   <span className="w-16 text-right font-medium tabular-nums">{money(l.p.pricePence * l.qty)}</span>
                 </div>
               </li>

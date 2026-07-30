@@ -45,20 +45,22 @@ export default async function SeoPage() {
           ) : gsc.topQueries.length === 0 ? (
             <p className="text-sm text-[var(--color-stone)]">No Search Console data for the last 28 days.</p>
           ) : (
-            <table className="w-full text-sm">
-              <thead><tr className="text-left text-xs uppercase tracking-wide text-[var(--color-stone)]"><th className="pb-2">Query</th><th className="pb-2 text-right">Clicks</th><th className="pb-2 text-right">Impr.</th><th className="pb-2 text-right">CTR</th><th className="pb-2 text-right">Pos.</th></tr></thead>
-              <tbody>
-                {gsc.topQueries.map((q) => (
-                  <tr key={q.query} className="border-t border-[var(--color-line)]">
-                    <td className="py-2">{q.query}</td>
-                    <td className="py-2 text-right tabular-nums">{q.clicks.toLocaleString('en-GB')}</td>
-                    <td className="py-2 text-right tabular-nums">{q.impressions.toLocaleString('en-GB')}</td>
-                    <td className="py-2 text-right tabular-nums">{pct(q.ctr)}</td>
-                    <td className="py-2 text-right tabular-nums">{q.position.toFixed(1)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead><tr className="text-left text-xs uppercase tracking-wide text-[var(--color-stone)]"><th className="pb-2">Query</th><th className="pb-2 text-right">Clicks</th><th className="pb-2 text-right">Impr.</th><th className="pb-2 text-right">CTR</th><th className="pb-2 text-right">Pos.</th></tr></thead>
+                <tbody>
+                  {gsc.topQueries.map((q) => (
+                    <tr key={q.query} className="border-t border-[var(--color-line)]">
+                      <td className="py-2">{q.query}</td>
+                      <td className="py-2 text-right tabular-nums">{q.clicks.toLocaleString('en-GB')}</td>
+                      <td className="py-2 text-right tabular-nums">{q.impressions.toLocaleString('en-GB')}</td>
+                      <td className="py-2 text-right tabular-nums">{pct(q.ctr)}</td>
+                      <td className="py-2 text-right tabular-nums">{q.position.toFixed(1)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           )}
         </section>
 
