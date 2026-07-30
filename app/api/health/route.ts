@@ -148,7 +148,9 @@ export async function GET(req: Request) {
       const body = JSON.stringify({ text: summary, ...report });
       // BLD-1137: awaited (not fire-and-forget) — Vercel's serverless runtime can
       // freeze the function once the response is sent, dropping an unawaited POST.
-      await fetch(webhookUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body }).catch(() => {});
+      // Bounded: this route has no maxDuration override and is hit every 5 minutes
+      // by cron, so a hung webhook must not stall the health check itself.
+      await fetch(webhookUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body, signal: AbortSignal.timeout(5_000) }).catch(() => {});
     }
   }
 
