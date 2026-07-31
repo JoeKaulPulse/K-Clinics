@@ -37,7 +37,7 @@ export async function eraseClientData(clientId: string) {
   const { encClinical } = await import('@/lib/clinical-crypto');
   // Fetch before erasing — purchaserEmail is a plain string (no FK), so we
   // need the current email to match GiftVouchers the client purchased.
-  const client = await db.client.findUnique({ where: { id: clientId }, select: { email: true } });
+  const client = await db.client.findUnique({ where: { id: clientId }, select: { email: true, stripeCustomerId: true } });
   if (!client) return { ok: false, error: 'Not found.' };
   const erasedEmail = `erased-${clientId}@redacted.invalid`;
   // Art. 17 erasure across ALL personal/special-category data, atomically. We
@@ -175,7 +175,28 @@ export async function eraseClientData(clientId: string) {
     const { removeBooking } = await import('@/lib/hostinger-calendar');
     for (const b of all) { await removeBooking(b.id).catch(() => {}); }
   } catch (e) { console.error('[erase] calendar cleanup failed (recorded in audit):', (e as Error)?.message); calendarFailures++; }
-  await logAudit({ action: 'CLIENT_ERASED', actor: session.email, actorRole: session.role, clientId, summary: `Client personal + special-category data erased across all records (GDPR right-to-erasure)${calendarFailures ? ` — ${calendarFailures} synced calendar event(s) could not be removed, follow up manually` : ''}`, meta: calendarFailures ? { calendarFailures } : undefined });
+  // BLD-1135: ensureCustomer() (lib/stripe.ts) creates a Stripe Customer with
+  // real name/email/phone and never touches it again — the erasure above never
+  // reached Stripe, so the person's identifiers persisted indefinitely in a
+  // third party. Scrub the Customer object to match the pseudonymised Client
+  // row (never delete it: past Charges/PaymentIntents/Invoices reference it).
+  let stripeFailure = false;
+  if (client.stripeCustomerId) {
+    try {
+      const { stripe, stripeEnabled } = await import('@/lib/stripe');
+      if (stripeEnabled) await stripe().customers.update(client.stripeCustomerId, { name: 'Erased', email: erasedEmail, phone: '', metadata: { clientId, erased: 'true' } });
+    } catch (e) {
+      console.error('[erase] stripe customer scrub failed (recorded in audit):', (e as Error)?.message);
+      const Sentry = await import('@sentry/nextjs');
+      Sentry.captureException(e, { tags: { area: 'gdpr-erasure', stage: 'stripe-scrub' } });
+      stripeFailure = true;
+    }
+  }
+  const failureNote = [
+    calendarFailures ? `${calendarFailures} synced calendar event(s) could not be removed` : null,
+    stripeFailure ? 'Stripe customer record could not be scrubbed' : null,
+  ].filter(Boolean).join('; ');
+  await logAudit({ action: 'CLIENT_ERASED', actor: session.email, actorRole: session.role, clientId, summary: `Client personal + special-category data erased across all records (GDPR right-to-erasure)${failureNote ? ` — ${failureNote}, follow up manually` : ''}`, meta: (calendarFailures || stripeFailure) ? { calendarFailures, stripeFailure } : undefined });
   try {
     const { notifyStaffByPermission } = await import('@/lib/notifications');
     await notifyStaffByPermission('settings.manage', { kind: 'status', category: 'system', priority: 'high', title: 'Client data erased (GDPR)', body: `Right-to-erasure completed by ${session.email.split('@')[0]}`, href: '/admin/clients' }, session.email);
@@ -214,8 +235,16 @@ export async function deleteClient(clientId: string, confirm: string) {
     for (const b of all) { await removeBooking(b.id).catch(() => {}); }
   } catch (e) { console.error('[delete] calendar cleanup failed (recorded in audit):', (e as Error)?.message); calendarFailures++; }
 
+  // BLD-1121: Incident (adverse-reaction/accident) rows have a genuine
+  // RIDDOR/H&S retention basis (Art. 17(3)(b)) — the relation is now SetNull,
+  // not Cascade (see prisma/schema.prisma), so the hard delete below no longer
+  // wipes them outright. Redact the encrypted narrative first, the same way
+  // eraseClientData() already does, so the anonymised safety fact survives.
+  await db.incident.updateMany({ where: { clientId }, data: { descriptionEnc: encClinical(JSON.stringify({ redacted: 'client-deleted' })), location: null } });
+
   try {
     // Cascades to the client's bookings, assessments, points, reviews, etc.
+    // Incident rows are spared (onDelete: SetNull) and already redacted above.
     await db.client.delete({ where: { id: clientId } });
   } catch (e) {
     return { ok: false, error: (e as Error)?.message || 'Could not delete this client.' };

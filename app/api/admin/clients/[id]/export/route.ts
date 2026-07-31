@@ -54,6 +54,11 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
     for (const bk of c.bookings) { bk.allergyNote = decClinical(bk.allergyNote); }
     for (const it of c.interactions) { it.detail = decClinical(it.detail); }
     for (const cr of c.callRecords) { cr.transcript = decClinical(cr.transcript); } // BLD-602: encrypted at rest
+    // PRJ-1060.10: the follow-up concern text is now encrypted at rest in BOTH
+    // places it lands — Task.detail (clinical: true) and the client's own
+    // FollowUp.comment. Decrypt for the readable record; never ship ciphertext.
+    for (const tk of c.tasks) { tk.detail = tk.clinical ? decClinical(tk.detail) : tk.detail; }
+    for (const fu of c.followUps) { fu.comment = decClinical(fu.comment); }
   } else {
     c.medicalFlag = null;
     c.allergies = null;
@@ -62,6 +67,11 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
     // Non-clinical interaction notes stay readable; CLINICAL entries are withheld.
     for (const it of c.interactions) { it.detail = it.type === 'CLINICAL' ? null : decClinical(it.detail); }
     for (const cr of c.callRecords) { cr.transcript = null; }
+    // PRJ-1060.10: same gate the Tasks board applies — a follow-up-concern task
+    // (clinical: true) and a follow-up response that flagged a concern hold
+    // health free-text, so they are withheld; ordinary ones stay readable.
+    for (const tk of c.tasks) { if (tk.clinical) tk.detail = null; }
+    for (const fu of c.followUps) { fu.comment = fu.concern ? null : decClinical(fu.comment); }
   }
   // BLD-866: the in-appointment clinical note (Booking.clinicalNoteEnc) was
   // exported as raw ciphertext — useless to the subject and omitted from the
@@ -134,7 +144,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
   } else {
     // BLD-866: make the withholding explicit in the file, so nobody treats a
     // non-clinical export as the complete Art. 15 record.
-    out.clinicalDataWithheld = 'Clinical fields (medical flag, allergies, consultation concerns/medical notes, clinical notes, call transcripts, health assessments, before photos) are withheld — the exporting account lacks clinical access. Ask a clinical-access holder to run the export for the complete record.';
+    out.clinicalDataWithheld = 'Clinical fields (medical flag, allergies, consultation concerns/medical notes, clinical notes, call transcripts, health assessments, before photos, follow-up concern text and the tasks raised from it) are withheld — the exporting account lacks clinical access. Ask a clinical-access holder to run the export for the complete record.';
   }
 
   const { logAudit } = await import('@/lib/audit');
