@@ -526,8 +526,13 @@ model Interaction {
 // optionally to the booking it happened at.
 model Incident {
   id        String   @id @default(cuid())
-  client    Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
-  clientId  String
+  // BLD-1121: was onDelete: Cascade, so a hard client-delete wiped RIDDOR/H&S
+  // records outright despite their Art. 17(3)(b) legal-retention basis (the
+  // same basis eraseClientData() already honours by redacting-and-keeping).
+  // SetNull orphans the row instead; deleteClient() redacts the narrative
+  // before the client row goes, so the anonymised safety fact survives.
+  client    Client?  @relation(fields: [clientId], references: [id], onDelete: SetNull)
+  clientId  String?
   booking   Booking? @relation(fields: [bookingId], references: [id], onDelete: SetNull)
   bookingId String?
 
@@ -1493,6 +1498,10 @@ model Task {
   ref         String?
   title       String
   detail      String?
+  // PRJ-1060.10: true when `detail` embeds a client's post-treatment health
+  // concern (see lib/followup.ts) — detail is then clinical-crypto encrypted
+  // and the task is hidden from the board for staff without clients.clinical.view.
+  clinical    Boolean      @default(false)
   status      TaskStatus   @default(OPEN)
   priority    TaskPriority @default(NORMAL)
   dueAt       DateTime?

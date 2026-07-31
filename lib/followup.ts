@@ -46,7 +46,8 @@ export async function submitFollowUp(token: string, sentiment: string, comment?:
     const task = await db.task.create({
       data: {
         title: `Follow-up concern — ${name} (${fu.treatmentTitle})`,
-        detail: note ? `Client reported a concern at their 1-week follow-up: “${note}”` : 'Client flagged a concern at their 1-week follow-up.',
+        detail: encClinical(note ? `Client reported a concern at their 1-week follow-up: “${note}”` : 'Client flagged a concern at their 1-week follow-up.'),
+        clinical: true,
         priority: 'HIGH', status: 'OPEN', clientId: fu.clientId, createdBy: 'system',
       },
     });
@@ -57,7 +58,7 @@ export async function submitFollowUp(token: string, sentiment: string, comment?:
     await db.interaction.create({ data: { clientId: fu.clientId, type: 'FOLLOW_UP', summary: `Post-treatment concern flagged (${fu.treatmentTitle})`, detail: note ? encClinical(note) : undefined, author: 'system' } }).catch(() => {});
   }
 
-  await db.followUp.update({ where: { id: fu.id }, data: { respondedAt: new Date(), sentiment: valid, concern, comment: note, taskId } });
+  await db.followUp.update({ where: { id: fu.id }, data: { respondedAt: new Date(), sentiment: valid, concern, comment: encClinical(note), taskId } });
   return { ok: true, concern };
 }
 

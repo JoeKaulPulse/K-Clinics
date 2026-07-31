@@ -1,7 +1,8 @@
 import Link from 'next/link';
 import { redirect } from 'next/navigation';
 import { crmEnabled } from '@/lib/crm';
-import { getSession, sessionPermissions } from '@/lib/auth';
+import { getSession, sessionPermissions, sessionCan } from '@/lib/auth';
+import { decClinical } from '@/lib/clinical-crypto';
 import { AdminShell } from '@/components/admin/AdminShell';
 import { CrmDisabled } from '@/components/admin/CrmDisabled';
 import { TaskBoard } from '@/components/admin/TaskBoard';
@@ -25,15 +26,20 @@ export default async function TasksPage() {
     client: { select: { id: true, firstName: true, lastName: true } },
     parent: { select: { ref: true, title: true } },
   } as const;
+  // PRJ-1060.10: a follow-up-concern task (`clinical: true`) embeds a client's
+  // health-concern text — hide it from the shared board for staff without the
+  // clinical-data permission, same gate as the client-detail clinical views.
+  const canClinical = sessionCan(session, 'clients.clinical.view');
+  const clinicalFilter = canClinical ? {} : { clinical: false };
   const [open, done, staff] = await Promise.all([
     db.task.findMany({
-      where: { status: 'OPEN' },
+      where: { status: 'OPEN', ...clinicalFilter },
       orderBy: [{ dueAt: { sort: 'asc', nulls: 'last' } }, { createdAt: 'desc' }],
       take: 200,
       include: taskInclude,
     }),
     db.task.findMany({
-      where: { status: 'DONE' },
+      where: { status: 'DONE', ...clinicalFilter },
       orderBy: { completedAt: 'desc' },
       take: 20,
       include: taskInclude,
@@ -42,7 +48,7 @@ export default async function TasksPage() {
   ]);
 
   const shape = (t: (typeof open)[number]) => ({
-    id: t.id, ref: t.ref, title: t.title, detail: t.detail, status: t.status as string, priority: t.priority as string,
+    id: t.id, ref: t.ref, title: t.title, detail: t.clinical ? decClinical(t.detail) : t.detail, status: t.status as string, priority: t.priority as string,
     dueAt: t.dueAt ? t.dueAt.toISOString() : null, assigneeId: t.assigneeId,
     assigneeName: t.assignee?.name || t.assignee?.email || null,
     createdBy: t.createdBy, completedAt: t.completedAt ? t.completedAt.toISOString() : null, completedBy: t.completedBy,
