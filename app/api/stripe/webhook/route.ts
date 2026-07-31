@@ -413,6 +413,17 @@ export async function POST(req: Request) {
           }
           if (fully) {
             try { const { refundBookingPoints } = await import('@/lib/client-loyalty'); await refundBookingPoints(bk.id); } catch (e) { console.error('[webhook] refund points reversal failed:', (e as Error)?.message); Sentry.captureException(e, { tags: { area: 'stripe-webhook', sub: 'refund-points' } }); } // BLD-921
+            // BLD-1138: mirror refundBooking()'s voucher restore (lib/booking-actions.ts) —
+            // a dashboard refund reconciled here otherwise never returns the
+            // gift-voucher-covered portion of a partly card+voucher booking.
+            if (bk.chargePaymentIntentId !== 'ext_gift-voucher' && (bk.giftVoucherPence ?? 0) > 0 && bk.giftVoucherCode) {
+              try {
+                const { creditVoucher } = await import('@/lib/gift-vouchers');
+                await creditVoucher(bk.giftVoucherCode, bk.giftVoucherPence);
+                const { logAudit } = await import('@/lib/audit');
+                await logAudit({ action: 'REWARD_REDEEMED', actor: 'stripe-webhook', bookingId: bk.id, clientId: bk.clientId, summary: `Gift voucher ${bk.giftVoucherCode} restored on full refund (Stripe dashboard) — £${(bk.giftVoucherPence / 100).toFixed(2)} back on the voucher` }).catch(() => {});
+              } catch (e) { console.error('[webhook] voucher restore failed:', (e as Error)?.message); Sentry.captureException(e, { tags: { area: 'stripe-webhook', sub: 'voucher-restore-refund' } }); }
+            }
           }
           // BLD-836: claw back the SPEND points earned on the refunded money too
           // (pro-rata, idempotent inside the helper) — parity with refundBooking().
