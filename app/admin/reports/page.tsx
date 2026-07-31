@@ -69,42 +69,61 @@ export default async function ReportsPage({ searchParams }: { searchParams: Prom
   // overstates. Both cost sources aggregate per treatment in SQL; StockMovement
   // has no Booking relation in the Prisma schema (bare bookingId column), so a
   // join here replaces the old unbounded id list.
-  const goodsCost = await db.$queryRaw<{ title: string; cost: number | null }[]>`
-    SELECT b."treatmentTitle" AS title,
-           SUM(v."costPence" * GREATEST(bi."sessions", 1))::float8 AS cost
-      FROM "BookingItem" bi
-      JOIN "Booking" b ON b."id" = bi."bookingId"
-      JOIN "ServiceVariant" v ON v."id" = bi."variantId"
-     WHERE b."status" = 'COMPLETED' AND b."startAt" >= ${since} AND v."costPence" > 0
-     GROUP BY 1
-  `.catch(() => [] as { title: string; cost: number | null }[]);
-  const usedCost = await db.$queryRaw<{ title: string; cost: number | null }[]>`
-    SELECT b."treatmentTitle" AS title,
-           SUM(ABS(m."delta") * COALESCE(si."costPence", 0))::float8 AS cost
-      FROM "StockMovement" m
-      JOIN "Booking" b ON b."id" = m."bookingId"
-      JOIN "StockItem" si ON si."id" = m."itemId"
-     WHERE m."reason" IN ('USED', 'WASTED') AND b."status" = 'COMPLETED' AND b."startAt" >= ${since}
-     GROUP BY 1
-  `.catch(() => [] as { title: string; cost: number | null }[]);
+  //
+  // BLD-1126: goodsCost/usedCost/minMarginPct/vatCfg/usedRow/sessions each only
+  // depend on the already-known since/bookingWhere, not on each other or on
+  // staffRows above — batched into one Promise.all instead of six sequential
+  // round trips.
+  const { getVatConfig, effectiveVatClass, vatBreakdown } = await import('@/lib/vat');
+  const { getConfigNumber } = await import('@/lib/settings');
+  const { SESSION_STEPS } = await import('@/lib/appointment-session');
+  const [goodsCost, usedCost, minMarginPct, vatCfg, usedRow, sessions] = await Promise.all([
+    db.$queryRaw<{ title: string; cost: number | null }[]>`
+      SELECT b."treatmentTitle" AS title,
+             SUM(v."costPence" * GREATEST(bi."sessions", 1))::float8 AS cost
+        FROM "BookingItem" bi
+        JOIN "Booking" b ON b."id" = bi."bookingId"
+        JOIN "ServiceVariant" v ON v."id" = bi."variantId"
+       WHERE b."status" = 'COMPLETED' AND b."startAt" >= ${since} AND v."costPence" > 0
+       GROUP BY 1
+    `.catch(() => [] as { title: string; cost: number | null }[]),
+    db.$queryRaw<{ title: string; cost: number | null }[]>`
+      SELECT b."treatmentTitle" AS title,
+             SUM(ABS(m."delta") * COALESCE(si."costPence", 0))::float8 AS cost
+        FROM "StockMovement" m
+        JOIN "Booking" b ON b."id" = m."bookingId"
+        JOIN "StockItem" si ON si."id" = m."itemId"
+       WHERE m."reason" IN ('USED', 'WASTED') AND b."status" = 'COMPLETED' AND b."startAt" >= ${since}
+       GROUP BY 1
+    `.catch(() => [] as { title: string; cost: number | null }[]),
+    getConfigNumber('min_margin_pct').catch(() => 0),
+    getVatConfig().catch(() => null),
+    db.$queryRaw<[{ used: number | null }]>`
+      SELECT SUM(ABS(m."delta") * COALESCE(si."costPence", 0))::float8 AS used
+        FROM "StockMovement" m
+        JOIN "StockItem" si ON si."id" = m."itemId"
+       WHERE m."reason" IN ('USED', 'WASTED') AND m."createdAt" >= ${since}
+    `.catch(() => [{ used: 0 }] as [{ used: number | null }]),
+    db.appointmentSession.findMany({
+      where: { booking: { status: 'COMPLETED', startAt: { gte: since } } },
+      select: { steps: true },
+    }).catch(() => [] as { steps: unknown }[]),
+  ]);
   const costByTreatment = new Map<string, number>();
   for (const r of [...goodsCost, ...usedCost]) costByTreatment.set(r.title, (costByTreatment.get(r.title) ?? 0) + Math.round(r.cost ?? 0));
   const profitability = treatmentAgg
     .map((t) => ({ ...t, cost: costByTreatment.get(t.title) ?? 0 }))
     .map((p) => ({ ...p, margin: p.revenue - p.cost, marginPct: p.revenue > 0 ? Math.round(((p.revenue - p.cost) / p.revenue) * 100) : 0 }))
     .sort((a, b) => b.margin - a.margin).slice(0, 15);
-  const minMarginPct = await import('@/lib/settings').then((m) => m.getConfigNumber('min_margin_pct')).catch(() => 0);
 
   const totalRevenue = rev(totals._sum);
   // VAT collected over the period (only when the clinic is VAT-registered).
   // Summed per treatment slug (the VAT class is per service), so the rate is
   // applied to the period total per service rather than per booking.
   let totalVat = 0; let vatRegistered = false;
-  try {
-    const { getVatConfig, effectiveVatClass, vatBreakdown } = await import('@/lib/vat');
-    const vatCfg = await getVatConfig();
-    vatRegistered = vatCfg.registered;
-    if (vatCfg.registered) {
+  if (vatCfg?.registered) {
+    vatRegistered = true;
+    try {
       const [bySlug, svcRows] = await Promise.all([
         db.booking.groupBy({ by: ['treatmentSlug'], where: bookingWhere, _sum: { chargedPence: true, refundedPence: true } }),
         db.service.findMany({ select: { treatmentSlug: true, vatClass: true, category: true } }),
@@ -114,25 +133,14 @@ export default async function ReportsPage({ searchParams }: { searchParams: Prom
         const svc = svcBySlug.get(g.treatmentSlug);
         totalVat += vatBreakdown(rev(g._sum), vatCfg, effectiveVatClass({ vatClass: svc?.vatClass, category: svc?.category })).vatPence;
       }
-    }
-  } catch { /* VAT figure is best-effort */ }
+    } catch { /* VAT figure is best-effort */ }
+  }
   const totalActualMin = totals._sum.actualMinutes ?? 0;
   const inventoryValue = items.reduce((s, i) => s + i.currentQty * (i.costPence ?? 0), 0);
-  const usedRow = await db.$queryRaw<[{ used: number | null }]>`
-    SELECT SUM(ABS(m."delta") * COALESCE(si."costPence", 0))::float8 AS used
-      FROM "StockMovement" m
-      JOIN "StockItem" si ON si."id" = m."itemId"
-     WHERE m."reason" IN ('USED', 'WASTED') AND m."createdAt" >= ${since}
-  `.catch(() => [{ used: 0 }] as [{ used: number | null }]);
   const consumablesUsed = Math.round(usedRow[0]?.used ?? 0);
 
   // Appointment-session timing analytics (BLD-143): how long each stage takes,
   // what gets skipped, and where the most time goes — from AppointmentSession.steps.
-  const { SESSION_STEPS } = await import('@/lib/appointment-session');
-  const sessions = await db.appointmentSession.findMany({
-    where: { booking: { status: 'COMPLETED', startAt: { gte: since } } },
-    select: { steps: true },
-  }).catch(() => [] as { steps: unknown }[]);
   const stepAgg = new Map<string, { secs: number; n: number; skips: number; visits: number }>();
   for (const s of sessions) {
     const steps = (s.steps && typeof s.steps === 'object') ? s.steps as Record<string, { seconds?: number; visits?: number; skipped?: boolean }> : {};
