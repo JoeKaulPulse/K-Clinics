@@ -235,10 +235,21 @@ export async function POST(req: Request) {
   if (usedWelcome && welcomeClaim) {
     await db.discountClaim.update({ where: { id: welcomeClaim.id }, data: { status: 'REDEEMED', redeemedBookingId: booking.id } });
   }
-  // Record the promo redemption (increments its usage counter).
+  // Record the promo redemption (increments its usage counter). This is the
+  // only atomic enforcement of maxRedemptions/oncePerClient — priceWithPromo
+  // above was a read-only check, so a concurrent request could have already won
+  // the last redemption. If it fails, the discounted price already set on the
+  // booking is no longer backed by a valid redemption: release the held slot
+  // and reject rather than silently honouring the discount (BLD-1035).
   if (promo) {
     const { redeemPromo } = await import('@/lib/promo');
-    await redeemPromo(promo.promoId, { clientId: client.id, email: client.email, bookingId: booking.id, amountOffPence: primaryDiscount });
+    const redeemed = await redeemPromo(promo.promoId, { clientId: client.id, email: client.email, bookingId: booking.id, amountOffPence: primaryDiscount });
+    if (!redeemed) {
+      await db.booking.update({ where: { id: booking.id }, data: { status: 'CANCELLED' } }).catch(() => {});
+      const { logAudit: logAuditCancel } = await import('@/lib/audit');
+      await logAuditCancel({ action: 'BOOKING_CANCELLED', actor: 'system', clientId: client.id, bookingId: booking.id, summary: 'Auto-cancelled: promo code redemption failed (code no longer available)' }).catch(() => {});
+      return NextResponse.json({ ok: false, error: 'This promo code is no longer available. Please remove it and try again.' }, { status: 409 });
+    }
   }
 
   const { logAudit } = await import('@/lib/audit');

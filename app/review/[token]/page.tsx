@@ -31,7 +31,7 @@ export default async function ReviewPage({ params }: { params: Promise<{ token: 
             </div>
             <h1 className="font-[family-name:var(--font-display)] text-2xl">Thank you{review.client.firstName ? `, ${review.client.firstName}` : ''}.</h1>
             <p className="mt-3 text-[var(--color-stone)]">Your feedback has been received — we’re grateful you took the time.</p>
-            {googleUrl && (
+            {review.rating != null && review.rating >= 4 && googleUrl && (
               <a href={googleUrl} target="_blank" rel="noopener noreferrer" className="mt-6 inline-block rounded-full bg-[var(--color-gold-deep)] px-6 py-3 text-sm font-medium text-white hover:bg-[var(--color-ink)]">
                 Share it on Google too
               </a>

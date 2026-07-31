@@ -179,10 +179,20 @@ export async function POST(req: Request) {
   // for securing this repeat booking (best-effort).
   try { const { awardForRebooking } = await import('@/lib/gamification'); await awardForRebooking(booking.id); } catch { /* non-fatal */ }
 
-  // Record the promo redemption (increments the code's usage counter).
+  // Record the promo redemption (increments the code's usage counter). This is
+  // the only atomic enforcement of maxRedemptions/oncePerClient — priceWithPromo
+  // above was a read-only check, so a concurrent request could have already won
+  // the last redemption. If it fails, the discounted price already set on the
+  // booking is no longer backed by a valid redemption: release the held slot and
+  // reject rather than silently honouring the discount (BLD-1035).
   if (promo) {
     const { redeemPromo } = await import('@/lib/promo');
-    await redeemPromo(promo.promoId, { clientId: client.id, email: client.email, bookingId: booking.id, amountOffPence: promo.discountPence });
+    const redeemed = await redeemPromo(promo.promoId, { clientId: client.id, email: client.email, bookingId: booking.id, amountOffPence: promo.discountPence });
+    if (!redeemed) {
+      await db.booking.update({ where: { id: booking.id }, data: { status: 'CANCELLED' } }).catch(() => {});
+      await logAudit({ action: 'BOOKING_CANCELLED', actor: 'system', clientId: client.id, bookingId: booking.id, summary: 'Auto-cancelled: promo code redemption failed (code no longer available)' }).catch(() => {});
+      return NextResponse.json({ ok: false, error: 'This promo code is no longer available. Please remove it and try again.' }, { status: 409 });
+    }
   }
 
   // Burn the welcome discount so it can only ever be used once.
