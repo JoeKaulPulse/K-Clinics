@@ -51,6 +51,18 @@ export async function POST(req: Request) {
       error: `This booking totals £${(booking.pricePence / 100).toFixed(2)} but the course itself is £${(course.pence / 100).toFixed(2)} — the extras on top can’t be collected once the course is pre-paid. Remove the add-on treatments here and bill them on a separate booking, then send the pre-payment link.`,
     }, { status: 409 });
   }
+  // BLD-1149: and refuse the mirror case. An admin price override edits
+  // Booking.pricePence only — the primary line item (what courseTotalPence
+  // reads, and what the course_prepaid webhook validates the payment against)
+  // keeps the catalogue price, deliberately, so the override can't leak into a
+  // rebooked next visit. Sending the link anyway would bill the client the
+  // PRE-override total and mark it paid in full. Fail loudly instead.
+  if (booking.pricePence < course.pence) {
+    return NextResponse.json({
+      ok: false,
+      error: `This booking is priced at £${(booking.pricePence / 100).toFixed(2)} but the course line item is still £${(course.pence / 100).toFixed(2)}, and a pre-payment link can only be raised for the course total — it would charge the client £${(course.pence / 100).toFixed(2)}. Take the agreed price on the card on file or a pay-link instead, or re-book the course at that price.`,
+    }, { status: 409 });
+  }
 
   const base = (process.env.NEXT_PUBLIC_SITE_URL || (await import('@/lib/site')).site.url).replace(/\/$/, '');
   const name = course.sessions > 1 ? `Course of ${course.sessions} × ${booking.treatmentTitle}` : booking.treatmentTitle;

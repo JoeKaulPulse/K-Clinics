@@ -134,7 +134,16 @@ export function BookingActions({
                       const r = await updateBookingPriceAction(bookingId, pence, overrideReason);
                       setMsg(r.ok ? `Price set to ${money(pence)} ✓` : r.error || 'Could not update price');
                       setConfirmOverride(false);
-                      if (r.ok) setOverrideOpen(false);
+                      if (r.ok) {
+                        setOverrideOpen(false);
+                        // Re-prime the "Charge card on file" box. It is seeded from
+                        // pricePence at mount only, so without this it would keep
+                        // offering the PRE-override amount for confirmation after a
+                        // successful override — the one number staff are about to
+                        // put through the card.
+                        setAmount((Math.max(0, pence - (pointsRedeemedPence ?? 0)) / 100).toFixed(2));
+                        setConfirmCharge(false);
+                      }
                     })} className="rounded-full bg-[var(--color-ink)] px-4 py-2 text-sm text-[var(--color-porcelain)] disabled:opacity-60">
                       {pending ? 'Saving…' : `Confirm — set to ${money(Math.round((parseFloat(overridePrice) || 0) * 100))}`}
                     </button>

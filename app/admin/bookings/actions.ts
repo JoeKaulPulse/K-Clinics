@@ -28,7 +28,20 @@ export async function updateBookingPriceAction(bookingId: string, newPricePence:
   if (pence === booking.pricePence) return { ok: true };
 
   const originalPence = booking.pricePence;
-  await db.booking.update({ where: { id: bookingId }, data: { pricePence: pence } });
+  // Guarded write, not a bare update: the chargedAt/prepaidAt reads above are a
+  // point-in-time check, so a charge taken on another screen (or the Stripe
+  // webhook finalising one) between that read and this write would otherwise
+  // reprice a booking whose money has ALREADY moved — the single case BLD-1149
+  // is scoped to never touch. The pricePence guard likewise makes a concurrent
+  // add-on increment/decrement (clinical-actions.ts) fail loudly instead of
+  // being silently clobbered by a stale total.
+  const updated = await db.booking.updateMany({
+    where: { id: bookingId, chargedAt: null, prepaidAt: null, pricePence: originalPence },
+    data: { pricePence: pence },
+  });
+  if (updated.count === 0) {
+    return { ok: false, error: 'This appointment changed on another screen while you were editing (charged, pre-paid, or its treatments changed) — reload the page and check the price before trying again.' };
+  }
   const trimmedReason = reason?.trim().slice(0, 300) || '';
   const summary = `Price overridden: £${(pence / 100).toFixed(2)} instead of £${(originalPence / 100).toFixed(2)}${trimmedReason ? ` — ${trimmedReason}` : ''}`;
   await db.interaction.create({ data: { clientId: booking.clientId, type: 'APPOINTMENT', summary, author: session.email } }).catch(() => {});
