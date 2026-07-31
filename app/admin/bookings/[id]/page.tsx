@@ -19,7 +19,7 @@ import { ReadinessPanel } from '@/components/admin/ReadinessPanel';
 import { AddTreatment } from '@/components/admin/AddTreatment';
 import { ScheduleFollowUp } from '@/components/admin/ScheduleFollowUp';
 import { SameDayRequestActions } from '@/components/admin/SameDayRequestActions';
-import { sessionCan } from '@/lib/auth';
+import { sessionCan, sessionIsAdmin } from '@/lib/auth';
 import { site } from '@/lib/site';
 
 export const dynamic = 'force-dynamic';
@@ -364,6 +364,7 @@ export default async function BookingDetail({ params }: { params: Promise<{ id: 
               refundableUntil={b.chargedAt ? new Date(b.chargedAt.getTime() + (await import('@/lib/settings').then((m) => m.getConfigNumber('refund_window_days'))) * 24 * 60 * 60 * 1000).toISOString() : null}
               canManage={sessionCan(session, 'bookings.manage')}
               canCharge={sessionCan(session, 'bookings.charge')}
+              canOverridePrice={sessionIsAdmin(session)}
               pointsRedeemedPence={b.pointsRedeemedPence}
               prepaid={Boolean(b.prepaidAt)}
             />

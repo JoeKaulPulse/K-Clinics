@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useTransition } from 'react';
-import { chargeBookingAction, refundBookingAction, setBookingStatus, cancelBookingAction, rescheduleBookingAction } from '@/app/admin/bookings/actions';
+import { chargeBookingAction, refundBookingAction, setBookingStatus, cancelBookingAction, rescheduleBookingAction, updateBookingPriceAction } from '@/app/admin/bookings/actions';
 import { clinicLocalToUTC } from '@/lib/clinic-time';
 
 const money = (p: number) => `£${(p / 100).toFixed(2)}`;
@@ -16,6 +16,7 @@ export function BookingActions({
   refundableUntil = null,
   canManage = true,
   canCharge = true,
+  canOverridePrice = false,
   prepaid = false,
   pointsRedeemedPence = 0,
 }: {
@@ -28,6 +29,8 @@ export function BookingActions({
   refundableUntil?: string | null;
   canManage?: boolean;
   canCharge?: boolean;
+  // BLD-1149: admin-only — edit this appointment's price before it's charged.
+  canOverridePrice?: boolean;
   // BLD-399: a course pre-paid upfront via BNPL (Klarna/Clearpay). When true the
   // card-on-file charge UI is suppressed — the course is already paid in full.
   prepaid?: boolean;
@@ -43,6 +46,10 @@ export function BookingActions({
   const [reason, setReason] = useState('');
   const [confirmCancel, setConfirmCancel] = useState(false);
   const [confirmCharge, setConfirmCharge] = useState(false);
+  const [overrideOpen, setOverrideOpen] = useState(false);
+  const [overridePrice, setOverridePrice] = useState((pricePence / 100).toFixed(2));
+  const [overrideReason, setOverrideReason] = useState('');
+  const [confirmOverride, setConfirmOverride] = useState(false);
 
   const refundedPence = refunded ?? 0;
   const remainingRefund = Math.max(0, (charged ?? 0) - refundedPence);
@@ -90,6 +97,55 @@ export function BookingActions({
       {prepaid && !charged && (
         <div className="rounded-[var(--radius-md)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-4">
           <p className="text-sm text-[var(--color-jade)]">Pre-paid in full via BNPL (Klarna/Clearpay) — nothing left to charge.</p>
+        </div>
+      )}
+
+      {/* BLD-1149: admin-only price override for THIS appointment, restoring the
+          override affordance staff had on the Live Appointment checkout to the
+          main Appointment page. Only while not yet charged/prepaid — after that,
+          the price is money already taken and any correction is a refund, not
+          an edit here. */}
+      {canOverridePrice && charged == null && !prepaid && (
+        <div className="rounded-[var(--radius-md)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-4">
+          {!overrideOpen ? (
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <p className="text-sm text-[var(--color-stone)]">Booked price {money(pricePence)}</p>
+              <button onClick={() => { setOverrideOpen(true); setOverridePrice((pricePence / 100).toFixed(2)); setOverrideReason(''); setConfirmOverride(false); }}
+                className="rounded-full border border-[var(--color-line)] px-4 py-2 text-sm hover:bg-[var(--color-bone)]">Override price…</button>
+            </div>
+          ) : (
+            <>
+              <p className="mb-2 text-sm font-medium">Override price</p>
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="text-sm text-[var(--color-stone)]">£</span>
+                <input value={overridePrice} onChange={(e) => { setOverridePrice(e.target.value); setConfirmOverride(false); }} inputMode="decimal" aria-label="Overridden price (£)"
+                  className="w-28 rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-bone)] px-3 py-2 text-sm outline-none focus:border-[var(--color-gold)]" />
+                <input value={overrideReason} onChange={(e) => setOverrideReason(e.target.value)} placeholder="Reason (discount, agreed rate…)" aria-label="Override reason"
+                  className="min-w-[10rem] flex-1 rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-bone)] px-3 py-2 text-sm outline-none focus:border-[var(--color-gold)]" />
+              </div>
+              <div className="mt-2 flex flex-wrap items-center gap-2">
+                {!confirmOverride ? (
+                  <button disabled={pending || !(parseFloat(overridePrice) >= 0)} onClick={() => setConfirmOverride(true)}
+                    className="rounded-full bg-[var(--color-gold-deep)] px-5 py-2 text-sm text-white disabled:opacity-60">Save…</button>
+                ) : (
+                  <span className="flex flex-wrap items-center gap-2">
+                    <button disabled={pending} onClick={() => start(async () => {
+                      const pence = Math.round(parseFloat(overridePrice) * 100);
+                      const r = await updateBookingPriceAction(bookingId, pence, overrideReason);
+                      setMsg(r.ok ? `Price set to ${money(pence)} ✓` : r.error || 'Could not update price');
+                      setConfirmOverride(false);
+                      if (r.ok) setOverrideOpen(false);
+                    })} className="rounded-full bg-[var(--color-ink)] px-4 py-2 text-sm text-[var(--color-porcelain)] disabled:opacity-60">
+                      {pending ? 'Saving…' : `Confirm — set to ${money(Math.round((parseFloat(overridePrice) || 0) * 100))}`}
+                    </button>
+                    <button onClick={() => setConfirmOverride(false)} className="text-sm text-[var(--color-stone)]">Cancel</button>
+                  </span>
+                )}
+                <button onClick={() => setOverrideOpen(false)} className="text-sm text-[var(--color-stone)]">Close</button>
+              </div>
+              <p className="mt-2 text-xs text-[var(--color-stone)]">This changes only this appointment — the treatment's default price is unaffected.</p>
+            </>
+          )}
         </div>
       )}
 
