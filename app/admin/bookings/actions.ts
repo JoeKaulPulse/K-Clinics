@@ -2,8 +2,55 @@
 
 import { revalidatePath } from 'next/cache';
 import { crmEnabled } from '@/lib/crm';
-import { getSession, sessionCan } from '@/lib/auth';
+import { getSession, sessionCan, sessionIsAdmin } from '@/lib/auth';
 import { site } from '@/lib/site';
+
+// BLD-1149: admin-only override of an existing appointment's price, restoring
+// the "override" affordance staff had on the Live Appointment session checkout
+// (the free-editable charge amount) to the main Appointment page for a booking
+// that hasn't been charged yet — a correction, discount, or a previously agreed
+// custom rate. Deliberately narrow: only touches Booking.pricePence, and only
+// while charged is null, so it never has to reconcile a real Stripe charge,
+// Xero invoice, loyalty points or a day-close snapshot (unlike the broader,
+// owner-gated ask in BLD-1094 to reprice an already-paid booking).
+export async function updateBookingPriceAction(bookingId: string, newPricePence: number, reason?: string): Promise<{ ok: boolean; error?: string }> {
+  if (!crmEnabled) return { ok: false, error: 'CRM disabled' };
+  const session = await getSession();
+  if (!session || !sessionIsAdmin(session)) return { ok: false, error: 'Only an admin can override the price.' };
+  if (!Number.isFinite(newPricePence) || newPricePence < 0) return { ok: false, error: 'Invalid amount' };
+  const pence = Math.round(newPricePence);
+
+  const { db } = await import('@/lib/db');
+  const booking = await db.booking.findUnique({ where: { id: bookingId } });
+  if (!booking) return { ok: false, error: 'Not found' };
+  if (booking.chargedAt) return { ok: false, error: 'This appointment has already been charged — the price can no longer be edited here.' };
+  if (booking.prepaidAt) return { ok: false, error: 'This course was pre-paid in full (Klarna/Clearpay) — the price can no longer be edited.' };
+  if (pence === booking.pricePence) return { ok: true };
+
+  const originalPence = booking.pricePence;
+  // Guarded write, not a bare update: the chargedAt/prepaidAt reads above are a
+  // point-in-time check, so a charge taken on another screen (or the Stripe
+  // webhook finalising one) between that read and this write would otherwise
+  // reprice a booking whose money has ALREADY moved — the single case BLD-1149
+  // is scoped to never touch. The pricePence guard likewise makes a concurrent
+  // add-on increment/decrement (clinical-actions.ts) fail loudly instead of
+  // being silently clobbered by a stale total.
+  const updated = await db.booking.updateMany({
+    where: { id: bookingId, chargedAt: null, prepaidAt: null, pricePence: originalPence },
+    data: { pricePence: pence },
+  });
+  if (updated.count === 0) {
+    return { ok: false, error: 'This appointment changed on another screen while you were editing (charged, pre-paid, or its treatments changed) — reload the page and check the price before trying again.' };
+  }
+  const trimmedReason = reason?.trim().slice(0, 300) || '';
+  const summary = `Price overridden: £${(pence / 100).toFixed(2)} instead of £${(originalPence / 100).toFixed(2)}${trimmedReason ? ` — ${trimmedReason}` : ''}`;
+  await db.interaction.create({ data: { clientId: booking.clientId, type: 'APPOINTMENT', summary, author: session.email } }).catch(() => {});
+  const { logAudit } = await import('@/lib/audit');
+  await logAudit({ action: 'BOOKING_PRICE_OVERRIDDEN', actor: session.email, actorRole: session.role, bookingId, clientId: booking.clientId, summary, meta: { originalPence, overriddenPence: pence } });
+  revalidatePath(`/admin/bookings/${bookingId}`);
+  revalidatePath('/admin/bookings');
+  return { ok: true };
+}
 
 // Set which location an appointment takes place at (multi-location).
 export async function setBookingLocation(bookingId: string, locationId: string | null) {

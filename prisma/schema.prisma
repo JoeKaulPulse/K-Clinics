@@ -185,6 +185,7 @@ enum AuditAction {
   TASK_COMPLETED // an assigned task was marked done (PRJ-63.11)
   ROOM_TURNOVER // a room was handed over for cleaning after a session (PRJ-63.11)
   INCIDENT_LOGGED // a staff-only internal incident (accident) report was logged (BLD-760)
+  BOOKING_PRICE_OVERRIDDEN // admin overrode the price of an existing, not-yet-charged appointment (BLD-1149)
 }
 
 enum ReviewStatus {
