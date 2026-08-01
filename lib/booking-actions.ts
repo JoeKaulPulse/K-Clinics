@@ -417,6 +417,14 @@ export async function finalizeBookingCharge(
   // BLD-455: only send hashed email to Meta CAPI if the client has opted in to marketing.
   try { const { sendPurchase } = await import('./conversions'); await sendPurchase({ bookingId, valuePence: amountReceivedPence, clientId: booking.clientId, email: booking.client?.marketingOptIn ? booking.client.email : null, campaign: booking.attribCampaign, gclid: booking.gclid, analyticsConsent: booking.analyticsConsent, marketingConsent: booking.marketingConsent }); } catch (e) { console.error('[charge] conversion failed:', (e as Error)?.message); }
   try { await logAudit({ action: 'PAYMENT_CHARGED', actor: 'system', summary: `Charge completed (£${(amountReceivedPence / 100).toFixed(2)})`, bookingId, clientId: booking.clientId }); } catch { /* non-fatal */ }
+  // BLD-1066: this is the async counterpart of a synchronous late-cancellation
+  // charge (the client completed card authentication via the emailed link, or
+  // Stripe's webhook confirmed it) — the fee that was previously outstanding is
+  // now settled, so clear it. Full settle-to-zero, matching the manual charge
+  // action's behaviour below.
+  if (opts.late) {
+    try { await db.client.update({ where: { id: booking.clientId }, data: { outstandingPaymentPence: 0 } }); } catch (e) { console.error('[charge] outstanding balance clear failed:', (e as Error)?.message); }
+  }
   return true;
 }
 
@@ -424,13 +432,21 @@ export async function finalizeBookingCharge(
  * Record an ASYNCHRONOUS charge failure (reported by Stripe via webhook), so a
  * decline/expiry that happens after the synchronous attempt is visible to staff
  * rather than silently lost. Leaves a follow-up note on the client + audit log.
+ *
+ * BLD-1066: when this is a late-cancellation/no-show fee (opts.late — read from
+ * the PaymentIntent's own metadata.late, set by chargeBooking()), also add the
+ * failed amount onto Client.outstandingPaymentPence so the balance survives past
+ * the one-time toast/email and is visible everywhere the client is looked at.
  */
-export async function recordChargeFailure(bookingId: string, reason: string): Promise<void> {
+export async function recordChargeFailure(bookingId: string, reason: string, opts: { amountPence?: number; late?: boolean } = {}): Promise<void> {
   const booking = await db.booking.findUnique({ where: { id: bookingId }, include: { client: true } });
   if (!booking) return;
   const msg = `Card charge failed — follow up: ${reason}`.slice(0, 200);
   try { await db.interaction.create({ data: { clientId: booking.clientId, type: 'APPOINTMENT', summary: msg, author: 'system' } }); } catch { /* non-fatal */ }
   try { await logAudit({ action: 'PAYMENT_FAILED', actor: 'system', summary: msg, bookingId, clientId: booking.clientId }); } catch { /* non-fatal */ }
+  if (opts.late && opts.amountPence && opts.amountPence > 0) {
+    try { await db.client.update({ where: { id: booking.clientId }, data: { outstandingPaymentPence: { increment: opts.amountPence } } }); } catch (e) { console.error('[charge] outstanding balance update failed:', (e as Error)?.message); }
+  }
   // BLD-757: also tell the CLIENT their off-session payment did not go through, so
   // an async decline (a post-treatment or balance charge Stripe reports via the
   // webhook) is not silent to them — previously only staff were notified. The
@@ -513,6 +529,10 @@ export async function cancelBooking(
   import('@/lib/waitlist').then((m) => m.notifyOnFreedSlot(booking.treatmentSlug, booking.startAt)).catch(() => {});
   if (feeFailed) {
     await logAudit({ action: 'PAYMENT_FAILED', actor: opts.by, bookingId: booking.id, clientId: booking.clientId, summary: `Late-cancellation fee (£${(booking.pricePence / 100).toFixed(2)}) failed — follow up.` }).catch(() => {});
+    // BLD-1066: track the unpaid amount on the client so it's visible to staff
+    // (client profile, booking detail) and the client (account, next booking
+    // attempt) until it's settled — not just a one-time toast on this page.
+    await db.client.update({ where: { id: booking.clientId }, data: { outstandingPaymentPence: { increment: chargeablePence } } }).catch((e) => console.error('[cancelBooking] outstanding balance update failed:', (e as Error)?.message));
   }
 
   // Remove from the shared clinic calendar (Hostinger CalDAV; no-op if unconfigured).

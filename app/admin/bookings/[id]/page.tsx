@@ -230,6 +230,15 @@ export default async function BookingDetail({ params }: { params: Promise<{ id: 
             )}
           </div>
 
+          {/* Outstanding payment (BLD-1066): a failed late-cancellation/no-show
+              fee this client still owes, surfaced whenever their booking is
+              opened — not just a one-time toast on the cancel action. */}
+          {b.client.outstandingPaymentPence > 0 && (
+            <p className="mt-4 rounded-[var(--radius-sm)] bg-[color-mix(in_oklab,#c0392b_14%,transparent)] px-4 py-3 text-sm font-medium text-[var(--color-ink)]">
+              ⚠ Outstanding payment: £{(b.client.outstandingPaymentPence / 100).toFixed(2)} owed from a failed late-cancellation/no-show fee.
+            </p>
+          )}
+
           {/* Health & consent — clinical safety at a glance */}
           <div className="mt-4 rounded-[var(--radius-md)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-5">
             <p className="eyebrow mb-3 text-[var(--color-stone)]">Health &amp; consent</p>

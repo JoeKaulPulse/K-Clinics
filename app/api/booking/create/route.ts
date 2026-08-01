@@ -94,6 +94,14 @@ export async function POST(req: Request) {
       ...(d.marketingOptIn ? marketingConsentFields('website-booking') : {}),
     },
   });
+  // BLD-1066: soft-block a new booking while a late-cancellation/no-show fee is
+  // still outstanding — this route is the public/guest booking flow only; staff
+  // can still book on the client's behalf via the admin flow
+  // (app/admin/bookings/create-action.ts), e.g. to help them settle it.
+  if (client.outstandingPaymentPence > 0) {
+    return NextResponse.json({ ok: false, error: `You have an outstanding payment of £${(client.outstandingPaymentPence / 100).toFixed(2)} from a previous late-cancellation or no-show fee. Please call or email us to settle this before booking again.` }, { status: 403 });
+  }
+
   const customerId = await ensureCustomer(client);
 
   const basePrice = pricePence ?? 0;

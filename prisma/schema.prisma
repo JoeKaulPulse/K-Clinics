@@ -335,6 +335,15 @@ model Client {
   referralCode String? @unique // this client's own shareable code
   referredById String? // the Referral they joined through (if any)
 
+  // ── Outstanding payment (BLD-1066) ────────────────────────────────────────
+  // Running balance of failed late-cancellation / no-show fees still owed.
+  // Incremented when such a charge is declined (lib/booking-actions.ts
+  // cancelBooking() / recordChargeFailure()); cleared once staff collect it
+  // via the existing manual charge action (app/admin/bookings/actions.ts
+  // chargeBookingAction()) or the fee is successfully charged asynchronously
+  // (finalizeBookingCharge()). Additive, defaulted — no existing rows change.
+  outstandingPaymentPence Int @default(0)
+
   // ── Clinical safety flag ─────────────────────────────────────────────────
   // A concise, non-clinical alert (e.g. "Diabetes — see medical history") that
   // staff must review at the start of each appointment. Detailed health data
