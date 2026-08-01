@@ -78,6 +78,21 @@ export async function POST(req: Request) {
   const practitionerId = autoAssign ? await withDbRetry(() => pickPractitioner(d.startISO, durationMin, d.slug)) : null;
   const resourceIds = await withDbRetry(() => assignResources(d.startISO, durationMin, d.slug));
 
+  // BLD-1066: soft-block a new booking while a late-cancellation/no-show fee is
+  // still outstanding. Staff can still book on the client's behalf via the admin
+  // flow (app/admin/bookings/create-action.ts), e.g. to help them settle it.
+  //
+  // Checked BEFORE the upsert below, and worded without the amount, because —
+  // unlike /api/booking/start — this route is PUBLIC and unauthenticated: anyone
+  // who types someone else's email address reaches this code. Returning the
+  // balance here would disclose a third party's payment history to them, and
+  // refusing after the upsert would let them rewrite that client's name, phone
+  // and date of birth on a booking we are about to reject anyway.
+  const owing = await withDbRetry(() => db.client.findUnique({ where: { email: d.email.toLowerCase() }, select: { outstandingPaymentPence: true } }));
+  if ((owing?.outstandingPaymentPence ?? 0) > 0) {
+    return NextResponse.json({ ok: false, error: 'We can’t complete this booking online. Please call or email the clinic and we’ll get you booked in.' }, { status: 403 });
+  }
+
   // Upsert client + Stripe customer.
   const { marketingConsentFields } = await import('@/lib/consent');
   const client = await db.client.upsert({
@@ -94,14 +109,6 @@ export async function POST(req: Request) {
       ...(d.marketingOptIn ? marketingConsentFields('website-booking') : {}),
     },
   });
-  // BLD-1066: soft-block a new booking while a late-cancellation/no-show fee is
-  // still outstanding — this route is the public/guest booking flow only; staff
-  // can still book on the client's behalf via the admin flow
-  // (app/admin/bookings/create-action.ts), e.g. to help them settle it.
-  if (client.outstandingPaymentPence > 0) {
-    return NextResponse.json({ ok: false, error: `You have an outstanding payment of £${(client.outstandingPaymentPence / 100).toFixed(2)} from a previous late-cancellation or no-show fee. Please call or email us to settle this before booking again.` }, { status: 403 });
-  }
-
   const customerId = await ensureCustomer(client);
 
   const basePrice = pricePence ?? 0;
