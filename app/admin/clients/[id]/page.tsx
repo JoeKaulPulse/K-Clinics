@@ -70,6 +70,12 @@ export default async function ClientDetail({ params }: { params: Promise<{ id: s
 
   const fullName = [c.firstName, c.lastName].filter(Boolean).join(' ');
 
+  // BLD-1013: read-only "card on file" status. Mirrors the signal used to reuse a
+  // saved card on rebooking (app/admin/bookings/create-action.ts) — a booking with
+  // a Stripe payment method attached, not just a Stripe customer id (a customer can
+  // exist before the card-save step completes, so that alone isn't proof of a card).
+  const hasCardOnFile = c.bookings.some((b) => !!b.stripePaymentMethodId);
+
   // Clinical (health) data — gated on the revocable `clients.clinical.view`
   // permission (not role), so a permission revoke actually withholds it here too,
   // matching the SAR export. Decrypt the latest version of each assessment type.
@@ -178,6 +184,10 @@ export default async function ClientDetail({ params }: { params: Promise<{ id: s
             {c.source && <span className="rounded-full bg-[var(--color-bone)] px-2.5 py-0.5 text-xs text-[var(--color-stone)]">{c.source}</span>}
             <span className={`rounded-full px-2.5 py-0.5 text-xs ${c.marketingOptIn && !c.unsubscribed ? 'bg-[var(--color-gold)]/20 text-[var(--color-ink)]' : 'bg-[var(--color-bone)] text-[var(--color-stone)]'}`}>
               {c.unsubscribed ? 'unsubscribed' : c.marketingOptIn ? 'marketing opt-in' : 'no marketing'}
+            </span>
+            {/* BLD-1013: saved payment card status — read-only, no card management here. */}
+            <span className={`rounded-full px-2.5 py-0.5 text-xs ${hasCardOnFile ? 'bg-[var(--color-jade)]/15 text-[var(--color-jade)]' : 'bg-[var(--color-bone)] text-[var(--color-stone)]'}`}>
+              {hasCardOnFile ? 'card on file' : 'no card on file'}
             </span>
           </div>
         </div>
