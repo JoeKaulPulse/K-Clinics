@@ -397,7 +397,7 @@ function QuizPanel({ quiz, state, onGraded, onBadges, onNext }: { quiz: QuizView
           return (
             <li key={q.id} className="rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-bone)] p-5">
               <p className="font-medium">{qi + 1}. {q.prompt}{multi && <span className="ml-2 text-xs font-normal text-[var(--color-stone)]">(select all that apply)</span>}</p>
-              {q.imageUrl && /* eslint-disable-next-line @next/next/no-img-element */ <img src={q.imageUrl} alt="" className="mt-3 max-h-60 rounded-[var(--radius-md)]" />}
+              {q.imageUrl && /* eslint-disable-next-line @next/next/no-img-element */ <img src={q.imageUrl} alt={q.imageAlt || 'Course image'} className="mt-3 max-h-60 rounded-[var(--radius-md)]" />}
               {q.type === 'SHORT' ? (
                 <div className="mt-3">
                   <input

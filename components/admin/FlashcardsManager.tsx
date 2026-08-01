@@ -63,8 +63,9 @@ function CardRow({ card, index, total, ids, busy, act }: { card: AdminDeck['card
   const [front, setFront] = useState(card.front);
   const [back, setBack] = useState(card.back);
   const [imageUrl, setImageUrl] = useState(card.imageUrl ?? '');
+  const [imageAlt, setImageAlt] = useState(card.imageAlt ?? '');
   const [uploading, setUploading] = useState(false);
-  const dirty = front !== card.front || back !== card.back || imageUrl !== (card.imageUrl ?? '');
+  const dirty = front !== card.front || back !== card.back || imageUrl !== (card.imageUrl ?? '') || imageAlt !== (card.imageAlt ?? '');
   const move = (d: number) => { const a = [...ids]; const j = index + d; if (j < 0 || j >= a.length) return; [a[index], a[j]] = [a[j], a[index]]; act({ op: 'reorderCards', ids: a }); };
 
   async function upload(file: File) {
@@ -91,15 +92,20 @@ function CardRow({ card, index, total, ids, busy, act }: { card: AdminDeck['card
         <label className={label}>Back (answer)<textarea rows={3} className={`${field} mt-1`} value={back} onChange={(e) => setBack(e.target.value)} /></label>
       </div>
       <div className="mt-2 flex flex-wrap items-center gap-2">
-        {imageUrl && /* eslint-disable-next-line @next/next/no-img-element */ <img src={imageUrl} alt="" className="max-h-16 rounded-[var(--radius-sm)] border border-[var(--color-line)]" />}
+        {imageUrl && /* eslint-disable-next-line @next/next/no-img-element */ <img src={imageUrl} alt={imageAlt || 'Flashcard image'} className="max-h-16 rounded-[var(--radius-sm)] border border-[var(--color-line)]" />}
         <label className={`inline-flex cursor-pointer items-center gap-1.5 rounded-[var(--radius-sm)] border border-[var(--color-line)] px-3 py-1.5 text-xs ${uploading ? 'opacity-60' : 'hover:border-[var(--color-gold)]'}`}>
           {uploading ? 'Uploading…' : imageUrl ? '↑ Replace image' : '↑ Add image'}
           <input type="file" accept="image/*" className="hidden" disabled={uploading} onChange={(e) => { const f = e.target.files?.[0]; if (f) upload(f); e.currentTarget.value = ''; }} />
         </label>
         {imageUrl && <button onClick={() => setImageUrl('')} className="text-xs text-[var(--color-blush-deep)] hover:underline">Remove image</button>}
         <span className="flex-1" />
-        {dirty && <button onClick={() => act({ op: 'updateCard', id: card.id, front, back, imageUrl })} disabled={busy} className={btnDark}>Save card</button>}
+        {dirty && <button onClick={() => act({ op: 'updateCard', id: card.id, front, back, imageUrl, imageAlt })} disabled={busy} className={btnDark}>Save card</button>}
       </div>
+      {imageUrl && (
+        <label className={`${label} mt-2 block`}>Image description (read aloud by screen readers)
+          <input className={`${field} mt-1`} value={imageAlt} onChange={(e) => setImageAlt(e.target.value)} placeholder="Describe what the image shows" />
+        </label>
+      )}
     </div>
   );
 }

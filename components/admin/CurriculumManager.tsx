@@ -15,7 +15,7 @@ const LESSON_TYPES: { value: string; label: string }[] = [
   { value: 'DOWNLOAD', label: 'Download' },
   { value: 'EMBED', label: 'Embed (iframe)' },
 ];
-type Question = { id: string; prompt: string; type: string; options: string[]; correct: number[]; acceptedAnswers: string[]; explanation: string | null; tip: string | null; imageUrl: string | null };
+type Question = { id: string; prompt: string; type: string; options: string[]; correct: number[]; acceptedAnswers: string[]; explanation: string | null; tip: string | null; imageUrl: string | null; imageAlt: string | null };
 type Quiz = { id: string; title: string; passMark: number; timeLimitMin: number | null; maxAttempts: number | null; shuffleQuestions: boolean; shuffleOptions: boolean; poolSize: number | null; isSurvey: boolean; questions: Question[] };
 type Module = { id: string; title: string; summary: string | null; lessons: Lesson[]; quiz: Quiz | null };
 type Course = { id: string; title: string; objectives: string[]; welcome: string | null; preCourseInfo: string | null; portfolioTarget: number | null; modules: Module[] };
@@ -381,6 +381,7 @@ function QuestionRow({ q, index, total, busy, act, ids, isSurvey = false }: { q:
   const [correct, setCorrect] = useState<number[]>(q.correct);
   const [acceptedAnswers, setAcceptedAnswers] = useState(listToText(q.acceptedAnswers ?? []));
   const [imageUrl, setImageUrl] = useState(q.imageUrl ?? '');
+  const [imageAlt, setImageAlt] = useState(q.imageAlt ?? '');
   const [uploadingImg, setUploadingImg] = useState(false);
 
   // Image upload for the question (pictures only) — reuses the academy Blob client.
@@ -455,7 +456,7 @@ function QuestionRow({ q, index, total, busy, act, ids, isSurvey = false }: { q:
             <p className={label}>Image (optional — a picture shown with the question)</p>
             {imageUrl && (
               // eslint-disable-next-line @next/next/no-img-element
-              <img src={imageUrl} alt="" className="mt-1.5 max-h-40 rounded-[var(--radius-sm)] border border-[var(--color-line)]" />
+              <img src={imageUrl} alt={imageAlt || 'Question image'} className="mt-1.5 max-h-40 rounded-[var(--radius-sm)] border border-[var(--color-line)]" />
             )}
             <div className="mt-1.5 flex items-center gap-2">
               <label className={`inline-flex cursor-pointer items-center gap-1.5 rounded-[var(--radius-sm)] border border-[var(--color-line)] px-3 py-1.5 text-xs ${uploadingImg ? 'opacity-60 pointer-events-none' : 'hover:border-[var(--color-gold)]'}`}>
@@ -464,10 +465,15 @@ function QuestionRow({ q, index, total, busy, act, ids, isSurvey = false }: { q:
               </label>
               {imageUrl && <button onClick={() => setImageUrl('')} className="text-xs text-[var(--color-blush-deep)] hover:underline">Remove</button>}
             </div>
+            {imageUrl && (
+              <label className={`${label} mt-2`}>Image description (read aloud by screen readers — describe what the image shows, e.g. "Cross-section of skin showing the epidermis, dermis and hypodermis layers")
+                <input className={`${field} mt-1`} value={imageAlt} onChange={(e) => setImageAlt(e.target.value)} placeholder="Describe what the image shows" />
+              </label>
+            )}
           </div>
           <label className={label}>Hint (optional — a nudge the learner can reveal before answering)<input className={`${field} mt-1`} value={tip} onChange={(e) => setTip(e.target.value)} placeholder="Think about which layer has no blood supply." /></label>
           <label className={label}>Explanation (shown after answering)<textarea rows={2} className={`${field} mt-1`} value={explanation} onChange={(e) => setExplanation(e.target.value)} /></label>
-          <button onClick={() => act({ op: 'updateQuestion', id: q.id, prompt, type, options, correct, acceptedAnswers: textToList(acceptedAnswers), explanation, tip, imageUrl })} disabled={busy} className={btnDark}>Save question</button>
+          <button onClick={() => act({ op: 'updateQuestion', id: q.id, prompt, type, options, correct, acceptedAnswers: textToList(acceptedAnswers), explanation, tip, imageUrl, imageAlt })} disabled={busy} className={btnDark}>Save question</button>
         </div>
       )}
     </div>

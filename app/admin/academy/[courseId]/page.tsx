@@ -61,7 +61,7 @@ export default async function CurriculumPage({ params }: { params: Promise<{ cou
           options: (q.options as string[] | null) ?? [],
           correct: (q.correct as number[] | null) ?? [],
           acceptedAnswers: Array.isArray(q.acceptedAnswers) ? q.acceptedAnswers : [],
-          explanation: q.explanation, tip: q.tip, imageUrl: q.imageUrl,
+          explanation: q.explanation, tip: q.tip, imageUrl: q.imageUrl, imageAlt: q.imageAlt,
         })),
       } : null,
     })),

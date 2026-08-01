@@ -275,13 +275,17 @@ export async function eraseStudentData(studentId: string) {
   const { logAudit } = await import('@/lib/audit');
   const student = await db.academyStudent.findUnique({ where: { id: studentId }, select: { email: true } });
   if (!student) return { ok: false, error: 'Student not found.' };
+  const erasedEmail = `erased-${studentId}@redacted.invalid`;
   await db.$transaction([
     db.academyStudent.update({
       where: { id: studentId },
       data: {
-        firstName: 'Erased', lastName: null, email: `erased-${studentId}@redacted.invalid`,
+        firstName: 'Erased', lastName: null, email: erasedEmail,
         phone: null, dob: null, portalActive: false, passwordHash: null,
         resetTokenHash: null, resetTokenExp: null,
+        // BLD-1124: free-text fields that can carry personal/health detail
+        // (trainer notes, career goals) — no retention basis once erased.
+        notes: null, goals: null,
       },
     }),
     // Remove authentication credentials — no retention basis.
@@ -293,8 +297,22 @@ export async function eraseStudentData(studentId: string) {
     db.forumThread.updateMany({ where: { authorStudentId: studentId }, data: { authorName: 'Erased' } }),
     db.forumPost.updateMany({ where: { authorStudentId: studentId }, data: { authorName: 'Erased' } }),
     db.lessonComment.updateMany({ where: { authorStudentId: studentId }, data: { authorName: 'Erased' } }),
+    // BLD-1124: the applicant snapshot captured at enquiry (before the account
+    // existed) — the enrolment row is retained pseudonymously (certification
+    // verification basis) but the identifying applicant fields are not.
+    db.enrolment.updateMany({ where: { studentId }, data: { applicantName: 'Erased', applicantEmail: erasedEmail, applicantPhone: null } }),
+    // BLD-1124: funding enquiries linked to this trainee — strip the applicant
+    // identity. Matched by the FK (post-account enquiries) and, mirroring
+    // eraseClientData's email-matched guest records, by the original email
+    // (pre-account enquiries with no studentId set yet).
+    db.fundingApplication.updateMany({ where: { studentId }, data: { name: 'Erased', email: erasedEmail, phone: null } }),
+    db.fundingApplication.updateMany({ where: { studentId: null, email: { equals: student.email, mode: 'insensitive' } }, data: { name: 'Erased', email: erasedEmail, phone: null } }),
+    // BLD-1124: homework submissions carry the learner's own free-text note,
+    // tutor feedback naming them, and uploaded files (photos/documents) — strip
+    // the content but keep the row (status/dates) for course records.
+    db.homeworkSubmission.updateMany({ where: { studentId }, data: { note: null, feedback: null, files: [] } }),
   ]);
-  await logAudit({ action: 'NOTE_ADDED', actor: session.email, actorRole: session.role, summary: `Academy student ${student.email} data erased (GDPR Art.17)` });
+  await logAudit({ action: 'STUDENT_ERASED', actor: session.email, actorRole: session.role, summary: `Academy student ${student.email} data erased (GDPR Art.17)` });
   revalidatePath('/admin/academy');
   return { ok: true };
 }

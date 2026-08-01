@@ -20,7 +20,7 @@ export type LessonView = {
   keyPoints: string[]; objectives: string[]; studyTips: string[]; homework: string | null;
   examRefs: string[]; steps: unknown; citations: LinkRef[]; resources: LinkRef[]; pdfUrls: string[]; pdfNoDownload: string[]; requiresHomework: boolean; submission: HomeworkSubmissionView | null; done: boolean; locked: boolean;
 };
-export type QuizQuestionView = { id: string; order: number; prompt: string; type: string; options: string[]; tip: string | null; imageUrl: string | null; correct?: number[]; acceptedAnswers?: string[]; explanation?: string | null };
+export type QuizQuestionView = { id: string; order: number; prompt: string; type: string; options: string[]; tip: string | null; imageUrl: string | null; imageAlt: string | null; correct?: number[]; acceptedAnswers?: string[]; explanation?: string | null };
 export type QuizView = { id: string; title: string; passMark: number; questionCount: number; bestScore: number | null; passed: boolean; timeLimitMin: number | null; maxAttempts: number | null; attemptsUsed: number; shuffleOptions: boolean; isSurvey: boolean; questions: QuizQuestionView[] };
 export type ModuleView = { id: string; title: string; summary: string | null; order: number; lessons: LessonView[]; quiz: QuizView | null; complete: boolean; lockedUntil: string | null };
 export type CourseLearning = {
@@ -184,7 +184,7 @@ export async function getCourseLearning(slug: string, studentId: string): Promis
         bestScore: b?.best ?? null, passed: b?.passed ?? false,
         timeLimitMin: qz.timeLimitMin, maxAttempts: qz.maxAttempts, attemptsUsed: attemptsByQuiz.get(qz.id) ?? 0, shuffleOptions: qz.shuffleOptions, isSurvey: qz.isSurvey,
         // Survey questions and SHORT questions carry no answer options to the learner.
-        questions: selectQuizQuestions(qz.questions, qz.shuffleQuestions, qz.poolSize, `${studentId}:${qz.id}`).map((q) => ({ id: q.id, order: q.order, prompt: q.prompt, type: q.type, options: q.type === 'SHORT' ? [] : strArr(q.options), tip: q.tip, imageUrl: q.imageUrl })),
+        questions: selectQuizQuestions(qz.questions, qz.shuffleQuestions, qz.poolSize, `${studentId}:${qz.id}`).map((q) => ({ id: q.id, order: q.order, prompt: q.prompt, type: q.type, options: q.type === 'SHORT' ? [] : strArr(q.options), tip: q.tip, imageUrl: q.imageUrl, imageAlt: q.imageAlt })),
       };
     }
     const complete = !isLocked && lessons.every((l) => l.done) && (!m.quiz || bestByQuiz.get(m.quiz.id)?.passed === true);
@@ -543,7 +543,7 @@ export async function getCoursePreview(courseId: string): Promise<CourseLearning
       id: m.quiz.id, title: m.quiz.title, passMark: m.quiz.passMark, questionCount: m.quiz.questions.length, bestScore: null, passed: false,
       timeLimitMin: m.quiz.timeLimitMin, maxAttempts: m.quiz.maxAttempts, attemptsUsed: 0, shuffleOptions: m.quiz.shuffleOptions, isSurvey: m.quiz.isSurvey,
       questions: m.quiz.questions.map((q) => ({
-        id: q.id, order: q.order, prompt: q.prompt, type: q.type, options: q.type === 'SHORT' ? [] : strArr(q.options), tip: q.tip, imageUrl: q.imageUrl,
+        id: q.id, order: q.order, prompt: q.prompt, type: q.type, options: q.type === 'SHORT' ? [] : strArr(q.options), tip: q.tip, imageUrl: q.imageUrl, imageAlt: q.imageAlt,
         correct: (Array.isArray(q.correct) ? (q.correct as number[]) : []), acceptedAnswers: strArr(q.acceptedAnswers), explanation: q.explanation,
       })),
     } : null;
