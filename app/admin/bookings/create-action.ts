@@ -118,7 +118,15 @@ export async function createManualBooking(input: {
   // appointment); the course size + total price live on the primary line item
   // (the detail page reads item.sessions). Consultations are always single.
   const sessions = consultBooking ? 1 : Math.max(1, Math.min(50, Math.round(Number(input.sessions) || 1)));
-  const defaultTotalPence = (pricePence ?? 0) * sessions;
+  // BLD-1148: a configured package/course tier (variant.courses, set in the
+  // Services admin) is priced independently of the single-session rate — it's
+  // usually cheaper per session, not a flat multiple. Use its totalPence when
+  // the requested session count matches a tier exactly (mirrors the public
+  // booking flow's course lookup in app/api/booking/start/route.ts); otherwise
+  // fall back to the simple multiplication so non-package bookings and
+  // mismatched counts behave exactly as before.
+  const course = !consultBooking && sessions > 1 && chosenVariantId ? variant?.variant.courses.find((c) => c.sessions === sessions) : undefined;
+  const defaultTotalPence = course ? course.totalPence : (pricePence ?? 0) * sessions;
   // BLD-812: admin override replaces the computed total (e.g. a promotion or a
   // custom price agreed with the client) — validated as a non-negative integer.
   let totalPence = defaultTotalPence;
