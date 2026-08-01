@@ -417,20 +417,60 @@ export async function finalizeBookingCharge(
   // BLD-455: only send hashed email to Meta CAPI if the client has opted in to marketing.
   try { const { sendPurchase } = await import('./conversions'); await sendPurchase({ bookingId, valuePence: amountReceivedPence, clientId: booking.clientId, email: booking.client?.marketingOptIn ? booking.client.email : null, campaign: booking.attribCampaign, gclid: booking.gclid, analyticsConsent: booking.analyticsConsent, marketingConsent: booking.marketingConsent }); } catch (e) { console.error('[charge] conversion failed:', (e as Error)?.message); }
   try { await logAudit({ action: 'PAYMENT_CHARGED', actor: 'system', summary: `Charge completed (£${(amountReceivedPence / 100).toFixed(2)})`, bookingId, clientId: booking.clientId }); } catch { /* non-fatal */ }
+  // BLD-1066: this is the async counterpart of a synchronous late-cancellation
+  // charge (the client completed card authentication via the emailed link, or
+  // Stripe's webhook confirmed it) — the fee that was previously outstanding is
+  // now settled, so clear it. Full settle-to-zero, matching the manual charge
+  // action's behaviour below.
+  if (opts.late) {
+    try { await db.client.update({ where: { id: booking.clientId }, data: { outstandingPaymentPence: 0 } }); } catch (e) { console.error('[charge] outstanding balance clear failed:', (e as Error)?.message); }
+  }
   return true;
+}
+
+/**
+ * BLD-1066: add a booking's FAILED late-cancellation / no-show fee to the
+ * client's outstanding balance — at most once per booking, ever.
+ *
+ * The same failed fee is reported through two paths: cancelBooking() sees the
+ * synchronous decline, and Stripe then delivers payment_intent.payment_failed
+ * for that very PaymentIntent (which can fire repeatedly — a retry on the still
+ * -live PI, or a webhook redelivery). A blind `increment` therefore inflates the
+ * balance by a multiple of the real fee, and since a non-zero balance soft-blocks
+ * the client from booking online, an inflated one both over-states what they owe
+ * and locks them out for longer. The claim below is the atomic guard: only the
+ * caller that wins the lateFeeOwedAt: null → now transition adds the money.
+ */
+async function accrueOutstandingLateFee(bookingId: string, clientId: string, amountPence: number): Promise<void> {
+  if (!Number.isFinite(amountPence) || amountPence <= 0) return;
+  try {
+    const claimed = await db.booking.updateMany({ where: { id: bookingId, lateFeeOwedAt: null }, data: { lateFeeOwedAt: new Date() } });
+    if (claimed.count === 0) return; // already counted by the other path / an earlier delivery
+    await db.client.update({ where: { id: clientId }, data: { outstandingPaymentPence: { increment: Math.round(amountPence) } } });
+  } catch (e) {
+    console.error('[charge] outstanding balance update failed:', (e as Error)?.message);
+  }
 }
 
 /**
  * Record an ASYNCHRONOUS charge failure (reported by Stripe via webhook), so a
  * decline/expiry that happens after the synchronous attempt is visible to staff
  * rather than silently lost. Leaves a follow-up note on the client + audit log.
+ *
+ * BLD-1066: when this is a late-cancellation/no-show fee (opts.late — read from
+ * the PaymentIntent's own metadata.late, set by chargeBooking()), also add the
+ * failed amount onto Client.outstandingPaymentPence so the balance survives past
+ * the one-time toast/email and is visible everywhere the client is looked at.
  */
-export async function recordChargeFailure(bookingId: string, reason: string): Promise<void> {
+export async function recordChargeFailure(bookingId: string, reason: string, opts: { amountPence?: number; late?: boolean } = {}): Promise<void> {
   const booking = await db.booking.findUnique({ where: { id: bookingId }, include: { client: true } });
   if (!booking) return;
   const msg = `Card charge failed — follow up: ${reason}`.slice(0, 200);
   try { await db.interaction.create({ data: { clientId: booking.clientId, type: 'APPOINTMENT', summary: msg, author: 'system' } }); } catch { /* non-fatal */ }
   try { await logAudit({ action: 'PAYMENT_FAILED', actor: 'system', summary: msg, bookingId, clientId: booking.clientId }); } catch { /* non-fatal */ }
+  if (opts.late && opts.amountPence && opts.amountPence > 0) {
+    await accrueOutstandingLateFee(bookingId, booking.clientId, opts.amountPence);
+  }
   // BLD-757: also tell the CLIENT their off-session payment did not go through, so
   // an async decline (a post-treatment or balance charge Stripe reports via the
   // webhook) is not silent to them — previously only staff were notified. The
@@ -513,6 +553,13 @@ export async function cancelBooking(
   import('@/lib/waitlist').then((m) => m.notifyOnFreedSlot(booking.treatmentSlug, booking.startAt)).catch(() => {});
   if (feeFailed) {
     await logAudit({ action: 'PAYMENT_FAILED', actor: opts.by, bookingId: booking.id, clientId: booking.clientId, summary: `Late-cancellation fee (£${(booking.pricePence / 100).toFixed(2)}) failed — follow up.` }).catch(() => {});
+    // BLD-1066: track the unpaid amount on the client so it's visible to staff
+    // (client profile, booking detail) and the client (account, next booking
+    // attempt) until it's settled — not just a one-time toast on this page.
+    // Claimed once per booking: Stripe also reports this same declined
+    // PaymentIntent asynchronously (payment_intent.payment_failed →
+    // recordChargeFailure), and that event can be delivered more than once.
+    await accrueOutstandingLateFee(booking.id, booking.clientId, chargeablePence);
   }
 
   // Remove from the shared clinic calendar (Hostinger CalDAV; no-op if unconfigured).

@@ -335,6 +335,15 @@ model Client {
   referralCode String? @unique // this client's own shareable code
   referredById String? // the Referral they joined through (if any)
 
+  // ── Outstanding payment (BLD-1066) ────────────────────────────────────────
+  // Running balance of failed late-cancellation / no-show fees still owed.
+  // Incremented when such a charge is declined (lib/booking-actions.ts
+  // cancelBooking() / recordChargeFailure()); cleared once staff collect it
+  // via the existing manual charge action (app/admin/bookings/actions.ts
+  // chargeBookingAction()) or the fee is successfully charged asynchronously
+  // (finalizeBookingCharge()). Additive, defaulted — no existing rows change.
+  outstandingPaymentPence Int @default(0)
+
   // ── Clinical safety flag ─────────────────────────────────────────────────
   // A concise, non-clinical alert (e.g. "Diabetes — see medical history") that
   // staff must review at the start of each appointment. Detailed health data
@@ -679,6 +688,13 @@ model Booking {
   cancelledBy  String? // 'client' | staff email
   lateCancel   Boolean   @default(false)
   feeWaived    Boolean   @default(false)
+  // BLD-1066: set once, when this booking's failed late-cancellation / no-show
+  // fee was added to Client.outstandingPaymentPence. It is the atomic claim that
+  // stops the SAME fee being counted twice: the synchronous decline in
+  // cancelBooking() and Stripe's payment_intent.payment_failed webhook both
+  // report the same PaymentIntent, and that webhook can fire more than once for
+  // it (a retry on the live PI, or a redelivery). Additive, nullable.
+  lateFeeOwedAt DateTime?
 
   // Client self-service link token.
   manageToken String @unique @default(cuid())

@@ -183,7 +183,11 @@ export async function POST(req: Request) {
         if (bookingId) {
           const { recordChargeFailure } = await import('@/lib/booking-actions');
           const reason = pi.last_payment_error?.message || 'The card was declined.';
-          await recordChargeFailure(bookingId, reason);
+          // BLD-1066: metadata.late (set by chargeBooking()) distinguishes a
+          // failed late-cancellation/no-show fee from an ordinary treatment
+          // charge failure, so only the former tracks toward the client's
+          // outstanding-payment balance.
+          await recordChargeFailure(bookingId, reason, { amountPence: pi.amount, late: pi.metadata?.late === 'true' });
           try {
             const { notifyStaffByPermission } = await import('@/lib/notifications');
             await notifyStaffByPermission('finance.view', { kind: 'status', category: 'finance', priority: 'urgent', title: 'Payment failed', body: reason.slice(0, 140), href: `/admin/bookings/${bookingId}` });

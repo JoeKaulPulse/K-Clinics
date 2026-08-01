@@ -93,6 +93,14 @@ export async function chargeBookingAction(bookingId: string, amountPence: number
     const vnote = vnoteParts ? ` + ${vnoteParts} already applied` : '';
     await db.interaction.create({ data: { clientId: booking.clientId, type: 'APPOINTMENT', summary: `Charged £${(amountPence / 100).toFixed(2)} for ${booking.treatmentTitle}${disc}${vnote}`, author: session.email } });
     await logAudit({ action: 'PAYMENT_CHARGED', actor: session.email, actorRole: session.role, bookingId, clientId: booking.clientId, summary: `Charged £${(amountPence / 100).toFixed(2)}${disc}${vnote}` });
+    // BLD-1066: this is the existing settlement action staff use to collect
+    // money owed by a client (including a previously-failed late-cancellation
+    // / no-show fee, added to the next bill) — a successful charge here clears
+    // any outstanding balance rather than leaving it stranded. Full
+    // settle-to-zero; a future pass can make this proportional.
+    if ((booking.client?.outstandingPaymentPence ?? 0) > 0) {
+      await db.client.update({ where: { id: booking.clientId }, data: { outstandingPaymentPence: 0 } }).catch((e) => console.error('[bookings] outstanding balance clear failed:', (e as Error)?.message));
+    }
     // The charged amount is the truest spend signal — credit loyalty points
     // (idempotent: a no-op if completion already awarded them).
     try {

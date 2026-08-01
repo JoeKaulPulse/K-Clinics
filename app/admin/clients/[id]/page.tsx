@@ -190,6 +190,15 @@ export default async function ClientDetail({ params }: { params: Promise<{ id: s
         )}
       </div>
 
+      {/* Outstanding payment (BLD-1066): a failed late-cancellation/no-show fee
+          the client still owes. Same red-banner treatment as the medicalFlag
+          alert below — a safety-adjacent warning staff must see up front. */}
+      {c.outstandingPaymentPence > 0 && (
+        <p className="mt-4 rounded-[var(--radius-sm)] bg-[color-mix(in_oklab,#c0392b_14%,transparent)] px-4 py-3 text-sm font-medium text-[var(--color-ink)]">
+          ⚠ Outstanding payment: £{(c.outstandingPaymentPence / 100).toFixed(2)} owed from a failed late-cancellation/no-show fee. Settle this the next time you take payment from this client.
+        </p>
+      )}
+
       <div className="mt-8 grid gap-8 lg:grid-cols-[1.5fr_1fr]">
         <div className="space-y-10">
         {/* Appointments — past / current / upcoming, with consent + insights */}

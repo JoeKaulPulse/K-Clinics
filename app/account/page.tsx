@@ -69,6 +69,17 @@ export default async function DashboardPage() {
         lastVisitISO={client.lastVisitAt ? client.lastVisitAt.toISOString() : null}
       />
 
+      {/* Outstanding payment (BLD-1066): a failed late-cancellation/no-show fee
+          still owed. Shown at every login until it's settled, and booking a
+          new appointment is soft-blocked until then (see /api/booking/start
+          and /api/booking/create). */}
+      {client.outstandingPaymentPence > 0 && (
+        <div className="mb-8 rounded-[var(--radius-lg)] border border-[color-mix(in_oklab,#c0392b_40%,transparent)] bg-[color-mix(in_oklab,#c0392b_10%,transparent)] p-5">
+          <p className="font-medium text-[var(--color-ink)]">⚠ Outstanding payment: £{(client.outstandingPaymentPence / 100).toFixed(2)}</p>
+          <p className="mt-1 text-sm text-[var(--color-stone)]">A late-cancellation or no-show fee couldn’t be taken from your card on file. Please call or email us to settle this — you’ll need to before booking another appointment.</p>
+        </div>
+      )}
+
       <PersonalisedOffers clientId={client.id} />
       {!client.marketingOptIn && !client.unsubscribed && <MarketingOptInPrompt />}
       <div className="mt-8"><OffersStrip heading="Offers for you" /></div>
