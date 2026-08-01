@@ -67,7 +67,7 @@ export function ReviseBoard({ decks }: { decks: DeckSummary[] }) {
           <>
             <Card tone="porcelain" className="min-h-[16rem] p-8">
               <p className="mb-2 text-center text-[0.65rem] uppercase tracking-[0.16em] text-[var(--color-stone)]">{flipped ? 'Answer' : 'Question'}</p>
-              {card.imageUrl && /* eslint-disable-next-line @next/next/no-img-element */ <img src={card.imageUrl} alt="" className="mx-auto mb-4 max-h-48 rounded-[var(--radius-md)]" />}
+              {card.imageUrl && /* eslint-disable-next-line @next/next/no-img-element */ <img src={card.imageUrl} alt={card.imageAlt || 'Course image'} className="mx-auto mb-4 max-h-48 rounded-[var(--radius-md)]" />}
               <p className="whitespace-pre-line text-center text-lg leading-relaxed text-[var(--color-ink)]">{flipped ? card.back : card.front}</p>
             </Card>
 

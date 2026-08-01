@@ -176,6 +176,7 @@ enum AuditAction {
   BEFORE_PHOTO_CAPTURED
   CLIENT_DELETED
   CLIENT_ERASED
+  STUDENT_ERASED // BLD-1124: distinct from CLIENT_ERASED — an academy trainee's data was erased (GDPR Art.17)
   CLIENT_EDITED
   DATA_EXPORTED
   DATA_IMPORTED // a data-migration step wrote records (e.g. WordPress import, BLD-187)
@@ -2201,6 +2202,7 @@ model QuizQuestion {
   explanation String? @db.Text
   tip         String? // optional hint surfaced to help the learner (Duolingo-style)
   imageUrl    String?
+  imageAlt    String? // BLD-1140: staff-entered alt text for imageUrl (WCAG 1.1.1) — the image is often the content being tested (anatomy landmark, injection site), so it can't be decorative
 
   @@index([quizId, order])
   @@index([tenantId])
@@ -2346,6 +2348,7 @@ model Flashcard {
   front     String            @db.Text
   back      String            @db.Text
   imageUrl  String?
+  imageAlt  String? // BLD-1140: staff-entered alt text for imageUrl (WCAG 1.1.1)
   reviews   FlashcardReview[]
   createdAt DateTime          @default(now())
   updatedAt DateTime          @updatedAt

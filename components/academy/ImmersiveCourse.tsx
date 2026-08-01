@@ -639,7 +639,7 @@ function QuizStep({ quiz, preview, onFinish }: { quiz: QuizView; preview: boolea
         <span className="tabular-nums">Question {qi + 1} / {quiz.questions.length}</span>
       </div>
       <h2 className="mt-4 font-[family-name:var(--font-display)] text-2xl leading-snug">{q.prompt}{multi && <span className="ml-2 align-middle text-xs font-normal text-white/45">(select all that apply)</span>}</h2>
-      {q.imageUrl && /* eslint-disable-next-line @next/next/no-img-element */ <img src={q.imageUrl} alt="" className="mt-4 max-h-64 rounded-[var(--radius-md)]" />}
+      {q.imageUrl && /* eslint-disable-next-line @next/next/no-img-element */ <img src={q.imageUrl} alt={q.imageAlt || 'Course image'} className="mt-4 max-h-64 rounded-[var(--radius-md)]" />}
 
       {isShort ? (
         <input

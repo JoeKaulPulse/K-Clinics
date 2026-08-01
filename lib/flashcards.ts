@@ -7,7 +7,7 @@ import { studentCanAccess } from '@/lib/lms';
 // each learner has per-card review state that schedules when a card is next due.
 
 export type DeckSummary = { id: string; title: string; description: string | null; courseId: string; courseTitle: string; total: number; due: number };
-export type SessionCard = { id: string; front: string; back: string; imageUrl: string | null };
+export type SessionCard = { id: string; front: string; back: string; imageUrl: string | null; imageAlt: string | null };
 export type Grade = 0 | 1 | 2; // 0 = again, 1 = good, 2 = easy
 
 const SESSION_LIMIT = 20;
@@ -57,7 +57,7 @@ export async function listDecks(studentId: string): Promise<DeckSummary[]> {
 
 /** The cards to review now for a deck (due + new, capped). Verifies access. */
 export async function getDeckSession(studentId: string, deckId: string, limit = SESSION_LIMIT): Promise<{ ok: boolean; deckTitle?: string; cards?: SessionCard[]; error?: string }> {
-  const deck = await db.flashcardDeck.findUnique({ where: { id: deckId }, select: { title: true, courseId: true, cards: { orderBy: { order: 'asc' }, select: { id: true, front: true, back: true, imageUrl: true } } } });
+  const deck = await db.flashcardDeck.findUnique({ where: { id: deckId }, select: { title: true, courseId: true, cards: { orderBy: { order: 'asc' }, select: { id: true, front: true, back: true, imageUrl: true, imageAlt: true } } } });
   if (!deck) return { ok: false, error: 'Deck not found.' };
   if (!(await studentCanAccess(studentId, deck.courseId))) return { ok: false, error: 'Not enrolled.' };
   const reviews = await db.flashcardReview.findMany({ where: { studentId, card: { deckId } }, select: { cardId: true, dueAt: true } });
@@ -69,7 +69,7 @@ export async function getDeckSession(studentId: string, deckId: string, limit = 
     // Overdue first (oldest due), then new cards.
     .sort((a, b) => (a.due?.getTime() ?? Infinity) - (b.due?.getTime() ?? Infinity))
     .slice(0, limit)
-    .map((x) => ({ id: x.c.id, front: x.c.front, back: x.c.back, imageUrl: x.c.imageUrl }));
+    .map((x) => ({ id: x.c.id, front: x.c.front, back: x.c.back, imageUrl: x.c.imageUrl, imageAlt: x.c.imageAlt }));
   return { ok: true, deckTitle: deck.title, cards: ranked };
 }
 
@@ -91,13 +91,13 @@ export async function gradeCard(studentId: string, cardId: string, grade: Grade)
 }
 
 // ── Admin authoring view ─────────────────────────────────────────────────────
-export type AdminDeck = { id: string; title: string; description: string | null; order: number; cards: { id: string; order: number; front: string; back: string; imageUrl: string | null }[] };
+export type AdminDeck = { id: string; title: string; description: string | null; order: number; cards: { id: string; order: number; front: string; back: string; imageUrl: string | null; imageAlt: string | null }[] };
 
 export async function adminListDecks(courseId: string): Promise<AdminDeck[]> {
   const decks = await db.flashcardDeck.findMany({
     where: { courseId },
     orderBy: { order: 'asc' },
-    select: { id: true, title: true, description: true, order: true, cards: { orderBy: { order: 'asc' }, select: { id: true, order: true, front: true, back: true, imageUrl: true } } },
+    select: { id: true, title: true, description: true, order: true, cards: { orderBy: { order: 'asc' }, select: { id: true, order: true, front: true, back: true, imageUrl: true, imageAlt: true } } },
   });
   return decks;
 }

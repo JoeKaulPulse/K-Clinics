@@ -176,7 +176,7 @@ export async function POST(req: Request) {
     case 'updateQuestion': {
       if (!b.id) return bad();
       const type = ['SINGLE', 'MULTI', 'TRUEFALSE', 'SHORT'].includes(str(b.type)) ? str(b.type) : 'SINGLE';
-      const common = { prompt: str(b.prompt).slice(0, 600), type, explanation: str(b.explanation).slice(0, 600) || null, tip: str(b.tip).slice(0, 400) || null, imageUrl: str(b.imageUrl).slice(0, 500) || null };
+      const common = { prompt: str(b.prompt).slice(0, 600), type, explanation: str(b.explanation).slice(0, 600) || null, tip: str(b.tip).slice(0, 400) || null, imageUrl: str(b.imageUrl).slice(0, 500) || null, imageAlt: str(b.imageAlt).slice(0, 300) || null };
       // SHORT: text-matched, no options/correct — needs one or more accepted answers.
       if (type === 'SHORT') {
         const acceptedAnswers = (Array.isArray(b.acceptedAnswers) ? (b.acceptedAnswers as unknown[]).map((a) => str(a).slice(0, 200).trim()).filter(Boolean) : []);

@@ -56,7 +56,8 @@ export async function POST(req: Request) {
       const back = str(b.back).slice(0, 2000).trim();
       if (!front || !back) return bad('A card needs a front and a back.');
       const imageUrl = str(b.imageUrl).slice(0, 1000).trim();
-      await db.flashcard.update({ where: { id: String(b.id) }, data: { front, back, imageUrl: imageUrl && isHttpUrl(imageUrl) ? imageUrl : null } });
+      const imageAlt = str(b.imageAlt).slice(0, 300).trim();
+      await db.flashcard.update({ where: { id: String(b.id) }, data: { front, back, imageUrl: imageUrl && isHttpUrl(imageUrl) ? imageUrl : null, imageAlt: imageAlt || null } });
       return ok();
     }
     case 'deleteCard': {
