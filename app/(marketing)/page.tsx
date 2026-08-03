@@ -20,7 +20,7 @@ import { Aurora } from '@/components/ui/Aurora';
 import { FaqAccordion } from '@/components/ui/FaqAccordion';
 import { allGeneralFaqs } from '@/lib/faqs';
 import { faqLd, JsonLd as JsonLdHome, pageMeta } from '@/lib/seo';
-import { treatments, getTreatment } from '@/lib/treatments';
+import { getTreatment, type Treatment } from '@/lib/treatments';
 import { packages } from '@/lib/packages';
 import { site } from '@/lib/site';
 import { JsonLd, breadcrumbLd, aggregateRatingLd } from '@/lib/seo';
@@ -43,9 +43,10 @@ export const generateMetadata = () => pageMeta({
   path: '/',
 });
 
-const featured = ['laser-hair-removal', 'smas-hifu-lifting', 'hydraglow-facial', 'veneers', 'body-contouring', 'cosmetic-injections']
-  .map(getTreatment)
-  .filter(Boolean) as typeof treatments;
+// PRJ-1069.11: 'veneers' is filtered out below when dentistry isn't live yet
+// (noindexed, not bookable) rather than hardcoded here, since that depends on
+// the live, admin-toggleable site.dentistryLive flag.
+const featuredSlugs = ['laser-hair-removal', 'smas-hifu-lifting', 'hydraglow-facial', 'veneers', 'body-contouring', 'cosmetic-injections'];
 
 const pillars = [
   { stat: '2', label: 'Disciplines, one roof', text: 'Advanced aesthetics and aesthetic dentistry, side by side.', countable: false },
@@ -60,6 +61,12 @@ export default async function HomePage() {
   const { getReviewAggregate } = await import('@/lib/reviews-aggregate');
   const aggregate = await getReviewAggregate();
   const rating = aggregate ? { average: aggregate.average, count: aggregate.count } : null;
+  // PRJ-1069.11: exclude not-yet-live dentistry items (e.g. veneers while
+  // dentistryLive is false) from the featured carousel — those pages are
+  // noindexed and not actually bookable yet.
+  const featured = featuredSlugs
+    .map(getTreatment)
+    .filter((t): t is Treatment => !!t && (t.category !== 'dentistry' || dentistryLive));
   return (
     <>
       <JsonLd data={breadcrumbLd([{ name: 'Home', path: '/' }])} />

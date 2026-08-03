@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import Image from 'next/image';
+import type { CSSProperties } from 'react';
 import type { Section } from '@/lib/sections';
 import { blocksToHtml, slugifyHeading, type Block } from '@/lib/blocks';
 import { PageHero } from '@/components/ui/PageHero';
@@ -51,10 +52,17 @@ function TocSection({ data, headings }: { data: Record<string, unknown>; heading
 
 // Optional per-section background band + extra spacing (editor "Layout" controls).
 function SectionFrame({ data, children }: { data: Record<string, unknown>; children: React.ReactNode }) {
-  const bg = data._bg === 'cream' ? 'bg-[var(--color-bone)]' : data._bg === 'sand' ? 'bg-[var(--color-sand)]' : '';
+  const isSand = data._bg === 'sand';
+  const bg = data._bg === 'cream' ? 'bg-[var(--color-bone)]' : isSand ? 'bg-[var(--color-sand)]' : '';
   const pad = data._pad === 'sm' ? 'py-8' : data._pad === 'md' ? 'py-16' : data._pad === 'lg' ? 'py-28' : '';
   if (!bg && !pad) return <>{children}</>;
-  return <div className={`${bg} ${pad}`.trim()}>{children}</div>;
+  // BLD-1151: sand (#e3d3c4) doesn't clear AA contrast for --color-stone body
+  // text (~4.05:1 vs the 4.5:1 minimum). Override the custom property on the
+  // wrapper so every descendant styled with --color-stone (body copy in every
+  // section variant) resolves to --color-ink-soft instead, per the guidance
+  // already noted on --color-stone in globals.css.
+  const style = isSand ? ({ '--color-stone': 'var(--color-ink-soft)' } as CSSProperties) : undefined;
+  return <div className={`${bg} ${pad}`.trim()} style={style}>{children}</div>;
 }
 
 const str = (v: unknown, d = '') => (typeof v === 'string' ? v : d);
