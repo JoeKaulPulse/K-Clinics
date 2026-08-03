@@ -8,8 +8,12 @@ export const dynamic = 'force-dynamic';
 // request token used to sign it (POST /api/consent/sign). Lets the client's live
 // phone companion present the form inline to read/tick/sign without leaving the
 // page — the same content the public /sign/[token] page renders server-side.
-export async function GET(_req: Request, { params }: { params: Promise<{ token: string }> }) {
+export async function GET(req: Request, { params }: { params: Promise<{ token: string }> }) {
   if (!crmEnabled) return NextResponse.json({ ok: false }, { status: 503 });
+  const { enforceRateLimit } = await import('@/lib/security/guard');
+  if (!(await enforceRateLimit(req, 'consent-read', 20, 600))) {
+    return NextResponse.json({ ok: false, status: 'error' }, { status: 429, headers: { 'cache-control': 'no-store' } });
+  }
   const { token } = await params;
   const { db } = await import('@/lib/db');
   try {
@@ -23,6 +27,12 @@ export async function GET(_req: Request, { params }: { params: Promise<{ token: 
     }
     const client = await db.client.findUnique({ where: { id: reqRow.clientId }, select: { firstName: true, lastName: true } });
     const { consentMdToHtml } = await import('@/lib/consent-md');
+    const { logAudit } = await import('@/lib/audit');
+    await logAudit({
+      action: 'CONSENT_READ',
+      actor: 'client', clientId: reqRow.clientId, bookingId: reqRow.bookingId ?? undefined,
+      summary: `Read “${template.title}” consent form via token`,
+    });
     return NextResponse.json({
       ok: true,
       status: 'open',

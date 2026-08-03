@@ -32,16 +32,21 @@ export default async function BookingsPage({ searchParams }: { searchParams: Pro
   const { listBookings } = await import('@/lib/crm-data');
   const session = await getSession();
   if (!sessionCan(session, 'bookings.view')) redirect('/admin');
-  const rows = await listBookings({ filter, q, from, to });
 
-  const can = await sessionPermissions();
-  const locale = await getLocale();
-
-  // Specific service variants/areas per treatment category (Underarms, Full Legs…)
-  // so the phone-booking flow can pick the exact one — applying its own price +
-  // duration (BLD-189). Service name prefixed only when a category has more than
-  // one service, to keep area names clean (e.g. just "Underarms").
-  const treatmentsForBooking = await loadBookingTreatments();
+  // listBookings and loadBookingTreatments are independent reads — neither
+  // depends on the other's result (PRJ-1069.8), so run them concurrently
+  // instead of serially.
+  const [rows, can, locale, treatmentsForBooking] = await Promise.all([
+    listBookings({ filter, q, from, to }),
+    sessionPermissions(),
+    getLocale(),
+    // Specific service variants/areas per treatment category (Underarms, Full
+    // Legs…) so the phone-booking flow can pick the exact one — applying its
+    // own price + duration (BLD-189). Service name prefixed only when a
+    // category has more than one service, to keep area names clean (e.g. just
+    // "Underarms").
+    loadBookingTreatments(),
+  ]);
 
   const tabHref = (k: string) => {
     const p = new URLSearchParams();

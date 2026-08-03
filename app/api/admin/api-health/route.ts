@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import * as Sentry from '@sentry/nextjs';
 import { crmEnabled } from '@/lib/crm';
 
 export const runtime = 'nodejs';
@@ -38,6 +39,7 @@ export async function GET(req: Request) {
     return NextResponse.json({ ok: true, cached: false, report });
   } catch (e) {
     console.error('[api-health] run failed', e);
+    Sentry.captureException(e, { tags: { route: 'admin/api-health' } });
     return NextResponse.json({ ok: false, error: 'Health run failed — see logs.' }, { status: 500 });
   }
 }
