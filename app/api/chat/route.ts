@@ -111,6 +111,13 @@ export async function POST(req: Request) {
 // Poll: return messages for the visitor's conversation since `after`.
 export async function GET(req: Request) {
   if (!crmEnabled) return NextResponse.json({ ok: false, messages: [] }, { status: 503 });
+  const { enforceRateLimit } = await import('@/lib/security/guard');
+  // Higher allowance than POST's 30/60 — this is a steady 4s poll while the
+  // widget is open (~15/min per visitor), so it needs headroom above that
+  // while still bounding a scripted token-enumeration sweep.
+  if (!(await enforceRateLimit(req, 'chat-poll', 60, 60))) {
+    return NextResponse.json({ ok: false, messages: [] }, { status: 429 });
+  }
   const url = new URL(req.url);
   const token = (url.searchParams.get('token') || '').trim();
   const after = url.searchParams.get('after');

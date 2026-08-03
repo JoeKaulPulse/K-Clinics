@@ -173,6 +173,7 @@ enum AuditAction {
   CONSENT_REQUESTED
   CONSENT_SIGNED
   CONSENT_DECLINED
+  CONSENT_READ // PRJ-1069.7: a consent form's content/PII was read via its token (GET /api/consent/[token])
   BEFORE_PHOTO_CAPTURED
   CLIENT_DELETED
   CLIENT_ERASED
