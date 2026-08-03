@@ -102,7 +102,7 @@ async function membershipRenewal(t: Tally) {
         <p style="margin:0 0 14px;">It's been a little while since your last visit. K Circle tiers are based on your spend over the last 12 months, so a visit soon keeps you in <strong>${tier.name}</strong>${perks ? ` — and everything it unlocks: ${perks}.` : '.'}</p>
         <p style="margin:6px 0 18px;"><a href="${base}/book" style="display:inline-block;background:${accent};color:#fff;text-decoration:none;padding:13px 26px;border-radius:999px;font-size:14px;">Book your next visit</a></p>
         <p style="font-size:14px;color:#91766e;">We'd love to see you again soon.</p>`;
-      const res = await sendEmail({ to: c.email, subject: `Keep your K Circle ${tier.name} benefits`, html: emailShell({ body, preheader: `A little nudge to keep your ${tier.name} status.`, unsubUrl: unsub(c.unsubToken) }) });
+      const res = await sendEmail({ to: c.email, subject: `Keep your K Circle ${tier.name} benefits`, html: emailShell({ body, preheader: `A little nudge to keep your ${tier.name} status.`, unsubUrl: unsub(c.unsubToken) }), headers: unsubHeaders(c.unsubToken) });
       await db.emailEvent.create({ data: { clientId: c.id, kind: 'MEMBERSHIP', to: c.email, subject: `K Circle renewal nudge (${tier.name})`, status: res.ok ? 'SENT' : 'FAILED', providerId: res.id, error: res.error, meta: { type: 'renewal' } } }).catch(() => {});
       res.ok ? t.membershipRenewals++ : t.errors++;
     }
