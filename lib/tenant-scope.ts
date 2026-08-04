@@ -43,6 +43,7 @@ export const ACADEMY_TENANT_MODELS: ReadonlySet<string> = new Set<string>([
   'demoMistake',
   'demoAttempt',
   'quizAttempt',
+  'quizAttemptGrant', // BLD-1139
   'examQuestion',
   'pastPaper',
   'practiceAttempt',

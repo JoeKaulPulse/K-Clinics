@@ -5,6 +5,7 @@ import { getSession, sessionCan, sessionPermissions } from '@/lib/auth';
 import { AdminShell } from '@/components/admin/AdminShell';
 import { CrmDisabled } from '@/components/admin/CrmDisabled';
 import { StudentActions } from '@/components/admin/StudentActions';
+import { GrantQuizAttempts } from '@/components/admin/GrantQuizAttempts';
 import { EnrolInCourse } from '@/components/admin/EnrolInCourse';
 import { BadgeIcon } from '@/components/academy/BadgeIcon';
 import { getLocale } from '@/lib/locale';
@@ -67,6 +68,24 @@ export default async function AdminAcademyStudentPage({ params }: { params: Prom
   for (const p of payments) { const a = paymentsByEnrol.get(p.enrolmentId) ?? []; a.push(p); paymentsByEnrol.set(p.enrolmentId, a); }
   const quizzesPassed = new Set(quizRows.filter((q) => q.passed).map((q) => q.quizId)).size;
   const age = student.dob ? Math.floor((Date.now() - +student.dob) / 31557600000) : null;
+
+  // BLD-1139: quizzes where this student has exhausted every attempt without a
+  // pass — the admin can grant extra attempts (attempt history is never deleted).
+  const attemptCounts = await db.quizAttempt.groupBy({ by: ['quizId'], where: { studentId: id }, _count: true });
+  const attemptedIds = attemptCounts.map((a) => a.quizId);
+  const [quizMeta, grantRows, passedRows] = attemptedIds.length
+    ? await Promise.all([
+        db.quiz.findMany({ where: { id: { in: attemptedIds } }, select: { id: true, title: true, maxAttempts: true } }),
+        db.quizAttemptGrant.groupBy({ by: ['quizId'], where: { studentId: id, quizId: { in: attemptedIds } }, _sum: { extra: true } }),
+        db.quizAttempt.findMany({ where: { studentId: id, passed: true }, select: { quizId: true }, distinct: ['quizId'] }),
+      ])
+    : [[], [], []];
+  const grantedByQuiz = new Map(grantRows.map((g) => [g.quizId, g._sum.extra ?? 0]));
+  const passedIds = new Set(passedRows.map((p) => p.quizId));
+  const usedByQuiz = new Map(attemptCounts.map((a) => [a.quizId, a._count]));
+  const blockedQuizzes = quizMeta
+    .filter((q) => q.maxAttempts && q.maxAttempts > 0 && !passedIds.has(q.id) && (usedByQuiz.get(q.id) ?? 0) >= q.maxAttempts + (grantedByQuiz.get(q.id) ?? 0))
+    .map((q) => ({ id: q.id, title: q.title, used: usedByQuiz.get(q.id) ?? 0, allowed: (q.maxAttempts ?? 0) + (grantedByQuiz.get(q.id) ?? 0) }));
 
   const can = await sessionPermissions();
   const locale = await getLocale();
@@ -180,6 +199,7 @@ export default async function AdminAcademyStudentPage({ params }: { params: Prom
               ))}
             </ul>
           )}
+          <GrantQuizAttempts studentId={id} blocked={blockedQuizzes} />
         </Card>
 
         <Card title="Recent lessons completed">

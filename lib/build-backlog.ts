@@ -3167,6 +3167,30 @@ export const BUILD_BACKLOG: BacklogItem[] = [
     detail: 'After its initial Promise.all, app/admin/reports/page.tsx separately awaited goodsCost, usedCost, minMarginPct, usedRow, an appointmentSession query and the VAT config import one after another — none depend on each other, only on since/bookingWhere.',
     notes: ['Fix: the six independent reads now run in one Promise.all (the VAT module import is included with a null fallback so the existing best-effort try/catch semantics are unchanged; the registered-only bySlug/svcRows pair stays dependent on vatCfg inside the try). staffRows still waits on byStaff as before. (BLD-1126)'],
   },
+  {
+    title: 'Stripe-dashboard refund reconciliation never restores the gift-voucher-covered portion of a booking', type: 'ERROR', urgency: 'P1', status: 'IN_REVIEW', assignee: 'claude',
+    value: 7, effort: 3,
+    detail: 'The webhook’s charge.refunded booking branch reconciled refundedPence, clawed back loyalty points, pushed the Xero credit note and emailed the client — but never called creditVoucher, unlike the in-app refundBooking() (BLD-882). A booking partially settled by card + gift voucher, refunded via the Stripe dashboard, permanently stranded the voucher-covered value.',
+    notes: ['Fix: the webhook branch now mirrors refundBooking() — on a full refund of a non-voucher-charged booking with giftVoucherPence > 0, creditVoucher restores the voucher balance (capped at face value, so a redelivered event can never over-credit) with a REWARD_REDEEMED audit entry. (BLD-1138)'],
+  },
+  {
+    title: 'Academy quiz attempt-limit exhaustion permanently blocks course completion with no escape hatch', type: 'IDEA', urgency: 'P1', status: 'IN_REVIEW', assignee: 'claude',
+    value: 8, effort: 3,
+    detail: 'gradeQuiz() hard-stopped at quiz.maxAttempts, the player showed a dead-end message, and there was no admin way to reset attempts — a student who exhausted attempts on one required quiz could never complete a paid course (certificates require every quiz passed).',
+    notes: ['Fix: new additive QuizAttemptGrant table (studentId, quizId, extra, reason, grantedBy) — attempt history is never deleted; grants raise the allowance. gradeQuiz and the course view both honour granted extras. The admin student page grows a "Blocked — out of attempts" panel (only for exhausted-not-passed quizzes) with a Grant 1 extra attempt control that requires nothing destructive, records a reason and writes an audit entry via the new grantQuizAttempts op (settings.manage). The student-facing exhausted message now offers a "Contact your tutor" mailto CTA to request a resit. Authorisation policy defaulted to the existing academy-management permission (settings.manage); grants are capped at 10 per call. (BLD-1139)'],
+  },
+  {
+    title: 'Stripe disputes/chargebacks are not handled anywhere in the webhook or booking/order state', type: 'IDEA', urgency: 'P1', status: 'IN_REVIEW', assignee: 'claude',
+    value: 8, effort: 4,
+    detail: 'No charge.dispute.* case in the Stripe webhook: a chargeback silently debited the Stripe balance with zero DB/booking/order state change, no staff notification, and no Xero reversal — the booking still showed fully paid after the funds were gone.',
+    notes: ['Built the visibility half: charge.dispute.created/closed are now handled — resolved to the booking or shop order via the payment intent, written to the audit trail as a new additive PAYMENT_DISPUTED action, reported to Sentry, pushed to the ops webhook channel, and notified to staff holding bookings.charge with a link to the record; both events are in the critical retry list so a DB failure makes Stripe redeliver. Deliberately NOT built without an owner decision (asked on this card): automatic booking/order state change on a lost dispute, Xero provisional-loss entry, and the escalation path. The Stripe dashboard webhook endpoint must have charge.dispute.created and charge.dispute.closed enabled for events to arrive. (PRJ-1069.12)'],
+  },
+  {
+    title: 'Publish-consent for public before/after gallery photos is an unevidenced checkbox, not a real consent record', type: 'IDEA', urgency: 'P1', status: 'IN_REVIEW', assignee: 'claude',
+    value: 8, effort: 3,
+    detail: 'GalleryItem.consent was a bare boolean set by any staffer with settings.manage — no timestamp, signer identity, or link to a SignedConsent record; an identifiable clinical photo could go live with no durable proof consent was given.',
+    notes: ['Built the evidence half: additive consentBy/consentAt columns on GalleryItem, stamped with the acting admin + time whenever the consent attestation is ticked (and cleared when unticked) on both create and update. The publish guard (cannot publish without consent) is unchanged. NOT built without an owner decision (asked on this card): hard-gating published:true behind a linked SignedConsent record, which changes staff workflow for clinical photo publishing. (BLD-1037)'],
+  },
 ];
 
 // A content hash over every item's title + status + PR, so ANY change (a new
