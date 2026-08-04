@@ -3135,6 +3135,18 @@ export const BUILD_BACKLOG: BacklogItem[] = [
     detail: 'app/admin/seo/page.tsx, app/admin/marketing/performance/page.tsx and app/admin/marketing/analytics/page.tsx rendered bare <table> elements; body { overflow-x: clip } means any table wider than its column gets cut off with no way to see the extra columns.',
     notes: ['Fix: each of the six tables is wrapped in a div.overflow-x-auto so wide content scrolls inside its own container. (BLD-1125)'],
   },
+  {
+    title: 'Promo-code redemption cap and once-per-client limit can be bypassed under concurrent requests', type: 'ERROR', urgency: 'P1', status: 'IN_REVIEW', assignee: 'claude',
+    value: 7, effort: 3,
+    detail: 'Both booking routes applied priceWithPromo (a read-only check) to set the final price, then ignored redeemPromo’s boolean — the only atomic enforcement of maxRedemptions/oncePerClient. Concurrent requests with the same capped code all kept the discount; only one incremented the counter.',
+    notes: ['Fix: both call sites now check redeemPromo’s return. app/api/booking/create/route.ts re-prices the booking at the undiscounted amount; app/api/booking/start/route.ts falls back to the best non-promo offer captured before the promo won (automatic offer or welcome discount, burning the welcome claim when that is the fallback) and syncs the primary BookingItem’s discountPence. Both log a SESSION_EDITED audit event with the restored amount. Charge time reads booking.pricePence, so the corrected price is what gets collected. (BLD-1035)'],
+  },
+  {
+    title: '/admin/reports runs six-plus independent queries as sequential round trips', type: 'TASK', urgency: 'P1', status: 'IN_REVIEW', assignee: 'claude',
+    value: 7, effort: 3,
+    detail: 'After its initial Promise.all, app/admin/reports/page.tsx separately awaited goodsCost, usedCost, minMarginPct, usedRow, an appointmentSession query and the VAT config import one after another — none depend on each other, only on since/bookingWhere.',
+    notes: ['Fix: the six independent reads now run in one Promise.all (the VAT module import is included with a null fallback so the existing best-effort try/catch semantics are unchanged; the registered-only bySlug/svcRows pair stays dependent on vatCfg inside the try). staffRows still waits on byStaff as before. (BLD-1126)'],
+  },
 ];
 
 // A content hash over every item's title + status + PR, so ANY change (a new
