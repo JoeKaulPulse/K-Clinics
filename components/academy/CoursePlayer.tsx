@@ -388,7 +388,14 @@ function QuizPanel({ quiz, state, onGraded, onBadges, onNext }: { quiz: QuizView
       )}
 
       {noAttemptsLeft && !result ? (
-        <p className="mt-6 rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-bone)] p-5 text-sm text-[var(--color-stone)]">You’ve used all your attempts for this assessment.{state?.best != null ? ` Your best score was ${state.best}%.` : ''}</p>
+        <div className="mt-6 rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-bone)] p-5 text-sm text-[var(--color-stone)]">
+          <p>You’ve used all your attempts for this assessment.{state?.best != null ? ` Your best score was ${state.best}%.` : ''}</p>
+          {/* BLD-1139: dead end without an escape hatch — the tutor team can grant a resit. */}
+          <p className="mt-2">
+            This doesn’t have to be the end of your course — your tutor can review your case and grant a resit.{' '}
+            <a href={`mailto:support@kclinics.co.uk?subject=${encodeURIComponent(`Resit request — ${quiz.title}`)}`} className="font-medium text-[var(--color-gold-deep)] underline-offset-2 hover:underline">Contact your tutor</a> to request one.
+          </p>
+        </div>
       ) : (
       <ol className="mt-6 space-y-6">
         {quiz.questions.map((q, qi) => {

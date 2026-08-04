@@ -1939,6 +1939,7 @@ model AcademyStudent {
   exerciseAttempts    ExerciseAttempt[]
   demoAttempts        DemoAttempt[]
   quizAttempts        QuizAttempt[]
+  quizAttemptGrants   QuizAttemptGrant[] // BLD-1139
   practiceAttempts    PracticeAttempt[]
   pointEvents         PointEvent[]
   badges              StudentBadge[]
@@ -2183,6 +2184,7 @@ model Quiz {
   isSurvey         Boolean @default(false) // ungraded feedback set — no pass/fail, no answer keys
   questions QuizQuestion[]
   attempts  QuizAttempt[]
+  attemptGrants QuizAttemptGrant[] // BLD-1139
   createdAt DateTime       @default(now())
   updatedAt DateTime       @updatedAt
 
@@ -2557,6 +2559,26 @@ model QuizAttempt {
   scorePct  Int
   passed    Boolean
   answers   Json?
+  createdAt DateTime       @default(now())
+
+  @@index([studentId, quizId])
+  @@index([tenantId])
+}
+
+// BLD-1139: staff-granted extra quiz attempts. A student who exhausts
+// maxAttempts on a required quiz could otherwise never complete a paid course
+// (certificates need every quiz passed) — attempts history is never deleted;
+// grants raise the allowance instead. Additive table, safe for the deploy gate.
+model QuizAttemptGrant {
+  id        String         @id @default(cuid())
+  tenantId  String
+  student   AcademyStudent @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  studentId String
+  quiz      Quiz           @relation(fields: [quizId], references: [id], onDelete: Cascade)
+  quizId    String
+  extra     Int // additional attempts granted on top of quiz.maxAttempts
+  reason    String?
+  grantedBy String // admin email
   createdAt DateTime       @default(now())
 
   @@index([studentId, quizId])

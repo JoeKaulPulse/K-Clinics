@@ -226,6 +226,23 @@ export async function POST(req: Request) {
       await db.academyStudent.update({ where: { id: String(body.id) }, data: { notes } });
       return ok();
     }
+    case 'grantQuizAttempts': {
+      // BLD-1139: unblock a trainee who has exhausted a quiz's attempt limit —
+      // grants extra attempts (history is never deleted) with a reason, audited.
+      if (!body.studentId || !body.quizId) return bad();
+      const extra = Math.min(10, Math.max(1, num(body.extra) ?? 1));
+      const reason = (body.reason as string | undefined)?.trim().slice(0, 300) || null;
+      const [student, quiz] = await Promise.all([
+        db.academyStudent.findFirst({ where: { id: String(body.studentId), tenantId }, select: { id: true, email: true } }),
+        db.quiz.findFirst({ where: { id: String(body.quizId), tenantId }, select: { id: true, title: true, maxAttempts: true } }),
+      ]);
+      if (!student || !quiz) return bad();
+      if (!quiz.maxAttempts) return NextResponse.json({ ok: false, error: 'This assessment has unlimited attempts already.' }, { status: 400 });
+      await db.quizAttemptGrant.create({ data: { tenantId, studentId: student.id, quizId: quiz.id, extra, reason, grantedBy: session.email } });
+      const { logAudit } = await import('@/lib/audit');
+      await logAudit({ action: 'SESSION_EDITED', actor: session.email, actorRole: session.role, summary: `Granted ${extra} extra quiz attempt${extra === 1 ? '' : 's'} on "${quiz.title}" to ${student.email}${reason ? ` — ${reason}` : ''}` }).catch(() => {});
+      return ok({ extra });
+    }
     case 'updateFunding': {
       if (!body.id) return bad();
       const b = body as Record<string, unknown>;

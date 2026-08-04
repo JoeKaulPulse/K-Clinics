@@ -119,7 +119,7 @@ export async function getCourseLearning(slug: string, studentId: string): Promis
   const enrol = await db.enrolment.findFirst({ where: { studentId, courseId: course.id, status: { in: ['PAID', 'ENROLLED', 'COMPLETED'] } }, select: { preCourseAckAt: true } });
   const preCourseAck = !!enrol?.preCourseAckAt;
 
-  const [modules, doneRows, attempts, homeworkRows] = await Promise.all([
+  const [modules, doneRows, attempts, homeworkRows, attemptGrants] = await Promise.all([
     db.courseModule.findMany({
       where: { courseId: course.id },
       orderBy: { order: 'asc' },
@@ -131,6 +131,8 @@ export async function getCourseLearning(slug: string, studentId: string): Promis
     db.lessonProgress.findMany({ where: { studentId, lesson: { module: { courseId: course.id } } }, select: { lessonId: true } }),
     db.quizAttempt.findMany({ where: { studentId, quiz: { module: { courseId: course.id } } }, select: { quizId: true, scorePct: true, passed: true } }),
     db.homeworkSubmission.findMany({ where: { studentId, lesson: { module: { courseId: course.id } } }, select: { lessonId: true, files: true, note: true, status: true, feedback: true } }),
+    // BLD-1139: staff-granted extras raise the visible attempt allowance.
+    db.quizAttemptGrant.findMany({ where: { studentId, quiz: { module: { courseId: course.id } } }, select: { quizId: true, extra: true } }),
   ]);
   // BLD-529: resume positions live in LessonPlayback (decoupled from completion).
   const playbackRows = await db.lessonPlayback.findMany({ where: { studentId, lesson: { module: { courseId: course.id } } }, select: { lessonId: true, positionSec: true } });
@@ -145,6 +147,8 @@ export async function getCourseLearning(slug: string, studentId: string): Promis
     bestByQuiz.set(a.quizId, { best: Math.max(cur?.best ?? 0, a.scorePct), passed: (cur?.passed ?? false) || a.passed });
     attemptsByQuiz.set(a.quizId, (attemptsByQuiz.get(a.quizId) ?? 0) + 1);
   }
+  const grantsByQuiz = new Map<string, number>();
+  for (const g of attemptGrants) grantsByQuiz.set(g.quizId, (grantsByQuiz.get(g.quizId) ?? 0) + g.extra);
   // BLD: per-cohort drip — locked modules are listed in the outline but their
   // content (body/video/quiz) is withheld until the release date.
   const lockedMap = await lockedModuleMap(studentId, course.id);
@@ -182,7 +186,7 @@ export async function getCourseLearning(slug: string, studentId: string): Promis
       quiz = isLocked ? null : {
         id: qz.id, title: qz.title, passMark: qz.passMark, questionCount: effectiveQuestionCount(qz.questions.length, qz.poolSize),
         bestScore: b?.best ?? null, passed: b?.passed ?? false,
-        timeLimitMin: qz.timeLimitMin, maxAttempts: qz.maxAttempts, attemptsUsed: attemptsByQuiz.get(qz.id) ?? 0, shuffleOptions: qz.shuffleOptions, isSurvey: qz.isSurvey,
+        timeLimitMin: qz.timeLimitMin, maxAttempts: qz.maxAttempts ? qz.maxAttempts + (grantsByQuiz.get(qz.id) ?? 0) : qz.maxAttempts, attemptsUsed: attemptsByQuiz.get(qz.id) ?? 0, shuffleOptions: qz.shuffleOptions, isSurvey: qz.isSurvey,
         // Survey questions and SHORT questions carry no answer options to the learner.
         questions: selectQuizQuestions(qz.questions, qz.shuffleQuestions, qz.poolSize, `${studentId}:${qz.id}`).map((q) => ({ id: q.id, order: q.order, prompt: q.prompt, type: q.type, options: q.type === 'SHORT' ? [] : strArr(q.options), tip: q.tip, imageUrl: q.imageUrl, imageAlt: q.imageAlt })),
       };
@@ -437,9 +441,15 @@ export async function gradeQuiz(studentId: string, quizId: string, answers: Reco
   const tenantId = await currentTenantId();
 
   // Attempt limit (counts every recorded attempt for this learner + quiz).
+  // BLD-1139: staff-granted extras raise the allowance so an exhausted student
+  // can be unblocked without deleting attempt history.
   if (quiz.maxAttempts && quiz.maxAttempts > 0) {
-    const used = await db.quizAttempt.count({ where: { studentId, quizId } });
-    if (used >= quiz.maxAttempts) return { ok: false, error: 'You have used all your attempts for this assessment.' };
+    const [used, grants] = await Promise.all([
+      db.quizAttempt.count({ where: { studentId, quizId } }),
+      db.quizAttemptGrant.aggregate({ where: { studentId, quizId }, _sum: { extra: true } }),
+    ]);
+    const allowed = quiz.maxAttempts + (grants._sum.extra ?? 0);
+    if (used >= allowed) return { ok: false, error: 'You have used all your attempts for this assessment.' };
   }
 
   // Survey: ungraded — record a completed attempt and return without answer keys.

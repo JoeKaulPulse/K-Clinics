@@ -414,6 +414,18 @@ export async function POST(req: Request) {
           if (fully) {
             try { const { refundBookingPoints } = await import('@/lib/client-loyalty'); await refundBookingPoints(bk.id); } catch (e) { console.error('[webhook] refund points reversal failed:', (e as Error)?.message); Sentry.captureException(e, { tags: { area: 'stripe-webhook', sub: 'refund-points' } }); } // BLD-921
           }
+          // BLD-1138: a partial-voucher booking's card remainder refunded in the
+          // Stripe dashboard must restore the voucher-covered portion too —
+          // parity with refundBooking() (BLD-882). creditVoucher caps at face
+          // value, so a webhook redelivery can never over-credit.
+          if (fully && bk.chargePaymentIntentId !== 'ext_gift-voucher' && (bk.giftVoucherPence ?? 0) > 0 && bk.giftVoucherCode) {
+            try {
+              const { creditVoucher } = await import('@/lib/gift-vouchers');
+              await creditVoucher(bk.giftVoucherCode, bk.giftVoucherPence ?? 0);
+              const { logAudit } = await import('@/lib/audit');
+              await logAudit({ action: 'REWARD_REDEEMED', actor: 'stripe-webhook', bookingId: bk.id, clientId: bk.clientId, summary: `Gift voucher ${bk.giftVoucherCode} restored on full refund — £${((bk.giftVoucherPence ?? 0) / 100).toFixed(2)} back on the voucher` }).catch(() => {});
+            } catch (e) { console.error('[webhook] voucher restore failed:', (e as Error)?.message); Sentry.captureException(e, { tags: { area: 'stripe-webhook', sub: 'voucher-restore' } }); }
+          }
           // BLD-836: claw back the SPEND points earned on the refunded money too
           // (pro-rata, idempotent inside the helper) — parity with refundBooking().
           try { const { reverseSpendPoints } = await import('@/lib/client-loyalty'); await reverseSpendPoints(bk.id, newTotal, bk.chargedPence ?? 0); } catch (e) { console.error('[webhook] spend-points clawback failed:', (e as Error)?.message); Sentry.captureException(e, { tags: { area: 'stripe-webhook', sub: 'spend-points-clawback' } }); } // BLD-921
