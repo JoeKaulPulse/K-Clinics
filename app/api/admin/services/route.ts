@@ -41,6 +41,9 @@ export async function POST(req: Request) {
           ...(body.pricePence != null ? { pricePence: Math.max(0, num(body.pricePence) ?? 0) } : {}),
           ...(body.costPence !== undefined ? { costPence: body.costPence === null || body.costPence === '' ? null : Math.max(0, num(body.costPence) ?? 0) } : {}),
           ...(body.durationMin != null ? { durationMin: Math.max(5, num(body.durationMin) ?? 30) } : {}),
+          // BLD-998: optional client-facing treatment length; empty/null clears
+          // it and clients fall back to the internal booked time.
+          ...('displayDurationMin' in body ? { displayDurationMin: body.displayDurationMin === null || body.displayDurationMin === '' ? null : Math.max(1, num(body.displayDurationMin) ?? 0) || null } : {}),
           ...('courses' in body ? { courses: asCourses(body.courses) } : {}),
           ...(typeof body.active === 'boolean' ? { active: body.active } : {}),
           // status: a valid value, or null to clear the per-option override (inherit).

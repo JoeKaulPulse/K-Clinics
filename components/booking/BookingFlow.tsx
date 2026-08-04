@@ -14,7 +14,7 @@ import { REFRESHMENTS } from '@/lib/hospitality';
 import { trackPurchase } from '@/lib/analytics-events';
 
 type Course = { sessions: number; totalPence: number };
-type Variant = { id: string; name: string; durationMin: number; pricePence: number; offerPence: number | null; offerName: string | null; courses: Course[] };
+type Variant = { id: string; name: string; durationMin: number; displayDurationMin?: number | null; pricePence: number; offerPence: number | null; offerName: string | null; courses: Course[] };
 type Service = { id: string; slug: string; treatmentSlug: string; name: string; category: string; audience: string; variants: Variant[] };
 type ClientInfo = { signedIn: boolean; firstName: string; email: string; gender: string | null; smsReminders: boolean; hasPhone: boolean; welcomeEligible: boolean };
 
@@ -308,7 +308,8 @@ export function BookingFlow({ catalogue, client, preselect = null, preselectDate
                       className={`flex items-center justify-between gap-3 rounded-[var(--radius-md)] border p-4 text-left transition-all ${variantId === v.id ? 'border-[var(--color-gold)] bg-[var(--color-porcelain)]' : 'border-[var(--color-line)] hover:border-[var(--color-stone-soft)]'}`}>
                       <span>
                         <span className="block text-sm font-medium">{v.name}</span>
-                        <span className="text-xs text-[var(--color-stone)]">{v.durationMin} min{pp.tag ? ` · ${pp.tag}` : ''}</span>
+                        {/* BLD-998: clients see the treatment length, not the internal booked time */}
+                        <span className="text-xs text-[var(--color-stone)]">{v.displayDurationMin ?? v.durationMin} min{pp.tag ? ` · ${pp.tag}` : ''}</span>
                       </span>
                       <span className="shrink-0 text-right text-sm font-medium text-[var(--color-gold-deep)]">
                         {pp.was && <span className="mr-1 text-xs text-[var(--color-stone)] line-through">{money(pp.was)}</span>}
@@ -420,7 +421,7 @@ export function BookingFlow({ catalogue, client, preselect = null, preselectDate
                         className={`flex items-center justify-between gap-3 rounded-[var(--radius-md)] border p-4 text-left transition-all ${on ? 'border-[var(--color-gold)] bg-[var(--color-porcelain)]' : 'border-[var(--color-line)] hover:border-[var(--color-stone-soft)]'}`}>
                         <span>
                           <span className="block text-sm font-medium">{s.name} — {v.name}</span>
-                          <span className="text-xs text-[var(--color-stone)]">+{v.durationMin} min · save {money(ap.saved)}</span>
+                          <span className="text-xs text-[var(--color-stone)]">+{v.displayDurationMin ?? v.durationMin} min · save {money(ap.saved)}</span>
                         </span>
                         <span className="shrink-0 text-right text-sm font-medium text-[var(--color-gold-deep)]">
                           <span className="mr-1 text-xs text-[var(--color-stone)] line-through">{money(v.pricePence)}</span>{money(ap.price)}

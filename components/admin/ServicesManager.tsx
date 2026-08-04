@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation';
 import { parsePriceMatrix } from '@/lib/price-import';
 import { PriceListUpload } from '@/components/admin/PriceListUpload';
 
-type Variant = { id: string; name: string; durationMin: number; pricePence: number; costPence: number | null; courses: { sessions: number; totalPence: number }[]; status: string | null };
+type Variant = { id: string; name: string; durationMin: number; displayDurationMin: number | null; pricePence: number; costPence: number | null; courses: { sessions: number; totalPence: number }[]; status: string | null };
 type Service = { id: string; slug: string; treatmentSlug: string; name: string; category: string; vatClass: string | null; active: boolean; status: string; variants: Variant[] };
 type Offer = { id: string; name: string; scope: string; serviceId: string | null; variantId: string | null; percentOff: number | null; amountOffPence: number | null; startAt: string | null; endAt: string | null; promoted: boolean };
 type TreatmentOpt = { slug: string; title: string; category: string };
@@ -207,7 +207,7 @@ function ServiceCard({ service }: { service: Service }) {
         <div className="mt-4 overflow-x-auto">
           <table className="w-full min-w-[640px] text-sm">
             <thead><tr className="text-left text-xs uppercase tracking-wide text-[var(--color-stone)]">
-              <th scope="col" className="py-1 pr-2">Variant</th><th scope="col" className="px-2">Min</th><th scope="col" className="px-2">Price £</th><th scope="col" className="px-2">Cost £</th><th scope="col" className="px-2">Margin</th><th scope="col" className="px-2">Status</th><th scope="col" className="px-2"></th>
+              <th scope="col" className="py-1 pr-2">Variant</th><th scope="col" className="px-2" title="Internal booked time incl. setup/cleaning — drives the diary">Min</th><th scope="col" className="px-2" title="What clients see as the treatment length (BLD-998). Blank = same as Min.">Client min</th><th scope="col" className="px-2">Price £</th><th scope="col" className="px-2">Cost £</th><th scope="col" className="px-2">Margin</th><th scope="col" className="px-2">Status</th><th scope="col" className="px-2"></th>
             </tr></thead>
             <tbody>
               {service.variants.map((v) => <VariantRow key={v.id} v={v} />)}
@@ -229,6 +229,7 @@ function VariantRow({ v }: { v: Variant }) {
   const [price, setPrice] = useState(pounds(v.pricePence));
   const [cost, setCost] = useState(pounds(v.costPence));
   const [dur, setDur] = useState(String(v.durationMin));
+  const [dispDur, setDispDur] = useState(v.displayDurationMin == null ? '' : String(v.displayDurationMin));
   const [courses, setCourses] = useState<CourseDraft[]>(v.courses.map((c) => ({ sessions: String(c.sessions), price: pounds(c.totalPence) })));
   const [showCourses, setShowCourses] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -241,10 +242,10 @@ function VariantRow({ v }: { v: Variant }) {
     .filter((c) => Number.isFinite(c.sessions) && c.sessions >= 1 && Number.isFinite(c.totalPence) && c.totalPence > 0);
 
   const coursesDirty = courseKey(cleanCourses) !== courseKey(v.courses);
-  const dirty = price !== pounds(v.pricePence) || cost !== pounds(v.costPence) || dur !== String(v.durationMin) || coursesDirty;
+  const dirty = price !== pounds(v.pricePence) || cost !== pounds(v.costPence) || dur !== String(v.durationMin) || dispDur !== (v.displayDurationMin == null ? '' : String(v.displayDurationMin)) || coursesDirty;
 
   async function save() {
-    await post({ op: 'updateVariant', id: v.id, pricePence: Math.round(Number(price || 0) * 100), costPence: cost === '' ? null : Math.round(Number(cost) * 100), durationMin: Number(dur), courses: cleanCourses });
+    await post({ op: 'updateVariant', id: v.id, pricePence: Math.round(Number(price || 0) * 100), costPence: cost === '' ? null : Math.round(Number(cost) * 100), durationMin: Number(dur), displayDurationMin: dispDur === '' ? null : Number(dispDur), courses: cleanCourses });
     setSaved(true); setTimeout(() => setSaved(false), 1500); router.refresh();
   }
   async function remove() { if (confirm(`Remove “${v.name}”?`)) { await post({ op: 'removeVariant', id: v.id }); router.refresh(); } }
@@ -264,7 +265,8 @@ function VariantRow({ v }: { v: Variant }) {
             {courses.length > 0 ? `${courses.length} package${courses.length > 1 ? 's' : ''}` : '+ packages'}
           </button>
         </td>
-        <td className="px-2"><input value={dur} onChange={(e) => setDur(e.target.value)} className={`${field} w-14`} /></td>
+        <td className="px-2"><input value={dur} onChange={(e) => setDur(e.target.value)} className={`${field} w-14`} aria-label="Internal booked minutes" /></td>
+        <td className="px-2"><input value={dispDur} onChange={(e) => setDispDur(e.target.value)} placeholder={dur} className={`${field} w-14`} aria-label="Client-visible treatment minutes" title="What clients see. Leave blank to show the internal time." /></td>
         <td className="px-2"><input value={price} onChange={(e) => setPrice(e.target.value)} className={`${field} w-20`} /></td>
         <td className="px-2"><input value={cost} onChange={(e) => setCost(e.target.value)} placeholder="—" className={`${field} w-20`} /></td>
         <td className="px-2 tabular-nums text-[var(--color-stone)]">{margin == null ? '—' : `${margin}%`}</td>
@@ -282,7 +284,7 @@ function VariantRow({ v }: { v: Variant }) {
       </tr>
       {showCourses && (
         <tr className="border-t border-[var(--color-line)] bg-[var(--color-bone)]/50">
-          <td colSpan={7} className="px-2 py-3">
+          <td colSpan={8} className="px-2 py-3">
             <div className="rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white p-3">
               <p className="mb-2 text-xs text-[var(--color-stone)]">
                 Course / package prices for <span className="font-medium">{v.name}</span> — set the number of sessions and the total package price. The single-session price above ({money(single)}) is used when no package is chosen.

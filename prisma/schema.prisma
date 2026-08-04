@@ -853,6 +853,10 @@ model ServiceVariant {
   serviceId   String
   name        String // e.g. "Full Face", "Signature Express (30 min)"
   durationMin Int            @default(30)
+  // BLD-998: client-facing treatment length (minutes). durationMin is the full
+  // INTERNAL booking time (setup + treatment + cleaning) and drives slots/rooms;
+  // when this is set, clients see it instead of the internal time.
+  displayDurationMin Int?
   pricePence  Int // single-session retail price (0 = on consultation)
   costPence   Int? // cost of goods/service, for margin tracking
   // Course/package options as [{ sessions, totalPence }], cheaper per-session.
@@ -2859,6 +2863,7 @@ model Enrolment {
   @@index([tenantId])
   @@index([studentId])
   @@index([studentId, status])
+  @@index([cohortId, status]) // BLD-1142: cohortsWithRemaining() groupBy on every course-page ISR
 }
 
 // BLD-528: itemised academy payments. One row per payment OR scheduled instalment.

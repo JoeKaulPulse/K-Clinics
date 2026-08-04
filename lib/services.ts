@@ -18,6 +18,9 @@ export type VariantView = {
   serviceId: string;
   name: string;
   durationMin: number;
+  // BLD-998: client-facing treatment length; durationMin is the internal booked
+  // time (setup + treatment + cleaning) and must keep driving slot/room maths.
+  displayDurationMin: number | null;
   pricePence: number;
   costPence: number | null;
   courses: Course[];
@@ -56,8 +59,8 @@ function asCourses(json: unknown): Course[] {
     .sort((a, b) => a.sessions - b.sessions);
 }
 
-const toVariant = (v: { id: string; serviceId: string; name: string; durationMin: number; pricePence: number; costPence: number | null; courses: unknown; status?: string | null }): VariantView =>
-  ({ id: v.id, serviceId: v.serviceId, name: v.name, durationMin: v.durationMin, pricePence: v.pricePence, costPence: v.costPence, courses: asCourses(v.courses), status: (v.status as ServiceStatus | null) ?? null });
+const toVariant = (v: { id: string; serviceId: string; name: string; durationMin: number; displayDurationMin?: number | null; pricePence: number; costPence: number | null; courses: unknown; status?: string | null }): VariantView =>
+  ({ id: v.id, serviceId: v.serviceId, name: v.name, durationMin: v.durationMin, displayDurationMin: v.displayDurationMin ?? null, pricePence: v.pricePence, costPence: v.costPence, courses: asCourses(v.courses), status: (v.status as ServiceStatus | null) ?? null });
 
 const toServiceStatus = (s: string | null | undefined): ServiceStatus => (s as ServiceStatus) ?? 'NORMAL';
 
@@ -207,7 +210,9 @@ export const pricingByTreatment = cache(async (): Promise<Map<string, TreatmentP
           const priced = status === 'NORMAL' && v.pricePence > 0;
           const off = priced ? bestOffer(offers, s.id, v.id, v.pricePence) : null;
           variants.push({
-            id: v.id, serviceId: v.serviceId, name: v.name, durationMin: v.durationMin,
+            // BLD-998: marketing pages are display-only (no slot maths), so the
+            // client-facing duration substitutes directly here.
+            id: v.id, serviceId: v.serviceId, name: v.name, durationMin: v.displayDurationMin ?? v.durationMin,
             pricePence: v.pricePence, courses: v.courses, status,
             offerPence: off ? Math.max(0, v.pricePence - off.discountPence) : null,
             offerName: off?.offer.name ?? null,
@@ -261,6 +266,9 @@ export const isBookableStatus = (s: ServiceStatus): boolean => s === 'NORMAL' ||
 
 export type BookingVariant = {
   id: string; name: string; durationMin: number; pricePence: number;
+  // BLD-998: what the client is told the treatment takes. durationMin stays the
+  // internal booked time — the flow must keep sending THAT to availability.
+  displayDurationMin: number | null;
   offerPence: number | null; offerName: string | null;
   courses: Course[]; status: ServiceStatus;
 };
@@ -290,7 +298,7 @@ export async function bookingCatalogue(): Promise<BookingService[]> {
           const off = status === 'NORMAL' ? bestOffer(offers, s.id, v.id, v.pricePence) : null;
           // On-consultation variants book as a £0 hold; price is kept internal.
           const pricePence = status === 'CONSULTATION' ? 0 : v.pricePence;
-          return { id: v.id, name: v.name, durationMin: v.durationMin, pricePence, courses: status === 'CONSULTATION' ? [] : v.courses, offerPence: off ? Math.max(0, v.pricePence - off.discountPence) : null, offerName: off?.offer.name ?? null, status };
+          return { id: v.id, name: v.name, durationMin: v.durationMin, displayDurationMin: v.displayDurationMin, pricePence, courses: status === 'CONSULTATION' ? [] : v.courses, offerPence: off ? Math.max(0, v.pricePence - off.discountPence) : null, offerName: off?.offer.name ?? null, status };
         })
         .filter((v) => isBookableStatus(v.status)),
     }))

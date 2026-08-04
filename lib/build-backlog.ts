@@ -3191,6 +3191,22 @@ export const BUILD_BACKLOG: BacklogItem[] = [
     detail: 'GalleryItem.consent was a bare boolean set by any staffer with settings.manage — no timestamp, signer identity, or link to a SignedConsent record; an identifiable clinical photo could go live with no durable proof consent was given.',
     notes: ['Built the evidence half: additive consentBy/consentAt columns on GalleryItem, stamped with the acting admin + time whenever the consent attestation is ticked (and cleared when unticked) on both create and update. The publish guard (cannot publish without consent) is unchanged. NOT built without an owner decision (asked on this card): hard-gating published:true behind a linked SignedConsent record, which changes staff workflow for clinical photo publishing. (BLD-1037)'],
   },
+  {
+    title: 'Treatment Duration Display', type: 'ERROR', urgency: 'P1', status: 'IN_REVIEW', assignee: 'claude',
+    detail: 'Clients could see the internal booking time (setup + treatment + cleaning, e.g. "70 min") instead of the actual treatment duration (e.g. 50 minutes). Internal booking times should remain visible only to staff.',
+    notes: ['Fix: new additive ServiceVariant.displayDurationMin — the client-facing treatment length. When set, the public booking flow (variant list and add-on list) and the marketing treatment pages show it; when blank, clients see the internal time as before. The internal durationMin is untouched and still drives slot availability, room/equipment holds and the staff diary — the flow deliberately keeps sending it to the availability API. Admins set the new "Client min" column per variant on Admin → Services & pricing (blank = same as internal). Staff surfaces are unchanged. (BLD-998)'],
+  },
+  {
+    title: 'Missing DB index on Enrolment.cohortId powers a full-table-scan groupBy on every academy course page', type: 'TASK', urgency: 'P2', status: 'IN_REVIEW', assignee: 'claude',
+    value: 6, effort: 2,
+    detail: 'cohortsWithRemaining() groupBy on Enrolment.cohortId ran with no index touching cohortId, on every ISR regeneration of the public course page.',
+    notes: ['Fix: added @@index([cohortId, status]) to Enrolment with a matching additive migration. (BLD-1142)'],
+  },
+  {
+    title: 'Allow admins to edit Date of Birth and Allergy Notes', type: 'ERROR', urgency: 'P1', status: 'SHIPPED', assignee: 'claude',
+    detail: 'Request: admins should be able to edit a client’s Date of Birth and Allergies / Medical Notes at any time.',
+    notes: ['Already delivered (BLD-199): the client profile’s "Edit details" dialog edits both — DoB as a date field, Allergies gated on the clinical-view permission so a non-clinical staffer can never silently wipe the hidden value; saves are immediate and audit-logged. Replied on the board with step-by-step staff instructions and flipped the card to Shipped. (BLD-1097)'],
+  },
 ];
 
 // A content hash over every item's title + status + PR, so ANY change (a new
