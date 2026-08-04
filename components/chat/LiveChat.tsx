@@ -102,7 +102,7 @@ export function LiveChat() {
               <button onClick={() => setOpen(false)} aria-label="Close chat" className="grid h-7 w-7 place-items-center rounded-full hover:bg-white/10">✕</button>
             </div>
 
-            <div ref={scroller} className="flex-1 space-y-2 overflow-y-auto p-4">
+            <div ref={scroller} aria-live="polite" role="log" className="flex-1 space-y-2 overflow-y-auto p-4">
               {msgs.length === 0 && <p className="text-sm text-[var(--color-stone)]">Hello — I’m K, the KClinics assistant. Ask me about treatments, pricing, opening hours or booking, and I’ll bring in our team whenever you need a person.</p>}
               {msgs.map((m) => {
                 const mine = m.sender === 'VISITOR';
