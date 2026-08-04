@@ -8,6 +8,9 @@ import { marketableClientWhere } from './consent';
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || site.url;
 const unsub = (token: string) => `${SITE_URL}/api/unsubscribe?t=${token}`;
+// BLD-1141: RFC 8058 one-click unsubscribe header, same construction as
+// lib/email-campaigns.ts / lib/re-permission.ts / app/api/newsletter/route.ts.
+const unsubHeaders = (token: string) => ({ 'List-Unsubscribe': `<${unsub(token)}>`, 'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click' });
 
 // Config (days) — tune freely.
 const FOLLOW_UP_DAYS = 3;
@@ -57,7 +60,7 @@ async function tierNudges(t: Tally) {
         <h1 style="margin:0 0 12px;font-size:25px;">You're ${gbp} from ${next.name}</h1>
         <p style="margin:0 0 14px;">Hi ${escapeHtml(c.firstName || 'there')}, you're closer than you think to <strong>${next.name}</strong> — and everything it unlocks: ${next.perks.slice(0, 2).join(', ')}.</p>
         <p style="margin:6px 0 18px;"><a href="${base}/book" style="display:inline-block;background:${accent};color:#fff;text-decoration:none;padding:13px 26px;border-radius:999px;font-size:14px;">Book your next visit</a></p>`;
-      const res = await sendEmail({ to: c.email, subject: `You're ${gbp} from ${next.name} — K Circle`, html: emailShell({ body, preheader: `Just ${gbp} more to reach ${next.name}.`, unsubUrl: unsub(c.unsubToken) }) });
+      const res = await sendEmail({ to: c.email, subject: `You're ${gbp} from ${next.name} — K Circle`, html: emailShell({ body, preheader: `Just ${gbp} more to reach ${next.name}.`, unsubUrl: unsub(c.unsubToken) }), headers: unsubHeaders(c.unsubToken) });
       await db.emailEvent.create({ data: { clientId: c.id, kind: 'MEMBERSHIP', to: c.email, subject: `K Circle: ${gbp} from ${next.name}`, status: res.ok ? 'SENT' : 'FAILED', providerId: res.id, error: res.error, meta: { type: 'nudge' } } }).catch(() => {});
       res.ok ? t.tierNudges++ : t.errors++;
     }
@@ -99,7 +102,7 @@ async function membershipRenewal(t: Tally) {
         <p style="margin:0 0 14px;">It's been a little while since your last visit. K Circle tiers are based on your spend over the last 12 months, so a visit soon keeps you in <strong>${tier.name}</strong>${perks ? ` — and everything it unlocks: ${perks}.` : '.'}</p>
         <p style="margin:6px 0 18px;"><a href="${base}/book" style="display:inline-block;background:${accent};color:#fff;text-decoration:none;padding:13px 26px;border-radius:999px;font-size:14px;">Book your next visit</a></p>
         <p style="font-size:14px;color:#91766e;">We'd love to see you again soon.</p>`;
-      const res = await sendEmail({ to: c.email, subject: `Keep your K Circle ${tier.name} benefits`, html: emailShell({ body, preheader: `A little nudge to keep your ${tier.name} status.`, unsubUrl: unsub(c.unsubToken) }) });
+      const res = await sendEmail({ to: c.email, subject: `Keep your K Circle ${tier.name} benefits`, html: emailShell({ body, preheader: `A little nudge to keep your ${tier.name} status.`, unsubUrl: unsub(c.unsubToken) }), headers: unsubHeaders(c.unsubToken) });
       await db.emailEvent.create({ data: { clientId: c.id, kind: 'MEMBERSHIP', to: c.email, subject: `K Circle renewal nudge (${tier.name})`, status: res.ok ? 'SENT' : 'FAILED', providerId: res.id, error: res.error, meta: { type: 'renewal' } } }).catch(() => {});
       res.ok ? t.membershipRenewals++ : t.errors++;
     }
@@ -126,7 +129,7 @@ async function anniversaries(t: Tally) {
         <h1 style="margin:0 0 12px;font-size:25px;">Thank you for ${years} ${years === 1 ? 'year' : 'years'}</h1>
         <p style="margin:0 0 14px;">Hi ${escapeHtml(c.firstName || 'there')}, it's been ${years} ${years === 1 ? 'year' : 'years'} since you joined us — thank you. As a small thank-you we've added <strong>${ANNIVERSARY_POINTS.toLocaleString('en-GB')} bonus points</strong> to your account.</p>
         <p style="margin:6px 0 18px;"><a href="${base}/account/rewards" style="display:inline-block;background:#a98a6d;color:#fff;text-decoration:none;padding:13px 26px;border-radius:999px;font-size:14px;">See your rewards</a></p>`;
-      const res = await sendEmail({ to: c.email, subject: `A little thank-you for ${years} ${years === 1 ? 'year' : 'years'} with us`, html: emailShell({ body, preheader: `${ANNIVERSARY_POINTS} bonus points are waiting in your account.`, unsubUrl: unsub(c.unsubToken) }) });
+      const res = await sendEmail({ to: c.email, subject: `A little thank-you for ${years} ${years === 1 ? 'year' : 'years'} with us`, html: emailShell({ body, preheader: `${ANNIVERSARY_POINTS} bonus points are waiting in your account.`, unsubUrl: unsub(c.unsubToken) }), headers: unsubHeaders(c.unsubToken) });
       await db.emailEvent.create({ data: { clientId: c.id, kind: 'MEMBERSHIP', to: c.email, subject: `K Circle anniversary (${years}y)`, status: res.ok ? 'SENT' : 'FAILED', providerId: res.id, error: res.error, meta: { type: 'anniversary' } } }).catch(() => {});
       res.ok ? t.anniversaries++ : t.errors++;
     }
@@ -277,7 +280,7 @@ async function birthdays(t: Tally) {
   for (const c of clients) {
     if (!c.dob || !canEmail(c)) continue;
     if (await sentRecently(c.id, 'BIRTHDAY', 350)) continue;
-    const res = await sendEmail({ to: c.email, subject: `Happy birthday, ${c.firstName} — a gift from KClinics`, html: tmplBirthday(c.firstName, unsub(c.unsubToken)) });
+    const res = await sendEmail({ to: c.email, subject: `Happy birthday, ${c.firstName} — a gift from KClinics`, html: tmplBirthday(c.firstName, unsub(c.unsubToken)), headers: unsubHeaders(c.unsubToken) });
     await logEvent(c.id, 'BIRTHDAY', c.email, 'Birthday greeting', res);
     res.ok ? t.birthdays++ : t.errors++;
   }
@@ -296,7 +299,7 @@ async function followUps(t: Tally) {
     if (!canEmail(a.client)) continue;
     const already = await db.emailEvent.findFirst({ where: { clientId: a.clientId, kind: 'FOLLOW_UP', status: 'SENT', createdAt: { gte: start } } });
     if (already) continue;
-    const res = await sendEmail({ to: a.client.email, subject: `How are you after your ${a.treatmentTitle}?`, html: tmplFollowUp(a.client.firstName, a.treatmentTitle, unsub(a.client.unsubToken)) });
+    const res = await sendEmail({ to: a.client.email, subject: `How are you after your ${a.treatmentTitle}?`, html: tmplFollowUp(a.client.firstName, a.treatmentTitle, unsub(a.client.unsubToken)), headers: unsubHeaders(a.client.unsubToken) });
     await logEvent(a.clientId, 'FOLLOW_UP', a.client.email, 'Post-treatment follow-up', res);
     res.ok ? t.followUps++ : t.errors++;
   }
@@ -333,7 +336,7 @@ async function aftercare(t: Tally) {
     if (!canEmailCare(b.client)) continue;
     const dup = await db.emailEvent.findFirst({ where: { clientId: b.clientId, kind: 'AFTERCARE', status: 'SENT', meta: { path: ['bookingId'], equals: b.id } } });
     if (dup) continue;
-    const res = await sendEmail({ to: b.client.email, subject: `Your aftercare for ${b.treatmentTitle}`, html: tmplAftercare(b.client.firstName, b.treatmentTitle, unsub(b.client.unsubToken)) });
+    const res = await sendEmail({ to: b.client.email, subject: `Your aftercare for ${b.treatmentTitle}`, html: tmplAftercare(b.client.firstName, b.treatmentTitle, unsub(b.client.unsubToken)), headers: unsubHeaders(b.client.unsubToken) });
     await db.emailEvent.create({ data: { clientId: b.clientId, kind: 'AFTERCARE', to: b.client.email, subject: 'Aftercare', status: res.ok ? 'SENT' : 'FAILED', providerId: res.id, error: res.error, meta: { bookingId: b.id } } }).catch(() => {});
     res.ok ? t.aftercare++ : t.errors++;
   }
@@ -349,7 +352,7 @@ async function satisfaction(t: Tally) {
     if (!canEmail(b.client)) continue;
     const dup = await db.emailEvent.findFirst({ where: { clientId: b.clientId, kind: 'SATISFACTION', status: 'SENT', meta: { path: ['bookingId'], equals: b.id } } });
     if (dup) continue;
-    const res = await sendEmail({ to: b.client.email, subject: `How are your results, ${b.client.firstName}?`, html: tmplSatisfaction(b.client.firstName, b.treatmentTitle, unsub(b.client.unsubToken)) });
+    const res = await sendEmail({ to: b.client.email, subject: `How are your results, ${b.client.firstName}?`, html: tmplSatisfaction(b.client.firstName, b.treatmentTitle, unsub(b.client.unsubToken)), headers: unsubHeaders(b.client.unsubToken) });
     await db.emailEvent.create({ data: { clientId: b.clientId, kind: 'SATISFACTION', to: b.client.email, subject: 'Satisfaction check', status: res.ok ? 'SENT' : 'FAILED', providerId: res.id, error: res.error, meta: { bookingId: b.id } } }).catch(() => {});
     res.ok ? t.satisfaction++ : t.errors++;
   }
@@ -365,7 +368,7 @@ async function rebookNudge(t: Tally) {
     if (!canEmail(b.client)) continue;
     const dup = await db.emailEvent.findFirst({ where: { clientId: b.clientId, kind: 'REBOOK_NUDGE', status: 'SENT', meta: { path: ['bookingId'], equals: b.id } } });
     if (dup) continue;
-    const res = await sendEmail({ to: b.client.email, subject: 'Time to top up your results?', html: tmplRebook(b.client.firstName, b.treatmentTitle, unsub(b.client.unsubToken)) });
+    const res = await sendEmail({ to: b.client.email, subject: 'Time to top up your results?', html: tmplRebook(b.client.firstName, b.treatmentTitle, unsub(b.client.unsubToken)), headers: unsubHeaders(b.client.unsubToken) });
     await db.emailEvent.create({ data: { clientId: b.clientId, kind: 'REBOOK_NUDGE', to: b.client.email, subject: 'Re-book nudge', status: res.ok ? 'SENT' : 'FAILED', providerId: res.id, error: res.error, meta: { bookingId: b.id } } }).catch(() => {});
     res.ok ? t.rebookNudges++ : t.errors++;
   }
@@ -396,7 +399,7 @@ async function winBacks(t: Tally) {
   });
   for (const c of clients) {
     if (!canEmail(c)) continue;
-    const res = await sendEmail({ to: c.email, subject: `We've missed you, ${c.firstName}`, html: tmplWinBack(c.firstName, unsub(c.unsubToken)) });
+    const res = await sendEmail({ to: c.email, subject: `We've missed you, ${c.firstName}`, html: tmplWinBack(c.firstName, unsub(c.unsubToken)), headers: unsubHeaders(c.unsubToken) });
     await logEvent(c.id, 'WIN_BACK', c.email, 'Win-back', res);
     res.ok ? t.winBacks++ : t.errors++;
   }
@@ -543,7 +546,7 @@ async function promoterFollowUp(t: Tally) {
         <p style="margin:0 0 14px;">We're so glad to hear you had a great experience with us. Reviews like yours help other people find us — if you have a moment, we'd love you to share your thoughts.</p>
         ${googleCta}
         <p style="margin:14px 0 6px;font-size:14px;color:#91766e;">Or, <a href="${base}/book" style="color:#a98a6d;">book your next visit</a> whenever you're ready — we look forward to seeing you again.</p>`;
-      const res = await sendEmail({ to: c.email, subject: `Thank you, ${c.firstName || 'there'} — you've made our day`, html: emailShell({ body, preheader: `We'd love you to share your experience.`, unsubUrl: unsub(c.unsubToken) }) });
+      const res = await sendEmail({ to: c.email, subject: `Thank you, ${c.firstName || 'there'} — you've made our day`, html: emailShell({ body, preheader: `We'd love you to share your experience.`, unsubUrl: unsub(c.unsubToken) }), headers: unsubHeaders(c.unsubToken) });
       await db.emailEvent.create({ data: { clientId: c.id, kind: 'NPS_PROMOTER', to: c.email, subject: 'NPS promoter follow-up', status: res.ok ? 'SENT' : 'FAILED', providerId: res.id, error: res.error, meta: { npsId: r.id } } }).catch(() => {});
       res.ok ? t.npsPromoters++ : t.errors++;
     }

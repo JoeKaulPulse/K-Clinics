@@ -174,6 +174,9 @@ export const footerNav = [
       { label: 'FAQs', href: '/faq' },
       { label: 'Blog', href: '/journal' },
       { label: 'Quiz', href: '/treatment-finder' },
+      // PRJ-1060.6: app/(marketing)/roadmap/page.tsx was fully built but had zero
+      // inbound links -- linking it here so it's discoverable by crawl and users.
+      { label: 'Roadmap', href: '/roadmap' },
     ],
   },
   {

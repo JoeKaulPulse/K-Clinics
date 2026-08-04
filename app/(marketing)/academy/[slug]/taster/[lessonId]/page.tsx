@@ -5,7 +5,10 @@ import { Markdown } from '@/components/academy/Markdown';
 import { LessonMedia, Downloads } from '@/components/academy/LessonMedia';
 import { pageMeta } from '@/lib/seo';
 
-export const dynamic = 'force-dynamic';
+// BLD-1128: public, pre-enrolment content with no session/auth dependency (see
+// getTasterLesson in lib/lms.ts -- a plain slug/lessonId lookup) -- ISR hourly,
+// matching the sibling treatment page (app/(marketing)/[slug]/page.tsx).
+export const revalidate = 3600;
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string; lessonId: string }> }): Promise<Metadata> {
   const { slug, lessonId } = await params;
