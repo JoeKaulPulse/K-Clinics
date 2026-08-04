@@ -62,7 +62,7 @@ export async function POST(req: Request) {
       if (!existing.lastName && data.lastName) noClobber.lastName = data.lastName;
       if (!existing.phone && data.phone) noClobber.phone = data.phone;
       if (!existing.dob && data.dob) noClobber.dob = new Date(data.dob);
-      if (data.marketingOptIn && !existing.marketingOptIn) { noClobber.marketingOptIn = true; Object.assign(noClobber, marketingConsentFields('consult-form')); }
+      if (data.marketingOptIn && !existing.marketingOptIn) { noClobber.marketingOptIn = true; Object.assign(noClobber, marketingConsentFields(data.formSource)); }
     }
     const client = await db.client.upsert({
       where: { email: emailNorm },
@@ -75,7 +75,7 @@ export async function POST(req: Request) {
         dob: data.dob ? new Date(data.dob) : null,
         source: 'website',
         marketingOptIn: data.marketingOptIn,
-        ...(data.marketingOptIn ? marketingConsentFields('consult-form') : {}),
+        ...(data.marketingOptIn ? marketingConsentFields(data.formSource) : {}),
       },
     });
 

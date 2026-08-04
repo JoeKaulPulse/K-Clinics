@@ -13,6 +13,9 @@ const schema = z.object({ bookingId: z.string().min(1), clientSecret: z.string()
 // payment method, marks the booking CONFIRMED and sends confirmation emails.
 export async function POST(req: Request) {
   if (!crmEnabled || !stripeEnabled) return NextResponse.json({ ok: false }, { status: 503 });
+  // Wall-clock start, so the best-effort tail below can be capped against what's
+  // left of maxDuration rather than a fixed figure that could overrun it.
+  const startedAt = Date.now();
   // BLD-700: rate-limit so booking IDs can't be probed at volume. The funnel
   // is anonymous (guests book without an account), so ownership is proven by
   // possession of the SetupIntent client secret below, not a session.
@@ -91,16 +94,26 @@ export async function POST(req: Request) {
 
   // Push to the shared clinic calendar (Hostinger CalDAV) and mirror onto the
   // assigned clinician's Google Calendar (both no-op until configured). Awaited
-  // and capped at 10s — a bare import().then() can be frozen mid-flight once the
-  // response is sent on Vercel's serverless runtime, silently dropping the sync
-  // (the same bug already fixed for the ops-alert webhook, BLD-1137).
+  // rather than fired and forgotten — a bare import().then() can be frozen
+  // mid-flight once the response is sent on Vercel's serverless runtime,
+  // silently dropping the sync (the same bug already fixed for the ops-alert
+  // webhook, BLD-1137).
+  //
+  // The wait is capped at 10s AND at whatever is left of maxDuration (30s) with
+  // headroom to send the response: the notify step above can itself burn 15s, so
+  // a flat 10s here could push the handler past the function limit and turn a
+  // booking that IS confirmed into a 504 at the last step of the funnel. If the
+  // budget runs out we return and let the calls finish (or not) in the
+  // background — the pre-BLD-1166 behaviour, but only under duress.
+  const calendarBudgetMs = Math.min(10_000, Math.max(1_000, 26_000 - (Date.now() - startedAt)));
+  let calendarTimer: ReturnType<typeof setTimeout> | undefined;
   await Promise.race([
     Promise.allSettled([
       import('@/lib/hostinger-calendar').then((m) => m.pushBooking(booking.id)),
       import('@/lib/google-calendar').then((m) => m.pushBookingToClinician(booking.id)),
     ]),
-    new Promise<void>((resolve) => setTimeout(resolve, 10_000)),
-  ]);
+    new Promise<void>((resolve) => { calendarTimer = setTimeout(resolve, calendarBudgetMs); }),
+  ]).finally(() => { if (calendarTimer) clearTimeout(calendarTimer); });
 
   return NextResponse.json({ ok: true, manageToken: booking.manageToken });
 }
