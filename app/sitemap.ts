@@ -87,6 +87,8 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { path: '/treatment-finder', priority: 0.75, freq: 'monthly' },
     { path: '/ai-consultation', priority: 0.8, freq: 'monthly' },
     { path: '/journal', priority: 0.7, freq: 'weekly' },
+    // PRJ-1060.6: was fully built and data-backed but had zero inbound links.
+    { path: '/roadmap', priority: 0.5, freq: 'weekly' },
     ...(dentistryLive ? [{ path: '/dentistry', priority: 0.9, freq: 'weekly' as const }] : []),
     { path: '/packages', priority: 0.8, freq: 'monthly' },
     { path: '/pricing', priority: 0.8, freq: 'monthly' },
