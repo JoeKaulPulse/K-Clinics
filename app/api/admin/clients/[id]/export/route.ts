@@ -7,12 +7,20 @@ export const dynamic = 'force-dynamic';
 // Subject Access Request export — a full JSON of a client's record (Art. 15
 // UK GDPR). Clinical (encrypted health) data is only included for staff who
 // hold the revocable clients.clinical.view permission (BLD-315).
-export async function GET(_req: Request, { params }: { params: Promise<{ id: string }> }) {
+export async function GET(req: Request, { params }: { params: Promise<{ id: string }> }) {
   if (!crmEnabled) return NextResponse.json({ ok: false }, { status: 503 });
   const { id } = await params;
   const { getSession, sessionCan } = await import('@/lib/auth');
   const session = await getSession();
   if (!sessionCan(session, 'clients.export')) return NextResponse.json({ ok: false, error: 'Not permitted.' }, { status: 403 });
+
+  // BLD-1134: match the sibling export endpoints (account 5/hr, admin bulk 6/hr) —
+  // without a limit a compromised staff session could script-loop client IDs and
+  // bulk-exfiltrate health records. 30/hr leaves room for a busy front desk.
+  const { enforceRateLimit } = await import('@/lib/security/guard');
+  if (!(await enforceRateLimit(req, 'admin-sar-export', 30, 3600, 'admin'))) {
+    return NextResponse.json({ ok: false, error: 'Too many exports. Please try again later.' }, { status: 429 });
+  }
 
   const { db } = await import('@/lib/db');
   const c = await db.client.findUnique({

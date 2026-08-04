@@ -163,7 +163,7 @@ function Hotspot({ exercise, result, busy, onGrade }: SubProps) {
         {exercise.imageUrl ? <img src={exercise.imageUrl} alt={exercise.title} className="block w-full select-none" draggable={false} /> : <div className="grid h-48 place-items-center text-sm text-[var(--color-stone)]">No image</div>}
         {/* learner pins */}
         {Object.entries(pins).map(([i, p]) => (
-          <span key={i} style={{ left: `${p.x}%`, top: `${p.y}%` }} className={`absolute -translate-x-1/2 -translate-y-1/2 grid h-6 w-6 place-items-center rounded-full text-[0.6rem] font-bold text-white ${result ? (result.results?.[Number(i)] ? 'bg-[var(--color-gold-deep)]' : 'bg-[var(--color-blush)]') : 'bg-[var(--color-ink)]'}`}>{Number(i) + 1}</span>
+          <span key={i} style={{ left: `${p.x}%`, top: `${p.y}%` }} className={`absolute -translate-x-1/2 -translate-y-1/2 grid h-6 w-6 place-items-center rounded-full text-[0.6rem] font-bold text-white ${result ? (result.results?.[Number(i)] ? 'bg-[var(--color-gold-deep)]' : 'bg-[var(--color-blush-deep)]') : 'bg-[var(--color-ink)]'}`}>{Number(i) + 1}</span>
         ))}
         {/* reveal correct targets after grading */}
         {reveal?.map((s, i) => (
@@ -275,7 +275,7 @@ function LabelDiagram({ exercise, result, busy, onGrade }: SubProps) {
         {exercise.imageUrl ? <img src={exercise.imageUrl} alt={exercise.title} className="block w-full select-none" draggable={false} /> : <div className="grid h-48 place-items-center text-sm text-[var(--color-stone)]">No image</div>}
         {points.map((p, i) => (
           <button key={i} onClick={() => !result && setSel(i)} disabled={!!result} style={{ left: `${p.x}%`, top: `${p.y}%` }}
-            className={`absolute -translate-x-1/2 -translate-y-1/2 whitespace-nowrap rounded-full border px-2 py-0.5 text-[0.7rem] font-medium ${result ? (result.results?.[i] ? 'border-[var(--color-gold-deep)] bg-[var(--color-gold)]/90 text-[var(--color-ink)]' : 'border-[var(--color-blush)] bg-[var(--color-blush)] text-white') : sel === i ? 'border-[var(--color-ink)] bg-[var(--color-ink)] text-[var(--color-porcelain)] ring-2 ring-[var(--color-ink)]' : 'border-[var(--color-ink)] bg-white text-[var(--color-ink)]'}`}>
+            className={`absolute -translate-x-1/2 -translate-y-1/2 whitespace-nowrap rounded-full border px-2 py-0.5 text-[0.7rem] font-medium ${result ? (result.results?.[i] ? 'border-[var(--color-gold-deep)] bg-[var(--color-gold)]/90 text-[var(--color-ink)]' : 'border-[var(--color-blush-deep)] bg-[var(--color-blush-deep)] text-white') : sel === i ? 'border-[var(--color-ink)] bg-[var(--color-ink)] text-[var(--color-porcelain)] ring-2 ring-[var(--color-ink)]' : 'border-[var(--color-ink)] bg-white text-[var(--color-ink)]'}`}>
             {i in assign ? bank[assign[i]] : result ? (reveal?.[i]?.label ?? i + 1) : i + 1}
           </button>
         ))}
@@ -304,7 +304,7 @@ function TypeIn({ exercise, result, busy, onGrade }: SubProps) {
         {/* eslint-disable-next-line @next/next/no-img-element */}
         {exercise.imageUrl ? <img src={exercise.imageUrl} alt={exercise.title} className="block w-full select-none" draggable={false} /> : <div className="grid h-48 place-items-center text-sm text-[var(--color-stone)]">No image</div>}
         {points.map((p, i) => (
-          <span key={i} style={{ left: `${p.x}%`, top: `${p.y}%` }} className={`absolute -translate-x-1/2 -translate-y-1/2 grid h-6 w-6 place-items-center rounded-full text-[0.65rem] font-bold text-white ${result ? (result.results?.[i] ? 'bg-[var(--color-gold-deep)]' : 'bg-[var(--color-blush)]') : 'bg-[var(--color-ink)]'}`}>{i + 1}</span>
+          <span key={i} style={{ left: `${p.x}%`, top: `${p.y}%` }} className={`absolute -translate-x-1/2 -translate-y-1/2 grid h-6 w-6 place-items-center rounded-full text-[0.65rem] font-bold text-white ${result ? (result.results?.[i] ? 'bg-[var(--color-gold-deep)]' : 'bg-[var(--color-blush-deep)]') : 'bg-[var(--color-ink)]'}`}>{i + 1}</span>
         ))}
       </div>
       <ul className="mt-3 space-y-2">

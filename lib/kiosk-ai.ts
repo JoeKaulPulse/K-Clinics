@@ -117,6 +117,8 @@ export async function analyzeKioskPhoto(photoUrl: string): Promise<KioskAiResult
     }
     if (!res.ok) {
       console.error('[kiosk-ai] anthropic', res.status, await res.text().catch(() => ''));
+      // BLD-999: mirror chat-ai/ai-consultation — kiosk AI outages must reach Sentry.
+      Sentry.captureMessage('[kiosk-ai] anthropic call failed', { level: 'error', tags: { area: 'kiosk-ai', status: String(res.status) } });
       return null;
     }
 
@@ -337,6 +339,8 @@ export async function analyzeKioskPhotosV2(photoUrls: string[]): Promise<KioskAi
     }
     if (!res.ok) {
       console.error('[kiosk-ai] anthropic v2', res.status, await res.text().catch(() => ''));
+      // BLD-999: mirror chat-ai/ai-consultation — kiosk AI outages must reach Sentry.
+      Sentry.captureMessage('[kiosk-ai] anthropic v2 call failed', { level: 'error', tags: { area: 'kiosk-ai', status: String(res.status) } });
       return null;
     }
 

@@ -9,8 +9,8 @@ type Audit = { pages: PageScore[]; health: number; byCategory: Record<string, nu
 
 const field = 'w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-2.5 py-1.5 text-sm';
 const tone = (s: number) => (s >= 80 ? 'text-green-700' : s >= 70 ? 'text-amber-600' : 'text-[var(--color-blush-deep)]');
-const bg = (s: number) => (s >= 80 ? 'bg-green-600' : s >= 70 ? 'bg-amber-500' : 'bg-[var(--color-blush)]');
-const gradeTone = (g: string) => (g === 'A' ? 'bg-green-600' : g === 'B' ? 'bg-green-500' : g === 'C' ? 'bg-amber-500' : g === 'D' ? 'bg-orange-500' : 'bg-[var(--color-blush)]');
+const bg = (s: number) => (s >= 80 ? 'bg-green-600' : s >= 70 ? 'bg-amber-500' : 'bg-[var(--color-blush-deep)]');
+const gradeTone = (g: string) => (g === 'A' ? 'bg-green-600' : g === 'B' ? 'bg-green-500' : g === 'C' ? 'bg-amber-500' : g === 'D' ? 'bg-orange-500' : 'bg-[var(--color-blush-deep)]');
 
 const CATS = [['onpage', 'On-page'], ['technical', 'Technical'], ['generative', 'AI / GEO'], ['local', 'Local']] as const;
 
@@ -113,7 +113,7 @@ function PageEditor({ p }: { p: PageScore }) {
         <ul className="mb-4 space-y-1">
           {p.issues.map((i, idx) => (
             <li key={idx} className="flex items-start gap-2 text-xs">
-              <span className={`mt-0.5 rounded px-1.5 py-0.5 text-[0.6rem] font-medium text-white ${i.severity === 'high' ? 'bg-[var(--color-blush)]' : i.severity === 'med' ? 'bg-amber-500' : 'bg-[var(--color-stone-soft)]'}`}>{i.severity}</span>
+              <span className={`mt-0.5 rounded px-1.5 py-0.5 text-[0.6rem] font-medium text-white ${i.severity === 'high' ? 'bg-[var(--color-blush-deep)]' : i.severity === 'med' ? 'bg-amber-500' : 'bg-[var(--color-stone-soft)]'}`}>{i.severity}</span>
               <span className="text-[var(--color-stone)]">{i.message}</span>
             </li>
           ))}

@@ -95,6 +95,7 @@ export default async function GaAnalyticsPage({ searchParams }: { searchParams: 
             <section className="rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-5">
               <h2 className="mb-3 font-[family-name:var(--font-display)] text-lg">Top pages</h2>
               {ga.topPages.length === 0 ? <Empty /> : (
+                <div className="overflow-x-auto">{/* BLD-1125: body clips overflow-x, tables scroll here */}
                 <table className="w-full text-sm">
                   <thead><tr className="text-left text-xs uppercase tracking-wide text-[var(--color-stone)]"><th className="pb-2">Page</th><th className="pb-2 text-right">Views</th><th className="pb-2 text-right">Avg. time</th></tr></thead>
                   <tbody>
@@ -107,12 +108,14 @@ export default async function GaAnalyticsPage({ searchParams }: { searchParams: 
                     ))}
                   </tbody>
                 </table>
+                </div>
               )}
             </section>
 
             <section className="rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-5">
               <h2 className="mb-3 font-[family-name:var(--font-display)] text-lg">Traffic by channel</h2>
               {ga.byChannel.length === 0 ? <Empty /> : (
+                <div className="overflow-x-auto">{/* BLD-1125 */}
                 <table className="w-full text-sm">
                   <thead><tr className="text-left text-xs uppercase tracking-wide text-[var(--color-stone)]"><th className="pb-2">Channel</th><th className="pb-2 text-right">Sessions</th><th className="pb-2 text-right">Conversions</th></tr></thead>
                   <tbody>
@@ -125,6 +128,7 @@ export default async function GaAnalyticsPage({ searchParams }: { searchParams: 
                     ))}
                   </tbody>
                 </table>
+                </div>
               )}
             </section>
           </div>
@@ -140,6 +144,7 @@ export default async function GaAnalyticsPage({ searchParams }: { searchParams: 
             <h2 className="mb-1 font-[family-name:var(--font-display)] text-lg">Where visitors land</h2>
             <p className="mb-3 text-xs text-[var(--color-stone)]">The first page of each visit — the start of the journey — and how many of those visits converted.</p>
             {ga.landingPages.length === 0 ? <Empty /> : (
+              <div className="overflow-x-auto">{/* BLD-1125 */}
               <table className="w-full text-sm">
                 <thead><tr className="text-left text-xs uppercase tracking-wide text-[var(--color-stone)]"><th className="pb-2">Landing page</th><th className="pb-2 text-right">Sessions</th><th className="pb-2 text-right">Conversions</th><th className="pb-2 text-right">Rate</th></tr></thead>
                 <tbody>
@@ -153,6 +158,7 @@ export default async function GaAnalyticsPage({ searchParams }: { searchParams: 
                   ))}
                 </tbody>
               </table>
+              </div>
             )}
           </section>
 
