@@ -17,6 +17,7 @@ import { ConsentPanel } from '@/components/admin/ConsentPanel';
 import { BeforePhotoCapture } from '@/components/admin/BeforePhotoCapture';
 import { ReadinessPanel } from '@/components/admin/ReadinessPanel';
 import { AddTreatment } from '@/components/admin/AddTreatment';
+import { PriceOverride } from '@/components/admin/PriceOverride';
 import { ScheduleFollowUp } from '@/components/admin/ScheduleFollowUp';
 import { SameDayRequestActions } from '@/components/admin/SameDayRequestActions';
 import { sessionCan } from '@/lib/auth';
@@ -152,6 +153,9 @@ export default async function BookingDetail({ params }: { params: Promise<{ id: 
   // course can never be collected (every charge surface refuses a pre-paid
   // booking), so don't offer the picker; extras go on a new booking.
   const canAddTreatment = canManageBk && !b.chargedAt && !b.prepaidAt && !['CANCELLED', 'NO_SHOW'].includes(b.status);
+  // BLD-1149: price override — same lifecycle gate, but keyed on bookings.charge
+  // (the permission that already lets the holder adjust the amount at checkout).
+  const canPriceOverride = sessionCan(session, 'bookings.charge') && !b.chargedAt && !b.prepaidAt && !['CANCELLED', 'NO_SHOW'].includes(b.status);
   let variantOptions: { id: string; label: string; pricePence: number }[] = [];
   if (canAddTreatment) {
     const { listServices } = await import('@/lib/services');
@@ -292,6 +296,10 @@ export default async function BookingDetail({ params }: { params: Promise<{ id: 
                   <span className="min-w-0 break-words">{b.treatmentTitle}{courseSessions > 1 ? ` · course of ${courseSessions}` : ''}</span>
                   <span className="shrink-0 tabular-nums text-[var(--color-stone)]">{basePence > 0 ? money(basePence) : 'On consultation'}</span>
                 </div>
+                {/* BLD-1149: adjust the agreed price for this appointment (pre-payment),
+                    restoring the override staff previously had on this page. Same gate
+                    as the checkout adjust (bookings.charge). */}
+                {canPriceOverride && <PriceOverride bookingId={b.id} basePence={basePence} />}
                 {addOnItems.map((it) => (
                   <div key={it.id} className="flex items-baseline justify-between gap-3">
                     <span className="min-w-0 break-words text-[var(--color-stone)]">+ {it.label}</span>

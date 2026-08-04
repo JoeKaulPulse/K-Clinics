@@ -108,6 +108,50 @@ export async function removeAddonTreatment(bookingId: string, itemId: string) {
   return { ok: true };
 }
 
+// BLD-1149: adjust the agreed treatment price of THIS appointment before payment
+// — a custom quote, a previously agreed rate, or a discount. Applies only to the
+// booking (the catalogue price is untouched), needs a reason, and audit-logs the
+// original and new amounts. Gated on bookings.charge — the same people who can
+// already adjust the amount at checkout (BLD-207). Charged/pre-paid bookings are
+// refused: post-payment corrections are an owner-gated question (BLD-1094).
+export async function overrideBookingPrice(bookingId: string, newBasePence: number, reason: string) {
+  if (!crmEnabled) return { ok: false, error: 'CRM disabled' };
+  const session = await getSession();
+  if (!session || !sessionCan(session, 'bookings.charge')) return { ok: false, error: 'Not permitted' };
+  const pence = Math.round(Number(newBasePence));
+  if (!Number.isFinite(pence) || pence < 0 || pence > 5_000_000) return { ok: false, error: 'Enter a valid price (up to £50,000).' };
+  const why = (reason || '').trim().slice(0, 200);
+  if (!why) return { ok: false, error: 'A reason for the price change is required.' };
+  const { db } = await import('@/lib/db');
+  const { logAudit } = await import('@/lib/audit');
+
+  const booking = await db.booking.findUnique({ where: { id: bookingId }, select: { status: true, chargedAt: true, prepaidAt: true, clientId: true, pricePence: true } });
+  if (!booking) return { ok: false, error: 'Booking not found.' };
+  if (booking.chargedAt) return { ok: false, error: 'This appointment is already paid — record a refund instead of editing the price.' };
+  if (booking.prepaidAt) return { ok: false, error: 'This course was pre-paid in full — its price can no longer be edited.' };
+  if (booking.status === 'CANCELLED' || booking.status === 'NO_SHOW') return { ok: false, error: 'This appointment is cancelled.' };
+
+  // The override sets the treatment (base) price; add-on line items keep their
+  // own prices and stay on top of it.
+  const addOns = await db.bookingItem.aggregate({ where: { bookingId, isAddon: true }, _sum: { pricePence: true } }).catch(() => null);
+  const addOnPence = addOns?._sum.pricePence ?? 0;
+  const newTotal = pence + addOnPence;
+  if (newTotal === booking.pricePence) return { ok: false, error: 'That is already the current price.' };
+  // Keep the primary line item in sync so itemised views and exports match.
+  const primary = await db.bookingItem.findFirst({ where: { bookingId, isAddon: false }, orderBy: { createdAt: 'asc' }, select: { id: true } }).catch(() => null);
+  await db.$transaction([
+    db.booking.update({ where: { id: bookingId }, data: { pricePence: newTotal } }),
+    ...(primary ? [db.bookingItem.update({ where: { id: primary.id }, data: { pricePence: pence } })] : []),
+  ]);
+  await logAudit({
+    action: 'SESSION_EDITED', actor: session.email, actorRole: session.role, bookingId, clientId: booking.clientId,
+    summary: `Price adjusted: £${(booking.pricePence / 100).toFixed(2)} → £${(newTotal / 100).toFixed(2)} — ${why}`,
+  });
+  revalidatePath(`/admin/bookings/${bookingId}`);
+  revalidatePath(`/admin/bookings/${bookingId}/session`);
+  return { ok: true };
+}
+
 // Clinician confirms they've reviewed the SOP for this appointment.
 export async function acknowledgeSop(bookingId: string) {
   if (!crmEnabled) return { ok: false };

@@ -63,6 +63,8 @@ export default async function PerformancePage() {
         ) : ga4.byChannel.length === 0 ? (
           <p className="text-sm text-[var(--color-stone)]">No GA4 traffic recorded in the last 90 days.</p>
         ) : (
+          <>{/* BLD-1125: body has overflow-x: clip, so wide tables must scroll in their own container */}
+          <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead><tr className="text-left text-xs uppercase tracking-wide text-[var(--color-stone)]"><th className="pb-2">Channel</th><th className="pb-2 text-right">Sessions</th><th className="pb-2 text-right">Conversions</th></tr></thead>
             <tbody>
@@ -75,6 +77,7 @@ export default async function PerformancePage() {
               ))}
             </tbody>
           </table>
+          </div></>
         )}
       </section>
 
@@ -111,6 +114,7 @@ function Table({ title, rows, empty }: { title: string; rows: { label: string; b
       {rows.length === 0 ? (
         <p className="text-sm text-[var(--color-stone)]">{empty}</p>
       ) : (
+        <div className="overflow-x-auto">{/* BLD-1125 */}
         <table className="w-full text-sm">
           <thead><tr className="text-left text-xs uppercase tracking-wide text-[var(--color-stone)]"><th className="pb-2">Name</th><th className="pb-2">Bookings</th><th className="pb-2 text-right">Revenue</th></tr></thead>
           <tbody>
@@ -123,6 +127,7 @@ function Table({ title, rows, empty }: { title: string; rows: { label: string; b
             ))}
           </tbody>
         </table>
+        </div>
       )}
     </section>
   );

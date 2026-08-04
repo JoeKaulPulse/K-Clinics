@@ -182,7 +182,18 @@ export async function POST(req: Request) {
   // Record the promo redemption (increments the code's usage counter).
   if (promo) {
     const { redeemPromo } = await import('@/lib/promo');
-    await redeemPromo(promo.promoId, { clientId: client.id, email: client.email, bookingId: booking.id, amountOffPence: promo.discountPence });
+    const redeemed = await redeemPromo(promo.promoId, { clientId: client.id, email: client.email, bookingId: booking.id, amountOffPence: promo.discountPence });
+    if (!redeemed) {
+      // BLD-1035: the read-only price check passed, but a concurrent request
+      // consumed the code's cap / once-per-client allowance before this atomic
+      // redemption ran. Without this the booking kept the discount anyway.
+      // Re-price at the undiscounted amount before any charge is taken.
+      await db.booking.update({ where: { id: booking.id }, data: { pricePence: basePrice } }).catch(() => {});
+      await logAudit({
+        action: 'SESSION_EDITED', actor: 'system', clientId: client.id, bookingId: booking.id,
+        summary: `Promo code could not be redeemed (limit reached by a concurrent booking) — price restored to £${(basePrice / 100).toFixed(2)}`,
+      }).catch(() => {});
+    }
   }
 
   // Burn the welcome discount so it can only ever be used once.

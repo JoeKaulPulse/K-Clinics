@@ -3114,6 +3114,59 @@ export const BUILD_BACKLOG: BacklogItem[] = [
       "Fix: app/(marketing)/academy/[slug]/taster/[lessonId]/page.tsx switched from export const dynamic = 'force-dynamic' to export const revalidate = 3600, matching the sibling treatment page's ISR convention -- the lesson lookup has no session/auth dependency. (BLD-1128)",
       'Shipped together as PR #1731 on claude/marketing-perf-batch (commits 2e9fb630, 1e90d996 -- the second commit is the independent review\'s List-Unsubscribe fix for BLD-1141). Residual, non-blocking follow-up noted by review: taster-page ISR can go up to an hour stale after an admin lesson edit, since the lesson-save path doesn\'t revalidate this specific route. Rollback: git revert 1e90d996 2e9fb630.'],
   },
+  {
+    title: 'Allow Price Override on the Appointment Page', type: 'ERROR', urgency: 'P0', status: 'IN_REVIEW', assignee: 'claude',
+    detail: 'The ability to override the treatment price should also be available on the main Appointment page, not just within the Live Appointment view. The overridden price should apply only to that specific appointment; the default treatment pricing should remain unchanged.',
+    notes: ['Fix: new overrideBookingPrice server action (app/admin/bookings/clinical-actions.ts) + PriceOverride control in the Treatments & billing panel of /admin/bookings/[id]. Sets the treatment (base) price for that appointment only -- add-on line items keep their own prices, the catalogue price is untouched, and the primary BookingItem is kept in sync so itemised views and exports match. Reason is required and the change is written to the booking activity log as "Price adjusted: £X → £Y — reason". Gated on bookings.charge (the permission that already allows the BLD-207 checkout adjust) and refused once charged/pre-paid or cancelled -- post-payment corrections stay an owner-gated question (BLD-1094). (BLD-1149)'],
+  },
+  {
+    title: 'Cron/health failure alert webhook is fire-and-forget, may silently never send', type: 'ERROR', urgency: 'P1', status: 'IN_REVIEW', assignee: 'claude',
+    value: 7, effort: 1,
+    detail: 'app/api/cron/daily/route.ts and app/api/health/route.ts POSTed the Slack/Discord ops alert with an un-awaited fetch(...).catch(()=>{}) before returning; on the serverless runtime the function can freeze once the response is sent, so the two most consequential alert paths could silently drop the notification.',
+    notes: ['Fix: both routes now await the webhook fetch in a try/catch before returning, matching app/api/cron/dispatch/route.ts and app/api/cron/kiosk-cleanup/route.ts. (BLD-1137)'],
+  },
+  {
+    title: 'Kiosk AI error responses from Anthropic never reach Sentry', type: 'ERROR', urgency: 'P1', status: 'IN_REVIEW', assignee: 'claude',
+    value: 8, effort: 2,
+    detail: 'lib/kiosk-ai.ts swallowed non-2xx Anthropic API failures with only console.error, unlike lib/chat-ai.ts and lib/ai-consultation.ts which call Sentry.captureMessage on the identical check — kiosk AI outages were invisible to on-call.',
+    notes: ['Fix: both the v1 and v2 !res.ok branches now call Sentry.captureMessage with level error and tags {area: kiosk-ai, status}, mirroring chat-ai. (BLD-999)'],
+  },
+  {
+    title: 'Admin SAR export has no rate limit, unlike every other export endpoint', type: 'ERROR', urgency: 'P1', status: 'IN_REVIEW', assignee: 'claude',
+    value: 8, effort: 2,
+    detail: 'app/api/admin/clients/[id]/export/route.ts returned a client’s full record gated only by clients.export — no enforceRateLimit, unlike account export (5/hr) and admin bulk export (6/hr). A compromised staff session could script-loop client IDs and bulk-exfiltrate health records.',
+    notes: ['Fix: added enforceRateLimit(req, admin-sar-export, 30, 3600, admin) after the permission check — 30/hr leaves room for a busy front desk while capping bulk exfiltration; the existing per-export DATA_EXPORTED audit row is unchanged. (BLD-1134)'],
+  },
+  {
+    title: 'Already-submitted review page re-invites negative reviewers to post publicly on Google', type: 'ERROR', urgency: 'P1', status: 'IN_REVIEW', assignee: 'claude',
+    value: 7, effort: 2,
+    detail: 'app/review/[token]/page.tsx showed the “Share it on Google too” link on the already-submitted branch whenever googleUrl existed, with no rating check — ReviewForm gates the same nudge behind rating >= 4 on first submit.',
+    notes: ['Fix: the already-submitted branch now renders the Google link only when review.rating >= 4 (rating was already in the page query), matching ReviewForm’s gate. (BLD-1004)'],
+  },
+  {
+    title: 'GDPR erase/delete buttons use a low-contrast color combination', type: 'ERROR', urgency: 'P1', status: 'IN_REVIEW', assignee: 'claude',
+    value: 7, effort: 2,
+    detail: '--color-blush (#cdb4a3) as a solid background with white text is roughly 2:1 against the 4.5:1 AA requirement — on the Erase and Delete permanently buttons (components/admin/DataPrivacy.tsx), academy exercise incorrect-answer markers and the SEO severity badge.',
+    notes: ['Fix: swapped the solid blush backgrounds under white text to --color-blush-deep (#8b4a4a, the palette’s documented AA destructive colour) in DataPrivacy.tsx, ExercisePlayer.tsx (hotspot/label markers) and SeoDashboard.tsx (severity badge, grade badge and score bar). Translucent blush tints with ink text are untouched. (BLD-1120)'],
+  },
+  {
+    title: 'Admin analytics/SEO tables clip instead of scrolling on narrow screens', type: 'TASK', urgency: 'P1', status: 'IN_REVIEW', assignee: 'claude',
+    value: 6, effort: 2,
+    detail: 'app/admin/seo/page.tsx, app/admin/marketing/performance/page.tsx and app/admin/marketing/analytics/page.tsx rendered bare <table> elements; body { overflow-x: clip } means any table wider than its column gets cut off with no way to see the extra columns.',
+    notes: ['Fix: each of the six tables is wrapped in a div.overflow-x-auto so wide content scrolls inside its own container. (BLD-1125)'],
+  },
+  {
+    title: 'Promo-code redemption cap and once-per-client limit can be bypassed under concurrent requests', type: 'ERROR', urgency: 'P1', status: 'IN_REVIEW', assignee: 'claude',
+    value: 7, effort: 3,
+    detail: 'Both booking routes applied priceWithPromo (a read-only check) to set the final price, then ignored redeemPromo’s boolean — the only atomic enforcement of maxRedemptions/oncePerClient. Concurrent requests with the same capped code all kept the discount; only one incremented the counter.',
+    notes: ['Fix: both call sites now check redeemPromo’s return. app/api/booking/create/route.ts re-prices the booking at the undiscounted amount; app/api/booking/start/route.ts falls back to the best non-promo offer captured before the promo won (automatic offer or welcome discount, burning the welcome claim when that is the fallback) and syncs the primary BookingItem’s discountPence. Both log a SESSION_EDITED audit event with the restored amount. Charge time reads booking.pricePence, so the corrected price is what gets collected. (BLD-1035)'],
+  },
+  {
+    title: '/admin/reports runs six-plus independent queries as sequential round trips', type: 'TASK', urgency: 'P1', status: 'IN_REVIEW', assignee: 'claude',
+    value: 7, effort: 3,
+    detail: 'After its initial Promise.all, app/admin/reports/page.tsx separately awaited goodsCost, usedCost, minMarginPct, usedRow, an appointmentSession query and the VAT config import one after another — none depend on each other, only on since/bookingWhere.',
+    notes: ['Fix: the six independent reads now run in one Promise.all (the VAT module import is included with a null fallback so the existing best-effort try/catch semantics are unchanged; the registered-only bySlug/svcRows pair stays dependent on vatCfg inside the try). staffRows still waits on byStaff as before. (BLD-1126)'],
+  },
 ];
 
 // A content hash over every item's title + status + PR, so ANY change (a new

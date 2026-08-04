@@ -74,7 +74,11 @@ export async function POST(req: Request) {
   }
   // A promo code applies to the primary treatment and wins if it beats the best
   // automatic discount (no stacking). Validated server-side; redeemed below.
+  // BLD-1035: remember the best non-promo offer so a redemption that loses the
+  // concurrency race can fall back to it instead of keeping the promo price.
   let promo: { promoId: string } | null = null;
+  const prePromoDiscount = primaryDiscount;
+  const prePromoUsedWelcome = usedWelcome;
   if (base > 0 && d.promoCode) {
     const { priceWithPromo } = await import('@/lib/promo');
     const r = await priceWithPromo(d.promoCode, { clientId: client.id, email: client.email, treatmentSlug: primary.service.treatmentSlug, pricePence: base });
@@ -238,7 +242,28 @@ export async function POST(req: Request) {
   // Record the promo redemption (increments its usage counter).
   if (promo) {
     const { redeemPromo } = await import('@/lib/promo');
-    await redeemPromo(promo.promoId, { clientId: client.id, email: client.email, bookingId: booking.id, amountOffPence: primaryDiscount });
+    const redeemed = await redeemPromo(promo.promoId, { clientId: client.id, email: client.email, bookingId: booking.id, amountOffPence: primaryDiscount });
+    if (!redeemed) {
+      // BLD-1035: a concurrent request consumed the code's cap / once-per-client
+      // allowance between the read-only price check and this atomic redemption.
+      // Fall back to the best non-promo offer the client would have had anyway
+      // (automatic offer or welcome discount) before any charge is taken.
+      const restorePence = primaryDiscount - prePromoDiscount;
+      if (restorePence > 0) {
+        await db.$transaction([
+          db.booking.update({ where: { id: booking.id }, data: { pricePence: { increment: restorePence } } }),
+          db.bookingItem.updateMany({ where: { bookingId: booking.id, isAddon: false }, data: { discountPence: prePromoDiscount } }),
+        ]).catch(() => {});
+        if (prePromoUsedWelcome && welcomeClaim) {
+          await db.discountClaim.update({ where: { id: welcomeClaim.id }, data: { status: 'REDEEMED', redeemedBookingId: booking.id } }).catch(() => {});
+        }
+        const { logAudit: logPromoAudit } = await import('@/lib/audit');
+        await logPromoAudit({
+          action: 'SESSION_EDITED', actor: 'system', clientId: client.id, bookingId: booking.id,
+          summary: `Promo code could not be redeemed (limit reached by a concurrent booking) — price adjusted by +£${(restorePence / 100).toFixed(2)}`,
+        }).catch(() => {});
+      }
+    }
   }
 
   const { logAudit } = await import('@/lib/audit');
