@@ -17,7 +17,7 @@ jobs:
       - uses: actions/checkout@v7
         with:
           fetch-depth: 0 # full history so the migration-drift guard can diff against origin/main
-      - uses: actions/setup-node@v6
+      - uses: actions/setup-node@v7
         with:
           node-version: '22'
           cache: 'npm'
