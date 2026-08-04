@@ -19,6 +19,23 @@ const MAX_FREE_RESCHEDULES = 3;
 
 type BookingWithClient = Booking & { client: Client };
 
+// BLD-1166: a bare `import().then().catch()` with no await can be frozen
+// mid-flight once the caller's response is sent — Vercel's serverless runtime
+// suspends the function, so the pending call may silently never complete (the
+// same bug already fixed for the ops-alert webhook, BLD-1137). This awaits a
+// best-effort background call but caps the wait so a slow provider can't hold
+// up the response either.
+// Never rejects: the swallow is on `p` itself, so a rejection can't escape the
+// race. The timer is cleared when the call wins (BLD-281 pattern in lib/email)
+// so a fast provider doesn't leave a 10s timer pinning the event loop.
+async function bestEffort(p: Promise<unknown>, ms = 10_000): Promise<void> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  await Promise.race([
+    p.then(() => {}).catch(() => {}),
+    new Promise<void>((resolve) => { timer = setTimeout(resolve, ms); }),
+  ]).finally(() => { if (timer) clearTimeout(timer); });
+}
+
 export function isWithin24h(b: Pick<Booking, 'startAt'>): boolean {
   return b.startAt.getTime() - Date.now() < CANCEL_WINDOW_MS;
 }
@@ -509,16 +526,9 @@ export async function cancelBooking(
     data: { clientId: booking.clientId, type: 'APPOINTMENT', summary: `Cancelled ${booking.treatmentTitle}${late ? ' (within 24h)' : ''}${charged ? ` — charged £${(charged / 100).toFixed(2)}` : feeFailed ? ' — LATE FEE FAILED (follow up)' : alreadyPaid ? ' — no fee taken (already paid in full)' : opts.waiveFee && late ? ' — fee waived' : ''}`, author: opts.by },
   });
 
-  // BLD-133: the slot just freed — offer it to the first matching waitlister.
-  import('@/lib/waitlist').then((m) => m.notifyOnFreedSlot(booking.treatmentSlug, booking.startAt)).catch(() => {});
   if (feeFailed) {
     await logAudit({ action: 'PAYMENT_FAILED', actor: opts.by, bookingId: booking.id, clientId: booking.clientId, summary: `Late-cancellation fee (£${(booking.pricePence / 100).toFixed(2)}) failed — follow up.` }).catch(() => {});
   }
-
-  // Remove from the shared clinic calendar (Hostinger CalDAV; no-op if unconfigured).
-  import('@/lib/hostinger-calendar').then((m) => m.removeBooking(booking.id)).catch(() => {});
-  // Remove from the clinician's Google Calendar too (no-op while parked).
-  import('@/lib/google-calendar').then((m) => m.removeBookingFromClinician(booking.id)).catch(() => {});
 
   // Return any loyalty points the client had applied to this booking -- but
   // only when they weren't already consumed as a discount on a late-cancellation
@@ -582,6 +592,19 @@ export async function cancelBooking(
     const when = booking.startAt.toLocaleString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', timeZone: CLINIC_TZ });
     await notifyStaffByPermission('bookings.view', { kind: 'status', category: 'bookings', priority: 'high', title: `Booking cancelled: ${booking.treatmentTitle}`, body: `${booking.client.firstName || 'A client'} · ${when}`, href: `/admin/bookings/${booking.id}` });
   } catch { /* non-fatal */ }
+
+  // BLD-1166: the outbound best-effort work, awaited (so the runtime can't
+  // freeze it mid-flight) but deliberately LAST and in ONE parallel group —
+  // nothing that moves money, writes the record or emails the client may sit
+  // behind it, and the whole tail costs at most one 10s cap rather than three:
+  // - BLD-133: the slot just freed — offer it to the first matching waitlister.
+  // - remove from the shared clinic calendar (Hostinger CalDAV; no-op if
+  //   unconfigured) and the clinician's Google Calendar (no-op while parked).
+  await Promise.all([
+    bestEffort(import('@/lib/waitlist').then((m) => m.notifyOnFreedSlot(booking.treatmentSlug, booking.startAt))),
+    bestEffort(import('@/lib/hostinger-calendar').then((m) => m.removeBooking(booking.id))),
+    bestEffort(import('@/lib/google-calendar').then((m) => m.removeBookingFromClinician(booking.id))),
+  ]);
   return { ok: true, charged, requiresAction, feeFailed };
 }
 
@@ -756,14 +779,6 @@ export async function rescheduleBooking(
     meta: { from: booking.startAt.toISOString(), to: newStart.toISOString(), rescheduleCount: booking.rescheduleCount + 1 },
   }).catch(() => {});
 
-  // Update the shared clinic calendar entry to the new time (best-effort). The
-  // CalDAV event is keyed by booking id, so re-pushing PUTs the moved times over
-  // the existing entry — we must NOT remove it (that would drop the appointment
-  // from the clinic calendar entirely).
-  import('@/lib/hostinger-calendar').then((m) => m.pushBooking(booking.id)).catch(() => {});
-  // Move the clinician's Google Calendar event to the new time (no-op while parked).
-  import('@/lib/google-calendar').then((m) => m.pushBookingToClinician(booking.id)).catch(() => {});
-
   // Confirmation email (best-effort).
   await sendEmail({
     to: booking.client.email,
@@ -783,5 +798,16 @@ export async function rescheduleBooking(
     const when = newStart.toLocaleString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', timeZone: CLINIC_TZ });
     await notifyStaffByPermission('bookings.view', { kind: 'status', category: 'bookings', priority: 'high', title: `Booking rescheduled: ${booking.treatmentTitle}`, body: `${booking.client.firstName || 'A client'} · now ${when}`, href: `/admin/bookings/${booking.id}` });
   } catch { /* non-fatal */ }
+
+  // BLD-1166: update the shared clinic calendar entry to the new time
+  // (best-effort, awaited so the runtime can't freeze it mid-flight, but LAST so
+  // the client's confirmation email is never held behind it). The CalDAV event
+  // is keyed by booking id, so re-pushing PUTs the moved times over the existing
+  // entry — we must NOT remove it (that would drop the appointment from the
+  // clinic calendar entirely). Google Calendar mirrors the move (no-op while parked).
+  await Promise.all([
+    bestEffort(import('@/lib/hostinger-calendar').then((m) => m.pushBooking(booking.id))),
+    bestEffort(import('@/lib/google-calendar').then((m) => m.pushBookingToClinician(booking.id))),
+  ]);
   return { ok: true, charged, requiresAction };
 }

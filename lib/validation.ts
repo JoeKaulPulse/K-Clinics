@@ -13,6 +13,10 @@ export const consultSchema = z.object({
   preferredTime: z.string().max(120).optional().or(z.literal('')),
   preferredContact: z.enum(['email', 'phone', 'whatsapp']).optional(),
   marketingOptIn: z.boolean().default(false),
+  // Which public form this came from — recorded as the marketing-consent source
+  // (UK GDPR Art. 7: WHERE consent was given). Closed enum so the stored evidence
+  // can only ever be one of our own surfaces. Defaults to the consult form.
+  formSource: z.enum(['consult-form', 'contact-form']).default('consult-form'),
   consent: z.literal(true, 'Please accept to continue'),
   // Client-generated id shared with the browser Meta Pixel so the server-side
   // CAPI Lead event de-duplicates against the browser one.

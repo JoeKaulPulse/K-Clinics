@@ -29,6 +29,11 @@ export async function POST(req: Request) {
   const booking = await db.booking.findUnique({ where: { id: bookingId }, include: { client: true } });
   if (!booking) return NextResponse.json({ ok: false, error: 'Booking not found.' }, { status: 404 });
   if (booking.prepaidVia) return NextResponse.json({ ok: false, error: 'This course has already been pre-paid.' }, { status: 409 });
+  // BLD-1165: the booking page hides the button once the card on file has been
+  // charged; the route must refuse it too, or a stale tab / direct call could mint
+  // a second payment link for a booking that is already paid and take the money
+  // twice (every other charge surface refuses chargedAt || prepaidAt — BLD-1119).
+  if (booking.chargedAt) return NextResponse.json({ ok: false, error: 'This booking has already been paid.' }, { status: 409 });
   if (['CANCELLED', 'NO_SHOW'].includes(booking.status)) {
     return NextResponse.json({ ok: false, error: 'This booking is closed.' }, { status: 409 });
   }

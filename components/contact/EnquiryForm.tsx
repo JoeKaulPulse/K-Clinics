@@ -14,6 +14,7 @@ import { trackLead } from '@/lib/analytics-events';
 export function EnquiryForm() {
   const [status, setStatus] = useState<'idle' | 'sent' | 'mailto'>('idle');
   const [busy, setBusy] = useState(false);
+  const [marketingOptIn, setMarketingOptIn] = useState(false);
   // BLD-125: stable IDs for aria-describedby on the success/fallback message.
   const statusId = useId();
 
@@ -28,7 +29,9 @@ export function EnquiryForm() {
 
     const mailtoFallback = () => {
       const subject = `Enquiry from ${name || 'website'} — ${interest || 'General'}`;
-      const body = [`Name: ${name}`, `Email: ${email}`, `Phone: ${phone}`, `Interest: ${interest}`, '', message].join('\n');
+      // Carry the marketing tick into the fallback too, so a ticked box isn't
+      // silently lost when the API is unavailable and staff can record it.
+      const body = [`Name: ${name}`, `Email: ${email}`, `Phone: ${phone}`, `Interest: ${interest}`, `Marketing opt-in: ${marketingOptIn ? 'Yes' : 'No'}`, '', message].join('\n');
       window.location.href = `${site.emailHref}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
       setStatus('mailto');
     };
@@ -43,6 +46,8 @@ export function EnquiryForm() {
         body: JSON.stringify({
           firstName: firstName || 'Website', lastName: rest.join(' ') || undefined, email, phone: phone || undefined,
           category: 'general', message: interest ? `Interested in: ${interest}\n\n${message}` : message, consent: true,
+          // marketingConsentSource evidence: this is /contact, not the consult form.
+          marketingOptIn, formSource: 'contact-form',
         }),
       });
       const j = await res.json().catch(() => ({ ok: false }));
@@ -97,6 +102,15 @@ export function EnquiryForm() {
           <textarea id="message" name="message" rows={4} required minLength={2} className={field} placeholder="Tell us a little about what you're looking for…" />
         </div>
       </div>
+
+      {/* BLD-1168: word-for-word the ConsultForm opt-in. Both post to /api/consult,
+          which stamps the same MARKETING_CONSENT_VERSION as evidence of WHAT wording
+          was shown — and the same tick is what allows the hashed email to go to Meta
+          CAPI — so the two surfaces must not say different things. */}
+      <label className="mt-5 flex items-start gap-3 text-sm text-[var(--color-stone)]">
+        <input type="checkbox" checked={marketingOptIn} onChange={(e) => setMarketingOptIn(e.target.checked)} className="mt-1 h-4 w-4 accent-[var(--color-gold)]" />
+        Keep me updated with offers, events and skincare tips. We may also use your contact details, in hashed form, to show you our offers on social media — see our Privacy Policy.
+      </label>
 
       <div className="mt-6 flex flex-wrap items-center gap-4">
         <Button size="lg" type="submit" disabled={busy}>{busy ? 'Sending…' : <>Send enquiry <ArrowIcon /></>}</Button>
