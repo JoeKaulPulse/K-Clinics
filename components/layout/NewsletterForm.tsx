@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
+import { trackLead } from '@/lib/analytics-events';
 
 export function NewsletterForm({ source = 'footer' }: { source?: string } = {}) {
   const [email, setEmail] = useState('');
@@ -16,7 +17,9 @@ export function NewsletterForm({ source = 'footer' }: { source?: string } = {}) 
     try {
       const res = await fetch('/api/newsletter', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email, company, source }) });
       const j = await res.json().catch(() => ({ ok: false }));
-      if (j.ok) { setState('done'); setEmail(''); }
+      // BLD-1130: track the newsletter signup as a lead, same as EnquiryForm/KVision/
+      // FranchiseEnquiryForm, tagged distinctly from other lead sources.
+      if (j.ok) { trackLead({ detail: { source: 'newsletter', surface: source } }); setState('done'); setEmail(''); }
       else { setState('error'); setMsg(j.error || 'Something went wrong.'); }
     } catch { setState('error'); setMsg('Network error. Please try again.'); }
   }
