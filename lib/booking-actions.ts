@@ -19,6 +19,16 @@ const MAX_FREE_RESCHEDULES = 3;
 
 type BookingWithClient = Booking & { client: Client };
 
+// BLD-1166: a bare `import().then().catch()` with no await can be frozen
+// mid-flight once the caller's response is sent — Vercel's serverless runtime
+// suspends the function, so the pending call may silently never complete (the
+// same bug already fixed for the ops-alert webhook, BLD-1137). This awaits a
+// best-effort background call but caps the wait so a slow provider can't hold
+// up the response either.
+async function bestEffort(p: Promise<unknown>, ms = 10_000): Promise<void> {
+  await Promise.race([p.then(() => {}).catch(() => {}), new Promise<void>((resolve) => setTimeout(resolve, ms))]);
+}
+
 export function isWithin24h(b: Pick<Booking, 'startAt'>): boolean {
   return b.startAt.getTime() - Date.now() < CANCEL_WINDOW_MS;
 }
@@ -510,15 +520,17 @@ export async function cancelBooking(
   });
 
   // BLD-133: the slot just freed — offer it to the first matching waitlister.
-  import('@/lib/waitlist').then((m) => m.notifyOnFreedSlot(booking.treatmentSlug, booking.startAt)).catch(() => {});
+  await bestEffort(import('@/lib/waitlist').then((m) => m.notifyOnFreedSlot(booking.treatmentSlug, booking.startAt)));
   if (feeFailed) {
     await logAudit({ action: 'PAYMENT_FAILED', actor: opts.by, bookingId: booking.id, clientId: booking.clientId, summary: `Late-cancellation fee (£${(booking.pricePence / 100).toFixed(2)}) failed — follow up.` }).catch(() => {});
   }
 
-  // Remove from the shared clinic calendar (Hostinger CalDAV; no-op if unconfigured).
-  import('@/lib/hostinger-calendar').then((m) => m.removeBooking(booking.id)).catch(() => {});
-  // Remove from the clinician's Google Calendar too (no-op while parked).
-  import('@/lib/google-calendar').then((m) => m.removeBookingFromClinician(booking.id)).catch(() => {});
+  // Remove from the shared clinic calendar (Hostinger CalDAV; no-op if unconfigured)
+  // and the clinician's Google Calendar (no-op while parked).
+  await Promise.all([
+    bestEffort(import('@/lib/hostinger-calendar').then((m) => m.removeBooking(booking.id))),
+    bestEffort(import('@/lib/google-calendar').then((m) => m.removeBookingFromClinician(booking.id))),
+  ]);
 
   // Return any loyalty points the client had applied to this booking -- but
   // only when they weren't already consumed as a discount on a late-cancellation
@@ -760,9 +772,11 @@ export async function rescheduleBooking(
   // CalDAV event is keyed by booking id, so re-pushing PUTs the moved times over
   // the existing entry — we must NOT remove it (that would drop the appointment
   // from the clinic calendar entirely).
-  import('@/lib/hostinger-calendar').then((m) => m.pushBooking(booking.id)).catch(() => {});
-  // Move the clinician's Google Calendar event to the new time (no-op while parked).
-  import('@/lib/google-calendar').then((m) => m.pushBookingToClinician(booking.id)).catch(() => {});
+  await Promise.all([
+    bestEffort(import('@/lib/hostinger-calendar').then((m) => m.pushBooking(booking.id))),
+    // Move the clinician's Google Calendar event to the new time (no-op while parked).
+    bestEffort(import('@/lib/google-calendar').then((m) => m.pushBookingToClinician(booking.id))),
+  ]);
 
   // Confirmation email (best-effort).
   await sendEmail({

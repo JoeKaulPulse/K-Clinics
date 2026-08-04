@@ -89,10 +89,18 @@ export async function POST(req: Request) {
     new Promise<void>((_, reject) => setTimeout(() => reject(new Error('notify timeout')), 15_000)),
   ]).catch((err) => console.warn('[booking/confirm] notification timeout or error:', (err as Error)?.message));
 
-  // Push to the shared clinic calendar (Hostinger CalDAV; no-op until configured).
-  import('@/lib/hostinger-calendar').then((m) => m.pushBooking(booking.id)).catch(() => {});
-  // Mirror onto the assigned clinician's Google Calendar (no-op while parked).
-  import('@/lib/google-calendar').then((m) => m.pushBookingToClinician(booking.id)).catch(() => {});
+  // Push to the shared clinic calendar (Hostinger CalDAV) and mirror onto the
+  // assigned clinician's Google Calendar (both no-op until configured). Awaited
+  // and capped at 10s — a bare import().then() can be frozen mid-flight once the
+  // response is sent on Vercel's serverless runtime, silently dropping the sync
+  // (the same bug already fixed for the ops-alert webhook, BLD-1137).
+  await Promise.race([
+    Promise.allSettled([
+      import('@/lib/hostinger-calendar').then((m) => m.pushBooking(booking.id)),
+      import('@/lib/google-calendar').then((m) => m.pushBookingToClinician(booking.id)),
+    ]),
+    new Promise<void>((resolve) => setTimeout(resolve, 10_000)),
+  ]);
 
   return NextResponse.json({ ok: true, manageToken: booking.manageToken });
 }

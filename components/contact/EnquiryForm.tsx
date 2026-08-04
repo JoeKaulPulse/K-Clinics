@@ -14,6 +14,7 @@ import { trackLead } from '@/lib/analytics-events';
 export function EnquiryForm() {
   const [status, setStatus] = useState<'idle' | 'sent' | 'mailto'>('idle');
   const [busy, setBusy] = useState(false);
+  const [marketingOptIn, setMarketingOptIn] = useState(false);
   // BLD-125: stable IDs for aria-describedby on the success/fallback message.
   const statusId = useId();
 
@@ -43,6 +44,7 @@ export function EnquiryForm() {
         body: JSON.stringify({
           firstName: firstName || 'Website', lastName: rest.join(' ') || undefined, email, phone: phone || undefined,
           category: 'general', message: interest ? `Interested in: ${interest}\n\n${message}` : message, consent: true,
+          marketingOptIn,
         }),
       });
       const j = await res.json().catch(() => ({ ok: false }));
@@ -97,6 +99,11 @@ export function EnquiryForm() {
           <textarea id="message" name="message" rows={4} required minLength={2} className={field} placeholder="Tell us a little about what you're looking for…" />
         </div>
       </div>
+
+      <label className="mt-5 flex items-start gap-3 text-sm text-[var(--color-stone)]">
+        <input type="checkbox" checked={marketingOptIn} onChange={(e) => setMarketingOptIn(e.target.checked)} className="mt-1 h-4 w-4 accent-[var(--color-gold)]" />
+        Keep me updated with offers, events and skincare tips.
+      </label>
 
       <div className="mt-6 flex flex-wrap items-center gap-4">
         <Button size="lg" type="submit" disabled={busy}>{busy ? 'Sending…' : <>Send enquiry <ArrowIcon /></>}</Button>

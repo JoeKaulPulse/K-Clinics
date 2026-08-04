@@ -4,6 +4,7 @@ import { Stagger, StaggerItem, Reveal } from '@/components/motion/Reveal';
 import { Button, ArrowIcon } from '@/components/ui/Button';
 import { pageMeta, JsonLd, breadcrumbLd } from '@/lib/seo';
 import { NewsletterCapture } from '@/components/layout/NewsletterCapture';
+import { OffersStrip } from '@/components/marketing/OffersStrip';
 
 export const revalidate = false;
 
@@ -34,6 +35,8 @@ export default function OffersPage() {
         lede="We’d rather offer genuine, lasting value than gimmicks. Here’s how to make the most of KClinics — from your very first visit onwards."
         gradient={['#a98a6d', '#3d352f']}
       />
+
+      <div className="container-lux pt-10"><OffersStrip heading="Live promotions" /></div>
 
       <section className="container-lux section">
         <h2 className="sr-only">Our current offers</h2>

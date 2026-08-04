@@ -19,6 +19,7 @@ import { ReadinessPanel } from '@/components/admin/ReadinessPanel';
 import { AddTreatment } from '@/components/admin/AddTreatment';
 import { PriceOverride } from '@/components/admin/PriceOverride';
 import { ScheduleFollowUp } from '@/components/admin/ScheduleFollowUp';
+import { BnplPaymentButton } from '@/components/admin/BnplPaymentButton';
 import { SameDayRequestActions } from '@/components/admin/SameDayRequestActions';
 import { sessionCan } from '@/lib/auth';
 import { site } from '@/lib/site';
@@ -156,6 +157,10 @@ export default async function BookingDetail({ params }: { params: Promise<{ id: 
   // BLD-1149: price override — same lifecycle gate, but keyed on bookings.charge
   // (the permission that already lets the holder adjust the amount at checkout).
   const canPriceOverride = sessionCan(session, 'bookings.charge') && !b.chargedAt && !b.prepaidAt && !['CANCELLED', 'NO_SHOW'].includes(b.status);
+  // BLD-1165: BNPL (Klarna/Clearpay) pre-payment is only for courses — a single
+  // session has nothing left to defer past this visit — same lifecycle gate as
+  // the add-on picker plus the "already a course" check the API itself enforces.
+  const canBnpl = canManageBk && courseSessions > 1 && !b.chargedAt && !b.prepaidAt && !['CANCELLED', 'NO_SHOW'].includes(b.status);
   let variantOptions: { id: string; label: string; pricePence: number }[] = [];
   if (canAddTreatment) {
     const { listServices } = await import('@/lib/services');
@@ -313,6 +318,7 @@ export default async function BookingDetail({ params }: { params: Promise<{ id: 
               </div>
               {canAddTreatment && <div className="mt-4"><AddTreatment bookingId={b.id} variants={variantOptions} /></div>}
               {b.chargedAt && addOnItems.length > 0 && <p className="mt-3 text-xs text-[var(--color-stone)]">Already charged — add further treatments to a new booking.</p>}
+              {canBnpl && <BnplPaymentButton bookingId={b.id} />}
             </div>
           )}
           <ReadinessPanel items={readiness.items} ready={readiness.ready} neededCount={readiness.neededCount} started={!!b.startedAt} />

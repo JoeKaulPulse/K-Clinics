@@ -3191,6 +3191,30 @@ export const BUILD_BACKLOG: BacklogItem[] = [
     detail: 'GalleryItem.consent was a bare boolean set by any staffer with settings.manage — no timestamp, signer identity, or link to a SignedConsent record; an identifiable clinical photo could go live with no durable proof consent was given.',
     notes: ['Built the evidence half: additive consentBy/consentAt columns on GalleryItem, stamped with the acting admin + time whenever the consent attestation is ticked (and cleared when unticked) on both create and update. The publish guard (cannot publish without consent) is unchanged. NOT built without an owner decision (asked on this card): hard-gating published:true behind a linked SignedConsent record, which changes staff workflow for clinical photo publishing. (BLD-1037)'],
   },
+  {
+    title: 'Klarna/Clearpay BNPL button is fully built but never rendered on the booking page', type: 'TASK', urgency: 'P1', status: 'IN_REVIEW', assignee: 'claude',
+    value: 8, effort: 1,
+    detail: 'components/admin/BnplPaymentButton.tsx is a complete, working component calling the already-implemented BNPL link route, but was imported nowhere -- app/admin/bookings/[id]/page.tsx only had a comment referencing it. Staff could not offer BNPL on course bookings at all.',
+    notes: ['Fix: BnplPaymentButton now renders in the Treatments & billing panel of /admin/bookings/[id] for course bookings (courseSessions > 1) that are unpaid, not pre-paid and not cancelled/no-show -- the same lifecycle gate the API route itself enforces, plus the bookings.manage permission the route requires. (BLD-1165)'],
+  },
+  {
+    title: 'Un-awaited fire-and-forget calls silently drop waitlist re-offers and calendar sync', type: 'ERROR', urgency: 'P1', status: 'IN_REVIEW', assignee: 'claude',
+    value: 7, effort: 2,
+    detail: 'lib/booking-actions.ts (waitlist re-offer on cancellation, CalDAV/Google Calendar push+remove) and app/api/booking/confirm/route.ts (calendar push) used import().then().catch() with no await before the handler returned its response -- the same class of bug already fixed for the ops-alert webhook (BLD-1137), which Vercel can freeze mid-flight once the response is sent.',
+    notes: ['Fix: all five call sites now await the background call, capped at 10s so a slow provider cannot delay the response either (booking-actions.ts via a small bestEffort helper; the confirm route via Promise.allSettled raced against a timeout). Cancelled slots now reliably re-offer to waitlisters, and calendar push/remove/reschedule sync can no longer be silently dropped. (BLD-1166)'],
+  },
+  {
+    title: '/offers page is a static hardcoded list and never shows live admin-created promotions', type: 'TASK', urgency: 'P1', status: 'IN_REVIEW', assignee: 'claude',
+    value: 7, effort: 2,
+    detail: 'app/(marketing)/offers/page.tsx rendered a hardcoded OFFERS array and never imported OffersStrip, the component that already pulls real-time discounts onto the homepage and /pricing -- a time-limited promotion set up in admin showed everywhere except the one page whose entire purpose is "see current offers".',
+    notes: ['Fix: /offers now renders <OffersStrip heading="Live promotions" /> above the evergreen offer cards, matching the /pricing placement. Safely renders nothing when the CRM/DB is unavailable or there are no live offers, so the static page still works standalone. (BLD-1167)'],
+  },
+  {
+    title: 'Contact enquiry form has no marketing-consent checkbox', type: 'ERROR', urgency: 'P1', status: 'IN_REVIEW', assignee: 'claude',
+    value: 6, effort: 2,
+    detail: 'components/contact/EnquiryForm.tsx posted to /api/consult without marketingOptIn, unlike ConsultForm.tsx which has the checkbox -- consultSchema.marketingOptIn defaults to false, so every /contact submission (the site\'s highest-traffic lead form) created a client with marketing consent off and no way to opt in.',
+    notes: ['Fix: added the same marketing-consent checkbox used in ConsultForm.tsx and threaded marketingOptIn through the /api/consult request body. (BLD-1168)'],
+  },
 ];
 
 // A content hash over every item's title + status + PR, so ANY change (a new
