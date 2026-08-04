@@ -259,6 +259,46 @@ export async function POST(req: Request) {
       // BLD-123: refunds issued directly in the Stripe dashboard bypass the app.
       // Reconcile: compute the delta vs what's already recorded and run the same
       // post-refund side-effects (loyalty reversal, Xero credit note, audit log).
+      // PRJ-1069.12: chargebacks previously debited the Stripe balance with zero
+      // trace in the app — no audit row, no staff alert, the booking still
+      // showing fully paid. This handler makes disputes VISIBLE (audit event,
+      // Sentry, ops webhook, staff notification with a link to the record).
+      // Deliberately no booking/order state change and no Xero entry yet — the
+      // owner decision on that workflow is tracked on the board (PRJ-1069.12).
+      case 'charge.dispute.created':
+      case 'charge.dispute.closed': {
+        const dispute = event.data.object;
+        const created = event.type === 'charge.dispute.created';
+        const piId = typeof dispute.payment_intent === 'string' ? dispute.payment_intent : null;
+        const amount = dispute.amount ?? 0;
+        // Resolve what was charged so the alert links straight to the record.
+        const booking = piId ? await db.booking.findFirst({ where: { chargePaymentIntentId: piId }, select: { id: true, clientId: true, treatmentTitle: true } }) : null;
+        const order = !booking && piId ? await db.order.findFirst({ where: { stripePaymentIntentId: piId }, select: { id: true, number: true } }) : null;
+        const what = booking ? `booking ${booking.treatmentTitle}` : order ? `shop order ${order.number}` : `charge ${typeof dispute.charge === 'string' ? dispute.charge : ''}`;
+        const summary = created
+          ? `Chargeback opened on ${what} — £${(amount / 100).toFixed(2)} (reason: ${dispute.reason || 'unknown'}). Respond in the Stripe dashboard before the evidence deadline.`
+          : `Chargeback ${dispute.status === 'won' ? 'WON' : dispute.status === 'lost' ? 'LOST' : `closed (${dispute.status})`} on ${what} — £${(amount / 100).toFixed(2)}.`;
+        try {
+          const { logAudit } = await import('@/lib/audit');
+          await logAudit({ action: 'PAYMENT_DISPUTED', actor: 'stripe-webhook', bookingId: booking?.id, clientId: booking?.clientId ?? undefined, summary, meta: { disputeId: dispute.id, status: dispute.status, reason: dispute.reason, amountPence: amount, orderId: order?.id } });
+        } catch (e) { console.error('[webhook] dispute audit failed:', (e as Error)?.message); throw e; }
+        Sentry.captureMessage(`[stripe] ${summary}`, { level: created ? 'error' : 'warning', tags: { area: 'stripe-webhook', sub: 'dispute' } });
+        try {
+          const { notifyStaffByPermission } = await import('@/lib/notifications');
+          await notifyStaffByPermission('bookings.charge', {
+            kind: 'status',
+            title: created ? 'Chargeback opened' : 'Chargeback closed',
+            body: summary,
+            href: booking ? `/admin/bookings/${booking.id}` : order ? `/admin/shop/orders` : '/admin',
+          });
+        } catch { /* best-effort */ }
+        const webhookUrl = process.env.CRON_ALERT_WEBHOOK_URL;
+        if (webhookUrl) {
+          const body = JSON.stringify({ text: `[kclinics] ${summary}` });
+          try { await fetch(webhookUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body }); } catch { /* non-fatal */ }
+        }
+        break;
+      }
       case 'charge.refunded': {
         const charge = event.data.object;
         const piId = typeof charge.payment_intent === 'string' ? charge.payment_intent : null;
@@ -462,6 +502,9 @@ export async function POST(req: Request) {
       event.type === 'payment_intent.succeeded' ||
       event.type === 'payment_intent.payment_failed' ||
       event.type === 'charge.refunded' ||
+      // PRJ-1069.12: a dropped dispute event means a silent chargeback — retry.
+      event.type === 'charge.dispute.created' ||
+      event.type === 'charge.dispute.closed' ||
       event.type === 'setup_intent.succeeded' ||
       // BLD-882: the expired-session claim releases a stranded voucher
       // reservation — a DB failure before the claim commits must retry.

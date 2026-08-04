@@ -50,6 +50,9 @@ export async function POST(req: Request) {
           beforeImage: before.buf, beforeType: before.type,
           afterImage: after.buf, afterType: after.type,
           consent: !!b.consent,
+          // BLD-1037: the consent tick is an attestation — record who made it and
+          // when, so a published clinical photo has a durable evidence trail.
+          ...(b.consent ? { consentBy: session.email, consentAt: new Date() } : {}),
           clientId: (b.clientId as string)?.trim() || null, // BLD-765: optional link to the depicted client for consent + erasure
           published: false,
           order: count,
@@ -66,7 +69,12 @@ export async function POST(req: Request) {
       if (typeof b.category === 'string') data.category = b.category.slice(0, 60);
       if (b.treatmentSlug !== undefined) data.treatmentSlug = (b.treatmentSlug as string)?.trim() || null;
       if (b.caption !== undefined) data.caption = (b.caption as string)?.slice(0, 200) || null;
-      if (typeof b.consent === 'boolean') data.consent = b.consent;
+      if (typeof b.consent === 'boolean') {
+        data.consent = b.consent;
+        // BLD-1037: stamp (or clear) the attestation evidence with the change.
+        data.consentBy = b.consent ? session.email : null;
+        data.consentAt = b.consent ? new Date() : null;
+      }
       if (b.clientId !== undefined) data.clientId = (b.clientId as string)?.trim() || null; // BLD-765
       if (b.beforeImage) { const i = decodeImage(b.beforeImage); if (!i) return bad('Invalid before image.'); data.beforeImage = i.buf; data.beforeType = i.type; }
       if (b.afterImage) { const i = decodeImage(b.afterImage); if (!i) return bad('Invalid after image.'); data.afterImage = i.buf; data.afterType = i.type; }
