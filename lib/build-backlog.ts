@@ -3342,6 +3342,17 @@ export const BUILD_BACKLOG: BacklogItem[] = [
     detail: 'The visibility half (audit + Sentry + ops webhook + staff notify) shipped earlier; the state/Xero half was held for an owner decision.',
     notes: ['Owner decision 5 Aug: FULL AUTO on a lost dispute. charge.dispute.closed with status lost now reconciles automatically — booking: refundedPence advanced by the dispute amount via CAS, loyalty points clawed back (full-refund return + pro-rata spend reversal), a Xero credit note pushed (pushBookingRefundToXero, reason "Chargeback lost") and a PAYMENT_REFUNDED audit entry; shop order: status → REFUNDED + stock restored (order sales carry no Xero push to reverse) + audit. Won/other outcomes change nothing. All side-effects sit behind the existing CAS claims so a redelivered event cannot double-run them. (PRJ-1069.12)'],
   },
+  {
+    title: 'Meta description & Article JSON-LD polluted with nav chrome on ~60 imported journal posts', type: 'TASK', urgency: 'P1', status: 'IN_REVIEW', assignee: 'claude',
+    value: 8, effort: 4,
+    detail: 'Every WP-imported /journal post\'s <meta name=description> and Article JSON-LD description read like "Cosmetology Blog Dentistry Blog {Title} {excerpt}..." — confirmed live. scripts/migrate-wp/migrate-blog.mjs never set metaDescription on import, so lib/blog.ts getBlogPost() fell back to the stored excerpt, and that excerpt itself carries leftover breadcrumb/nav-label text scraped ahead of the real article copy from the original WordPress page dump.',
+    notes: [
+      'CODE-LEVEL READ-TIME MITIGATION, not a DB backfill — DATABASE_URL in this environment is read-only per this repo\'s CLAUDE.md, so the stored Post.excerpt/metaDescription columns were NOT touched. Could not get a live DB connection to sample real rows either (direct TCP to the Neon host times out from this sandbox — confirmed with a raw /dev/tcp probe and a Prisma pg-adapter query, both hung/failed); proceeded from the bug report\'s documented evidence pattern.',
+      'Added lib/blog.ts stripNavChrome(text, title?): (1) strips a leading run of "<Capitalized word(s)> Blog" nav labels via /^(?:(?:[A-Z][a-z]+\\s){0,2}[A-Z][a-z]+\\s+Blog\\s+)+/ — matches the confirmed "Cosmetology Blog Dentistry Blog " pattern and generalises to a few concatenated "<Category> Blog" labels without matching a legitimate excerpt that merely starts with a capitalized word; (2) strips a leading literal duplicate of the post\'s own title (matched exactly against the known title, so it cannot misfire) — WP page dumps apparently also leaked the H1 title text ahead of the real excerpt.',
+      'Applied ONLY to the metaDescription fallback in getBlogPost() (lib/blog.ts) — the displayed excerpt/lede paragraph under the H1 is untouched (separate, lower-priority display bug, not in scope). Consumers fixed for free: generateMetadata() and articleLd() in app/(marketing)/journal/[slug]/page.tsx both read a.metaDescription.',
+      'Follow-up for an owner with write DB access: a one-time cleanup of the stored Post.excerpt values for the ~60 affected wordpress-sourced posts would give a permanently clean excerpt (and let the display-side lede also stop carrying the chrome) — not required for this fix, which makes the public-facing SEO/JSON-LD bug disappear on every request regardless. (BLD-1182)',
+    ],
+  },
 ];
 
 // A content hash over every item's title + status + PR, so ANY change (a new
