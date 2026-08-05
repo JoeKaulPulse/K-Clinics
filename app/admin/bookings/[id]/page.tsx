@@ -153,6 +153,10 @@ export default async function BookingDetail({ params }: { params: Promise<{ id: 
   // course purchase itself or a session linked to one).
   const { packageSessionNumber } = await import('@/lib/package-sessions');
   const pkgSession = await packageSessionNumber(b.id).catch(() => null);
+  // BLD-1066: surface the client's unpaid late-cancel/no-show balance on every
+  // one of their appointments, so it's seen the moment a booking is opened.
+  const { outstandingBalance } = await import('@/lib/outstanding');
+  const owedHere = await outstandingBalance(b.clientId);
   const perSessionPence = courseSessions > 1 && basePence > 0 ? Math.round(basePence / courseSessions) : basePence;
   // BLD-1119: !b.prepaidAt as well as !b.chargedAt — an add-on on a BNPL pre-paid
   // course can never be collected (every charge surface refuses a pre-paid
@@ -197,6 +201,15 @@ export default async function BookingDetail({ params }: { params: Promise<{ id: 
   return (
     <AdminShell user={session?.email} can={can}>
       <Link href="/admin/bookings" className="text-sm text-[var(--color-gold-deep)] hover:underline">← Bookings</Link>
+
+      {/* BLD-1066: unpaid late-cancel/no-show balance on this client. */}
+      {owedHere.totalPence > 0 && (
+        <div role="alert" className="mt-4 rounded-[var(--radius-md)] border border-[var(--color-blush-deep)] bg-[var(--color-blush)]/15 px-4 py-3 text-sm">
+          <span className="font-medium text-[var(--color-blush-deep)]">Outstanding payment — £{(owedHere.totalPence / 100).toFixed(2)}.</span>{' '}
+          {name} has {owedHere.items.length === 1 ? 'an unpaid fee' : `${owedHere.items.length} unpaid fees`} from {owedHere.items.map((i) => `${i.treatmentTitle} (${i.kind === 'no-show' ? 'no-show' : 'late cancellation'})`).join(', ')}. Online booking is blocked until it’s charged or waived —{' '}
+          <Link href={`/admin/clients/${b.clientId}`} className="underline underline-offset-2">see the client profile</Link>.
+        </div>
+      )}
 
       <div className="mt-4 flex flex-wrap items-start justify-between gap-4">
         <div>

@@ -147,7 +147,7 @@ export async function POST(req: Request) {
 
     return NextResponse.json({ ok: true, eventId });
   } catch (e) {
-    console.error('consult error', e);
+    console.error('consult error', (e as Error)?.message);
     return NextResponse.json({ ok: false, error: 'Something went wrong. Please try again or call us.' }, { status: 500 });
   }
 }

@@ -39,6 +39,9 @@ export default async function DashboardPage() {
   // BLD-1098: package balances for the signed-in client.
   const { clientPackages } = await import('@/lib/package-sessions');
   const packages = await clientPackages(client.id).catch(() => []);
+  // BLD-1066: unpaid late-cancel/no-show balance — booking is paused until settled.
+  const { outstandingBalance } = await import('@/lib/outstanding');
+  const owed = await outstandingBalance(client.id).catch(() => ({ totalPence: 0, items: [] }));
 
   // Onboarding state (welcome flow for new — and existing — clients).
   const { db: _db, withDbRetry } = await import('@/lib/db');
@@ -71,6 +74,15 @@ export default async function DashboardPage() {
         memberSince={client.createdAt.toISOString()}
         lastVisitISO={client.lastVisitAt ? client.lastVisitAt.toISOString() : null}
       />
+
+      {/* BLD-1066: outstanding payment — shown before anything promotional. */}
+      {owed.totalPence > 0 && (
+        <div role="alert" className="mt-8 rounded-[var(--radius-lg)] border border-[var(--color-blush-deep)] bg-[var(--color-blush)]/15 p-6">
+          <p className="font-medium text-[var(--color-blush-deep)]">{t('dash.owedTitle', { amount: formatPrice(owed.totalPence) })}</p>
+          <p className="mt-1 text-sm text-[var(--color-ink)]">{t('dash.owedBody')}</p>
+          <a href={site.phoneHref} className="mt-3 inline-block rounded-full bg-[var(--color-ink)] px-5 py-2.5 text-sm font-medium text-[var(--color-porcelain)]">{site.phone}</a>
+        </div>
+      )}
 
       <PersonalisedOffers clientId={client.id} />
       {!client.marketingOptIn && !client.unsubscribed && <MarketingOptInPrompt />}

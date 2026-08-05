@@ -94,6 +94,15 @@ export async function POST(req: Request) {
       ...(d.marketingOptIn ? marketingConsentFields('website-booking') : {}),
     },
   });
+  // BLD-1066: an unpaid late-cancellation/no-show fee blocks new bookings
+  // until settled or waived — the balance is derived, so paying it (or staff
+  // waiving it) reopens booking automatically.
+  const { outstandingBalance } = await import('@/lib/outstanding');
+  const owed = await outstandingBalance(client.id);
+  if (owed.totalPence > 0) {
+    return NextResponse.json({ ok: false, error: `There’s an outstanding payment of £${(owed.totalPence / 100).toFixed(2)} on your account from a previous appointment (late cancellation or missed visit). Please call us to settle it — booking reopens as soon as it’s paid.` }, { status: 403 });
+  }
+
   const customerId = await ensureCustomer(client);
 
   const basePrice = pricePence ?? 0;
