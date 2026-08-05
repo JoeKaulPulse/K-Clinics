@@ -78,6 +78,10 @@ export default async function ClientDetail({ params }: { params: Promise<{ id: s
   // BLD-1014/BLD-1098: package balances derived from course purchases + linked sessions.
   const { clientPackages } = await import('@/lib/package-sessions');
   const packages = await clientPackages(c.id);
+  // BLD-1066: unpaid late-cancel/no-show fees — shown loudly, and the public
+  // booking routes refuse new bookings while any remain.
+  const { outstandingBalance } = await import('@/lib/outstanding');
+  const owed = await outstandingBalance(c.id);
 
   // Clinical (health) data — gated on the revocable `clients.clinical.view`
   // permission (not role), so a permission revoke actually withholds it here too,
@@ -202,6 +206,24 @@ export default async function ClientDetail({ params }: { params: Promise<{ id: s
           </div>
         )}
       </div>
+
+      {/* BLD-1066: outstanding payment — impossible to miss, lists the exact
+          appointments owing. Clears automatically once charged or waived. */}
+      {owed.totalPence > 0 && (
+        <div role="alert" className="mt-6 rounded-[var(--radius-md)] border border-[var(--color-blush-deep)] bg-[var(--color-blush)]/15 p-4">
+          <p className="font-medium text-[var(--color-blush-deep)]">Outstanding payment — £{(owed.totalPence / 100).toFixed(2)}</p>
+          <ul className="mt-1 space-y-0.5 text-sm text-[var(--color-ink)]">
+            {owed.items.map((i) => (
+              <li key={i.bookingId}>
+                <Link href={`/admin/bookings/${i.bookingId}`} className="underline-offset-2 hover:underline">
+                  {i.treatmentTitle} · {new Date(i.startAt).toLocaleDateString('en-GB')} · {i.kind === 'no-show' ? 'no-show' : 'late cancellation'} · £{(i.pricePence / 100).toFixed(2)}
+                </Link>
+              </li>
+            ))}
+          </ul>
+          <p className="mt-2 text-xs text-[var(--color-stone)]">Online booking is blocked for this client until the balance is charged (open the appointment → charge the card) or the fee is waived on the appointment. Either clears this warning automatically.</p>
+        </div>
+      )}
 
       <div className="mt-8 grid gap-8 lg:grid-cols-[1.5fr_1fr]">
         <div className="space-y-10">

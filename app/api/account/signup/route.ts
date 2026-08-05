@@ -71,7 +71,7 @@ export async function POST(req: Request) {
     }
     return NextResponse.json(result, { status: result.ok ? 200 : 409 });
   } catch (err) {
-    console.error('[account/signup] failed:', err);
+    console.error('[account/signup] failed:', (err as Error)?.message);
     Sentry.captureException(err, { tags: { area: 'account/signup' } });
     // Surface the underlying cause off-production to make issues diagnosable.
     const detail = process.env.VERCEL_ENV && process.env.VERCEL_ENV !== 'production'

@@ -154,6 +154,9 @@ export const PORTAL_DICT: Record<string, Entry> = {
   'dash.offerReady': { en: 'Your welcome offer is ready', uk: 'Ваша вітальна пропозиція готова' },
   'dash.offerBody': { en: '{percent}% off your first treatment — code {code}', uk: '{percent}% знижки на першу процедуру — код {code}' },
   'dash.book': { en: 'Book a treatment', uk: 'Записатися на процедуру' },
+  // BLD-1066: outstanding-payment warning
+  'dash.owedTitle': { en: 'Outstanding payment — {amount}', uk: 'Неоплачений платіж — {amount}' },
+  'dash.owedBody': { en: 'There’s an unpaid fee from a previous appointment (late cancellation or missed visit). New bookings are paused until it’s settled — please call us and we’ll sort it in a moment.', uk: 'Є неоплачений збір за попередній запис (пізнє скасування або неявка). Нові записи призупинено до оплати — зателефонуйте нам, і ми швидко все вирішимо.' },
   // BLD-1098: package (course) balance card
   'dash.pkgTitle': { en: 'Your packages', uk: 'Ваші пакети' },
   'dash.pkgSession': { en: 'Session {used} of {total}', uk: 'Сеанс {used} з {total}' },

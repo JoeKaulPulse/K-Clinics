@@ -102,7 +102,10 @@ export function CookieConsent() {
           transition={{ duration: 0.45, ease: [0.16, 1, 0.3, 1] }}
           role="region"
           aria-label="Cookie consent"
-          className="fixed inset-x-3 bottom-3 z-[80] mx-auto max-h-[38vh] max-w-2xl overflow-y-auto rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-5 shadow-[var(--shadow-lift)] md:inset-x-auto md:left-6 md:bottom-6 md:max-h-none md:overflow-visible md:p-6"
+          // BLD-1152: right-20 on mobile keeps the banner clear of the fixed
+          // WhatsApp lead button (bottom-5 right-5), which it used to cover on
+          // every first visit — the button stays tappable beside the banner.
+          className="fixed bottom-3 left-3 right-20 z-[80] mx-auto max-h-[38vh] max-w-2xl overflow-y-auto rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-5 shadow-[var(--shadow-lift)] md:bottom-6 md:left-6 md:right-auto md:max-h-none md:overflow-visible md:p-6"
         >
           <p className="font-[family-name:var(--font-display)] text-lg">Your privacy, your choice</p>
           <p className="mt-2 text-sm leading-relaxed text-[var(--color-stone)]">
