@@ -10,8 +10,8 @@ const CATEGORY_LABEL: Record<string, string> = {
   messages: 'Messages', bookings: 'Bookings', clinical: 'Clinical', finance: 'Finance', reviews: 'Reviews',
   inventory: 'Inventory', team: 'Team', academy: 'Academy', marketing: 'Marketing', system: 'System',
 };
-const PRIORITY_ACCENT: Record<string, string> = { urgent: 'border-l-2 border-l-[#c0392b]', high: 'border-l-2 border-l-amber-400', normal: '', low: '' };
-const PRIORITY_DOT: Record<string, string> = { urgent: 'bg-[#c0392b]', high: 'bg-amber-400', normal: 'bg-[var(--color-stone-soft)]', low: 'bg-[var(--color-line)]' };
+const PRIORITY_ACCENT: Record<string, string> = { urgent: 'border-l-2 border-l-[#c0392b]', high: 'border-l-2 border-l-[var(--color-gold)]', normal: '', low: '' };
+const PRIORITY_DOT: Record<string, string> = { urgent: 'bg-[#c0392b]', high: 'bg-[var(--color-gold)]', normal: 'bg-[var(--color-stone-soft)]', low: 'bg-[var(--color-line)]' };
 
 const ago = (iso: string) => {
   const s = Math.max(0, Math.round((Date.now() - new Date(iso).getTime()) / 1000));
@@ -52,7 +52,7 @@ export function NotificationsList() {
 
   const tab = (key: string | null, label: string, count?: number) => (
     <button key={label} onClick={() => setFilter(key)} className={`flex items-center gap-1.5 rounded-full px-3 py-1 text-sm transition-colors ${filter === key ? 'bg-[var(--color-ink)] text-[var(--color-porcelain)]' : 'border border-[var(--color-line)] text-[var(--color-stone)] hover:bg-[var(--color-bone)]'}`}>
-      {label}{count ? <span className="rounded-full bg-amber-400 px-1.5 text-[0.6rem] font-semibold text-amber-950">{count}</span> : null}
+      {label}{count ? <span className="rounded-full bg-[var(--color-gold)] px-1.5 text-[0.6rem] font-semibold text-[var(--color-ink)]">{count}</span> : null}
     </button>
   );
 

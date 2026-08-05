@@ -58,15 +58,15 @@ export function RewardManager({
     <div className="space-y-6">
       {/* Pending redemptions queue */}
       {pending.length > 0 && (
-        <section className="rounded-[var(--radius-lg)] border border-amber-200 bg-amber-50/60 p-5">
-          <h2 className="mb-3 font-[family-name:var(--font-display)] text-lg">{L('Pending redemptions', 'Очікують обміну')} <span className="ml-1 rounded-full bg-amber-400 px-2 py-0.5 text-xs text-amber-950">{pending.length}</span></h2>
+        <section className="rounded-[var(--radius-lg)] border border-[var(--color-gold)]/30 bg-[var(--color-gold)]/6 p-5">
+          <h2 className="mb-3 font-[family-name:var(--font-display)] text-lg">{L('Pending redemptions', 'Очікують обміну')} <span className="ml-1 rounded-full bg-[var(--color-gold)] px-2 py-0.5 text-xs text-[var(--color-ink)]">{pending.length}</span></h2>
           <div className="space-y-2">
             {pending.map((p) => (
               <div key={p.id} className="flex flex-wrap items-center justify-between gap-3 rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-4 py-2.5 text-sm">
                 <span><span className="font-medium">{p.staffName}</span> — {p.rewardName} <span className="text-[var(--color-stone)]">({p.costPoints} {L('pts', 'балів')})</span></span>
                 <span className="flex gap-2">
-                  <button onClick={() => decide(p.id, 'FULFILLED')} className="rounded-full bg-emerald-600 px-3 py-1 text-xs text-white hover:bg-emerald-700">{L('Fulfil', 'Виконати')}</button>
-                  <button onClick={() => decide(p.id, 'DECLINED')} className="rounded-full border border-[var(--color-line)] px-3 py-1 text-xs text-[var(--color-stone)] hover:border-rose-300 hover:text-rose-600">{L('Decline & refund', 'Відхилити та повернути')}</button>
+                  <button onClick={() => decide(p.id, 'FULFILLED')} className="rounded-full bg-[var(--color-jade)] px-3 py-1 text-xs text-white hover:opacity-90">{L('Fulfil', 'Виконати')}</button>
+                  <button onClick={() => decide(p.id, 'DECLINED')} className="rounded-full border border-[var(--color-line)] px-3 py-1 text-xs text-[var(--color-stone)] hover:border-[var(--color-blush)] hover:text-[var(--color-blush-deep)]">{L('Decline & refund', 'Відхилити та повернути')}</button>
                 </span>
               </div>
             ))}
@@ -103,7 +103,7 @@ export function RewardManager({
             <div className="mt-4 flex items-center gap-3">
               <button onClick={save} disabled={busy} className="rounded-full bg-[var(--color-gold-deep)] px-5 py-2 text-sm font-medium text-white hover:bg-[var(--color-ink)] disabled:opacity-60">{busy ? L('Saving…', 'Збереження…') : L('Save', 'Зберегти')}</button>
               <button onClick={() => setOpen(false)} className="text-sm text-[var(--color-stone)]">{L('Cancel', 'Скасувати')}</button>
-              {msg && <span className="text-sm text-rose-600">{msg}</span>}
+              {msg && <span className="text-sm text-[var(--color-blush-deep)]">{msg}</span>}
             </div>
           </div>
         )}
@@ -121,7 +121,7 @@ export function RewardManager({
               <span className="flex items-center gap-2">
                 <button onClick={() => catalogueAction({ action: 'toggle', id: r.id, active: !r.active })} className="text-xs text-[var(--color-stone)] hover:text-[var(--color-ink)]">{r.active ? L('Hide', 'Сховати') : L('Show', 'Показати')}</button>
                 <button onClick={() => startEdit(r)} className="text-xs text-[var(--color-stone)] hover:text-[var(--color-ink)]">{L('Edit', 'Редагувати')}</button>
-                <button onClick={() => { if (confirm(L('Delete this reward?', 'Видалити цю винагороду?'))) catalogueAction({ action: 'delete', id: r.id }); }} className="text-xs text-rose-500 hover:text-rose-700">{L('Delete', 'Видалити')}</button>
+                <button onClick={() => { if (confirm(L('Delete this reward?', 'Видалити цю винагороду?'))) catalogueAction({ action: 'delete', id: r.id }); }} className="text-xs text-[var(--color-blush-deep)] hover:underline">{L('Delete', 'Видалити')}</button>
               </span>
             </div>
           ))}

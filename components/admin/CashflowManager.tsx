@@ -108,7 +108,7 @@ function LiveBalances({ balances, canManage, uk }: { balances: Balance[]; canMan
           <div key={b.source} className={`rounded-[var(--radius-md)] border p-4 ${b.connected ? 'border-[var(--color-line)] bg-white' : 'border-dashed border-[var(--color-line)]'}`}>
             <div className="flex items-center justify-between">
               <span className="text-sm font-medium">{b.label}</span>
-              <span className={`h-2 w-2 rounded-full ${b.connected ? 'bg-green-500' : 'bg-[var(--color-stone-soft)]'}`} />
+              <span className={`h-2 w-2 rounded-full ${b.connected ? 'bg-[var(--color-jade)]' : 'bg-[var(--color-stone-soft)]'}`} />
             </div>
             {b.connected ? (
               <>

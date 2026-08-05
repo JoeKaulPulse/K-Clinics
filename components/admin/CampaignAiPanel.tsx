@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import type { CampaignPack, CampaignAdvice } from '@/lib/ai-marketing';
 
-const IMPACT: Record<string, string> = { high: 'bg-green-100 text-green-800', medium: 'bg-amber-100 text-amber-800', low: 'bg-[var(--color-bone)] text-[var(--color-stone)]' };
+const IMPACT: Record<string, string> = { high: 'bg-[var(--color-jade)]/15 text-[var(--color-jade)]', medium: 'bg-[var(--color-gold)]/20 text-[var(--color-gold-deep)]', low: 'bg-[var(--color-bone)] text-[var(--color-stone)]' };
 
 function Copy({ label, text, multiline }: { label?: string; text: string; multiline?: boolean }) {
   const [done, setDone] = useState(false);

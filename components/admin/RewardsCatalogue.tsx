@@ -7,9 +7,9 @@ export type CatalogueReward = { id: string; name: string; description: string | 
 export type MyRedemption = { id: string; name: string; costPoints: number; status: string; createdAt: string };
 
 const STATUS_STYLE: Record<string, string> = {
-  PENDING: 'bg-amber-100 text-amber-800',
-  FULFILLED: 'bg-emerald-100 text-emerald-800',
-  DECLINED: 'bg-rose-100 text-rose-700',
+  PENDING: 'bg-[var(--color-gold)]/20 text-[var(--color-gold-deep)]',
+  FULFILLED: 'bg-[var(--color-jade)]/15 text-[var(--color-jade)]',
+  DECLINED: 'bg-[var(--color-blush)]/20 text-[var(--color-blush-deep)]',
 };
 
 export function RewardsCatalogue({
@@ -49,7 +49,7 @@ export function RewardsCatalogue({
           {L('Your balance', 'Ваш баланс')}: <span className="font-medium text-[var(--color-gold-deep)]">{balance} {L('pts', 'балів')}</span>
         </p>
       </div>
-      {msg && <p className="mt-2 text-sm text-rose-600">{msg}</p>}
+      {msg && <p className="mt-2 text-sm text-[var(--color-blush-deep)]">{msg}</p>}
 
       {rewards.length === 0 ? (
         <p className="mt-4 text-sm text-[var(--color-stone)]">{L('No rewards available yet.', 'Поки що немає доступних винагород.')}</p>

@@ -933,7 +933,7 @@ function CheckoutStep({ p, live, sessData, pending, presenting, api, run, onCont
                 <div className="flex flex-wrap items-center gap-2 rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-bone)]/40 p-3 text-sm">
                   <span>Gift voucher <span className="font-medium">{vApplied.code}</span> — {money(vApplied.pence)} applied. {money(duePence)} left to collect.</span>
                   <button type="button" onClick={removeVoucher} disabled={vBusy} className="text-xs text-[var(--color-gold-deep)] underline-offset-2 hover:underline disabled:opacity-50">{vBusy ? 'Removing…' : 'Remove'}</button>
-                  {voucherExceedsAmount && <span className="w-full text-xs text-red-700">The voucher covers more than the current amount — remove it and apply again at the new price.</span>}
+                  {voucherExceedsAmount && <span className="w-full text-xs text-[var(--color-blush-deep)]">The voucher covers more than the current amount — remove it and apply again at the new price.</span>}
                 </div>
               ) : !vOpen ? (
                 <button type="button" onClick={() => setVOpen(true)} className="text-xs text-[var(--color-gold-deep)] underline-offset-2 hover:underline">Redeem a gift voucher</button>
@@ -944,7 +944,7 @@ function CheckoutStep({ p, live, sessData, pending, presenting, api, run, onCont
                   <span className="text-xs text-[var(--color-stone)]">Covers up to the amount above; any leftover stays on the voucher.</span>
                 </div>
               )}
-              {vErr && <p className="mt-1 text-xs text-red-700">{vErr}</p>}
+              {vErr && <p className="mt-1 text-xs text-[var(--color-blush-deep)]">{vErr}</p>}
             </div>
 
             {/* The action for the chosen method */}
@@ -1450,7 +1450,7 @@ function VoiceRecorder({ bookingId, onTranscript }: { bookingId: string; onTrans
     return (
       <button type="button" onClick={stop}
         className="inline-flex min-h-11 items-center gap-2 rounded-full border border-[var(--color-blush)] bg-[color-mix(in_oklab,var(--color-blush)_15%,white)] px-4 py-2 text-sm text-[var(--color-ink)] transition-colors hover:bg-[color-mix(in_oklab,var(--color-blush)_30%,white)]">
-        <span className="h-2 w-2 animate-pulse rounded-full bg-red-500" aria-hidden />
+        <span className="h-2 w-2 animate-pulse rounded-full bg-[var(--color-blush-deep)]" aria-hidden />
         Stop recording
       </button>
     );
@@ -1462,7 +1462,7 @@ function VoiceRecorder({ bookingId, onTranscript }: { bookingId: string; onTrans
         <svg aria-hidden width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><rect x="9" y="2" width="6" height="13" rx="3" /><path d="M5 10a7 7 0 0 0 14 0M12 19v3M9 22h6" /></svg>
         Record voice note
       </button>
-      {state === 'error' && <p className="text-xs text-red-500">{errMsg}</p>}
+      {state === 'error' && <p className="text-xs text-[var(--color-blush-deep)]">{errMsg}</p>}
       {hint && <p className="text-xs text-[var(--color-stone)]">{hint}</p>}
     </div>
   );

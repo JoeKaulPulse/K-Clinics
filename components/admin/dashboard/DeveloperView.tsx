@@ -15,7 +15,7 @@ const VERCEL_URL = 'https://vercel.com/kaul-joe/k-clinics';
 
 const URGENCY_CLS: Record<string, string> = {
   P0: 'bg-[color-mix(in_oklab,#c0392b_16%,transparent)] text-[#b23b3b]',
-  P1: 'bg-amber-100 text-amber-800',
+  P1: 'bg-[var(--color-gold)]/20 text-[var(--color-gold-deep)]',
   P2: 'bg-[var(--color-bone)] text-[var(--color-stone)]',
   P3: 'bg-[var(--color-bone)] text-[var(--color-stone)]',
 };

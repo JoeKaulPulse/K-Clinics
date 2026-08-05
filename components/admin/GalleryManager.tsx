@@ -146,7 +146,7 @@ function Case({ it }: { it: Item }) {
       <div className="p-3">
         <div className="flex items-center justify-between gap-2">
           <span className="text-sm font-medium">{it.category}</span>
-          <span className={`rounded-full px-2 py-0.5 text-[0.6rem] font-medium uppercase tracking-wide ${it.published ? 'bg-emerald-100 text-emerald-800' : 'bg-[var(--color-bone)] text-[var(--color-stone)]'}`}>{it.published ? 'Live' : 'Hidden'}</span>
+          <span className={`rounded-full px-2 py-0.5 text-[0.6rem] font-medium uppercase tracking-wide ${it.published ? 'bg-[var(--color-jade)]/15 text-[var(--color-jade)]' : 'bg-[var(--color-bone)] text-[var(--color-stone)]'}`}>{it.published ? 'Live' : 'Hidden'}</span>
         </div>
         {it.caption && <p className="mt-1 text-xs text-[var(--color-stone)]">{it.caption}</p>}
         <p className="mt-1 text-[0.65rem] uppercase tracking-wide text-[var(--color-stone)]">{it.consent ? '✓ Consent confirmed' : '⚠ No consent on file'}</p>

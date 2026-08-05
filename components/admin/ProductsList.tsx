@@ -7,8 +7,8 @@ import { useRouter } from 'next/navigation';
 export type ProductRow = { id: string; name: string; image: string | null; pricePence: number; status: string; ageRestricted: boolean; stockQty: number; stock: 'in' | 'low' | 'out' | 'untracked' };
 
 const money = (p: number) => `£${(p / 100).toLocaleString('en-GB', { minimumFractionDigits: p % 100 ? 2 : 0 })}`;
-const STATUS: Record<string, string> = { DRAFT: 'bg-[var(--color-bone)] text-[var(--color-stone)]', ACTIVE: 'bg-green-100 text-green-800', ARCHIVED: 'bg-[var(--color-bone)] text-[var(--color-stone)]' };
-const STOCK: Record<string, string> = { in: 'text-[var(--color-jade)]', low: 'text-amber-700', out: 'text-[var(--color-blush-deep)]', untracked: 'text-[var(--color-stone)]' };
+const STATUS: Record<string, string> = { DRAFT: 'bg-[var(--color-bone)] text-[var(--color-stone)]', ACTIVE: 'bg-[var(--color-jade)]/15 text-[var(--color-jade)]', ARCHIVED: 'bg-[var(--color-bone)] text-[var(--color-stone)]' };
+const STOCK: Record<string, string> = { in: 'text-[var(--color-jade)]', low: 'text-[var(--color-gold-deep)]', out: 'text-[var(--color-blush-deep)]', untracked: 'text-[var(--color-stone)]' };
 
 export function ProductsList({ rows }: { rows: ProductRow[] }) {
   const router = useRouter();

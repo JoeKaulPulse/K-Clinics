@@ -42,7 +42,7 @@ function Row({ l, courses }: { l: LiveClass; courses: CourseRef[] }) {
         <div className="min-w-0">
           <span className="font-medium">{l.title}</span>
           <span className="text-xs text-[var(--color-stone)]"> · {l.courseTitle} · {fmt(l.startAt)}</span>
-          {!l.joinUrl && <span className="ml-2 rounded-full bg-amber-100 px-2 py-0.5 text-[0.6rem] font-medium uppercase tracking-wide text-amber-800">No join link</span>}
+          {!l.joinUrl && <span className="ml-2 rounded-full bg-[var(--color-gold)]/20 px-2 py-0.5 text-[0.6rem] font-medium uppercase tracking-wide text-[var(--color-gold-deep)]">No join link</span>}
         </div>
         <div className="flex items-center gap-3 text-xs">
           {l.joinUrl && <a href={l.joinUrl} target="_blank" rel="noopener" className="text-[var(--color-gold-deep)] hover:underline">Meet ↗</a>}

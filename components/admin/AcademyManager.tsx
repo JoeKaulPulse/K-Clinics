@@ -18,7 +18,7 @@ const STATUSES = ['APPLIED', 'OFFERED', 'PAID', 'ENROLLED', 'COMPLETED', 'CANCEL
 const PAY_KINDS = ['DEPOSIT', 'BALANCE', 'FULL', 'INSTALMENT'];
 const PAY_METHODS = ['CARD', 'BNPL', 'BANK_TRANSFER', 'CASH', 'OTHER'];
 const METHOD_LABEL: Record<string, string> = { CARD: 'Card', BNPL: 'Klarna/Clearpay', BANK_TRANSFER: 'Bank transfer', CASH: 'Cash', OTHER: 'Other' };
-const STATE_BADGE: Record<string, string> = { PAID: 'bg-emerald-100 text-emerald-800', SCHEDULED: 'bg-[var(--color-line)] text-[var(--color-stone)]', PENDING: 'bg-amber-100 text-amber-800', FAILED: 'bg-red-100 text-red-800', REFUNDED: 'bg-[var(--color-line)] text-[var(--color-stone)]', CANCELLED: 'bg-[var(--color-line)] text-[var(--color-stone)]' };
+const STATE_BADGE: Record<string, string> = { PAID: 'bg-[var(--color-jade)]/15 text-[var(--color-jade)]', SCHEDULED: 'bg-[var(--color-line)] text-[var(--color-stone)]', PENDING: 'bg-[var(--color-gold)]/20 text-[var(--color-gold-deep)]', FAILED: 'bg-[var(--color-blush)]/20 text-[var(--color-blush-deep)]', REFUNDED: 'bg-[var(--color-line)] text-[var(--color-stone)]', CANCELLED: 'bg-[var(--color-line)] text-[var(--color-stone)]' };
 
 async function post(payload: object) {
   return fetch('/api/admin/academy', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
@@ -67,7 +67,7 @@ export function Applications({ enrolments, courses }: { enrolments: Enrolment[];
                       <td className="py-2 pr-2">
                         <span className="font-medium">{e.applicantName}</span>
                         {e.financeInterest && <span className="ml-1 rounded-full bg-[var(--color-gold)]/15 px-1.5 py-0.5 text-[0.6rem] text-[var(--color-gold-deep)]">Finance</span>}
-                        {!e.studentId && <span className="ml-1 rounded-full bg-amber-100 px-1.5 py-0.5 text-[0.6rem] text-amber-800" title="No trainee account linked yet — make an offer to create one">No account</span>}
+                        {!e.studentId && <span className="ml-1 rounded-full bg-[var(--color-gold)]/20 px-1.5 py-0.5 text-[0.6rem] text-[var(--color-gold-deep)]" title="No trainee account linked yet — make an offer to create one">No account</span>}
                         <span className="block text-xs text-[var(--color-stone)]">{e.applicantEmail}{e.applicantPhone ? ` · ${e.applicantPhone}` : ''}</span>
                         <span className="block text-xs text-[var(--color-stone)]">Applied {fmtDate(e.createdAt)}{e.preCourseAckAt ? ' · pre-course read ✓' : ''}</span>
                         {e.experience && <span className="mt-1 block max-w-xs text-xs text-[var(--color-stone)]">{e.experience}</span>}

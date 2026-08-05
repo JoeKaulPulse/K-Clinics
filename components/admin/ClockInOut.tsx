@@ -45,7 +45,7 @@ export function ClockInOut({ onShift, onBreak, shiftStartIso, workedTodayMin, br
     });
   }
 
-  const dot = onBreak ? 'bg-amber-400' : onShift ? 'bg-[var(--color-jade)]' : 'bg-[var(--color-stone-soft)]';
+  const dot = onBreak ? 'bg-[var(--color-gold)]' : onShift ? 'bg-[var(--color-jade)]' : 'bg-[var(--color-stone-soft)]';
   const label = onBreak ? 'On break' : onShift ? 'On shift' : 'Off the clock';
 
   // Compact pill: a single-line control for the dashboard header cluster.
@@ -67,7 +67,7 @@ export function ClockInOut({ onShift, onBreak, shiftStartIso, workedTodayMin, br
                 className="rounded-full border border-[var(--color-line)] bg-[var(--color-porcelain)] px-2.5 py-1 text-xs hover:bg-[var(--color-bone)] disabled:opacity-50">Break</button>
             ) : (
               <button type="button" onClick={() => run(() => breakAction('end'))} disabled={pending}
-                className="rounded-full bg-amber-400/90 px-2.5 py-1 text-xs font-medium text-[var(--color-ink)] hover:bg-amber-400 disabled:opacity-50">End break</button>
+                className="rounded-full bg-[var(--color-gold)]/90 px-2.5 py-1 text-xs font-medium text-[var(--color-ink)] hover:bg-[var(--color-gold)] disabled:opacity-50">End break</button>
             )}
             <button type="button" onClick={() => run(() => clockInOutAction('out'))} disabled={pending}
               className="rounded-full border border-[var(--color-line)] bg-[var(--color-porcelain)] px-2.5 py-1 text-xs font-medium hover:bg-[var(--color-bone)] disabled:opacity-50">
@@ -109,7 +109,7 @@ export function ClockInOut({ onShift, onBreak, shiftStartIso, workedTodayMin, br
               </button>
             ) : (
               <button type="button" onClick={() => run(() => breakAction('end'))} disabled={pending}
-                className="rounded-full bg-amber-400/90 px-4 py-1.5 text-sm font-medium text-[var(--color-ink)] hover:bg-amber-400 disabled:opacity-50">
+                className="rounded-full bg-[var(--color-gold)]/90 px-4 py-1.5 text-sm font-medium text-[var(--color-ink)] hover:bg-[var(--color-gold)] disabled:opacity-50">
                 End break
               </button>
             )}

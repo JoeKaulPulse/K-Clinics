@@ -10,7 +10,7 @@ export type OrderRow = {
 };
 
 const money = (p: number) => `£${(p / 100).toLocaleString('en-GB', { minimumFractionDigits: p % 100 ? 2 : 0 })}`;
-const STATUS: Record<string, string> = { PENDING: 'bg-amber-100 text-amber-800', PAID: 'bg-blue-100 text-blue-800', FULFILLED: 'bg-green-100 text-green-800', REFUNDED: 'bg-[var(--color-bone)] text-[var(--color-stone)]', CANCELLED: 'bg-[var(--color-blush)]/30 text-[var(--color-ink)]' };
+const STATUS: Record<string, string> = { PENDING: 'bg-[var(--color-gold)]/20 text-[var(--color-gold-deep)]', PAID: 'bg-blue-100 text-blue-800', FULFILLED: 'bg-[var(--color-jade)]/15 text-[var(--color-jade)]', REFUNDED: 'bg-[var(--color-bone)] text-[var(--color-stone)]', CANCELLED: 'bg-[var(--color-blush)]/30 text-[var(--color-ink)]' };
 
 export function OrdersManager({ rows, canManage }: { rows: OrderRow[]; canManage: boolean }) {
   const [open, setOpen] = useState<string | null>(null);
