@@ -12,7 +12,7 @@ const schema = z.object({
   budgetLabel: z.string().max(40).default('Flexible'),
   storeImages: z.boolean().default(true),
   consent: z.literal(true, 'Please give your consent to continue.'),
-  dob: z.string().optional(),
+  dob: z.string().max(32).optional(),
   ageDeclare: z.boolean().optional(),
 });
 
@@ -47,6 +47,13 @@ export async function POST(req: Request) {
   const { db } = await import('@/lib/db');
   let dob = client.dob;
   if (!dob || !isAdultOn(dob)) {
+    // A DOB already on the record is never overwritten from the request body:
+    // an account known to be under 18 must not be able to self-declare its way
+    // past the gate (app/api/booking/start also refuses on the stored DOB).
+    // Only an account with no DOB at all can set one here.
+    if (dob) {
+      return NextResponse.json({ ok: false, reason: 'age', message: 'The AI consultation is for clients aged 18 or over. Please check the date of birth on your profile.' }, { status: 403 });
+    }
     if (parsed.data.dob) {
       const d = new Date(parsed.data.dob);
       if (isNaN(+d)) return NextResponse.json({ ok: false, reason: 'age', message: 'Enter a valid date of birth.', needAge: true }, { status: 400 });
