@@ -18,7 +18,7 @@ const STATUSES = ['APPLIED', 'OFFERED', 'PAID', 'ENROLLED', 'COMPLETED', 'CANCEL
 const PAY_KINDS = ['DEPOSIT', 'BALANCE', 'FULL', 'INSTALMENT'];
 const PAY_METHODS = ['CARD', 'BNPL', 'BANK_TRANSFER', 'CASH', 'OTHER'];
 const METHOD_LABEL: Record<string, string> = { CARD: 'Card', BNPL: 'Klarna/Clearpay', BANK_TRANSFER: 'Bank transfer', CASH: 'Cash', OTHER: 'Other' };
-const STATE_BADGE: Record<string, string> = { PAID: 'bg-[var(--color-jade)]/15 text-[var(--color-jade)]', SCHEDULED: 'bg-[var(--color-line)] text-[var(--color-stone)]', PENDING: 'bg-[var(--color-gold)]/20 text-[var(--color-gold-deep)]', FAILED: 'bg-[var(--color-blush)]/20 text-[var(--color-blush-deep)]', REFUNDED: 'bg-[var(--color-line)] text-[var(--color-stone)]', CANCELLED: 'bg-[var(--color-line)] text-[var(--color-stone)]' };
+const STATE_BADGE: Record<string, string> = { PAID: 'bg-[var(--color-jade)]/15 text-[var(--color-ink)]', SCHEDULED: 'bg-[var(--color-line)] text-[var(--color-stone)]', PENDING: 'bg-[var(--color-gold)]/20 text-[var(--color-ink)]', FAILED: 'bg-[var(--color-blush)]/20 text-[var(--color-blush-deep)]', REFUNDED: 'bg-[var(--color-line)] text-[var(--color-stone)]', CANCELLED: 'bg-[var(--color-line)] text-[var(--color-stone)]' };
 
 async function post(payload: object) {
   return fetch('/api/admin/academy', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });

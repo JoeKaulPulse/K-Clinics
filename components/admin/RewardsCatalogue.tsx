@@ -7,8 +7,8 @@ export type CatalogueReward = { id: string; name: string; description: string | 
 export type MyRedemption = { id: string; name: string; costPoints: number; status: string; createdAt: string };
 
 const STATUS_STYLE: Record<string, string> = {
-  PENDING: 'bg-[var(--color-gold)]/20 text-[var(--color-gold-deep)]',
-  FULFILLED: 'bg-[var(--color-jade)]/15 text-[var(--color-jade)]',
+  PENDING: 'bg-[var(--color-gold)]/20 text-[var(--color-ink)]',
+  FULFILLED: 'bg-[var(--color-jade)]/15 text-[var(--color-ink)]',
   DECLINED: 'bg-[var(--color-blush)]/20 text-[var(--color-blush-deep)]',
 };
 

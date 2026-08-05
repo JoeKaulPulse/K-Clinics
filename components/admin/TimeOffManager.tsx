@@ -11,8 +11,8 @@ type TeamItem = { id: string; staffName: string; kind: string; startAt: string; 
 const KIND_VALUES = ['HOLIDAY', 'SICK', 'TRAINING', 'PERSONAL'];
 
 const STATUS_STYLE: Record<string, string> = {
-  PENDING: 'bg-[var(--color-gold)]/20 text-[var(--color-gold-deep)]',
-  APPROVED: 'bg-[var(--color-jade)]/15 text-[var(--color-jade)]',
+  PENDING: 'bg-[var(--color-gold)]/20 text-[var(--color-ink)]',
+  APPROVED: 'bg-[var(--color-jade)]/15 text-[var(--color-ink)]',
   DECLINED: 'bg-[var(--color-blush)]/20 text-[var(--color-ink)]',
   CANCELLED: 'bg-[var(--color-bone)] text-[var(--color-stone)]',
 };

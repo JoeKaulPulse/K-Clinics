@@ -11,8 +11,8 @@ const LIGHT: Record<string, { dot: string; label: string; text: string }> = {
   grey: { dot: '#b7a294', label: 'Not checked', text: 'text-[var(--color-stone)]' },
 };
 const SRC: Record<string, { text: string; cls: string }> = {
-  app: { text: 'Set in app', cls: 'bg-[var(--color-jade)]/15 text-[var(--color-jade)]' },
-  env: { text: 'From hosting', cls: 'bg-[var(--color-gold)]/20 text-[var(--color-gold-deep)]' },
+  app: { text: 'Set in app', cls: 'bg-[var(--color-jade)]/15 text-[var(--color-ink)]' },
+  env: { text: 'From hosting', cls: 'bg-[var(--color-gold)]/20 text-[var(--color-ink)]' },
   unset: { text: 'Not set', cls: 'bg-[var(--color-bone)] text-[var(--color-stone)]' },
 };
 

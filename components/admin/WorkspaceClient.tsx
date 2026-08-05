@@ -271,7 +271,7 @@ export function WorkspaceClient() {
                         {u.isAdmin && <span className="ml-1 text-xs text-[var(--color-gold-deep)] font-medium">(admin)</span>}
                       </td>
                       <td className="px-4 py-3">
-                        <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${u.suspended ? 'bg-[var(--color-blush)]/20 text-[var(--color-blush-deep)]' : 'bg-[var(--color-jade)]/15 text-[var(--color-jade)]'}`}>
+                        <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${u.suspended ? 'bg-[var(--color-blush)]/20 text-[var(--color-blush-deep)]' : 'bg-[var(--color-jade)]/15 text-[var(--color-ink)]'}`}>
                           {u.suspended ? 'Suspended' : 'Active'}
                         </span>
                       </td>

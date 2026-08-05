@@ -18,7 +18,7 @@ const fmtDate = (iso: string) => new Date(iso).toLocaleDateString('en-GB', { day
 const BADGE: Record<RenewalStatus, string> = {
   EXPIRED: 'bg-[var(--color-blush)]/20 text-[var(--color-blush-deep)]',
   DUE: 'bg-[var(--color-blush)]/20 text-[var(--color-ink)]',
-  SOON: 'bg-[var(--color-gold)]/20 text-[var(--color-gold-deep)]',
+  SOON: 'bg-[var(--color-gold)]/20 text-[var(--color-ink)]',
   OK: 'bg-[var(--color-bone)] text-[var(--color-stone)]',
 };
 const statusText = (r: Row) =>

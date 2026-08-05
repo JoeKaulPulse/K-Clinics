@@ -102,7 +102,7 @@ export async function ClinicianView({ session }: { session: Session }) {
             )}
             <div className="mt-3 flex flex-wrap gap-2 text-xs">
               {focus.arrivedAt && <span className="rounded-full bg-[color-mix(in_oklab,var(--color-jade)_14%,transparent)] px-2.5 py-1 font-medium text-[var(--color-jade)]">✓ Arrived</span>}
-              <span className={`rounded-full px-2.5 py-1 font-medium ${focusConsent ? 'bg-[color-mix(in_oklab,var(--color-jade)_14%,transparent)] text-[var(--color-jade)]' : 'bg-[var(--color-gold)]/20 text-[var(--color-gold-deep)]'}`}>
+              <span className={`rounded-full px-2.5 py-1 font-medium ${focusConsent ? 'bg-[color-mix(in_oklab,var(--color-jade)_14%,transparent)] text-[var(--color-jade)]' : 'bg-[var(--color-gold)]/20 text-[var(--color-ink)]'}`}>
                 {focusConsent ? 'Consent signed' : 'Consent outstanding'}
               </span>
               {canClinical && !focusMedical && <span className="rounded-full bg-[var(--color-bone)] px-2.5 py-1 text-[var(--color-stone)]">No medical flag</span>}

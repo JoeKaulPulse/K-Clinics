@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation';
 type Provider = { id: string; name: string; category: string; blurb: string; state: 'connected' | 'ready' | 'setup'; setupSteps: string[]; docsUrl: string; redirectUri: string };
 
 const BADGE: Record<string, string> = {
-  connected: 'bg-[var(--color-jade)]/15 text-[var(--color-jade)]',
+  connected: 'bg-[var(--color-jade)]/15 text-[var(--color-ink)]',
   ready: 'bg-blue-100 text-blue-800',
   setup: 'bg-[var(--color-bone)] text-[var(--color-stone)]',
 };

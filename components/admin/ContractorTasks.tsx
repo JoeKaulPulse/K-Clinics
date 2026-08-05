@@ -19,7 +19,7 @@ const NEXT: Record<string, 'OPEN' | 'IN_PROGRESS' | 'DONE'> = { OPEN: 'IN_PROGRE
 const STATUS_LABEL: Record<string, string> = { OPEN: 'Open', IN_PROGRESS: 'In progress', DONE: 'Done' };
 const STATUS_CLS: Record<string, string> = {
   OPEN: 'bg-[var(--color-bone)] text-[var(--color-stone)]',
-  IN_PROGRESS: 'bg-[var(--color-gold)]/20 text-[var(--color-gold-deep)]',
+  IN_PROGRESS: 'bg-[var(--color-gold)]/20 text-[var(--color-ink)]',
   DONE: 'bg-[color-mix(in_oklab,var(--color-jade)_16%,transparent)] text-[var(--color-jade)]',
 };
 

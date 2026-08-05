@@ -14,8 +14,8 @@ const money = (p: number) => `£${(p / 100).toLocaleString('en-GB', { maximumFra
 const STATUS_STYLE: Record<string, string> = {
   DRAFT: 'bg-[var(--color-bone)] text-[var(--color-stone)]',
   SCHEDULED: 'bg-blue-100 text-blue-800',
-  ACTIVE: 'bg-[var(--color-jade)]/15 text-[var(--color-jade)]',
-  PAUSED: 'bg-[var(--color-gold)]/20 text-[var(--color-gold-deep)]',
+  ACTIVE: 'bg-[var(--color-jade)]/15 text-[var(--color-ink)]',
+  PAUSED: 'bg-[var(--color-gold)]/20 text-[var(--color-ink)]',
   ENDED: 'bg-[var(--color-bone)] text-[var(--color-stone)]',
 };
 

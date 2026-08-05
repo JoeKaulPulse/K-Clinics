@@ -4,8 +4,8 @@ import { useMemo, useState } from 'react';
 import type { GoLiveGroup, GoLiveItem, GoLiveStatus } from '@/lib/go-live';
 
 const BADGE: Record<GoLiveStatus, { label: string; cls: string }> = {
-  ready: { label: 'Ready ✓', cls: 'bg-[var(--color-jade)]/15 text-[var(--color-jade)]' },
-  action: { label: 'Action needed', cls: 'bg-[var(--color-gold)]/20 text-[var(--color-gold-deep)]' },
+  ready: { label: 'Ready ✓', cls: 'bg-[var(--color-jade)]/15 text-[var(--color-ink)]' },
+  action: { label: 'Action needed', cls: 'bg-[var(--color-gold)]/20 text-[var(--color-ink)]' },
   optional: { label: 'Optional', cls: 'bg-[var(--color-bone)] text-[var(--color-stone)]' },
 };
 

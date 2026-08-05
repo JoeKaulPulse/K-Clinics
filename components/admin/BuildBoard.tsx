@@ -74,7 +74,7 @@ const COLUMNS: { key: string; label: string }[] = [
 const ALL_STATUSES = [...COLUMNS.map((c) => c.key), 'CANCELLED'];
 const URGENCY: Record<string, { label: string; cls: string }> = {
   P0: { label: 'P0 · Critical', cls: 'bg-[var(--color-blush)]/20 text-[var(--color-blush-deep)]' },
-  P1: { label: 'P1 · High', cls: 'bg-[var(--color-gold)]/20 text-[var(--color-gold-deep)]' },
+  P1: { label: 'P1 · High', cls: 'bg-[var(--color-gold)]/20 text-[var(--color-ink)]' },
   P2: { label: 'P2 · Normal', cls: 'bg-[var(--color-bone)] text-[var(--color-stone)]' },
   P3: { label: 'P3 · Low', cls: 'bg-[var(--color-bone)] text-[var(--color-stone)]' },
 };
@@ -230,7 +230,7 @@ export function BuildBoard({ canManage, isAdmin, github, staff, me }: { canManag
         <span><strong className="text-[var(--color-ink)]">{awaitingSignoff}</strong> awaiting sign-off</span>
         <span><strong className="text-[var(--color-ink)]">{items.filter((i) => i.assignee === 'claude' && !['SHIPPED', 'CLOSED', 'CANCELLED'].includes(i.status)).length}</strong> with Claude</span>
         {gh.connected ? <span className="text-[var(--color-jade)]">GitHub ✓{gh.repo ? ` · ${gh.repo}` : ''}</span> : <span className="text-[var(--color-stone)]">GitHub not connected</span>}
-        {gh.connected && canManage && <button onClick={toggleMirror} title="When off, the board never auto-pushes to GitHub — it runs entirely on its own and won’t hit API limits. Turn on to also mirror items to issues." className={`rounded-full px-2 py-0.5 text-xs ${mirror ? 'bg-[var(--color-jade)]/15 text-[var(--color-jade)]' : 'bg-[var(--color-bone)] text-[var(--color-stone)]'}`}>mirror {mirror ? 'on' : 'off'}</button>}
+        {gh.connected && canManage && <button onClick={toggleMirror} title="When off, the board never auto-pushes to GitHub — it runs entirely on its own and won’t hit API limits. Turn on to also mirror items to issues." className={`rounded-full px-2 py-0.5 text-xs ${mirror ? 'bg-[var(--color-jade)]/15 text-[var(--color-ink)]' : 'bg-[var(--color-bone)] text-[var(--color-stone)]'}`}>mirror {mirror ? 'on' : 'off'}</button>}
         {backoffUntil > Date.now() && <span className="rounded-full bg-[var(--color-gold)]/20 px-2 py-0.5 text-xs text-[var(--color-gold-deep)]" title="GitHub rate-limited; auto-pushes paused. The board is unaffected.">GitHub cooling down · {new Date(backoffUntil).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}</span>}
         <span className="ml-auto flex flex-wrap items-center gap-2">
           {canManage && <button onClick={continueWork} disabled={continuing} className="rounded-full bg-[var(--color-gold-deep)] px-4 py-1.5 text-xs font-medium text-white hover:bg-[var(--color-ink)] disabled:opacity-50">{continuing ? 'Prompting…' : '▶ Continue working'}</button>}
@@ -251,7 +251,7 @@ export function BuildBoard({ canManage, isAdmin, github, staff, me }: { canManag
         </div>
         {canManage && gh.connected && items.some((i) => !i.githubUrl) && <button onClick={syncAll} disabled={syncing} className="rounded-full border border-[var(--color-line)] px-3 py-1 text-xs hover:bg-[var(--color-bone)] disabled:opacity-50">{syncing ? 'Syncing…' : `⤴ Sync ${items.filter((i) => !i.githubUrl).length} to GitHub`}</button>}
         {sync && (
-          <span className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs ${sync.inSync ? 'bg-[var(--color-bone)] text-[var(--color-stone)]' : 'bg-[var(--color-gold)]/20 text-[var(--color-gold-deep)]'}`} title={`Live build: ${sync.commit}`}>
+          <span className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs ${sync.inSync ? 'bg-[var(--color-bone)] text-[var(--color-stone)]' : 'bg-[var(--color-gold)]/20 text-[var(--color-ink)]'}`} title={`Live build: ${sync.commit}`}>
             <span className={`h-2 w-2 rounded-full ${sync.inSync ? 'bg-[var(--color-jade)]' : 'bg-[var(--color-gold)]'}`} />
             {sync.inSync ? 'In sync' : 'Behind'} · {sync.dbCount}/{sync.backlogCount} · {sync.commit}
           </span>

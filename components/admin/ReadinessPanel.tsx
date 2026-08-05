@@ -2,8 +2,8 @@ import type { ReadyItem } from '@/lib/readiness';
 
 const ICON: Record<string, string> = { ok: '✓', needed: '!', na: '–' };
 const CLS: Record<string, string> = {
-  ok: 'bg-[var(--color-jade)]/15 text-[var(--color-jade)]',
-  needed: 'bg-[var(--color-gold)]/20 text-[var(--color-gold-deep)]',
+  ok: 'bg-[var(--color-jade)]/15 text-[var(--color-ink)]',
+  needed: 'bg-[var(--color-gold)]/20 text-[var(--color-ink)]',
   na: 'bg-[var(--color-bone)] text-[var(--color-stone)]',
 };
 
@@ -14,7 +14,7 @@ export function ReadinessPanel({ items, ready, neededCount, started }: { items: 
     <div className={`rounded-[var(--radius-lg)] border p-4 ${started ? 'border-[var(--color-line)] bg-[var(--color-porcelain)]' : ready ? 'border-[var(--color-jade)]/40 bg-[var(--color-jade)]/8' : 'border-[var(--color-gold)]/40 bg-[var(--color-gold)]/8'}`}>
       <div className="flex items-center justify-between gap-3">
         <h2 className="font-[family-name:var(--font-display)] text-lg">Pre-treatment checklist</h2>
-        <span className={`rounded-full px-3 py-0.5 text-xs font-medium ${started ? 'bg-[var(--color-bone)] text-[var(--color-stone)]' : ready ? 'bg-[var(--color-jade)]/20 text-[var(--color-jade)]' : 'bg-[var(--color-gold)]/25 text-[var(--color-gold-deep)]'}`}>
+        <span className={`rounded-full px-3 py-0.5 text-xs font-medium ${started ? 'bg-[var(--color-bone)] text-[var(--color-stone)]' : ready ? 'bg-[var(--color-jade)]/20 text-[var(--color-ink)]' : 'bg-[var(--color-gold)]/25 text-[var(--color-ink)]'}`}>
           {started ? 'In progress' : ready ? 'Ready to treat' : `${neededCount} to do`}
         </span>
       </div>
