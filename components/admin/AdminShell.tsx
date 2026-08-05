@@ -181,7 +181,7 @@ export function AdminShell({
     >
       <span className="truncate">{t(n.key)}</span>
       {badgeCount(n.badge) > 0 && (
-        <span className="rounded-full bg-[var(--color-gold)] px-1.5 py-0.5 text-[0.65rem] font-semibold text-[var(--color-ink)]">{badgeCount(n.badge)}</span>
+        <span className="rounded-full bg-[var(--color-gold-deep)] px-1.5 py-0.5 text-[0.65rem] font-semibold text-[var(--color-porcelain)]">{badgeCount(n.badge)}</span>
       )}
     </Link>
   );
@@ -240,7 +240,7 @@ export function AdminShell({
               <GroupIcon name={g.icon} />
               <span className="flex-1 text-left">{g.heading ? t(g.heading) : ''}</span>
               {!open && pending > 0 && (
-                <span className="rounded-full bg-[var(--color-gold)] px-1.5 py-0.5 text-[0.6rem] font-semibold text-[var(--color-ink)]">{pending}</span>
+                <span className="rounded-full bg-[var(--color-gold-deep)] px-1.5 py-0.5 text-[0.6rem] font-semibold text-[var(--color-porcelain)]">{pending}</span>
               )}
             </button>
             {/* Animated accordion: grid-rows 0fr→1fr is transform-safe (no JS

@@ -47,7 +47,7 @@ export function ChatLauncher() {
           <path d="M4 4h12a1.5 1.5 0 011.5 1.5v7A1.5 1.5 0 0116 14H8l-4 3v-3a1.5 1.5 0 01-1.5-1.5v-7A1.5 1.5 0 014 4z" />
         </svg>
         {totalUnread > 0 && (
-          <span className="absolute -right-0.5 -top-0.5 grid h-4 min-w-4 place-items-center rounded-full bg-[var(--color-gold)] px-1 text-[0.6rem] font-semibold text-[var(--color-ink)]">{totalUnread > 99 ? '99+' : totalUnread}</span>
+          <span className="absolute -right-0.5 -top-0.5 grid h-4 min-w-4 place-items-center rounded-full bg-[var(--color-gold-deep)] px-1 text-[0.6rem] font-semibold text-[var(--color-porcelain)]">{totalUnread > 99 ? '99+' : totalUnread}</span>
         )}
       </button>
 

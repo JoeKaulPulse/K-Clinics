@@ -52,7 +52,7 @@ export function NotificationsList() {
 
   const tab = (key: string | null, label: string, count?: number) => (
     <button key={label} onClick={() => setFilter(key)} className={`flex items-center gap-1.5 rounded-full px-3 py-1 text-sm transition-colors ${filter === key ? 'bg-[var(--color-ink)] text-[var(--color-porcelain)]' : 'border border-[var(--color-line)] text-[var(--color-stone)] hover:bg-[var(--color-bone)]'}`}>
-      {label}{count ? <span className="rounded-full bg-[var(--color-gold)] px-1.5 text-[0.6rem] font-semibold text-[var(--color-ink)]">{count}</span> : null}
+      {label}{count ? <span className="rounded-full bg-[var(--color-gold-deep)] px-1.5 text-[0.6rem] font-semibold text-[var(--color-porcelain)]">{count}</span> : null}
     </button>
   );
 

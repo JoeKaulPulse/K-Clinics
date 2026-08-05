@@ -59,7 +59,7 @@ export function RewardManager({
       {/* Pending redemptions queue */}
       {pending.length > 0 && (
         <section className="rounded-[var(--radius-lg)] border border-[var(--color-gold)]/30 bg-[var(--color-gold)]/6 p-5">
-          <h2 className="mb-3 font-[family-name:var(--font-display)] text-lg">{L('Pending redemptions', 'Очікують обміну')} <span className="ml-1 rounded-full bg-[var(--color-gold)] px-2 py-0.5 text-xs text-[var(--color-ink)]">{pending.length}</span></h2>
+          <h2 className="mb-3 font-[family-name:var(--font-display)] text-lg">{L('Pending redemptions', 'Очікують обміну')} <span className="ml-1 rounded-full bg-[var(--color-gold-deep)] px-2 py-0.5 text-xs text-[var(--color-porcelain)]">{pending.length}</span></h2>
           <div className="space-y-2">
             {pending.map((p) => (
               <div key={p.id} className="flex flex-wrap items-center justify-between gap-3 rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-4 py-2.5 text-sm">
