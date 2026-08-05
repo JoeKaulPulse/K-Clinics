@@ -36,6 +36,9 @@ export default async function DashboardPage() {
   const { clientLoyaltySummary } = await import('@/lib/client-loyalty');
   const { formatPrice } = await import('@/lib/treatments');
   const loyalty = await clientLoyaltySummary(client.id);
+  // BLD-1098: package balances for the signed-in client.
+  const { clientPackages } = await import('@/lib/package-sessions');
+  const packages = await clientPackages(client.id).catch(() => []);
 
   // Onboarding state (welcome flow for new — and existing — clients).
   const { db: _db, withDbRetry } = await import('@/lib/db');
@@ -90,6 +93,29 @@ export default async function DashboardPage() {
               </div>
             </div>
             <Link href="/book" className="rounded-full bg-[var(--color-gold-deep)] px-5 py-2.5 text-sm font-medium text-white shadow-[var(--shadow-gold)] hover:bg-[var(--color-ink)]">{t('dash.book')}</Link>
+          </div>
+        </Reveal>
+      )}
+
+      {/* BLD-1098: package balances — "Session X of N" at a glance. */}
+      {packages.length > 0 && (
+        <Reveal>
+          <div className="mb-10 space-y-3">
+            <h2 className="eyebrow">{t('dash.pkgTitle')}</h2>
+            {packages.map((p) => (
+              <div key={p.purchaseBookingId} className="flex flex-wrap items-center justify-between gap-4 rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-6">
+                <div>
+                  <p className="font-medium">{p.label}</p>
+                  <p className="mt-0.5 text-sm text-[var(--color-stone)]">
+                    {t('dash.pkgSession', { used: Math.min(p.sessionsUsed + p.sessionsBooked, p.sessionsTotal), total: p.sessionsTotal })}
+                    {' · '}{t('dash.pkgRemaining', { n: p.sessionsRemaining })}
+                  </p>
+                </div>
+                <span className={`rounded-full px-3 py-1 text-xs font-medium ${p.paid ? 'bg-[var(--color-jade)]/15 text-[var(--color-jade)]' : 'bg-[var(--color-blush)]/20 text-[var(--color-blush-deep)]'}`}>
+                  {p.paid ? t('dash.pkgPaid') : t('dash.pkgUnpaid')}
+                </span>
+              </div>
+            ))}
           </div>
         </Reveal>
       )}

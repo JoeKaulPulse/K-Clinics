@@ -75,6 +75,9 @@ export default async function ClientDetail({ params }: { params: Promise<{ id: s
   // a Stripe payment method attached, not just a Stripe customer id (a customer can
   // exist before the card-save step completes, so that alone isn't proof of a card).
   const hasCardOnFile = c.bookings.some((b) => !!b.stripePaymentMethodId);
+  // BLD-1014/BLD-1098: package balances derived from course purchases + linked sessions.
+  const { clientPackages } = await import('@/lib/package-sessions');
+  const packages = await clientPackages(c.id);
 
   // Clinical (health) data — gated on the revocable `clients.clinical.view`
   // permission (not role), so a permission revoke actually withholds it here too,
@@ -202,6 +205,28 @@ export default async function ClientDetail({ params }: { params: Promise<{ id: s
 
       <div className="mt-8 grid gap-8 lg:grid-cols-[1.5fr_1fr]">
         <div className="space-y-10">
+        {/* BLD-1014/BLD-1098: package (course) balances — staff see at a glance
+            whether the client has already paid for the treatment being booked. */}
+        <section>
+          <h2 className="mb-3 font-[family-name:var(--font-display)] text-xl">Packages</h2>
+          {packages.length === 0 ? (
+            <p className="rounded-[var(--radius-md)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-3.5 text-sm text-[var(--color-stone)]">No active package.</p>
+          ) : (
+            <div className="space-y-2">
+              {packages.map((p) => (
+                <Link key={p.purchaseBookingId} href={`/admin/bookings/${p.purchaseBookingId}`} className="block rounded-[var(--radius-md)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-3.5 transition-colors hover:border-[var(--color-gold)]">
+                  <div className="flex flex-wrap items-baseline justify-between gap-2">
+                    <span className="font-medium">{p.label}</span>
+                    <span className={`rounded-full px-2.5 py-0.5 text-xs ${p.paid ? 'bg-[var(--color-jade)]/15 text-[var(--color-jade)]' : 'bg-[var(--color-blush)]/20 text-[var(--color-blush-deep)]'}`}>{p.paid ? 'Paid' : 'Not yet paid'}</span>
+                  </div>
+                  <p className="mt-1 text-sm text-[var(--color-stone)]">
+                    Course of {p.sessionsTotal} · {p.sessionsUsed} used · {p.sessionsBooked} booked · <span className="font-medium text-[var(--color-ink)]">{p.sessionsRemaining} remaining</span>
+                  </p>
+                </Link>
+              ))}
+            </div>
+          )}
+        </section>
         {/* Appointments — past / current / upcoming, with consent + insights */}
         <section>
           <h2 className="mb-3 font-[family-name:var(--font-display)] text-xl">Appointments</h2>

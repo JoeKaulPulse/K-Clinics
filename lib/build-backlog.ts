@@ -3235,6 +3235,16 @@ export const BUILD_BACKLOG: BacklogItem[] = [
     detail: 'Request: admins should be able to edit a client’s Date of Birth and Allergies / Medical Notes at any time.',
     notes: ['Already delivered (BLD-199): the client profile’s "Edit details" dialog edits both — DoB as a date field, Allergies gated on the clinical-view permission so a non-clinical staffer can never silently wipe the hidden value; saves are immediate and audit-logged. Replied on the board with step-by-step staff instructions and flipped the card to Shipped. (BLD-1097)'],
   },
+  {
+    title: 'Track prepaid treatment sessions for clients and staff', type: 'TASK', urgency: 'P1', status: 'IN_REVIEW', assignee: 'claude',
+    detail: 'A clear system to track treatment packages and prepaid sessions, visible in the client’s online account and the admin system: package purchased, total sessions, used, remaining, which session is being booked, and paid status.',
+    notes: ['Built with BLD-1098 as one feature. Additive Booking.packageBookingId self-relation: a course purchase is the existing sessions>1 booking (BLD-409); each later visit booked against it links back, so used/booked/remaining balances DERIVE from real bookings and can never drift from the diary. Cancelled/no-show sessions do not consume the package. Staff flow: the New phone booking modal loads the selected client’s packages and, when one matches the chosen treatment with sessions remaining, offers "Use package session — nothing to charge" (validated server-side: same client, same treatment, remaining > 0; booking created at £0, linked, audit-logged with its session number). Paid status = charged or BNPL pre-paid. (BLD-1014)'],
+  },
+  {
+    title: 'Display package session balance for clients and admins', type: 'TASK', urgency: 'P1', status: 'IN_REVIEW', assignee: 'claude',
+    detail: 'A package balance indicator visible to both clients and admin users: total purchased, used, remaining, per package; "No active package" when none.',
+    notes: ['Built with BLD-1014. Admin: a Packages card at the top of the client profile (label, paid badge, used/booked/remaining per package, linking to the purchase booking; "No active package." when none) and a "Session X of N" chip on every linked appointment page linking back to the package. Client portal: a "Your packages" card on the account dashboard (EN + UK translations) showing Session X of N, remaining count and paid status. Balances update automatically because they are derived from booking statuses — a completed session moves used up with no manual deduction. (BLD-1098)'],
+  },
 ];
 
 // A content hash over every item's title + status + PR, so ANY change (a new

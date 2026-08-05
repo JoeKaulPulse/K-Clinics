@@ -154,6 +154,13 @@ export const PORTAL_DICT: Record<string, Entry> = {
   'dash.offerReady': { en: 'Your welcome offer is ready', uk: 'Ваша вітальна пропозиція готова' },
   'dash.offerBody': { en: '{percent}% off your first treatment — code {code}', uk: '{percent}% знижки на першу процедуру — код {code}' },
   'dash.book': { en: 'Book a treatment', uk: 'Записатися на процедуру' },
+  // BLD-1098: package (course) balance card
+  'dash.pkgTitle': { en: 'Your packages', uk: 'Ваші пакети' },
+  'dash.pkgSession': { en: 'Session {used} of {total}', uk: 'Сеанс {used} з {total}' },
+  'dash.pkgRemaining': { en: '{n} remaining', uk: 'залишилось {n}' },
+  'dash.pkgBooked': { en: '{n} booked', uk: 'заброньовано {n}' },
+  'dash.pkgPaid': { en: 'Paid', uk: 'Оплачено' },
+  'dash.pkgUnpaid': { en: 'Payment pending', uk: 'Очікує оплати' },
   'dash.nextAppt': { en: 'Next appointment', uk: 'Наступний запис' },
   'dash.inDays': { en: 'in {n} days', uk: 'через {n} дн.' },
   'dash.tomorrow': { en: 'Tomorrow', uk: 'Завтра' },

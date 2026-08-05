@@ -149,6 +149,10 @@ export default async function BookingDetail({ params }: { params: Promise<{ id: 
   // how many sessions were paid for. The primary (non-add-on) line item holds it.
   const primaryItem = await db.bookingItem.findFirst({ where: { bookingId: id, isAddon: false }, orderBy: { createdAt: 'asc' }, select: { sessions: true } }).catch(() => null);
   const courseSessions = primaryItem?.sessions ?? 1;
+  // BLD-1014: "Session X of N" when this booking is part of a package (the
+  // course purchase itself or a session linked to one).
+  const { packageSessionNumber } = await import('@/lib/package-sessions');
+  const pkgSession = await packageSessionNumber(b.id).catch(() => null);
   const perSessionPence = courseSessions > 1 && basePence > 0 ? Math.round(basePence / courseSessions) : basePence;
   // BLD-1119: !b.prepaidAt as well as !b.chargedAt — an add-on on a BNPL pre-paid
   // course can never be collected (every charge surface refuses a pre-paid
@@ -206,6 +210,15 @@ export default async function BookingDetail({ params }: { params: Promise<{ id: 
             <p className="mt-2 inline-flex items-center gap-2 rounded-full bg-[color-mix(in_oklab,var(--color-gold)_16%,transparent)] px-3 py-1 text-sm font-medium text-[var(--color-ink)]">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden><rect x="3" y="4" width="18" height="16" rx="2" /><path d="M3 9h18M8 3v3M16 3v3" /></svg>
               Course of {courseSessions} sessions{perSessionPence > 0 ? ` · ${money(perSessionPence)} per session` : ''}
+              {pkgSession ? ` · session ${pkgSession.session} taken/booked so far` : ''}
+            </p>
+          ) : pkgSession ? (
+            // BLD-1014: a session booked against a package — say which one, and
+            // link back to the purchase that carries the money.
+            <p className="mt-2 inline-flex items-center gap-2 rounded-full bg-[color-mix(in_oklab,var(--color-gold)_16%,transparent)] px-3 py-1 text-sm font-medium text-[var(--color-ink)]">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden><rect x="3" y="4" width="18" height="16" rx="2" /><path d="M3 9h18M8 3v3M16 3v3" /></svg>
+              Session {pkgSession.session} of {pkgSession.total}
+              <Link href={`/admin/bookings/${pkgSession.purchaseBookingId}`} className="text-xs underline-offset-2 hover:underline">package →</Link>
             </p>
           ) : (
             <p className="mt-2 text-sm text-[var(--color-stone)]">Single session</p>
