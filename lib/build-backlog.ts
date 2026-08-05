@@ -3342,6 +3342,18 @@ export const BUILD_BACKLOG: BacklogItem[] = [
     detail: 'The visibility half (audit + Sentry + ops webhook + staff notify) shipped earlier; the state/Xero half was held for an owner decision.',
     notes: ['Owner decision 5 Aug: FULL AUTO on a lost dispute. charge.dispute.closed with status lost now reconciles automatically — booking: refundedPence advanced by the dispute amount via CAS, loyalty points clawed back (full-refund return + pro-rata spend reversal), a Xero credit note pushed (pushBookingRefundToXero, reason "Chargeback lost") and a PAYMENT_REFUNDED audit entry; shop order: status → REFUNDED + stock restored (order sales carry no Xero push to reverse) + audit. Won/other outcomes change nothing. All side-effects sit behind the existing CAS claims so a redelivered event cannot double-run them. (PRJ-1069.12)'],
   },
+  {
+    title: 'Shared Dialog component never locks background scroll, affecting 13 modals', type: 'ERROR', urgency: 'P1', status: 'IN_REVIEW', assignee: 'claude',
+    value: 8, effort: 2,
+    detail: 'components/ui/Dialog.tsx rendered its overlay/panel without locking document.body scroll while open, unlike the other overlays in the app (Header mobile menu, Intro, ImmersiveCourse, ExplainerPlayer) which do this manually. The background page could scroll behind any of the 13+ modals built on the shared Dialog primitive.',
+    notes: ['Fix: Dialog now locks document.body.style.overflow on open and restores the previous value on close/unmount, matching the existing save/restore pattern used elsewhere in the codebase. Restoring to the captured previous value (rather than unconditionally clearing it) means a nested Dialog closing does not clobber an outer Dialog\'s lock. (BLD-1183)'],
+  },
+  {
+    title: 'Supplier list row is mouse-only, unreachable by keyboard (WCAG 2.1.1)', type: 'ERROR', urgency: 'P1', status: 'IN_REVIEW', assignee: 'claude',
+    value: 6, effort: 2,
+    detail: 'The clickable supplier row in components/admin/SupplierManager.tsx had onClick with no tabIndex or onKeyDown, so keyboard-only staff could not reach or open the supplier editor.',
+    notes: ['Fix: added tabIndex={0} and an onKeyDown handler (Enter or Space opens the editor, Space prevents default to stop page scroll), matching the existing clickable-row pattern already used for the Build board list rows. (BLD-1185)'],
+  },
 ];
 
 // A content hash over every item's title + status + PR, so ANY change (a new

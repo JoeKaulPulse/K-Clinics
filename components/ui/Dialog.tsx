@@ -71,6 +71,16 @@ export function useDialogBehaviours<T extends HTMLElement = HTMLDivElement>(onCl
 export function Dialog({ open, onClose, labelledby, label, children, className }: DialogProps) {
   const { panelRef, onKeyDown: trapTab } = useDialogBehaviours(onClose, open);
 
+  // Lock background scroll while open (BLD-1183). Captures the previous value
+  // so a nested/stacked Dialog restores its outer sibling's lock rather than
+  // clobbering it back to visible.
+  useEffect(() => {
+    if (!open) return;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => { document.body.style.overflow = prev; };
+  }, [open]);
+
   if (!open) return null;
 
   return (
