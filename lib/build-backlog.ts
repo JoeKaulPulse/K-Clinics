@@ -3342,6 +3342,18 @@ export const BUILD_BACKLOG: BacklogItem[] = [
     detail: 'The visibility half (audit + Sentry + ops webhook + staff notify) shipped earlier; the state/Xero half was held for an owner decision.',
     notes: ['Owner decision 5 Aug: FULL AUTO on a lost dispute. charge.dispute.closed with status lost now reconciles automatically — booking: refundedPence advanced by the dispute amount via CAS, loyalty points clawed back (full-refund return + pro-rata spend reversal), a Xero credit note pushed (pushBookingRefundToXero, reason "Chargeback lost") and a PAYMENT_REFUNDED audit entry; shop order: status → REFUNDED + stock restored (order sales carry no Xero push to reverse) + audit. Won/other outcomes change nothing. All side-effects sit behind the existing CAS claims so a redelivered event cannot double-run them. (PRJ-1069.12)'],
   },
+  {
+    title: 'BNPL course pre-payment bills full list price, ignoring points/voucher already redeemed', type: 'ERROR', urgency: 'P1', status: 'IN_REVIEW', assignee: 'claude',
+    value: 8, effort: 3,
+    detail: 'courseTotalPence (lib/booking-actions.ts), the single source of truth for both minting the BNPL Checkout Session amount and validating the webhook payment, never subtracted booking.pointsRedeemedPence or booking.giftVoucherPence, so a client who had already redeemed loyalty points or a gift voucher on a course was billed the discount twice.',
+    notes: ["Fix: courseTotalPence now nets pointsRedeemedPence and giftVoucherPence off the gross price (clamped to zero) before returning, for both the primary-line-item figure and the legacy no-line-item fallback — both are always gross, never pre-discounted (confirmed against the same netting pattern already used at the point of charge in app/admin/bookings/actions.ts, BLD-882/BLD-1001). Only courseTotalPence changed, so the mint site (bnpl-link route) and the webhook validation stay in sync automatically. (BLD-1186)"],
+  },
+  {
+    title: "Chargeback 'lost' refund cap is a no-op, can push refundedPence past chargedPence", type: 'ERROR', urgency: 'P2', status: 'IN_REVIEW', assignee: 'claude',
+    value: 6, effort: 1,
+    detail: 'In the charge.dispute lost-dispute branch (app/api/stripe/webhook/route.ts), Math.min(X, Math.max(c, X)) always resolves to X for any c, so the intended cap at chargedPence never capped anything — a dispute landing on top of a prior partial refund could inflate refundedPence above what was actually charged, corrupting reports and the downstream loyalty clawback / Xero credit-note amounts that read the same total.',
+    notes: ['Fix: replaced with Math.min((full.refundedPence ?? 0) + amount, full.chargedPence ?? 0), the straightforward cap the code was clearly trying to write. Checked chargedPence can be 0/null here: this branch only runs when Stripe has confirmed a real dispute, which requires a captured charge, and every path that sets chargePaymentIntentId on a successful capture (chargeBooking, finalizeBookingCharge) sets chargedPence in that same write — so chargedPence is always populated in practice by the time a dispute fires; capping to 0 in the hypothetical unset case is still correct (refundedPence cannot exceed what was charged). (BLD-1190)'],
+  },
 ];
 
 // A content hash over every item's title + status + PR, so ANY change (a new

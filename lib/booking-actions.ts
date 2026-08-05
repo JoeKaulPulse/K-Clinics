@@ -49,9 +49,19 @@ export function isWithin24h(b: Pick<Booking, 'startAt'>): boolean {
  * primary item directly so the link, the validation and the badge all agree.
  * Returns { pence, sessions, label }; pence is 0 for an on-consultation (£0)
  * booking, which callers must reject (nothing to pre-pay).
+ *
+ * BLD-1186: pricePence — both the booking-level figure and the line item's —
+ * is always the GROSS price. Redeeming loyalty points or a gift voucher never
+ * rewrites it; the discount is tracked separately in pointsRedeemedPence /
+ * giftVoucherPence and netted off at the point of charge instead (the same
+ * pattern already used for the card-on-file charge in
+ * app/admin/bookings/actions.ts, BLD-882/BLD-1001). Net both fields off here
+ * too, for whichever branch below supplies the gross figure — the primary
+ * line item or the legacy no-line-item fallback — since neither is ever
+ * pre-discounted.
  */
 export async function courseTotalPence(bookingId: string): Promise<{ pence: number; sessions: number; label: string } | null> {
-  const booking = await db.booking.findUnique({ where: { id: bookingId }, select: { pricePence: true, treatmentTitle: true } });
+  const booking = await db.booking.findUnique({ where: { id: bookingId }, select: { pricePence: true, treatmentTitle: true, pointsRedeemedPence: true, giftVoucherPence: true } });
   if (!booking) return null;
   const primary = await db.bookingItem.findFirst({
     where: { bookingId, isAddon: false },
@@ -61,7 +71,8 @@ export async function courseTotalPence(bookingId: string): Promise<{ pence: numb
   // Prefer the primary line item (course total + session count). Fall back to
   // the booking price for legacy bookings created without line items.
   const sessions = Math.max(1, primary?.sessions ?? 1);
-  const pence = primary?.pricePence ?? booking.pricePence ?? 0;
+  const grossPence = primary?.pricePence ?? booking.pricePence ?? 0;
+  const pence = Math.max(0, grossPence - (booking.pointsRedeemedPence ?? 0) - (booking.giftVoucherPence ?? 0));
   return { pence, sessions, label: primary?.label || booking.treatmentTitle };
 }
 
