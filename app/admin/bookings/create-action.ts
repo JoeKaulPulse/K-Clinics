@@ -47,6 +47,11 @@ export async function createManualBooking(input: {
   /** BLD-812: admin-only custom total price for this booking (pence), e.g. a
    *  promotion or one-off agreed rate. Overrides the treatment/variant price. */
   overridePricePence?: number;
+  /** BLD-1014: book this appointment as a session of an already-purchased
+   *  package (the purchase booking's id). Validated server-side (same client,
+   *  same treatment, sessions remaining); the booking is created at £0 and
+   *  linked, so package balances derive from real bookings. */
+  usePackageBookingId?: string;
 }) {
   if (!crmEnabled) return { ok: false, error: 'CRM disabled' };
   const session = await getSession();
@@ -165,6 +170,23 @@ export async function createManualBooking(input: {
         create: { firstName: input.firstName, lastName: input.lastName || null, email: input.email.toLowerCase(), phone: input.phone || null, dob: dob || null, source: 'staff-booking' },
       });
 
+  // BLD-1014: booking a session against an already-purchased package. Validate
+  // ownership/treatment/balance, then create at £0 linked to the purchase —
+  // the money already lives on the purchase booking.
+  let packageBookingId: string | null = null;
+  if (input.usePackageBookingId) {
+    if (consultBooking) return { ok: false, error: 'A consultation can’t use a package session.' };
+    if (sessions > 1) return { ok: false, error: 'A package session books one visit at a time.' };
+    const { clientPackages } = await import('@/lib/package-sessions');
+    const pkg = (await clientPackages(client.id)).find((p) => p.purchaseBookingId === input.usePackageBookingId);
+    if (!pkg) return { ok: false, error: 'That package could not be found on this client.' };
+    if (pkg.treatmentSlug !== input.treatmentSlug) return { ok: false, error: `That package is for a different treatment (${pkg.label}).` };
+    if (pkg.sessionsRemaining < 1) return { ok: false, error: 'No sessions left on that package — every remaining session is already booked or used.' };
+    packageBookingId = pkg.purchaseBookingId;
+    totalPence = 0;
+    priceOverridden = false;
+  }
+
   // Hold the slot ATOMICALLY — re-check for overlapping bookings inside a
   // Serializable transaction (mirrors app/api/booking/create + booking/start)
   // so a concurrent public/portal booking can't grab the same clinician/room
@@ -197,6 +219,7 @@ export async function createManualBooking(input: {
           status: 'CONFIRMED',
           notes: input.notes || null,
           practitionerId,
+          packageBookingId, // BLD-1014: null unless booked as a package session
           resources: resourceIds.length ? { connect: resourceIds.map((id) => ({ id })) } : undefined,
           // Primary line item so the itemised receipt + billing reflect the exact
           // service/area chosen (not just the category).
@@ -229,6 +252,16 @@ export async function createManualBooking(input: {
       summary: `Price overridden on manual booking: £${(totalPence / 100).toFixed(2)} instead of £${(defaultTotalPence / 100).toFixed(2)}`,
       meta: { defaultTotalPence, overriddenTotalPence: totalPence },
     });
+  }
+  if (packageBookingId) {
+    const { logAudit } = await import('@/lib/audit');
+    const { packageSessionNumber } = await import('@/lib/package-sessions');
+    const n = await packageSessionNumber(booking.id).catch(() => null);
+    await logAudit({
+      action: 'BOOKING_CREATED', actor: session.email, actorRole: session.role, bookingId: booking.id, clientId: client.id,
+      summary: `Package session booked${n ? ` (session ${n.session} of ${n.total})` : ''} — covered by the package purchase, £0 to collect`,
+      meta: { packageBookingId },
+    }).catch(() => {});
   }
 
   // Staff incentive: reward the prior practitioner for a secured repeat booking.

@@ -5,7 +5,7 @@ import { Reveal, Stagger, StaggerItem } from '@/components/motion/Reveal';
 import { BookingButtons } from '@/components/booking/BookingButtons';
 import { AccessBadges } from '@/components/ui/AccessBadges';
 import { site } from '@/lib/site';
-import { pageMeta, JsonLd, breadcrumbLd, organizationLd } from '@/lib/seo';
+import { pageMeta, JsonLd, breadcrumbLd } from '@/lib/seo';
 
 // BLD-517: hourly ISR so these mostly-static pages are cached, not full SSR per request.
 export const revalidate = 3600;
@@ -30,11 +30,11 @@ export default async function ClinicsPage() {
   const cms = await getPublishedPage('/clinics');
   if (cms) {
     const { SectionRenderer } = await import('@/components/cms/SectionRenderer');
-    return (<><JsonLd data={[organizationLd(), breadcrumbLd([{ name: 'Home', path: '/' }, { name: 'Our Clinics', path: '/clinics' }])]} /><SectionRenderer sections={cms} /></>);
+    return (<><JsonLd data={[breadcrumbLd([{ name: 'Home', path: '/' }, { name: 'Our Clinics', path: '/clinics' }])]} /><SectionRenderer sections={cms} /></>);
   }
   return (
     <>
-      <JsonLd data={[organizationLd(), breadcrumbLd([{ name: 'Home', path: '/' }, { name: 'Our Clinics', path: '/clinics' }])]} />
+      <JsonLd data={[breadcrumbLd([{ name: 'Home', path: '/' }, { name: 'Our Clinics', path: '/clinics' }])]} />
       <PageHero
         eyebrow="Our clinic"
         title="Find us in Clerkenwell."

@@ -17,7 +17,7 @@ export async function POST(req: Request) {
     const { requestPasswordReset } = await import('@/lib/client-auth');
     await requestPasswordReset(parsed.data.email);
   } catch (err) {
-    console.error('[forgot-password] failed:', err);
+    console.error('[forgot-password] failed:', (err as Error)?.message);
     Sentry.captureException(err, { tags: { area: 'account/forgot-password' } });
   }
   // Always succeed to avoid leaking which emails are registered.
