@@ -23,7 +23,7 @@ export default async function ProductEditorPage({ params }: { params: Promise<{ 
     id: p.id, name: p.name, description: p.description ?? '', brand: p.brand ?? '', category: p.category ?? '',
     price: gbp(p.pricePence), compareAt: gbp(p.compareAtPence), cost: gbp(p.costPence), sku: p.sku ?? '', barcode: p.barcode ?? '',
     images: p.images, status: p.status, ageRestricted: p.ageRestricted, trackInventory: p.trackInventory,
-    stockQty: p.stockQty, lowStockThreshold: p.lowStockThreshold,
+    stockQty: p.stockQty, lowStockThreshold: p.lowStockThreshold, vatClass: p.vatClass ?? '',
   };
 
   const can = await sessionPermissions();
