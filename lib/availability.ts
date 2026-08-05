@@ -7,6 +7,13 @@ import { clinicWallTimeToUTC, clinicMinutesOfDay, clinicDateISO, clinicDayOfWeek
 
 const SLOT_INTERVAL = Number(process.env.SLOT_INTERVAL_MIN || 15);
 const LEAD_MINUTES = 120; // earliest bookable time from now
+// BLD-1015 (owner decision 5 Aug): when staff availability is enforced, slots
+// may START up to this clinic-local minute (20:00) even if the treatment runs
+// past the advertised closing time — the clinician's rota (clinicianFree) is
+// the real gate, so late evenings only appear on days someone is rostered.
+// Advertised opening hours are unchanged. Without staff enforcement there is
+// no rota to gate by, so the treatment-must-end-by-close rule stays.
+const LATE_START_MAX = 20 * 60;
 
 const DOW = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
@@ -204,7 +211,10 @@ export async function freeSlots(dateISO: string, durationMin: number, treatmentS
   const minStart = Date.now() + LEAD_MINUTES * 60_000;
   const slots: string[] = [];
 
-  for (let m = open; m + durationMin <= close; m += SLOT_INTERVAL) {
+  // BLD-1015: with staff enforcement, allow starts up to LATE_START_MAX — every
+  // late slot still has to pass the per-slot clinicianFree rota check below.
+  const lastStart = useStaff ? Math.max(close - durationMin, LATE_START_MAX) : close - durationMin;
+  for (let m = open; m <= lastStart; m += SLOT_INTERVAL) {
     const start = clinicWallTimeToUTC(dateISO, m); // wall-clock minute → correct UTC instant
     const end = new Date(start.getTime() + durationMin * 60_000);
     if (start.getTime() < minStart) continue;
@@ -365,7 +375,12 @@ export async function isSlotFree(startISO: string, durationMin: number, treatmen
   if (!hours || hours.open === 'Closed') return false;
   const open = parseHM(hours.open), close = parseHM(hours.close);
   const startM = clinicMinutesOfDay(start); // clinic-local minutes-of-day
-  if (open == null || close == null || startM < open || startM + durationMin > close) return false;
+  if (open == null || close == null || startM < open) return false;
+  // BLD-1015: a start past the end-by-close rule is only valid up to
+  // LATE_START_MAX and only when a rostered clinician covers it (checked in
+  // the staff-enforcement branch below — without enforcement it stays invalid).
+  const lateStart = startM + durationMin > close;
+  if (lateStart && startM > LATE_START_MAX) return false;
   const leadMinutes = opts?.leadMinutes ?? LEAD_MINUTES;
   if (start.getTime() < Date.now() + leadMinutes * 60_000) return false;
 
@@ -388,6 +403,10 @@ export async function isSlotFree(startISO: string, durationMin: number, treatmen
     const clinicians = await cliniciansForDay(treatmentSlug, dayStart, dayEnd, excludeBookingId);
     if (clinicians.length) return clinicians.some((c) => clinicianFree(c, start, end, clinicDayOfWeek(dateISO), bufferMin, locationId));
   }
+
+  // BLD-1015: past-close starts need a rostered clinician — with no staff
+  // enforcement (or no clinicians for the day) there is no rota to gate by.
+  if (lateStart) return false;
 
   // Single-resource fallback — buffer-aware overlap check.
   const sameDay = await db.booking.findMany({

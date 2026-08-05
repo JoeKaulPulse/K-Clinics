@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { AnimatePresence, motion } from 'motion/react';
 import { finderQuestions, scoreFinder } from '@/lib/treatment-finder';
 import { getTreatment, formatPrice, suitableForGender } from '@/lib/treatments';
+import { trackLead } from '@/lib/analytics-events';
 
 /** `gender` (when a signed-in client uses the finder) tailors which treatments
  *  are suggested — e.g. a man isn't shown women-specific treatments and vice
@@ -15,6 +16,11 @@ export function TreatmentFinder({ gender, prices = {} }: { gender?: string | nul
   const [step, setStep] = useState(0);
   const [dir, setDir] = useState(1);
   const [answers, setAnswers] = useState<Record<string, string | string[]>>({});
+  // BLD-1127: optional "email me my results" lead capture on the results step.
+  const [email, setEmail] = useState('');
+  const [emailBusy, setEmailBusy] = useState(false);
+  const [emailSent, setEmailSent] = useState(false);
+  const [emailErr, setEmailErr] = useState('');
   const total = finderQuestions.length;
   const done = step >= total;
   const q = finderQuestions[step];
@@ -102,7 +108,38 @@ export function TreatmentFinder({ gender, prices = {} }: { gender?: string | nul
                 );
               })}
             </div>
-            <div className="mt-8 flex flex-wrap gap-3">
+            {/* BLD-1127: optional lead capture — entering an email sends the
+                results + creates the lead; skipping keeps the quiz anonymous. */}
+            <div className="mt-8 rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-bone)]/50 p-5">
+              {emailSent ? (
+                <p className="text-sm font-medium text-[var(--color-ink)]">Sent — check your inbox for your matches. ✓</p>
+              ) : (
+                <>
+                  <p className="font-medium">Email me my results</p>
+                  <p className="mt-1 text-xs text-[var(--color-stone)]">Optional. We’ll email you these matches and may follow up about your free consultation — nothing else, no newsletter.</p>
+                  <form
+                    className="mt-3 flex flex-wrap gap-2"
+                    onSubmit={async (e) => {
+                      e.preventDefault();
+                      if (emailBusy || !/\S+@\S+\.\S+/.test(email)) { setEmailErr('Enter a valid email.'); return; }
+                      setEmailBusy(true); setEmailErr('');
+                      try {
+                        const r = await fetch('/api/finder-lead', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email, slugs: results.map((t) => t!.slug) }) });
+                        const j = await r.json().catch(() => ({ ok: false }));
+                        if (j.ok) { setEmailSent(true); trackLead({ detail: { source: 'treatment-finder' } }); }
+                        else setEmailErr(j.error || 'Couldn’t send just now — please try again.');
+                      } catch { setEmailErr('Couldn’t send just now — please try again.'); }
+                      setEmailBusy(false);
+                    }}
+                  >
+                    <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@example.com" aria-label="Email address for your results" className="min-w-[14rem] flex-1 rounded-full border border-[var(--color-line)] bg-white px-4 py-2.5 text-sm outline-none focus:border-[var(--color-gold)]" />
+                    <button type="submit" disabled={emailBusy} className="rounded-full bg-[var(--color-ink)] px-5 py-2.5 text-sm font-medium text-[var(--color-porcelain)] disabled:opacity-50">{emailBusy ? 'Sending…' : 'Send'}</button>
+                  </form>
+                  {emailErr && <p role="alert" aria-live="assertive" className="mt-2 text-xs text-[var(--color-blush-deep)]">{emailErr}</p>}
+                </>
+              )}
+            </div>
+            <div className="mt-6 flex flex-wrap gap-3">
               <Link href="/consultation" className="rounded-full bg-[var(--color-gold-deep)] px-7 py-3.5 font-medium text-white shadow-[var(--shadow-gold)] hover:bg-[var(--color-ink)]">Book a free consultation</Link>
               <button onClick={() => { setAnswers({}); setStep(0); setDir(-1); }} className="rounded-full border border-[var(--color-line)] px-6 py-3.5 font-medium hover:border-[var(--color-gold)] hover:text-[var(--color-gold-deep)]">Start over</button>
             </div>

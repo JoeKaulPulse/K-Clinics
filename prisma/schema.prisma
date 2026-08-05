@@ -364,6 +364,10 @@ model Client {
   // Only clients who explicitly opt in appear on the public leaderboard.
   // leaderboardPhotoUrl is staff-set after the client's written permission.
   leaderboardOptIn       Boolean @default(false)
+  // BLD-1122 (owner decision 5 Aug: tick-with-record): evidence trail for the
+  // leaderboard consent — who switched it on and when. Additive, nullable.
+  leaderboardConsentBy   String?
+  leaderboardConsentAt   DateTime?
   leaderboardPhotoUrl    String?
   leaderboardDisplayName String? // preferred display name (first name by default)
 

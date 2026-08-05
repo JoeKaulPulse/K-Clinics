@@ -10,7 +10,7 @@ import { overrideBookingPrice } from '@/app/admin/bookings/clinical-actions';
 // to the booking's activity log with the before/after amounts.
 const money = (p: number) => `£${(p / 100).toLocaleString('en-GB', { minimumFractionDigits: p % 100 ? 2 : 0 })}`;
 
-export function PriceOverride({ bookingId, basePence }: { bookingId: string; basePence: number }) {
+export function PriceOverride({ bookingId, basePence, paid = false }: { bookingId: string; basePence: number; paid?: boolean }) {
   const [open, setOpen] = useState(false);
   const [amount, setAmount] = useState(() => (basePence / 100).toFixed(2));
   const [reason, setReason] = useState('');
@@ -34,14 +34,19 @@ export function PriceOverride({ bookingId, basePence }: { bookingId: string; bas
   if (!open) {
     return (
       <button type="button" onClick={() => setOpen(true)} className="text-xs text-[var(--color-gold-deep)] underline-offset-2 hover:underline">
-        Adjust price
+        {paid ? 'Correct price (record only)' : 'Adjust price'}
       </button>
     );
   }
 
   return (
     <div className="rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-bone)]/40 p-3 text-sm">
-      <p className="mb-2 text-xs text-[var(--color-stone)]">Applies to this appointment only — the treatment’s standard price is unchanged. Add-ons keep their own prices.</p>
+      {/* BLD-1094: paid corrections are record-only by owner decision. */}
+      <p className="mb-2 text-xs text-[var(--color-stone)]">
+        {paid
+          ? 'This appointment is already paid. The correction updates the recorded price and the activity log ONLY — the card payment is untouched, and any refund, invoice or loyalty-points change must be done separately.'
+          : 'Applies to this appointment only — the treatment’s standard price is unchanged. Add-ons keep their own prices.'}
+      </p>
       <div className="flex flex-wrap items-center gap-2">
         <label htmlFor="price-override-amount" className="sr-only">New treatment price in pounds</label>
         <span className="flex items-center gap-1 rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-2 py-1.5">

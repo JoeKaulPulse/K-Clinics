@@ -125,9 +125,17 @@ export async function overrideBookingPrice(bookingId: string, newBasePence: numb
   const { db } = await import('@/lib/db');
   const { logAudit } = await import('@/lib/audit');
 
-  const booking = await db.booking.findUnique({ where: { id: bookingId }, select: { status: true, chargedAt: true, prepaidAt: true, clientId: true, pricePence: true } });
+  const booking = await db.booking.findUnique({ where: { id: bookingId }, select: { status: true, chargedAt: true, chargedPence: true, prepaidAt: true, clientId: true, pricePence: true } });
   if (!booking) return { ok: false, error: 'Booking not found.' };
-  if (booking.chargedAt) return { ok: false, error: 'This appointment is already paid — record a refund instead of editing the price.' };
+  // BLD-1094 (owner decision 5 Aug: record-only): admins may correct the price
+  // of an ALREADY-PAID appointment. The correction changes the recorded agreed
+  // price and the audit trail only — chargedPence stays what the card actually
+  // paid, and any refund, Xero correction or loyalty adjustment is manual.
+  const paidCorrection = Boolean(booking.chargedAt);
+  if (paidCorrection) {
+    const { sessionIsAdmin } = await import('@/lib/auth');
+    if (!sessionIsAdmin(session)) return { ok: false, error: 'Only an admin can correct the price of a paid appointment.' };
+  }
   if (booking.prepaidAt) return { ok: false, error: 'This course was pre-paid in full — its price can no longer be edited.' };
   if (booking.status === 'CANCELLED' || booking.status === 'NO_SHOW') return { ok: false, error: 'This appointment is cancelled.' };
 
@@ -145,7 +153,9 @@ export async function overrideBookingPrice(bookingId: string, newBasePence: numb
   ]);
   await logAudit({
     action: 'SESSION_EDITED', actor: session.email, actorRole: session.role, bookingId, clientId: booking.clientId,
-    summary: `Price adjusted: £${(booking.pricePence / 100).toFixed(2)} → £${(newTotal / 100).toFixed(2)} — ${why}`,
+    summary: paidCorrection
+      ? `Price corrected AFTER payment (record only): was £${(booking.pricePence / 100).toFixed(2)}, now £${(newTotal / 100).toFixed(2)} — card actually charged £${((booking.chargedPence ?? 0) / 100).toFixed(2)}, unchanged. Any refund/Xero/loyalty adjustment is manual. Reason: ${why}`
+      : `Price adjusted: £${(booking.pricePence / 100).toFixed(2)} → £${(newTotal / 100).toFixed(2)} — ${why}`,
   });
   revalidatePath(`/admin/bookings/${bookingId}`);
   revalidatePath(`/admin/bookings/${bookingId}/session`);
