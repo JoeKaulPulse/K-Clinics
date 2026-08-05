@@ -164,7 +164,11 @@ export default async function BookingDetail({ params }: { params: Promise<{ id: 
   const canAddTreatment = canManageBk && !b.chargedAt && !b.prepaidAt && !['CANCELLED', 'NO_SHOW'].includes(b.status);
   // BLD-1149: price override — same lifecycle gate, but keyed on bookings.charge
   // (the permission that already lets the holder adjust the amount at checkout).
-  const canPriceOverride = sessionCan(session, 'bookings.charge') && !b.chargedAt && !b.prepaidAt && !['CANCELLED', 'NO_SHOW'].includes(b.status);
+  // BLD-1094 (owner decision: record-only): admins may also correct the price
+  // of an already-paid appointment — the audit trail records it; no money moves.
+  const { sessionIsAdmin } = await import('@/lib/auth');
+  const canPriceOverride = sessionCan(session, 'bookings.charge') && !b.prepaidAt && !['CANCELLED', 'NO_SHOW'].includes(b.status)
+    && (!b.chargedAt || sessionIsAdmin(session));
   // BLD-1165: BNPL (Klarna/Clearpay) pre-payment is only for courses — a single
   // session has nothing left to defer past this visit — same lifecycle gate as
   // the add-on picker plus the "already a course" check the API itself enforces.
@@ -330,7 +334,7 @@ export default async function BookingDetail({ params }: { params: Promise<{ id: 
                 {/* BLD-1149: adjust the agreed price for this appointment (pre-payment),
                     restoring the override staff previously had on this page. Same gate
                     as the checkout adjust (bookings.charge). */}
-                {canPriceOverride && <PriceOverride bookingId={b.id} basePence={basePence} />}
+                {canPriceOverride && <PriceOverride bookingId={b.id} basePence={basePence} paid={!!b.chargedAt} />}
                 {addOnItems.map((it) => (
                   <div key={it.id} className="flex items-baseline justify-between gap-3">
                     <span className="min-w-0 break-words text-[var(--color-stone)]">+ {it.label}</span>

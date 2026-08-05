@@ -278,6 +278,38 @@ export async function POST(req: Request) {
         const summary = created
           ? `Chargeback opened on ${what} — £${(amount / 100).toFixed(2)} (reason: ${dispute.reason || 'unknown'}). Respond in the Stripe dashboard before the evidence deadline.`
           : `Chargeback ${dispute.status === 'won' ? 'WON' : dispute.status === 'lost' ? 'LOST' : `closed (${dispute.status})`} on ${what} — £${(amount / 100).toFixed(2)}.`;
+        // PRJ-1069.12 (owner decision 5 Aug: full auto): a LOST dispute means the
+        // money is factually gone — reconcile state automatically. Booking:
+        // refundedPence CAS + loyalty clawback + Xero credit note (the same
+        // side-effects a dashboard refund runs). Order: status → REFUNDED +
+        // restock (order sales carry no Xero push to reverse). Won/other
+        // outcomes change nothing.
+        if (!created && dispute.status === 'lost' && amount > 0) {
+          if (booking) {
+            const full = await db.booking.findFirst({ where: { id: booking.id }, select: { id: true, clientId: true, refundedPence: true, chargedPence: true } });
+            if (full) {
+              const newTotal = Math.min((full.refundedPence ?? 0) + amount, Math.max(full.chargedPence ?? 0, (full.refundedPence ?? 0) + amount));
+              const claimed = await db.booking.updateMany({ where: { id: full.id, refundedPence: full.refundedPence }, data: { refundedPence: newTotal, refundedAt: new Date() } });
+              if (claimed.count > 0) {
+                const fully = newTotal >= (full.chargedPence ?? 0);
+                if (fully) { try { const { refundBookingPoints } = await import('@/lib/client-loyalty'); await refundBookingPoints(full.id); } catch (e) { Sentry.captureException(e, { tags: { area: 'stripe-webhook', sub: 'dispute-points' } }); } }
+                try { const { reverseSpendPoints } = await import('@/lib/client-loyalty'); await reverseSpendPoints(full.id, newTotal, full.chargedPence ?? 0); } catch (e) { Sentry.captureException(e, { tags: { area: 'stripe-webhook', sub: 'dispute-spend-points' } }); }
+                try { const { pushBookingRefundToXero } = await import('@/lib/xero'); await pushBookingRefundToXero(full.id, amount, 'Chargeback lost'); } catch (e) { Sentry.captureException(e, { tags: { area: 'stripe-webhook', sub: 'dispute-xero' } }); }
+                try { const { logAudit } = await import('@/lib/audit'); await logAudit({ action: 'PAYMENT_REFUNDED', actor: 'stripe-webhook', bookingId: full.id, clientId: full.clientId, summary: `Chargeback lost — £${(amount / 100).toFixed(2)} reconciled as refunded (auto, owner policy)`, meta: { disputeId: dispute.id } }); } catch { /* non-fatal */ }
+              }
+            }
+          } else if (order) {
+            const fullOrder = await db.order.findFirst({ where: { id: order.id }, select: { id: true, number: true, status: true } });
+            if (fullOrder && fullOrder.status !== 'REFUNDED') {
+              const wasStockDecremented = fullOrder.status === 'PAID' || fullOrder.status === 'FULFILLED';
+              const claimed = await db.order.updateMany({ where: { id: fullOrder.id, status: { not: 'REFUNDED' } }, data: { status: 'REFUNDED' } });
+              if (claimed.count > 0) {
+                if (wasStockDecremented) { try { const { restockOrder } = await import('@/lib/shop'); await restockOrder(fullOrder.id); } catch (e) { Sentry.captureException(e, { tags: { area: 'stripe-webhook', sub: 'dispute-restock' } }); } }
+                try { const { logAudit } = await import('@/lib/audit'); await logAudit({ action: 'PAYMENT_REFUNDED', actor: 'stripe-webhook', summary: `Chargeback lost on order ${fullOrder.number} — marked refunded + restocked (auto, owner policy)`, meta: { orderId: fullOrder.id, disputeId: dispute.id } }); } catch { /* non-fatal */ }
+              }
+            }
+          }
+        }
         try {
           const { logAudit } = await import('@/lib/audit');
           await logAudit({ action: 'PAYMENT_DISPUTED', actor: 'stripe-webhook', bookingId: booking?.id, clientId: booking?.clientId ?? undefined, summary, meta: { disputeId: dispute.id, status: dispute.status, reason: dispute.reason, amountPence: amount, orderId: order?.id } });

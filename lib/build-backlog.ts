@@ -3303,6 +3303,33 @@ export const BUILD_BACKLOG: BacklogItem[] = [
     detail: 'Review every way a client can enter the system and make T&C + cancellation-policy acceptance active, mandatory, never pre-selected, and reliably recorded.',
     notes: ['Reviewed every entry flow. Already-active acceptance existed everywhere: portal signup, guest booking, public booking (with cancellation wording in the label), consult/contact form (all z.literal(true) checkboxes, never pre-selected) and K Vision (explicit by-continuing line, owner decision BLD-734). The REAL gap: acceptance was validated then discarded — no durable record. Built: additive Client.termsAcceptedAt/termsAcceptedSource/termsVersion + termsAcceptanceFields() (mirroring the marketing/AI-consent evidence pattern), recorded with first-acceptance-wins no-clobber updates at all three write points (signupClient — covers registration, guest and K Vision; the public booking create route; the consult route). Labels strengthened to name the full consequence chain at the tick: 24h cancellations and no-shows charged in full, unpaid fees must be settled before booking again (now literally true via BLD-1066). Admin: a T&Cs accepted/not-yet-accepted chip on the client profile with date, surface and wording version in the tooltip; staff-created clients show not-yet-accepted until their first online signup/booking/enquiry captures it. Version constant 2026-08-v1 — bump it whenever the shown wording changes. (BLD-1067)'],
   },
+  {
+    title: 'Admin access to edit prices on existing bookings', type: 'TASK', urgency: 'P0', status: 'IN_REVIEW', assignee: 'claude',
+    detail: 'Admins should be able to edit the price of any existing appointment, including paid ones, with a reason and full audit history.',
+    notes: ['Owner decision 5 Aug: RECORD-ONLY for paid appointments. overrideBookingPrice now allows admins (sessionIsAdmin, stricter than the bookings.charge gate that covers unpaid edits) to correct an already-paid appointment’s recorded price: pricePence and the primary line item update, chargedPence stays exactly what the card paid, and the audit entry states both figures plus that any refund/Xero/loyalty adjustment is manual. The appointment-page control shows "Correct price (record only)" with explicit copy for the paid case. Unpaid-edit behaviour (BLD-1149) is unchanged; BNPL pre-paid stays uneditable. (BLD-1094)'],
+  },
+  {
+    title: 'Extend online booking availability until 8:00 PM', type: 'TASK', urgency: 'P1', status: 'IN_REVIEW', assignee: 'claude',
+    detail: 'Clients should be able to see and book time slots up to and including 8:00 PM, depending on staff and room availability.',
+    notes: ['Owner decision 5 Aug: LATE STARTS, ROTA-GATED. With staff-availability enforcement on, freeSlots and isSlotFree now allow slot STARTS up to 20:00 (LATE_START_MAX) even when the treatment runs past the advertised close — every late slot must still pass the per-clinician rota check (clinicianFree), so evenings only appear on days someone is actually rostered late, and the room/equipment pool checks are unchanged. Advertised opening hours (site.hours, Google/schema.org) are untouched. Without staff enforcement there is no rota to gate by, so the end-by-close rule stays. To open evenings: roster a clinician past 19:00 on the staff schedule for that day. (BLD-1015)'],
+  },
+  {
+    title: 'Membership leaderboard photo/name consent has no evidence trail', type: 'IDEA', urgency: 'P1', status: 'IN_REVIEW', assignee: 'claude',
+    value: 6, effort: 3,
+    detail: 'setLeaderboard flipped a boolean with only an audit note — no timestamp or attestor recorded for a public disclosure of client identity.',
+    notes: ['Owner decision 5 Aug: tick-with-record. Additive Client.leaderboardConsentBy/leaderboardConsentAt, stamped with the acting staff member and time when the opt-in is switched on (cleared when switched off), mirroring the gallery-photo evidence pattern (BLD-1037). (BLD-1122)'],
+  },
+  {
+    title: 'Treatment Finder quiz never captures the lead', type: 'IDEA', urgency: 'P1', status: 'IN_REVIEW', assignee: 'claude',
+    value: 8, effort: 4,
+    detail: 'A visitor could complete the finder quiz and leave zero trace — no CRM lead, no ad-platform event — and the quiz collected no contact details, so silent capture raised a consent question.',
+    notes: ['Owner decision 5 Aug: OPTIONAL EMAIL STEP. The results step now offers "Email me my results" with a plain consent line (results + possible consultation follow-up, explicitly no newsletter): entering an email posts to the new rate-limited /api/finder-lead (no-clobber client upsert, source treatment-finder; interaction note; results email with links and from-prices via the live catalogue) and fires the client-side trackLead event, matching the other capture points. Skipping the step keeps the quiz fully anonymous — no tracking, no storage. (BLD-1127)'],
+  },
+  {
+    title: 'Stripe disputes/chargebacks are not handled anywhere in the webhook or booking/order state — automation half', type: 'IDEA', urgency: 'P1', status: 'IN_REVIEW', assignee: 'claude',
+    detail: 'The visibility half (audit + Sentry + ops webhook + staff notify) shipped earlier; the state/Xero half was held for an owner decision.',
+    notes: ['Owner decision 5 Aug: FULL AUTO on a lost dispute. charge.dispute.closed with status lost now reconciles automatically — booking: refundedPence advanced by the dispute amount via CAS, loyalty points clawed back (full-refund return + pro-rata spend reversal), a Xero credit note pushed (pushBookingRefundToXero, reason "Chargeback lost") and a PAYMENT_REFUNDED audit entry; shop order: status → REFUNDED + stock restored (order sales carry no Xero push to reverse) + audit. Won/other outcomes change nothing. All side-effects sit behind the existing CAS claims so a redelivered event cannot double-run them. (PRJ-1069.12)'],
+  },
 ];
 
 // A content hash over every item's title + status + PR, so ANY change (a new
