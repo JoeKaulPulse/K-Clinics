@@ -56,6 +56,13 @@ export function KVision({ signedIn, firstName, enabled }: { signedIn: boolean; f
   const [photos, setPhotos] = useState<Photo[]>([]);
   const [consent, setConsent] = useState(false);
   const [storeImages, setStoreImages] = useState(true);
+  // BLD-1169: the uploaded photo is analysed by AI for biometric/cosmetic detail,
+  // so this is age-restricted like booking a treatment. We don't know if the
+  // account has a verified adult DOB until the server tells us (needAge:true),
+  // so these stay empty/hidden unless that happens.
+  const [dob, setDob] = useState('');
+  const [ageDeclare, setAgeDeclare] = useState(false);
+  const [showAgeGate, setShowAgeGate] = useState(false);
   const [error, setError] = useState('');
   const [result, setResult] = useState<Result | null>(null);
   const [camOpen, setCamOpen] = useState(false);
@@ -66,6 +73,7 @@ export function KVision({ signedIn, firstName, enabled }: { signedIn: boolean; f
   function requestAnalyse() {
     if (!consent) { setError('Please give your consent to continue.'); return; }
     if (photos.length === 0) { setError('Add at least one photo.'); return; }
+    if (showAgeGate && (!dob || !ageDeclare)) { setError('Please confirm your date of birth to continue.'); return; }
     setError('');
     if (!authed) { setStage('auth'); return; }
     analyse();
@@ -87,11 +95,11 @@ export function KVision({ signedIn, firstName, enabled }: { signedIn: boolean; f
     try {
       const res = await fetch('/api/ai-consultation/analyze', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ areas: [...areas], images: photos.map((p) => ({ area: p.area, dataUrl: p.dataUrl })), budgetPence: budget?.pence ?? null, budgetLabel: budget?.label ?? 'Flexible', storeImages, consent: true }),
+        body: JSON.stringify({ areas: [...areas], images: photos.map((p) => ({ area: p.area, dataUrl: p.dataUrl })), budgetPence: budget?.pence ?? null, budgetLabel: budget?.label ?? 'Flexible', storeImages, consent: true, dob: dob || undefined, ageDeclare }),
       });
       const j = await res.json();
       if (j.ok) { setResult(j); await new Promise((r) => setTimeout(r, 900)); setStage('results'); }
-      else { setError(j.message || 'Something went wrong.'); setStage('capture'); }
+      else { if (j.needAge) setShowAgeGate(true); setError(j.message || 'Something went wrong.'); setStage('capture'); }
     } catch { setError('Network error. Please try again.'); setStage('capture'); }
   }
 
@@ -171,6 +179,20 @@ export function KVision({ signedIn, firstName, enabled }: { signedIn: boolean; f
                 )}
               </div>
               <input ref={fileRef} type="file" accept="image/*" multiple className="hidden" onChange={(e) => onFiles(e.target.files)} />
+
+              {showAgeGate && (
+                <div className="mt-6 rounded-2xl border border-white/10 bg-white/[0.03] p-5 backdrop-blur">
+                  <p className="text-sm text-[#cdbfae]">This experience is for adults only. Please confirm your date of birth to continue.</p>
+                  <label className="mt-3 block text-xs text-[#9a8f80]">Date of birth
+                    <input type="date" value={dob} onChange={(e) => setDob(e.target.value)} className="mt-1 w-full rounded-xl border border-white/15 bg-white/[0.04] px-4 py-2.5 text-sm text-[#f4ece1] outline-none focus:border-[var(--color-gold,#c8a96a)]" />
+                  </label>
+                  <label className="mt-3 flex items-start gap-2 text-sm text-[#cdbfae]">
+                    <input type="checkbox" checked={ageDeclare} onChange={(e) => setAgeDeclare(e.target.checked)} className="mt-0.5 h-4 w-4 accent-[var(--color-gold,#c8a96a)]" />
+                    I confirm I am 18 years of age or over.
+                  </label>
+                </div>
+              )}
+
               <NavRow onBack={() => setStage('consent')} next={{ label: 'Build my plan', onClick: requestAnalyse, disabled: photos.length === 0 }} />
             </motion.div>
           )}
@@ -193,7 +215,7 @@ export function KVision({ signedIn, firstName, enabled }: { signedIn: boolean; f
             </motion.div>
           )}
 
-          {stage === 'results' && result && <Results key="results" result={result} budget={budget} onRestart={() => { setResult(null); setPhotos([]); setConsent(false); setBudget(null); setStage('intro'); }} />}
+          {stage === 'results' && result && <Results key="results" result={result} budget={budget} onRestart={() => { setResult(null); setPhotos([]); setConsent(false); setBudget(null); setShowAgeGate(false); setDob(''); setAgeDeclare(false); setStage('intro'); }} />}
         </AnimatePresence>
 
         {error && <p role="alert" aria-live="assertive" className="mx-auto mt-6 max-w-2xl rounded-xl border border-[#d98c8c]/30 bg-[#d98c8c]/10 px-4 py-3 text-center text-sm text-[#f4d6d6]">{error}</p>}
