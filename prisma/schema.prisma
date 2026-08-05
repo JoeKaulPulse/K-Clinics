@@ -332,6 +332,13 @@ model Client {
   // ── First-visit discount (one-time, guardrailed) ─────────────────────────
   firstDiscountClaimed Boolean @default(false)
   signupIp             String?
+  // BLD-1067: durable evidence of Terms & Conditions / cancellation-policy
+  // acceptance — WHEN, WHERE (which surface) and WHAT wording version. Every
+  // entry flow already required an active tick (or an explicit "by continuing"
+  // line) but validated-and-discarded it; these record it. Additive, nullable.
+  termsAcceptedAt      DateTime?
+  termsAcceptedSource  String?
+  termsVersion         String?
 
   // ── Loyalty / referrals ──────────────────────────────────────────────────
   referralCode String? @unique // this client's own shareable code

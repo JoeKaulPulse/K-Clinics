@@ -79,6 +79,13 @@ export async function POST(req: Request) {
       },
     });
 
+    // BLD-1067: the form's required "I accept" tick is recorded as durable
+    // T&C acceptance evidence — first acceptance wins, never overwritten.
+    {
+      const { termsAcceptanceFields } = await import('@/lib/consent');
+      await db.client.updateMany({ where: { id: client.id, termsAcceptedAt: null }, data: termsAcceptanceFields(data.formSource) }).catch(() => {});
+    }
+
     const consultation = await db.consultation.create({
       data: {
         clientId: client.id,

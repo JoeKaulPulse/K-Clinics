@@ -94,6 +94,14 @@ export async function POST(req: Request) {
       ...(d.marketingOptIn ? marketingConsentFields('website-booking') : {}),
     },
   });
+  // BLD-1067: the booking form's required terms tick (card save, charge on
+  // delivery, 24h cancellation fee) is now recorded, not just validated —
+  // first acceptance wins, never overwritten.
+  {
+    const { termsAcceptanceFields } = await import('@/lib/consent');
+    await db.client.updateMany({ where: { id: client.id, termsAcceptedAt: null }, data: termsAcceptanceFields('website-booking') }).catch(() => {});
+  }
+
   // BLD-1066: an unpaid late-cancellation/no-show fee blocks new bookings
   // until settled or waived — the balance is derived, so paying it (or staff
   // waiving it) reopens booking automatically.

@@ -18,6 +18,18 @@ export function marketingConsentFields(source: string) {
   return { marketingConsentAt: new Date(), marketingConsentSource: source.slice(0, 60), marketingConsentVersion: MARKETING_CONSENT_VERSION };
 }
 
+// BLD-1067: durable evidence of Terms & Conditions + cancellation-policy
+// acceptance. Every client entry flow requires an active tick (signup, guest
+// booking, public booking, consult) or an explicit "by continuing you agree"
+// line (K Vision, BLD-734) — this records WHEN/WHERE/WHAT-version instead of
+// validating and discarding it. Bump the version whenever the terms wording
+// shown at acceptance changes. Apply with a no-clobber update (first
+// acceptance wins) — e.g. updateMany({ where: { id, termsAcceptedAt: null } }).
+export const TERMS_CONSENT_VERSION = '2026-08-v1';
+export function termsAcceptanceFields(source: string) {
+  return { termsAcceptedAt: new Date(), termsAcceptedSource: source.slice(0, 60), termsVersion: TERMS_CONSENT_VERSION };
+}
+
 // BLD-702: explicit, demonstrable consent for AI processing of facial/body
 // photos — UK GDPR Art. 9(2)(a) (special-category data) plus Art. 13/14
 // transparency for the third-country transfer to our AI provider. Records WHAT
