@@ -148,12 +148,17 @@ export default async function ReportsPage({ searchParams }: { searchParams: Prom
       if (byProduct.length) {
         const productIds = byProduct.map((r) => r.productId).filter((id): id is string => !!id);
         const productRows = productIds.length
-          ? await db.product.findMany({ where: { id: { in: productIds } }, select: { id: true, vatClass: true, category: true } })
+          ? await db.product.findMany({ where: { id: { in: productIds } }, select: { id: true, vatClass: true } })
           : [];
         const prodById = new Map(productRows.map((p) => [p.id, p]));
         for (const g of byProduct) {
           const product = g.productId ? prodById.get(g.productId) : undefined;
-          totalVat += vatBreakdown(Math.round(g.revenue ?? 0), vatCfg, effectiveVatClass({ vatClass: product?.vatClass, category: product?.category })).vatPence;
+          // Only the explicit class counts for retail. effectiveVatClass' category
+          // fallback derives EXEMPT from the *service* category 'dentistry', and
+          // Product.category is a free-text shop category — a shop category named
+          // "dentistry" would silently zero-rate standard-rated goods. Unset means
+          // STANDARD, which is what the product editor's "Default (standard)" says.
+          totalVat += vatBreakdown(Math.round(g.revenue ?? 0), vatCfg, effectiveVatClass({ vatClass: product?.vatClass })).vatPence;
         }
       }
     }
