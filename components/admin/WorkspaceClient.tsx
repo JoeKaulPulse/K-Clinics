@@ -168,7 +168,7 @@ export function WorkspaceClient() {
         <WorkspaceSeatAudit />
 
         {configured === false && (
-          <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
+          <div className="rounded-lg border border-[var(--color-gold)]/40 bg-[var(--color-gold)]/10 p-4 text-sm text-[var(--color-gold-deep)]">
             <strong>Not configured.</strong> Set <code>GOOGLE_WORKSPACE_SA_KEY</code> and{' '}
             <code>GOOGLE_WORKSPACE_ADMIN_EMAIL</code> in{' '}
             <Link href="/admin/settings/credentials" className="underline">Admin &gt; Credentials</Link>.
@@ -190,7 +190,7 @@ export function WorkspaceClient() {
         </div>
 
         {loading && <p className="text-sm text-[var(--color-muted)]">Loading…</p>}
-        {error && !loading && <p className="text-sm text-red-600">{error}</p>}
+        {error && !loading && <p className="text-sm text-[var(--color-blush-deep)]">{error}</p>}
 
         {/* Users tab */}
         {tab === 'users' && !loading && !error && (
@@ -205,7 +205,7 @@ export function WorkspaceClient() {
                 </div>
                 <input className={`${inputCls} w-full`} type="email" placeholder="user@kclinics.co.uk" aria-label="Email" value={newUserEmail} onChange={(e) => setNewUserEmail(e.target.value)} required />
                 <input className={`${inputCls} w-full`} type="password" placeholder="Temporary password" aria-label="Temporary password" value={newUserPass} onChange={(e) => setNewUserPass(e.target.value)} required minLength={8} />
-                {createError && <p className="text-xs text-red-600">{createError}</p>}
+                {createError && <p className="text-xs text-[var(--color-blush-deep)]">{createError}</p>}
                 <button type="submit" disabled={creating} className={`${btnCls} bg-[var(--color-ink)] text-[var(--color-parchment)] disabled:opacity-50`}>
                   {creating ? 'Creating…' : 'Create user'}
                 </button>
@@ -237,7 +237,7 @@ export function WorkspaceClient() {
                                 <button
                                   type="button"
                                   onClick={() => removeAlias(u.email, a)}
-                                  className="text-[var(--color-muted)] hover:text-red-500 leading-none"
+                                  className="text-[var(--color-muted)] hover:text-[var(--color-blush-deep)] leading-none"
                                   aria-label={`Remove alias ${a}`}
                                 >
                                   ×
@@ -264,14 +264,14 @@ export function WorkspaceClient() {
                             + alias
                           </button>
                         )}
-                        {aliasTarget === u.email && aliasError && <p className="text-xs text-red-600 mt-1">{aliasError}</p>}
+                        {aliasTarget === u.email && aliasError && <p className="text-xs text-[var(--color-blush-deep)] mt-1">{aliasError}</p>}
                       </td>
                       <td className="px-4 py-3">
                         {u.name}
-                        {u.isAdmin && <span className="ml-1 text-xs text-amber-600 font-medium">(admin)</span>}
+                        {u.isAdmin && <span className="ml-1 text-xs text-[var(--color-gold-deep)] font-medium">(admin)</span>}
                       </td>
                       <td className="px-4 py-3">
-                        <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${u.suspended ? 'bg-red-100 text-red-700' : 'bg-emerald-100 text-emerald-700'}`}>
+                        <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${u.suspended ? 'bg-[var(--color-blush)]/20 text-[var(--color-blush-deep)]' : 'bg-[var(--color-jade)]/15 text-[var(--color-ink)]'}`}>
                           {u.suspended ? 'Suspended' : 'Active'}
                         </span>
                       </td>
@@ -307,7 +307,7 @@ export function WorkspaceClient() {
                 <input className={`${inputCls} w-full`} type="email" placeholder="support@kclinics.co.uk" aria-label="Group email" value={newGroupEmail} onChange={(e) => setNewGroupEmail(e.target.value)} required />
                 <input className={`${inputCls} w-full`} placeholder="Display name (e.g. Front desk)" aria-label="Display name" value={newGroupName} onChange={(e) => setNewGroupName(e.target.value)} required />
                 <input className={`${inputCls} w-full`} placeholder="Description (optional)" aria-label="Description" value={newGroupDesc} onChange={(e) => setNewGroupDesc(e.target.value)} />
-                {createGroupError && <p className="text-xs text-red-600">{createGroupError}</p>}
+                {createGroupError && <p className="text-xs text-[var(--color-blush-deep)]">{createGroupError}</p>}
                 <button type="submit" disabled={creatingGroup} className={`${btnCls} bg-[var(--color-ink)] text-[var(--color-parchment)] disabled:opacity-50`}>
                   {creatingGroup ? 'Creating…' : 'Create group'}
                 </button>

@@ -19,9 +19,9 @@ export function PhysicalFulfilment({ items, canManage }: { items: Card[]; canMan
   }
 
   return (
-    <section className="mb-8 rounded-[var(--radius-lg)] border border-amber-300 bg-amber-50 p-5">
-      <h2 className="font-[family-name:var(--font-display)] text-lg text-amber-900">📮 Physical cards to post ({items.length})</h2>
-      <p className="mt-1 text-sm text-amber-800">Printed-card upgrades that have been paid for and are waiting to be posted to the recipient.</p>
+    <section className="mb-8 rounded-[var(--radius-lg)] border border-[var(--color-gold)]/40 bg-[var(--color-gold)]/8 p-5">
+      <h2 className="font-[family-name:var(--font-display)] text-lg text-[var(--color-gold-deep)]">📮 Physical cards to post ({items.length})</h2>
+      <p className="mt-1 text-sm text-[var(--color-gold-deep)]">Printed-card upgrades that have been paid for and are waiting to be posted to the recipient.</p>
       <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
         {items.map((c) => (
           <div key={c.id} className="rounded-[var(--radius-md)] border border-[var(--color-line)] bg-white p-4 text-sm">

@@ -49,7 +49,7 @@ function GoogleSetupGuide({ configured, redirectUri }: { configured: boolean; re
         <li>Click <strong>Connect Google Business</strong> — we auto-detect your location and import reviews. No numeric IDs needed.</li>
       </ol>
       <div className="mt-3"><CopyField label="Authorised redirect URI (paste into the OAuth client)" value={redirectUri} /></div>
-      {!configured && <p className="mt-3 rounded-[var(--radius-sm)] bg-amber-50 px-3 py-2 text-xs text-amber-800">Waiting on <code>GOOGLE_CLIENT_ID</code> + <code>GOOGLE_CLIENT_SECRET</code> in the environment (then redeploy) — the Connect button appears once they’re set.</p>}
+      {!configured && <p className="mt-3 rounded-[var(--radius-sm)] bg-[var(--color-gold)]/10 px-3 py-2 text-xs text-[var(--color-gold-deep)]">Waiting on <code>GOOGLE_CLIENT_ID</code> + <code>GOOGLE_CLIENT_SECRET</code> in the environment (then redeploy) — the Connect button appears once they’re set.</p>}
     </div>
   );
 }
@@ -108,10 +108,10 @@ function LocationSetup({ onReady }: { onReady: () => void }) {
 
   if (state === 'error') {
     return (
-      <div className="mt-4 rounded-[var(--radius-md)] border border-[var(--color-line)] bg-amber-50 p-4">
-        <p className="text-sm font-medium text-amber-900">We couldn’t reach Google just now</p>
-        {err && <p role="alert" aria-live="assertive" className="mt-1 text-sm text-amber-800">{err}</p>}
-        <button onClick={load} disabled={busy} className="mt-3 rounded-full border border-amber-300 px-4 py-1.5 text-xs font-medium text-amber-900 hover:bg-amber-100 disabled:opacity-50">Try again</button>
+      <div className="mt-4 rounded-[var(--radius-md)] border border-[var(--color-line)] bg-[var(--color-gold)]/8 p-4">
+        <p className="text-sm font-medium text-[var(--color-gold-deep)]">We couldn’t reach Google just now</p>
+        {err && <p role="alert" aria-live="assertive" className="mt-1 text-sm text-[var(--color-gold-deep)]">{err}</p>}
+        <button onClick={load} disabled={busy} className="mt-3 rounded-full border border-[var(--color-gold)]/50 px-4 py-1.5 text-xs font-medium text-[var(--color-gold-deep)] hover:bg-[var(--color-gold)]/15 disabled:opacity-50">Try again</button>
       </div>
     );
   }

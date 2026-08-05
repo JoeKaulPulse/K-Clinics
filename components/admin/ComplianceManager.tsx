@@ -16,9 +16,9 @@ const money = (p: number | null) => (p == null ? '' : `£${(p / 100).toLocaleStr
 const fmtDate = (iso: string) => new Date(iso).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
 
 const BADGE: Record<RenewalStatus, string> = {
-  EXPIRED: 'bg-red-100 text-red-800',
+  EXPIRED: 'bg-[var(--color-blush)]/20 text-[var(--color-blush-deep)]',
   DUE: 'bg-[var(--color-blush)]/20 text-[var(--color-ink)]',
-  SOON: 'bg-[var(--color-gold)]/20 text-[var(--color-gold-deep)]',
+  SOON: 'bg-[var(--color-gold)]/20 text-[var(--color-ink)]',
   OK: 'bg-[var(--color-bone)] text-[var(--color-stone)]',
 };
 const statusText = (r: Row) =>
@@ -133,7 +133,7 @@ export function ComplianceManager({ rows, canManage }: { rows: Row[]; canManage:
 }
 
 function Stat({ label, value, tone }: { label: string; value: number; tone: 'red' | 'blush' | 'gold' | 'stone' }) {
-  const color = tone === 'red' ? 'text-red-700' : tone === 'blush' ? 'text-[var(--color-ink)]' : tone === 'gold' ? 'text-[var(--color-gold-deep)]' : 'text-[var(--color-stone)]';
+  const color = tone === 'red' ? 'text-[var(--color-blush-deep)]' : tone === 'blush' ? 'text-[var(--color-ink)]' : tone === 'gold' ? 'text-[var(--color-gold-deep)]' : 'text-[var(--color-stone)]';
   return (
     <div className="rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-5">
       <p className="text-xs uppercase tracking-[0.14em] text-[var(--color-stone)]">{label}</p>

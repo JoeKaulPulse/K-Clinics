@@ -99,7 +99,7 @@ export function ChatManager() {
           <button key={c.id} onClick={() => open(c.id)} className={`block w-full border-b border-[var(--color-line)] px-4 py-3 text-left last:border-0 ${activeId === c.id ? 'bg-[var(--color-bone)]' : 'hover:bg-[var(--color-bone)]'}`}>
             <div className="flex items-center justify-between gap-2">
               <span className="truncate text-sm font-medium">{c.visitorName || c.visitorEmail || 'Visitor'}</span>
-              {c.staffUnread > 0 && <span className="rounded-full bg-amber-400 px-1.5 py-0.5 text-[0.6rem] font-semibold text-amber-950">{c.staffUnread}</span>}
+              {c.staffUnread > 0 && <span className="rounded-full bg-[var(--color-gold-deep)] px-1.5 py-0.5 text-[0.6rem] font-semibold text-[var(--color-porcelain)]">{c.staffUnread}</span>}
             </div>
             <p className="mt-0.5 truncate text-xs text-[var(--color-stone)]">{c.preview}</p>
             <p className="mt-0.5 flex items-center gap-1.5 text-[0.6rem] uppercase tracking-wide text-[var(--color-stone)]">

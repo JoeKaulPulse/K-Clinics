@@ -187,7 +187,7 @@ export function EmailComposer({ segments, tags, initial, templates = [] }: { seg
               <label className="ml-auto flex items-center gap-1.5 text-[0.65rem] text-[var(--color-stone)]">
                 <input type="checkbox" checked={abOn} onChange={(e) => setAbOn(e.target.checked)} className="h-3.5 w-3.5 accent-[var(--color-gold)]" /> A/B test subject
               </label>
-              <span className={`text-[0.65rem] ${subject.length > 60 ? 'text-amber-700' : 'text-[var(--color-stone)]'}`}>{subject.length} chars</span>
+              <span className={`text-[0.65rem] ${subject.length > 60 ? 'text-[var(--color-gold-deep)]' : 'text-[var(--color-stone)]'}`}>{subject.length} chars</span>
             </div>
             {abOn && (
               <div className="mt-2 rounded-[var(--radius-md)] border border-dashed border-[var(--color-line)] bg-white/50 p-3">
@@ -209,7 +209,7 @@ export function EmailComposer({ segments, tags, initial, templates = [] }: { seg
                 </div>
               </div>
             )}
-            {spamHits.length > 0 && <p className="mt-1 text-[0.65rem] text-amber-700">Possible spam triggers: {spamHits.join(', ')}</p>}
+            {spamHits.length > 0 && <p className="mt-1 text-[0.65rem] text-[var(--color-gold-deep)]">Possible spam triggers: {spamHits.join(', ')}</p>}
           </div>
           <div className="mt-3 grid gap-3 sm:grid-cols-2">
             <label className="text-xs text-[var(--color-stone)]">Preview text <span className="text-[var(--color-stone)]">(inbox snippet)</span><input value={preheader} onChange={(e) => setPreheader(e.target.value)} placeholder="Shown after the subject in most inboxes" className={`${field} mt-1 w-full`} /></label>

@@ -4,8 +4,8 @@ import { useMemo, useState } from 'react';
 import type { GoLiveGroup, GoLiveItem, GoLiveStatus } from '@/lib/go-live';
 
 const BADGE: Record<GoLiveStatus, { label: string; cls: string }> = {
-  ready: { label: 'Ready ✓', cls: 'bg-green-100 text-green-800' },
-  action: { label: 'Action needed', cls: 'bg-amber-100 text-amber-800' },
+  ready: { label: 'Ready ✓', cls: 'bg-[var(--color-jade)]/15 text-[var(--color-ink)]' },
+  action: { label: 'Action needed', cls: 'bg-[var(--color-gold)]/20 text-[var(--color-ink)]' },
   optional: { label: 'Optional', cls: 'bg-[var(--color-bone)] text-[var(--color-stone)]' },
 };
 
@@ -96,7 +96,7 @@ export function GoLiveChecklist({ groups: initial }: { groups: GoLiveGroup[] }) 
                           {it.done && <svg viewBox="0 0 24 24" className="h-3 w-3" fill="none"><path d="M5 13l4 4L19 7" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" /></svg>}
                         </button>
                       ) : (
-                        <span className={`mt-1 h-2.5 w-2.5 shrink-0 rounded-full ${it.done ? 'bg-[var(--color-jade)]' : 'bg-amber-400'}`} />
+                        <span className={`mt-1 h-2.5 w-2.5 shrink-0 rounded-full ${it.done ? 'bg-[var(--color-jade)]' : 'bg-[var(--color-gold)]'}`} />
                       )}
                       <div>
                         <h3 className="font-medium">

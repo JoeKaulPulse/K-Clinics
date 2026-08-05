@@ -22,7 +22,7 @@ export function HeatmapViewer({ path, baseUrl, points }: { path: string; baseUrl
               <option value={1200}>Short</option><option value={1800}>Medium</option><option value={3000}>Tall</option>
             </select>
           </label>
-          <span><span className="inline-block h-2 w-2 rounded-full bg-[var(--color-gold)]" /> click · <span className="inline-block h-2 w-2 rounded-full bg-red-500" /> rage</span>
+          <span><span className="inline-block h-2 w-2 rounded-full bg-[var(--color-gold)]" /> click · <span className="inline-block h-2 w-2 rounded-full bg-[var(--color-blush-deep)]" /> rage</span>
         </div>
       </div>
       <div className="relative mx-auto w-full max-w-[1100px] overflow-hidden rounded-[var(--radius-md)] border border-[var(--color-line)] bg-white" style={{ height }}>

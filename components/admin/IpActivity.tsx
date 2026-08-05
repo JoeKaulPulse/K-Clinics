@@ -140,7 +140,7 @@ export function IpActivity({ rows, blocked }: { rows: IpRow[]; blocked: BlockedR
                           {r.devices.length > 1 && <span className="text-xs text-[var(--color-stone)]"> +{r.devices.length - 1}</span>}
                         </td>
                         <td className="py-2 pr-3 tabular-nums">{r.events}</td>
-                        <td className={`py-2 pr-3 tabular-nums ${r.fails > 5 ? 'text-amber-600' : ''}`}>{r.fails}</td>
+                        <td className={`py-2 pr-3 tabular-nums ${r.fails > 5 ? 'text-[var(--color-gold-deep)]' : ''}`}>{r.fails}</td>
                         <td className="py-2 pr-3 text-xs text-[var(--color-stone)]">{r.portals.join(', ') || '—'}</td>
                         <td className="py-2 pr-3 text-xs text-[var(--color-stone)]">{fmt(r.lastSeen)}</td>
                         <td className="py-2 text-right">
