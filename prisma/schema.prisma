@@ -3783,6 +3783,7 @@ model Product {
   description       String?
   brand             String?
   category          String?
+  vatClass          String? // STANDARD | REDUCED | ZERO | EXEMPT (null → derived: else STANDARD)
   pricePence        Int           @default(0)
   compareAtPence    Int? // "was" price for sale display
   costPence         Int? // cost of goods (margin)
