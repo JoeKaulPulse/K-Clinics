@@ -3235,6 +3235,12 @@ export const BUILD_BACKLOG: BacklogItem[] = [
     detail: 'Request: admins should be able to edit a client’s Date of Birth and Allergies / Medical Notes at any time.',
     notes: ['Already delivered (BLD-199): the client profile’s "Edit details" dialog edits both — DoB as a date field, Allergies gated on the clinical-view permission so a non-clinical staffer can never silently wipe the hidden value; saves are immediate and audit-logged. Replied on the board with step-by-step staff instructions and flipped the card to Shipped. (BLD-1097)'],
   },
+  {
+    title: 'Admin UI uses raw Tailwind colours instead of brand palette tokens across 56+ components', type: 'TASK', urgency: 'P1', status: 'IN_REVIEW', assignee: 'claude',
+    value: 8, effort: 5,
+    detail: "components/admin/ReviewsBoard.tsx, BuildBoard.tsx and dozens more use raw Tailwind swatches instead of the theme tokens defined in app/globals.css, failing every brand audit.",
+    notes: ["Built on a draft PR, NOT merged -- an Opus review pass found a real accessibility regression risk in the conversion itself. Fix: about 52 admin components swapped raw Tailwind status colours (green/red/amber) for the jade/blush-deep/gold theme tokens; scope, visual weight (tint stayed tint, solid fill stayed solid fill) and file boundary (components/admin/ only) all check out, and one dark-mode contrast bug the conversion introduced along the way (unread-count badges going near-invisible) is already fixed on the branch. Unresolved: several of the light-theme tinted badges and warning panels this branch converts -- plus about 15 more already on main using the same pattern -- fall below the WCAG AA 4.5:1 text contrast ratio (measured 3.4-4.2:1), because the palette has no dedicated AA-safe 'coloured text on its own tint' pair for gold or jade at the intensities used. This is the same class of bug BLD-1120 fixed for the Erase/Delete buttons. Needs a design-system call before merge: add an AA-safe on-tint text token to app/globals.css, or switch tinted badges to text-[var(--color-ink)] (10-13:1), the pattern ComplianceManager/TimeOffManager/OrdersManager already use for blush tints. Reply on this card with your preference and this ships once applied. (BLD-1032)"],
+  },
 ];
 
 // A content hash over every item's title + status + PR, so ANY change (a new
