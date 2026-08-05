@@ -43,17 +43,38 @@ export async function POST(req: Request) {
   // exact figure quoted here.
   const { courseTotalPence } = await import('@/lib/booking-actions');
   const course = await courseTotalPence(bookingId);
-  if (!course || course.pence <= 0) {
+  if (!course || course.grossPence <= 0) {
     return NextResponse.json({ ok: false, error: 'This booking has no payable course total (on-consultation pricing). Set a price first.' }, { status: 409 });
+  }
+  // BLD-1186 (review): the course DOES have a price, but redeemed loyalty points
+  // and/or an applied gift voucher already cover all of it — nothing is left for
+  // a BNPL link to collect. Say so plainly instead of falling through to the
+  // on-consultation message above, which would tell staff to "set a price" on a
+  // booking that already has one.
+  if (course.pence <= 0) {
+    return NextResponse.json({
+      ok: false,
+      error: `Redeemed loyalty points and/or an applied gift voucher already cover the full £${(course.grossPence / 100).toFixed(2)} course price — there is nothing left to pre-pay. Complete the appointment and settle it from the session screen instead.`,
+    }, { status: 409 });
   }
   // BLD-1119: the pre-payment must settle the booking IN FULL. courseTotalPence is
   // the primary line item only, so if the booking price is higher (add-on
   // treatments on top of the course) this link would leave a remainder that no
   // charge surface can then collect — prepaidAt makes every one of them refuse.
-  if (booking.pricePence > course.pence) {
+  //
+  // BLD-1186 (review): compare GROSS with GROSS. booking.pricePence is always the
+  // undiscounted figure — addTreatmentToBooking/removeAddonTreatment increment and
+  // decrement it by the add-on's own pricePence, and redeeming points or applying
+  // a voucher never rewrites it — so the only thing this subtraction should ever
+  // surface is the add-ons total. course.pence is now NET of those redemptions, so
+  // testing against it would read a discount as an add-on and refuse to mint the
+  // link (with a misleading "extras on top" message) for precisely the discounted
+  // course BLD-1186 exists to fix. course.grossPence is the same primary-line-item
+  // figure before the netting, which keeps the difference below meaning "add-ons".
+  if (booking.pricePence > course.grossPence) {
     return NextResponse.json({
       ok: false,
-      error: `This booking totals £${(booking.pricePence / 100).toFixed(2)} but the course itself is £${(course.pence / 100).toFixed(2)} — the extras on top can’t be collected once the course is pre-paid. Remove the add-on treatments here and bill them on a separate booking, then send the pre-payment link.`,
+      error: `This booking totals £${(booking.pricePence / 100).toFixed(2)} but the course itself is £${(course.grossPence / 100).toFixed(2)} — the extras on top can’t be collected once the course is pre-paid. Remove the add-on treatments here and bill them on a separate booking, then send the pre-payment link.`,
     }, { status: 409 });
   }
 

@@ -47,8 +47,8 @@ export function isWithin24h(b: Pick<Booking, 'startAt'>): boolean {
  * pricePence to (price-per-session × sessions), and the booking detail derives
  * `basePence` the same way (booking.pricePence minus add-ons). We read the
  * primary item directly so the link, the validation and the badge all agree.
- * Returns { pence, sessions, label }; pence is 0 for an on-consultation (£0)
- * booking, which callers must reject (nothing to pre-pay).
+ * Returns { pence, grossPence, sessions, label }; pence is 0 for an
+ * on-consultation (£0) booking, which callers must reject (nothing to pre-pay).
  *
  * BLD-1186: pricePence — both the booking-level figure and the line item's —
  * is always the GROSS price. Redeeming loyalty points or a gift voucher never
@@ -59,8 +59,15 @@ export function isWithin24h(b: Pick<Booking, 'startAt'>): boolean {
  * too, for whichever branch below supplies the gross figure — the primary
  * line item or the legacy no-line-item fallback — since neither is ever
  * pre-discounted.
+ *
+ * `pence` is therefore what the client still OWES for the course (what a BNPL
+ * link must collect). `grossPence` is the same figure BEFORE those redemptions:
+ * it is what callers must compare against booking.pricePence, which is itself
+ * always gross (BLD-1186 review). Mixing the two — netted course vs gross
+ * booking — makes any "is there anything on top of the course?" test read a
+ * discount as an add-on.
  */
-export async function courseTotalPence(bookingId: string): Promise<{ pence: number; sessions: number; label: string } | null> {
+export async function courseTotalPence(bookingId: string): Promise<{ pence: number; grossPence: number; sessions: number; label: string } | null> {
   const booking = await db.booking.findUnique({ where: { id: bookingId }, select: { pricePence: true, treatmentTitle: true, pointsRedeemedPence: true, giftVoucherPence: true } });
   if (!booking) return null;
   const primary = await db.bookingItem.findFirst({
@@ -73,7 +80,7 @@ export async function courseTotalPence(bookingId: string): Promise<{ pence: numb
   const sessions = Math.max(1, primary?.sessions ?? 1);
   const grossPence = primary?.pricePence ?? booking.pricePence ?? 0;
   const pence = Math.max(0, grossPence - (booking.pointsRedeemedPence ?? 0) - (booking.giftVoucherPence ?? 0));
-  return { pence, sessions, label: primary?.label || booking.treatmentTitle };
+  return { pence, grossPence, sessions, label: primary?.label || booking.treatmentTitle };
 }
 
 /**
