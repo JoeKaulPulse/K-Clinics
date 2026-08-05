@@ -3235,6 +3235,12 @@ export const BUILD_BACKLOG: BacklogItem[] = [
     detail: 'Request: admins should be able to edit a client’s Date of Birth and Allergies / Medical Notes at any time.',
     notes: ['Already delivered (BLD-199): the client profile’s "Edit details" dialog edits both — DoB as a date field, Allergies gated on the clinical-view permission so a non-clinical staffer can never silently wipe the hidden value; saves are immediate and audit-logged. Replied on the board with step-by-step staff instructions and flipped the card to Shipped. (BLD-1097)'],
   },
+  {
+    title: 'K Vision web AI face-analysis flow has no age verification, unlike the physical kiosk', type: 'IDEA', urgency: 'P1', status: 'IN_REVIEW', assignee: 'claude',
+    value: 7, effort: 3,
+    detail: 'components/ai/KVision.tsx and app/api/ai-consultation/analyze/route.ts let any visitor create a guest account and upload a face photo for AI cosmetic analysis with no age gate, unlike the kiosk (explicit 18+ declaration) and booking/gift-card claim (isAdultOn). Filed as IDEA, not auto-built -- needs an owner decision on the minimum age and what happens below it.',
+    notes: ["Built on a draft PR, NOT merged -- this card was explicitly filed as an owner decision, not an auto-build, and that was only caught after the branch was built and reviewed. What is on the branch: app/api/ai-consultation/analyze/route.ts now requires a verified adult DOB before the AI call runs -- date of birth plus an explicit 'I confirm I am 18 or over' checkbox, persisted to Client.dob/ageDeclaredAt on first confirmation -- mirroring the existing app/api/account/gift-card/claim/route.ts pattern exactly. The prompt only appears in KVision.tsx when needed (no verified adult DOB on file yet). Signup itself is untouched -- age stays enforced at the point of the action, not at signup, matching this codebase's documented policy -- so the specific 'changes the signup form's UX' concern the original filing raised does not apply to this implementation. Still needs your decision before this merges: is 18 the right minimum, and is a hard block (no plan shown, no parental-consent path) the right response below it, matching every other age gate already in this codebase? Reply on this card and this ships as-is. (BLD-1169)"],
+  },
 ];
 
 // A content hash over every item's title + status + PR, so ANY change (a new
