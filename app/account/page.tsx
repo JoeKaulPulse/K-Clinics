@@ -36,6 +36,12 @@ export default async function DashboardPage() {
   const { clientLoyaltySummary } = await import('@/lib/client-loyalty');
   const { formatPrice } = await import('@/lib/treatments');
   const loyalty = await clientLoyaltySummary(client.id);
+  // BLD-1098: package balances for the signed-in client.
+  const { clientPackages } = await import('@/lib/package-sessions');
+  const packages = await clientPackages(client.id).catch(() => []);
+  // BLD-1066: unpaid late-cancel/no-show balance — booking is paused until settled.
+  const { outstandingBalance } = await import('@/lib/outstanding');
+  const owed = await outstandingBalance(client.id).catch(() => ({ totalPence: 0, items: [] }));
 
   // Onboarding state (welcome flow for new — and existing — clients).
   const { db: _db, withDbRetry } = await import('@/lib/db');
@@ -69,6 +75,15 @@ export default async function DashboardPage() {
         lastVisitISO={client.lastVisitAt ? client.lastVisitAt.toISOString() : null}
       />
 
+      {/* BLD-1066: outstanding payment — shown before anything promotional. */}
+      {owed.totalPence > 0 && (
+        <div role="alert" className="mt-8 rounded-[var(--radius-lg)] border border-[var(--color-blush-deep)] bg-[var(--color-blush)]/15 p-6">
+          <p className="font-medium text-[var(--color-blush-deep)]">{t('dash.owedTitle', { amount: formatPrice(owed.totalPence) })}</p>
+          <p className="mt-1 text-sm text-[var(--color-ink)]">{t('dash.owedBody')}</p>
+          <a href={site.phoneHref} className="mt-3 inline-block rounded-full bg-[var(--color-ink)] px-5 py-2.5 text-sm font-medium text-[var(--color-porcelain)]">{site.phone}</a>
+        </div>
+      )}
+
       <PersonalisedOffers clientId={client.id} />
       {!client.marketingOptIn && !client.unsubscribed && <MarketingOptInPrompt />}
       <div className="mt-8"><OffersStrip heading="Offers for you" /></div>
@@ -90,6 +105,29 @@ export default async function DashboardPage() {
               </div>
             </div>
             <Link href="/book" className="rounded-full bg-[var(--color-gold-deep)] px-5 py-2.5 text-sm font-medium text-white shadow-[var(--shadow-gold)] hover:bg-[var(--color-ink)]">{t('dash.book')}</Link>
+          </div>
+        </Reveal>
+      )}
+
+      {/* BLD-1098: package balances — "Session X of N" at a glance. */}
+      {packages.length > 0 && (
+        <Reveal>
+          <div className="mb-10 space-y-3">
+            <h2 className="eyebrow">{t('dash.pkgTitle')}</h2>
+            {packages.map((p) => (
+              <div key={p.purchaseBookingId} className="flex flex-wrap items-center justify-between gap-4 rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-6">
+                <div>
+                  <p className="font-medium">{p.label}</p>
+                  <p className="mt-0.5 text-sm text-[var(--color-stone)]">
+                    {t('dash.pkgSession', { used: Math.min(p.sessionsUsed + p.sessionsBooked, p.sessionsTotal), total: p.sessionsTotal })}
+                    {' · '}{t('dash.pkgRemaining', { n: p.sessionsRemaining })}
+                  </p>
+                </div>
+                <span className={`rounded-full px-3 py-1 text-xs font-medium ${p.paid ? 'bg-[var(--color-jade)]/15 text-[var(--color-jade)]' : 'bg-[var(--color-blush)]/20 text-[var(--color-blush-deep)]'}`}>
+                  {p.paid ? t('dash.pkgPaid') : t('dash.pkgUnpaid')}
+                </span>
+              </div>
+            ))}
           </div>
         </Reveal>
       )}
