@@ -45,13 +45,25 @@ export async function GET(req: Request) {
     // red — a dead/revoked key on one of those is the "customers are affected
     // right now" case this finding is about.
     //
-    // Only alert on a FRESH transition into red: ApiHealthResult.since is
-    // carried forward unchanged while a light stays the same between runs and
-    // reset to `report.generatedAt` the run a check's light changes (see
-    // runApiHealth() in lib/api-health.ts). So `since === report.generatedAt`
-    // means this check just turned red this run — alerting on that (rather
-    // than on every red run) avoids paging every ~30 minutes for the duration
-    // of a single ongoing outage while still catching it the moment it starts.
+    // Only alert on a NEW red spell, not on every red run: ApiHealthResult.since
+    // is carried forward unchanged while a light stays the same between runs and
+    // reset to that run's `generatedAt` the run a check's light changes (see
+    // runApiHealth() in lib/api-health.ts). So `since` is the moment the check
+    // went red, and alerting only when that moment is newer than the last alert
+    // we sent catches the outage as it starts without re-paging every ~30
+    // minutes for its duration. (ISO-8601 UTC strings from toISOString() are
+    // fixed-width, so a lexicographic compare is a chronological one.)
+    //
+    // The last-alerted watermark is kept in its own Setting row rather than
+    // inferred from `since === report.generatedAt` (BLD-1187 review): ANY run
+    // rewrites the stored report, including the live probe that
+    // components/admin/ApiHealthPanel.tsx fires on every /admin/api-health open
+    // (and every 60s with auto-refresh on) and the one ConnectionCentre.tsx
+    // fires after a key is saved. Those runs consume the "changed this run"
+    // marker without alerting, so the following cron would see an unchanged
+    // light and stay silent — losing the page entirely for the outage. That is
+    // the likeliest moment for one, since saving a wrong key is what turns a
+    // critical check red in the first place.
     //
     // Only alert when the caller is the actual scheduled cron (cronAuthed,
     // i.e. presented CRON_SECRET) — not an admin interactively opening
@@ -59,11 +71,17 @@ export async function GET(req: Request) {
     // already see the red light on the page. Mirrors the `authed` gate in
     // app/api/health/route.ts.
     if (cronAuthed) {
-      const freshRedCritical = report.checks.filter(
-        (c) => c.critical && c.light === 'red' && c.since === report.generatedAt,
+      const { db } = await import('@/lib/db');
+      const ALERT_KEY = 'api_health_last_alert_at';
+      let lastAlertAt = '';
+      try {
+        lastAlertAt = (await db.setting.findUnique({ where: { key: ALERT_KEY } }))?.value || '';
+      } catch { /* no watermark — treat every current red spell as new */ }
+      const newRedCritical = report.checks.filter(
+        (c) => c.critical && c.light === 'red' && c.since > lastAlertAt,
       );
-      if (freshRedCritical.length > 0) {
-        const summary = `[kclinics api-health] critical outage — ${freshRedCritical
+      if (newRedCritical.length > 0) {
+        const summary = `[kclinics api-health] critical outage — ${newRedCritical
           .map((c) => `${c.label} (${c.id}): ${c.detail}`)
           .join(' · ')}`;
         try {
@@ -76,6 +94,15 @@ export async function GET(req: Request) {
           // the response is sent, so an un-awaited fetch may silently never send.
           try { await fetch(webhookUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body }); } catch { /* non-fatal */ }
         }
+        // Advance the watermark only after the alert has gone out, so a failed
+        // run re-alerts on the next cron rather than swallowing the outage.
+        try {
+          await db.setting.upsert({
+            where: { key: ALERT_KEY },
+            update: { value: report.generatedAt, updatedBy: 'api-health' },
+            create: { key: ALERT_KEY, value: report.generatedAt, updatedBy: 'api-health' },
+          });
+        } catch { /* watermark write failed — worst case is one duplicate alert */ }
       }
     }
 
