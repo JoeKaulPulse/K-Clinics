@@ -9,7 +9,7 @@ type Window = {
 };
 
 const STATUS_DOT: Record<string, string> = {
-  SCHEDULED: 'bg-amber-400', ACTIVE: 'bg-[var(--color-jade)]', DONE: 'bg-[var(--color-stone-soft)]', CANCELLED: 'bg-[var(--color-stone-soft)]',
+  SCHEDULED: 'bg-[var(--color-gold)]', ACTIVE: 'bg-[var(--color-jade)]', DONE: 'bg-[var(--color-stone-soft)]', CANCELLED: 'bg-[var(--color-stone-soft)]',
 };
 
 export function MaintenanceScheduler({ windows, serviceOptions }: { windows: Window[]; serviceOptions: { id: string; label: string }[] }) {
@@ -79,7 +79,7 @@ export function MaintenanceScheduler({ windows, serviceOptions }: { windows: Win
               })}
             </div>
           </div>
-          {err && <p role="alert" aria-live="assertive" className="text-sm text-red-600 sm:col-span-2">{err}</p>}
+          {err && <p role="alert" aria-live="assertive" className="text-sm text-[var(--color-blush-deep)] sm:col-span-2">{err}</p>}
           <div className="sm:col-span-2">
             <button onClick={submit} disabled={busy} className="rounded-full bg-[var(--color-ink)] px-5 py-2.5 text-sm font-medium text-[var(--color-porcelain)] disabled:opacity-50">{busy ? 'Scheduling…' : 'Schedule window'}</button>
           </div>
@@ -102,7 +102,7 @@ export function MaintenanceScheduler({ windows, serviceOptions }: { windows: Win
                 {w.detail && <p className="mt-0.5 text-xs text-[var(--color-stone)]">{w.detail}</p>}
                 {w.services.length > 0 && <p className="mt-0.5 text-xs text-[var(--color-stone)]">Affects: {w.services.join(', ')}</p>}
               </div>
-              <button onClick={() => cancel(w.id)} className="shrink-0 text-xs text-[var(--color-stone)] hover:text-red-600">Cancel</button>
+              <button onClick={() => cancel(w.id)} className="shrink-0 text-xs text-[var(--color-stone)] hover:text-[var(--color-blush-deep)]">Cancel</button>
             </li>
           ))}
         </ul>

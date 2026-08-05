@@ -14,8 +14,8 @@ type Threats = {
 };
 const ROLES = ['OWNER', 'ADMIN', 'PRACTITIONER', 'FRONT_DESK', 'STAFF'];
 
-const dot: Record<Severity, string> = { ok: 'bg-emerald-500', info: 'bg-sky-400', warn: 'bg-amber-400', critical: 'bg-[var(--color-blush)]' };
-const chip: Record<Severity, string> = { ok: 'text-emerald-700', info: 'text-sky-700', warn: 'text-amber-700', critical: 'text-[var(--color-blush-deep)]' };
+const dot: Record<Severity, string> = { ok: 'bg-[var(--color-jade)]', info: 'bg-sky-400', warn: 'bg-[var(--color-gold)]', critical: 'bg-[var(--color-blush)]' };
+const chip: Record<Severity, string> = { ok: 'text-[var(--color-jade)]', info: 'text-sky-700', warn: 'text-[var(--color-gold-deep)]', critical: 'text-[var(--color-blush-deep)]' };
 
 async function post(payload: object) {
   const r = await fetch('/api/admin/security', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
@@ -60,7 +60,7 @@ export function SecurityCentre({ score, checks, policy, threats }: { score: numb
   }
   function toggleRole(role: string) { setRoles((rs) => (rs.includes(role) ? rs.filter((x) => x !== role) : [...rs, role])); }
 
-  const scoreColor = score >= 85 ? 'text-emerald-600' : score >= 60 ? 'text-amber-600' : 'text-[var(--color-blush-deep)]';
+  const scoreColor = score >= 85 ? 'text-[var(--color-jade)]' : score >= 60 ? 'text-[var(--color-gold-deep)]' : 'text-[var(--color-blush-deep)]';
 
   return (
     <div className="space-y-8">
@@ -79,15 +79,15 @@ export function SecurityCentre({ score, checks, policy, threats }: { score: numb
         ].map((s) => (
           <div key={s.l} className="rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-4">
             <p className="text-xs uppercase tracking-wide text-[var(--color-stone)]">{s.l}</p>
-            <p className={`font-[family-name:var(--font-display)] text-2xl tabular-nums ${s.warn ? 'text-amber-600' : ''}`}>{s.v}</p>
+            <p className={`font-[family-name:var(--font-display)] text-2xl tabular-nums ${s.warn ? 'text-[var(--color-gold-deep)]' : ''}`}>{s.v}</p>
           </div>
         ))}
       </div>
 
       {/* Warning flags */}
       {flags.length > 0 && (
-        <div className="rounded-[var(--radius-lg)] border border-amber-300 bg-amber-50 p-5">
-          <h2 className="font-[family-name:var(--font-display)] text-lg text-amber-900">⚠ {flags.length} item{flags.length === 1 ? '' : 's'} need attention</h2>
+        <div className="rounded-[var(--radius-lg)] border border-[var(--color-gold)]/40 bg-[var(--color-gold)]/8 p-5">
+          <h2 className="font-[family-name:var(--font-display)] text-lg text-[var(--color-gold-deep)]">⚠ {flags.length} item{flags.length === 1 ? '' : 's'} need attention</h2>
           <ul className="mt-3 space-y-2">
             {flags.map((c) => (
               <li key={c.label} className="flex items-start gap-2.5 text-sm">

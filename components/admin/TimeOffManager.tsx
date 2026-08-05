@@ -11,8 +11,8 @@ type TeamItem = { id: string; staffName: string; kind: string; startAt: string; 
 const KIND_VALUES = ['HOLIDAY', 'SICK', 'TRAINING', 'PERSONAL'];
 
 const STATUS_STYLE: Record<string, string> = {
-  PENDING: 'bg-amber-100 text-amber-800',
-  APPROVED: 'bg-green-100 text-green-800',
+  PENDING: 'bg-[var(--color-gold)]/20 text-[var(--color-ink)]',
+  APPROVED: 'bg-[var(--color-jade)]/15 text-[var(--color-ink)]',
   DECLINED: 'bg-[var(--color-blush)]/20 text-[var(--color-ink)]',
   CANCELLED: 'bg-[var(--color-bone)] text-[var(--color-stone)]',
 };
@@ -187,7 +187,7 @@ function Approvals({ pending }: { pending: Pending[] }) {
     <section className="rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-6">
       <div className="mb-4 flex items-center gap-2">
         <h2 className="font-[family-name:var(--font-display)] text-xl">{t('timeoff.pending')}</h2>
-        {pending.length > 0 && <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-800">{pending.length}</span>}
+        {pending.length > 0 && <span className="rounded-full bg-[var(--color-gold)]/20 px-2 py-0.5 text-xs font-medium text-[var(--color-gold-deep)]">{pending.length}</span>}
       </div>
       {pending.length === 0 && <p className="text-sm text-[var(--color-stone)]">{t('timeoff.noPending')}</p>}
       <ul className="space-y-3">

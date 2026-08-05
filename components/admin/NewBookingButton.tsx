@@ -391,7 +391,7 @@ function DoneView({ result, treatmentTitle, whenLabel, onClose, router }: { resu
             {noteState === 'saving' ? 'Saving…' : noteState === 'saved' ? 'Saved ✓' : 'Save to client record'}
           </button>
           {noteState === 'saved' && <span className="text-xs text-[var(--color-jade)]">Logged to the client’s timeline.</span>}
-          {noteState === 'error' && <span className="text-xs text-red-600">Couldn’t save — try again.</span>}
+          {noteState === 'error' && <span className="text-xs text-[var(--color-blush-deep)]">Couldn’t save — try again.</span>}
         </div>
       </div>
 

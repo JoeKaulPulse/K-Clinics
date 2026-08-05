@@ -11,8 +11,8 @@ const CATEGORY_LABEL: Record<string, string> = {
   inventory: 'Inventory', team: 'Team', academy: 'Academy', marketing: 'Marketing', system: 'System',
 };
 // Left accent + dot per priority so urgent/high stand out without colour-only meaning.
-const PRIORITY_ACCENT: Record<string, string> = { urgent: 'border-l-2 border-l-[#c0392b]', high: 'border-l-2 border-l-amber-400', normal: '', low: '' };
-const PRIORITY_DOT: Record<string, string> = { urgent: 'bg-[#c0392b]', high: 'bg-amber-400', normal: 'bg-[var(--color-stone-soft)]', low: 'bg-[var(--color-line)]' };
+const PRIORITY_ACCENT: Record<string, string> = { urgent: 'border-l-2 border-l-[#c0392b]', high: 'border-l-2 border-l-[var(--color-gold)]', normal: '', low: '' };
+const PRIORITY_DOT: Record<string, string> = { urgent: 'bg-[#c0392b]', high: 'bg-[var(--color-gold)]', normal: 'bg-[var(--color-stone-soft)]', low: 'bg-[var(--color-line)]' };
 
 const ago = (iso: string) => {
   const s = Math.max(0, Math.round((Date.now() - new Date(iso).getTime()) / 1000));
@@ -82,7 +82,7 @@ export function NotificationBell() {
         className="relative flex h-9 w-9 items-center justify-center rounded-full border border-[var(--color-line)] bg-white text-[var(--color-ink)] hover:bg-[var(--color-bone)]"
       >
         <svg viewBox="0 0 24 24" className="h-[18px] w-[18px]" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9" /><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0" /></svg>
-        {unread > 0 && <span className="absolute -right-1 -top-1 grid h-[18px] min-w-[18px] place-items-center rounded-full bg-amber-400 px-1 text-[0.6rem] font-semibold text-amber-950">{unread > 9 ? '9+' : unread}</span>}
+        {unread > 0 && <span className="absolute -right-1 -top-1 grid h-[18px] min-w-[18px] place-items-center rounded-full bg-[var(--color-gold-deep)] px-1 text-[0.6rem] font-semibold text-[var(--color-porcelain)]">{unread > 9 ? '9+' : unread}</span>}
       </button>
 
       {open && (

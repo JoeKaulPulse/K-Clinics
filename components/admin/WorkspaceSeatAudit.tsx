@@ -52,7 +52,7 @@ export function WorkspaceSeatAudit() {
       </div>
 
       {missing.length > 0 && (
-        <div className="mt-3 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
+        <div className="mt-3 rounded-md border border-[var(--color-gold)]/40 bg-[var(--color-gold)]/10 px-3 py-2 text-sm text-[var(--color-gold-deep)]">
           <strong>{missing.length} active {missing.length === 1 ? 'staff member has' : 'staff have'} no mailbox:</strong>{' '}
           {missing.map((s) => s.name || s.email).join(', ')}.
           <span className="block text-xs mt-1">Create a mailbox in the Users tab — or, if they don’t need their own seat, add them as a group member / alias (both free).</span>

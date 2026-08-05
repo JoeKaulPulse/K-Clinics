@@ -219,7 +219,7 @@ function GoogleCalendar({ staff, configured }: { staff: Staff; configured: boole
       ) : staff.googleConnected ? (
         <div className="flex flex-wrap items-center gap-3">
           <span className="inline-flex items-center gap-2 rounded-full bg-[var(--color-gold)]/15 px-3 py-1.5 text-sm text-[var(--color-ink)]">
-            <span className="h-2 w-2 rounded-full bg-green-600" /> Connected
+            <span className="h-2 w-2 rounded-full bg-[var(--color-jade)]" /> Connected
           </span>
           <button onClick={sync} disabled={syncing} className="rounded-full bg-[var(--color-ink)] px-5 py-2 text-sm text-[var(--color-porcelain)] disabled:opacity-60">
             {syncing ? 'Syncing…' : 'Sync now'}

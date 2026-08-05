@@ -15,8 +15,8 @@ type Voucher = {
 const money = (p: number) => `£${(p / 100).toLocaleString('en-GB', { minimumFractionDigits: p % 100 ? 2 : 0 })}`;
 const fmt = (iso: string | null) => (iso ? new Date(iso).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : '—');
 const STATUS_STYLE: Record<string, string> = {
-  ACTIVE: 'bg-emerald-100 text-emerald-800', REDEEMED: 'bg-stone-200 text-stone-700',
-  PENDING: 'bg-amber-100 text-amber-800', CANCELLED: 'bg-rose-100 text-rose-800',
+  ACTIVE: 'bg-[var(--color-jade)]/15 text-[var(--color-ink)]', REDEEMED: 'bg-stone-200 text-stone-700',
+  PENDING: 'bg-[var(--color-gold)]/20 text-[var(--color-ink)]', CANCELLED: 'bg-[var(--color-blush)]/20 text-[var(--color-blush-deep)]',
 };
 
 async function post(payload: object) {

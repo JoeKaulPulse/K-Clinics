@@ -73,8 +73,8 @@ const COLUMNS: { key: string; label: string }[] = [
 ];
 const ALL_STATUSES = [...COLUMNS.map((c) => c.key), 'CANCELLED'];
 const URGENCY: Record<string, { label: string; cls: string }> = {
-  P0: { label: 'P0 · Critical', cls: 'bg-red-100 text-red-800' },
-  P1: { label: 'P1 · High', cls: 'bg-amber-100 text-amber-800' },
+  P0: { label: 'P0 · Critical', cls: 'bg-[var(--color-blush)]/20 text-[var(--color-blush-deep)]' },
+  P1: { label: 'P1 · High', cls: 'bg-[var(--color-gold)]/20 text-[var(--color-ink)]' },
   P2: { label: 'P2 · Normal', cls: 'bg-[var(--color-bone)] text-[var(--color-stone)]' },
   P3: { label: 'P3 · Low', cls: 'bg-[var(--color-bone)] text-[var(--color-stone)]' },
 };
@@ -230,8 +230,8 @@ export function BuildBoard({ canManage, isAdmin, github, staff, me }: { canManag
         <span><strong className="text-[var(--color-ink)]">{awaitingSignoff}</strong> awaiting sign-off</span>
         <span><strong className="text-[var(--color-ink)]">{items.filter((i) => i.assignee === 'claude' && !['SHIPPED', 'CLOSED', 'CANCELLED'].includes(i.status)).length}</strong> with Claude</span>
         {gh.connected ? <span className="text-[var(--color-jade)]">GitHub ✓{gh.repo ? ` · ${gh.repo}` : ''}</span> : <span className="text-[var(--color-stone)]">GitHub not connected</span>}
-        {gh.connected && canManage && <button onClick={toggleMirror} title="When off, the board never auto-pushes to GitHub — it runs entirely on its own and won’t hit API limits. Turn on to also mirror items to issues." className={`rounded-full px-2 py-0.5 text-xs ${mirror ? 'bg-[var(--color-jade)]/15 text-[var(--color-jade)]' : 'bg-[var(--color-bone)] text-[var(--color-stone)]'}`}>mirror {mirror ? 'on' : 'off'}</button>}
-        {backoffUntil > Date.now() && <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs text-amber-800" title="GitHub rate-limited; auto-pushes paused. The board is unaffected.">GitHub cooling down · {new Date(backoffUntil).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}</span>}
+        {gh.connected && canManage && <button onClick={toggleMirror} title="When off, the board never auto-pushes to GitHub — it runs entirely on its own and won’t hit API limits. Turn on to also mirror items to issues." className={`rounded-full px-2 py-0.5 text-xs ${mirror ? 'bg-[var(--color-jade)]/15 text-[var(--color-ink)]' : 'bg-[var(--color-bone)] text-[var(--color-stone)]'}`}>mirror {mirror ? 'on' : 'off'}</button>}
+        {backoffUntil > Date.now() && <span className="rounded-full bg-[var(--color-gold)]/20 px-2 py-0.5 text-xs text-[var(--color-gold-deep)]" title="GitHub rate-limited; auto-pushes paused. The board is unaffected.">GitHub cooling down · {new Date(backoffUntil).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}</span>}
         <span className="ml-auto flex flex-wrap items-center gap-2">
           {canManage && <button onClick={continueWork} disabled={continuing} className="rounded-full bg-[var(--color-gold-deep)] px-4 py-1.5 text-xs font-medium text-white hover:bg-[var(--color-ink)] disabled:opacity-50">{continuing ? 'Prompting…' : '▶ Continue working'}</button>}
           {sessionUrl && <a href={sessionUrl} target="_blank" rel="noreferrer" className="rounded-full border border-[var(--color-jade)] px-3 py-1.5 text-xs text-[var(--color-jade)] hover:bg-[var(--color-jade)]/10">▶ Watch session ↗</a>}
@@ -251,8 +251,8 @@ export function BuildBoard({ canManage, isAdmin, github, staff, me }: { canManag
         </div>
         {canManage && gh.connected && items.some((i) => !i.githubUrl) && <button onClick={syncAll} disabled={syncing} className="rounded-full border border-[var(--color-line)] px-3 py-1 text-xs hover:bg-[var(--color-bone)] disabled:opacity-50">{syncing ? 'Syncing…' : `⤴ Sync ${items.filter((i) => !i.githubUrl).length} to GitHub`}</button>}
         {sync && (
-          <span className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs ${sync.inSync ? 'bg-[var(--color-bone)] text-[var(--color-stone)]' : 'bg-amber-100 text-amber-800'}`} title={`Live build: ${sync.commit}`}>
-            <span className={`h-2 w-2 rounded-full ${sync.inSync ? 'bg-[var(--color-jade)]' : 'bg-amber-500'}`} />
+          <span className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs ${sync.inSync ? 'bg-[var(--color-bone)] text-[var(--color-stone)]' : 'bg-[var(--color-gold)]/20 text-[var(--color-ink)]'}`} title={`Live build: ${sync.commit}`}>
+            <span className={`h-2 w-2 rounded-full ${sync.inSync ? 'bg-[var(--color-jade)]' : 'bg-[var(--color-gold)]'}`} />
             {sync.inSync ? 'In sync' : 'Behind'} · {sync.dbCount}/{sync.backlogCount} · {sync.commit}
           </span>
         )}
@@ -313,8 +313,8 @@ export function BuildBoard({ canManage, isAdmin, github, staff, me }: { canManag
         <div className="mb-4 flex flex-wrap items-center gap-3 rounded-[var(--radius-md)] border border-[var(--color-line)] bg-[var(--color-porcelain)] px-4 py-2 text-sm">
           <span className="font-medium">Project: {activeProject.name}</span>
           <span className="text-[var(--color-stone)]">{activeProject.done}/{activeProject.total} done · {activeProject.progress}%</span>
-          {activeProject.openErrors > 0 && <span className="rounded-full bg-red-100 px-2 py-0.5 text-xs font-medium text-red-800">{activeProject.openErrors} error{activeProject.openErrors === 1 ? '' : 's'}</span>}
-          {activeProject.userGated > 0 && <span className="rounded-full bg-red-600 px-2 py-0.5 text-xs font-semibold text-white" title="Tasks waiting on you">⚑ {activeProject.userGated} need you</span>}
+          {activeProject.openErrors > 0 && <span className="rounded-full bg-[var(--color-blush)]/20 px-2 py-0.5 text-xs font-medium text-[var(--color-blush-deep)]">{activeProject.openErrors} error{activeProject.openErrors === 1 ? '' : 's'}</span>}
+          {activeProject.userGated > 0 && <span className="rounded-full bg-[var(--color-blush-deep)] px-2 py-0.5 text-xs font-semibold text-white" title="Tasks waiting on you">⚑ {activeProject.userGated} need you</span>}
           <button onClick={() => setProjectFilter(null)} className="ml-auto text-xs text-[var(--color-stone)] hover:underline">Clear ✕</button>
         </div>
       )}
@@ -367,7 +367,7 @@ function Card({ i, onOpen }: { i: Item; onOpen: (i: Item) => void }) {
         {i.ref && <span className="rounded bg-[var(--color-bone)] px-1 py-0.5 font-mono text-[0.6rem] tracking-tight text-[var(--color-stone)]">{i.ref}</span>}
         <span className={`rounded-full px-1.5 py-0.5 text-[0.6rem] font-semibold ${URGENCY[i.urgency]?.cls}`}>{i.urgency}</span>
         <span className="text-[0.6rem] uppercase tracking-wide text-[var(--color-stone)]">{i.type}</span>
-        {gatedCount(i) > 0 && <span title={`${gatedCount(i)} item(s) need your input`} className="grid h-4 min-w-4 place-items-center rounded-full bg-red-600 px-1 text-[0.6rem] font-bold text-white">{gatedCount(i)}</span>}
+        {gatedCount(i) > 0 && <span title={`${gatedCount(i)} item(s) need your input`} className="grid h-4 min-w-4 place-items-center rounded-full bg-[var(--color-blush-deep)] px-1 text-[0.6rem] font-bold text-white">{gatedCount(i)}</span>}
         {r != null && <span className="ml-auto text-[0.6rem] text-[var(--color-stone)]">V:E {r}</span>}
       </div>
       <p className="break-words text-sm font-medium leading-snug">{i.title}</p>
@@ -396,7 +396,7 @@ function ProjectsView({ projects, onOpen }: { projects: Project[]; onOpen: (id: 
               {p.ref && <span className="mb-1 inline-block rounded bg-[var(--color-bone)] px-1.5 py-0.5 font-mono text-[0.65rem] tracking-tight text-[var(--color-stone)]">{p.ref}</span>}
               <h3 className="font-[family-name:var(--font-display)] text-lg leading-tight">{p.name}</h3>
             </div>
-            {p.userGated > 0 && <span title={`${p.userGated} task(s) need your input`} className="shrink-0 grid h-6 min-w-6 place-items-center rounded-full bg-red-600 px-1.5 text-xs font-bold text-white">{p.userGated}</span>}
+            {p.userGated > 0 && <span title={`${p.userGated} task(s) need your input`} className="shrink-0 grid h-6 min-w-6 place-items-center rounded-full bg-[var(--color-blush-deep)] px-1.5 text-xs font-bold text-white">{p.userGated}</span>}
           </div>
           {p.summary && <p className="mt-1.5 line-clamp-2 text-sm text-[var(--color-stone)]">{p.summary}</p>}
           <div className="mt-3 h-2 w-full overflow-hidden rounded-full bg-[var(--color-bone)]">
@@ -405,8 +405,8 @@ function ProjectsView({ projects, onOpen }: { projects: Project[]; onOpen: (id: 
           <p className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-[var(--color-stone)]">
             <span><strong className="text-[var(--color-ink)]">{p.progress}%</strong> · {p.done}/{p.total} done</span>
             <span>{p.open} open</span>
-            {p.openErrors > 0 && <span className="rounded-full bg-red-100 px-2 py-0.5 font-medium text-red-800">{p.openErrors} error{p.openErrors === 1 ? '' : 's'}</span>}
-            {p.userGated > 0 && <span className="font-medium text-red-700">⚑ {p.userGated} need you</span>}
+            {p.openErrors > 0 && <span className="rounded-full bg-[var(--color-blush)]/20 px-2 py-0.5 font-medium text-[var(--color-blush-deep)]">{p.openErrors} error{p.openErrors === 1 ? '' : 's'}</span>}
+            {p.userGated > 0 && <span className="font-medium text-[var(--color-blush-deep)]">⚑ {p.userGated} need you</span>}
             {p.originIdeaTitle && <span className="text-[var(--color-stone)]">· from idea</span>}
           </p>
         </button>
@@ -692,7 +692,7 @@ function TaskModal({ item, allItems, projects, canManage, isAdmin, gh, staff, on
               <input type="checkbox" checked={s.status === 'DONE'} onChange={(e) => setSubStatus(s.id, e.target.checked ? 'DONE' : 'TODO')} className="h-4 w-4 accent-[var(--color-jade)]" />
               {s.ref && <span className="shrink-0 rounded bg-[var(--color-bone)] px-1 py-0.5 font-mono text-[0.6rem] tracking-tight text-[var(--color-stone)]">{s.ref}</span>}
               <span className={s.status === 'DONE' ? 'text-[var(--color-stone)] line-through' : ''}>{s.title}</span>
-              {s.ownerInput && <span className="rounded-full bg-amber-100 px-1.5 py-0.5 text-[0.55rem] font-medium text-amber-800">owner input</span>}
+              {s.ownerInput && <span className="rounded-full bg-[var(--color-gold)]/20 px-1.5 py-0.5 text-[0.55rem] font-medium text-[var(--color-gold-deep)]">owner input</span>}
               <span className="ml-auto text-[0.6rem] text-[var(--color-stone)]">{s.assignee === 'claude' ? '◆' : s.assignee.split('@')[0]}{s.status === 'DOING' ? ' · doing' : ''}</span>
               {canManage && s.status !== 'DONE' && <button onClick={() => setSubStatus(s.id, s.status === 'DOING' ? 'TODO' : 'DOING')} className="text-[0.6rem] text-[var(--color-stone)] hover:underline">{s.status === 'DOING' ? '↩' : '▶'}</button>}
             </li>

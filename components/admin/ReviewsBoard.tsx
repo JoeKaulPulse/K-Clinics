@@ -16,8 +16,8 @@ async function post(payload: object) {
 }
 
 const STATUS_BADGE: Record<string, string> = {
-  PENDING: 'bg-[var(--color-gold)]/15 text-[var(--color-gold-deep)]',
-  PUBLISHED: 'bg-green-100 text-green-800',
+  PENDING: 'bg-[var(--color-gold)]/15 text-[var(--color-ink)]',
+  PUBLISHED: 'bg-[var(--color-jade)]/15 text-[var(--color-ink)]',
   HIDDEN: 'bg-[var(--color-line)] text-[var(--color-stone)]',
 };
 

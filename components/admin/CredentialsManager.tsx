@@ -8,8 +8,8 @@ type Secret = {
 };
 
 const BADGE: Record<string, { text: string; cls: string }> = {
-  app: { text: 'Set in app', cls: 'bg-green-100 text-green-800' },
-  env: { text: 'From hosting', cls: 'bg-amber-100 text-amber-800' },
+  app: { text: 'Set in app', cls: 'bg-[var(--color-jade)]/15 text-[var(--color-ink)]' },
+  env: { text: 'From hosting', cls: 'bg-[var(--color-gold)]/20 text-[var(--color-ink)]' },
   unset: { text: 'Not set', cls: 'bg-[var(--color-bone)] text-[var(--color-stone)]' },
 };
 

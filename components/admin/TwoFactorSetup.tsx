@@ -43,7 +43,7 @@ export function TwoFactorSetup({ enabled }: { enabled: boolean }) {
     return (
       <div className="rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-5">
         <h3 className="font-[family-name:var(--font-display)] text-lg">Two-factor authentication</h3>
-        <p className="mt-1 inline-flex items-center gap-2 text-sm text-emerald-700"><span className="grid h-4 w-4 place-items-center rounded-full bg-emerald-600 text-[0.6rem] text-white">✓</span> Enabled — your account is protected with an authenticator app.</p>
+        <p className="mt-1 inline-flex items-center gap-2 text-sm text-[var(--color-jade)]"><span className="grid h-4 w-4 place-items-center rounded-full bg-[var(--color-jade)] text-[0.6rem] text-white">✓</span> Enabled — your account is protected with an authenticator app.</p>
         <button onClick={disable} disabled={busy} className="mt-4 text-sm text-[var(--color-blush-deep)] hover:underline disabled:opacity-50">Turn off 2FA</button>
       </div>
     );
@@ -82,7 +82,7 @@ export function TwoFactorSetup({ enabled }: { enabled: boolean }) {
 
       {stage === 'codes' && (
         <div className="mt-3 space-y-3">
-          <p className="text-sm font-medium text-emerald-700">✓ Two-factor authentication is on.</p>
+          <p className="text-sm font-medium text-[var(--color-jade)]">✓ Two-factor authentication is on.</p>
           <p className="text-sm text-[var(--color-ink)]">Save these <strong>recovery codes</strong> somewhere safe. Each works once if you lose your authenticator:</p>
           <div className="grid grid-cols-2 gap-2 rounded-[var(--radius-sm)] bg-[var(--color-bone)] p-4 font-[family-name:var(--font-mono,monospace)] text-sm">
             {codes.map((c) => <span key={c}>{c}</span>)}
