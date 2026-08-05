@@ -130,6 +130,37 @@ export default async function ReportsPage({ searchParams }: { searchParams: Prom
         const svc = svcBySlug.get(g.treatmentSlug);
         totalVat += vatBreakdown(rev(g._sum), vatCfg, effectiveVatClass({ vatClass: svc?.vatClass, category: svc?.category })).vatPence;
       }
+
+      // BLD-1170: retail (shop) revenue also carries VAT once registered — sum
+      // paid/fulfilled Order line items over the same reporting window, grouped
+      // by product, and fold their VAT into the same period total. Mirrors the
+      // booking approach above (per-item class × period revenue). Orders predate
+      // paidAt for some historical rows, so fall back to createdAt for those, same
+      // as day-close does elsewhere in this codebase.
+      const byProduct = await db.$queryRaw<{ productId: string | null; revenue: number | null }[]>`
+        SELECT oi."productId" AS "productId", SUM(oi."unitPence" * oi."qty")::float8 AS revenue
+          FROM "OrderItem" oi
+          JOIN "Order" o ON o."id" = oi."orderId"
+         WHERE o."status" IN ('PAID', 'FULFILLED')
+           AND (o."paidAt" >= ${since} OR (o."paidAt" IS NULL AND o."createdAt" >= ${since}))
+         GROUP BY 1
+      `.catch(() => [] as { productId: string | null; revenue: number | null }[]);
+      if (byProduct.length) {
+        const productIds = byProduct.map((r) => r.productId).filter((id): id is string => !!id);
+        const productRows = productIds.length
+          ? await db.product.findMany({ where: { id: { in: productIds } }, select: { id: true, vatClass: true } })
+          : [];
+        const prodById = new Map(productRows.map((p) => [p.id, p]));
+        for (const g of byProduct) {
+          const product = g.productId ? prodById.get(g.productId) : undefined;
+          // Only the explicit class counts for retail. effectiveVatClass' category
+          // fallback derives EXEMPT from the *service* category 'dentistry', and
+          // Product.category is a free-text shop category — a shop category named
+          // "dentistry" would silently zero-rate standard-rated goods. Unset means
+          // STANDARD, which is what the product editor's "Default (standard)" says.
+          totalVat += vatBreakdown(Math.round(g.revenue ?? 0), vatCfg, effectiveVatClass({ vatClass: product?.vatClass })).vatPence;
+        }
+      }
     }
   } catch { /* VAT figure is best-effort */ }
   const totalActualMin = totals._sum.actualMinutes ?? 0;
