@@ -12,6 +12,8 @@ const schema = z.object({
   budgetLabel: z.string().max(40).default('Flexible'),
   storeImages: z.boolean().default(true),
   consent: z.literal(true, 'Please give your consent to continue.'),
+  dob: z.string().optional(),
+  ageDeclare: z.boolean().optional(),
 });
 
 export async function POST(req: Request) {
@@ -36,6 +38,26 @@ export async function POST(req: Request) {
 
   const parsed = schema.safeParse(await req.json().catch(() => ({})));
   if (!parsed.success) return NextResponse.json({ ok: false, reason: 'error', message: parsed.error.issues[0]?.message || 'Check your photos and try again.' }, { status: 422 });
+
+  // The uploaded photo is analysed by an AI model for biometric/cosmetic
+  // detail, so this is age-restricted like booking a treatment — confirmed
+  // by DOB + declaration (set here if the account doesn't have an adult DOB
+  // yet), checked before the expensive AI call runs.
+  const { isAdultOn } = await import('@/lib/age');
+  const { db } = await import('@/lib/db');
+  let dob = client.dob;
+  if (!dob || !isAdultOn(dob)) {
+    if (parsed.data.dob) {
+      const d = new Date(parsed.data.dob);
+      if (isNaN(+d)) return NextResponse.json({ ok: false, reason: 'age', message: 'Enter a valid date of birth.', needAge: true }, { status: 400 });
+      dob = d;
+    }
+    if (!dob || !isAdultOn(dob)) {
+      return NextResponse.json({ ok: false, reason: 'age', message: 'This experience is for adults only — the AI consultation can only be used by someone aged 18 or over.', needAge: true }, { status: 403 });
+    }
+    if (parsed.data.ageDeclare !== true) return NextResponse.json({ ok: false, reason: 'age', message: 'Please confirm you are 18 or over.', needAge: true }, { status: 400 });
+    await db.client.update({ where: { id: client.id }, data: { dob, ageDeclaredAt: new Date() } });
+  }
 
   const { analyze } = await import('@/lib/ai-consultation');
   // BLD-702: the affirmative `consent: true` tick is enforced by the schema above;
