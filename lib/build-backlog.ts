@@ -3241,6 +3241,68 @@ export const BUILD_BACKLOG: BacklogItem[] = [
     detail: "components/admin/ReviewsBoard.tsx, BuildBoard.tsx and dozens more use raw Tailwind swatches instead of the theme tokens defined in app/globals.css, failing every brand audit.",
     notes: ["Built on a draft PR, NOT merged -- an Opus review pass found a real accessibility regression risk in the conversion itself. Fix: about 52 admin components swapped raw Tailwind status colours (green/red/amber) for the jade/blush-deep/gold theme tokens; scope, visual weight (tint stayed tint, solid fill stayed solid fill) and file boundary (components/admin/ only) all check out, and one dark-mode contrast bug the conversion introduced along the way (unread-count badges going near-invisible) is already fixed on the branch. Unresolved: several of the light-theme tinted badges and warning panels this branch converts -- plus about 15 more already on main using the same pattern -- fall below the WCAG AA 4.5:1 text contrast ratio (measured 3.4-4.2:1), because the palette has no dedicated AA-safe 'coloured text on its own tint' pair for gold or jade at the intensities used. This is the same class of bug BLD-1120 fixed for the Erase/Delete buttons. Needs a design-system call before merge: add an AA-safe on-tint text token to app/globals.css, or switch tinted badges to text-[var(--color-ink)] (10-13:1), the pattern ComplianceManager/TimeOffManager/OrdersManager already use for blush tints. Reply on this card with your preference and this ships once applied. (BLD-1032)"],
   },
+  {
+    title: 'Track prepaid treatment sessions for clients and staff', type: 'TASK', urgency: 'P1', status: 'IN_REVIEW', assignee: 'claude',
+    detail: 'A clear system to track treatment packages and prepaid sessions, visible in the client’s online account and the admin system: package purchased, total sessions, used, remaining, which session is being booked, and paid status.',
+    notes: ['Built with BLD-1098 as one feature. Additive Booking.packageBookingId self-relation: a course purchase is the existing sessions>1 booking (BLD-409); each later visit booked against it links back, so used/booked/remaining balances DERIVE from real bookings and can never drift from the diary. Cancelled/no-show sessions do not consume the package. Staff flow: the New phone booking modal loads the selected client’s packages and, when one matches the chosen treatment with sessions remaining, offers "Use package session — nothing to charge" (validated server-side: same client, same treatment, remaining > 0; booking created at £0, linked, audit-logged with its session number). Paid status = charged or BNPL pre-paid. (BLD-1014)'],
+  },
+  {
+    title: 'Display package session balance for clients and admins', type: 'TASK', urgency: 'P1', status: 'IN_REVIEW', assignee: 'claude',
+    detail: 'A package balance indicator visible to both clients and admin users: total purchased, used, remaining, per package; "No active package" when none.',
+    notes: ['Built with BLD-1014. Admin: a Packages card at the top of the client profile (label, paid badge, used/booked/remaining per package, linking to the purchase booking; "No active package." when none) and a "Session X of N" chip on every linked appointment page linking back to the package. Client portal: a "Your packages" card on the account dashboard (EN + UK translations) showing Session X of N, remaining count and paid status. Balances update automatically because they are derived from booking statuses — a completed session moves used up with no manual deduction. (BLD-1098)'],
+  },
+  {
+    title: 'Outstanding Payment Warning', type: 'TASK', urgency: 'P1', status: 'IN_REVIEW', assignee: 'claude',
+    detail: 'If a payment for a late cancellation or no-show fails, display a clear Outstanding Payment warning to the client and staff; block new client bookings until the balance is settled; clear automatically once paid.',
+    notes: ['Built. The balance is DERIVED: a booking cancelled inside 24h (fee not waived) or marked no-show, with a price and no charge recorded, is outstanding — charging it or waiving the fee clears every warning automatically, no flag to reset (lib/outstanding.ts). Staff: a red banner on the client profile lists each owed appointment with links and the exact clear-path, and every appointment page of that client carries the same warning strip. Clients: a red card on the account dashboard (EN + UK) with the amount and a call-us button, shown before anything promotional. Enforcement: both public booking endpoints (signed-in and new-client flows, which the guest flow also passes through) refuse new bookings with a clear message while a balance remains. Staff manual bookings are deliberately NOT blocked — reception can still book with judgment, with the warning in view. Note: pre-existing unwaived late-cancel/no-show fees from before this feature now surface and block those clients — waive the fee on the old appointment to clear any that should not count. (BLD-1066)'],
+  },
+  {
+    title: 'POS quantity steppers are under the touch-target minimum', type: 'TASK', urgency: 'P2', status: 'IN_REVIEW', assignee: 'claude',
+    value: 5, effort: 1,
+    detail: 'PosTerminal basket +/- buttons rendered at 28px on a touchscreen till, under the ~44px guideline.',
+    notes: ['Fix: bumped to h-11 w-11 (44px) with per-product aria-labels. (BLD-1129)'],
+  },
+  {
+    title: 'Raw Error objects (not .message) are console.error’d in PII-collecting routes, risking plaintext PII in Vercel logs', type: 'ERROR', urgency: 'P2', status: 'IN_REVIEW', assignee: 'claude',
+    value: 5, effort: 1,
+    detail: 'Eight PII-collecting routes logged the full error object; a PrismaClientValidationError echoes submitted names/emails/phones/dob into Vercel function logs, bypassing Sentry’s sendDefaultPii:false.',
+    notes: ['Fix: all eight sites (consult, account signup/login/forgot/reset, booking guest, academy forgot/reset) now log (err as Error)?.message, matching the codebase convention; Sentry still receives the full exception with PII scrubbing. (BLD-1173)'],
+  },
+  {
+    title: 'Booking-confirmation SMS and clinic-notify email failures are silently swallowed', type: 'ERROR', urgency: 'P2', status: 'IN_REVIEW', assignee: 'claude',
+    value: 5, effort: 1,
+    detail: 'lib/booking-notify.ts settled the clinic-notify email and client SMS via Promise.allSettled with results never inspected — a failing SMS provider or clinic inbox was invisible.',
+    notes: ['Fix: results are now inspected with labels; both helpers RESOLVE with {ok:false} rather than rejecting, so the check covers resolved failures too. Failures console.error and reach Sentry with the booking id, matching the client-email handling above. (BLD-1174)'],
+  },
+  {
+    title: 'Duplicate MedicalClinic JSON-LD emitted twice on /contact and /clinics', type: 'TASK', urgency: 'P2', status: 'IN_REVIEW', assignee: 'claude',
+    value: 5, effort: 1,
+    detail: 'The marketing layout already renders organizationLd() on every page; /contact and /clinics rendered it again, producing two MedicalClinic nodes with the same @id (confirmed live).',
+    notes: ['Fix: dropped the redundant organizationLd() call and import from both pages; breadcrumbLd stays. (BLD-1175)'],
+  },
+  {
+    title: 'Public /api/search endpoint has no rate limiting, unlike every other public route', type: 'TASK', urgency: 'P2', status: 'IN_REVIEW', assignee: 'claude',
+    value: 6, effort: 2,
+    detail: 'Every distinct ?q= is its own CDN cache key, so the unthrottled ILIKE scan was a direct path to sustained DB load.',
+    notes: ['Fix: enforceRateLimit(req, search, 60, 60); the 429 body matches the SearchResults shape so the header live-search box degrades to empty hits. (BLD-1172)'],
+  },
+  {
+    title: 'Cookie-consent banner covers the mobile WhatsApp lead button on first visit', type: 'ERROR', urgency: 'P2', status: 'IN_REVIEW', assignee: 'claude',
+    value: 6, effort: 2,
+    detail: 'The consent banner (inset-x-3, z-80) sat spatially over and above the mobile WhatsApp CTA (bottom-5 right-5, z-40) on every first visit.',
+    notes: ['Fix: the banner now stops at right-20 on mobile, leaving the WhatsApp button tappable beside it; desktop position unchanged (the button is mobile-only). (BLD-1152)'],
+  },
+  {
+    title: 'Sitewide scroll-reveal wrapper can leave content invisible with no scroll event, and ignores prefers-reduced-motion', type: 'ERROR', urgency: 'P2', status: 'IN_REVIEW', assignee: 'claude',
+    value: 7, effort: 2,
+    detail: 'components/motion/Reveal.tsx left children at opacity 0 until the intersection observer fired — confirmed live to strand in-viewport sections invisible on /laser-hair-removal and /book — and never checked prefers-reduced-motion.',
+    notes: ['Fix: Reveal/Stagger gain a viewport fallback — 1.5s after mount, anything positioned inside the viewport that the observer has not revealed is forced visible; below-the-fold content keeps the scroll reveal. All three wrappers (Reveal, Stagger, StaggerItem) now render statically under prefers-reduced-motion via the existing useReducedMotionSafe hook (the StaggerItem case matters: a static parent with motion children would have left them hidden). (BLD-1171)'],
+  },
+  {
+    title: 'Review and Improve Terms & Conditions Acceptance Across All Booking Flows', type: 'TASK', urgency: 'P1', status: 'IN_REVIEW', assignee: 'claude',
+    detail: 'Review every way a client can enter the system and make T&C + cancellation-policy acceptance active, mandatory, never pre-selected, and reliably recorded.',
+    notes: ['Reviewed every entry flow. Already-active acceptance existed everywhere: portal signup, guest booking, public booking (with cancellation wording in the label), consult/contact form (all z.literal(true) checkboxes, never pre-selected) and K Vision (explicit by-continuing line, owner decision BLD-734). The REAL gap: acceptance was validated then discarded — no durable record. Built: additive Client.termsAcceptedAt/termsAcceptedSource/termsVersion + termsAcceptanceFields() (mirroring the marketing/AI-consent evidence pattern), recorded with first-acceptance-wins no-clobber updates at all three write points (signupClient — covers registration, guest and K Vision; the public booking create route; the consult route). Labels strengthened to name the full consequence chain at the tick: 24h cancellations and no-shows charged in full, unpaid fees must be settled before booking again (now literally true via BLD-1066). Admin: a T&Cs accepted/not-yet-accepted chip on the client profile with date, surface and wording version in the tooltip; staff-created clients show not-yet-accepted until their first online signup/booking/enquiry captures it. Version constant 2026-08-v1 — bump it whenever the shown wording changes. (BLD-1067)'],
+  },
 ];
 
 // A content hash over every item's title + status + PR, so ANY change (a new

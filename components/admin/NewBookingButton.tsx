@@ -52,6 +52,12 @@ function Modal({ treatments, isAdmin, onClose }: { treatments: Treatment[]; isAd
   const [selectedGroup, setSelectedGroup] = useState(firstGroup);
   const [d, setD] = useState({ firstName: '', lastName: '', email: '', phone: '', dob: '', treatmentSlug: firstSlug, variantId: treatments.find((t) => t.slug === firstSlug)?.variants?.[0]?.id ?? '', asConsultation: false, sessions: 1, date: '', time: '10:00', notes: '', overridePrice: false, overridePriceValue: '' });
   const set = <K extends keyof typeof d>(k: K, v: (typeof d)[K]) => setD((p) => ({ ...p, [k]: v }));
+  // BLD-1014: the selected client's package balances — when one matches the
+  // chosen treatment with sessions remaining, staff can book it as a package
+  // session (no charge; the purchase already carries the money).
+  type Pkg = { purchaseBookingId: string; label: string; treatmentSlug: string; sessionsTotal: number; sessionsUsed: number; sessionsBooked: number; sessionsRemaining: number; paid: boolean };
+  const [packages, setPackages] = useState<Pkg[]>([]);
+  const [usePackageId, setUsePackageId] = useState<string | null>(null);
   // The standalone "Consultation" category is already a consultation; the toggle
   // is for booking a *real* treatment category as a consultation (BLD-208).
   const isConsultationCat = d.treatmentSlug === 'consultation';
@@ -73,6 +79,21 @@ function Modal({ treatments, isAdmin, onClose }: { treatments: Treatment[]; isAd
     const t = setTimeout(async () => { const r = await searchClientsForBooking(q); if (r.ok) setMatches(r.clients); }, 300);
     return () => clearTimeout(t);
   }, [q, tab, selected]);
+
+  // BLD-1014: load package balances when an existing client is selected.
+  useEffect(() => {
+    setPackages([]); setUsePackageId(null);
+    if (!selected) return;
+    let live = true;
+    fetch(`/api/admin/clients/${selected.id}/packages`)
+      .then((r) => r.json())
+      .then((j) => { if (live && j.ok) setPackages(j.packages ?? []); })
+      .catch(() => {});
+    return () => { live = false; };
+  }, [selected]);
+  const matchingPackage = packages.find((p) => p.treatmentSlug === d.treatmentSlug && p.sessionsRemaining > 0);
+  // A changed treatment invalidates a ticked package from another treatment.
+  useEffect(() => { if (usePackageId && matchingPackage?.purchaseBookingId !== usePackageId) setUsePackageId(null); }, [d.treatmentSlug, usePackageId, matchingPackage]);
 
   const baseTitle = treatments.find((t) => t.slug === d.treatmentSlug)?.title || 'your treatment';
   const variantName = variants.find((v) => v.id === d.variantId)?.name;
@@ -99,7 +120,8 @@ function Modal({ treatments, isAdmin, onClose }: { treatments: Treatment[]; isAd
         email: selected?.email || d.email,
         phone: selected?.phone || d.phone,
         dob: selected ? undefined : (d.dob || undefined),
-        treatmentSlug: d.treatmentSlug, variantId: d.asConsultation ? undefined : (d.variantId || undefined), asConsultation: d.asConsultation, sessions: d.sessions, startISO, notes: d.notes, override, overridePricePence,
+        treatmentSlug: d.treatmentSlug, variantId: d.asConsultation ? undefined : (d.variantId || undefined), asConsultation: d.asConsultation, sessions: usePackageId ? 1 : d.sessions, startISO, notes: d.notes, override, overridePricePence: usePackageId ? undefined : overridePricePence,
+        usePackageBookingId: usePackageId ?? undefined,
       });
       if (r.ok) setResult(r as Result);
       else { setError(r.error || 'Could not create booking.'); setClash(Boolean(r.clash)); }
@@ -183,8 +205,27 @@ function Modal({ treatments, isAdmin, onClose }: { treatments: Treatment[]; isAd
                 Book as a consultation <span className="text-[var(--color-stone)]">(15 min · on consultation)</span>
               </label>
             )}
+            {/* BLD-1014: the client already paid for this treatment — book the
+                visit as a package session (£0) instead of charging again. */}
+            {!isConsultationCat && !d.asConsultation && matchingPackage && (
+              <label className="flex items-start gap-2 rounded-[var(--radius-sm)] border border-[var(--color-gold)]/50 bg-[var(--color-gold)]/8 p-3 text-sm">
+                <input
+                  type="checkbox"
+                  checked={usePackageId === matchingPackage.purchaseBookingId}
+                  onChange={(e) => setUsePackageId(e.target.checked ? matchingPackage.purchaseBookingId : null)}
+                  className="mt-0.5 h-4 w-4 accent-[var(--color-gold)]"
+                />
+                <span>
+                  <span className="block font-medium">Use package session — nothing to charge</span>
+                  <span className="text-xs text-[var(--color-stone)]">
+                    {matchingPackage.label}: {matchingPackage.sessionsUsed} used · {matchingPackage.sessionsBooked} booked · {matchingPackage.sessionsRemaining} left of {matchingPackage.sessionsTotal}
+                    {matchingPackage.paid ? ' · paid' : ' · NOT yet paid'}
+                  </span>
+                </span>
+              </label>
+            )}
             {/* BLD-409: book a course of N sessions in one go. */}
-            {!isConsultationCat && !d.asConsultation && (
+            {!isConsultationCat && !d.asConsultation && !usePackageId && (
               <label className="flex items-center justify-between gap-3 text-sm text-[var(--color-stone)]">
                 Number of sessions
                 <input type="number" min={1} max={50} value={d.sessions} onChange={(e) => set('sessions', Math.max(1, Math.min(50, Math.round(Number(e.target.value) || 1))))} className={`${f} w-24`} />

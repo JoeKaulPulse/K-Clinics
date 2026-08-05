@@ -153,6 +153,16 @@ export async function signupClient(input: SignupInput): Promise<SignupResult> {
     },
   });
 
+  // BLD-1067: record the T&C acceptance this signup's active tick (or K Vision's
+  // "by continuing" line) just gave — first acceptance wins, never overwritten.
+  {
+    const { termsAcceptanceFields } = await import('@/lib/consent');
+    await db.client.updateMany({
+      where: { id: client.id, termsAcceptedAt: null },
+      data: termsAcceptanceFields(isGuest ? 'guest-booking' : 'registration'),
+    }).catch(() => {});
+  }
+
   // BLD-703: serialise the welcome grant so two concurrent signups can't both
   // mint an ACTIVE claim. The fingerprint read above guards cross-identity reuse
   // (email/phone/nameDob); this atomic CAS on the client's firstDiscountClaimed

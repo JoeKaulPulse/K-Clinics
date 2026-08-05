@@ -33,6 +33,17 @@ export async function POST(req: Request) {
   const client = await getCurrentClient();
   if (!client) return NextResponse.json({ ok: false, error: 'Please create an account or sign in to book.' }, { status: 401 });
 
+  // BLD-1066: an unpaid late-cancellation/no-show fee blocks new bookings
+  // until settled or waived (balance is derived — paying/waiving reopens
+  // booking with nothing to reset).
+  {
+    const { outstandingBalance } = await import('@/lib/outstanding');
+    const owed = await outstandingBalance(client.id);
+    if (owed.totalPence > 0) {
+      return NextResponse.json({ ok: false, error: `There’s an outstanding payment of £${(owed.totalPence / 100).toFixed(2)} on your account from a previous appointment (late cancellation or missed visit). Please call us to settle it — booking reopens as soon as it’s paid.` }, { status: 403 });
+    }
+  }
+
   const { getVariant, liveOffers, bestOffer, effectiveStatus, isBookableStatus } = await import('@/lib/services');
   const primary = await withDbRetry(() => getVariant(d.variantId));
   if (!primary) return NextResponse.json({ ok: false, error: 'That service is unavailable. Please choose another.' }, { status: 404 });

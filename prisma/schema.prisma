@@ -332,6 +332,13 @@ model Client {
   // ── First-visit discount (one-time, guardrailed) ─────────────────────────
   firstDiscountClaimed Boolean @default(false)
   signupIp             String?
+  // BLD-1067: durable evidence of Terms & Conditions / cancellation-policy
+  // acceptance — WHEN, WHERE (which surface) and WHAT wording version. Every
+  // entry flow already required an active tick (or an explicit "by continuing"
+  // line) but validated-and-discarded it; these record it. Additive, nullable.
+  termsAcceptedAt      DateTime?
+  termsAcceptedSource  String?
+  termsVersion         String?
 
   // ── Loyalty / referrals ──────────────────────────────────────────────────
   referralCode String? @unique // this client's own shareable code
@@ -657,6 +664,16 @@ model Booking {
   prepaidAt             DateTime?
   prepaidCheckoutId     String? // Stripe Checkout Session id (traceability / idempotency)
 
+  // BLD-1014/BLD-1098: package/course session tracking. A course purchase is a
+  // booking whose primary item has sessions > 1 (BLD-409); each later session
+  // booked against it links back here, so used/remaining balances are derived
+  // from real bookings rather than a counter that can drift. Linked sessions
+  // are created at £0 (the package purchase already carries the money).
+  // Additive, nullable — existing rows unaffected.
+  packageBooking        Booking?  @relation("PackageSessions", fields: [packageBookingId], references: [id], onDelete: SetNull)
+  packageBookingId      String?
+  packageSessions       Booking[] @relation("PackageSessions")
+
   // BLD-882: gift-voucher redemption at front-desk checkout. The voucher
   // balance is reserved atomically (lib/gift-vouchers reserveVoucher) when
   // applied; a partial application reduces the amount then collected by any
@@ -735,6 +752,7 @@ model Booking {
   // one index instead of scanning on the busiest customer-facing query.
   @@index([status, startAt])
   @@index([locationId, startAt])
+  @@index([packageBookingId]) // BLD-1014: sessions-of-a-package lookups
 }
 
 // ── Interactive appointment session (BLD-138) ───────────────────────────────

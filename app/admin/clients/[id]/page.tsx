@@ -75,6 +75,13 @@ export default async function ClientDetail({ params }: { params: Promise<{ id: s
   // a Stripe payment method attached, not just a Stripe customer id (a customer can
   // exist before the card-save step completes, so that alone isn't proof of a card).
   const hasCardOnFile = c.bookings.some((b) => !!b.stripePaymentMethodId);
+  // BLD-1014/BLD-1098: package balances derived from course purchases + linked sessions.
+  const { clientPackages } = await import('@/lib/package-sessions');
+  const packages = await clientPackages(c.id);
+  // BLD-1066: unpaid late-cancel/no-show fees — shown loudly, and the public
+  // booking routes refuse new bookings while any remain.
+  const { outstandingBalance } = await import('@/lib/outstanding');
+  const owed = await outstandingBalance(c.id);
 
   // Clinical (health) data — gated on the revocable `clients.clinical.view`
   // permission (not role), so a permission revoke actually withholds it here too,
@@ -185,6 +192,15 @@ export default async function ClientDetail({ params }: { params: Promise<{ id: s
             <span className={`rounded-full px-2.5 py-0.5 text-xs ${c.marketingOptIn && !c.unsubscribed ? 'bg-[var(--color-gold)]/20 text-[var(--color-ink)]' : 'bg-[var(--color-bone)] text-[var(--color-stone)]'}`}>
               {c.unsubscribed ? 'unsubscribed' : c.marketingOptIn ? 'marketing opt-in' : 'no marketing'}
             </span>
+            {/* BLD-1067: T&C acceptance evidence — when/where the client actively
+                accepted; staff-created clients accept at their first online
+                signup, booking or enquiry. */}
+            <span
+              className={`rounded-full px-2.5 py-0.5 text-xs ${c.termsAcceptedAt ? 'bg-[var(--color-jade)]/15 text-[var(--color-jade)]' : 'bg-[var(--color-bone)] text-[var(--color-stone)]'}`}
+              title={c.termsAcceptedAt ? `Accepted ${new Date(c.termsAcceptedAt).toLocaleString('en-GB')} via ${c.termsAcceptedSource ?? 'unknown'} (${c.termsVersion ?? '—'})` : 'No recorded acceptance yet — captured automatically at their first online signup, booking or enquiry.'}
+            >
+              {c.termsAcceptedAt ? `T&Cs accepted ${new Date(c.termsAcceptedAt).toLocaleDateString('en-GB')}` : 'T&Cs not yet accepted'}
+            </span>
             {/* BLD-1013: saved payment card status — read-only, no card management here. */}
             <span className={`rounded-full px-2.5 py-0.5 text-xs ${hasCardOnFile ? 'bg-[var(--color-jade)]/15 text-[var(--color-jade)]' : 'bg-[var(--color-bone)] text-[var(--color-stone)]'}`}>
               {hasCardOnFile ? 'card on file' : 'no card on file'}
@@ -200,8 +216,48 @@ export default async function ClientDetail({ params }: { params: Promise<{ id: s
         )}
       </div>
 
+      {/* BLD-1066: outstanding payment — impossible to miss, lists the exact
+          appointments owing. Clears automatically once charged or waived. */}
+      {owed.totalPence > 0 && (
+        <div role="alert" className="mt-6 rounded-[var(--radius-md)] border border-[var(--color-blush-deep)] bg-[var(--color-blush)]/15 p-4">
+          <p className="font-medium text-[var(--color-blush-deep)]">Outstanding payment — £{(owed.totalPence / 100).toFixed(2)}</p>
+          <ul className="mt-1 space-y-0.5 text-sm text-[var(--color-ink)]">
+            {owed.items.map((i) => (
+              <li key={i.bookingId}>
+                <Link href={`/admin/bookings/${i.bookingId}`} className="underline-offset-2 hover:underline">
+                  {i.treatmentTitle} · {new Date(i.startAt).toLocaleDateString('en-GB')} · {i.kind === 'no-show' ? 'no-show' : 'late cancellation'} · £{(i.pricePence / 100).toFixed(2)}
+                </Link>
+              </li>
+            ))}
+          </ul>
+          <p className="mt-2 text-xs text-[var(--color-stone)]">Online booking is blocked for this client until the balance is charged (open the appointment → charge the card) or the fee is waived on the appointment. Either clears this warning automatically.</p>
+        </div>
+      )}
+
       <div className="mt-8 grid gap-8 lg:grid-cols-[1.5fr_1fr]">
         <div className="space-y-10">
+        {/* BLD-1014/BLD-1098: package (course) balances — staff see at a glance
+            whether the client has already paid for the treatment being booked. */}
+        <section>
+          <h2 className="mb-3 font-[family-name:var(--font-display)] text-xl">Packages</h2>
+          {packages.length === 0 ? (
+            <p className="rounded-[var(--radius-md)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-3.5 text-sm text-[var(--color-stone)]">No active package.</p>
+          ) : (
+            <div className="space-y-2">
+              {packages.map((p) => (
+                <Link key={p.purchaseBookingId} href={`/admin/bookings/${p.purchaseBookingId}`} className="block rounded-[var(--radius-md)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-3.5 transition-colors hover:border-[var(--color-gold)]">
+                  <div className="flex flex-wrap items-baseline justify-between gap-2">
+                    <span className="font-medium">{p.label}</span>
+                    <span className={`rounded-full px-2.5 py-0.5 text-xs ${p.paid ? 'bg-[var(--color-jade)]/15 text-[var(--color-jade)]' : 'bg-[var(--color-blush)]/20 text-[var(--color-blush-deep)]'}`}>{p.paid ? 'Paid' : 'Not yet paid'}</span>
+                  </div>
+                  <p className="mt-1 text-sm text-[var(--color-stone)]">
+                    Course of {p.sessionsTotal} · {p.sessionsUsed} used · {p.sessionsBooked} booked · <span className="font-medium text-[var(--color-ink)]">{p.sessionsRemaining} remaining</span>
+                  </p>
+                </Link>
+              ))}
+            </div>
+          )}
+        </section>
         {/* Appointments — past / current / upcoming, with consent + insights */}
         <section>
           <h2 className="mb-3 font-[family-name:var(--font-display)] text-xl">Appointments</h2>

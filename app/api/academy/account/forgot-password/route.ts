@@ -17,7 +17,7 @@ export async function POST(req: Request) {
     const { requestAcademyPasswordReset } = await import('@/lib/academy-auth');
     await requestAcademyPasswordReset(parsed.data.email);
   } catch (err) {
-    console.error('[academy/forgot-password] failed:', err);
+    console.error('[academy/forgot-password] failed:', (err as Error)?.message);
     Sentry.captureException(err, { tags: { area: 'academy/forgot-password' } });
   }
   return NextResponse.json({ ok: true });

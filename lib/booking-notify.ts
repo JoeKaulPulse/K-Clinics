@@ -141,6 +141,7 @@ async function sendBookingConfirmation(bookingId: string): Promise<void> {
       html: tmplBookingNotify({ name, email: c.email, phone: c.phone || undefined, treatment: booking.treatmentTitle, start: booking.startAt, pricePence: booking.pricePence }),
     }),
   ];
+  const taskLabels = ['clinic-notify email'];
 
   // SMS confirmation — only when the client opted in and SMS is configured.
   if (c.smsReminders && c.phone) {
@@ -149,10 +150,26 @@ async function sendBookingConfirmation(bookingId: string): Promise<void> {
       const when = booking.startAt.toLocaleString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', timeZone: 'Europe/London' });
       const arrive = firstVisit ? ' Please arrive 15 mins early for your first visit.' : '';
       tasks.push(sendSms(c.phone, `KClinics: your ${booking.treatmentTitle} is booked for ${when}.${arrive} Manage: ${manageUrl}`));
+      taskLabels.push('client SMS confirmation');
     }
   }
 
-  await Promise.allSettled(tasks);
+  // BLD-1174: these results were never inspected — a failing clinic inbox or
+  // SMS provider was invisible. Both helpers RESOLVE with {ok:false} rather
+  // than rejecting, so check the value as well as the settled status.
+  const settled = await Promise.allSettled(tasks);
+  for (let i = 0; i < settled.length; i++) {
+    const r = settled[i];
+    const value = r.status === 'fulfilled' ? (r.value as { ok?: boolean; error?: string } | null) : null;
+    const failed = r.status === 'rejected' || (value != null && typeof value === 'object' && 'ok' in value && !value.ok);
+    if (!failed) continue;
+    const reason = r.status === 'rejected' ? String((r.reason as Error)?.message ?? r.reason) : String(value?.error ?? 'send failed');
+    console.error(`[booking-notify] ${taskLabels[i]} failed:`, reason);
+    try {
+      const Sentry = await import('@sentry/nextjs');
+      Sentry.captureMessage(`[booking-notify] ${taskLabels[i]} failed for booking ${booking.id}: ${reason}`, { level: 'error', tags: { area: 'booking-notify' } });
+    } catch { /* Sentry not available — non-fatal */ }
+  }
 
   // Record the REAL outcome so failures are visible in the email log (this used
   // to always log SENT, masking provider/config issues like an unverified domain).
