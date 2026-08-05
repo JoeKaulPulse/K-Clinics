@@ -192,6 +192,15 @@ export default async function ClientDetail({ params }: { params: Promise<{ id: s
             <span className={`rounded-full px-2.5 py-0.5 text-xs ${c.marketingOptIn && !c.unsubscribed ? 'bg-[var(--color-gold)]/20 text-[var(--color-ink)]' : 'bg-[var(--color-bone)] text-[var(--color-stone)]'}`}>
               {c.unsubscribed ? 'unsubscribed' : c.marketingOptIn ? 'marketing opt-in' : 'no marketing'}
             </span>
+            {/* BLD-1067: T&C acceptance evidence — when/where the client actively
+                accepted; staff-created clients accept at their first online
+                signup, booking or enquiry. */}
+            <span
+              className={`rounded-full px-2.5 py-0.5 text-xs ${c.termsAcceptedAt ? 'bg-[var(--color-jade)]/15 text-[var(--color-jade)]' : 'bg-[var(--color-bone)] text-[var(--color-stone)]'}`}
+              title={c.termsAcceptedAt ? `Accepted ${new Date(c.termsAcceptedAt).toLocaleString('en-GB')} via ${c.termsAcceptedSource ?? 'unknown'} (${c.termsVersion ?? '—'})` : 'No recorded acceptance yet — captured automatically at their first online signup, booking or enquiry.'}
+            >
+              {c.termsAcceptedAt ? `T&Cs accepted ${new Date(c.termsAcceptedAt).toLocaleDateString('en-GB')}` : 'T&Cs not yet accepted'}
+            </span>
             {/* BLD-1013: saved payment card status — read-only, no card management here. */}
             <span className={`rounded-full px-2.5 py-0.5 text-xs ${hasCardOnFile ? 'bg-[var(--color-jade)]/15 text-[var(--color-jade)]' : 'bg-[var(--color-bone)] text-[var(--color-stone)]'}`}>
               {hasCardOnFile ? 'card on file' : 'no card on file'}
