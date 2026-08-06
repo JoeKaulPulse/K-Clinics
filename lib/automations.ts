@@ -1,6 +1,6 @@
 import 'server-only';
 import { db } from './db';
-import { sendEmail, emailShell, tmplBirthday, tmplFollowUp, tmplWinBack, tmplReviewRequest, tmplAppointmentReminder, tmplFormReminder, tmplAbandonedBooking, tmplAftercare, tmplSatisfaction, tmplRebook } from './email';
+import { sendEmail, emailShell, tmplBirthday, tmplFollowUp, tmplWinBack, tmplReviewRequest, tmplAppointmentReminder, tmplFormReminder, tmplAbandonedBooking, tmplAbandonedOrder, tmplAftercare, tmplSatisfaction, tmplRebook } from './email';
 import { ensureReviewRequest, reviewLink, googleReviewLink } from './review-system';
 import { site } from './site';
 import { escapeHtml } from './sanitize';
@@ -24,13 +24,13 @@ const WIN_BACK_MONTHS = 6;
 const TIER_NUDGE_PENCE = 20000;   // nudge clients within £200 of the next tier
 const ANNIVERSARY_POINTS = 1000;  // bonus points on a membership anniversary
 
-type Tally = { birthdays: number; followUps: number; winBacks: number; reviews: number; reminders: number; formReminders: number; treatmentFollowUps: number; giftVouchers: number; tierNudges: number; anniversaries: number; abandonedBookings: number; bookingIntents: number; membershipRenewals: number; staffDigests: number; staffNudges: number; reencrypted: number; aftercare: number; satisfaction: number; rebookNudges: number; npsPromoters: number; npsDetractors: number; liveClassReminders: number; errors: number };
+type Tally = { birthdays: number; followUps: number; winBacks: number; reviews: number; reminders: number; formReminders: number; treatmentFollowUps: number; giftVouchers: number; tierNudges: number; anniversaries: number; abandonedBookings: number; abandonedOrders: number; bookingIntents: number; membershipRenewals: number; staffDigests: number; staffNudges: number; reencrypted: number; aftercare: number; satisfaction: number; rebookNudges: number; npsPromoters: number; npsDetractors: number; liveClassReminders: number; errors: number };
 
 export async function runDailyAutomations(): Promise<Tally> {
-  const t: Tally = { birthdays: 0, followUps: 0, winBacks: 0, reviews: 0, reminders: 0, formReminders: 0, treatmentFollowUps: 0, giftVouchers: 0, tierNudges: 0, anniversaries: 0, abandonedBookings: 0, bookingIntents: 0, membershipRenewals: 0, staffDigests: 0, staffNudges: 0, reencrypted: 0, aftercare: 0, satisfaction: 0, rebookNudges: 0, npsPromoters: 0, npsDetractors: 0, liveClassReminders: 0, errors: 0 };
+  const t: Tally = { birthdays: 0, followUps: 0, winBacks: 0, reviews: 0, reminders: 0, formReminders: 0, treatmentFollowUps: 0, giftVouchers: 0, tierNudges: 0, anniversaries: 0, abandonedBookings: 0, abandonedOrders: 0, bookingIntents: 0, membershipRenewals: 0, staffDigests: 0, staffNudges: 0, reencrypted: 0, aftercare: 0, satisfaction: 0, rebookNudges: 0, npsPromoters: 0, npsDetractors: 0, liveClassReminders: 0, errors: 0 };
   const { staffWeeklyDigest, staffReengagement } = await import('@/lib/staff-emails');
   // BLD-120: allSettled so one failing automation can't abort the rest.
-  const results = await Promise.allSettled([birthdays(t), followUps(t), reviews(t), winBacks(t), reminders(t), formReminders(t), treatmentFollowUps(t), scheduledGiftVouchers(t), tierNudges(t), anniversaries(t), abandonedBookings(t), bookingIntentRecovery(t), membershipRenewal(t), staffWeeklyDigest(t), staffReengagement(t), keyReencryption(t), aftercare(t), satisfaction(t), rebookNudge(t), promoterFollowUp(t), detractorFollowUp(t), liveClassReminders(t)]);
+  const results = await Promise.allSettled([birthdays(t), followUps(t), reviews(t), winBacks(t), reminders(t), formReminders(t), treatmentFollowUps(t), scheduledGiftVouchers(t), tierNudges(t), anniversaries(t), abandonedBookings(t), abandonedOrders(t), bookingIntentRecovery(t), membershipRenewal(t), staffWeeklyDigest(t), staffReengagement(t), keyReencryption(t), aftercare(t), satisfaction(t), rebookNudge(t), promoterFollowUp(t), detractorFollowUp(t), liveClassReminders(t)]);
   for (const r of results) {
     if (r.status === 'rejected') { t.errors++; console.error('[automations] unhandled automation failure:', r.reason); }
   }
@@ -167,6 +167,44 @@ async function abandonedBookings(t: Tally) {
       res.ok ? t.abandonedBookings++ : t.errors++;
     }
   } catch (e) { t.errors++; console.error('[automations] abandoned bookings failed:', (e as Error)?.message); }
+}
+
+// ── Abandoned-order recovery (opt-in) ──
+// BLD-1204: a one-time nudge to shoppers who reached checkout (Order created
+// PENDING with their email already captured) but never completed payment.
+// Mirrors abandonedBookings() above: same 2–72h timing window, same
+// EmailEvent dedupe pattern, same email-sending mechanism. Gated behind the
+// abandoned_order_recovery setting.
+async function abandonedOrders(t: Tally) {
+  try {
+    const { getSetting } = await import('@/lib/settings');
+    if (!(await getSetting('abandoned_order_recovery'))) return;
+    const base = (SITE_URL || '').replace(/\/$/, '');
+    const now = Date.now();
+    const rows = await db.order.findMany({
+      where: {
+        status: 'PENDING',
+        createdAt: { gte: new Date(now - 72 * 3600e3), lte: new Date(now - 2 * 3600e3) },
+      },
+      take: 500,
+    });
+    for (const o of rows) {
+      // Honour a hard unsubscribe if this email maps to a known client — this is
+      // a one-time transactional nudge (not marketing), same stance as
+      // bookingIntentRecovery below.
+      const client = o.clientId
+        ? await db.client.findUnique({ where: { id: o.clientId }, select: { unsubscribed: true } }).catch(() => null)
+        : await db.client.findFirst({ where: { email: { equals: o.email, mode: 'insensitive' } }, select: { unsubscribed: true } }).catch(() => null);
+      if (client?.unsubscribed) continue;
+      // Once per order only.
+      const dup = await db.emailEvent.findFirst({ where: { kind: 'ABANDONED_ORDER', status: 'SENT', meta: { path: ['orderId'], equals: o.id } } });
+      if (dup) continue;
+      const resumeUrl = `${base}/shop/cart`;
+      const res = await sendEmail({ to: o.email, subject: 'Finish your order', html: tmplAbandonedOrder({ firstName: o.name.split(/\s+/)[0] || 'there', resumeUrl }) });
+      await db.emailEvent.create({ data: { clientId: o.clientId ?? null, kind: 'ABANDONED_ORDER', to: o.email, subject: 'Finish your order', status: res.ok ? 'SENT' : 'FAILED', providerId: res.id, error: res.error, meta: { orderId: o.id } } }).catch(() => {});
+      res.ok ? t.abandonedOrders++ : t.errors++;
+    }
+  } catch (e) { t.errors++; console.error('[automations] abandoned orders failed:', (e as Error)?.message); }
 }
 
 // ── Booking-funnel intent recovery (opt-in) ──

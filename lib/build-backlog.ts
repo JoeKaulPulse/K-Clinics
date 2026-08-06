@@ -3504,6 +3504,15 @@ export const BUILD_BACKLOG: BacklogItem[] = [
       'Review fix (BLD-1038): the new per-attempt console.error lines logged the full destination phone number. They now log the last 4 digits only, matching the no-raw-PII-in-logs rule applied under BLD-1179. Pre-existing finding left alone (separate ref needed): the dummy-mode console.warn at the top of sendSms still logs the full number and message body when Twilio is unconfigured.',
     ],
   },
+  {
+    title: 'Marketing batch: Academy purchases missing server-side consent-gated conversions, no abandoned-order recovery', type: 'TASK', urgency: 'P1', status: 'IN_REVIEW', assignee: 'claude',
+    value: 7, effort: 3,
+    detail: 'Two independent revenue/marketing gaps: sendEnrolmentPurchaseConversion() called sendPurchase() with no consent arguments, and sendPurchase() treats missing consent as not-consented, so every academy course sale silently skipped its server-side GA4/Meta CAPI Purchase event; and lib/automations.ts had no job at all for the Order model, so a shopper who reached checkout and never paid was never re-emailed to recover the sale.',
+    notes: [
+      'Fix (BLD-1203): added Enrolment.analyticsConsent / Enrolment.marketingConsent (nullable Boolean columns, additive) to prisma/schema.prisma, mirroring Booking.analyticsConsent / Order.analyticsConsent. Captured in startEnrolmentPayment() (lib/academy-payments.ts) — now takes an optional consent argument and writes it onto the enrolment at the moment the learner starts an online payment — read from the cookie-banner cookies (consentFromCookieHeader, lib/attribution.ts) by app/api/academy/pay/route.ts, the same pattern app/api/shop/checkout/route.ts already uses for Order. sendEnrolmentPurchaseConversion() now selects analyticsConsent/marketingConsent off the enrolment and threads them into sendPurchase(), so the server-side GA4/Meta events fire for consented purchases instead of being skipped unconditionally.',
+      'Fix (BLD-1204): added abandonedOrders() to lib/automations.ts, mirroring abandonedBookings() — same 2-72h timing window off Order.createdAt (status PENDING), same EmailEvent dedupe pattern (kind ABANDONED_ORDER, status SENT, meta.orderId), same sendEmail mechanism, gated behind a new abandoned_order_recovery setting (lib/settings.ts, ships off by default). Added EmailKind.ABANDONED_ORDER (additive enum value) and a tmplAbandonedOrder() email template (lib/email.ts). Wired into runDailyAutomations()\'s existing Promise.allSettled batch, same as every other automations job, so it runs off the existing daily cron with no separate wiring needed.',
+    ],
+  },
 ];
 
 // A content hash over every item's title + status + PR, so ANY change (a new
