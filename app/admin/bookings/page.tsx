@@ -139,7 +139,13 @@ export default async function BookingsPage({ searchParams }: { searchParams: Pro
               {new Date(b.startAt).toLocaleString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit', timeZone: 'Europe/London' })}
             </p>
             <p className="hidden text-sm sm:block">{b.chargedAt ? `${money(b.chargedPence || 0)} paid` : b.pricePence > 0 ? money(b.pricePence) : '—'}</p>
-            <span className="justify-self-end rounded-full bg-[var(--color-bone)] px-3 py-1 text-xs">{b.status}</span>
+            <span className="flex justify-self-end gap-1.5">
+              {/* BLD-1096: cancelled, but the client's prepaid package still absorbed the session. */}
+              {b.status === 'CANCELLED' && b.packageSessionUsedAt && (
+                <span className="rounded-full bg-[color-mix(in_oklab,var(--color-gold)_18%,transparent)] px-3 py-1 text-xs font-medium text-[var(--color-gold-deep)]">Package used</span>
+              )}
+              <span className="rounded-full bg-[var(--color-bone)] px-3 py-1 text-xs">{b.status}</span>
+            </span>
           </Link>
         ))}
       </div>
