@@ -19,7 +19,7 @@ export async function POST(req: Request) {
   const file = form?.get('file');
   if (!(file instanceof File)) return NextResponse.json({ ok: false, error: 'No file.' }, { status: 400 });
   if (file.size > MAX) return NextResponse.json({ ok: false, error: 'Image is over 12 MB.' }, { status: 413 });
-  if (file.type && !OK.test(file.type)) return NextResponse.json({ ok: false, error: 'Images only.' }, { status: 415 });
+  if (!file.type || !OK.test(file.type)) return NextResponse.json({ ok: false, error: 'Images only.' }, { status: 415 });
 
   try {
     const { put } = await import('@vercel/blob');
