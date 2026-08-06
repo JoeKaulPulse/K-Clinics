@@ -1,11 +1,16 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
+import Link from 'next/link';
 import { AnimatePresence, motion } from 'motion/react';
 import { useHideAtFooter } from '@/components/chat/useHideAtFooter';
 
 type Msg = { id: string; sender: string; body: string; createdAt: string; from?: string; link?: string };
 const TOKEN_KEY = 'kc_chat_token';
+// BLD-1155: replies here can be AI-drafted (lib/chat-ai.ts sends the visitor's
+// message to Anthropic) — a one-line, dismissable notice above the input says
+// so on first open, mirroring the cookie banner's "remember the choice" pattern.
+const AI_NOTICE_KEY = 'kc_chat_ai_notice_dismissed';
 
 export function LiveChat() {
   const [open, setOpen] = useState(false);
@@ -14,11 +19,19 @@ export function LiveChat() {
   const [draft, setDraft] = useState('');
   const [email, setEmail] = useState('');
   const [busy, setBusy] = useState(false);
+  const [showAiNotice, setShowAiNotice] = useState(false);
   const lastAt = useRef<string | null>(null);
   const scroller = useRef<HTMLDivElement>(null);
   const atFooter = useHideAtFooter();
 
   useEffect(() => { setToken(localStorage.getItem(TOKEN_KEY)); }, []);
+  useEffect(() => {
+    try { if (!localStorage.getItem(AI_NOTICE_KEY)) setShowAiNotice(true); } catch { setShowAiNotice(true); }
+  }, []);
+  function dismissAiNotice() {
+    try { localStorage.setItem(AI_NOTICE_KEY, '1'); } catch { /* private mode — still dismiss for this visit */ }
+    setShowAiNotice(false);
+  }
 
   const poll = useCallback(async (tok: string) => {
     try {
@@ -120,6 +133,12 @@ export function LiveChat() {
             </div>
 
             <div className="border-t border-[var(--color-line)] p-3">
+              {showAiNotice && (
+                <div className="mb-2 flex items-start justify-between gap-2 rounded-[var(--radius-sm)] bg-[var(--color-bone)] px-2.5 py-2 text-[0.68rem] leading-snug text-[var(--color-stone)]">
+                  <span>Replies may be AI-assisted; see our <Link href="/info/privacy-policy" className="underline hover:text-[var(--color-ink)]">Privacy Policy</Link>.</span>
+                  <button type="button" onClick={dismissAiNotice} aria-label="Dismiss" className="shrink-0 text-[var(--color-stone)] hover:text-[var(--color-ink)]">✕</button>
+                </div>
+              )}
               {!token && (
                 <input value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Email (optional — so we can reply if you leave)" className="mb-2 w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-3 py-2 text-xs outline-none focus:border-[var(--color-gold)]" />
               )}

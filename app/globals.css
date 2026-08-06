@@ -30,6 +30,22 @@
   --color-blush: #cdb4a3;      /* warm sand highlight */
   --color-blush-deep: #8b4a4a; /* deep warm red — error / destructive text on light surfaces */
 
+  /* PRJ-1032.35 — "Night" surface tokens: a handful of public-site sections
+     (KVision, GetMyPlanBand, LiveCompanion, the room-display kiosk) render a
+     deliberately dark hero surface regardless of the site's own light/dark
+     theme (data-theme is admin-only, see below — the public site never sets
+     it). These were drifting per-file as near-identical hardcoded hex
+     literals; consolidated here to one canonical set. */
+  --color-night: #0c0b0a;             /* near-black hero background */
+  --color-night-ink: #f4ece1;         /* primary text on --color-night */
+  --color-night-ink-soft: #e7dccd;    /* secondary bright text (list titles, item labels) */
+  --color-night-muted: #cdbfae;       /* muted body text on --color-night */
+  --color-night-faint: #9a8f80;       /* faintest text — captions, timestamps */
+  --color-night-mild: #8fae8f;        /* success/mild status accent on --color-night */
+  --color-night-moderate: #d8b26a;    /* warning/moderate status accent on --color-night */
+  --color-night-notable: #d98c8c;     /* alert/notable status accent on --color-night */
+  --color-night-notable-text: #f4d6d6;/* alert/notable readable text on --color-night */
+
   /* Semantic surface tokens */
   --color-bg: var(--color-porcelain);
   --color-fg: var(--color-ink);

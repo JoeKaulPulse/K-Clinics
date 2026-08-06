@@ -268,7 +268,10 @@ function LessonStep({ lesson, reviewing, preview, formative, register, onContinu
     if (lesson.videoUrl) { const yt = ytId(lesson.videoUrl); mediaArt = yt ? `video:yt:${yt}` : `video:url:${encodeURIComponent(lesson.videoUrl)}`; }
     else if (lesson.audioUrl) { mediaArt = `audio:url:${encodeURIComponent(lesson.audioUrl)}`; mediaTitle = 'Listen'; }
     else if (lesson.embedUrl) { mediaArt = `embed:url:${encodeURIComponent(lesson.embedUrl)}`; mediaTitle = ''; }
-    return mediaArt ? [{ kind: 'teach', title: mediaTitle, text: '', art: mediaArt }, ...withAsk] : withAsk;
+    // BLD-1157: thread the lesson's own captionsUrl (lib/lms.ts) onto the
+    // synthetic media step so TeachMicro can render a <track> for the native
+    // video case, same as LessonMedia/DemoPlayer.
+    return mediaArt ? [{ kind: 'teach', title: mediaTitle, text: '', art: mediaArt, captionsUrl: lesson.captionsUrl ?? undefined }, ...withAsk] : withAsk;
   }, [lesson, formative, register]);
 
   const [mi, setMi] = useState(0);
@@ -412,8 +415,10 @@ function TeachMicro({ step, onContinue, gated }: { step: TeachStep; onContinue: 
       {ytv ? (
         <div className="aspect-video w-full max-w-md overflow-hidden rounded-[var(--radius-lg)] border border-white/12"><iframe className="h-full w-full" src={`https://www.youtube-nocookie.com/embed/${ytv}`} title="Lesson video" loading="lazy" allow="accelerometer; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowFullScreen /></div>
       ) : filev ? (
-        // eslint-disable-next-line jsx-a11y/media-has-caption
-        <video controls playsInline className="aspect-video w-full max-w-md rounded-[var(--radius-lg)] border border-white/12" src={filev} />
+        <video controls playsInline crossOrigin={step.captionsUrl ? 'anonymous' : undefined} className="aspect-video w-full max-w-md rounded-[var(--radius-lg)] border border-white/12" src={filev}>
+          {/* BLD-1157: WebVTT captions when the lesson has them, same as LessonMedia/DemoPlayer. */}
+          {step.captionsUrl && <track kind="captions" src={step.captionsUrl} srcLang="en" label="English" default />}
+        </video>
       ) : audioSrc ? (
         // eslint-disable-next-line jsx-a11y/media-has-caption
         <audio controls preload="metadata" className="w-full max-w-md" src={audioSrc} />
