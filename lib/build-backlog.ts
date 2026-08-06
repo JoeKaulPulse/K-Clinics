@@ -3343,6 +3343,7 @@ export const BUILD_BACKLOG: BacklogItem[] = [
     notes: ['Owner decision 5 Aug: FULL AUTO on a lost dispute. charge.dispute.closed with status lost now reconciles automatically — booking: refundedPence advanced by the dispute amount via CAS, loyalty points clawed back (full-refund return + pro-rata spend reversal), a Xero credit note pushed (pushBookingRefundToXero, reason "Chargeback lost") and a PAYMENT_REFUNDED audit entry; shop order: status → REFUNDED + stock restored (order sales carry no Xero push to reverse) + audit. Won/other outcomes change nothing. All side-effects sit behind the existing CAS claims so a redelivered event cannot double-run them. (PRJ-1069.12)'],
   },
   {
+<<<<<<< HEAD
     title: 'BNPL course pre-payment bills full list price, ignoring points/voucher already redeemed', type: 'ERROR', urgency: 'P1', status: 'IN_REVIEW', assignee: 'claude',
     value: 8, effort: 3,
     detail: 'courseTotalPence (lib/booking-actions.ts), the single source of truth for both minting the BNPL Checkout Session amount and validating the webhook payment, never subtracted booking.pointsRedeemedPence or booking.giftVoucherPence, so a client who had already redeemed loyalty points or a gift voucher on a course was billed the discount twice.',
@@ -3357,6 +3358,39 @@ export const BUILD_BACKLOG: BacklogItem[] = [
     value: 6, effort: 1,
     detail: 'In the charge.dispute lost-dispute branch (app/api/stripe/webhook/route.ts), Math.min(X, Math.max(c, X)) always resolves to X for any c, so the intended cap at chargedPence never capped anything — a dispute landing on top of a prior partial refund could inflate refundedPence above what was actually charged, corrupting reports and the downstream loyalty clawback / Xero credit-note amounts that read the same total.',
     notes: ['Fix: replaced with Math.min((full.refundedPence ?? 0) + amount, full.chargedPence ?? 0), the straightforward cap the code was clearly trying to write. Checked chargedPence can be 0/null here: this branch only runs when Stripe has confirmed a real dispute, which requires a captured charge, and every path that sets chargePaymentIntentId on a successful capture (chargeBooking, finalizeBookingCharge) sets chargedPence in that same write — so chargedPence is always populated in practice by the time a dispute fires; capping to 0 in the hypothetical unset case is still correct (refundedPence cannot exceed what was charged). (BLD-1190)'],
+  },
+  {
+    title: 'Shared Dialog component never locks background scroll', type: 'ERROR', urgency: 'P1', status: 'IN_REVIEW', assignee: 'claude',
+    value: 8, effort: 2,
+    detail: 'components/ui/Dialog.tsx rendered its overlay/panel without locking document.body scroll while open, unlike the other overlays in the app (Header mobile menu, Intro, ImmersiveCourse, ExplainerPlayer) which do this manually. The background page could scroll behind the modal.',
+    notes: [
+      'Fix: Dialog now locks document.body.style.overflow on open and restores the previous value on close/unmount, matching the existing save/restore pattern used elsewhere in the codebase. Restoring to the captured previous value (rather than unconditionally clearing it) means a nested Dialog closing does not clobber an outer Dialog\'s lock. (BLD-1183)',
+      'Pre-merge review, same branch: the original wording of this item claimed 13 modals were affected and therefore fixed. Corrected — 13 files import from components/ui/Dialog.tsx, but only two of them (components/admin/ReplayList.tsx and components/admin/EditClientDetails.tsx) render the <Dialog> component and so gain the scroll lock. The other eleven files (13 call sites) use the useDialogBehaviours() hook instead — focus-in, Tab trap, Escape and focus restore around their own bespoke overlay markup — and still do not lock background scroll: AdminShell (mobile drawer), BuildBoard x2, StaffManager x2, MediaPicker, NewBookingButton, ReportProblem, SupplierManager, teamchat/NewChatModal, academy/CourseReviewPrompt, academy/SecurePdfViewer, ai/KVision. Moving the lock into the hook was deliberately not done here: six of those call sites pass no `active` argument, so it defaults to true and the lock would hold for as long as the component is mounted rather than while its modal is open — every site needs checking before the hook can own the lock. Worth its own item. (BLD-1183)',
+    ],
+  },
+  {
+    title: 'Supplier list row is mouse-only, unreachable by keyboard (WCAG 2.1.1)', type: 'ERROR', urgency: 'P1', status: 'IN_REVIEW', assignee: 'claude',
+    value: 6, effort: 2,
+    detail: 'The clickable supplier row in components/admin/SupplierManager.tsx had onClick with no tabIndex or onKeyDown, so keyboard-only staff could not reach or open the supplier editor.',
+    notes: ['Fix: added tabIndex={0} and an onKeyDown handler (Enter or Space opens the editor, Space prevents default to stop page scroll), matching the existing clickable-row pattern already used for the Build board list rows. (BLD-1185)'],
+  },
+  {
+    title: 'Meta Custom Audience sync uses a weaker consent gate than the rest of the app', type: 'TASK', urgency: 'P1', status: 'IN_REVIEW', assignee: 'claude',
+    value: 7, effort: 1,
+    detail: 'syncSegmentToMeta built its consent gate inline (marketingOptIn + unsubscribed only), missing the marketingConsentAt evidence check every other marketing audience already requires.',
+    notes: ['Fix: lib/meta-audiences.ts now spreads the canonical marketableClientWhere() from lib/consent.ts instead of the inline pair, so a Meta Custom Audience sync excludes legacy boolean-only opt-ins with no recorded consent evidence, matching every other marketing audience in the app. (BLD-1181)'],
+  },
+  {
+    title: 'Consultation.message (health-adjacent text) shown to staff without clinical.view permission', type: 'ERROR', urgency: 'P1', status: 'IN_REVIEW', assignee: 'claude',
+    value: 6, effort: 2,
+    detail: 'The client profile page rendered a consultation\'s free-text message to any staff viewer regardless of the clients.clinical.view permission, even though the same page already gates every other clinical field on it.',
+    notes: ['Fix: the consultation message render in app/admin/clients/[id]/page.tsx is now gated behind the existing `clinical` flag, matching the pattern used for assessments, AI analyses, the medical flag and clinical interactions elsewhere on the same page; category, treatments, status and date remain visible to all staff. (BLD-1184)'],
+  },
+  {
+    title: 'Gift-voucher, shop and academy checkouts have no marketing-consent capture', type: 'TASK', urgency: 'P1', status: 'IN_REVIEW', assignee: 'claude',
+    value: 7, effort: 3,
+    detail: 'The gift-voucher, shop and academy-signup forms collect a purchaser email but offer no marketing opt-in, unlike BookingFlow and ConsultForm.',
+    notes: ['Fix: added the same opt-in checkbox and copy used by BookingFlow/ConsultForm to GiftVoucherFlow, shop CheckoutForm and the academy signup form (AcademyAuth), each threading marketingOptIn through its API route into a no-clobber Client upsert stamped with marketingConsentFields() (lib/consent.ts) — gift-vouchers.ts and the shop checkout route now upsert/update the purchaser\'s Client record by email (previously neither touched one at all), and academy signupStudent()/linkClientByEmail creates or updates the linked Client on an affirmative opt-in. (BLD-1188)'],
   },
 ];
 
