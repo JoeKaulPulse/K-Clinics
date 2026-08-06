@@ -75,7 +75,7 @@ function BundleRow({ bundle, courses, busy, act }: { bundle: AdminBundle; course
                     <span className="flex-1">{it.courseTitle}</span>
                     <button onClick={() => move(i, -1)} disabled={busy || i === 0} className={btnGhost}>↑</button>
                     <button onClick={() => move(i, 1)} disabled={busy || i === bundle.items.length - 1} className={btnGhost}>↓</button>
-                    <button onClick={() => act({ op: 'removeItem', id: it.id })} disabled={busy} className="text-xs text-[var(--color-blush-deep)] hover:underline">Remove</button>
+                    <button onClick={() => { if (confirm('Remove this course from the bundle? This cannot be undone.')) act({ op: 'removeItem', id: it.id }); }} disabled={busy} className="text-xs text-[var(--color-blush-deep)] hover:underline">Remove</button>
                   </li>
                 ))}
               </ul>

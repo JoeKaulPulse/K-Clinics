@@ -78,7 +78,7 @@ function TestCard({ t, canManage }: { t: AbTestRow; canManage: boolean }) {
                   <input defaultValue={v.ctaHref} onBlur={(e) => e.target.value !== v.ctaHref && act({ op: 'updateVariant', id: v.id, ctaHref: e.target.value })} placeholder="CTA link (/book)" aria-label="CTA link" className={field} />
                 </div>
               )}
-              {canManage && t.variants.length > 2 && <button onClick={() => act({ op: 'removeVariant', id: v.id })} className="mt-2 text-xs text-[var(--color-blush-deep)] hover:underline">Remove variant</button>}
+              {canManage && t.variants.length > 2 && <button onClick={() => { if (confirm('Remove this variant? Its exposure and conversion data will be lost.')) act({ op: 'removeVariant', id: v.id }); }} className="mt-2 text-xs text-[var(--color-blush-deep)] hover:underline">Remove variant</button>}
             </div>
           );
         })}

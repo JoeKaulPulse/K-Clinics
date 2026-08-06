@@ -3504,6 +3504,14 @@ export const BUILD_BACKLOG: BacklogItem[] = [
       'Review fix (BLD-1038): the new per-attempt console.error lines logged the full destination phone number. They now log the last 4 digits only, matching the no-raw-PII-in-logs rule applied under BLD-1179. Pre-existing finding left alone (separate ref needed): the dummy-mode console.warn at the top of sendSms still logs the full number and message body when Twilio is unconfigured.',
     ],
   },
+  {
+    title: 'Destructive admin Remove actions inconsistently guarded — some skip confirmation entirely', type: 'ERROR', urgency: 'P1', status: 'IN_REVIEW', assignee: 'claude',
+    value: 7, effort: 2,
+    detail: 'Several admin Remove/Delete handlers fired their mutation immediately with no confirm() step, while near-identical Remove/Delete buttons elsewhere in the same file did confirm first, risking accidental irreversible deletes.',
+    notes: [
+      'Fix: added a confirm() gate to six handlers that had none: BundlesManager.tsx removeItem (course-in-bundle Remove button), AbManager.tsx removeVariant (Remove variant button), DemosManager.tsx deleteMistake (mistake-marker x button), ScheduleManager.tsx remove() in TimeOff (removeTimeOff), WorkspaceClient.tsx removeAlias (Google Workspace alias DELETE), and FacilityDocsViewer.tsx remove() (facility doc DELETE). Each message names the specific thing being removed and states it cannot be undone, matching the wording style of the confirm() calls already used on the sibling Delete buttons in the same files. Audited every components/admin/**/*.tsx file (192 files) for remove/delete/destroy-named handlers and for fetch calls with method DELETE; all other matches already had a confirm() (or, for teamchat/ChatWindow.tsx remove(), the confirm sits in the caller before invoking it) and were left untouched. Two reversible toggles (SessionRunner.tsx removeVoucher, NotificationPreferences.tsx disablePush) were intentionally left alone — removing a promo code or disabling push notifications is trivially reversible, unlike the six irreversible-delete handlers above. (BLD-1208)',
+    ],
+  },
 ];
 
 // A content hash over every item's title + status + PR, so ANY change (a new
