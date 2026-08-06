@@ -107,13 +107,18 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
     db.promoRedemption.findMany({ where: { clientId: id }, orderBy: { createdAt: 'desc' } }),
   ]);
 
+  // BLD-1160: ChatMessage.body is encrypted at rest, like Consultation.message
+  // above — decrypt for the readable record (decClinical tolerates legacy
+  // plaintext rows); never ship ciphertext in the SAR export.
+  const chatConversationsOut = chatConversations.map((cc) => ({ ...cc, messages: cc.messages.map((m) => ({ ...m, body: decClinical(m.body) })) }));
+
   const out: Record<string, unknown> = {
     exportedAt: new Date().toISOString(),
     exportedBy: session!.email,
     client,
     signedConsents,
     beforePhotos,
-    chatConversations,
+    chatConversations: chatConversationsOut,
     shopOrders,
     consentRequests,
     promoRedemptions,

@@ -3,6 +3,7 @@ import * as Sentry from '@sentry/nextjs';
 import { db } from '@/lib/db';
 import { site } from '@/lib/site';
 import { getSecret } from '@/lib/secrets';
+import { encClinical, decClinical } from '@/lib/clinical-crypto';
 
 // ── Live-chat AI agent ───────────────────────────────────────────────────────
 // A cheap Claude Haiku agent that answers most visitor chat messages, grounded
@@ -168,7 +169,8 @@ async function handOver(conversationId: string, visitorEmail: string | null, ope
   const note = open
     ? `${opening} Let me bring in a member of our team — they'll reply right here in just a moment.`
     : `${opening} Our team isn't online at the moment (hours: ${hoursText()}). I've passed this to them and they'll follow up${visitorEmail ? ' by email' : ' here'} as soon as we reopen. In the meantime you can call ${site.phone} or book online at ${site.booking.path}.`;
-  const handoverMsg = await db.chatMessage.create({ data: { conversationId, sender: 'AI', author: 'K (assistant)', body: note } });
+  // BLD-1160: encrypt at rest, matching every write of ChatMessage.body.
+  const handoverMsg = await db.chatMessage.create({ data: { conversationId, sender: 'AI', author: 'K (assistant)', body: encClinical(note) as string } });
   await db.chatConversation.update({ where: { id: conversationId }, data: { mode: 'STAFF', status: 'OPEN', lastMessageAt: new Date(), staffUnread: { increment: 1 } } });
   // In-app alert: a live visitor needs a person now (urgent, collapses per conversation).
   try {
@@ -210,7 +212,9 @@ export async function maybeAutoReply(conversationId: string): Promise<void> {
     const key = await getSecret('ANTHROPIC_API_KEY');
     if (!key) { await handOver(conversationId, convo.visitorEmail, 'Thanks for your message!', 'assistant unavailable'); return; }
 
-    const turns = convo.messages.slice().reverse();
+    // BLD-1160: bodies are encrypted at rest; decrypt before feeding the model
+    // (decClinical tolerates legacy plaintext rows).
+    const turns = convo.messages.slice().reverse().map((t) => ({ ...t, body: decClinical(t.body) }));
     const messages = toMessages(turns);
     if (!messages.length) return;
 
@@ -227,7 +231,8 @@ export async function maybeAutoReply(conversationId: string): Promise<void> {
     // Re-check mode in case staff jumped in while the model was thinking.
     const fresh = await db.chatConversation.findUnique({ where: { id: conversationId }, select: { mode: true } });
     if (fresh?.mode !== 'AI') return;
-    const aiMsg = await db.chatMessage.create({ data: { conversationId, sender: 'AI', author: 'K (assistant)', body: result.reply } });
+    // BLD-1160: encrypt at rest, matching every write of ChatMessage.body.
+    const aiMsg = await db.chatMessage.create({ data: { conversationId, sender: 'AI', author: 'K (assistant)', body: encClinical(result.reply) as string } });
     await db.chatConversation.update({ where: { id: conversationId }, data: { lastMessageAt: new Date() } });
     // Email the reply if the visitor left their email and has stepped away.
     try { const { emailChatMessage } = await import('@/lib/chat-email'); await emailChatMessage(aiMsg.id); } catch { /* non-fatal */ }

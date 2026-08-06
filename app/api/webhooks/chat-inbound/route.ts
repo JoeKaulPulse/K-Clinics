@@ -55,6 +55,7 @@ export async function POST(req: Request) {
 
   const { db } = await import('@/lib/db');
   const { stripQuotedReply, tokenFromAddresses } = await import('@/lib/chat-email');
+  const { encClinical } = await import('@/lib/clinical-crypto');
 
   // 1) Find the conversation. Prefer the chat-<token>@ recipient address.
   const recipients = collect(data.to, data.cc, headers.to, headers.To, headers.Cc);
@@ -99,7 +100,8 @@ export async function POST(req: Request) {
         const seen = await tx.chatMessage.findFirst({ where: { externalId }, select: { id: true } });
         if (seen) return false;
       }
-      await tx.chatMessage.create({ data: { conversationId: convoId, sender: 'VISITOR', body: message, via: 'email', externalId } });
+      // BLD-1160: encrypt at rest, matching every write of ChatMessage.body.
+      await tx.chatMessage.create({ data: { conversationId: convoId, sender: 'VISITOR', body: encClinical(message) as string, via: 'email', externalId } });
       await tx.chatConversation.update({
         where: { id: convoId },
         data: { status: 'OPEN', mode: 'STAFF', lastMessageAt: new Date(), lastVisitorSeenAt: new Date(), staffUnread: { increment: 1 } },
