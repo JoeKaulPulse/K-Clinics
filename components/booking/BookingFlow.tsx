@@ -554,16 +554,37 @@ function courseAsVariant(v: Variant, sessions: number): Variant {
   return c ? { ...v, pricePence: c.totalPence, offerPence: null, offerName: null } : v;
 }
 
+// BLD-1144: treatments are 18+ — flag under-18 and implausible (>120y) dates
+// of birth with a clear, specific message. Returns null when the date is fine.
+function dobError(dob: string): string | null {
+  if (!dob) return 'Date of birth is required.';
+  const d = new Date(dob);
+  if (isNaN(+d)) return 'Enter a valid date of birth.';
+  const now = new Date();
+  if (d >= now) return 'Date of birth can’t be in the future.';
+  let age = now.getFullYear() - d.getFullYear();
+  const monthDiff = now.getMonth() - d.getMonth();
+  if (monthDiff < 0 || (monthDiff === 0 && now.getDate() < d.getDate())) age--;
+  if (age > 120) return 'Please check the date of birth — that doesn’t look right.';
+  if (age < 18) return 'You must be 18 or older to book a treatment.';
+  return null;
+}
+
 // ── Account step (signup / login) ───────────────────────────────────────────
 function AccountStep({ onAuthed, setError }: { onAuthed: (i: { firstName: string; gender: string | null; welcome: boolean; sms: boolean }) => void; setError: (e: string) => void }) {
   const [mode, setMode] = useState<'signup' | 'login'>('signup');
   const [f, setF] = useState({ firstName: '', lastName: '', email: '', phone: '', dob: '', password: '', gender: '', marketingOptIn: false, sms: false, consent: false, company: '' });
   const [busy, setBusy] = useState(false);
+  // Today's date (browser-local), used as the DOB field's max and to keep the
+  // inline age check in sync with it.
+  const maxDob = useMemo(() => new Date().toLocaleDateString('en-CA'), []);
+  const dobMsg = f.dob ? dobError(f.dob) : null;
 
   async function signup() {
     const digits = (f.phone.match(/\d/g) || []).length;
-    if (!f.firstName || !f.lastName.trim() || !/\S+@\S+\.\S+/.test(f.email) || digits < 7 || !f.dob || f.password.length < 8 || !f.consent) {
-      setError('Please complete all required fields (surname, a valid mobile, date of birth, password 8+) and accept the terms.'); return;
+    const dobErr = dobError(f.dob);
+    if (!f.firstName || !f.lastName.trim() || !/\S+@\S+\.\S+/.test(f.email) || digits < 7 || dobErr || f.password.length < 8 || !f.consent) {
+      setError(dobErr || 'Please complete all required fields (surname, a valid mobile, date of birth, password 8+) and accept the terms.'); return;
     }
     setBusy(true); setError('');
     try {
@@ -596,8 +617,9 @@ function AccountStep({ onAuthed, setError }: { onAuthed: (i: { firstName: string
   // email to set a password later.
   async function guest() {
     const digits = (f.phone.match(/\d/g) || []).length;
-    if (!f.firstName || !f.lastName.trim() || !/\S+@\S+\.\S+/.test(f.email) || digits < 7 || !f.dob || !f.consent) {
-      setError('Please complete all required fields (surname, a valid mobile, date of birth) and accept the terms.'); return;
+    const dobErr = dobError(f.dob);
+    if (!f.firstName || !f.lastName.trim() || !/\S+@\S+\.\S+/.test(f.email) || digits < 7 || dobErr || !f.consent) {
+      setError(dobErr || 'Please complete all required fields (surname, a valid mobile, date of birth) and accept the terms.'); return;
     }
     setBusy(true); setError('');
     try {
@@ -628,7 +650,7 @@ function AccountStep({ onAuthed, setError }: { onAuthed: (i: { firstName: string
           <div><label htmlFor="bf-lastName" className={label}>Last name *</label><input id="bf-lastName" autoComplete="family-name" className={field} value={f.lastName} onChange={(e) => setF({ ...f, lastName: e.target.value })} /></div>
           <div className="sm:col-span-2"><label htmlFor="bf-email" className={label}>Email *</label><input id="bf-email" type="email" autoComplete="email" className={field} value={f.email} onChange={(e) => setF({ ...f, email: e.target.value })} /></div>
           <div><label htmlFor="bf-phone" className={label}>Mobile *</label><input id="bf-phone" type="tel" autoComplete="tel" className={field} value={f.phone} onChange={(e) => setF({ ...f, phone: e.target.value })} /></div>
-          <div><label htmlFor="bf-dob" className={label}>Date of birth *</label><input id="bf-dob" type="date" autoComplete="bday" className={field} value={f.dob} onChange={(e) => setF({ ...f, dob: e.target.value })} /></div>
+          <div><label htmlFor="bf-dob" className={label}>Date of birth *</label><input id="bf-dob" type="date" autoComplete="bday" max={maxDob} aria-invalid={!!dobMsg} className={field} value={f.dob} onChange={(e) => setF({ ...f, dob: e.target.value })} />{dobMsg && <p className="mt-1.5 text-xs text-[var(--color-blush-deep)]">{dobMsg}</p>}</div>
           <div className="sm:col-span-2"><label htmlFor="bf-password" className={label}>Password (8+) <span className="font-normal text-[var(--color-stone)]">— optional; or continue as a guest below</span></label><input id="bf-password" type="password" autoComplete="new-password" className={field} value={f.password} onChange={(e) => setF({ ...f, password: e.target.value })} /></div>
           <div className="sm:col-span-2"><label htmlFor="bf-gender" className={label}>Gender (optional — tailors recommendations)</label>
             <select id="bf-gender" className={field} value={f.gender} onChange={(e) => setF({ ...f, gender: e.target.value })}>
