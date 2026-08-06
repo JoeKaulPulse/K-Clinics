@@ -3422,7 +3422,10 @@ export const BUILD_BACKLOG: BacklogItem[] = [
     title: 'Gallery before/after images get generic, non-unique alt text', type: 'ERROR', urgency: 'P2', status: 'IN_REVIEW', assignee: 'claude',
     value: 4, effort: 1,
     detail: 'BeforeAfter.tsx defaults labelBefore/labelAfter to Before/After, and PublicGallery rendered every case without overriding them, so every gallery image got identical alt text ("Before treatment" / "After treatment") despite each case carrying a distinct category (Laser Hair Removal, Veneers, ...).',
-    notes: ['Fix: PublicGallery now passes labelBefore/labelAfter derived from each item\'s category (e.g. "Before Laser Hair Removal" / "After Laser Hair Removal"), so BeforeAfter\'s alt text and on-image badges are unique per case. (BLD-1176)'],
+    notes: [
+      'Fix: PublicGallery now passes case-specific alt text to BeforeAfter, derived from each item\'s category plus its caption when present (e.g. "Veneers -- before treatment: upper arch"), so no two gallery images share the same alt. (BLD-1176)',
+      'Review fix (BLD-1176): the first cut overrode labelBefore/labelAfter instead, which also changes the two on-image badges. Those badges are absolutely positioned at the top-left and top-right corners of a 4:3 tile in uppercase with 0.16em tracking, so "BEFORE LASER HAIR REMOVAL" and "AFTER LASER HAIR REMOVAL" would overlap in the middle of every tile in the 3-column grid. BeforeAfter now takes separate optional altBefore/altAfter props (defaulting to the badge text, so its only other behaviour is unchanged) and PublicGallery sets those, leaving the badges as the short "Before"/"After". Residual: two published cases in the same category with no caption still share alt text -- there is no other distinguishing field on GalleryItem to use.',
+    ],
   },
   {
     title: 'Audit re-check: 3 previously reported findings already resolved, no code change needed', type: 'AUDIT', urgency: 'P3', status: 'SHIPPED', assignee: 'claude',
