@@ -3426,6 +3426,15 @@ export const BUILD_BACKLOG: BacklogItem[] = [
     ],
   },
   {
+    title: 'sharp (Next.js Image Optimization dependency) vulnerable to libvips CVEs', type: 'TASK', urgency: 'P1', status: 'IN_REVIEW', assignee: 'claude',
+    value: 6, effort: 1,
+    detail: 'npm audit flagged GHSA-f88m-g3jw-g9cj: sharp versions below 0.35.0 inherit several libvips vulnerabilities (CVE-2026-33327, CVE-2026-33328, CVE-2026-35590, CVE-2026-35591). sharp backs next/image, used across admin media uploads, kiosk photos and before/after gallery photos.',
+    notes: [
+      'Fix: added an npm overrides entry holding sharp at ^0.35.3 (0.35.3 is the version the advisory names as the fix, bundling libvips 8.18.3). The installed lockfile already resolved sharp to 0.35.3 via next\'s own optional dependency range, so npm audit already showed 0 vulnerabilities before this change and the lockfile did not move -- the override exists to hold that patched version in place against any future range widening rather than to fix an active install. Verified sharp still loads and reports vips 8.18.3 after the pin, and both npx tsc --noEmit and npm run build pass. (BLD-1154)',
+      'Review fix (BLD-1154): the override was an exact "0.35.3". Changed to "^0.35.3" so a future libvips patch released as 0.35.4 is picked up by a normal install instead of needing a package.json edit -- which is the whole point of the item. It keeps the same security floor and the same 0.36 upper bound as the exact pin. Re-verified: npm audit reports 0 vulnerabilities, the lockfile still resolves sharp 0.35.3 (the newest 0.35.x published), and npm ci --dry-run stays in sync with package.json (the lockfile records no overrides block at all, matching the three pre-existing overrides on main, so this addition does not desync the deploy install).',
+    ],
+  },
+  {
     title: 'Five independent frontend/UX/accessibility findings: booking DOB, plain img tags, off-palette dark UI colours, chat AI-consent notice, academy video captions', type: 'ERROR', urgency: 'P1', status: 'IN_REVIEW', assignee: 'claude',
     value: 7, effort: 3,
     detail: 'Five unrelated frontend findings from the live build board, fixed together on one branch: (1) booking DOB field had no max date or age check; (2) GiftPackages/CartClient used plain img tags instead of next/image; (3) KVision/GetMyPlanBand/LiveCompanion/room-display used off-palette hardcoded hex colours instead of theme tokens; (4) the live chat widget sent visitor messages to an AI with no consent notice; (5) the academy immersive course video player had no captions track.',
