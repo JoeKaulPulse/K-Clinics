@@ -2,7 +2,7 @@
 
 import { revalidatePath } from 'next/cache';
 import { crmEnabled } from '@/lib/crm';
-import { getSession, sessionCan } from '@/lib/auth';
+import { getSession, sessionCan, sessionIsAdmin } from '@/lib/auth';
 import { site } from '@/lib/site';
 
 // Set which location an appointment takes place at (multi-location).
@@ -364,4 +364,70 @@ export async function rescheduleBookingAction(bookingId: string, newStartISO: st
   const { rescheduleBooking } = await import('@/lib/booking-actions');
   const r = await rescheduleBooking(bookingId, newStartISO, { by: session.email, admin: true });
   return r.ok ? { ok: true } : { ok: false, error: r.error || 'Could not reschedule.' };
+}
+
+// BLD-1096 — owner request: sometimes a client cancels with enough notice that
+// no late fee applies, but the clinic and client have separately agreed the
+// prepaid package session is spent rather than credited back. This marks that
+// WITHOUT touching the booking's status — it stays CANCELLED in the diary and
+// the client's appointment history — and deducts one session from the client's
+// package balance by making lib/package-sessions.ts's derived totals count it as
+// used (same mechanism as a COMPLETED session; nothing is reimplemented here).
+// Admin/owner only, same gate as the paid-price correction (BLD-1094).
+export async function markPackageSessionUsed(bookingId: string): Promise<{ ok: boolean; error?: string }> {
+  if (!crmEnabled) return { ok: false, error: 'CRM disabled' };
+  const session = await getSession();
+  if (!session || !sessionIsAdmin(session)) return { ok: false, error: 'Only an admin can mark a cancelled appointment as a used package session.' };
+  const { db } = await import('@/lib/db');
+  const booking = await db.booking.findUnique({
+    where: { id: bookingId },
+    select: { status: true, clientId: true, treatmentTitle: true, packageBookingId: true, packageSessionUsedAt: true },
+  });
+  if (!booking) return { ok: false, error: 'Booking not found.' };
+  if (booking.status !== 'CANCELLED') return { ok: false, error: 'Only a cancelled appointment can be marked this way.' };
+  if (booking.packageSessionUsedAt) return { ok: true }; // idempotent
+  // Review fix (BLD-1096): only a FOLLOW-UP session (one linked back to a
+  // purchase via packageBookingId) can be marked. The course purchase booking
+  // itself must not be: clientPackages() drops a package whose purchase booking
+  // is CANCELLED (`status: { notIn: ['CANCELLED','NO_SHOW'] }`) and counts the
+  // purchase's own slot without reading packageSessionUsedAt, so marking it
+  // would change nothing while the badge and audit entry claimed a session had
+  // been deducted.
+  if (!booking.packageBookingId) {
+    return { ok: false, error: 'This appointment isn’t a session booked against a client package, so there’s no package balance to deduct from. (A cancelled course purchase itself can’t be marked — cancelling it already ends the package.)' };
+  }
+
+  await db.booking.update({ where: { id: bookingId }, data: { packageSessionUsedAt: new Date(), packageSessionUsedBy: session.email } });
+  const { logAudit } = await import('@/lib/audit');
+  await logAudit({
+    action: 'SESSION_EDITED', actor: session.email, actorRole: session.role, bookingId, clientId: booking.clientId,
+    summary: `Cancelled appointment (${booking.treatmentTitle}) marked "package session used" — one session deducted from the client's package balance; appointment stays Cancelled`,
+  });
+  revalidatePath(`/admin/bookings/${bookingId}`);
+  revalidatePath('/admin/bookings');
+  revalidatePath(`/admin/clients/${booking.clientId}`);
+  return { ok: true };
+}
+
+// Undo the mark above — restores the session to the client's package balance.
+// Same admin-only gate; the booking's CANCELLED status is untouched either way.
+export async function unmarkPackageSessionUsed(bookingId: string): Promise<{ ok: boolean; error?: string }> {
+  if (!crmEnabled) return { ok: false, error: 'CRM disabled' };
+  const session = await getSession();
+  if (!session || !sessionIsAdmin(session)) return { ok: false, error: 'Only an admin can undo this.' };
+  const { db } = await import('@/lib/db');
+  const booking = await db.booking.findUnique({ where: { id: bookingId }, select: { clientId: true, treatmentTitle: true, packageSessionUsedAt: true } });
+  if (!booking) return { ok: false, error: 'Booking not found.' };
+  if (!booking.packageSessionUsedAt) return { ok: true }; // idempotent
+
+  await db.booking.update({ where: { id: bookingId }, data: { packageSessionUsedAt: null, packageSessionUsedBy: null } });
+  const { logAudit } = await import('@/lib/audit');
+  await logAudit({
+    action: 'SESSION_EDITED', actor: session.email, actorRole: session.role, bookingId, clientId: booking.clientId,
+    summary: `Reverted "package session used" mark on cancelled appointment (${booking.treatmentTitle}) — session restored to the client's package balance`,
+  });
+  revalidatePath(`/admin/bookings/${bookingId}`);
+  revalidatePath('/admin/bookings');
+  revalidatePath(`/admin/clients/${booking.clientId}`);
+  return { ok: true };
 }

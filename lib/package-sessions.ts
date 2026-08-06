@@ -1,4 +1,5 @@
 import 'server-only';
+import type { Prisma } from '@prisma/client';
 import { db } from '@/lib/db';
 
 // BLD-1014 / BLD-1098 — package (course) session tracking.
@@ -8,7 +9,11 @@ import { db } from '@/lib/db';
 // Booking.packageBookingId. Balances are DERIVED from bookings — used = the
 // completed ones, booked = upcoming ones — so nothing can drift out of sync
 // with the diary. Cancelled/no-show sessions do not consume the package
-// (no-show fees are handled by the ordinary late-cancel path).
+// (no-show fees are handled by the ordinary late-cancel path) — UNLESS an admin
+// has explicitly marked a cancelled session as package-consumed (BLD-1096:
+// Booking.packageSessionUsedAt), in which case it counts as used exactly like a
+// completed one. The booking's own status is never changed by that mark — it
+// stays CANCELLED in the diary and appointment history.
 
 export type PackageView = {
   purchaseBookingId: string;
@@ -23,6 +28,11 @@ export type PackageView = {
 };
 
 const LIVE = ['PENDING', 'CONFIRMED'] as const;
+// BLD-1096: a linked session still counts toward the package's derived totals
+// when it's either genuinely live/completed, OR it's a cancelled appointment an
+// admin has explicitly marked as package-consumed (kept out of the query by a
+// plain `notIn: ['CANCELLED', 'NO_SHOW']` filter, so that case needs its own OR branch).
+const SESSION_INCLUDED: Prisma.BookingWhereInput = { OR: [{ status: { notIn: ['CANCELLED', 'NO_SHOW'] } }, { status: 'CANCELLED', packageSessionUsedAt: { not: null } }] };
 
 /** All packages a client has bought, newest first. */
 export async function clientPackages(clientId: string): Promise<PackageView[]> {
@@ -37,14 +47,14 @@ export async function clientPackages(clientId: string): Promise<PackageView[]> {
       id: true, treatmentSlug: true, treatmentTitle: true, status: true,
       chargedAt: true, prepaidAt: true, createdAt: true,
       items: { where: { isAddon: false }, orderBy: { createdAt: 'asc' }, take: 1, select: { sessions: true, label: true } },
-      packageSessions: { where: { status: { notIn: ['CANCELLED', 'NO_SHOW'] } }, select: { status: true } },
+      packageSessions: { where: SESSION_INCLUDED, select: { status: true, packageSessionUsedAt: true } },
     },
   }).catch(() => []);
 
   return purchases.map((p) => {
     const total = p.items[0]?.sessions ?? 1;
-    const all = [{ status: p.status }, ...p.packageSessions];
-    const used = all.filter((s) => s.status === 'COMPLETED').length;
+    const all = [{ status: p.status, packageSessionUsedAt: null as Date | null }, ...p.packageSessions];
+    const used = all.filter((s) => s.status === 'COMPLETED' || (s.status === 'CANCELLED' && s.packageSessionUsedAt)).length;
     const booked = all.filter((s) => (LIVE as readonly string[]).includes(s.status)).length;
     return {
       purchaseBookingId: p.id,
@@ -75,7 +85,7 @@ export async function packageSessionNumber(bookingId: string): Promise<{ session
     select: {
       id: true, startAt: true,
       items: { where: { isAddon: false }, orderBy: { createdAt: 'asc' }, take: 1, select: { sessions: true } },
-      packageSessions: { where: { status: { notIn: ['CANCELLED', 'NO_SHOW'] } }, select: { id: true, startAt: true } },
+      packageSessions: { where: SESSION_INCLUDED, select: { id: true, startAt: true } },
     },
   }).catch(() => null);
   if (!purchase) return null;
