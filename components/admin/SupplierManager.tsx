@@ -79,7 +79,7 @@ export function SupplierManager({ canManage }: { canManage: boolean }) {
             </thead>
             <tbody>
               {filtered.map((s) => (
-                <tr key={s.id} onClick={() => openEdit(s.id)} className={`cursor-pointer border-b border-[var(--color-line)] last:border-0 hover:bg-[var(--color-bone)] ${!s.active ? 'opacity-50' : ''}`}>
+                <tr key={s.id} onClick={() => openEdit(s.id)} tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openEdit(s.id); } }} className={`cursor-pointer border-b border-[var(--color-line)] last:border-0 hover:bg-[var(--color-bone)] ${!s.active ? 'opacity-50' : ''}`}>
                   <td className="px-4 py-2.5 font-medium">{s.name}{!s.active && <span className="ml-2 text-[0.6rem] uppercase text-[var(--color-stone)]">inactive</span>}</td>
                   <td className="px-4 py-2.5 text-[var(--color-stone)]">{s.category || '—'}</td>
                   <td className="px-4 py-2.5 text-[var(--color-stone)]">{s.contactName || s.email || '—'}</td>
