@@ -77,7 +77,13 @@ export async function POST(req: Request) {
       fromName, replyTo,
     });
     const { logAudit } = await import('@/lib/audit');
-    await logAudit({ action: 'SETTINGS_UPDATED', actor: session.email, actorRole: session.role, summary: `Sent test email “${name}” to ${to}` }).catch(() => {});
+    // Record the attempt either way (that is the point of the log — who sent
+    // clinic-branded mail to which address), but never claim a send that the
+    // provider rejected; the branch below returns 502 in that case.
+    await logAudit({
+      action: 'SETTINGS_UPDATED', actor: session.email, actorRole: session.role,
+      summary: res.ok ? `Sent test email “${name}” to ${to}` : `Test email “${name}” to ${to} failed to send`,
+    }).catch(() => {});
     return res.ok ? NextResponse.json({ ok: true, test: true }) : NextResponse.json({ ok: false, error: res.error }, { status: 502 });
   }
 
