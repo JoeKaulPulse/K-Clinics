@@ -40,38 +40,38 @@ export default async function RoomDisplay({ params }: { params: Promise<{ token:
   const manuallyOccupied = !current && !!prep?.occupied;
 
   return (
-    <main className="grid min-h-dvh place-items-center bg-[#1a1714] p-[5vmin] text-[#f3ece2]">
+    <main className="grid min-h-dvh place-items-center bg-[var(--color-night)] p-[5vmin] text-[var(--color-night-ink)]">
       {/* Kiosk auto-refresh — keep the panel live without any client bundle. */}
       <meta httpEquiv="refresh" content="20" />
       <div className="w-full max-w-3xl text-center">
-        <p className="text-[3.2vmin] uppercase tracking-[0.3em] text-[#b79c74]">{room.name}{room.floor ? ` · ${room.floor}` : ''}</p>
+        <p className="text-[3.2vmin] uppercase tracking-[0.3em] text-[var(--color-gold-soft)]">{room.name}{room.floor ? ` · ${room.floor}` : ''}</p>
 
         {current ? (
           <div className="mt-[6vmin]">
-            <p className="inline-flex items-center gap-3 rounded-full bg-[#b79c74]/20 px-5 py-2 text-[2.6vmin] uppercase tracking-[0.2em] text-[#e7c9a0]">
-              <span className="h-3 w-3 animate-pulse rounded-full bg-[#e7c9a0]" /> In session
+            <p className="inline-flex items-center gap-3 rounded-full bg-[var(--color-gold-soft)]/20 px-5 py-2 text-[2.6vmin] uppercase tracking-[0.2em] text-[var(--color-gold-bright)]">
+              <span className="h-3 w-3 animate-pulse rounded-full bg-[var(--color-gold-bright)]" /> In session
             </p>
             <h1 className="mt-[4vmin] font-[family-name:var(--font-display)] text-[10vmin] leading-none">{who(current.client?.firstName)}</h1>
-            <p className="mt-[3vmin] text-[3.4vmin] text-[#cdbfa9]">{current.treatmentTitle}</p>
-            <p className="mt-[1.5vmin] text-[3vmin] tabular-nums text-[#9c8f7c]">{fmt(current.startAt)} – {fmt(current.endAt)}</p>
+            <p className="mt-[3vmin] text-[3.4vmin] text-[var(--color-night-muted)]">{current.treatmentTitle}</p>
+            <p className="mt-[1.5vmin] text-[3vmin] tabular-nums text-[var(--color-night-faint)]">{fmt(current.startAt)} – {fmt(current.endAt)}</p>
           </div>
         ) : manuallyOccupied ? (
           <div className="mt-[6vmin]">
-            <p className="inline-flex items-center gap-3 rounded-full bg-[#c0392b]/20 px-5 py-2 text-[2.6vmin] uppercase tracking-[0.2em] text-[#e8a99f]">
-              <span className="h-3 w-3 rounded-full bg-[#e8a99f]" /> Occupied
+            <p className="inline-flex items-center gap-3 rounded-full bg-[var(--color-night-notable)]/20 px-5 py-2 text-[2.6vmin] uppercase tracking-[0.2em] text-[var(--color-night-notable-text)]">
+              <span className="h-3 w-3 rounded-full bg-[var(--color-night-notable-text)]" /> Occupied
             </p>
-            <h1 className="mt-[4vmin] font-[family-name:var(--font-display)] text-[8vmin] leading-tight text-[#cdbfa9]">In use</h1>
+            <h1 className="mt-[4vmin] font-[family-name:var(--font-display)] text-[8vmin] leading-tight text-[var(--color-night-muted)]">In use</h1>
           </div>
         ) : (
           <div className="mt-[6vmin]">
-            <h1 className="font-[family-name:var(--font-display)] text-[8vmin] leading-tight text-[#cdbfa9]">Available</h1>
+            <h1 className="font-[family-name:var(--font-display)] text-[8vmin] leading-tight text-[var(--color-night-muted)]">Available</h1>
           </div>
         )}
 
         {next && (
           <div className="mt-[8vmin] border-t border-white/10 pt-[4vmin]">
-            <p className="text-[2.4vmin] uppercase tracking-[0.25em] text-[#9c8f7c]">Next</p>
-            <p className="mt-[1.5vmin] text-[4vmin]">{fmt(next.startAt)} · {who(next.client?.firstName)} <span className="text-[#9c8f7c]">— {next.treatmentTitle}</span></p>
+            <p className="text-[2.4vmin] uppercase tracking-[0.25em] text-[var(--color-night-faint)]">Next</p>
+            <p className="mt-[1.5vmin] text-[4vmin]">{fmt(next.startAt)} · {who(next.client?.firstName)} <span className="text-[var(--color-night-faint)]">— {next.treatmentTitle}</span></p>
           </div>
         )}
       </div>
