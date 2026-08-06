@@ -15,7 +15,7 @@ import { ConsentSigner } from '@/components/consent/ConsentSigner';
 // notifications + a gentle vibration as the visit moves forward.
 const POLL_MS = 4000;
 
-const gold = '#c8a96a';
+const gold = '#a98a6d'; // PRJ-1032.35: matches --color-gold exactly; kept as a literal (not var()) because it's concatenated with a raw hex alpha suffix below (${gold}66), which only works on a literal hex string.
 const STAGE_ORDER = SESSION_STEPS.map((s) => s.key);
 const money = (p: number) => (p <= 0 ? 'On consultation' : `£${(p / 100).toLocaleString('en-GB', { minimumFractionDigits: p % 100 ? 2 : 0 })}`);
 
@@ -97,11 +97,11 @@ export function LiveCompanion({ token, firstName, treatmentTitle, startAt, durat
     : { initial: { opacity: 0, y: 14 }, animate: { opacity: 1, y: 0 }, exit: { opacity: 0, y: -10 }, transition: { duration: 0.34, ease: [0.16, 1, 0.3, 1] as const } };
 
   return (
-    <main className="grain relative min-h-dvh overflow-hidden bg-[#12100e] text-[#f4ece1]">
+    <main className="grain relative min-h-dvh overflow-hidden bg-[var(--color-night)] text-[var(--color-night-ink)]">
       {/* Ambient aura behind everything */}
       <div aria-hidden className="pointer-events-none absolute inset-0">
         <div className="absolute left-1/2 top-[-15%] h-[55vh] w-[120vw] -translate-x-1/2 rounded-full opacity-25 blur-3xl" style={{ background: `radial-gradient(closest-side, ${gold}, transparent 70%)` }} />
-        <div className="absolute bottom-[-20%] right-[-30%] h-[45vh] w-[80vw] rounded-full opacity-15 blur-3xl" style={{ background: 'radial-gradient(closest-side, #7b6a5d, transparent 70%)' }} />
+        <div className="absolute bottom-[-20%] right-[-30%] h-[45vh] w-[80vw] rounded-full opacity-15 blur-3xl" style={{ background: 'radial-gradient(closest-side, var(--color-stone), transparent 70%)' }} />
       </div>
 
       <div className="relative mx-auto flex min-h-dvh max-w-md flex-col px-6 pb-10 pt-8">
@@ -115,7 +115,7 @@ export function LiveCompanion({ token, firstName, treatmentTitle, startAt, durat
             <span className="block h-[0.6rem] w-[6.5rem]"><ClinicsWordmark /></span>
           </span>
         </header>
-        <p className="mt-6 text-center text-[11px] uppercase tracking-[0.3em] text-[#9a8f80]">Your visit · live</p>
+        <p className="mt-6 text-center text-[11px] uppercase tracking-[0.3em] text-[var(--color-night-faint)]">Your visit · live</p>
 
         {/* Current stage — the breathing centrepiece */}
         <section className="mt-10 text-center" aria-live="polite">
@@ -133,7 +133,7 @@ export function LiveCompanion({ token, firstName, treatmentTitle, startAt, durat
               <h1 className="font-[family-name:var(--font-display)] text-4xl leading-tight">
                 {done ? 'Until next time' : copy.title}
               </h1>
-              <p className="mx-auto mt-3 max-w-xs leading-relaxed text-[#cdbfae]">
+              <p className="mx-auto mt-3 max-w-xs leading-relaxed text-[var(--color-night-muted)]">
                 {done ? `Thank you for visiting us today, ${firstName}. Your aftercare guide is in your account.` : copy.note}
               </p>
             </motion.div>
@@ -146,7 +146,7 @@ export function LiveCompanion({ token, firstName, treatmentTitle, startAt, durat
                 <StaffAvatar name={withStaff.name} photo={withStaff.photo} size={40} />
                 <span className="text-left">
                   <span className="block text-sm font-medium">{withStaff.name}</span>
-                  <span className="block text-xs text-[#9a8f80]">{withStaff.title || 'Looking after you'}</span>
+                  <span className="block text-xs text-[var(--color-night-faint)]">{withStaff.title || 'Looking after you'}</span>
                 </span>
               </motion.div>
             )}
@@ -168,20 +168,20 @@ export function LiveCompanion({ token, firstName, treatmentTitle, startAt, durat
                   )}
                   <span aria-hidden className="relative mt-0.5 grid h-6 w-6 shrink-0 place-items-center rounded-full border transition-colors duration-500"
                     style={state === 'done'
-                      ? { borderColor: gold, background: gold, color: '#12100e' }
+                      ? { borderColor: gold, background: gold, color: 'var(--color-night)' }
                       : state === 'now'
                         ? { borderColor: gold, color: gold }
-                        : { borderColor: 'rgba(255,255,255,0.15)', color: '#9a8f80' }}>
+                        : { borderColor: 'rgba(255,255,255,0.15)', color: 'var(--color-night-faint)' }}>
                     {state === 'done' ? <CheckIcon /> : state === 'now' && !reduce
                       ? <motion.span className="h-2 w-2 rounded-full" style={{ background: gold }} animate={{ scale: [1, 1.4, 1] }} transition={{ duration: 1.8, repeat: Infinity, ease: 'easeInOut' }} />
                       : <span className="h-1.5 w-1.5 rounded-full bg-current" />}
                   </span>
                   <div className="min-w-0 flex-1">
-                    <p className={`text-sm ${state === 'now' ? 'font-medium text-[#f4ece1]' : state === 'done' ? 'text-[#cdbfae]' : 'text-[#9a8f80]'}`}>
+                    <p className={`text-sm ${state === 'now' ? 'font-medium text-[var(--color-night-ink)]' : state === 'done' ? 'text-[var(--color-night-muted)]' : 'text-[var(--color-night-faint)]'}`}>
                       {CLIENT_STAGE_COPY[s.key].title}
                     </p>
                     {host && state !== 'next' && (
-                      <p className="mt-1 flex items-center gap-1.5 text-xs text-[#9a8f80]">
+                      <p className="mt-1 flex items-center gap-1.5 text-xs text-[var(--color-night-faint)]">
                         <StaffAvatar name={host.name} photo={host.photo} size={16} />
                         with {host.name}
                       </p>
@@ -196,26 +196,26 @@ export function LiveCompanion({ token, firstName, treatmentTitle, startAt, durat
         {/* Your forms — read, tick & sign on your own phone, in step with the visit */}
         {live?.forms?.consents.length ? (
           <section className="mt-12" aria-label="Your forms">
-            <p className="mb-3 text-center text-[11px] uppercase tracking-[0.22em] text-[#9a8f80]">Your forms</p>
+            <p className="mb-3 text-center text-[11px] uppercase tracking-[0.22em] text-[var(--color-night-faint)]">Your forms</p>
             <ul className="space-y-2.5">
               {live.forms.consents.map((c, i) => c.signed ? (
                 <li key={`s${i}`} className="flex items-center gap-3 rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3">
-                  <span aria-hidden className="grid h-6 w-6 shrink-0 place-items-center rounded-full" style={{ background: gold, color: '#12100e' }}><CheckIcon /></span>
+                  <span aria-hidden className="grid h-6 w-6 shrink-0 place-items-center rounded-full" style={{ background: gold, color: 'var(--color-night)' }}><CheckIcon /></span>
                   <span className="min-w-0 flex-1">
-                    <span className="block text-sm text-[#e7dccd]">{c.title}</span>
-                    <span className="block text-xs text-[#9a8f80]">Signed{c.signedAt ? ` · ${new Date(c.signedAt).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}` : ''}</span>
+                    <span className="block text-sm text-[var(--color-night-ink-soft)]">{c.title}</span>
+                    <span className="block text-xs text-[var(--color-night-faint)]">Signed{c.signedAt ? ` · ${new Date(c.signedAt).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}` : ''}</span>
                   </span>
                 </li>
               ) : (
                 <li key={`p${i}`}>
                   <button type="button" onClick={() => c.token && setSigning(c.token)}
-                    className="flex w-full items-center gap-3 rounded-2xl border border-[#c8a96a]/50 bg-[#c8a96a]/10 px-4 py-3.5 text-left transition-colors hover:bg-[#c8a96a]/20">
+                    className="flex w-full items-center gap-3 rounded-2xl border border-[var(--color-gold)]/50 bg-[var(--color-gold)]/10 px-4 py-3.5 text-left transition-colors hover:bg-[var(--color-gold)]/20">
                     <span aria-hidden className="grid h-7 w-7 shrink-0 place-items-center rounded-full border" style={{ borderColor: gold, color: gold }}>
                       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M12 20h9" /><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z" /></svg>
                     </span>
                     <span className="min-w-0 flex-1">
-                      <span className="block text-sm font-medium text-[#f4ece1]">{c.title}</span>
-                      <span className="block text-xs text-[#cdbfae]">Tap to read &amp; sign on your phone</span>
+                      <span className="block text-sm font-medium text-[var(--color-night-ink)]">{c.title}</span>
+                      <span className="block text-xs text-[var(--color-night-muted)]">Tap to read &amp; sign on your phone</span>
                     </span>
                     <span aria-hidden style={{ color: gold }}>→</span>
                   </button>
@@ -229,7 +229,7 @@ export function LiveCompanion({ token, firstName, treatmentTitle, startAt, durat
         <footer className="mt-auto pt-12">
           <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4 text-center backdrop-blur">
             <p className="text-sm">{treatmentTitle}</p>
-            <p className="mt-0.5 text-xs text-[#9a8f80]">
+            <p className="mt-0.5 text-xs text-[var(--color-night-faint)]">
               {new Date(startAt).toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' })} · about {durationMin} min
               {practitionerName ? ` · with ${practitionerName}` : ''}
             </p>
@@ -237,11 +237,11 @@ export function LiveCompanion({ token, firstName, treatmentTitle, startAt, durat
           {live?.pricing && <PriceCard pricing={live.pricing} />}
           {!notifyOn && canNotify && !done && (
             <button type="button" onClick={enableNotifications}
-              className="mx-auto mt-4 block min-h-11 rounded-full border border-white/15 px-5 py-2.5 text-xs text-[#cdbfae] transition-colors hover:border-[#c8a96a] hover:text-[#f4ece1]">
+              className="mx-auto mt-4 block min-h-11 rounded-full border border-white/15 px-5 py-2.5 text-xs text-[var(--color-night-muted)] transition-colors hover:border-[var(--color-gold)] hover:text-[var(--color-night-ink)]">
               Notify me as my visit moves forward
             </button>
           )}
-          {notifyOn && <p className="mt-4 text-center text-xs text-[#9a8f80]" role="status">Notifications on — we’ll nudge you at each stage.</p>}
+          {notifyOn && <p className="mt-4 text-center text-xs text-[var(--color-night-faint)]" role="status">Notifications on — we’ll nudge you at each stage.</p>}
         </footer>
       </div>
 
@@ -301,23 +301,23 @@ function PriceCard({ pricing }: { pricing: ClientLiveView['pricing'] }) {
   const charged = pricing.chargedPence != null;
   return (
     <div className="mt-4 rounded-2xl border border-white/10 bg-white/[0.03] p-4 backdrop-blur">
-      <p className="mb-2.5 text-[11px] uppercase tracking-[0.22em] text-[#9a8f80]">{charged ? 'Your payment' : 'What you’ll pay'}</p>
+      <p className="mb-2.5 text-[11px] uppercase tracking-[0.22em] text-[var(--color-night-faint)]">{charged ? 'Your payment' : 'What you’ll pay'}</p>
       <ul className="space-y-2">
         {pricing.items.map((it, i) => (
           <li key={i} className="flex items-baseline justify-between gap-3 text-sm">
-            <span className="min-w-0 text-[#e7dccd]">
+            <span className="min-w-0 text-[var(--color-night-ink-soft)]">
               {it.label}{it.sessions > 1 ? ` · course of ${it.sessions}` : ''}
-              {it.isAddon && <span className="ml-2 inline-block rounded-full border border-[#c8a96a]/40 px-1.5 py-px text-[10px] uppercase tracking-wider text-[#c8a96a]">Add-on</span>}
+              {it.isAddon && <span className="ml-2 inline-block rounded-full border border-[var(--color-gold)]/40 px-1.5 py-px text-[10px] uppercase tracking-wider text-[var(--color-gold)]">Add-on</span>}
             </span>
-            <span className="shrink-0 tabular-nums text-[#f4ece1]">{money(it.pricePence)}</span>
+            <span className="shrink-0 tabular-nums text-[var(--color-night-ink)]">{money(it.pricePence)}</span>
           </li>
         ))}
       </ul>
       <div className="mt-3 flex items-baseline justify-between border-t border-white/10 pt-3">
-        <span className="text-sm text-[#cdbfae]">{charged ? 'Paid today' : 'Total'}</span>
+        <span className="text-sm text-[var(--color-night-muted)]">{charged ? 'Paid today' : 'Total'}</span>
         <span className="font-[family-name:var(--font-display)] text-lg" style={{ color: gold }}>{money(charged ? pricing.chargedPence! : pricing.totalPence)}</span>
       </div>
-      <p className="mt-2 text-[11px] leading-relaxed text-[#9a8f80]">
+      <p className="mt-2 text-[11px] leading-relaxed text-[var(--color-night-faint)]">
         {charged ? 'Thank you — your card has been charged for today’s visit.' : 'Saved securely to your card — only taken after your treatment.'}
       </p>
     </div>
@@ -330,7 +330,7 @@ function StaffAvatar({ name, photo, size }: { name: string; photo: string | null
     return <img src={photo} alt="" width={size} height={size} className="shrink-0 rounded-full object-cover" style={{ width: size, height: size }} />;
   }
   return (
-    <span aria-hidden className="grid shrink-0 place-items-center rounded-full bg-[#c8a96a] font-[family-name:var(--font-display)] text-[#12100e]" style={{ width: size, height: size, fontSize: Math.max(8, size * 0.38) }}>
+    <span aria-hidden className="grid shrink-0 place-items-center rounded-full bg-[var(--color-gold)] font-[family-name:var(--font-display)] text-[var(--color-night)]" style={{ width: size, height: size, fontSize: Math.max(8, size * 0.38) }}>
       {name.split(/\s+/).map((w) => w[0]).slice(0, 2).join('').toUpperCase()}
     </span>
   );
