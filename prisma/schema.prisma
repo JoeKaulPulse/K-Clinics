@@ -678,6 +678,17 @@ model Booking {
   packageBookingId      String?
   packageSessions       Booking[] @relation("PackageSessions")
 
+  // BLD-1096: admin-only override for a CANCELLED appointment that is still
+  // billed as a used session of the client's package — e.g. the client cancelled
+  // with notice (no late fee), but the clinic and client agreed the prepaid
+  // session is spent rather than refunded to the balance. Status stays
+  // CANCELLED; this only affects package-balance accounting (lib/package-sessions.ts
+  // treats a CANCELLED booking with this set as "used", same as COMPLETED) and
+  // display (a "Package session used" badge wherever the booking is shown).
+  // Additive, nullable — existing rows unaffected.
+  packageSessionUsedAt DateTime?
+  packageSessionUsedBy String?
+
   // BLD-882: gift-voucher redemption at front-desk checkout. The voucher
   // balance is reserved atomically (lib/gift-vouchers reserveVoucher) when
   // applied; a partial application reduces the amount then collected by any

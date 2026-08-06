@@ -21,7 +21,8 @@ import { PriceOverride } from '@/components/admin/PriceOverride';
 import { ScheduleFollowUp } from '@/components/admin/ScheduleFollowUp';
 import { BnplPaymentButton } from '@/components/admin/BnplPaymentButton';
 import { SameDayRequestActions } from '@/components/admin/SameDayRequestActions';
-import { sessionCan } from '@/lib/auth';
+import { PackageSessionToggle } from '@/components/admin/PackageSessionToggle';
+import { sessionCan, sessionIsAdmin } from '@/lib/auth';
 import { site } from '@/lib/site';
 
 export const dynamic = 'force-dynamic';
@@ -153,6 +154,12 @@ export default async function BookingDetail({ params }: { params: Promise<{ id: 
   // course purchase itself or a session linked to one).
   const { packageSessionNumber } = await import('@/lib/package-sessions');
   const pkgSession = await packageSessionNumber(b.id).catch(() => null);
+  // BLD-1096: is this appointment linked to a client package at all (the
+  // purchase booking itself, or a follow-up session created against one)?
+  // Computed directly from the booking's own fields rather than pkgSession —
+  // pkgSession only resolves once a cancelled session is ALREADY marked used
+  // (see lib/package-sessions.ts), so it can't gate whether to offer the mark.
+  const packageEligible = Boolean(b.packageBookingId) || courseSessions > 1;
   // BLD-1066: surface the client's unpaid late-cancel/no-show balance on every
   // one of their appointments, so it's seen the moment a booking is opened.
   const { outstandingBalance } = await import('@/lib/outstanding');
@@ -166,7 +173,6 @@ export default async function BookingDetail({ params }: { params: Promise<{ id: 
   // (the permission that already lets the holder adjust the amount at checkout).
   // BLD-1094 (owner decision: record-only): admins may also correct the price
   // of an already-paid appointment — the audit trail records it; no money moves.
-  const { sessionIsAdmin } = await import('@/lib/auth');
   const canPriceOverride = sessionCan(session, 'bookings.charge') && !b.prepaidAt && !['CANCELLED', 'NO_SHOW'].includes(b.status)
     && (!b.chargedAt || sessionIsAdmin(session));
   // BLD-1165: BNPL (Klarna/Clearpay) pre-payment is only for courses — a single
@@ -218,6 +224,10 @@ export default async function BookingDetail({ params }: { params: Promise<{ id: 
       <div className="mt-4 flex flex-wrap items-start justify-between gap-4">
         <div>
           <span className="inline-block rounded-full bg-[var(--color-bone)] px-3 py-1 text-xs uppercase tracking-[0.16em]">{b.status}</span>
+          {/* BLD-1096: cancelled, but the client's prepaid package still absorbed the session. */}
+          {b.status === 'CANCELLED' && b.packageSessionUsedAt && (
+            <span className="ml-2 inline-block rounded-full bg-[color-mix(in_oklab,var(--color-gold)_18%,transparent)] px-3 py-1 text-xs font-medium uppercase tracking-[0.16em] text-[var(--color-gold-deep)]">Package session used</span>
+          )}
           <h1 className="mt-3 font-[family-name:var(--font-display)] text-3xl">{b.treatmentTitle}</h1>
           <p className="mt-1 text-[var(--color-stone)]">
             {new Date(b.startAt).toLocaleString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit', timeZone: 'Europe/London' })}
@@ -411,6 +421,15 @@ export default async function BookingDetail({ params }: { params: Promise<{ id: 
               pointsRedeemedPence={b.pointsRedeemedPence}
               prepaid={Boolean(b.prepaidAt)}
             />
+            {/* BLD-1096: admin-only — mark a cancelled appointment as still
+                having consumed one session of the client's package. Only
+                offered once there's a package to deduct from (or it's already
+                marked, so the undo control stays reachable). */}
+            {b.status === 'CANCELLED' && sessionIsAdmin(session) && (packageEligible || b.packageSessionUsedAt) && (
+              <div className="mt-6">
+                <PackageSessionToggle bookingId={b.id} usedAt={b.packageSessionUsedAt ? b.packageSessionUsedAt.toISOString() : null} usedBy={b.packageSessionUsedBy} />
+              </div>
+            )}
           </div>
         </section>
       </div>
