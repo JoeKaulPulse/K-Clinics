@@ -16,6 +16,7 @@ const schema = z.object({
   design: z.string().max(40).optional().or(z.literal('')),
   packageSlug: z.string().max(120).optional().or(z.literal('')),
   physical: z.boolean().optional(),
+  marketingOptIn: z.boolean().optional().default(false),
   ship: z.object({
     name: z.string().max(120).optional().or(z.literal('')),
     line1: z.string().max(160).optional().or(z.literal('')),
@@ -49,6 +50,7 @@ export async function POST(req: Request) {
     packageSlug: parsed.data.packageSlug || undefined,
     physical: parsed.data.physical || false,
     ship: parsed.data.ship,
+    marketingOptIn: parsed.data.marketingOptIn,
   });
   return NextResponse.json(res, { status: res.ok ? 200 : 400 });
 }

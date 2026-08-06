@@ -288,7 +288,17 @@ export async function POST(req: Request) {
           if (booking) {
             const full = await db.booking.findFirst({ where: { id: booking.id }, select: { id: true, clientId: true, refundedPence: true, chargedPence: true } });
             if (full) {
-              const newTotal = Math.min((full.refundedPence ?? 0) + amount, Math.max(full.chargedPence ?? 0, (full.refundedPence ?? 0) + amount));
+              // BLD-1190: the old formula — Math.min(X, Math.max(c, X)) — is a
+              // no-op (Math.max(c, X) >= X always, so the min always resolves to
+              // X), so a dispute landing on top of a prior partial refund could
+              // push refundedPence above chargedPence. This booking branch only
+              // runs once Stripe has confirmed an actual dispute, which requires
+              // a captured charge; every write path that sets chargePaymentIntentId
+              // on a successful capture (chargeBooking, finalizeBookingCharge)
+              // sets chargedPence in that same write, so chargedPence is always
+              // populated here in practice. Cap at chargedPence regardless (0 if
+              // somehow unset) — refundedPence can never legitimately exceed it.
+              const newTotal = Math.min((full.refundedPence ?? 0) + amount, full.chargedPence ?? 0);
               const claimed = await db.booking.updateMany({ where: { id: full.id, refundedPence: full.refundedPence }, data: { refundedPence: newTotal, refundedAt: new Date() } });
               if (claimed.count > 0) {
                 const fully = newTotal >= (full.chargedPence ?? 0);

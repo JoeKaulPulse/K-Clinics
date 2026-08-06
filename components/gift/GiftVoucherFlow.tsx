@@ -15,7 +15,7 @@ const label = 'mb-1.5 block text-xs uppercase tracking-[0.16em] text-[var(--colo
 const money = (p: number) => `£${(p / 100).toLocaleString('en-GB')}`;
 
 export function GiftVoucherFlow({ physicalEnabled = false, physicalFeePence = 0, pkg }: { physicalEnabled?: boolean; physicalFeePence?: number; pkg?: { slug: string; name: string; pricePence: number } } = {}) {
-  const [f, setF] = useState({ amount: 5000, custom: '', recipientName: '', recipientEmail: '', message: '', deliverAt: '', purchaserName: '', purchaserEmail: '', design: DEFAULT_THEME_ID, physical: false, shipName: '', shipLine1: '', shipLine2: '', shipCity: '', shipPostcode: '', company: '' });
+  const [f, setF] = useState({ amount: 5000, custom: '', recipientName: '', recipientEmail: '', message: '', deliverAt: '', purchaserName: '', purchaserEmail: '', design: DEFAULT_THEME_ID, physical: false, shipName: '', shipLine1: '', shipLine2: '', shipCity: '', shipPostcode: '', company: '', marketingOptIn: false });
   const [stage, setStage] = useState<'form' | 'pay' | 'done'>('form');
   const [clientSecret, setClientSecret] = useState('');
   const [voucherId, setVoucherId] = useState('');
@@ -39,6 +39,7 @@ export function GiftVoucherFlow({ physicalEnabled = false, physicalFeePence = 0,
         recipientName: f.recipientName, recipientEmail: f.recipientEmail, message: f.message,
         deliverAt: f.deliverAt || undefined, design: f.design, company: f.company,
         physical, ship: physical ? { name: f.shipName, line1: f.shipLine1, line2: f.shipLine2, city: f.shipCity, postcode: f.shipPostcode } : undefined,
+        marketingOptIn: f.marketingOptIn,
       };
       const res = await fetch('/api/gift-vouchers/create', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
       const j = await res.json();
@@ -94,6 +95,7 @@ export function GiftVoucherFlow({ physicalEnabled = false, physicalFeePence = 0,
                 <div><label htmlFor="gv-purchaserName" className={label}>Your name *</label><input id="gv-purchaserName" autoComplete="name" className={field} value={f.purchaserName} onChange={(e) => set('purchaserName', e.target.value)} /></div>
                 <div><label htmlFor="gv-purchaserEmail" className={label}>Your email *</label><input id="gv-purchaserEmail" type="email" autoComplete="email" className={field} value={f.purchaserEmail} onChange={(e) => set('purchaserEmail', e.target.value)} placeholder="For your receipt" /></div>
                 <input type="text" tabIndex={-1} value={f.company} onChange={(e) => set('company', e.target.value)} className="absolute -left-[9999px]" aria-hidden />
+                <label className="flex items-start gap-3 text-sm text-[var(--color-stone)] sm:col-span-2"><input type="checkbox" checked={f.marketingOptIn} onChange={(e) => set('marketingOptIn', e.target.checked)} className="mt-1 h-4 w-4 accent-[var(--color-gold)]" />Keep me updated with offers and skincare tips. We may also use your contact details, in hashed form, to show you our offers on social media — see our Privacy Policy.</label>
               </div>
 
               {/* Optional paid physical-card upgrade (only when the clinic offers it). */}

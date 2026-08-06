@@ -62,6 +62,31 @@ export async function POST(req: Request) {
   const { getClientSession } = await import('@/lib/auth');
   const clientId = (await getClientSession())?.sub ?? null;
 
+  // BLD-1188: record the checkout's marketing opt-in against the Client record
+  // (creating it if the shopper is a guest), with recorded consent evidence —
+  // not just the bare boolean — matching the no-clobber pattern used by
+  // /api/consult and /api/booking/create. Best-effort: never blocks a purchase.
+  try {
+    const marketingOptIn = body.marketingOptIn === true;
+    const { marketingConsentFields } = await import('@/lib/consent');
+    if (clientId) {
+      if (marketingOptIn) {
+        await db.client.updateMany({ where: { id: clientId, marketingOptIn: false }, data: { marketingOptIn: true, ...marketingConsentFields('shop-checkout') } });
+      }
+    } else {
+      const existing = await db.client.findUnique({ where: { email }, select: { marketingOptIn: true } });
+      const noClobber: Record<string, unknown> = {};
+      if (existing) {
+        if (marketingOptIn && !existing.marketingOptIn) { noClobber.marketingOptIn = true; Object.assign(noClobber, marketingConsentFields('shop-checkout')); }
+      }
+      await db.client.upsert({
+        where: { email },
+        update: noClobber,
+        create: { firstName: name, email, source: 'shop-checkout', marketingOptIn, ...(marketingOptIn ? marketingConsentFields('shop-checkout') : {}) },
+      });
+    }
+  } catch (e) { console.error('[shop checkout] marketing consent upsert failed (continuing):', (e as Error)?.message); }
+
   // Cookie-banner consent, captured now so the deferred Purchase conversion in
   // finalizeOrder() (which can run from the Stripe webhook backstop, with no
   // request/cookie context of its own) can honour it later.

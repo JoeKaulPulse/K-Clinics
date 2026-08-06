@@ -56,6 +56,7 @@ export type VoucherInput = {
   physical?: boolean;        // paid printed-card upgrade
   ship?: { name?: string; line1?: string; line2?: string; city?: string; postcode?: string };
   packageSlug?: string;      // buy a specific giftable package as a gift (fixes the amount)
+  marketingOptIn?: boolean;  // BLD-1188: purchaser's marketing opt-in (consent evidence recorded below)
 };
 
 /** Create a PENDING voucher + a Stripe PaymentIntent (charged now). The card
@@ -94,6 +95,29 @@ export async function createVoucherIntent(input: VoucherInput): Promise<{ ok: bo
     feePence = await getConfigNumber('gift_card_physical_fee_pence');
   }
   const charge = amount + feePence;
+
+  // BLD-1188: record the purchaser's marketing opt-in against their Client
+  // record (creating it if new), with recorded consent evidence — not just the
+  // bare boolean — matching the no-clobber pattern used by /api/consult and
+  // /api/booking/create. Best-effort: a CRM hiccup must never block a purchase.
+  try {
+    const { marketingConsentFields } = await import('@/lib/consent');
+    const emailNorm = input.purchaserEmail.trim().toLowerCase();
+    const existing = await db.client.findUnique({ where: { email: emailNorm }, select: { firstName: true, marketingOptIn: true } });
+    const noClobber: Record<string, unknown> = {};
+    if (existing) {
+      if (input.marketingOptIn && !existing.marketingOptIn) { noClobber.marketingOptIn = true; Object.assign(noClobber, marketingConsentFields('gift-voucher-checkout')); }
+    }
+    await db.client.upsert({
+      where: { email: emailNorm },
+      update: noClobber,
+      create: {
+        firstName: input.purchaserName.trim(), email: emailNorm, source: 'gift-voucher-checkout',
+        marketingOptIn: !!input.marketingOptIn,
+        ...(input.marketingOptIn ? marketingConsentFields('gift-voucher-checkout') : {}),
+      },
+    });
+  } catch (e) { console.error('[gift-vouchers] purchaser client upsert failed (continuing):', (e as Error)?.message); }
 
   const deliverAt = input.deliverAt ? new Date(input.deliverAt) : null;
   const voucher = await db.giftVoucher.create({
