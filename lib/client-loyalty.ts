@@ -147,9 +147,18 @@ export async function clientLedger(clientId: string, limit = 50) {
  *  case in app/api/admin/bookings/session/route.ts), so that case is excluded
  *  here to avoid double-counting the same money twice. */
 function bookingSpendPence(b: { chargedPence: number | null; pricePence: number; giftVoucherPence?: number | null; chargePaymentIntentId?: string | null }): number {
+  const charged = b.chargedPence ?? 0;
+  // BLD-1202 (review): nothing charged yet — fall back to the list price, as
+  // before. awardClientSpend fires on COMPLETION as well as on charge
+  // ("whichever happens first", and it is idempotent per booking, so the later
+  // charge never tops it up), and pricePence is the full undiscounted figure
+  // that already covers whatever the voucher will pay. Adding the voucher to a
+  // zero charge instead would make a partially-vouchered booking earn points on
+  // the voucher slice alone — an UNDER-award, the very bug BLD-1202 set out to
+  // fix, on the path that runs first in practice.
+  if (charged <= 0) return b.pricePence;
   const voucher = b.chargePaymentIntentId === 'ext_gift-voucher' ? 0 : (b.giftVoucherPence ?? 0);
-  const spend = (b.chargedPence ?? 0) + voucher;
-  return spend > 0 ? spend : b.pricePence;
+  return charged + voucher;
 }
 
 /** Award loyalty points for a completed/charged booking (1 pt per £1). Idempotent
