@@ -3342,6 +3342,24 @@ export const BUILD_BACKLOG: BacklogItem[] = [
     detail: 'The visibility half (audit + Sentry + ops webhook + staff notify) shipped earlier; the state/Xero half was held for an owner decision.',
     notes: ['Owner decision 5 Aug: FULL AUTO on a lost dispute. charge.dispute.closed with status lost now reconciles automatically — booking: refundedPence advanced by the dispute amount via CAS, loyalty points clawed back (full-refund return + pro-rata spend reversal), a Xero credit note pushed (pushBookingRefundToXero, reason "Chargeback lost") and a PAYMENT_REFUNDED audit entry; shop order: status → REFUNDED + stock restored (order sales carry no Xero push to reverse) + audit. Won/other outcomes change nothing. All side-effects sit behind the existing CAS claims so a redelivered event cannot double-run them. (PRJ-1069.12)'],
   },
+  {
+    title: 'Meta Custom Audience sync uses a weaker consent gate than the rest of the app', type: 'TASK', urgency: 'P1', status: 'IN_REVIEW', assignee: 'claude',
+    value: 7, effort: 1,
+    detail: 'syncSegmentToMeta built its consent gate inline (marketingOptIn + unsubscribed only), missing the marketingConsentAt evidence check every other marketing audience already requires.',
+    notes: ['Fix: lib/meta-audiences.ts now spreads the canonical marketableClientWhere() from lib/consent.ts instead of the inline pair, so a Meta Custom Audience sync excludes legacy boolean-only opt-ins with no recorded consent evidence, matching every other marketing audience in the app. (BLD-1181)'],
+  },
+  {
+    title: 'Consultation.message (health-adjacent text) shown to staff without clinical.view permission', type: 'ERROR', urgency: 'P1', status: 'IN_REVIEW', assignee: 'claude',
+    value: 6, effort: 2,
+    detail: 'The client profile page rendered a consultation\'s free-text message to any staff viewer regardless of the clients.clinical.view permission, even though the same page already gates every other clinical field on it.',
+    notes: ['Fix: the consultation message render in app/admin/clients/[id]/page.tsx is now gated behind the existing `clinical` flag, matching the pattern used for assessments, AI analyses, the medical flag and clinical interactions elsewhere on the same page; category, treatments, status and date remain visible to all staff. (BLD-1184)'],
+  },
+  {
+    title: 'Gift-voucher, shop and academy checkouts have no marketing-consent capture', type: 'TASK', urgency: 'P1', status: 'IN_REVIEW', assignee: 'claude',
+    value: 7, effort: 3,
+    detail: 'The gift-voucher, shop and academy-signup forms collect a purchaser email but offer no marketing opt-in, unlike BookingFlow and ConsultForm.',
+    notes: ['Fix: added the same opt-in checkbox and copy used by BookingFlow/ConsultForm to GiftVoucherFlow, shop CheckoutForm and the academy signup form (AcademyAuth), each threading marketingOptIn through its API route into a no-clobber Client upsert stamped with marketingConsentFields() (lib/consent.ts) — gift-vouchers.ts and the shop checkout route now upsert/update the purchaser\'s Client record by email (previously neither touched one at all), and academy signupStudent()/linkClientByEmail creates or updates the linked Client on an affirmative opt-in. (BLD-1188)'],
+  },
 ];
 
 // A content hash over every item's title + status + PR, so ANY change (a new

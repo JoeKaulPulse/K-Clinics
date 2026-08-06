@@ -9,7 +9,7 @@ const label = 'mb-1.5 block text-xs uppercase tracking-[0.16em] text-[var(--colo
 
 export function AcademyAuth() {
   const [mode, setMode] = useState<'login' | 'signup'>('login');
-  const [f, setF] = useState({ firstName: '', lastName: '', email: '', phone: '', dob: '', password: '', ageDeclare: false, company: '' });
+  const [f, setF] = useState({ firstName: '', lastName: '', email: '', phone: '', dob: '', password: '', ageDeclare: false, marketingOptIn: false, company: '' });
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const set = <K extends keyof typeof f>(k: K, v: (typeof f)[K]) => setF((p) => ({ ...p, [k]: v }));
@@ -61,6 +61,12 @@ export function AcademyAuth() {
           <label className="flex items-start gap-3 text-sm text-[var(--color-stone)]">
             <input type="checkbox" checked={f.ageDeclare} onChange={(e) => set('ageDeclare', e.target.checked)} className="mt-0.5 h-4 w-4 accent-[var(--color-gold)]" />
             I confirm I am 16 years of age or older.
+          </label>
+        )}
+        {mode === 'signup' && (
+          <label className="flex items-start gap-3 text-sm text-[var(--color-stone)]">
+            <input type="checkbox" checked={f.marketingOptIn} onChange={(e) => set('marketingOptIn', e.target.checked)} className="mt-1 h-4 w-4 accent-[var(--color-gold)]" />
+            Keep me updated with offers and skincare tips. We may also use your contact details, in hashed form, to show you our offers on social media — see our Privacy Policy.
           </label>
         )}
         <input type="text" tabIndex={-1} autoComplete="off" value={f.company} onChange={(e) => set('company', e.target.value)} className="absolute -left-[9999px] h-0 w-0" aria-hidden />
