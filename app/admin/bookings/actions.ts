@@ -381,16 +381,21 @@ export async function markPackageSessionUsed(bookingId: string): Promise<{ ok: b
   const { db } = await import('@/lib/db');
   const booking = await db.booking.findUnique({
     where: { id: bookingId },
-    select: {
-      status: true, clientId: true, treatmentTitle: true, packageBookingId: true, packageSessionUsedAt: true,
-      items: { where: { isAddon: false }, orderBy: { createdAt: 'asc' }, take: 1, select: { sessions: true } },
-    },
+    select: { status: true, clientId: true, treatmentTitle: true, packageBookingId: true, packageSessionUsedAt: true },
   });
   if (!booking) return { ok: false, error: 'Booking not found.' };
   if (booking.status !== 'CANCELLED') return { ok: false, error: 'Only a cancelled appointment can be marked this way.' };
   if (booking.packageSessionUsedAt) return { ok: true }; // idempotent
-  const packageLinked = Boolean(booking.packageBookingId) || (booking.items[0]?.sessions ?? 1) > 1;
-  if (!packageLinked) return { ok: false, error: 'This appointment isn’t linked to a client package, so there’s no package balance to deduct from.' };
+  // Review fix (BLD-1096): only a FOLLOW-UP session (one linked back to a
+  // purchase via packageBookingId) can be marked. The course purchase booking
+  // itself must not be: clientPackages() drops a package whose purchase booking
+  // is CANCELLED (`status: { notIn: ['CANCELLED','NO_SHOW'] }`) and counts the
+  // purchase's own slot without reading packageSessionUsedAt, so marking it
+  // would change nothing while the badge and audit entry claimed a session had
+  // been deducted.
+  if (!booking.packageBookingId) {
+    return { ok: false, error: 'This appointment isn’t a session booked against a client package, so there’s no package balance to deduct from. (A cancelled course purchase itself can’t be marked — cancelling it already ends the package.)' };
+  }
 
   await db.booking.update({ where: { id: bookingId }, data: { packageSessionUsedAt: new Date(), packageSessionUsedBy: session.email } });
   const { logAudit } = await import('@/lib/audit');

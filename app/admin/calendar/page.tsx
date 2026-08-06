@@ -164,7 +164,10 @@ export default async function CalendarPage({ searchParams }: { searchParams: Pro
                     // BLD-1096: a cancelled slot whose package session was still
                     // marked used — faded + struck through, so it clearly reads
                     // as "no one's coming in" while staying visible on the diary.
-                    const cancelledUsed = b.status === 'CANCELLED';
+                    // Check the mark itself, not just the status: the query
+                    // above only returns CANCELLED rows that carry it today,
+                    // but that coupling shouldn't be load-bearing here.
+                    const cancelledUsed = b.status === 'CANCELLED' && Boolean(b.packageSessionUsedAt);
                     return (
                     <Link key={b.id} href={`/admin/bookings/${b.id}`}
                       style={{ top: topOf(b.startAt), height: heightOf(b.startAt, b.endAt), borderColor: col.color || 'var(--color-gold)' }}

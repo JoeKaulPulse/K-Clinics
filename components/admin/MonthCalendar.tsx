@@ -5,6 +5,13 @@ import Link from 'next/link';
 // Pure presentational — the page fetches booking counts per day and passes them
 // in; a day with >=1 booking is highlighted in red, and clicking it opens that
 // day's schedule (the existing diary view, via the date query param).
+//
+// The red is --color-blush-deep, the palette's only red (app/globals.css @theme;
+// docs/BRAND_GUIDELINES.md). Do not reach for a raw hex here: the admin has a
+// dark theme that redefines the token, and a literal would not flip with it.
+// Foreground is --color-porcelain rather than white for the same reason — it is
+// near-white on the light theme and near-black on the dark one, so the fill
+// clears AA either way.
 
 const MONTH_WEEKDAYS = ['M', 'T', 'W', 'T', 'F', 'S', 'S'] as const;
 
@@ -79,7 +86,7 @@ export function MonthCalendar({
               className={[
                 'relative grid aspect-square place-items-center rounded-full text-xs tabular-nums transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-gold)]',
                 hasBookings
-                  ? 'bg-[#c0392b] font-medium text-white hover:bg-[#a8321f]'
+                  ? 'bg-[var(--color-blush-deep)] font-medium text-[var(--color-porcelain)] hover:bg-[color-mix(in_oklab,var(--color-blush-deep)_82%,var(--color-ink))]'
                   : 'hover:bg-[var(--color-bone)]',
                 isSelected && !hasBookings ? 'ring-2 ring-[var(--color-gold)]' : '',
                 isSelected && hasBookings ? 'ring-2 ring-[var(--color-ink)] ring-offset-1 ring-offset-[var(--color-porcelain)]' : '',
@@ -91,7 +98,7 @@ export function MonthCalendar({
           );
         })}
       </div>
-      <p className="mt-3 text-[0.65rem] text-[var(--color-stone)]"><span className="mr-1 inline-block h-2 w-2 rounded-full bg-[#c0392b] align-middle" /> day has one or more bookings — click to open its schedule.</p>
+      <p className="mt-3 text-[0.65rem] text-[var(--color-stone)]"><span className="mr-1 inline-block h-2 w-2 rounded-full bg-[var(--color-blush-deep)] align-middle" /> day has one or more bookings — click to open its schedule.</p>
     </div>
   );
 }

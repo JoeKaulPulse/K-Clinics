@@ -154,12 +154,15 @@ export default async function BookingDetail({ params }: { params: Promise<{ id: 
   // course purchase itself or a session linked to one).
   const { packageSessionNumber } = await import('@/lib/package-sessions');
   const pkgSession = await packageSessionNumber(b.id).catch(() => null);
-  // BLD-1096: is this appointment linked to a client package at all (the
-  // purchase booking itself, or a follow-up session created against one)?
-  // Computed directly from the booking's own fields rather than pkgSession —
-  // pkgSession only resolves once a cancelled session is ALREADY marked used
-  // (see lib/package-sessions.ts), so it can't gate whether to offer the mark.
-  const packageEligible = Boolean(b.packageBookingId) || courseSessions > 1;
+  // BLD-1096: is this appointment a follow-up session booked against a client
+  // package? Computed directly from the booking's own field rather than
+  // pkgSession — pkgSession only resolves once a cancelled session is ALREADY
+  // marked used (see lib/package-sessions.ts), so it can't gate whether to
+  // offer the mark. Review fix: the course PURCHASE booking is deliberately
+  // excluded — cancelling it drops the whole package from clientPackages(), so
+  // there is no balance left for the mark to deduct from (see the same note on
+  // markPackageSessionUsed in app/admin/bookings/actions.ts).
+  const packageEligible = Boolean(b.packageBookingId);
   // BLD-1066: surface the client's unpaid late-cancel/no-show balance on every
   // one of their appointments, so it's seen the moment a booking is opened.
   const { outstandingBalance } = await import('@/lib/outstanding');
