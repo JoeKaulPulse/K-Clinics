@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { crmEnabled } from '@/lib/crm';
+import { encClinical, decClinical } from '@/lib/clinical-crypto';
 
 export const runtime = 'nodejs';
 
@@ -29,7 +30,9 @@ export async function POST(req: Request) {
       });
       return NextResponse.json({ ok: true, conversations: rows.map((c) => ({
         id: c.id, visitorName: c.visitorName, visitorEmail: c.visitorEmail, status: c.status, mode: c.mode, staffUnread: c.staffUnread,
-        lastMessageAt: c.lastMessageAt.toISOString(), preview: c.messages[0]?.body.slice(0, 80) ?? '',
+        // BLD-1160: bodies are encrypted at rest; decrypt for the preview snippet
+        // (decClinical tolerates legacy plaintext rows).
+        lastMessageAt: c.lastMessageAt.toISOString(), preview: c.messages[0] ? decClinical(c.messages[0].body).slice(0, 80) : '',
       })) });
     }
     case 'messages': {
@@ -43,7 +46,9 @@ export async function POST(req: Request) {
       await db.chatConversation.update({ where: { id }, data: { staffUnread: 0 } }).catch(() => {});
       const { listChatEmails } = await import('@/lib/chat-email');
       const emails = await listChatEmails(id);
-      return NextResponse.json({ ok: true, conversation: convo, messages: messages.map((m) => ({ ...m, createdAt: m.createdAt.toISOString() })), emails: emails.map((e) => ({ id: e.id, to: e.to, subject: e.subject, status: e.status, openedAt: e.openedAt?.toISOString() || null, createdAt: e.createdAt.toISOString(), chatKind: (e.meta as { chatKind?: string } | null)?.chatKind || 'reply' })) });
+      // BLD-1160: bodies are encrypted at rest; decrypt for display in the CRM
+      // thread (decClinical tolerates legacy plaintext rows).
+      return NextResponse.json({ ok: true, conversation: convo, messages: messages.map((m) => ({ ...m, body: decClinical(m.body), createdAt: m.createdAt.toISOString() })), emails: emails.map((e) => ({ id: e.id, to: e.to, subject: e.subject, status: e.status, openedAt: e.openedAt?.toISOString() || null, createdAt: e.createdAt.toISOString(), chatKind: (e.meta as { chatKind?: string } | null)?.chatKind || 'reply' })) });
     }
     case 'emailTranscript': {
       const id = String(b.conversationId || '');
@@ -70,7 +75,8 @@ export async function POST(req: Request) {
         authorPublic = !!u?.publicProfile;
         authorTitle = u?.title || null;
       }
-      const staffMsg = await db.chatMessage.create({ data: { conversationId: id, sender: 'STAFF', author: session.email, authorName: firstName, authorTitle, authorId: isAnon ? null : session.sub, authorPublic, body } });
+      // BLD-1160: encrypt at rest, matching the visitor-side write path.
+      const staffMsg = await db.chatMessage.create({ data: { conversationId: id, sender: 'STAFF', author: session.email, authorName: firstName, authorTitle, authorId: isAnon ? null : session.sub, authorPublic, body: encClinical(body) as string } });
       await db.chatConversation.update({ where: { id }, data: { lastMessageAt: new Date(), status: 'OPEN', mode: 'STAFF', staffUnread: 0 } });
       // Email the visitor: forced when staff hit "Send & email"; otherwise only
       // if they've left their email and stepped away from the chat.
