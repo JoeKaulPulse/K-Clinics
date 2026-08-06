@@ -1,5 +1,6 @@
 import 'server-only';
-import { db } from './db';
+import { cache } from 'react';
+import { db, withDbRetry } from './db';
 import { site } from './site';
 import { getSetting } from './settings';
 import { bookingFor, getTreatment } from './treatments';
@@ -43,9 +44,26 @@ type Clinician = {
   bookings: { startAt: Date; endAt: Date; bufferMin: number }[];
 };
 
-/** Clinicians competent for a treatment, with schedule/time-off/bookings for the day. */
-async function cliniciansForDay(treatmentSlug: string, dayStart: Date, dayEnd: Date, excludeBookingId?: string): Promise<Clinician[]> {
-  const staff = await db.adminUser.findMany({
+/**
+ * Clinicians competent for a treatment, with schedule/time-off/bookings for the
+ * day. BLD-1189: wrapped in React's cache() so the (potentially large)
+ * adminUser query — schedules + timeOff + bookings — runs at most once per
+ * request instead of once per caller (freeSlots, recommendedSlots and
+ * pickPractitioner/isSlotFree all ask for the same day on the same date pick).
+ * Args are kept to primitives (dateISO, not Date objects) because cache()
+ * memoizes non-primitive arguments by reference, not by value — two
+ * separately-constructed Date instances for the same instant would miss.
+ *
+ * The read is wrapped in withDbRetry INSIDE the memo: cache() memoizes
+ * rejections as well as results, so a transient pool error cached here would
+ * be replayed to every later caller in the request — including the
+ * withDbRetry(() => isSlotFree(...)) wrappers in the booking routes, whose
+ * retries would then be no-ops. Retrying inside means only a persistent
+ * failure is ever cached.
+ */
+const cliniciansForDay = cache(async function cliniciansForDay(treatmentSlug: string, dateISO: string, excludeBookingId?: string): Promise<Clinician[]> {
+  const { dayStart, dayEnd } = clinicDayBounds(dateISO);
+  const staff = await withDbRetry(() => db.adminUser.findMany({
     where: { isClinician: true, active: true },
     select: {
       id: true,
@@ -59,11 +77,11 @@ async function cliniciansForDay(treatmentSlug: string, dayStart: Date, dayEnd: D
         select: { startAt: true, endAt: true, bufferMin: true },
       },
     },
-  });
+  }));
   return staff
     .filter((s) => s.competencies.length === 0 || s.competencies.includes(treatmentSlug))
     .map((s) => ({ id: s.id, name: s.name, schedules: s.schedules, timeOff: s.timeOff, bookings: s.bookings }));
-}
+});
 
 /** A clinician is free if scheduled (at the location, if any), not on a break,
  *  not on time-off, and with no overlapping booking — all buffer-aware. */
@@ -194,7 +212,7 @@ export async function freeSlots(dateISO: string, durationMin: number, treatmentS
     treatmentSlug ? getSetting('room_equipment_binding') : Promise.resolve(false),
   ]);
   const [clinicians, closures, rooms, equip] = await Promise.all([
-    enforce && treatmentSlug ? cliniciansForDay(treatmentSlug, dayStart, dayEnd) : Promise.resolve([] as Clinician[]),
+    enforce && treatmentSlug ? cliniciansForDay(treatmentSlug, dateISO) : Promise.resolve([] as Clinician[]),
     dayClosures(dayStart, dayEnd, locationId),
     roomPool(roomTagFor(treatmentSlug), boundEquipSlug(binding, treatmentSlug), dayStart, dayEnd, locationId),
     equipmentPool(treatmentSlug, dayStart, dayEnd, locationId),
@@ -264,7 +282,11 @@ export async function recommendedSlots(dateISO: string, durationMin: number, tre
   const preferred: string[] = [];
 
   if (enforce && treatmentSlug) {
-    const clinicians = await cliniciansForDay(treatmentSlug, dayStart, dayEnd);
+    // BLD-1189: cliniciansForDay is React-cache()'d — this hits the same
+    // memoized result freeSlots() above already populated for (treatmentSlug,
+    // dateISO), so the adminUser/schedules/timeOff/bookings query runs once
+    // per request rather than twice per date pick.
+    const clinicians = await cliniciansForDay(treatmentSlug, dateISO);
     for (const iso of slots) {
       const s = new Date(iso); const e = new Date(s.getTime() + durationMin * 60_000);
       const ok = clinicians.some((c) =>
@@ -324,9 +346,8 @@ export async function pickPractitioner(startISO: string, durationMin: number, tr
   if (isNaN(start.getTime())) return null;
   const end = new Date(start.getTime() + durationMin * 60_000);
   const dateISO = clinicDateISO(start);
-  const { dayStart, dayEnd } = clinicDayBounds(dateISO);
   const bufferMin = bookingFor(treatmentSlug).bufferMin ?? 0;
-  const clinicians = await cliniciansForDay(treatmentSlug, dayStart, dayEnd);
+  const clinicians = await cliniciansForDay(treatmentSlug, dateISO);
   const free = clinicians.find((c) => clinicianFree(c, start, end, clinicDayOfWeek(dateISO), bufferMin, locationId));
   return free?.id ?? null;
 }
@@ -400,7 +421,7 @@ export async function isSlotFree(startISO: string, durationMin: number, treatmen
 
   const enforce = treatmentSlug ? await getSetting('enforce_staff_availability') : false;
   if (enforce && treatmentSlug) {
-    const clinicians = await cliniciansForDay(treatmentSlug, dayStart, dayEnd, excludeBookingId);
+    const clinicians = await cliniciansForDay(treatmentSlug, dateISO, excludeBookingId);
     if (clinicians.length) return clinicians.some((c) => clinicianFree(c, start, end, clinicDayOfWeek(dateISO), bufferMin, locationId));
   }
 
