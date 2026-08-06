@@ -3343,7 +3343,6 @@ export const BUILD_BACKLOG: BacklogItem[] = [
     notes: ['Owner decision 5 Aug: FULL AUTO on a lost dispute. charge.dispute.closed with status lost now reconciles automatically — booking: refundedPence advanced by the dispute amount via CAS, loyalty points clawed back (full-refund return + pro-rata spend reversal), a Xero credit note pushed (pushBookingRefundToXero, reason "Chargeback lost") and a PAYMENT_REFUNDED audit entry; shop order: status → REFUNDED + stock restored (order sales carry no Xero push to reverse) + audit. Won/other outcomes change nothing. All side-effects sit behind the existing CAS claims so a redelivered event cannot double-run them. (PRJ-1069.12)'],
   },
   {
-<<<<<<< HEAD
     title: 'BNPL course pre-payment bills full list price, ignoring points/voucher already redeemed', type: 'ERROR', urgency: 'P1', status: 'IN_REVIEW', assignee: 'claude',
     value: 8, effort: 3,
     detail: 'courseTotalPence (lib/booking-actions.ts), the single source of truth for both minting the BNPL Checkout Session amount and validating the webhook payment, never subtracted booking.pointsRedeemedPence or booking.giftVoucherPence, so a client who had already redeemed loyalty points or a gift voucher on a course was billed the discount twice.',
