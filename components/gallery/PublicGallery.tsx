@@ -32,7 +32,13 @@ export function PublicGallery({ items }: { items: PublicGalleryItem[] }) {
         {shown.map((it) => (
           <StaggerItem key={it.id}>
             <figure className="overflow-hidden rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-porcelain)]">
-              <BeforeAfter beforeSrc={it.beforeSrc} afterSrc={it.afterSrc} className="aspect-[4/3] w-full" />
+              <BeforeAfter
+                beforeSrc={it.beforeSrc}
+                afterSrc={it.afterSrc}
+                labelBefore={`Before ${it.category}`}
+                labelAfter={`After ${it.category}`}
+                className="aspect-[4/3] w-full"
+              />
               <figcaption className="flex items-center justify-between gap-3 p-5">
                 <div>
                   <p className="font-[family-name:var(--font-display)] text-lg leading-tight">{it.category}</p>

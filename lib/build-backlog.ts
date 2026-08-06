@@ -3412,6 +3412,28 @@ export const BUILD_BACKLOG: BacklogItem[] = [
     detail: 'The gift-voucher, shop and academy-signup forms collect a purchaser email but offer no marketing opt-in, unlike BookingFlow and ConsultForm.',
     notes: ['Fix: added the same opt-in checkbox and copy used by BookingFlow/ConsultForm to GiftVoucherFlow, shop CheckoutForm and the academy signup form (AcademyAuth), each threading marketingOptIn through its API route into a no-clobber Client upsert stamped with marketingConsentFields() (lib/consent.ts) — gift-vouchers.ts and the shop checkout route now upsert/update the purchaser\'s Client record by email (previously neither touched one at all), and academy signupStudent()/linkClientByEmail creates or updates the linked Client on an affirmative opt-in. (BLD-1188)'],
   },
+  {
+    title: 'Group booking enquiry never fires the browser-side Meta pixel Lead event', type: 'ERROR', urgency: 'P2', status: 'IN_REVIEW', assignee: 'claude',
+    value: 5, effort: 1,
+    detail: 'GroupBookingForm posts to /api/consult, which sends a server-side CAPI Lead event, but the component never called the browser-side trackLead(), so Meta never got the matching browser event to dedup against for these high-value group/event enquiries.',
+    notes: ['Fix: mirrors the ConsultForm pattern -- a client-generated eventId is sent to /api/consult and passed to trackLead() on a successful response, so the browser and CAPI Lead events share one id and de-duplicate correctly. (PRJ-1060.9)'],
+  },
+  {
+    title: 'Gallery before/after images get generic, non-unique alt text', type: 'ERROR', urgency: 'P2', status: 'IN_REVIEW', assignee: 'claude',
+    value: 4, effort: 1,
+    detail: 'BeforeAfter.tsx defaults labelBefore/labelAfter to Before/After, and PublicGallery rendered every case without overriding them, so every gallery image got identical alt text ("Before treatment" / "After treatment") despite each case carrying a distinct category (Laser Hair Removal, Veneers, ...).',
+    notes: ['Fix: PublicGallery now passes labelBefore/labelAfter derived from each item\'s category (e.g. "Before Laser Hair Removal" / "After Laser Hair Removal"), so BeforeAfter\'s alt text and on-image badges are unique per case. (BLD-1176)'],
+  },
+  {
+    title: 'Audit re-check: 3 previously reported findings already resolved, no code change needed', type: 'AUDIT', urgency: 'P3', status: 'SHIPPED', assignee: 'claude',
+    value: 2, effort: 1,
+    detail: 'Re-verified three findings pulled from the queue before starting work on this batch; all three were already fixed by earlier, differently-numbered work.',
+    notes: [
+      'BLD-1143 (duplicate MedicalClinic JSON-LD on /contact, /clinics): contact/page.tsx and clinics/page.tsx already only render breadcrumbLd(); the page-level organizationLd() call was removed by BLD-1175 (commit 21c3f202). Same underlying issue, different ref -- no further change needed.',
+      'PRJ-1034.12 (careers Apply link ignores the selected role): app/(marketing)/careers/page.tsx already links to /careers?role={id}#apply and ApplyForm already seeds vacancyId from the ?role param, falling back to roles[0] -- shipped in commit 44988f05 (PR #1684). No further change needed.',
+      'BLD-1150 (9 nav links to non-existent treatment pages): verified via getTreatment() that all 9 slugs (laser-wrinkle-removal, rosacea-treatment, laser-skin-rejuvenation, microcurrent, led-therapy, bb-glow, deep-cleansing-facial, facial-massage, dermal-fillers) already resolve -- they are defined in lib/treatments-imported.ts and merged into lib/treatments.ts\'s treatments array, none are POM-filtered. lib/nav.ts needs no change.',
+    ],
+  },
 ];
 
 // A content hash over every item's title + status + PR, so ANY change (a new
