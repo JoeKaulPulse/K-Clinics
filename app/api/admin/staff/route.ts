@@ -111,7 +111,14 @@ export async function POST(req: Request) {
     if (grant) data.permGrant = clampGrant(grant);
     if (revoke) data.permRevoke = clean(revoke);
     if (typeof active === 'boolean') data.active = active;
-    if (password) data.passwordHash = await hashPassword(password);
+    if (password) {
+      if (password.length < 8) return NextResponse.json({ ok: false, error: 'Password must be at least 8 characters.' }, { status: 422 });
+      const { isBreachedPassword } = await import('@/lib/security/breached-password');
+      if (await isBreachedPassword(password)) {
+        return NextResponse.json({ ok: false, error: 'That password has appeared in a known data breach. Please choose a different one.' }, { status: 422 });
+      }
+      data.passwordHash = await hashPassword(password);
+    }
     // Link (or clear) this account's Google sign-in. Lets an owner merge a
     // Workspace email that differs from the login email into the right record;
     // clearing it also unlinks any previously bound Google identity.
@@ -162,6 +169,13 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: false, error: 'Email, role and a temporary password are required.' }, { status: 422 });
   }
   if (!validRole.includes(role)) return NextResponse.json({ ok: false, error: 'Invalid role.' }, { status: 422 });
+  if (password.length < 8) return NextResponse.json({ ok: false, error: 'Password must be at least 8 characters.' }, { status: 422 });
+  {
+    const { isBreachedPassword } = await import('@/lib/security/breached-password');
+    if (await isBreachedPassword(password)) {
+      return NextResponse.json({ ok: false, error: 'That password has appeared in a known data breach. Please choose a different one.' }, { status: 422 });
+    }
+  }
   // Only an OWNER may create another OWNER.
   if (role === 'OWNER' && actor.role !== 'OWNER') {
     return NextResponse.json({ ok: false, error: 'Only an owner can create an owner.' }, { status: 403 });
