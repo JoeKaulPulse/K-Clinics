@@ -2,6 +2,7 @@ import 'server-only';
 import crypto from 'node:crypto';
 import { getConnection } from '@/lib/oauth-connections';
 import { rulesToWhere, type SegmentRules } from '@/lib/segments';
+import { marketableClientWhere } from '@/lib/consent';
 
 // Push a client segment to Meta as a Custom Audience (and a base for Lookalikes)
 // so it can be retargeted / prospected in Meta Ads. Best-effort; never throws.
@@ -82,9 +83,11 @@ export async function syncSegmentToMeta(segmentId: string): Promise<{ ok: boolea
     if (!seg) return { ok: false, error: 'Segment not found.' };
     const rules = (seg.rules as SegmentRules) ?? {};
 
-    // CONSENT GATE — only marketing-opted-in, non-unsubscribed clients may go to an
-    // ad platform, whatever the segment rules say (UK GDPR / PECR).
-    const where = { ...rulesToWhere(rules), marketingOptIn: true, unsubscribed: false };
+    // CONSENT GATE — only marketing-opted-in, non-unsubscribed clients with recorded
+    // consent evidence may go to an ad platform, whatever the segment rules say (UK
+    // GDPR / PECR). Uses the canonical marketableClientWhere() so this stays in
+    // lockstep with every other marketing audience (BLD-1181).
+    const where = { ...rulesToWhere(rules), ...marketableClientWhere() };
     const members = await db.client.findMany({ where, select: { email: true, phone: true } });
     if (members.length === 0) return { ok: false, error: 'No marketing-opted-in clients match this segment — nothing to upload.' };
 
