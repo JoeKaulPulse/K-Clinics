@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import Image from 'next/image';
 import { useCart } from '@/lib/cart';
 import { Button, ArrowIcon } from '@/components/ui/Button';
 
@@ -20,8 +21,7 @@ export function CartClient({ vatNote }: { vatNote: string }) {
             {items.map((i) => (
               <li key={i.productId} className="flex items-center gap-4 bg-[var(--color-porcelain)] p-4">
                 {i.image
-                  // eslint-disable-next-line @next/next/no-img-element
-                  ? <img src={i.image} alt="" className="h-16 w-16 rounded object-cover" />
+                  ? <Image src={i.image} alt="" width={64} height={64} sizes="64px" className="h-16 w-16 rounded object-cover" />
                   : <span className="grid h-16 w-16 place-items-center rounded bg-[var(--color-bone)] text-[var(--color-stone)]">▦</span>}
                 <div className="min-w-0 flex-1">
                   <Link href={`/shop/${i.slug}`} className="font-[family-name:var(--font-display)] hover:text-[var(--color-gold-deep)]">{i.name}{i.ageRestricted && <span className="ml-2 rounded-full bg-[var(--color-ink)] px-1.5 py-0.5 text-[0.6rem] text-[var(--color-porcelain)]">18+</span>}</Link>

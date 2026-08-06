@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import Image from 'next/image';
 import { GiftVoucherFlow } from '@/components/gift/GiftVoucherFlow';
 
 type Pkg = { slug: string; name: string; description: string | null; pricePence: number; images: string[] };
@@ -27,8 +28,9 @@ export function GiftPackages({ packages, physicalEnabled = false, physicalFeePen
         return (
           <div key={p.slug} className="flex flex-col overflow-hidden rounded-[var(--radius-xl)] border border-[var(--color-line)] bg-[var(--color-bone)]">
             {p.images[0] && (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={p.images[0]} alt={p.name} className="h-40 w-full object-cover" />
+              <div className="relative h-40 w-full overflow-hidden">
+                <Image src={p.images[0]} alt={p.name} fill sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw" className="object-cover" />
+              </div>
             )}
             <div className="flex flex-1 flex-col p-5">
               <h3 className="font-[family-name:var(--font-display)] text-xl">{p.name}</h3>
