@@ -22,14 +22,22 @@ export function BeforeAfter({
   afterGrad = ['#dcc4a8', '#a98a6d'],
   labelBefore = 'Before',
   labelAfter = 'After',
+  altBefore,
+  altAfter,
   className = '',
 }: {
   beforeSrc?: string;
   afterSrc?: string;
   beforeGrad?: [string, string];
   afterGrad?: [string, string];
+  /** On-image badge text. Keep these short — the two badges sit side by side. */
   labelBefore?: string;
   labelAfter?: string;
+  /** Image alt text. Pass a case-specific description (BLD-1176) so a page
+   *  rendering several sliders doesn't repeat the same alt on every image.
+   *  Defaults to the badge text when not given. */
+  altBefore?: string;
+  altAfter?: string;
   className?: string;
 }) {
   const ref = useRef<HTMLDivElement>(null);
@@ -66,7 +74,7 @@ export function BeforeAfter({
       {afterSrc ? (
         <Image
           src={`${BASE}${afterSrc}`}
-          alt={`${labelAfter} treatment`}
+          alt={altAfter || `${labelAfter} treatment`}
           fill
           sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
           className="object-cover"
@@ -82,7 +90,7 @@ export function BeforeAfter({
         {beforeSrc ? (
           <Image
             src={`${BASE}${beforeSrc}`}
-            alt={`${labelBefore} treatment`}
+            alt={altBefore || `${labelBefore} treatment`}
             fill
             sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
             className="object-cover"

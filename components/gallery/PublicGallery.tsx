@@ -32,7 +32,17 @@ export function PublicGallery({ items }: { items: PublicGalleryItem[] }) {
         {shown.map((it) => (
           <StaggerItem key={it.id}>
             <figure className="overflow-hidden rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-porcelain)]">
-              <BeforeAfter beforeSrc={it.beforeSrc} afterSrc={it.afterSrc} className="aspect-[4/3] w-full" />
+              {/* BLD-1176: alt text carries the case detail so every image in the
+                  grid is described distinctly. The on-image badges stay "Before"
+                  and "After" — they sit at opposite top corners of a 4:3 tile and
+                  collide once a category name is appended. */}
+              <BeforeAfter
+                beforeSrc={it.beforeSrc}
+                afterSrc={it.afterSrc}
+                altBefore={`${it.category} — before treatment${it.caption ? `: ${it.caption}` : ''}`}
+                altAfter={`${it.category} — after treatment${it.caption ? `: ${it.caption}` : ''}`}
+                className="aspect-[4/3] w-full"
+              />
               <figcaption className="flex items-center justify-between gap-3 p-5">
                 <div>
                   <p className="font-[family-name:var(--font-display)] text-lg leading-tight">{it.category}</p>
