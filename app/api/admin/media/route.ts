@@ -38,7 +38,7 @@ export async function POST(req: Request) {
   const file = form?.get('file');
   if (!(file instanceof File)) return NextResponse.json({ ok: false, error: 'No file.' }, { status: 400 });
   if (file.size > MAX_BYTES) return NextResponse.json({ ok: false, error: 'Image is over 8 MB.' }, { status: 413 });
-  if (file.type && !OK_MIME.test(file.type)) return NextResponse.json({ ok: false, error: 'Only image files are allowed.' }, { status: 415 });
+  if (!file.type || !OK_MIME.test(file.type)) return NextResponse.json({ ok: false, error: 'Only image files are allowed.' }, { status: 415 });
 
   const alt = String(form?.get('alt') || '');
   const width = Number(form?.get('width')) || null;

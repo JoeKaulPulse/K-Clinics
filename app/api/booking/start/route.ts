@@ -316,7 +316,7 @@ export async function POST(req: Request) {
         await db.client.update({ where: { id: client.id }, data: { stripeCustomerId: fresh.id } }).catch(() => {});
         await db.booking.update({ where: { id: booking.id }, data: { stripeCustomerId: fresh.id } }).catch(() => {});
       } catch (e2) {
-        console.error('[booking-start] customer recreate failed for', booking.id, e2);
+        console.error('[booking-start] customer recreate failed for', booking.id, (e2 as Error)?.message);
         Sentry.captureException(e2, { tags: { area: 'booking/start', stage: 'customer-recreate' } });
       }
     }
@@ -342,7 +342,7 @@ export async function POST(req: Request) {
     await db.booking.update({ where: { id: booking.id }, data: { stripeSetupIntentId: setupIntent.id } });
     return NextResponse.json({ ok: true, bookingId: booking.id, needCard: true, clientSecret: setupIntent.client_secret });
   } catch (e) {
-    console.error('[booking-start] card setup could not start for', booking.id, e);
+    console.error('[booking-start] card setup could not start for', booking.id, (e as Error)?.message);
     // Capture the real Stripe reason in the audit log so it's visible in the admin
     // (no server-log access needed to diagnose, e.g. a bad key vs a missing customer).
     const se = e as { message?: string; code?: string; type?: string };
