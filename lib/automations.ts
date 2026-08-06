@@ -469,8 +469,12 @@ async function reminders(t: Tally) {
       }
       if (smsApplicable) {
         const when = b.startAt.toLocaleString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', timeZone: 'Europe/London' });
-        const sms = await sendSms(b.client.phone, `KClinics reminder: your ${b.treatmentTitle} is ${label}, ${when}. Manage: ${manageUrl}`).catch(() => null);
-        if (sms?.ok) delivered = true;
+        const sms = await sendSms(b.client.phone, `KClinics reminder: your ${b.treatmentTitle} is ${label}, ${when}. Manage: ${manageUrl}`)
+          .catch((e) => ({ ok: false, error: e instanceof Error ? e.message : 'send failed' }));
+        // BLD-1156: this used to only set a boolean on success — a failing SMS
+        // provider was invisible next to the email branch above, which logs and
+        // counts every failure. Mirror that here so SMS outages show up too.
+        if (sms.ok) { delivered = true; } else { t.errors++; console.error(`[automations] SMS reminder (${label}) failed for booking ${b.id}:`, sms.error); }
       }
       // Latch the per-window flag only when a channel actually delivered, or when
       // the client has no contactable channel at all (nothing to retry). A
