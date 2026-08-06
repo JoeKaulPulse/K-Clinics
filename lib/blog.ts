@@ -37,18 +37,24 @@ export function blocksToHtml(blocks: ArticleBlock[]): string {
 //      narrow (only that specific "<Title Case> Blog" shape, the confirmed
 //      nav-label pattern), so a legitimate excerpt that merely starts with a
 //      capitalized word is left untouched.
-//   2. A leading duplicate of the post's own title, if given — matched literally
-//      against the known title, so this can't misfire on real content.
+//   2. A leading duplicate of the post's own title, if given — but ONLY on an
+//      excerpt that actually carried the nav labels in (1). In the WP dump the
+//      leaked H1 always sits behind those labels, so requiring them is what
+//      makes this safe: a title is very often a legitimate opening for real
+//      prose too ("Microneedling" / "Microneedling is a collagen induction
+//      therapy…", "Laser hair removal" / "Laser hair removal works by…"), and
+//      stripping it unconditionally would leave a clean post's meta description
+//      starting mid-sentence — the exact SEO damage this fix exists to undo
+//      (BLD-1182 review).
 // This is a read-time mitigation only — see BLD-1182 in lib/build-backlog.ts for
 // the separate stored-`excerpt` cleanup.
 export function stripNavChrome(text: string, title?: string): string {
-  let t = text.replace(/^(?:(?:[A-Z][a-z]+\s){0,2}[A-Z][a-z]+\s+Blog\s+)+/, '').trim();
+  const t = text.replace(/^(?:(?:[A-Z][a-z]+\s){0,2}[A-Z][a-z]+\s+Blog\s+)+/, '').trim();
+  const hadNavChrome = t !== text.trim();
   const cleanTitle = title?.trim();
-  if (cleanTitle) {
-    const escaped = cleanTitle.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-    t = t.replace(new RegExp(`^${escaped}\\s+`, 'i'), '').trim();
-  }
-  return t;
+  if (!hadNavChrome || !cleanTitle) return t;
+  const escaped = cleanTitle.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  return t.replace(new RegExp(`^${escaped}\\s+`, 'i'), '').trim();
 }
 
 const articleCard = (a: Article): BlogCard => ({ slug: a.slug, title: a.title, excerpt: a.excerpt, category: a.category, readMinutes: a.readMinutes, published: a.published, image: articleImage(a.slug) });
