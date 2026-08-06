@@ -3426,6 +3426,31 @@ export const BUILD_BACKLOG: BacklogItem[] = [
     ],
   },
   {
+    title: 'Group booking enquiry never fires the browser-side Meta pixel Lead event', type: 'ERROR', urgency: 'P2', status: 'IN_REVIEW', assignee: 'claude',
+    value: 5, effort: 1,
+    detail: 'GroupBookingForm posts to /api/consult, which sends a server-side CAPI Lead event, but the component never called the browser-side trackLead(), so Meta never got the matching browser event to dedup against for these high-value group/event enquiries.',
+    notes: ['Fix: mirrors the ConsultForm pattern -- a client-generated eventId is sent to /api/consult and passed to trackLead() on a successful response, so the browser and CAPI Lead events share one id and de-duplicate correctly. (PRJ-1060.9)'],
+  },
+  {
+    title: 'Gallery before/after images get generic, non-unique alt text', type: 'ERROR', urgency: 'P2', status: 'IN_REVIEW', assignee: 'claude',
+    value: 4, effort: 1,
+    detail: 'BeforeAfter.tsx defaults labelBefore/labelAfter to Before/After, and PublicGallery rendered every case without overriding them, so every gallery image got identical alt text ("Before treatment" / "After treatment") despite each case carrying a distinct category (Laser Hair Removal, Veneers, ...).',
+    notes: [
+      'Fix: PublicGallery now passes case-specific alt text to BeforeAfter, derived from each item\'s category plus its caption when present (e.g. "Veneers -- before treatment: upper arch"), so no two gallery images share the same alt. (BLD-1176)',
+      'Review fix (BLD-1176): the first cut overrode labelBefore/labelAfter instead, which also changes the two on-image badges. Those badges are absolutely positioned at the top-left and top-right corners of a 4:3 tile in uppercase with 0.16em tracking, so "BEFORE LASER HAIR REMOVAL" and "AFTER LASER HAIR REMOVAL" would overlap in the middle of every tile in the 3-column grid. BeforeAfter now takes separate optional altBefore/altAfter props (defaulting to the badge text, so its only other behaviour is unchanged) and PublicGallery sets those, leaving the badges as the short "Before"/"After". Residual: two published cases in the same category with no caption still share alt text -- there is no other distinguishing field on GalleryItem to use.',
+    ],
+  },
+  {
+    title: 'Audit re-check: 3 previously reported findings already resolved, no code change needed', type: 'AUDIT', urgency: 'P3', status: 'SHIPPED', assignee: 'claude',
+    value: 2, effort: 1,
+    detail: 'Re-verified three findings pulled from the queue before starting work on this batch; all three were already fixed by earlier, differently-numbered work.',
+    notes: [
+      'BLD-1143 (duplicate MedicalClinic JSON-LD on /contact, /clinics): contact/page.tsx and clinics/page.tsx already only render breadcrumbLd(); the page-level organizationLd() call was removed by BLD-1175 (commit 21c3f202). Same underlying issue, different ref -- no further change needed.',
+      'PRJ-1034.12 (careers Apply link ignores the selected role): app/(marketing)/careers/page.tsx already links to /careers?role={id}#apply and ApplyForm already seeds vacancyId from the ?role param, falling back to roles[0] -- shipped in commit 44988f05 (PR #1684). No further change needed.',
+      'BLD-1150 (9 nav links to non-existent treatment pages): verified via getTreatment() that all 9 slugs (laser-wrinkle-removal, rosacea-treatment, laser-skin-rejuvenation, microcurrent, led-therapy, bb-glow, deep-cleansing-facial, facial-massage, dermal-fillers) already resolve -- they are defined in lib/treatments-imported.ts and merged into lib/treatments.ts\'s treatments array, none are POM-filtered. lib/nav.ts needs no change.',
+    ],
+  },
+  {
     title: 'Security batch: MIME bypass, passkey owner-gate, staff password strength, marketing rate-limit, PII error logging', type: 'ERROR', urgency: 'P1', status: 'IN_REVIEW', assignee: 'claude',
     value: 8, effort: 3,
     detail: 'Five independent security/PII findings from the build board: an empty Content-Type could skip the media/build-upload MIME allow-list entirely; the passkey list/remove route only required a signed-in session where every sibling passkey route requires OWNER; staff.manage could set any staff password with no strength check, unlike client/academy self-service resets; the marketing email send route had no rate limit anywhere and no audit log on its test-send branch; and three public booking routes still logged raw error objects instead of just the message, bypassing sendDefaultPii:false.',
