@@ -3,6 +3,7 @@
 import { useState, type FormEvent } from 'react';
 import { site } from '@/lib/site';
 import { Button, ArrowIcon } from '@/components/ui/Button';
+import { trackLead } from '@/lib/analytics-events';
 
 /** Group & event enquiry (birthdays, hen parties, corporate, bridal) — recorded
  *  via /api/consult so it lands in the CRM and notifies the front desk. */
@@ -27,11 +28,15 @@ export function GroupBookingForm() {
         '',
         get('message'),
       ].filter(Boolean).join('\n');
+      // Shared id so the browser Lead event de-duplicates against the server-side
+      // CAPI Lead (sent from /api/consult) — same pattern as ConsultForm (PRJ-1060.9).
+      const eventId = (typeof crypto !== 'undefined' && crypto.randomUUID) ? crypto.randomUUID() : String(Date.now());
       const res = await fetch('/api/consult', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ firstName: firstName || 'Group', lastName: rest.join(' ') || undefined, email: get('email'), phone: get('phone') || undefined, category: 'general', message, consent: true, company }),
+        body: JSON.stringify({ firstName: firstName || 'Group', lastName: rest.join(' ') || undefined, email: get('email'), phone: get('phone') || undefined, category: 'general', message, consent: true, company, eventId }),
       });
       const j = await res.json().catch(() => ({ ok: false }));
+      if (j.ok) trackLead({ eventId: j.eventId || eventId });
       setStatus(j.ok ? 'sent' : 'error');
     } catch { setStatus('error'); } finally { setBusy(false); }
   }
