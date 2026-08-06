@@ -238,7 +238,7 @@ export async function POST(req: Request) {
 
     return NextResponse.json({ ok: true, bookingId: booking.id, clientSecret: setupIntent.client_secret });
   } catch (e) {
-    console.error('[booking/create] card setup could not start for', booking.id, e);
+    console.error('[booking/create] card setup could not start for', booking.id, (e as Error)?.message);
     Sentry.captureException(e, { tags: { route: 'booking/create', stage: 'setup-intent' } });
     const se = e as { message?: string; code?: string; type?: string };
     const reason = [se.type, se.code, se.message].filter(Boolean).join(' · ').slice(0, 300) || 'unknown error';
