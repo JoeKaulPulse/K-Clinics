@@ -184,6 +184,24 @@ async function abandonedOrders(t: Tally) {
     const rows = await db.order.findMany({
       where: {
         status: 'PENDING',
+        // BLD-1204 (review): ONLINE shop checkouts only. app/api/admin/pos
+        // creates Order rows too, and an abandoned over-the-counter sale is
+        // left PENDING with a customer email that is often blank (the till
+        // defaults the name to 'In-store sale' and the email field is
+        // optional) and nothing to "finish" in the web cart — so without these
+        // two filters the automation emails in-clinic till customers a
+        // nonsensical /shop/cart link, and a blank-email row sends to '' and
+        // writes a FAILED EmailEvent that the SENT-only dedupe below never
+        // suppresses, so it retries on every daily run.
+        //
+        // app/api/shop/checkout sets stripePaymentIntentId the moment the
+        // PaymentIntent is created (and deletes the order outright if that
+        // fails), while POS card sales go through a Checkout Session and only
+        // receive a PI id from the webhook — by which point they are already
+        // PAID. So "PENDING with a PI id" is exactly the set of abandoned web
+        // checkouts.
+        stripePaymentIntentId: { not: null },
+        email: { not: '' },
         createdAt: { gte: new Date(now - 72 * 3600e3), lte: new Date(now - 2 * 3600e3) },
       },
       take: 500,
