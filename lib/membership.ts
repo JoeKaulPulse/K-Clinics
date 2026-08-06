@@ -67,6 +67,18 @@ export async function rolling12moSpendPence(clientId: string): Promise<number> {
   const since = new Date(Date.now() - 365 * 86400000);
   const bookings = await db.booking.aggregate({ _sum: { chargedPence: true, refundedPence: true }, where: { clientId, chargedAt: { gte: since } } });
   let total = (bookings._sum.chargedPence ?? 0) - (bookings._sum.refundedPence ?? 0);
+  // BLD-1202: a partial-voucher booking's chargedPence is the card/terminal/
+  // pay-link remainder only (BLD-882) — fold the voucher-covered portion back
+  // in too, or a client's realised spend (and their K Circle tier) undercounts
+  // by however much they paid with a gift voucher. Excludes bookings settled
+  // ENTIRELY by voucher (chargePaymentIntentId 'ext_gift-voucher'), whose full
+  // amount is already in chargedPence — same rule as bookingSpendPence in
+  // lib/client-loyalty.ts, kept in sync deliberately.
+  const vouchered = await db.booking.aggregate({
+    _sum: { giftVoucherPence: true },
+    where: { clientId, chargedAt: { gte: since }, giftVoucherPence: { gt: 0 }, chargePaymentIntentId: { not: 'ext_gift-voucher' } },
+  });
+  total += vouchered._sum.giftVoucherPence ?? 0;
   try {
     const orders = await db.order.aggregate({ _sum: { totalPence: true }, where: { clientId, status: { in: ['PAID', 'FULFILLED'] }, createdAt: { gte: since } } });
     total += orders._sum.totalPence ?? 0;

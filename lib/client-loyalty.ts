@@ -135,9 +135,21 @@ export async function clientLedger(clientId: string, limit = 50) {
 
 // ── Earning ──────────────────────────────────────────────────────────────────
 
-/** True spend (pence) for a booking: the amount charged, else the listed price. */
-function bookingSpendPence(b: { chargedPence: number | null; pricePence: number }): number {
-  return b.chargedPence && b.chargedPence > 0 ? b.chargedPence : b.pricePence;
+/** True spend (pence) for a booking: the amount charged (plus any gift-voucher
+ *  portion not already folded into that charge), else the listed price.
+ *
+ *  BLD-1202: for a PARTIAL voucher application, chargedPence is deliberately
+ *  just the card/terminal/pay-link REMAINDER (BLD-882) — the voucher-covered
+ *  portion lives separately in giftVoucherPence and must be added back in, or
+ *  it earns zero loyalty points despite being real client spend. A booking
+ *  settled ENTIRELY by voucher already carries the whole amount in
+ *  chargedPence (chargePaymentIntentId 'ext_gift-voucher' — see the 'voucher'
+ *  case in app/api/admin/bookings/session/route.ts), so that case is excluded
+ *  here to avoid double-counting the same money twice. */
+function bookingSpendPence(b: { chargedPence: number | null; pricePence: number; giftVoucherPence?: number | null; chargePaymentIntentId?: string | null }): number {
+  const voucher = b.chargePaymentIntentId === 'ext_gift-voucher' ? 0 : (b.giftVoucherPence ?? 0);
+  const spend = (b.chargedPence ?? 0) + voucher;
+  return spend > 0 ? spend : b.pricePence;
 }
 
 /** Award loyalty points for a completed/charged booking (1 pt per £1). Idempotent
@@ -146,7 +158,7 @@ function bookingSpendPence(b: { chargedPence: number | null; pricePence: number 
 export async function awardClientSpend(bookingId: string): Promise<void> {
   const b = await db.booking.findUnique({
     where: { id: bookingId },
-    select: { id: true, clientId: true, treatmentTitle: true, pricePence: true, chargedPence: true },
+    select: { id: true, clientId: true, treatmentTitle: true, pricePence: true, chargedPence: true, giftVoucherPence: true, chargePaymentIntentId: true },
   });
   if (!b) return;
 

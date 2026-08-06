@@ -24,6 +24,12 @@ export async function outstandingBalance(clientId: string): Promise<OutstandingB
     where: {
       clientId,
       chargedAt: null,
+      // BLD-1200: a course paid upfront via BNPL (Klarna/Clearpay) records the
+      // money on prepaidAt/prepaidPence and never touches chargedAt (see
+      // cancelBooking's "already paid in full" branch in lib/booking-actions.ts).
+      // Without this, a late-cancelled-but-already-prepaid booking reports a
+      // phantom debt equal to the full course price and blocks rebooking.
+      prepaidAt: null,
       feeWaived: false,
       pricePence: { gt: 0 },
       OR: [
