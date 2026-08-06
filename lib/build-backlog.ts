@@ -3412,6 +3412,12 @@ export const BUILD_BACKLOG: BacklogItem[] = [
     detail: 'The gift-voucher, shop and academy-signup forms collect a purchaser email but offer no marketing opt-in, unlike BookingFlow and ConsultForm.',
     notes: ['Fix: added the same opt-in checkbox and copy used by BookingFlow/ConsultForm to GiftVoucherFlow, shop CheckoutForm and the academy signup form (AcademyAuth), each threading marketingOptIn through its API route into a no-clobber Client upsert stamped with marketingConsentFields() (lib/consent.ts) — gift-vouchers.ts and the shop checkout route now upsert/update the purchaser\'s Client record by email (previously neither touched one at all), and academy signupStudent()/linkClientByEmail creates or updates the linked Client on an affirmative opt-in. (BLD-1188)'],
   },
+  {
+    title: 'sharp (Next.js Image Optimization dependency) vulnerable to libvips CVEs', type: 'TASK', urgency: 'P1', status: 'IN_REVIEW', assignee: 'claude',
+    value: 6, effort: 1,
+    detail: 'npm audit flagged GHSA-f88m-g3jw-g9cj: sharp versions below 0.35.0 inherit several libvips vulnerabilities (CVE-2026-33327, CVE-2026-33328, CVE-2026-35590, CVE-2026-35591). sharp backs next/image, used across admin media uploads, kiosk photos and before/after gallery photos.',
+    notes: ['Fix: added an npm overrides entry pinning sharp to 0.35.3 (the version the advisory names as the fix, bundling libvips 8.18.3). The installed lockfile already resolved sharp to 0.35.3 via next\'s own optional dependency range, so npm audit already showed 0 vulnerabilities before this change and the lockfile did not move -- the override exists to hold that patched version in place against any future range widening rather than to fix an active install. Verified sharp still loads and reports vips 8.18.3 after the pin, and both npx tsc --noEmit and npm run build pass. (BLD-1154)'],
+  },
 ];
 
 // A content hash over every item's title + status + PR, so ANY change (a new
