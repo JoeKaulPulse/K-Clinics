@@ -45,20 +45,39 @@ export async function sendSms(to: string | null | undefined, body: string): Prom
     console.warn(`[sms:dummy] Twilio not configured — text NOT sent → ${to}: ${body.slice(0, 80)}…`);
     return { ok: true, dummy: true, id: 'dummy-sms' };
   }
-  try {
-    const res = await fetch(`https://api.twilio.com/2010-04-01/Accounts/${sid}/Messages.json`, {
-      method: 'POST',
-      headers: {
-        Authorization: `Basic ${Buffer.from(`${sid}:${authToken}`).toString('base64')}`,
-        'Content-Type': 'application/x-www-form-urlencoded',
-      },
-      body: new URLSearchParams({ To: to, From: from, Body: body }),
-      signal: AbortSignal.timeout(8000),
-    });
-    if (!res.ok) return { ok: false, error: `SMS provider ${res.status}` };
-    const data = (await res.json()) as { sid?: string };
-    return { ok: true, id: data.sid };
-  } catch {
-    return { ok: false, error: 'Could not reach SMS provider.' };
+  // BLD-1038: mirror sendEmail's retry/backoff (lib/email.ts) — a transient
+  // Twilio 429/5xx or timeout used to fail the send outright with nothing
+  // logged, so a reminder or confirmation text silently vanished with no trace.
+  // Retry a bounded few times with backoff on transient failures, and log
+  // every failed attempt so a real outage is visible instead of one swallowed
+  // error. A 4xx (bad number, unverified region, etc.) won't succeed on retry,
+  // so it fails fast.
+  const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+  let lastError = 'SMS send failed';
+  for (let attempt = 0; attempt < 3; attempt++) {
+    try {
+      const res = await fetch(`https://api.twilio.com/2010-04-01/Accounts/${sid}/Messages.json`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Basic ${Buffer.from(`${sid}:${authToken}`).toString('base64')}`,
+          'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: new URLSearchParams({ To: to, From: from, Body: body }),
+        signal: AbortSignal.timeout(8000),
+      });
+      if (!res.ok) {
+        lastError = `SMS provider ${res.status}`;
+        console.error(`[sms] send attempt ${attempt + 1}/3 failed (${lastError}) → ${to}`);
+        if ((res.status === 429 || res.status >= 500) && attempt < 2) { await sleep(700 * (attempt + 1)); continue; }
+        return { ok: false, error: lastError };
+      }
+      const data = (await res.json()) as { sid?: string };
+      return { ok: true, id: data.sid };
+    } catch (e) {
+      lastError = e instanceof Error ? e.message : 'Could not reach SMS provider.';
+      console.error(`[sms] send attempt ${attempt + 1}/3 failed (${lastError}) → ${to}`);
+      if (attempt < 2) { await sleep(700 * (attempt + 1)); continue; }
+    }
   }
+  return { ok: false, error: lastError };
 }

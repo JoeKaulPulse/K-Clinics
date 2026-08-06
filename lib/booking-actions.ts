@@ -16,6 +16,16 @@ import type { Booking, Client } from '@prisma/client';
 const CANCEL_WINDOW_MS = 24 * 60 * 60 * 1000;
 const RESCHEDULE_WINDOW_MS = 48 * 60 * 60 * 1000;
 const MAX_FREE_RESCHEDULES = 3;
+// PRJ-1043.3: a PENDING booking holds its slot from creation until the client
+// finishes card setup (see app/api/booking/create). If they close the tab
+// (or a bot only ever hits /create) the hold never clears — the only existing
+// PENDING->CANCELLED paths are an immediate SetupIntent failure or an explicit
+// cancel. 45 minutes gives a genuine checkout (including a slow 3DS challenge)
+// comfortable room while still bounding the hold — wider than the kiosk
+// session's 30-min TTL (lib/kiosk.ts SESSION_TTL_MS), the closest "abandoned
+// in-progress" precedent in this codebase, since card setup can legitimately
+// take longer than a kiosk selfie.
+const PENDING_ABANDON_MS = 45 * 60 * 1000;
 
 type BookingWithClient = Booking & { client: Client };
 
@@ -828,4 +838,35 @@ export async function rescheduleBooking(
     bestEffort(import('@/lib/google-calendar').then((m) => m.pushBookingToClinician(booking.id))),
   ]);
   return { ok: true, charged, requiresAction };
+}
+
+/**
+ * PRJ-1043.3: release PENDING bookings abandoned before card setup finished —
+ * they are still holding a slot (lib/availability.ts treats PENDING like
+ * CONFIRMED) with no card ever attached and no way for the client to come
+ * back to them. Cancels outright (no charge, no fee logic): the client never
+ * confirmed a card, so this is never a "late cancellation" in the billing
+ * sense, just releasing a hold nobody is coming back to claim. Mirrors the
+ * plain `status: 'CANCELLED'` update already used for the immediate
+ * SetupIntent-failure path in app/api/booking/create.
+ *
+ * Safe to run frequently (idempotent — only ever touches rows still PENDING
+ * past the window) from the 15-min cron dispatcher.
+ */
+export async function releaseAbandonedPendingBookings(): Promise<{ released: number }> {
+  const cutoff = new Date(Date.now() - PENDING_ABANDON_MS);
+  const stale = await db.booking.findMany({
+    where: { status: 'PENDING', createdAt: { lt: cutoff } },
+    select: { id: true, clientId: true },
+  });
+  if (!stale.length) return { released: 0 };
+
+  await db.booking.updateMany({
+    where: { id: { in: stale.map((b) => b.id) } },
+    data: { status: 'CANCELLED', cancelledAt: new Date(), cancelReason: 'Abandoned checkout — no card added within the booking window (auto-released)', cancelledBy: 'system' },
+  });
+  for (const b of stale) {
+    await logAudit({ action: 'BOOKING_CANCELLED', actor: 'system', clientId: b.clientId, bookingId: b.id, summary: 'Auto-released: PENDING booking abandoned before card setup completed' }).catch(() => {});
+  }
+  return { released: stale.length };
 }
