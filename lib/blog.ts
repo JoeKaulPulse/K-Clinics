@@ -27,6 +27,36 @@ export function blocksToHtml(blocks: ArticleBlock[]): string {
   }).join('\n');
 }
 
+// BLD-1182: WordPress-imported excerpts can carry leftover site-nav/breadcrumb
+// text (e.g. "Cosmetology Blog Dentistry Blog {Title} {real excerpt}") — the
+// original WP page dump included blog-category nav links and the page's own H1
+// title ahead of the article body, and migrate-blog.mjs's excerptOf()/stripTags()
+// strip HTML tags but not that leaked text. Strip both pieces before the excerpt
+// is used as a meta description / JSON-LD description fallback:
+//   1. A leading run of "<Capitalized word(s)> Blog" nav labels — deliberately
+//      narrow (only that specific "<Title Case> Blog" shape, the confirmed
+//      nav-label pattern), so a legitimate excerpt that merely starts with a
+//      capitalized word is left untouched.
+//   2. A leading duplicate of the post's own title, if given — but ONLY on an
+//      excerpt that actually carried the nav labels in (1). In the WP dump the
+//      leaked H1 always sits behind those labels, so requiring them is what
+//      makes this safe: a title is very often a legitimate opening for real
+//      prose too ("Microneedling" / "Microneedling is a collagen induction
+//      therapy…", "Laser hair removal" / "Laser hair removal works by…"), and
+//      stripping it unconditionally would leave a clean post's meta description
+//      starting mid-sentence — the exact SEO damage this fix exists to undo
+//      (BLD-1182 review).
+// This is a read-time mitigation only — see BLD-1182 in lib/build-backlog.ts for
+// the separate stored-`excerpt` cleanup.
+export function stripNavChrome(text: string, title?: string): string {
+  const t = text.replace(/^(?:(?:[A-Z][a-z]+\s){0,2}[A-Z][a-z]+\s+Blog\s+)+/, '').trim();
+  const hadNavChrome = t !== text.trim();
+  const cleanTitle = title?.trim();
+  if (!hadNavChrome || !cleanTitle) return t;
+  const escaped = cleanTitle.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  return t.replace(new RegExp(`^${escaped}\\s+`, 'i'), '').trim();
+}
+
 const articleCard = (a: Article): BlogCard => ({ slug: a.slug, title: a.title, excerpt: a.excerpt, category: a.category, readMinutes: a.readMinutes, published: a.published, image: articleImage(a.slug) });
 const articlePost = (a: Article): BlogPost => ({ slug: a.slug, title: a.title, excerpt: a.excerpt, metaDescription: a.metaDescription, category: a.category, readMinutes: a.readMinutes, published: a.published, updated: a.updated, html: blocksToHtml(a.blocks), keywords: a.keywords, related: a.related ?? [], image: articleImage(a.slug) });
 
@@ -52,7 +82,8 @@ export async function getBlogPost(slug: string): Promise<BlogPost | null> {
   try {
     const r = await db.post.findFirst({ where: { slug, status: 'PUBLISHED' } });
     if (r) return {
-      slug: r.slug, title: r.title, excerpt: r.excerpt ?? '', metaDescription: r.metaDescription ?? r.excerpt ?? '',
+      slug: r.slug, title: r.title, excerpt: r.excerpt ?? '',
+      metaDescription: r.metaDescription ?? (r.excerpt ? stripNavChrome(r.excerpt, r.title) : ''),
       category: r.category ?? 'Wellbeing', readMinutes: r.readMinutes, published: (r.publishedAt ?? r.createdAt).toISOString(),
       updated: r.updatedAt.toISOString(), html: sanitizeHtml(r.content), keywords: r.keywords, related: r.related, image: r.coverImage ?? null,
     };
