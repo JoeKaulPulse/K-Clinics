@@ -14,7 +14,7 @@ const field = 'mt-1 w-full rounded-[var(--radius-sm)] border border-[var(--color
 export function CheckoutForm() {
   const { items, subtotalPence, clear } = useCart();
   const hasAge = items.some((i) => i.ageRestricted);
-  const [f, setF] = useState({ name: '', email: '', phone: '', method: 'ship', shipLine1: '', shipLine2: '', shipCity: '', shipPostcode: '', giftCardCode: '', dob: '', ageDeclare: false });
+  const [f, setF] = useState({ name: '', email: '', phone: '', method: 'ship', shipLine1: '', shipLine2: '', shipCity: '', shipPostcode: '', giftCardCode: '', dob: '', ageDeclare: false, marketingOptIn: false });
   const set = <K extends keyof typeof f>(k: K, v: (typeof f)[K]) => setF((p) => ({ ...p, [k]: v }));
   const [stage, setStage] = useState<'details' | 'pay' | 'done'>('details');
   const [clientSecret, setClientSecret] = useState('');
@@ -31,7 +31,7 @@ export function CheckoutForm() {
     setError(''); setBusy(true);
     const res = await fetch('/api/shop/checkout', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ items: items.map((i) => ({ productId: i.productId, qty: i.qty })), name: f.name, email: f.email, phone: f.phone, method: f.method, shipName: f.name, shipLine1: f.shipLine1, shipLine2: f.shipLine2, shipCity: f.shipCity, shipPostcode: f.shipPostcode, giftCardCode: f.giftCardCode || undefined, dob: f.dob || undefined, ageDeclare: f.ageDeclare }),
+      body: JSON.stringify({ items: items.map((i) => ({ productId: i.productId, qty: i.qty })), name: f.name, email: f.email, phone: f.phone, method: f.method, shipName: f.name, shipLine1: f.shipLine1, shipLine2: f.shipLine2, shipCity: f.shipCity, shipPostcode: f.shipPostcode, giftCardCode: f.giftCardCode || undefined, dob: f.dob || undefined, ageDeclare: f.ageDeclare, marketingOptIn: f.marketingOptIn }),
     });
     const j = await res.json().catch(() => ({}));
     setBusy(false);
@@ -66,6 +66,7 @@ export function CheckoutForm() {
                 <label className="text-xs text-[var(--color-stone)]">Email<input type="email" value={f.email} onChange={(e) => set('email', e.target.value)} className={field} /></label>
                 <label className="text-xs text-[var(--color-stone)]">Phone<input value={f.phone} onChange={(e) => set('phone', e.target.value)} className={field} /></label>
               </div>
+              <label className="mt-3 flex items-start gap-3 text-sm text-[var(--color-stone)]"><input type="checkbox" checked={f.marketingOptIn} onChange={(e) => set('marketingOptIn', e.target.checked)} className="mt-1 h-4 w-4 accent-[var(--color-gold)]" />Keep me updated with offers and skincare tips. We may also use your contact details, in hashed form, to show you our offers on social media — see our Privacy Policy.</label>
             </section>
 
             <section className="rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-5">
