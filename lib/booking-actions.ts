@@ -850,19 +850,55 @@ export async function rescheduleBooking(
  * plain `status: 'CANCELLED'` update already used for the immediate
  * SetupIntent-failure path in app/api/booking/create.
  *
+ * PENDING is NOT exclusive to the online-checkout hold, so the sweep is scoped
+ * hard rather than taking every stale PENDING row (review fix, PRJ-1043.3):
+ *
+ *  - `stripeSetupIntentId != null` + `stripePaymentMethodId == null` — the
+ *    booking reached the card step and no card was ever attached. Both public
+ *    checkout routes stamp the SetupIntent id onto the booking as soon as it
+ *    is created (app/api/booking/create, app/api/booking/start), and both the
+ *    card-saved route and the `setup_intent.succeeded` webhook stamp the
+ *    payment method, so a completed card save can never look abandoned.
+ *  - `startAt` still in the future — a past PENDING row holds no slot, and
+ *    retro-cancelling history would rewrite reporting for no benefit. Mirrors
+ *    the same guard in the abandoned-booking recovery email (lib/automations).
+ *  - BOOKING_CREATED audit actor === 'client' — the decisive origin check.
+ *    Staff-created PENDING bookings exist and are legitimately long-lived:
+ *    app/api/admin/bookings/session/route.ts books the next visit as PENDING
+ *    whenever the client has no card on file, and staff then send a card link
+ *    (app/api/admin/bookings/request-card) whose page stamps a
+ *    stripeSetupIntentId on open. Those audit rows carry the staff email as
+ *    actor, so they are never swept; only 'client' (public checkout) rows are.
+ *    No audit row at all (a failed logAudit) also means no sweep — fail-safe.
+ *
  * Safe to run frequently (idempotent — only ever touches rows still PENDING
  * past the window) from the 15-min cron dispatcher.
  */
 export async function releaseAbandonedPendingBookings(): Promise<{ released: number }> {
   const cutoff = new Date(Date.now() - PENDING_ABANDON_MS);
-  const stale = await db.booking.findMany({
-    where: { status: 'PENDING', createdAt: { lt: cutoff } },
+  const candidates = await db.booking.findMany({
+    where: {
+      status: 'PENDING',
+      createdAt: { lt: cutoff },
+      startAt: { gt: new Date() },
+      stripeSetupIntentId: { not: null },
+      stripePaymentMethodId: null,
+    },
     select: { id: true, clientId: true },
+    take: 200,
   });
+  if (!candidates.length) return { released: 0 };
+
+  const createdBy = await db.auditEvent.findMany({
+    where: { action: 'BOOKING_CREATED', bookingId: { in: candidates.map((b) => b.id) } },
+    select: { bookingId: true, actor: true },
+  });
+  const clientOriginated = new Set(createdBy.filter((a) => a.actor === 'client').map((a) => a.bookingId));
+  const stale = candidates.filter((b) => clientOriginated.has(b.id));
   if (!stale.length) return { released: 0 };
 
   await db.booking.updateMany({
-    where: { id: { in: stale.map((b) => b.id) } },
+    where: { id: { in: stale.map((b) => b.id) }, status: 'PENDING', stripePaymentMethodId: null },
     data: { status: 'CANCELLED', cancelledAt: new Date(), cancelReason: 'Abandoned checkout — no card added within the booking window (auto-released)', cancelledBy: 'system' },
   });
   for (const b of stale) {

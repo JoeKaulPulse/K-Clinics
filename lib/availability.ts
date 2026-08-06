@@ -1,6 +1,6 @@
 import 'server-only';
 import { cache } from 'react';
-import { db } from './db';
+import { db, withDbRetry } from './db';
 import { site } from './site';
 import { getSetting } from './settings';
 import { bookingFor, getTreatment } from './treatments';
@@ -53,10 +53,17 @@ type Clinician = {
  * Args are kept to primitives (dateISO, not Date objects) because cache()
  * memoizes non-primitive arguments by reference, not by value — two
  * separately-constructed Date instances for the same instant would miss.
+ *
+ * The read is wrapped in withDbRetry INSIDE the memo: cache() memoizes
+ * rejections as well as results, so a transient pool error cached here would
+ * be replayed to every later caller in the request — including the
+ * withDbRetry(() => isSlotFree(...)) wrappers in the booking routes, whose
+ * retries would then be no-ops. Retrying inside means only a persistent
+ * failure is ever cached.
  */
 const cliniciansForDay = cache(async function cliniciansForDay(treatmentSlug: string, dateISO: string, excludeBookingId?: string): Promise<Clinician[]> {
   const { dayStart, dayEnd } = clinicDayBounds(dateISO);
-  const staff = await db.adminUser.findMany({
+  const staff = await withDbRetry(() => db.adminUser.findMany({
     where: { isClinician: true, active: true },
     select: {
       id: true,
@@ -70,7 +77,7 @@ const cliniciansForDay = cache(async function cliniciansForDay(treatmentSlug: st
         select: { startAt: true, endAt: true, bufferMin: true },
       },
     },
-  });
+  }));
   return staff
     .filter((s) => s.competencies.length === 0 || s.competencies.includes(treatmentSlug))
     .map((s) => ({ id: s.id, name: s.name, schedules: s.schedules, timeOff: s.timeOff, bookings: s.bookings }));

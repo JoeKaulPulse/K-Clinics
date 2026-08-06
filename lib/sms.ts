@@ -53,6 +53,9 @@ export async function sendSms(to: string | null | undefined, body: string): Prom
   // error. A 4xx (bad number, unverified region, etc.) won't succeed on retry,
   // so it fails fast.
   const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+  // Never put a full client number in the logs (same rule as BLD-1179) — the
+  // last 4 digits are enough to correlate an outage with a specific send.
+  const masked = `…${to.slice(-4)}`;
   let lastError = 'SMS send failed';
   for (let attempt = 0; attempt < 3; attempt++) {
     try {
@@ -67,7 +70,7 @@ export async function sendSms(to: string | null | undefined, body: string): Prom
       });
       if (!res.ok) {
         lastError = `SMS provider ${res.status}`;
-        console.error(`[sms] send attempt ${attempt + 1}/3 failed (${lastError}) → ${to}`);
+        console.error(`[sms] send attempt ${attempt + 1}/3 failed (${lastError}) → ${masked}`);
         if ((res.status === 429 || res.status >= 500) && attempt < 2) { await sleep(700 * (attempt + 1)); continue; }
         return { ok: false, error: lastError };
       }
@@ -75,7 +78,7 @@ export async function sendSms(to: string | null | undefined, body: string): Prom
       return { ok: true, id: data.sid };
     } catch (e) {
       lastError = e instanceof Error ? e.message : 'Could not reach SMS provider.';
-      console.error(`[sms] send attempt ${attempt + 1}/3 failed (${lastError}) → ${to}`);
+      console.error(`[sms] send attempt ${attempt + 1}/3 failed (${lastError}) → ${masked}`);
       if (attempt < 2) { await sleep(700 * (attempt + 1)); continue; }
     }
   }
