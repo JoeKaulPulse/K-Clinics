@@ -29,7 +29,9 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   if (!crmEnabled) return NextResponse.json({ ok: false, error: 'CRM disabled.' }, { status: 503 });
 
   const session = await getSession();
-  if (!session || !sessionCan(session, 'consultations.manage')) {
+  // BLD-1199: note bodies can hold clinical detail (BLD-913), so authoring one
+  // requires clients.clinical.view alongside consultations.manage.
+  if (!session || !sessionCan(session, 'consultations.manage') || !sessionCan(session, 'clients.clinical.view')) {
     return NextResponse.json({ ok: false, error: 'Forbidden.' }, { status: 403 });
   }
 

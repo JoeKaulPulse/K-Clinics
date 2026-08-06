@@ -3504,6 +3504,14 @@ export const BUILD_BACKLOG: BacklogItem[] = [
       'Review fix (BLD-1038): the new per-attempt console.error lines logged the full destination phone number. They now log the last 4 digits only, matching the no-raw-PII-in-logs rule applied under BLD-1179. Pre-existing finding left alone (separate ref needed): the dummy-mode console.warn at the top of sendSms still logs the full number and message body when Twilio is unconfigured.',
     ],
   },
+  {
+    title: 'Consultation team notes bypass the clients.clinical.view permission gate', type: 'ERROR', urgency: 'P1', status: 'IN_REVIEW', assignee: 'claude',
+    value: 8, effort: 2,
+    detail: 'app/admin/consultations/[id]/page.tsx correctly gated consult.medicalNotes behind clients.clinical.view, but built and passed the full decrypted "team notes" thread to ConsultationNotes with no clinical check at all, so any staff member with only consultations.view (e.g. FRONT_DESK) could read every note body -- and notes are encClinical()\'d specifically because they can hold clinical detail (BLD-913). The POST route had the matching gap: it only required consultations.manage, so the same front-desk-role staff could author clinical free-text notes too.',
+    notes: [
+      'Fix (BLD-1199): app/admin/consultations/[id]/page.tsx now only decrypts and passes note bodies to <ConsultationNotes> when clinical (sessionCan(session, \'clients.clinical.view\')) is true -- notes resolves to [] otherwise, mirroring the existing consult.medicalNotes && clinical pattern in the same file. Non-clinical staff see a "You don\'t have permission to view clinical notes for this consultation." message in place of the thread, and the input box is hidden with it (no point letting them draft a note the API will reject). app/api/admin/consultations/[id]/notes/route.ts POST handler now requires both sessionCan(session, \'consultations.manage\') and sessionCan(session, \'clients.clinical.view\'), returning the same 403 Forbidden shape as before when either is missing.',
+    ],
+  },
 ];
 
 // A content hash over every item's title + status + PR, so ANY change (a new
