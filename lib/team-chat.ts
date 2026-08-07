@@ -373,6 +373,15 @@ export async function deleteMessage(meId: string, messageId: string): Promise<vo
   const isOwner = mem?.role === 'OWNER';
   if (msg.authorId !== meId && !isOwner) throw new Error('You can only delete your own messages.');
   await db.teamMessage.update({ where: { id: messageId }, data: { deletedAt: new Date(), body: '' } });
+  // BLD-1207 (review): bump the channel so streamProbe() notices. Deleting an
+  // unread message lowers every other member's unread count, but the probe only
+  // hashes lastMessageAt/lastReadAt/muted/membership — none of which move on a
+  // soft delete — so without this the probe string is unchanged, streamSnapshot()
+  // never re-runs, and their badge stays inflated until some unrelated event
+  // moves the channel. The full-snapshot comparison the probe replaced caught
+  // this via the unread number itself. Same bump toggleReaction() already does,
+  // and best-effort for the same reason: the delete itself must still stand.
+  await db.teamChannel.update({ where: { id: msg.channelId }, data: { lastMessageAt: new Date() } }).catch(() => {});
 }
 
 export async function addMembers(meId: string, channelId: string, memberIds: string[]): Promise<void> {
