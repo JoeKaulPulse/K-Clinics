@@ -254,6 +254,7 @@ function TimeOff({ staff, onChange }: { staff: Staff; onChange: () => void }) {
     setStart(''); setEnd(''); setReason(''); onChange();
   }
   async function remove(id: string) {
+    if (!confirm('Remove this time off entry? This cannot be undone.')) return;
     setBusy(true); setMsg('');
     const res = await fetch('/api/admin/schedule', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ op: 'removeTimeOff', id }) });
     setBusy(false);

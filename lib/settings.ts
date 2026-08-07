@@ -19,6 +19,7 @@ export type SettingKey =
   | 'require_consent'            // signed treatment consent required before starting
   | 'require_before_photo'       // laser: before-photo (or signed opt-out) required before starting
   | 'abandoned_booking_recovery' // email a nudge to finish an unpaid/incomplete booking
+  | 'abandoned_order_recovery'   // email a nudge to finish an unpaid shop order (BLD-1204)
   | 'booking_intent_recovery'    // email a nudge to a funnel visitor who left their email but never booked
   | 'no_show_notice'             // email a warm rebooking note when an appointment is marked no-show
   | 'membership_renewal_nudge'   // email lapsing K Circle members to keep their tier
@@ -48,6 +49,7 @@ export const SETTING_DEFAULTS: Record<SettingKey, boolean> = {
   require_consent: false,
   require_before_photo: true,
   abandoned_booking_recovery: true, // BLD-131: enabled (owner-approved revenue automation)
+  abandoned_order_recovery: false, // BLD-1204: ships dark; owner enables after review
   booking_intent_recovery: true, // BLD-838: enabled (owner-approved revenue automation)
   no_show_notice: false,
   membership_renewal_nudge: true, // BLD-131: enabled (owner-approved revenue automation)
@@ -116,6 +118,10 @@ export const SETTING_META: Record<SettingKey, { label: string; description: stri
   abandoned_booking_recovery: {
     label: 'Abandoned-booking recovery emails',
     description: 'Email a gentle, one-time nudge to clients who started a booking but didn’t save a card to finish it (sent 2–72h later). Off by default — turn on to recover incomplete bookings.',
+  },
+  abandoned_order_recovery: {
+    label: 'Abandoned-order recovery emails',
+    description: 'Email a gentle, one-time nudge to shoppers who reached checkout but never completed payment for their shop order (sent 2–72h later, once per order). Off by default — turn on to recover unpaid orders.',
   },
   booking_intent_recovery: {
     label: 'Booking-funnel email recovery',

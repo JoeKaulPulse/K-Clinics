@@ -28,6 +28,7 @@ export function FacilityDocsViewer({ docs, canManage = false }: { docs: Facility
 
   async function remove(id: string) {
     if (busy) return;
+    if (!confirm('Delete this facility document? This cannot be undone.')) return;
     setBusy(id);
     try {
       const res = await fetch('/api/admin/facility', { method: 'DELETE', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id }) });

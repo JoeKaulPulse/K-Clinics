@@ -149,6 +149,26 @@ export async function listMyChannels(meId: string): Promise<ChannelDTO[]> {
   return rows.sort((a, b) => b.lastMessageAt.localeCompare(a.lastMessageAt));
 }
 
+/** BLD-1207 — cheap change probe for the SSE poll loop: one membership+channel
+ *  join, no per-channel `teamMessage.count()`. streamSnapshot()'s N+1 unread
+ *  count burst only runs when this string moves, instead of on every ~1.5s
+ *  tick for every open admin session. Covers every input streamSnapshot's rev
+ *  is built from: new channel activity (lastMessageAt, bumped on send and on
+ *  reaction toggle), read state (lastReadAt, via markRead), mute toggles, and
+ *  channel membership changes (join/leave) — so nothing that would change the
+ *  real snapshot goes undetected here. */
+export async function streamProbe(meId: string): Promise<string> {
+  const memberships = await db.teamChannelMember.findMany({
+    where: { userId: meId },
+    select: { lastReadAt: true, muted: true, channel: { select: { id: true, lastMessageAt: true } } },
+  });
+  if (!memberships.length) return '0';
+  return memberships
+    .map((m) => `${m.channel.id}:${+m.channel.lastMessageAt}:${m.lastReadAt ? +m.lastReadAt : 0}:${m.muted ? 1 : 0}`)
+    .sort()
+    .join('|');
+}
+
 /** Lightweight per-user signal for the SSE stream: channel ids + lastMessageAt +
  *  unread. The client refetches detail when this changes. */
 export async function streamSnapshot(meId: string): Promise<{ rev: string; channels: { id: string; lastMessageAt: string; unread: number }[]; totalUnread: number }> {
@@ -353,6 +373,15 @@ export async function deleteMessage(meId: string, messageId: string): Promise<vo
   const isOwner = mem?.role === 'OWNER';
   if (msg.authorId !== meId && !isOwner) throw new Error('You can only delete your own messages.');
   await db.teamMessage.update({ where: { id: messageId }, data: { deletedAt: new Date(), body: '' } });
+  // BLD-1207 (review): bump the channel so streamProbe() notices. Deleting an
+  // unread message lowers every other member's unread count, but the probe only
+  // hashes lastMessageAt/lastReadAt/muted/membership — none of which move on a
+  // soft delete — so without this the probe string is unchanged, streamSnapshot()
+  // never re-runs, and their badge stays inflated until some unrelated event
+  // moves the channel. The full-snapshot comparison the probe replaced caught
+  // this via the unread number itself. Same bump toggleReaction() already does,
+  // and best-effort for the same reason: the delete itself must still stand.
+  await db.teamChannel.update({ where: { id: msg.channelId }, data: { lastMessageAt: new Date() } }).catch(() => {});
 }
 
 export async function addMembers(meId: string, channelId: string, memberIds: string[]): Promise<void> {

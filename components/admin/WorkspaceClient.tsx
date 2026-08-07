@@ -125,6 +125,7 @@ export function WorkspaceClient() {
   }
 
   async function removeAlias(userEmail: string, alias: string) {
+    if (!confirm(`Remove the alias "${alias}"? This cannot be undone.`)) return;
     await fetch(`/api/admin/integrations/google-workspace/users/${encodeURIComponent(userEmail)}/aliases`, {
       method: 'DELETE',
       headers: { 'Content-Type': 'application/json' },
