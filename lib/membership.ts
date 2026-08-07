@@ -67,6 +67,31 @@ export async function rolling12moSpendPence(clientId: string): Promise<number> {
   const since = new Date(Date.now() - 365 * 86400000);
   const bookings = await db.booking.aggregate({ _sum: { chargedPence: true, refundedPence: true }, where: { clientId, chargedAt: { gte: since } } });
   let total = (bookings._sum.chargedPence ?? 0) - (bookings._sum.refundedPence ?? 0);
+  // BLD-1202: a partial-voucher booking's chargedPence is the card/terminal/
+  // pay-link remainder only (BLD-882) — fold the voucher-covered portion back
+  // in too, or a client's realised spend (and their K Circle tier) undercounts
+  // by however much they paid with a gift voucher. Excludes bookings settled
+  // ENTIRELY by voucher (chargePaymentIntentId 'ext_gift-voucher'), whose full
+  // amount is already in chargedPence — same rule as bookingSpendPence in
+  // lib/client-loyalty.ts, kept in sync deliberately.
+  // BLD-1202 (review): a FULL refund also puts the voucher-covered portion back
+  // on the voucher — refundBooking() and the charge.refunded webhook both
+  // creditVoucher() once `fully`, but neither zeroes giftVoucherPence — so that
+  // money stops being realised spend. Without this the card leg nets to zero
+  // above while the voucher slice keeps counting, leaving phantom K Circle tier
+  // credit on a booking the client was refunded in full AND had their voucher
+  // balance returned for. A PARTIAL refund does not return the voucher, so it
+  // still counts. Prisma can't compare two columns in a where-clause, so this
+  // reads the rows (a handful per client per year) instead of aggregating.
+  const vouchered = await db.booking.findMany({
+    where: { clientId, chargedAt: { gte: since }, giftVoucherPence: { gt: 0 }, chargePaymentIntentId: { not: 'ext_gift-voucher' } },
+    select: { giftVoucherPence: true, chargedPence: true, refundedPence: true },
+  });
+  for (const v of vouchered) {
+    const refunded = v.refundedPence ?? 0;
+    if (refunded > 0 && refunded >= (v.chargedPence ?? 0)) continue; // fully refunded — voucher was credited back
+    total += v.giftVoucherPence;
+  }
   try {
     const orders = await db.order.aggregate({ _sum: { totalPence: true }, where: { clientId, status: { in: ['PAID', 'FULFILLED'] }, createdAt: { gte: since } } });
     total += orders._sum.totalPence ?? 0;

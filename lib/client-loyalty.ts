@@ -135,9 +135,30 @@ export async function clientLedger(clientId: string, limit = 50) {
 
 // ── Earning ──────────────────────────────────────────────────────────────────
 
-/** True spend (pence) for a booking: the amount charged, else the listed price. */
-function bookingSpendPence(b: { chargedPence: number | null; pricePence: number }): number {
-  return b.chargedPence && b.chargedPence > 0 ? b.chargedPence : b.pricePence;
+/** True spend (pence) for a booking: the amount charged (plus any gift-voucher
+ *  portion not already folded into that charge), else the listed price.
+ *
+ *  BLD-1202: for a PARTIAL voucher application, chargedPence is deliberately
+ *  just the card/terminal/pay-link REMAINDER (BLD-882) — the voucher-covered
+ *  portion lives separately in giftVoucherPence and must be added back in, or
+ *  it earns zero loyalty points despite being real client spend. A booking
+ *  settled ENTIRELY by voucher already carries the whole amount in
+ *  chargedPence (chargePaymentIntentId 'ext_gift-voucher' — see the 'voucher'
+ *  case in app/api/admin/bookings/session/route.ts), so that case is excluded
+ *  here to avoid double-counting the same money twice. */
+function bookingSpendPence(b: { chargedPence: number | null; pricePence: number; giftVoucherPence?: number | null; chargePaymentIntentId?: string | null }): number {
+  const charged = b.chargedPence ?? 0;
+  // BLD-1202 (review): nothing charged yet — fall back to the list price, as
+  // before. awardClientSpend fires on COMPLETION as well as on charge
+  // ("whichever happens first", and it is idempotent per booking, so the later
+  // charge never tops it up), and pricePence is the full undiscounted figure
+  // that already covers whatever the voucher will pay. Adding the voucher to a
+  // zero charge instead would make a partially-vouchered booking earn points on
+  // the voucher slice alone — an UNDER-award, the very bug BLD-1202 set out to
+  // fix, on the path that runs first in practice.
+  if (charged <= 0) return b.pricePence;
+  const voucher = b.chargePaymentIntentId === 'ext_gift-voucher' ? 0 : (b.giftVoucherPence ?? 0);
+  return charged + voucher;
 }
 
 /** Award loyalty points for a completed/charged booking (1 pt per £1). Idempotent
@@ -146,7 +167,7 @@ function bookingSpendPence(b: { chargedPence: number | null; pricePence: number 
 export async function awardClientSpend(bookingId: string): Promise<void> {
   const b = await db.booking.findUnique({
     where: { id: bookingId },
-    select: { id: true, clientId: true, treatmentTitle: true, pricePence: true, chargedPence: true },
+    select: { id: true, clientId: true, treatmentTitle: true, pricePence: true, chargedPence: true, giftVoucherPence: true, chargePaymentIntentId: true },
   });
   if (!b) return;
 
