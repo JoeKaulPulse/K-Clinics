@@ -36,12 +36,15 @@ export default async function ConsultationDetail({ params }: { params: Promise<{
 
   // BLD-913: bodies are encrypted at rest; decClinical tolerates legacy
   // plaintext rows until the daily backfill has swept them.
-  const notes = consult.notes.map((n) => ({
-    id: n.id,
-    body: decClinical(n.body) ?? '',
-    author: n.author,
-    createdAt: n.createdAt.toISOString(),
-  }));
+  // BLD-1199: only decrypt/expose bodies to staff with clients.clinical.view.
+  const notes = clinical
+    ? consult.notes.map((n) => ({
+        id: n.id,
+        body: decClinical(n.body) ?? '',
+        author: n.author,
+        createdAt: n.createdAt.toISOString(),
+      }))
+    : [];
 
   return (
     <AdminShell user={session?.email} can={can}>
@@ -63,7 +66,9 @@ export default async function ConsultationDetail({ params }: { params: Promise<{
 
       <div className="mt-8 grid gap-8 lg:grid-cols-[1.5fr_1fr]">
         <div className="space-y-8">
-          {/* Team notes with @-mentions — staff only */}
+          {/* Team notes with @-mentions — staff only; bodies can hold clinical
+              detail (BLD-913), so reading/writing requires clients.clinical.view
+              on top of consultations.view (BLD-1199). */}
           <section>
             <div className="mb-3 flex items-center gap-2">
               <h2 className="font-[family-name:var(--font-display)] text-xl">Team notes</h2>
@@ -71,7 +76,13 @@ export default async function ConsultationDetail({ params }: { params: Promise<{
                 Staff only
               </span>
             </div>
-            <ConsultationNotes consultationId={consult.id} initial={notes} />
+            {clinical ? (
+              <ConsultationNotes consultationId={consult.id} initial={notes} />
+            ) : (
+              <p className="text-sm text-[var(--color-stone)]">
+                You don&apos;t have permission to view clinical notes for this consultation.
+              </p>
+            )}
           </section>
 
           {/* Client's original message */}
