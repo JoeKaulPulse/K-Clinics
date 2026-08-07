@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { KSpeech } from '@/components/academy/KMascot';
 import { Illustration, matchIllustration } from '@/components/academy/Illustrations';
 import { AmbientBackdrop } from '@/components/academy/AmbientBackdrop';
+import { useBodyScrollLock } from '@/components/ui/Dialog';
 
 // A short animated "video" explainer generated on the fly from a lesson's own
 // points — the K narrates each beat (typed speech) over a matched illustration,
@@ -24,7 +25,9 @@ export function ExplainerPlayer({ title, level, points, onClose, onStart }: { ti
     const t = setTimeout(() => setI((x) => x + 1), cur.kind === 'title' ? 4200 : 5400);
     return () => clearTimeout(t);
   }, [i, last, cur.kind]);
-  useEffect(() => { const prev = document.body.style.overflow; document.body.style.overflow = 'hidden'; return () => { document.body.style.overflow = prev; }; }, []);
+  // Shared ref-counted lock: this player opens on top of ImmersiveCourse, which
+  // also locks — unmounting both at once must not leave the page stuck. (BLD-1194)
+  useBodyScrollLock();
 
   const art = cur.kind === 'point' ? matchIllustration(cur.text) : null;
 

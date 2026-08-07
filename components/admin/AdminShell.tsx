@@ -137,6 +137,20 @@ export function AdminShell({
   // Dialog primitive's hook (PRJ-939.10).
   const [mobileOpen, setMobileOpen] = useState(false);
   useEffect(() => { setMobileOpen(false); }, [pathname]); // close on navigation
+  // The drawer markup is `lg:hidden`, so growing past the desktop breakpoint
+  // (window resize, tablet rotated to landscape) would leave it mounted but
+  // display:none — invisible, with no way to close it (its own close button and
+  // the hamburger are both lg:hidden too) while it still holds the body scroll
+  // lock, so the admin page could not be scrolled. Close it as soon as the
+  // desktop layout takes over. (BLD-1194)
+  useEffect(() => {
+    if (!mobileOpen) return;
+    const mq = window.matchMedia('(min-width: 64rem)'); // Tailwind `lg`
+    if (mq.matches) { setMobileOpen(false); return; }
+    const onChange = (e: MediaQueryListEvent) => { if (e.matches) setMobileOpen(false); };
+    mq.addEventListener('change', onChange);
+    return () => mq.removeEventListener('change', onChange);
+  }, [mobileOpen]);
   const closeMobile = useCallback(() => setMobileOpen(false), []);
   const { panelRef: drawerRef, onKeyDown: drawerKeyDown } = useDialogBehaviours<HTMLElement>(closeMobile, mobileOpen);
 
