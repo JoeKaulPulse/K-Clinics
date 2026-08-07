@@ -3505,6 +3505,14 @@ export const BUILD_BACKLOG: BacklogItem[] = [
     ],
   },
   {
+    title: 'Destructive admin Remove actions inconsistently guarded — some skip confirmation entirely', type: 'ERROR', urgency: 'P1', status: 'IN_REVIEW', assignee: 'claude',
+    value: 7, effort: 2,
+    detail: 'Several admin Remove/Delete handlers fired their mutation immediately with no confirm() step, while near-identical Remove/Delete buttons elsewhere in the same file did confirm first, risking accidental irreversible deletes.',
+    notes: [
+      'Fix: added a confirm() gate to six handlers that had none: BundlesManager.tsx removeItem (course-in-bundle Remove button), AbManager.tsx removeVariant (Remove variant button), DemosManager.tsx deleteMistake (mistake-marker x button), ScheduleManager.tsx remove() in TimeOff (removeTimeOff), WorkspaceClient.tsx removeAlias (Google Workspace alias DELETE), and FacilityDocsViewer.tsx remove() (facility doc DELETE). Each message names the specific thing being removed and states it cannot be undone, matching the wording style of the confirm() calls already used on the sibling Delete buttons in the same files. Audited every components/admin/**/*.tsx file (192 files) for remove/delete/destroy-named handlers and for fetch calls with method DELETE; all other matches already had a confirm() (or, for teamchat/ChatWindow.tsx remove(), the confirm sits in the caller before invoking it) and were left untouched. Two reversible toggles (SessionRunner.tsx removeVoucher, NotificationPreferences.tsx disablePush) were intentionally left alone — removing a promo code or disabling push notifications is trivially reversible, unlike the six irreversible-delete handlers above. (BLD-1208)',
+    ],
+  },
+  {
     title: 'Consultation team notes bypass the clients.clinical.view permission gate', type: 'ERROR', urgency: 'P1', status: 'IN_REVIEW', assignee: 'claude',
     value: 8, effort: 2,
     detail: 'app/admin/consultations/[id]/page.tsx correctly gated consult.medicalNotes behind clients.clinical.view, but built and passed the full decrypted "team notes" thread to ConsultationNotes with no clinical check at all, so any staff member with only consultations.view (e.g. FRONT_DESK) could read every note body -- and notes are encClinical()\'d specifically because they can hold clinical detail (BLD-913). The POST route had the matching gap: it only required consultations.manage, so the same front-desk-role staff could author clinical free-text notes too.',

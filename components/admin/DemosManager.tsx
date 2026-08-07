@@ -109,7 +109,7 @@ function MistakeRow({ m, busy, act, seek }: { m: DemoMistake; busy: boolean; act
       <input className="flex-1 rounded border border-[var(--color-line)] px-2 py-1 text-xs" value={labelText} onChange={(e) => setLabelText(e.target.value)} />
       <label className="flex items-center gap-1 text-xs text-[var(--color-stone)]">±s<input className="w-14 rounded border border-[var(--color-line)] px-1.5 py-1 text-xs" value={windowSec} onChange={(e) => setWindowSec(e.target.value)} /></label>
       <button onClick={() => act({ op: 'updateMistake', id: m.id, atSec: m.atSec, windowSec: Number(windowSec) || 3, label: labelText })} disabled={busy} className={btnGhost}>Save</button>
-      <button onClick={() => act({ op: 'deleteMistake', id: m.id })} disabled={busy} className="text-xs text-[var(--color-blush-deep)] hover:underline">×</button>
+      <button onClick={() => { if (confirm('Delete this mistake marker? This cannot be undone.')) act({ op: 'deleteMistake', id: m.id }); }} disabled={busy} className="text-xs text-[var(--color-blush-deep)] hover:underline">×</button>
     </li>
   );
 }
