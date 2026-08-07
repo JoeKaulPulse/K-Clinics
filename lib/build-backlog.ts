@@ -3561,7 +3561,7 @@ export const BUILD_BACKLOG: BacklogItem[] = [
     ],
   },
   {
-    title: 'Enrolled academy students on a course with zero uploaded modules hit a dead end', type: 'ERROR', urgency: 'P1', status: 'IN_REVIEW', assignee: 'claude',
+    title: 'Enrolled academy students on a course with zero uploaded modules hit a dead end', type: 'ERROR', urgency: 'P1', status: 'SHIPPED', assignee: 'claude', pr: PR(1768),
     value: 7, effort: 3,
     detail: 'app/(marketing)/academy/portal/page.tsx: when courseProgress() (lib/lms.ts) finds zero lessons/quizzes for a paid, active enrolment, the only action was a generic "contact us" link -- no ETA, no auto-notify when content lands.',
     notes: [
