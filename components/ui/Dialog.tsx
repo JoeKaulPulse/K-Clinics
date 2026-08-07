@@ -12,6 +12,39 @@ interface DialogProps {
   className?: string;
 }
 
+// ── Background scroll lock ───────────────────────────────────────────────────
+// Ref-counted at module scope rather than each overlay saving and restoring
+// document.body.style.overflow itself. React fires useEffect cleanups
+// **parent-first** inside a deleted subtree, so when an outer overlay and an
+// overlay nested inside it unmount in the same commit (a client-side
+// navigation away from a lesson with the PDF viewer open, say) the naive
+// save/restore runs backwards: the outer restores '' and then the inner
+// restores the 'hidden' it captured, leaving the page permanently unscrollable.
+// A counter is order-independent: the page unlocks when the last overlay goes,
+// whatever sequence the cleanups run in. (BLD-1194)
+let scrollLocks = 0;
+let scrollRestore = '';
+
+/**
+ * Locks background scroll while `active`. Safe to nest and to stack — every
+ * overlay that wants the lock should use this rather than touching
+ * document.body.style.overflow directly.
+ */
+export function useBodyScrollLock(active = true) {
+  useEffect(() => {
+    if (!active) return;
+    if (scrollLocks === 0) {
+      scrollRestore = document.body.style.overflow;
+      document.body.style.overflow = 'hidden';
+    }
+    scrollLocks += 1;
+    return () => {
+      scrollLocks = Math.max(0, scrollLocks - 1);
+      if (scrollLocks === 0) document.body.style.overflow = scrollRestore;
+    };
+  }, [active]);
+}
+
 const FOCUSABLE = [
   'a[href]',
   'button:not([disabled])',
@@ -48,14 +81,7 @@ export function useDialogBehaviours<T extends HTMLElement = HTMLDivElement>(onCl
 
   // Lock background scroll while active (BLD-1194, extending BLD-1183's fix in
   // <Dialog> to every bespoke-markup modal that uses this hook directly).
-  // Captures the previous value so a nested/stacked dialog restores its outer
-  // sibling's lock rather than clobbering it back to visible.
-  useEffect(() => {
-    if (!active) return;
-    const prev = document.body.style.overflow;
-    document.body.style.overflow = 'hidden';
-    return () => { document.body.style.overflow = prev; };
-  }, [active]);
+  useBodyScrollLock(active);
 
   const onKeyDown = useCallback(
     (e: KeyboardEvent<HTMLDivElement>) => {
