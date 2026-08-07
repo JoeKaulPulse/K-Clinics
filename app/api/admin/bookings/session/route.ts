@@ -290,12 +290,6 @@ export async function POST(req: Request) {
         });
         if (updated.count === 0) { await undoVoucherReservation(code, reservedPence); return bad('This booking was just paid on another screen.'); }
         try { const { awardClientSpend } = await import('@/lib/client-loyalty'); await awardClientSpend(bookingId); } catch { /* non-fatal */ }
-        // BLD-1201: real in-house revenue collected via gift voucher must reconcile
-        // to Xero like every other settlement path (card charge, terminal, pay-link)
-        // — only 'external' (Treatwell etc.) is intentionally skipped, per the
-        // comment on that branch above, because the external platform owns that
-        // side. A voucher redemption is genuine revenue and must be invoiced.
-        try { const { pushBookingSaleToXero } = await import('@/lib/xero'); await pushBookingSaleToXero(bookingId); } catch (e) { console.error('[session] xero push failed:', (e as Error)?.message); const Sentry = await import('@sentry/nextjs'); Sentry.captureException(e, { tags: { area: 'xero', sub: 'sale-push' } }); }
         await logAudit({ action: 'PAYMENT_CHARGED', actor: session.email, summary: `Paid in full with gift voucher ${code} (£${(amountPence / 100).toFixed(2)})${dr ? ` (price adjustment — ${dr})` : ''}`, bookingId, clientId: booking.clientId, meta: { channel: 'gift-voucher', voucherCode: code, voucherPence: amountPence, discountReason: dr || undefined } }).catch(() => {});
         return ok({ appliedPence: amountPence, remainingPence: 0, settled: true });
       }
