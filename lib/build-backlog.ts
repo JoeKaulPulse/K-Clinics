@@ -3560,6 +3560,14 @@ export const BUILD_BACKLOG: BacklogItem[] = [
       'Review fix (BLD-1194), two defects found and fixed. (1) React unmounts a deleted subtree\'s useEffect cleanups parent-first, so an outer and a nested overlay unmounting in the same commit (e.g. leaving an academy lesson via browser Back while the PDF viewer or explainer is open) ran the naive save/restore backwards -- the outer restored empty string, then the inner restored the "hidden" it had captured, leaving the page permanently unscrollable. Replaced it with a module-scope ref-counted useBodyScrollLock() (order-independent by construction), exported from components/ui/Dialog.tsx, and moved ImmersiveCourse/ExplainerPlayer onto it. (2) AdminShell\'s mobile drawer is lg:hidden but mobileOpen did not track the breakpoint -- resizing/rotating past lg while it was open left it display:none yet still holding the lock, with its own close button and the hamburger also lg:hidden (no way to dismiss it). It now closes itself via a matchMedia(min-width: 64rem) listener the moment the desktop layout takes over. Noted, left alone: components/layout/Header.tsx and components/motion/Intro.tsx still write document.body.style.overflow directly, but neither\'s lifetime can overlap a dialog\'s (both are top-level full-screen overlays; Intro is a ~1.75s boot splash).',
     ],
   },
+  {
+    title: 'Enrolled academy students on a course with zero uploaded modules hit a dead end', type: 'ERROR', urgency: 'P1', status: 'IN_REVIEW', assignee: 'claude',
+    value: 7, effort: 3,
+    detail: 'app/(marketing)/academy/portal/page.tsx: when courseProgress() (lib/lms.ts) finds zero lessons/quizzes for a paid, active enrolment, the only action was a generic "contact us" link -- no ETA, no auto-notify when content lands.',
+    notes: [
+      'Fix (BLD-1231): added Enrolment.contentReadyNotifiedAt (nullable DateTime, additive) and EmailKind.COURSE_CONTENT_READY (additive enum value). New courseContentReady() job in lib/automations.ts runs unconditionally (always on, not opt-in -- this is a transactional "your paid course is ready" notice, not marketing) as part of the existing daily automations batch: finds courses with at least one published lesson or quiz, then every PAID/ENROLLED enrolment on those courses with contentReadyNotifiedAt still null gets a one-time tmplCourseContentReady() email (lib/email.ts) and the timestamp is set only on a successful send, so a delivery failure retries the next day. Portal copy (app/(marketing)/academy/portal/page.tsx) now tells students they will be emailed automatically, alongside the existing Contact us fallback. Did not block course sale/payment on content existing -- that is a revenue-affecting product decision left for an owner call, not something to decide unilaterally in an unattended build.',
+    ],
+  },
 ];
 
 // A content hash over every item's title + status + PR, so ANY change (a new

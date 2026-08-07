@@ -1,6 +1,6 @@
 import 'server-only';
 import { db } from './db';
-import { sendEmail, emailShell, tmplBirthday, tmplFollowUp, tmplWinBack, tmplReviewRequest, tmplAppointmentReminder, tmplFormReminder, tmplAbandonedBooking, tmplAbandonedOrder, tmplAftercare, tmplSatisfaction, tmplRebook } from './email';
+import { sendEmail, emailShell, tmplBirthday, tmplFollowUp, tmplWinBack, tmplReviewRequest, tmplAppointmentReminder, tmplFormReminder, tmplAbandonedBooking, tmplAbandonedOrder, tmplAftercare, tmplSatisfaction, tmplRebook, tmplCourseContentReady } from './email';
 import { ensureReviewRequest, reviewLink, googleReviewLink } from './review-system';
 import { site } from './site';
 import { escapeHtml } from './sanitize';
@@ -24,13 +24,13 @@ const WIN_BACK_MONTHS = 6;
 const TIER_NUDGE_PENCE = 20000;   // nudge clients within £200 of the next tier
 const ANNIVERSARY_POINTS = 1000;  // bonus points on a membership anniversary
 
-type Tally = { birthdays: number; followUps: number; winBacks: number; reviews: number; reminders: number; formReminders: number; treatmentFollowUps: number; giftVouchers: number; tierNudges: number; anniversaries: number; abandonedBookings: number; abandonedOrders: number; bookingIntents: number; membershipRenewals: number; staffDigests: number; staffNudges: number; reencrypted: number; aftercare: number; satisfaction: number; rebookNudges: number; npsPromoters: number; npsDetractors: number; liveClassReminders: number; errors: number };
+type Tally = { birthdays: number; followUps: number; winBacks: number; reviews: number; reminders: number; formReminders: number; treatmentFollowUps: number; giftVouchers: number; tierNudges: number; anniversaries: number; abandonedBookings: number; abandonedOrders: number; bookingIntents: number; membershipRenewals: number; staffDigests: number; staffNudges: number; reencrypted: number; aftercare: number; satisfaction: number; rebookNudges: number; npsPromoters: number; npsDetractors: number; liveClassReminders: number; courseContentReady: number; errors: number };
 
 export async function runDailyAutomations(): Promise<Tally> {
-  const t: Tally = { birthdays: 0, followUps: 0, winBacks: 0, reviews: 0, reminders: 0, formReminders: 0, treatmentFollowUps: 0, giftVouchers: 0, tierNudges: 0, anniversaries: 0, abandonedBookings: 0, abandonedOrders: 0, bookingIntents: 0, membershipRenewals: 0, staffDigests: 0, staffNudges: 0, reencrypted: 0, aftercare: 0, satisfaction: 0, rebookNudges: 0, npsPromoters: 0, npsDetractors: 0, liveClassReminders: 0, errors: 0 };
+  const t: Tally = { birthdays: 0, followUps: 0, winBacks: 0, reviews: 0, reminders: 0, formReminders: 0, treatmentFollowUps: 0, giftVouchers: 0, tierNudges: 0, anniversaries: 0, abandonedBookings: 0, abandonedOrders: 0, bookingIntents: 0, membershipRenewals: 0, staffDigests: 0, staffNudges: 0, reencrypted: 0, aftercare: 0, satisfaction: 0, rebookNudges: 0, npsPromoters: 0, npsDetractors: 0, liveClassReminders: 0, courseContentReady: 0, errors: 0 };
   const { staffWeeklyDigest, staffReengagement } = await import('@/lib/staff-emails');
   // BLD-120: allSettled so one failing automation can't abort the rest.
-  const results = await Promise.allSettled([birthdays(t), followUps(t), reviews(t), winBacks(t), reminders(t), formReminders(t), treatmentFollowUps(t), scheduledGiftVouchers(t), tierNudges(t), anniversaries(t), abandonedBookings(t), abandonedOrders(t), bookingIntentRecovery(t), membershipRenewal(t), staffWeeklyDigest(t), staffReengagement(t), keyReencryption(t), aftercare(t), satisfaction(t), rebookNudge(t), promoterFollowUp(t), detractorFollowUp(t), liveClassReminders(t)]);
+  const results = await Promise.allSettled([birthdays(t), followUps(t), reviews(t), winBacks(t), reminders(t), formReminders(t), treatmentFollowUps(t), scheduledGiftVouchers(t), tierNudges(t), anniversaries(t), abandonedBookings(t), abandonedOrders(t), bookingIntentRecovery(t), membershipRenewal(t), staffWeeklyDigest(t), staffReengagement(t), keyReencryption(t), aftercare(t), satisfaction(t), rebookNudge(t), promoterFollowUp(t), detractorFollowUp(t), liveClassReminders(t), courseContentReady(t)]);
   for (const r of results) {
     if (r.status === 'rejected') { t.errors++; console.error('[automations] unhandled automation failure:', r.reason); }
   }
@@ -223,6 +223,44 @@ async function abandonedOrders(t: Tally) {
       res.ok ? t.abandonedOrders++ : t.errors++;
     }
   } catch (e) { t.errors++; console.error('[automations] abandoned orders failed:', (e as Error)?.message); }
+}
+
+// ── Course-content-ready notification (always on) ──
+// BLD-1231: a paid/enrolled academy student on a course with zero published
+// lessons/quizzes hit a portal dead end (courseProgress() → hasContent:false,
+// so the only action shown was a generic "contact us" link). Once staff
+// publish the course's first module, notify every such enrolment exactly
+// once — Enrolment.contentReadyNotifiedAt is the idempotency gate, only set
+// on a successful send so a delivery failure retries the next run.
+async function courseContentReady(t: Tally) {
+  try {
+    const base = (SITE_URL || '').replace(/\/$/, '');
+    const modulesWithContent = await db.courseModule.findMany({
+      where: { OR: [{ lessons: { some: {} } }, { quiz: { isNot: null } }] },
+      select: { courseId: true },
+      distinct: ['courseId'],
+    });
+    if (!modulesWithContent.length) return;
+    const courseIds = modulesWithContent.map((m) => m.courseId);
+    const rows = await db.enrolment.findMany({
+      where: { courseId: { in: courseIds }, status: { in: ['PAID', 'ENROLLED'] }, contentReadyNotifiedAt: null },
+      select: { id: true, applicantEmail: true, applicantName: true, course: { select: { title: true, slug: true } } },
+      take: 500,
+    });
+    for (const e of rows) {
+      if (!e.applicantEmail) continue;
+      const firstName = e.applicantName.split(/\s+/)[0] || 'there';
+      const learnUrl = `${base}/academy/learn/${e.course.slug}`;
+      const res = await sendEmail({ to: e.applicantEmail, subject: `${e.course.title} is ready to start`, html: tmplCourseContentReady({ firstName, courseTitle: e.course.title, learnUrl }) });
+      await db.emailEvent.create({ data: { kind: 'COURSE_CONTENT_READY', to: e.applicantEmail, subject: `${e.course.title} is ready to start`, status: res.ok ? 'SENT' : 'FAILED', providerId: res.id, error: res.error, meta: { enrolmentId: e.id } } }).catch(() => {});
+      if (res.ok) {
+        await db.enrolment.update({ where: { id: e.id }, data: { contentReadyNotifiedAt: new Date() } }).catch(() => {});
+        t.courseContentReady++;
+      } else {
+        t.errors++;
+      }
+    }
+  } catch (e) { t.errors++; console.error('[automations] course content ready failed:', (e as Error)?.message); }
 }
 
 // ── Booking-funnel intent recovery (opt-in) ──

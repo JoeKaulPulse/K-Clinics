@@ -962,6 +962,20 @@ export function tmplAbandonedOrder(o: { firstName: string; resumeUrl: string }) 
   });
 }
 
+// BLD-1231: sent once, the day a course's first module publishes, to every
+// paid/enrolled student who was stuck on the portal's "content coming soon"
+// dead end.
+export function tmplCourseContentReady(o: { firstName: string; courseTitle: string; learnUrl: string }) {
+  return emailShell({
+    preheader: `${o.courseTitle} is ready — start whenever you like`,
+    body: `${heroBand('confirmed')}
+    <h1 style="font-size:25px;margin:0 0 14px;">Your course is ready, ${escape(o.firstName)}</h1>
+    <p>Good news — the theory content for <strong>${escape(o.courseTitle)}</strong> is now live. You can start whenever suits you.</p>
+    <p style="margin:26px 0;">${btn(o.learnUrl, 'Start the course')}</p>
+    <p style="font-size:14px;color:#91766e;">Any questions before you dive in? Just reply — we're happy to help.</p>`,
+  });
+}
+
 export function tmplPostCourse(o: { firstName: string; treatment: string; rebookUrl: string; maintenance?: string | null }) {
   return emailShell({
     preheader: `You've completed your ${o.treatment} course`,
