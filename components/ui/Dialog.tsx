@@ -46,6 +46,17 @@ export function useDialogBehaviours<T extends HTMLElement = HTMLDivElement>(onCl
     };
   }, [active]);
 
+  // Lock background scroll while active (BLD-1194, extending BLD-1183's fix in
+  // <Dialog> to every bespoke-markup modal that uses this hook directly).
+  // Captures the previous value so a nested/stacked dialog restores its outer
+  // sibling's lock rather than clobbering it back to visible.
+  useEffect(() => {
+    if (!active) return;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => { document.body.style.overflow = prev; };
+  }, [active]);
+
   const onKeyDown = useCallback(
     (e: KeyboardEvent<HTMLDivElement>) => {
       if (e.key === 'Escape') { e.preventDefault(); onClose(); return; }
@@ -69,17 +80,9 @@ export function useDialogBehaviours<T extends HTMLElement = HTMLDivElement>(onCl
 }
 
 export function Dialog({ open, onClose, labelledby, label, children, className }: DialogProps) {
+  // Scroll lock (BLD-1183) now lives in useDialogBehaviours itself (BLD-1194),
+  // gated on `active` (= `open` here), so every hook consumer gets it too.
   const { panelRef, onKeyDown: trapTab } = useDialogBehaviours(onClose, open);
-
-  // Lock background scroll while open (BLD-1183). Captures the previous value
-  // so a nested/stacked Dialog restores its outer sibling's lock rather than
-  // clobbering it back to visible.
-  useEffect(() => {
-    if (!open) return;
-    const prev = document.body.style.overflow;
-    document.body.style.overflow = 'hidden';
-    return () => { document.body.style.overflow = prev; };
-  }, [open]);
 
   if (!open) return null;
 
