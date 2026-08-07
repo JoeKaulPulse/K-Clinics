@@ -186,8 +186,16 @@ export type StartResult =
  *  outstanding balance ('full') or the course deposit ('deposit'). Creates a
  *  PENDING EnrolmentPayment + a Stripe PaymentIntent (card + Klarna/Clearpay via
  *  automatic_payment_methods) and returns the client secret. Server re-prices —
- *  the client never supplies an amount. */
-export async function startEnrolmentPayment(studentId: string, enrolmentId: string, mode: 'full' | 'deposit'): Promise<StartResult> {
+ *  the client never supplies an amount.
+ *
+ *  BLD-1203: `consent` is the cookie-banner choice (read by the caller, which
+ *  has the request), captured onto the enrolment here — the moment the
+ *  learner actually starts a purchase — so the deferred server-side GA4/Meta
+ *  Purchase conversion in finalizeEnrolmentPayment (fired later from the
+ *  Stripe webhook/confirm endpoint, with no request/cookie context of its
+ *  own) can honour it. Mirrors how Booking/Order capture consent at
+ *  creation/checkout time for the same reason. */
+export async function startEnrolmentPayment(studentId: string, enrolmentId: string, mode: 'full' | 'deposit', consent?: { analyticsConsent?: boolean; marketingConsent?: boolean }): Promise<StartResult> {
   const e = await db.enrolment.findUnique({
     where: { id: enrolmentId },
     select: {
@@ -199,6 +207,13 @@ export async function startEnrolmentPayment(studentId: string, enrolmentId: stri
   if (!e || e.studentId !== studentId) return { ok: false, error: 'Enrolment not found.', status: 404 };
   if (e.status === 'CANCELLED') return { ok: false, error: 'This enrolment has been cancelled.', status: 409 };
   if (e.status === 'APPLIED') return { ok: false, error: 'Your place hasn’t been confirmed yet — we’ll email you when it’s ready to pay.', status: 409 };
+
+  if (consent) {
+    await db.enrolment.update({
+      where: { id: e.id },
+      data: { analyticsConsent: consent.analyticsConsent ?? false, marketingConsent: consent.marketingConsent ?? false },
+    }).catch(() => {});
+  }
 
   const fee = effectiveFeePence(e, e.course);
   // BLD-850: enrolments that never went through the offer email (manual
@@ -327,9 +342,14 @@ export async function finalizeEnrolmentPayment(piId: string, amountReceivedPence
  *  no email, same default-closed stance as the gift-voucher/booking purchase
  *  events. Deduped against the browser pixel by payment id; only reached from
  *  the tx.claimed branch above, so it fires exactly once per payment regardless
- *  of whether the webhook or the synchronous confirm endpoint claims it. */
+ *  of whether the webhook or the synchronous confirm endpoint claims it.
+ *
+ *  BLD-1203: analyticsConsent/marketingConsent are read back off the enrolment
+ *  (captured in startEnrolmentPayment, at the request that began this
+ *  purchase) and threaded into sendPurchase() — previously omitted entirely,
+ *  so sendPurchase's fail-closed default silently skipped every academy sale. */
 async function sendEnrolmentPurchaseConversion(paymentId: string, enrolmentId: string, amountPence: number): Promise<void> {
-  const e = await db.enrolment.findUnique({ where: { id: enrolmentId }, select: { applicantEmail: true, student: { select: { clientId: true } } } });
+  const e = await db.enrolment.findUnique({ where: { id: enrolmentId }, select: { applicantEmail: true, analyticsConsent: true, marketingConsent: true, student: { select: { clientId: true } } } });
   let consentedEmail: string | null = null;
   const clientId = e?.student?.clientId ?? null;
   if (clientId) {
@@ -337,7 +357,10 @@ async function sendEnrolmentPurchaseConversion(paymentId: string, enrolmentId: s
     if (buyer?.marketingOptIn && !buyer.unsubscribed) consentedEmail = e?.applicantEmail ?? null;
   }
   const { sendPurchase } = await import('@/lib/conversions');
-  await sendPurchase({ bookingId: paymentId, valuePence: amountPence, clientId, email: consentedEmail });
+  await sendPurchase({
+    bookingId: paymentId, valuePence: amountPence, clientId, email: consentedEmail,
+    analyticsConsent: e?.analyticsConsent ?? undefined, marketingConsent: e?.marketingConsent ?? undefined,
+  });
 }
 
 /** Email the learner a payment confirmation with any outstanding balance. Best-effort. */

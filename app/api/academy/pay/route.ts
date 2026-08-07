@@ -20,8 +20,15 @@ export async function POST(req: Request) {
   const mode = body.mode === 'deposit' ? 'deposit' : 'full';
   if (!enrolmentId) return NextResponse.json({ ok: false, error: 'Missing enrolment.' }, { status: 400 });
 
+  // BLD-1203: cookie-banner consent, captured now so the deferred GA4/Meta
+  // Purchase conversion (which can run from the Stripe webhook backstop, with
+  // no request/cookie context of its own) can honour it later — same pattern
+  // as the shop checkout route.
+  const { consentFromCookieHeader } = await import('@/lib/attribution');
+  const consent = consentFromCookieHeader(req.headers.get('cookie'));
+
   const { startEnrolmentPayment } = await import('@/lib/academy-payments');
-  const r = await startEnrolmentPayment(student.id, enrolmentId, mode);
+  const r = await startEnrolmentPayment(student.id, enrolmentId, mode, consent);
   if (!r.ok) return NextResponse.json({ ok: false, error: r.error }, { status: r.status ?? 400 });
   return NextResponse.json({ ok: true, clientSecret: r.clientSecret, paymentId: r.paymentId, amountPence: r.amountPence });
 }

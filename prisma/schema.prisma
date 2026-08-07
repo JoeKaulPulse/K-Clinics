@@ -46,6 +46,7 @@ enum EmailKind {
   MEMBERSHIP
   CHAT
   ABANDONED_BOOKING
+  ABANDONED_ORDER // BLD-1204: abandoned shop-order recovery
   NO_SHOW
   STAFF_DIGEST
   STAFF_NUDGE
@@ -2878,6 +2879,20 @@ model Enrolment {
   acceptedAt     DateTime? // when the learner first paid / accepted the offer
   paymentPlan    Boolean         @default(false) // an in-house instalment plan is in place
   payments       EnrolmentPayment[]
+
+  // BLD-1203: cookie-banner consent (kc_analytics_consent / kc_marketing_consent)
+  // captured when the learner starts an online payment (startEnrolmentPayment),
+  // so the deferred server-side GA4/Meta Purchase conversion
+  // (finalizeEnrolmentPayment, which can run from the Stripe webhook with no
+  // request/cookie context of its own) can honour it — mirrors
+  // Booking.analyticsConsent / Order.analyticsConsent. Nullable (unlike the
+  // Booking/Order NOT NULL DEFAULT false columns) rather than defaulted: an
+  // enrolment that never went through an online payment (manually enrolled,
+  // paid offline/instalment plan) has no consent signal to report, and
+  // lib/conversions.ts already treats missing/undefined consent as
+  // not-consented (fail closed), so null and false are equivalent there.
+  analyticsConsent Boolean?
+  marketingConsent Boolean?
 
   // BLD-528: verifiable certificate reference, issued when the theory is complete.
   // Stored (not derived) so /academy/verify can confirm it. Uniqueness is enforced

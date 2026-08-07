@@ -948,6 +948,20 @@ export function tmplAbandonedBooking(o: { firstName: string; treatment: string; 
   });
 }
 
+// BLD-1204: one-time nudge to a shopper who reached checkout but never
+// completed payment for their shop order. Mirrors tmplAbandonedBooking.
+export function tmplAbandonedOrder(o: { firstName: string; resumeUrl: string }) {
+  return emailShell({
+    preheader: `Your order is still waiting in your bag`,
+    body: `${heroBand('reminder')}
+    <h1 style="font-size:25px;margin:0 0 14px;">Pick up where you left off, ${escape(o.firstName)}.</h1>
+    <p>You started an order with us but didn't quite finish checking out. Your bag is still waiting — it only takes a moment to complete it.</p>
+    <p style="margin:26px 0;">${btn(o.resumeUrl, 'Finish my order')}</p>
+    <p style="font-size:14px;color:#91766e;">If you'd rather talk it through first, just reply to this email or call us — we're happy to help.</p>
+    <p style="margin-top:20px;">With warmth,<br>The KClinics team</p>`,
+  });
+}
+
 export function tmplPostCourse(o: { firstName: string; treatment: string; rebookUrl: string; maintenance?: string | null }) {
   return emailShell({
     preheader: `You've completed your ${o.treatment} course`,
