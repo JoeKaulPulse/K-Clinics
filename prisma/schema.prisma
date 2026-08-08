@@ -57,6 +57,7 @@ enum EmailKind {
   NPS_DETRACTOR
   BOOKING_INTENT
   LIVE_CLASS // BLD-1034: academy live-class create/reschedule/cancel/reminder notices
+  COURSE_CONTENT_READY // BLD-1231: one-time nudge once a zero-content course's first module publishes
 }
 
 enum EmailStatus {
@@ -2899,6 +2900,12 @@ model Enrolment {
   // in app code (self-healing), not a DB @unique, to stay within the deploy gate.
   certificateRef      String?
   certificateIssuedAt DateTime?
+
+  // BLD-1231: a paid/enrolled student on a course with zero published lessons
+  // hit a dead end in the portal (just a "contact us" link). Set once the
+  // one-time "your course content is ready" email has sent, so the daily
+  // automation never re-notifies the same enrolment.
+  contentReadyNotifiedAt DateTime?
   fundingApplications FundingApplication[]
   auditEvents         AuditEvent[]
 

@@ -1,6 +1,6 @@
 import 'server-only';
 import { db } from './db';
-import { sendEmail, emailShell, tmplBirthday, tmplFollowUp, tmplWinBack, tmplReviewRequest, tmplAppointmentReminder, tmplFormReminder, tmplAbandonedBooking, tmplAbandonedOrder, tmplAftercare, tmplSatisfaction, tmplRebook } from './email';
+import { sendEmail, emailShell, tmplBirthday, tmplFollowUp, tmplWinBack, tmplReviewRequest, tmplAppointmentReminder, tmplFormReminder, tmplAbandonedBooking, tmplAbandonedOrder, tmplAftercare, tmplSatisfaction, tmplRebook, tmplCourseContentReady } from './email';
 import { ensureReviewRequest, reviewLink, googleReviewLink } from './review-system';
 import { site } from './site';
 import { escapeHtml } from './sanitize';
@@ -24,13 +24,20 @@ const WIN_BACK_MONTHS = 6;
 const TIER_NUDGE_PENCE = 20000;   // nudge clients within £200 of the next tier
 const ANNIVERSARY_POINTS = 1000;  // bonus points on a membership anniversary
 
-type Tally = { birthdays: number; followUps: number; winBacks: number; reviews: number; reminders: number; formReminders: number; treatmentFollowUps: number; giftVouchers: number; tierNudges: number; anniversaries: number; abandonedBookings: number; abandonedOrders: number; bookingIntents: number; membershipRenewals: number; staffDigests: number; staffNudges: number; reencrypted: number; aftercare: number; satisfaction: number; rebookNudges: number; npsPromoters: number; npsDetractors: number; liveClassReminders: number; errors: number };
+// BLD-1231: how far back a course's FIRST lesson/quiz can have landed and still
+// be worth telling stranded students about. Wide enough that a few missed cron
+// runs don't lose the notice, narrow enough that shipping the feature can't
+// retro-announce content that has been live for years.
+const CONTENT_READY_WINDOW_DAYS = 30;
+const CONTENT_READY_MAX_PER_RUN = 500; // sends per daily run; the rest drain tomorrow
+
+type Tally = { birthdays: number; followUps: number; winBacks: number; reviews: number; reminders: number; formReminders: number; treatmentFollowUps: number; giftVouchers: number; tierNudges: number; anniversaries: number; abandonedBookings: number; abandonedOrders: number; bookingIntents: number; membershipRenewals: number; staffDigests: number; staffNudges: number; reencrypted: number; aftercare: number; satisfaction: number; rebookNudges: number; npsPromoters: number; npsDetractors: number; liveClassReminders: number; courseContentReady: number; errors: number };
 
 export async function runDailyAutomations(): Promise<Tally> {
-  const t: Tally = { birthdays: 0, followUps: 0, winBacks: 0, reviews: 0, reminders: 0, formReminders: 0, treatmentFollowUps: 0, giftVouchers: 0, tierNudges: 0, anniversaries: 0, abandonedBookings: 0, abandonedOrders: 0, bookingIntents: 0, membershipRenewals: 0, staffDigests: 0, staffNudges: 0, reencrypted: 0, aftercare: 0, satisfaction: 0, rebookNudges: 0, npsPromoters: 0, npsDetractors: 0, liveClassReminders: 0, errors: 0 };
+  const t: Tally = { birthdays: 0, followUps: 0, winBacks: 0, reviews: 0, reminders: 0, formReminders: 0, treatmentFollowUps: 0, giftVouchers: 0, tierNudges: 0, anniversaries: 0, abandonedBookings: 0, abandonedOrders: 0, bookingIntents: 0, membershipRenewals: 0, staffDigests: 0, staffNudges: 0, reencrypted: 0, aftercare: 0, satisfaction: 0, rebookNudges: 0, npsPromoters: 0, npsDetractors: 0, liveClassReminders: 0, courseContentReady: 0, errors: 0 };
   const { staffWeeklyDigest, staffReengagement } = await import('@/lib/staff-emails');
   // BLD-120: allSettled so one failing automation can't abort the rest.
-  const results = await Promise.allSettled([birthdays(t), followUps(t), reviews(t), winBacks(t), reminders(t), formReminders(t), treatmentFollowUps(t), scheduledGiftVouchers(t), tierNudges(t), anniversaries(t), abandonedBookings(t), abandonedOrders(t), bookingIntentRecovery(t), membershipRenewal(t), staffWeeklyDigest(t), staffReengagement(t), keyReencryption(t), aftercare(t), satisfaction(t), rebookNudge(t), promoterFollowUp(t), detractorFollowUp(t), liveClassReminders(t)]);
+  const results = await Promise.allSettled([birthdays(t), followUps(t), reviews(t), winBacks(t), reminders(t), formReminders(t), treatmentFollowUps(t), scheduledGiftVouchers(t), tierNudges(t), anniversaries(t), abandonedBookings(t), abandonedOrders(t), bookingIntentRecovery(t), membershipRenewal(t), staffWeeklyDigest(t), staffReengagement(t), keyReencryption(t), aftercare(t), satisfaction(t), rebookNudge(t), promoterFollowUp(t), detractorFollowUp(t), liveClassReminders(t), courseContentReady(t)]);
   for (const r of results) {
     if (r.status === 'rejected') { t.errors++; console.error('[automations] unhandled automation failure:', r.reason); }
   }
@@ -223,6 +230,110 @@ async function abandonedOrders(t: Tally) {
       res.ok ? t.abandonedOrders++ : t.errors++;
     }
   } catch (e) { t.errors++; console.error('[automations] abandoned orders failed:', (e as Error)?.message); }
+}
+
+// ── Course-content-ready notification (always on) ──
+// BLD-1231: a paid/enrolled academy student on a course with zero lessons and
+// no quiz hit a portal dead end (courseProgress() → hasContent:false, so the
+// only action shown was a generic "contact us" link). Once staff add the
+// course's first lesson or quiz, notify every enrolment that was actually
+// stuck, exactly once.
+//
+// "Actually stuck" is the load-bearing part (BLD-1231 review): the audience is
+// NOT "everyone on a course that has content" — that is every paying student
+// the academy has ever had, all of whom would be mass-mailed "your course is
+// ready" on the first run after deploy, including people who are half way
+// through. An enrolment only qualifies when the course's FIRST lesson/quiz was
+// created after that enrolment took its place (acceptedAt, else createdAt) —
+// i.e. there was a window in which the student had paid and had nothing to
+// study. A course that already had content when they enrolled never stranded
+// them, so it never notifies.
+//
+// The same reasoning bounds it in time: only content that first landed inside
+// CONTENT_READY_WINDOW_DAYS counts, so courses filled years ago do not fire a
+// retrospective "it's ready!" today, and the feature cannot reach back over
+// historical data when it ships.
+//
+// The audience also mirrors the portal exactly — the dead end is a portal
+// screen, and the portal lists enrolments by studentId (not by email), while
+// /academy/learn/<slug> resolves access through studentCanAccess(studentId).
+// So an enrolment with no linked AcademyStudent never saw the dead end and
+// could not open the link we would send it; requiring studentId keeps the
+// email and the portal talking about the same set of people.
+//
+// Idempotency: contentReadyNotifiedAt is claimed with a conditional updateMany
+// BEFORE the send, so two overlapping cron runs cannot both take the same row;
+// a failed send releases the claim so it retries on the next run.
+async function courseContentReady(t: Tally) {
+  try {
+    const base = (SITE_URL || '').replace(/\/$/, '');
+    const cutoff = new Date(Date.now() - CONTENT_READY_WINDOW_DAYS * 864e5);
+    // When did each course stop being empty? Earliest lesson/quiz per course.
+    // Matches courseProgress()'s hasContent definition (lib/lms.ts): a course
+    // has content iff it has at least one lesson or one quiz, in any module.
+    const modules = await db.courseModule.findMany({
+      where: { OR: [{ lessons: { some: {} } }, { quiz: { isNot: null } }] },
+      select: {
+        courseId: true,
+        lessons: { select: { createdAt: true }, orderBy: { createdAt: 'asc' }, take: 1 },
+        quiz: { select: { createdAt: true } },
+      },
+    });
+    const firstContentAt = new Map<string, Date>();
+    for (const m of modules) {
+      for (const at of [m.lessons[0]?.createdAt, m.quiz?.createdAt]) {
+        if (!at) continue;
+        const seen = firstContentAt.get(m.courseId);
+        if (!seen || at < seen) firstContentAt.set(m.courseId, at);
+      }
+    }
+    let budget = CONTENT_READY_MAX_PER_RUN;
+    for (const [courseId, contentAt] of firstContentAt) {
+      if (budget <= 0) break;
+      if (contentAt < cutoff) continue; // filled long before this ran — not news
+      const rows = await db.enrolment.findMany({
+        where: {
+          courseId,
+          status: { in: ['PAID', 'ENROLLED'] },
+          contentReadyNotifiedAt: null,
+          studentId: { not: null },
+          applicantEmail: { not: '' },
+          // Their place predates the content → they were stranded.
+          OR: [{ acceptedAt: { lt: contentAt } }, { acceptedAt: null, createdAt: { lt: contentAt } }],
+        },
+        select: { id: true, studentId: true, applicantEmail: true, applicantName: true, course: { select: { title: true, slug: true } } },
+        orderBy: { createdAt: 'asc' },
+        take: budget,
+      });
+      const notified = new Set<string>();
+      for (const e of rows) {
+        budget--;
+        // Claim first: a conditional update is the concurrency gate, so two
+        // overlapping runs can't both send. count 0 = someone else has it.
+        const claim = await db.enrolment.updateMany({ where: { id: e.id, contentReadyNotifiedAt: null }, data: { contentReadyNotifiedAt: new Date() } });
+        if (claim.count !== 1) continue;
+        // A student with two live enrolments on one course (e.g. a re-sit) gets
+        // one email, not two — the duplicate is stamped, not sent, so it stops
+        // being re-queried every run.
+        if (e.studentId && notified.has(e.studentId)) continue;
+        const firstName = (e.applicantName || 'there').trim().split(/\s+/)[0] || 'there';
+        const learnUrl = `${base}/academy/learn/${e.course.slug}`;
+        const subject = `${e.course.title} is ready to start`;
+        const res = await sendEmail({ to: e.applicantEmail, subject, html: tmplCourseContentReady({ firstName, courseTitle: e.course.title, learnUrl }) });
+        await db.emailEvent.create({ data: { kind: 'COURSE_CONTENT_READY', to: e.applicantEmail, subject, status: res.ok ? 'SENT' : 'FAILED', providerId: res.id, error: res.error, meta: { enrolmentId: e.id, courseId } } }).catch(() => {});
+        if (res.ok) {
+          if (e.studentId) notified.add(e.studentId);
+          t.courseContentReady++;
+        } else {
+          t.errors++;
+          // Release the claim so a transient send failure retries next run. If
+          // the release itself fails the row stays stamped — fails closed (a
+          // missed nudge), never into a duplicate send.
+          await db.enrolment.updateMany({ where: { id: e.id }, data: { contentReadyNotifiedAt: null } }).catch(() => {});
+        }
+      }
+    }
+  } catch (e) { t.errors++; console.error('[automations] course content ready failed:', (e as Error)?.message); }
 }
 
 // ── Booking-funnel intent recovery (opt-in) ──

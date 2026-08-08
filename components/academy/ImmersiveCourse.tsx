@@ -11,6 +11,7 @@ import { HomeworkPanel } from '@/components/academy/HomeworkPanel';
 import { SecurePdfViewer } from '@/components/academy/SecurePdfViewer';
 import { kindLabel } from '@/components/academy/attachment-kinds';
 import { academyLevel } from '@/lib/academy-levels';
+import { useBodyScrollLock } from '@/components/ui/Dialog';
 import { isMascotMuted, setMascotMuted } from '@/components/academy/mascotVoice';
 import type { CourseLearning, LessonView, QuizView } from '@/lib/lms';
 
@@ -101,12 +102,12 @@ export function ImmersiveCourse({ learning, slug, mode = 'learn', xp = 0, regist
   const [maxReached, setMaxReached] = useState(mode === 'preview' ? steps.length - 1 : firstIncomplete);
   const step = steps[idx];
 
-  // Lock background scroll while the full-screen overlay is open.
-  useEffect(() => {
-    const prev = document.body.style.overflow;
-    document.body.style.overflow = 'hidden';
-    return () => { document.body.style.overflow = prev; };
-  }, []);
+  // Lock background scroll while the full-screen overlay is open. Uses the
+  // shared ref-counted lock so the overlays that open *inside* the course
+  // (ExplainerPlayer, SecurePdfViewer) cooperate with it instead of fighting
+  // over document.body.style.overflow — unmounting together left the page
+  // permanently unscrollable otherwise. (BLD-1194)
+  useBodyScrollLock();
 
   const ceiling = mode === 'preview' ? steps.length - 1 : maxReached;
   const go = (to: number) => { if (to >= 0 && to < steps.length && to <= ceiling) setIdx(to); };
