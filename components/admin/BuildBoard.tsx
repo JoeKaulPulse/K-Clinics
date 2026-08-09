@@ -528,7 +528,7 @@ function TaskModal({ item, allItems, projects, canManage, isAdmin, gh, staff, on
 
   // Dependencies
   async function addDep(dependsOnId: string) { if (!dependsOnId) return; const r = await post({ op: 'dep-add', id: item.id, dependsOnId }); if (r.ok) onChange(); else alert(r.error || 'Failed'); }
-  async function removeDep(dependsOnId: string) { const r = await post({ op: 'dep-remove', id: item.id, dependsOnId }); if (r.ok) onChange(); else alert(r.error || 'Failed'); }
+  async function removeDep(dependsOnId: string) { if (!confirm('Remove this dependency link?')) return; const r = await post({ op: 'dep-remove', id: item.id, dependsOnId }); if (r.ok) onChange(); else alert(r.error || 'Failed'); }
 
   // Project — promote this item into a new or existing project, or detach it.
   const [projBusy, setProjBusy] = useState(false);
@@ -570,7 +570,7 @@ function TaskModal({ item, allItems, projects, canManage, isAdmin, gh, staff, on
     }
     if (errs.length) setUpErr(`${urls.length} uploaded, ${errs.length} failed — ${errs[0]}${errs.length > 1 ? ` (+${errs.length - 1} more)` : ''}`);
   }
-  async function removeAttachment(url: string) { const r = await post({ op: 'attach-remove', id: item.id, url }); if (r.ok) onChange(); else alert(r.error || 'Failed'); }
+  async function removeAttachment(url: string) { if (!confirm('Remove this attachment?')) return; const r = await post({ op: 'attach-remove', id: item.id, url }); if (r.ok) onChange(); else alert(r.error || 'Failed'); }
 
   async function signoff() { if (!confirm('Sign off and close this task? This marks the work reviewed & complete.')) return; const r = await post({ op: 'signoff', id: item.id }); if (r.ok) onChange(); else alert(r.error || 'Failed'); }
   async function reopen() { const reason = prompt('Reopen this task — add a note for Claude (what still needs doing):') || undefined; const r = await post({ op: 'reopen', id: item.id, reason }); if (r.ok) onChange(); else alert(r.error || 'Failed'); }

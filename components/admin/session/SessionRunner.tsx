@@ -835,6 +835,7 @@ function CheckoutStep({ p, live, sessData, pending, presenting, api, run, onCont
   }
   async function removeVoucher() {
     if (vBusy || !vApplied) return;
+    if (!confirm('Remove this voucher from the sale? The total will go back up.')) return;
     setVBusy(true); setVErr('');
     const res = await api({ op: 'voucher-remove' });
     setVBusy(false);
