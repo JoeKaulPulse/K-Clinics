@@ -290,13 +290,21 @@ export async function refundBooking(
       return { ok: false, error: `Couldn’t return the balance to voucher ${booking.giftVoucherCode} — try again. (${(e as Error)?.message || 'unknown error'})` };
     }
   }
+  // BLD-1234: Stripe's ground-truth cumulative amount_refunded on the charge —
+  // when present, the CAS loop below reconciles against this (like the
+  // charge.refunded webhook does) instead of blindly re-adding `amount` on
+  // every retry, so a lost CAS (a concurrent identical click, or the webhook
+  // echo of this same refund winning the race) can't double-record the money.
+  let stripeRefundedTotal: number | null = null;
   if (!isExternalPayment) {
     try {
-      await stripe().refunds.create({
+      const refund = await stripe().refunds.create({
         payment_intent: booking.chargePaymentIntentId,
         amount,
         metadata: { bookingId: booking.id, reason: (opts.reason || '').slice(0, 200) },
+        expand: ['charge'],
       }, { idempotencyKey: `refund-${booking.id}-from-${booking.refundedPence ?? 0}-${amount}` });
+      if (refund.charge && typeof refund.charge !== 'string') stripeRefundedTotal = refund.charge.amount_refunded ?? null;
     } catch (e) {
       return { ok: false, error: e instanceof Error ? e.message : 'Refund failed at Stripe.' };
     }
@@ -315,7 +323,13 @@ export async function refundBooking(
   let fully = totalRefunded >= (current.chargedPence ?? 0);
   let claimed = { count: 0 };
   for (let attempt = 0; ; attempt++) {
-    totalRefunded = (current.refundedPence ?? 0) + amount;
+    if (stripeRefundedTotal != null) {
+      const delta = stripeRefundedTotal - (current.refundedPence ?? 0);
+      if (delta <= 0) { totalRefunded = current.refundedPence ?? 0; fully = totalRefunded >= (current.chargedPence ?? 0); break; }
+      totalRefunded = (current.refundedPence ?? 0) + delta;
+    } else {
+      totalRefunded = (current.refundedPence ?? 0) + amount;
+    }
     fully = totalRefunded >= (current.chargedPence ?? 0);
     claimed = await db.booking.updateMany({
       where: { id: current.id, refundedPence: current.refundedPence },

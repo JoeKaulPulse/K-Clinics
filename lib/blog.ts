@@ -1,9 +1,19 @@
 import 'server-only';
 import { db } from './db';
 import { sortedArticles, getArticle, type Article, type ArticleBlock } from './articles';
-import { articleImage } from './treatment-images';
+import { articleImage, resolveMigratedImage } from './treatment-images';
 import { asBlocks, htmlToBlocks, type Block } from './blocks';
-import { sanitizeHtml } from './sanitize';
+import { sanitizeHtml, escapeHtml } from './sanitize';
+
+// BLD-1230: rewrite any <img src="...wp-content/uploads/..."> left over from the
+// WordPress import to its migrated local copy (see resolveMigratedImage) so
+// article bodies don't 403 against the live firewall's /wp-content block.
+function rewriteMigratedImageSrcs(html: string): string {
+  return html.replace(/\bsrc="([^"]*\/wp-content\/uploads\/[^"]+)"/gi, (full, url) => {
+    const resolved = resolveMigratedImage(url);
+    return resolved && resolved !== url ? `src="${escapeHtml(resolved)}"` : full;
+  });
+}
 
 // DB-backed journal. Admin-managed Post rows are the source of truth; the native
 // curated articles (lib/articles.ts) still render for any slug NOT in the DB, so
@@ -70,7 +80,7 @@ export async function listBlogCards(): Promise<BlogCard[]> {
       orderBy: { publishedAt: 'desc' },
       select: { slug: true, title: true, excerpt: true, category: true, readMinutes: true, publishedAt: true, createdAt: true, coverImage: true },
     });
-    dbCards = rows.map((r) => ({ slug: r.slug, title: r.title, excerpt: r.excerpt ?? '', category: r.category ?? 'Wellbeing', readMinutes: r.readMinutes, published: (r.publishedAt ?? r.createdAt).toISOString(), image: r.coverImage ?? null }));
+    dbCards = rows.map((r) => ({ slug: r.slug, title: r.title, excerpt: r.excerpt ?? '', category: r.category ?? 'Wellbeing', readMinutes: r.readMinutes, published: (r.publishedAt ?? r.createdAt).toISOString(), image: resolveMigratedImage(r.coverImage) }));
     dbSlugs = new Set(rows.map((r) => r.slug));
   } catch { /* Post table not migrated yet → native articles only */ }
   const staticCards = sortedArticles.filter((a) => !dbSlugs.has(a.slug)).map(articleCard);
@@ -85,7 +95,7 @@ export async function getBlogPost(slug: string): Promise<BlogPost | null> {
       slug: r.slug, title: r.title, excerpt: r.excerpt ?? '',
       metaDescription: r.metaDescription ?? (r.excerpt ? stripNavChrome(r.excerpt, r.title) : ''),
       category: r.category ?? 'Wellbeing', readMinutes: r.readMinutes, published: (r.publishedAt ?? r.createdAt).toISOString(),
-      updated: r.updatedAt.toISOString(), html: sanitizeHtml(r.content), keywords: r.keywords, related: r.related, image: r.coverImage ?? null,
+      updated: r.updatedAt.toISOString(), html: rewriteMigratedImageSrcs(sanitizeHtml(r.content)), keywords: r.keywords, related: r.related, image: resolveMigratedImage(r.coverImage),
     };
   } catch { /* fall through to native */ }
   const a = getArticle(slug);

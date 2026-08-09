@@ -40,3 +40,20 @@ const articleMap: Record<string, string> = {
 export function articleImage(slug: string): string | null {
   return resolve(articleMap[slug]);
 }
+
+// BLD-1230: WordPress-imported Journal posts (the `Post` DB table) still carry
+// their original https://kclinics.co.uk/wp-content/uploads/... image URLs in
+// `coverImage` and inline <img> tags. That path now 403s (the live firewall
+// blocks /wp-content/* as a WordPress-attack signature), breaking every
+// migrated article's images site-wide. Rewrite any such URL to its migrated
+// local copy when the file has already been downloaded into
+// public/treatments/ (see manifest.json above) — otherwise leave it
+// untouched so a URL that isn't actually broken is never altered.
+export function resolveMigratedImage(url: string | null | undefined): string | null {
+  if (!url) return null;
+  const m = /\/wp-content\/uploads\/.*\/([^/?#]+)$/i.exec(url.split(/[?#]/)[0]);
+  if (!m) return url;
+  let file = m[1];
+  try { file = decodeURIComponent(file); } catch { /* malformed escape → use raw */ }
+  return resolve(file) ?? url;
+}
