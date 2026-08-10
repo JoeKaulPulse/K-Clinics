@@ -24,7 +24,7 @@ export function AcademyBanner() {
         <Reveal className="max-w-2xl">
           <p className="eyebrow mb-4 inline-flex items-center gap-2.5 text-[var(--color-gold-soft)]">
             <span className="h-px w-8 bg-[var(--color-gold-soft)]/70" />
-            K Academy
+            Inside the academy
           </p>
           <h2 className="font-[family-name:var(--font-display)] text-[clamp(2rem,1.5rem+2vw,3.25rem)] leading-[1.05] tracking-[-0.01em]">
             Learn where beauty is <span className="text-gold-shimmer">practised</span>, not just taught.
@@ -34,7 +34,7 @@ export function AcademyBanner() {
             Islington clinic — accredited qualifications from Level 2 to Level 7.
           </p>
           <div className="mt-7">
-            <Button href="#courses" variant="gold">Explore courses <ArrowIcon /></Button>
+            <Button href="#courses" variant="gold">See the course range <ArrowIcon /></Button>
           </div>
         </Reveal>
       </div>
