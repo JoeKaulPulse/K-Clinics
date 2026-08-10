@@ -3612,6 +3612,14 @@ export const BUILD_BACKLOG: BacklogItem[] = [
       'Also closed this run, no code change needed: BLD-1150 (9 mega-menu links reported 404ing) does not reproduce -- verified live, all 9 URLs return 200; app/(marketing)/[slug]/page.tsx falls back to an admin-published CMS page when lib/treatments.ts has no static entry, and CMS pages now exist at all 9 paths. BLD-1233 (kiosk result-page link contrast) re-confirmed as the false positive already noted against this entry on 2026-08-09 -- gold-soft renders on the page\'s dark ink background (~6.6:1), not porcelain as the original finding assumed. Both were previously noted in this file as not reproducing but their board rows were still sitting at TRIAGE; flipped both to SHIPPED with evidence comments this run.',
     ],
   },
+  {
+    title: 'Academy homepage banner (BLD-997)', type: 'TASK', urgency: 'P2', status: 'IN_REVIEW', assignee: 'claude',
+    value: 4, effort: 2,
+    detail: 'A prior run left BLD-997 BLOCKED, reading it as needing supplied artwork that was never attached. The owner @-mentioned Claude on the item to unblock it: "You can use our existing website branding and create the banner in the same style" -- so build a homepage banner for the Academy section in the site\'s existing brand language, no photography required.',
+    notes: [
+      'Built new components/academy/AcademyBanner.tsx, inserted into app/(marketing)/academy/page.tsx directly below the existing PageHero (above the conditional course-promo strip). Mirrors components/home/Hero.tsx\'s signature dark composition -- bg-[var(--color-ink)], a radial gold glow, the KMark monogram (components/brand/marks.tsx) anchored right at low opacity, Fraunces display headline with a text-gold-shimmer accent word, eyebrow line, lede copy and a single gold CTA to #courses -- rather than requiring supplied photography, per the owner\'s note. No CMS/DB model exists for academy homepage marketing content (checked prisma/schema.prisma and app/admin/academy) so this ships as a static section, matching how the rest of the Academy page (pillars, funding, equipment panels) is authored today.',
+    ],
+  },
 ];
 
 // A content hash over every item's title + status + PR, so ANY change (a new

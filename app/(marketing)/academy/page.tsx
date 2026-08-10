@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { PageHero } from '@/components/ui/PageHero';
+import { AcademyBanner } from '@/components/academy/AcademyBanner';
 import { Reveal } from '@/components/motion/Reveal';
 import { Button, ArrowIcon } from '@/components/ui/Button';
 import { pageMeta, JsonLd, breadcrumbLd } from '@/lib/seo';
@@ -50,6 +51,8 @@ export default async function AcademyPage() {
           <Button href="/academy/portal" variant="outline">Trainee login</Button>
         </div>
       </PageHero>
+
+      <AcademyBanner />
 
       {/* Promo banner — shown only when at least one course has an active promo */}
       {lowestPromo != null && (
