@@ -33,7 +33,11 @@ export async function generateMetadata(): Promise<Metadata> {
     keywords: dentistryLive
       ? ['cosmetic dentist London', 'dental clinic Islington', 'veneers London', 'dental implants London']
       : ['cosmetic dentist London opening soon', 'new dental clinic Islington', 'veneers London waiting list', 'cosmetic dentistry coming soon London', 'register interest cosmetic dentist London'],
-    noindex: !dentistryLive,
+    // BLD-1250: no noindex here -- the BLD-157 comment above already says this page
+    // stays indexed pre-launch (that's the whole point of the coming-soon title/
+    // description/keywords swap above). It was previously set to `!dentistryLive`,
+    // which contradicted that intent and deindexed the page whenever dentistry
+    // wasn't live -- i.e. always, since dentistryLive defaults false.
   });
 }
 
