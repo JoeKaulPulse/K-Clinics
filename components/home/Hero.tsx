@@ -10,7 +10,7 @@ type Rating = { average: number; count: number } | null | undefined;
 
 /**
  * Above-the-fold hero (BLD-1197: now a rotating carousel of promotional
- * slides — see components/home/hero-slides.ts for the ordered slide list).
+ * slides — see components/home/hero-slides.tsx for the ordered slide list).
  *
  * Stays a *server* component: each slide's markup is rendered here (CSS-only
  * entrance motion, no client JS needed to paint it) and handed as pre-built
@@ -171,11 +171,14 @@ function PromoSlide({ slide }: { slide: PromoHeroSlide }) {
             <span className="text-gold-gradient font-[family-name:var(--font-display)] text-[clamp(2.75rem,2rem+2.4vw,4rem)] leading-none">
               {slide.price}
             </span>
-            <span className="text-lg text-[color-mix(in_oklab,var(--color-porcelain)_55%,transparent)] line-through decoration-[color-mix(in_oklab,var(--color-porcelain)_45%,transparent)]">
+            {/* 65%, not 55%: over the gold glow this slide anchors top-left, 55%
+                porcelain lands at ~3.8:1 on ink and fails AA. 65% clears 4.5:1
+                everywhere on the slide, including the brightest part of the glow. */}
+            <span className="text-lg text-[color-mix(in_oklab,var(--color-porcelain)_65%,transparent)] line-through decoration-[color-mix(in_oklab,var(--color-porcelain)_55%,transparent)]">
               Was {slide.wasPrice}
             </span>
           </div>
-          <p className="mt-2 text-xs uppercase tracking-[0.14em] text-[color-mix(in_oklab,var(--color-porcelain)_55%,transparent)]">
+          <p className="mt-2 text-xs uppercase tracking-[0.14em] text-[color-mix(in_oklab,var(--color-porcelain)_65%,transparent)]">
             {slide.priceNote}
           </p>
 
