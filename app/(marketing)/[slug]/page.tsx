@@ -23,10 +23,32 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   const { slug } = await params;
   const t = await getMergedTreatment(slug);
   if (t) {
-    // BLD-1250: no noindex on dentistry treatment pages pre-launch -- per BLD-157
-    // (see app/(marketing)/dentistry/page.tsx) their coming-soon title/description
-    // already frame them honestly, so they stay indexed regardless of dentistryLive.
-    return pageMeta({ title: t.metaTitle, description: t.metaDescription, path: `/${t.slug}`, keywords: t.keywords, ownOgImage: true });
+    // BLD-1250: dentistry pages stay indexed pre-launch, per the owner's BLD-157
+    // decision (see app/(marketing)/dentistry/page.tsx) -- but only on BLD-157's
+    // own terms: index the page, and frame its title/description for the intent it
+    // can satisfy today. The hub swaps its copy for that reason; a treatment page's
+    // metaTitle/metaDescription are static commercial copy in lib/treatments.ts
+    // ("Bespoke porcelain veneers in Islington, London ... at KClinics"), so
+    // indexing them unchanged would put a bookable-sounding dental service in the
+    // SERP that the clinic cannot deliver until a GDC-registered dentist is in
+    // post. Swap to coming-soon framing while dentistryLive is false; the page
+    // itself already shows an "Opening soon" badge and a register-interest CTA
+    // instead of a booking button (components/treatment/TreatmentTemplate.tsx).
+    // The swap deliberately overrides any TreatmentContent metaTitle an admin has
+    // typed -- pre-launch honesty is not an editorial choice. The PageSeo panel
+    // override still wins over both (lib/seo.tsx pageMeta), so a per-URL snippet
+    // can still be set by hand if the owner wants one.
+    let title = t.metaTitle;
+    let description = t.metaDescription;
+    if (t.category === 'dentistry') {
+      const { getSiteConfig } = await import('@/lib/site-config');
+      const { dentistryLive } = await getSiteConfig(); // BLD-515: live, admin-toggleable flag
+      if (!dentistryLive) {
+        title = `${t.title} — Coming Soon | KClinics London`;
+        description = `Coming soon to KClinics, Islington — ${t.title.toLowerCase()}. Not bookable yet; join the waiting list and be first to know when our dentistry suite opens.`;
+      }
+    }
+    return pageMeta({ title, description, path: `/${t.slug}`, keywords: t.keywords, ownOgImage: true });
   }
   const cms = await getPublishedPage(`/${slug}`);
   if (cms) { const m = pageMetaFromSections(cms); return pageMeta({ title: m.title || slug, description: m.description, path: `/${slug}` }); }
