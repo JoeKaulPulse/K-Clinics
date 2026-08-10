@@ -39,7 +39,7 @@ export default async function ReferPage() {
           {STEPS.map((s, i) => (
             <Reveal key={s.n} delay={i * 0.08}>
               <div>
-                <p className="font-[family-name:var(--font-display)] text-4xl text-[var(--color-gold)]">{s.n}</p>
+                <p className="font-[family-name:var(--font-display)] text-4xl text-[var(--color-gold-deep)]">{s.n}</p>
                 <h3 className="mt-3 font-[family-name:var(--font-display)] text-xl">{s.t}</h3>
                 <p className="mt-2 text-[var(--color-ink-soft)]">{s.d}</p>
               </div>

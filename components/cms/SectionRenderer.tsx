@@ -285,7 +285,7 @@ function SectionView({ section: { type, data } }: { section: Section }) {
             {arr<{ title: string; text: string }>(data.items).map((it, i) => (
               <Reveal key={i} delay={i * 0.05}>
                 <div className="h-full rounded-[var(--radius-lg)] border border-[var(--color-line)] p-7">
-                  <span className="font-[family-name:var(--font-display)] text-3xl text-[var(--color-gold)]">{String(i + 1).padStart(2, '0')}</span>
+                  <span className="font-[family-name:var(--font-display)] text-3xl text-[var(--color-gold-deep)]">{String(i + 1).padStart(2, '0')}</span>
                   <h3 className="mt-3 font-[family-name:var(--font-display)] text-xl">{it.title}</h3>
                   <p className="mt-2 text-[var(--color-stone)]">{it.text}</p>
                 </div>
