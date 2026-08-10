@@ -3613,7 +3613,7 @@ export const BUILD_BACKLOG: BacklogItem[] = [
     ],
   },
   {
-    title: 'npm audit: high-severity transitive CVEs (js-yaml, nanoid) (BLD-1213, BLD-1243)', type: 'ERROR', urgency: 'P1', status: 'IN_REVIEW', assignee: 'claude',
+    title: 'npm audit: high-severity transitive CVEs (js-yaml, nanoid) (BLD-1213, BLD-1243)', type: 'ERROR', urgency: 'P1', status: 'IN_REVIEW', assignee: 'claude', pr: PR(1774),
     value: 5, effort: 1,
     detail: 'npm audit --omit=dev --audit-level=high failed CI on two pre-existing transitive advisories: js-yaml 4.0.0-4.3.0 (CVE-2026-59870, quadratic CPU in !!omap resolution) and nanoid <3.3.17 (GHSA-2v37-7h3g-55p8, custom generators loop indefinitely at size zero). Neither is a direct package.json dependency.',
     notes: [
