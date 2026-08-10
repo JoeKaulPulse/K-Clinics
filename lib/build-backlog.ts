@@ -3613,7 +3613,7 @@ export const BUILD_BACKLOG: BacklogItem[] = [
     ],
   },
   {
-    title: 'Academy homepage banner (BLD-997)', type: 'TASK', urgency: 'P2', status: 'IN_REVIEW', assignee: 'claude',
+    title: 'Academy homepage banner (BLD-997)', type: 'TASK', urgency: 'P2', status: 'IN_REVIEW', assignee: 'claude', pr: PR(1773),
     value: 4, effort: 2,
     detail: 'A prior run left BLD-997 BLOCKED, reading it as needing supplied artwork that was never attached. The owner @-mentioned Claude on the item to unblock it: "You can use our existing website branding and create the banner in the same style" -- so build a homepage banner for the Academy section in the site\'s existing brand language, no photography required.',
     notes: [
