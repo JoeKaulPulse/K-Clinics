@@ -23,9 +23,10 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   const { slug } = await params;
   const t = await getMergedTreatment(slug);
   if (t) {
-    const { getSiteConfig } = await import('@/lib/site-config');
-    const { dentistryLive } = await getSiteConfig(); // BLD-515: live, admin-toggleable flag
-    return pageMeta({ title: t.metaTitle, description: t.metaDescription, path: `/${t.slug}`, keywords: t.keywords, ownOgImage: true, noindex: t.category === 'dentistry' && !dentistryLive });
+    // BLD-1250: no noindex on dentistry treatment pages pre-launch -- per BLD-157
+    // (see app/(marketing)/dentistry/page.tsx) their coming-soon title/description
+    // already frame them honestly, so they stay indexed regardless of dentistryLive.
+    return pageMeta({ title: t.metaTitle, description: t.metaDescription, path: `/${t.slug}`, keywords: t.keywords, ownOgImage: true });
   }
   const cms = await getPublishedPage(`/${slug}`);
   if (cms) { const m = pageMetaFromSections(cms); return pageMeta({ title: m.title || slug, description: m.description, path: `/${slug}` }); }
