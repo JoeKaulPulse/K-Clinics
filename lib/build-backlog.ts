@@ -3638,7 +3638,7 @@ export const BUILD_BACKLOG: BacklogItem[] = [
     ],
   },
   {
-    title: 'Dentistry pages set to noindex despite code comment describing them as pre-launch-indexed (BLD-1250)', type: 'ERROR', urgency: 'P1', status: 'IN_REVIEW', assignee: 'claude',
+    title: 'Dentistry pages set to noindex despite code comment describing them as pre-launch-indexed (BLD-1250)', type: 'ERROR', urgency: 'P1', status: 'SHIPPED', assignee: 'claude', pr: PR(1776),
     value: 5, effort: 1,
     detail: 'app/(marketing)/dentistry/page.tsx generateMetadata set noindex: !dentistryLive, directly contradicting the adjacent BLD-157 comment on the same lines, which says these pages should stay indexed pre-launch to capture "coming soon" search intent -- the title/description/keywords already swap to coming-soon framing for exactly that reason. Since dentistryLive defaults false (lib/site.ts), the /dentistry hub was always noindexed in production. app/(marketing)/[slug]/page.tsx carried the same line in a different shape (noindex: t.category === \'dentistry\' && !dentistryLive), deindexing every dentistry treatment slug (veneers, teeth-whitening, composite-bonding, implants, etc) -- that one was a deliberate call (BLD-403), not a stray revert, and is reopened here because its stated reason no longer holds; see the review notes below. app/sitemap.ts compounded it by excluding /dentistry and the dentistry slugs from the sitemap whenever dentistryLive was false, so the noindexed pages were also unlisted -- consistent with each other, but consistently wrong.',
     notes: [
