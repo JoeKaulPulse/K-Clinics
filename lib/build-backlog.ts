@@ -3613,6 +3613,15 @@ export const BUILD_BACKLOG: BacklogItem[] = [
     ],
   },
   {
+    title: 'npm audit: high-severity transitive CVEs (js-yaml, nanoid) (BLD-1213, BLD-1243)', type: 'ERROR', urgency: 'P1', status: 'SHIPPED', assignee: 'claude', pr: PR(1774),
+    value: 5, effort: 1,
+    detail: 'npm audit --omit=dev --audit-level=high failed CI on two pre-existing transitive advisories: js-yaml 4.0.0-4.3.0 (CVE-2026-59870, quadratic CPU in !!omap resolution) and nanoid <3.3.17 (GHSA-2v37-7h3g-55p8, custom generators loop indefinitely at size zero). Neither is a direct package.json dependency.',
+    notes: [
+      'Fix: ran npm audit fix on its own branch off main -- resolved both advisories via lockfile-only transitive bumps, no package.json change. npm audit --omit=dev --audit-level=high now reports 0 vulnerabilities. npx tsc --noEmit and a DB-less production build (DATABASE_URL= npx next build) both pass clean on the bumped lockfile -- plain npm run build is not runnable in the sandbox because its prebuild db-sync step cannot reach Postgres.',
+      'Pre-merge review: re-verified on the branch. package.json has zero diff, so no declared dependency range moved. Both bumps are patch-level (js-yaml 4.3.0 -> 4.3.1, nanoid 3.3.16 -> 3.3.18) and the whole lockfile diff is those two entries, 12 lines, with no new transitive packages. Provenance confirmed as transitive-only: js-yaml comes in via eslint-config-next > eslint > @eslint/eslintrc, nanoid via next > postcss (which the existing postcss ^8.5.15 override already covers, unchanged). npm audit reports 0 vulnerabilities with dev dependencies included too, and npm ls flags no invalid or unmet non-optional deps.',
+    ],
+  },
+  {
     title: 'Academy homepage banner (BLD-997)', type: 'TASK', urgency: 'P2', status: 'IN_REVIEW', assignee: 'claude', pr: PR(1773),
     value: 4, effort: 2,
     detail: 'A prior run left BLD-997 BLOCKED, reading it as needing supplied artwork that was never attached. The owner @-mentioned Claude on the item to unblock it: "You can use our existing website branding and create the banner in the same style" -- so build a homepage banner for the Academy section in the site\'s existing brand language, no photography required.',
