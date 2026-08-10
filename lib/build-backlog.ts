@@ -3612,6 +3612,15 @@ export const BUILD_BACKLOG: BacklogItem[] = [
       'Also closed this run, no code change needed: BLD-1150 (9 mega-menu links reported 404ing) does not reproduce -- verified live, all 9 URLs return 200; app/(marketing)/[slug]/page.tsx falls back to an admin-published CMS page when lib/treatments.ts has no static entry, and CMS pages now exist at all 9 paths. BLD-1233 (kiosk result-page link contrast) re-confirmed as the false positive already noted against this entry on 2026-08-09 -- gold-soft renders on the page\'s dark ink background (~6.6:1), not porcelain as the original finding assumed. Both were previously noted in this file as not reproducing but their board rows were still sitting at TRIAGE; flipped both to SHIPPED with evidence comments this run.',
     ],
   },
+  {
+    title: 'npm audit: high-severity transitive CVEs (js-yaml, nanoid) (BLD-1213, BLD-1243)', type: 'ERROR', urgency: 'P1', status: 'IN_REVIEW', assignee: 'claude', pr: PR(1774),
+    value: 5, effort: 1,
+    detail: 'npm audit --omit=dev --audit-level=high failed CI on two pre-existing transitive advisories: js-yaml 4.0.0-4.3.0 (CVE-2026-59870, quadratic CPU in !!omap resolution) and nanoid <3.3.17 (GHSA-2v37-7h3g-55p8, custom generators loop indefinitely at size zero). Neither is a direct package.json dependency.',
+    notes: [
+      'Fix: ran npm audit fix on its own branch off main -- resolved both advisories via lockfile-only transitive bumps, no package.json change. npm audit --omit=dev --audit-level=high now reports 0 vulnerabilities. npx tsc --noEmit and a DB-less production build (DATABASE_URL= npx next build) both pass clean on the bumped lockfile -- plain npm run build is not runnable in the sandbox because its prebuild db-sync step cannot reach Postgres.',
+      'Pre-merge review: re-verified on the branch. package.json has zero diff, so no declared dependency range moved. Both bumps are patch-level (js-yaml 4.3.0 -> 4.3.1, nanoid 3.3.16 -> 3.3.18) and the whole lockfile diff is those two entries, 12 lines, with no new transitive packages. Provenance confirmed as transitive-only: js-yaml comes in via eslint-config-next > eslint > @eslint/eslintrc, nanoid via next > postcss (which the existing postcss ^8.5.15 override already covers, unchanged). npm audit reports 0 vulnerabilities with dev dependencies included too, and npm ls flags no invalid or unmet non-optional deps.',
+    ],
+  },
 ];
 
 // A content hash over every item's title + status + PR, so ANY change (a new
