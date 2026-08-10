@@ -3613,12 +3613,21 @@ export const BUILD_BACKLOG: BacklogItem[] = [
     ],
   },
   {
-    title: 'npm audit: high-severity transitive CVEs (js-yaml, nanoid) (BLD-1213, BLD-1243)', type: 'ERROR', urgency: 'P1', status: 'IN_REVIEW', assignee: 'claude', pr: PR(1774),
+    title: 'npm audit: high-severity transitive CVEs (js-yaml, nanoid) (BLD-1213, BLD-1243)', type: 'ERROR', urgency: 'P1', status: 'SHIPPED', assignee: 'claude', pr: PR(1774),
     value: 5, effort: 1,
     detail: 'npm audit --omit=dev --audit-level=high failed CI on two pre-existing transitive advisories: js-yaml 4.0.0-4.3.0 (CVE-2026-59870, quadratic CPU in !!omap resolution) and nanoid <3.3.17 (GHSA-2v37-7h3g-55p8, custom generators loop indefinitely at size zero). Neither is a direct package.json dependency.',
     notes: [
       'Fix: ran npm audit fix on its own branch off main -- resolved both advisories via lockfile-only transitive bumps, no package.json change. npm audit --omit=dev --audit-level=high now reports 0 vulnerabilities. npx tsc --noEmit and a DB-less production build (DATABASE_URL= npx next build) both pass clean on the bumped lockfile -- plain npm run build is not runnable in the sandbox because its prebuild db-sync step cannot reach Postgres.',
       'Pre-merge review: re-verified on the branch. package.json has zero diff, so no declared dependency range moved. Both bumps are patch-level (js-yaml 4.3.0 -> 4.3.1, nanoid 3.3.16 -> 3.3.18) and the whole lockfile diff is those two entries, 12 lines, with no new transitive packages. Provenance confirmed as transitive-only: js-yaml comes in via eslint-config-next > eslint > @eslint/eslintrc, nanoid via next > postcss (which the existing postcss ^8.5.15 override already covers, unchanged). npm audit reports 0 vulnerabilities with dev dependencies included too, and npm ls flags no invalid or unmet non-optional deps.',
+    ],
+  },
+  {
+    title: 'Academy homepage banner (BLD-997)', type: 'TASK', urgency: 'P2', status: 'IN_REVIEW', assignee: 'claude', pr: PR(1773),
+    value: 4, effort: 2,
+    detail: 'A prior run left BLD-997 BLOCKED, reading it as needing supplied artwork that was never attached. The owner @-mentioned Claude on the item to unblock it: "You can use our existing website branding and create the banner in the same style" -- so build a homepage banner for the Academy section in the site\'s existing brand language, no photography required.',
+    notes: [
+      'Built new components/academy/AcademyBanner.tsx, inserted into app/(marketing)/academy/page.tsx directly below the existing PageHero (above the conditional course-promo strip). Mirrors components/home/Hero.tsx\'s signature dark composition -- bg-[var(--color-ink)], a radial gold glow, the KMark monogram (components/brand/marks.tsx) anchored right at low opacity, Fraunces display headline with a text-gold-shimmer accent word, eyebrow line, lede copy and a single gold CTA to #courses -- rather than requiring supplied photography, per the owner\'s note. No CMS/DB model exists for academy homepage marketing content (checked prisma/schema.prisma and app/admin/academy) so this ships as a static section, matching how the rest of the Academy page (pillars, funding, equipment panels) is authored today.',
+      'Pre-merge review: rendered the section locally and screenshotted it at 1440px and 390px. Two verbatim duplications with the PageHero directly above it were fixed -- the eyebrow read "K Academy" in both (now "Inside the academy" in the banner), and the gold CTA was a byte-identical "Explore courses" pointing at the same #courses anchor about 150px below the hero\'s own (now "See the course range"). Checked and clear: heading order is h1 (PageHero) then h2 (banner); the decorative KMark is aria-hidden on its wrapper; every text pair clears WCAG AA on ink (gold-soft eyebrow 6.6:1, porcelain headline 13.1:1, 80% porcelain lede 8.9:1, white on gold-deep button 5.3:1); palette is tokens only and the display face is Fraunces. Still open for the owner as a design call, not changed here: the banner is a second full-bleed dark block immediately under the dark PageHero, and inserting it pushes the conditional promo strip about 460px further from the fold.',
     ],
   },
 ];
