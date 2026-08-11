@@ -540,11 +540,18 @@ export async function cancelBooking(
   // 0 — otherwise the client's cancellation email and the client record both claim
   // a late fee was taken when no money moved.
   let alreadyPaid = false;
+  // BLD-1236 (review): true once the late fee has actually been settled with the
+  // voucher netted off it — i.e. the voucher was SPENT on the fee. The
+  // voucher-return block below must then leave it spent, exactly as BLD-915 does
+  // for loyalty points; returning it as well would hand the client the discount
+  // AND the balance back, and the clinic would collect pricePence minus the
+  // voucher for a fee that is supposed to be the full price.
+  let feeConsumedVoucher = false;
 
   if (shouldCharge) {
     const res = await chargeBooking(booking, chargeablePence, { late: true });
     if (res.alreadyPaid) alreadyPaid = true;
-    else if (res.ok) charged = chargeablePence;
+    else if (res.ok) { charged = chargeablePence; feeConsumedVoucher = (booking.giftVoucherPence ?? 0) > 0; }
     else if (res.requiresAction) requiresAction = true;
     else feeFailed = true; // charge declined — cancel anyway, but flag for follow-up.
   }
@@ -603,11 +610,14 @@ export async function cancelBooking(
   // fee lands): a booking already charged before cancellation consumed its
   // voucher as part of that settled sale (fully by voucher, or netted off a
   // card/cash remainder) — returning consumed value is a refund decision, made
-  // deliberately via refundBooking, never automatic. A late fee charged DURING
-  // this cancellation is computed from pricePence and never spends the voucher,
-  // so the reservation still returns. Guarded clear so a concurrent removal
-  // can't double-credit.
-  if ((booking.giftVoucherPence ?? 0) > 0 && booking.giftVoucherCode && !booking.chargedAt) {
+  // deliberately via refundBooking, never automatic. Guarded clear so a
+  // concurrent removal can't double-credit.
+  // BLD-1236 (review): a late fee settled DURING this cancellation now nets the
+  // voucher off (above), so it DOES spend it — feeConsumedVoucher blocks the
+  // return in that case. The reservation still returns whenever no fee was
+  // settled: outside the 24h window, fee waived, charge declined, or the client
+  // still has to authenticate it.
+  if ((booking.giftVoucherPence ?? 0) > 0 && booking.giftVoucherCode && !booking.chargedAt && !feeConsumedVoucher) {
     try {
       const cleared = await db.booking.updateMany({
         where: { id: booking.id, giftVoucherCode: booking.giftVoucherCode, giftVoucherPence: booking.giftVoucherPence },

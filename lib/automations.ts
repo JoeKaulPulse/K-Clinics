@@ -357,6 +357,13 @@ async function courseContentReady(t: Tally) {
 const ORDER_ABANDON_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
 
 export async function releaseAbandonedPendingOrders(): Promise<{ released: number }> {
+  const { stripeEnabled, stripe } = await import('@/lib/stripe');
+  // (review) Without Stripe we cannot confirm a PaymentIntent is dead, and the
+  // whole point of this sweep is never to cancel an order that was in fact paid.
+  // A missing/misconfigured key must therefore mean "do nothing", not "cancel
+  // everything unchecked".
+  if (!stripeEnabled) return { released: 0 };
+
   const cutoff = new Date(Date.now() - ORDER_ABANDON_MS);
   const candidates = await db.order.findMany({
     where: {
@@ -365,11 +372,15 @@ export async function releaseAbandonedPendingOrders(): Promise<{ released: numbe
       createdAt: { lt: cutoff },
     },
     select: { id: true, number: true, stripePaymentIntentId: true, giftCardCode: true, giftCardPence: true },
-    take: 200,
+    // (review) Oldest first, and a batch small enough that up to two Stripe
+    // round-trips each stay well inside cron/dispatch's 60s maxDuration
+    // alongside everything else it runs. At a 15-minute cadence that still
+    // drains ~4,800 orders/day, so a first-run backlog clears within hours.
+    orderBy: { createdAt: 'asc' },
+    take: 25,
   });
   if (!candidates.length) return { released: 0 };
 
-  const { stripeEnabled, stripe } = await import('@/lib/stripe');
   const { undoVoucherReservation } = await import('@/lib/gift-vouchers');
 
   let released = 0;
@@ -379,7 +390,7 @@ export async function releaseAbandonedPendingOrders(): Promise<{ released: numbe
     // webhook hasn't landed yet, must never be cancelled out from under the
     // customer. Mirrors the same care app/api/admin/pos/route.ts takes before
     // cancelling a sale: don't touch anything we can't confirm is dead.
-    if (stripeEnabled && o.stripePaymentIntentId) {
+    if (o.stripePaymentIntentId) {
       try {
         const pi = await stripe().paymentIntents.retrieve(o.stripePaymentIntentId);
         if (pi.status === 'succeeded' || pi.status === 'processing' || pi.status === 'requires_capture') continue;
@@ -400,7 +411,7 @@ export async function releaseAbandonedPendingOrders(): Promise<{ released: numbe
     // confirmation attempt can't succeed against an order we've already given
     // up on (finalizeOrder's CANCELLED guard, BLD-761, would catch and flag it
     // for staff review either way — this just prevents it happening at all).
-    if (stripeEnabled && o.stripePaymentIntentId) {
+    if (o.stripePaymentIntentId) {
       try { await stripe().paymentIntents.cancel(o.stripePaymentIntentId); } catch { /* already terminal / non-cancellable — fine */ }
     }
     released++;
