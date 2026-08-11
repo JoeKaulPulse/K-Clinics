@@ -18,7 +18,9 @@ const STATUS_STYLE: Record<string, string> = {
   HIDDEN: 'bg-[var(--color-blush)]/25 text-[var(--color-ink)]',
 };
 const Stars = ({ n }: { n: number | null }) => (
-  <span className="text-[var(--color-gold)]" aria-label={n ? `${n} out of 5 stars` : 'no rating'}>
+  // role="img" is required for the label to be exposed — aria-label is ignored
+  // on a bare <span> (implicit role=generic).
+  <span role="img" className="text-[var(--color-gold)]" aria-label={n ? `${n} out of 5 stars` : 'no rating'}>
     <span aria-hidden="true">{n ? '★'.repeat(n) + '☆'.repeat(5 - n) : '—'}</span>
   </span>
 );
