@@ -42,8 +42,34 @@ export function secretMatches(expected: string | null | undefined, provided: str
 /** Hash a client IP so we never store the raw address (anti-abuse counting only). */
 export function hashIp(ip: string | null | undefined): string | null {
   if (!ip) return null;
-  const salt = process.env.KIOSK_IP_SALT || process.env.ENCRYPTION_KEY || 'k-clinics-kiosk';
+  const salt = kioskIpSalt();
   return createHash('sha256').update(`${salt}:${ip}`).digest('hex').slice(0, 32);
+}
+
+// BLD-1260: never pseudonymise IPs with a salt that's committed in source (that
+// defeats the whole point). Preference order:
+//   1. KIOSK_IP_SALT      — the dedicated, explicit secret.
+//   2. ENCRYPTION_KEY     — kept for compatibility with the original chain.
+//   3. a salt DERIVED from another per-deployment secret (audit
+//      07-secrets-integrations.md: "derived from the keyring if desired"). The
+//      key itself is never used as the salt — only a domain-separated hash of
+//      it — and it is never exposed anywhere. This is what keeps production
+//      working: neither KIOSK_IP_SALT nor ENCRYPTION_KEY appears in
+//      .env.example, so on today's deployment both are unset and a hard throw
+//      here would 500 every public kiosk route (session create, funnel events,
+//      result share).
+//   4. throw in production — no secret of any kind to derive from.
+// Dev/test keeps the literal fallback so local runs need no secrets.
+function kioskIpSalt(): string {
+  const explicit = process.env.KIOSK_IP_SALT || process.env.ENCRYPTION_KEY;
+  if (explicit) return explicit;
+  const derivable = process.env.HEALTH_ENCRYPTION_KEY || process.env.ADMIN_JWT_SECRET;
+  if (derivable) return createHash('sha256').update(`kiosk-ip-salt:${derivable}`).digest('hex');
+  if (process.env.NODE_ENV === 'production') {
+    throw new Error('KIOSK_IP_SALT (or ENCRYPTION_KEY / HEALTH_ENCRYPTION_KEY / ADMIN_JWT_SECRET) is required in production for kiosk IP pseudonymisation.');
+  }
+  // Dev/test-only fallback so the app runs locally without secrets.
+  return 'k-clinics-kiosk';
 }
 
 /** Best-effort client IP from proxy headers. */

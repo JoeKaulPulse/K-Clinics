@@ -3649,6 +3649,17 @@ export const BUILD_BACKLOG: BacklogItem[] = [
       'Also checked and clear: sitemap consistency (fetched the live sitemap.xml, 161 URLs -- none noindexed, no canonical mismatches, so adding the 9 dentistry URLs keeps the invariant "everything listed is indexable"); robots.txt does not disallow /dentistry; the 8 treatment pages carry unique benefit/process/FAQ copy, so no thin- or duplicate-content cluster. Unrelated pre-existing defect spotted during that sweep and not touched here: sitemap.xml lists /academy/bundles, which 404s.',
     ],
   },
+  {
+    title: 'Security batch: Google SSO skipped 2FA enrollment gate, kiosk IP-hash had a hardcoded fallback salt, promo-code delete could destroy redemption records (BLD-1256, BLD-1260, BLD-1259)',
+    type: 'ERROR', urgency: 'P0', status: 'IN_REVIEW', assignee: 'claude',
+    value: 8, effort: 2,
+    detail: 'Three independent security gaps: a Google SSO admin login went straight to a full session with no totpEnabledAt / is2faRequiredForRole check, unlike the password and passkey login paths; hashIp() in lib/kiosk.ts fell back to a literal string committed in source when neither KIOSK_IP_SALT nor ENCRYPTION_KEY was set, defeating IP pseudonymisation; and deleting a PromoCode cascades onto PromoRedemption (onDelete: Cascade in the schema), permanently destroying redemption/financial audit rows for any code that had been used.',
+    notes: [
+      'Fix (BLD-1256): app/api/admin/oauth/google/callback/route.ts now mirrors app/api/admin/passkey-login/verify/route.ts -- if the resolved user has no totpEnabledAt and is2faRequiredForRole(user.role) is true, it creates a setup-only session (needsSetup: true) and redirects straight to /admin/profile?setup2fa=1 instead of the normal destination, matching the exact enrollment UX the password and passkey paths already use (middleware then confines a needsSetup session to the profile page until they enrol). A full session is only created on the pre-existing path, unchanged. Logs recordSecurity(\'LOGIN_OK\', ..., { sso: \'google\', setup: true }) on the setup branch instead of recordLogin, matching app/api/admin/login/route.ts\'s setup branch.',
+      'Fix (BLD-1260): hashIp() in lib/kiosk.ts now throws in production when neither KIOSK_IP_SALT nor ENCRYPTION_KEY is set, instead of silently falling back to the hardcoded \'k-clinics-kiosk\' string -- same fail-closed pattern as loadActive() in lib/crypto.ts. The hardcoded fallback is kept for non-production (dev/test) use only, so local/CI runs still work without secrets configured.',
+      'Fix (BLD-1259): the \'remove\' op in app/api/admin/promotions/route.ts now counts db.promoRedemption rows for the code before calling promoCode.delete, and returns 409 with "This code has been redeemed and can\'t be deleted -- set it to inactive instead" (referencing PromoCode.active) when any exist. The schema\'s onDelete: Cascade on PromoRedemption.promo is untouched -- no schema/migration change, per the no--accept-data-loss deploy gate -- the guard is purely at the application layer, and the delete still proceeds normally for a never-redeemed code.',
+    ],
+  },
 ];
 
 // A content hash over every item's title + status + PR, so ANY change (a new

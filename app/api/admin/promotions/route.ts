@@ -53,6 +53,14 @@ export async function POST(req: Request) {
     }
     case 'remove': {
       if (!b.id) return bad();
+      // BLD-1259: PromoRedemption.promo is onDelete: Cascade, so deleting a
+      // code that's been redeemed would silently destroy the financial/audit
+      // trail with it. Block the delete once redemptions exist — deactivate
+      // (active: false) is the correct way to retire a used code.
+      const redemptions = await db.promoRedemption.count({ where: { promoCodeId: String(b.id) } });
+      if (redemptions > 0) {
+        return NextResponse.json({ ok: false, error: "This code has been redeemed and can't be deleted — set it to inactive instead." }, { status: 409 });
+      }
       await db.promoCode.delete({ where: { id: String(b.id) } });
       return NextResponse.json({ ok: true });
     }
