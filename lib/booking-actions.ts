@@ -527,7 +527,11 @@ export async function cancelBooking(
   // BLD-733: net off any loyalty points the client already redeemed as money off
   // this booking — otherwise the late fee bills the pre-discount price on top of
   // a discount the client already paid for with points.
-  const chargeablePence = Math.max(0, booking.pricePence - (booking.pointsRedeemedPence ?? 0));
+  // BLD-1236: also net off any gift voucher already applied to this booking, the
+  // same way the staff "charge now" action does (app/admin/bookings/actions.ts,
+  // BLD-882) — otherwise a client who paid part of the price with a voucher is
+  // billed the late fee on the full pre-voucher price on top of that.
+  const chargeablePence = Math.max(0, booking.pricePence - (booking.pointsRedeemedPence ?? 0) - (booking.giftVoucherPence ?? 0));
   let charged = 0;
   let requiresAction = false;
   let feeFailed = false;
@@ -783,7 +787,9 @@ export async function rescheduleBooking(
   // that then fails with SLOT_TAKEN. If the charge itself hard-fails we undo the
   // move, so the original "no reschedule without payment" rule still holds.
   if (!opts.admin && booking.rescheduleCount >= MAX_FREE_RESCHEDULES && booking.pricePence > 0) {
-    const rescheduleFeePence = Math.max(0, booking.pricePence - (booking.pointsRedeemedPence ?? 0));
+    // BLD-1236: net off an already-applied gift voucher too, same as the
+    // late-cancellation fee above and the staff "charge now" action.
+    const rescheduleFeePence = Math.max(0, booking.pricePence - (booking.pointsRedeemedPence ?? 0) - (booking.giftVoucherPence ?? 0));
     // BLD-1119: res.alreadyPaid means the booking was already paid in full (BNPL
     // course pre-payment / an earlier charge) and nothing was taken — the move
     // stands, but `charged` stays 0 so the client's confirmation email and the

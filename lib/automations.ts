@@ -336,6 +336,78 @@ async function courseContentReady(t: Tally) {
   } catch (e) { t.errors++; console.error('[automations] course content ready failed:', (e as Error)?.message); }
 }
 
+// BLD-1253: app/api/shop/checkout creates a plain Stripe PaymentIntent (not a
+// Checkout Session, which auto-expires) and reserves any applied gift-card
+// balance up front via reserveVoucher(). If the customer never confirms
+// payment, no payment_intent.canceled event is ever fired (there's nothing
+// for Stripe to expire), so the Order sits PENDING forever and the reserved
+// gift-card balance is stranded — never spendable, never released. Mirrors
+// releaseAbandonedPendingBookings() (lib/booking-actions.ts): a frequent,
+// unconditional sweep (not gated behind the abandoned_order_recovery setting
+// above, which only controls the reminder EMAIL) that cancels the order and
+// credits back any reserved balance via the same undoVoucherReservation() the
+// POS cancel path uses (app/api/admin/pos/route.ts).
+//
+// Cutoff is deliberately longer than a booking's 45-minute window: the
+// abandonedOrders() reminder above emails the shopper anywhere from 2h to 72h
+// after checkout, and a cancelled order can't be "finished" by clicking that
+// link — so releasing before the reminder has had its full window to convert
+// would undercut it. ORDER_ABANDON_MS clears that 72h window with a few days'
+// margin for the shopper to act on the nudge before we give up on the sale.
+const ORDER_ABANDON_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
+
+export async function releaseAbandonedPendingOrders(): Promise<{ released: number }> {
+  const cutoff = new Date(Date.now() - ORDER_ABANDON_MS);
+  const candidates = await db.order.findMany({
+    where: {
+      status: 'PENDING',
+      stripePaymentIntentId: { not: null },
+      createdAt: { lt: cutoff },
+    },
+    select: { id: true, number: true, stripePaymentIntentId: true, giftCardCode: true, giftCardPence: true },
+    take: 200,
+  });
+  if (!candidates.length) return { released: 0 };
+
+  const { stripeEnabled, stripe } = await import('@/lib/stripe');
+  const { undoVoucherReservation } = await import('@/lib/gift-vouchers');
+
+  let released = 0;
+  for (const o of candidates) {
+    // Re-confirm the live PaymentIntent before cancelling — a payment that
+    // succeeded (or is mid-confirmation) moments before this sweep ran, whose
+    // webhook hasn't landed yet, must never be cancelled out from under the
+    // customer. Mirrors the same care app/api/admin/pos/route.ts takes before
+    // cancelling a sale: don't touch anything we can't confirm is dead.
+    if (stripeEnabled && o.stripePaymentIntentId) {
+      try {
+        const pi = await stripe().paymentIntents.retrieve(o.stripePaymentIntentId);
+        if (pi.status === 'succeeded' || pi.status === 'processing' || pi.status === 'requires_capture') continue;
+      } catch (e) {
+        console.error(`[automations] abandoned order ${o.number}: couldn't confirm PaymentIntent state — skipping`, (e as Error)?.message);
+        continue;
+      }
+    }
+    // Atomic claim (mirrors the PENDING→CANCELLED guard used throughout the
+    // webhook and POS cancel paths) so a concurrent finalize/cancel can't
+    // double-credit the voucher.
+    const claimed = await db.order.updateMany({ where: { id: o.id, status: 'PENDING' }, data: { status: 'CANCELLED' } });
+    if (claimed.count === 0) continue;
+    if (o.giftCardCode && o.giftCardPence > 0) {
+      await undoVoucherReservation(o.giftCardCode, o.giftCardPence);
+    }
+    // Best-effort: also cancel the PaymentIntent itself so a much-later
+    // confirmation attempt can't succeed against an order we've already given
+    // up on (finalizeOrder's CANCELLED guard, BLD-761, would catch and flag it
+    // for staff review either way — this just prevents it happening at all).
+    if (stripeEnabled && o.stripePaymentIntentId) {
+      try { await stripe().paymentIntents.cancel(o.stripePaymentIntentId); } catch { /* already terminal / non-cancellable — fine */ }
+    }
+    released++;
+  }
+  return { released };
+}
+
 // ── Booking-funnel intent recovery (opt-in) ──
 // BLD-838 / BLD-853: a one-time nudge to visitors who left their email in the
 // public funnel ("email me my selection") but never completed a booking. The

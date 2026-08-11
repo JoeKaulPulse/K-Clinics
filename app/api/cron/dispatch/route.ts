@@ -32,6 +32,10 @@ export async function GET(req: Request) {
   // forever.
   let abandoned = { released: 0 };
   try { const { releaseAbandonedPendingBookings } = await import('@/lib/booking-actions'); abandoned = await releaseAbandonedPendingBookings(); } catch (e) { failures.push(`abandoned-bookings: ${(e as Error)?.message}`); }
+  // BLD-1253: cancel PENDING shop Orders abandoned past checkout (no Checkout
+  // Session to auto-expire them) and release any reserved gift-card balance.
+  let abandonedOrders = { released: 0 };
+  try { const { releaseAbandonedPendingOrders } = await import('@/lib/automations'); abandonedOrders = await releaseAbandonedPendingOrders(); } catch (e) { failures.push(`abandoned-orders: ${(e as Error)?.message}`); }
   // Materialise any due recurring/scheduled task automations ("repeat events").
   // Idempotent per occurrence, so the 15-min cadence can't double-spawn.
   let taskAutomations = { fired: 0, tasksCreated: 0 };
@@ -60,8 +64,8 @@ export async function GET(req: Request) {
       try { await fetch(webhook, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ text: `cron/dispatch failures: ${failures.join('; ')}` }) }); } catch { /* non-fatal */ }
     }
     console.error('[cron/dispatch] failures:', failures);
-    return NextResponse.json({ ok: false, failures, ...result, chatFollowups: chat.emailed, waitlistExpired: waitlist.expired, waitlistReoffered: waitlist.reoffered, abandonedBookingsReleased: abandoned.released, githubSynced: ghSync.synced, githubRemaining: ghSync.remaining, taskAutomationsFired: taskAutomations.fired, taskAutomationTasks: taskAutomations.tasksCreated }, { status: 500 });
+    return NextResponse.json({ ok: false, failures, ...result, chatFollowups: chat.emailed, waitlistExpired: waitlist.expired, waitlistReoffered: waitlist.reoffered, abandonedBookingsReleased: abandoned.released, abandonedOrdersReleased: abandonedOrders.released, githubSynced: ghSync.synced, githubRemaining: ghSync.remaining, taskAutomationsFired: taskAutomations.fired, taskAutomationTasks: taskAutomations.tasksCreated }, { status: 500 });
   }
 
-  return NextResponse.json({ ok: true, ...result, chatFollowups: chat.emailed, waitlistExpired: waitlist.expired, waitlistReoffered: waitlist.reoffered, abandonedBookingsReleased: abandoned.released, githubSynced: ghSync.synced, githubRemaining: ghSync.remaining, taskAutomationsFired: taskAutomations.fired, taskAutomationTasks: taskAutomations.tasksCreated });
+  return NextResponse.json({ ok: true, ...result, chatFollowups: chat.emailed, waitlistExpired: waitlist.expired, waitlistReoffered: waitlist.reoffered, abandonedBookingsReleased: abandoned.released, abandonedOrdersReleased: abandonedOrders.released, githubSynced: ghSync.synced, githubRemaining: ghSync.remaining, taskAutomationsFired: taskAutomations.fired, taskAutomationTasks: taskAutomations.tasksCreated });
 }
