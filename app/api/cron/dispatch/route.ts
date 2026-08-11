@@ -17,9 +17,14 @@ export async function GET(req: Request) {
 
   const failures: string[] = [];
 
-  const { dispatchDueCampaigns } = await import('@/lib/email-campaigns');
+  const { dispatchDueCampaigns, recoverStuckSendingCampaigns } = await import('@/lib/email-campaigns');
   let result = { processed: 0, sent: 0, abDecided: 0 };
   try { result = await dispatchDueCampaigns(); } catch (e) { failures.push(`campaigns: ${(e as Error)?.message}`); }
+  // PRJ-1043.5: a campaign that got stuck in SENDING (delivery threw before an
+  // older deploy's try/catch existed, or the function was killed mid-loop at
+  // maxDuration) is otherwise stuck forever — nothing else clears SENDING.
+  let stuckCampaigns = { recovered: 0 };
+  try { stuckCampaigns = await recoverStuckSendingCampaigns(); } catch (e) { failures.push(`stuck-campaigns: ${(e as Error)?.message}`); }
 
   // Email any unseen live-chat reply once the visitor has clearly left.
   let chat = { emailed: 0 };
@@ -60,8 +65,8 @@ export async function GET(req: Request) {
       try { await fetch(webhook, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ text: `cron/dispatch failures: ${failures.join('; ')}` }) }); } catch { /* non-fatal */ }
     }
     console.error('[cron/dispatch] failures:', failures);
-    return NextResponse.json({ ok: false, failures, ...result, chatFollowups: chat.emailed, waitlistExpired: waitlist.expired, waitlistReoffered: waitlist.reoffered, abandonedBookingsReleased: abandoned.released, githubSynced: ghSync.synced, githubRemaining: ghSync.remaining, taskAutomationsFired: taskAutomations.fired, taskAutomationTasks: taskAutomations.tasksCreated }, { status: 500 });
+    return NextResponse.json({ ok: false, failures, ...result, chatFollowups: chat.emailed, waitlistExpired: waitlist.expired, waitlistReoffered: waitlist.reoffered, abandonedBookingsReleased: abandoned.released, stuckCampaignsRecovered: stuckCampaigns.recovered, githubSynced: ghSync.synced, githubRemaining: ghSync.remaining, taskAutomationsFired: taskAutomations.fired, taskAutomationTasks: taskAutomations.tasksCreated }, { status: 500 });
   }
 
-  return NextResponse.json({ ok: true, ...result, chatFollowups: chat.emailed, waitlistExpired: waitlist.expired, waitlistReoffered: waitlist.reoffered, abandonedBookingsReleased: abandoned.released, githubSynced: ghSync.synced, githubRemaining: ghSync.remaining, taskAutomationsFired: taskAutomations.fired, taskAutomationTasks: taskAutomations.tasksCreated });
+  return NextResponse.json({ ok: true, ...result, chatFollowups: chat.emailed, waitlistExpired: waitlist.expired, waitlistReoffered: waitlist.reoffered, abandonedBookingsReleased: abandoned.released, stuckCampaignsRecovered: stuckCampaigns.recovered, githubSynced: ghSync.synced, githubRemaining: ghSync.remaining, taskAutomationsFired: taskAutomations.fired, taskAutomationTasks: taskAutomations.tasksCreated });
 }

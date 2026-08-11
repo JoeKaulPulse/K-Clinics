@@ -29,7 +29,16 @@ export async function sendPush(userId: string, payload: { title: string; body?: 
   const data = JSON.stringify({ title: payload.title, body: payload.body || '', href: payload.href || '/admin', tag: payload.tag });
   await Promise.all(subs.map(async (s) => {
     try {
-      await webpush.sendNotification({ endpoint: s.endpoint, keys: { p256dh: s.p256dh, auth: s.auth } }, data);
+      // BLD-1209: cap each send so one hung push endpoint can't stall the whole
+      // Promise.all (and every other device on the account) — same pattern as
+      // the Resend timeout in lib/email.ts (BLD-281).
+      const TIMEOUT = Symbol('timeout');
+      let timer: ReturnType<typeof setTimeout> | undefined;
+      const result = await Promise.race([
+        webpush.sendNotification({ endpoint: s.endpoint, keys: { p256dh: s.p256dh, auth: s.auth } }, data),
+        new Promise<typeof TIMEOUT>((resolve) => { timer = setTimeout(() => resolve(TIMEOUT), 10_000); }),
+      ]).finally(() => { if (timer) clearTimeout(timer); });
+      if (result === TIMEOUT) throw new Error('Push send timed out after 10s');
     } catch (e) {
       const code = (e as { statusCode?: number })?.statusCode;
       if (code === 404 || code === 410) await db.pushSubscription.delete({ where: { id: s.id } }).catch(() => {});

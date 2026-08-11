@@ -91,11 +91,23 @@ export async function sendCampaignById(id: string): Promise<{ ok: boolean; sent?
   if (claimed.count === 0) return { ok: false, error: 'This campaign has already been sent.' };
   let blocks: EmailBlock[] = [];
   try { blocks = JSON.parse(c.body) as EmailBlock[]; } catch { /* empty */ }
-  const { sent, failed } = await deliverCampaign({
-    subject: c.subject, blocks, campaignId: id,
-    audience: { type: (c.audienceType as Audience['type']) || 'all', value: c.audienceValue || undefined },
-    fromName: c.fromName || undefined, replyTo: c.replyTo || undefined, preheader: c.preheader || undefined,
-  });
+  let sent = 0, failed = 0;
+  try {
+    ({ sent, failed } = await deliverCampaign({
+      subject: c.subject, blocks, campaignId: id,
+      audience: { type: (c.audienceType as Audience['type']) || 'all', value: c.audienceValue || undefined },
+      fromName: c.fromName || undefined, replyTo: c.replyTo || undefined, preheader: c.preheader || undefined,
+    }));
+  } catch (e) {
+    // PRJ-1043.5: a thrown error here — or the serverless function getting
+    // killed at maxDuration mid-loop — must not leave the row stuck in
+    // SENDING forever (nothing else clears it, and the delete route refuses
+    // to remove a SENDING campaign). Put it back to SCHEDULED, due now, so
+    // the cron dispatcher retries delivery on its next tick.
+    console.error('[email-campaigns] sendCampaignById', id, 'delivery threw:', (e as Error)?.message);
+    await db.campaign.update({ where: { id }, data: { status: 'SCHEDULED', scheduledAt: new Date() } }).catch(() => {});
+    return { ok: false, error: 'Delivery failed — campaign requeued for retry.' };
+  }
   await db.campaign.update({ where: { id }, data: { status: 'SENT', sentAt: new Date(), recipients: sent } });
   return { ok: true, sent, failed };
 }
@@ -188,4 +200,23 @@ export async function dispatchDueCampaigns(): Promise<{ processed: number; sent:
     catch (e) { console.error('[email-cron] A/B decide', d.id, 'failed:', (e as Error)?.message); }
   }
   return { processed: due.length, sent, abDecided };
+}
+
+// Comfortably past the 60s maxDuration on both send paths (sendCampaignById /
+// the immediate-send route), so a still-genuinely-in-flight send is never
+// mistaken for stuck.
+const STALE_SENDING_MS = 12 * 60 * 1000;
+
+/** Recover campaigns stuck in SENDING — e.g. the serverless function that was
+ *  delivering it got killed mid-loop before a surrounding try/catch could run,
+ *  or an older deploy without one. Nothing else ever clears SENDING, so left
+ *  alone the row is stuck forever. Resets it to SCHEDULED, due now, so the
+ *  next cron tick retries delivery (PRJ-1043.5). */
+export async function recoverStuckSendingCampaigns(): Promise<{ recovered: number }> {
+  const cutoff = new Date(Date.now() - STALE_SENDING_MS);
+  const stale = await db.campaign.updateMany({
+    where: { status: 'SENDING', updatedAt: { lt: cutoff } },
+    data: { status: 'SCHEDULED', scheduledAt: new Date() },
+  });
+  return { recovered: stale.count };
 }
