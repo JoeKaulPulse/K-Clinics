@@ -3,6 +3,7 @@ import type { PrismaPromise } from '@prisma/client';
 import { withAccelerate } from '@prisma/extension-accelerate';
 import { Pool } from 'pg';
 import { PrismaPg } from '@prisma/adapter-pg';
+import { PHASE_PRODUCTION_BUILD } from 'next/constants';
 import { isAcademyModel, applyTenantScope } from '@/lib/tenant-scope';
 
 // ── Database client ──────────────────────────────────────────────────────────
@@ -101,8 +102,29 @@ const tenantExtension = {
 // unchanged; only the static type is widened for the second hop.
 type Extendable = { $extends: (ext: unknown) => unknown };
 
+// BLD-1269: a misconfigured deploy (pooled URL env vars missing/misnamed) used
+// to fall through silently to the direct-connection branch below, which is
+// exactly the "every serverless instance opens its own Postgres connection"
+// pattern that previously exhausted the connection cap under concurrent
+// traffic + deploys (see comment above). Fail loud at boot instead, so that
+// misconfiguration surfaces immediately rather than as an outage under load.
+// Excludes the Next.js build phase (`next build` sets NODE_ENV=production and,
+// on Vercel, VERCEL=1 too, but never touches a real database) so builds without
+// a pooled URL configured — this repo's normal CI/sandbox posture — still pass.
+function assertPooledInProduction(pooled: string | undefined): void {
+  if (pooled) return;
+  const isBuildPhase = process.env.NEXT_PHASE === PHASE_PRODUCTION_BUILD;
+  if (isBuildPhase) return;
+  if (!process.env.VERCEL && process.env.NODE_ENV !== 'production') return;
+  throw new Error(
+    'No pooled database URL configured (PRISMA_DATABASE_URL / ACCELERATE_URL / a prisma+postgres:// DATABASE_URL). ' +
+    'Falling back to a direct connection per serverless instance previously exhausted the Postgres connection cap under concurrent traffic + deploys — configure the Accelerate pooler before serving production traffic.',
+  );
+}
+
 function makeClient(): PrismaClient {
   const pooled = resolvePooledUrl();
+  assertPooledInProduction(pooled);
   let base: Extendable;
   if (pooled) {
     // Route every runtime query through the Accelerate pooler.

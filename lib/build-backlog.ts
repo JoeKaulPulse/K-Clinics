@@ -3651,13 +3651,34 @@ export const BUILD_BACKLOG: BacklogItem[] = [
   },
   {
     title: 'Security batch: Google SSO skipped 2FA enrollment gate, kiosk IP-hash had a hardcoded fallback salt, promo-code delete could destroy redemption records (BLD-1256, BLD-1260, BLD-1259)',
-    type: 'ERROR', urgency: 'P0', status: 'IN_REVIEW', assignee: 'claude',
+    type: 'ERROR', urgency: 'P0', status: 'SHIPPED', assignee: 'claude',
     value: 8, effort: 2,
     detail: 'Three independent security gaps: a Google SSO admin login went straight to a full session with no totpEnabledAt / is2faRequiredForRole check, unlike the password and passkey login paths; hashIp() in lib/kiosk.ts fell back to a literal string committed in source when neither KIOSK_IP_SALT nor ENCRYPTION_KEY was set, defeating IP pseudonymisation; and deleting a PromoCode cascades onto PromoRedemption (onDelete: Cascade in the schema), permanently destroying redemption/financial audit rows for any code that had been used.',
     notes: [
       'Fix (BLD-1256): app/api/admin/oauth/google/callback/route.ts now mirrors app/api/admin/passkey-login/verify/route.ts -- if the resolved user has no totpEnabledAt and is2faRequiredForRole(user.role) is true, it creates a setup-only session (needsSetup: true) and redirects straight to /admin/profile?setup2fa=1 instead of the normal destination, matching the exact enrollment UX the password and passkey paths already use (middleware then confines a needsSetup session to the profile page until they enrol). A full session is only created on the pre-existing path, unchanged. Logs recordSecurity(\'LOGIN_OK\', ..., { sso: \'google\', setup: true }) on the setup branch instead of recordLogin, matching app/api/admin/login/route.ts\'s setup branch.',
       'Fix (BLD-1260): hashIp() in lib/kiosk.ts now throws in production when neither KIOSK_IP_SALT nor ENCRYPTION_KEY is set, instead of silently falling back to the hardcoded \'k-clinics-kiosk\' string -- same fail-closed pattern as loadActive() in lib/crypto.ts. The hardcoded fallback is kept for non-production (dev/test) use only, so local/CI runs still work without secrets configured.',
       'Fix (BLD-1259): the \'remove\' op in app/api/admin/promotions/route.ts now counts db.promoRedemption rows for the code before calling promoCode.delete, and returns 409 with "This code has been redeemed and can\'t be deleted -- set it to inactive instead" (referencing PromoCode.active) when any exist. The schema\'s onDelete: Cascade on PromoRedemption.promo is untouched -- no schema/migration change, per the no--accept-data-loss deploy gate -- the guard is purely at the application layer, and the delete still proceeds normally for a never-redeemed code.',
+      'Closed 11 Aug: all three fixes confirmed already on main (commit 9231173) from a prior run; this board row was left at IN_REVIEW and never flipped. No further code change needed.',
+    ],
+  },
+  {
+    title: 'Serverless DB pool silently falls back to unpooled connections without a configured pooler URL (prior cause of connection exhaustion) (BLD-1269)',
+    type: 'ERROR', urgency: 'P1', status: 'IN_REVIEW', assignee: 'claude',
+    value: 8, effort: 2,
+    detail: 'lib/db.ts resolvePooledUrl() only takes the safe Accelerate/pooler path when PRISMA_DATABASE_URL/ACCELERATE_URL/a prisma+postgres:// URL is present; otherwise every serverless instance opened its own direct pg.Pool -- the exact pattern the code\'s own comments describe as having previously exhausted Postgres\'s connection cap under concurrent traffic + deploys.',
+    notes: [
+      'Fix: makeClient() now calls assertPooledInProduction() before falling back to the direct-connection branch. It throws loudly at boot when no pooled URL is configured and the process is either on Vercel or running with NODE_ENV=production, so misconfiguration surfaces immediately instead of silently degrading to per-instance direct connections under load. Explicitly excluded: the Next.js build phase (process.env.NEXT_PHASE === PHASE_PRODUCTION_BUILD from next/constants) -- next build sets NODE_ENV=production but never opens a real DB connection, and this repo\'s CI/sandbox builds run with no DATABASE_URL at all, so the assertion would otherwise fail every build. Dev/test and local `next start` without VERCEL/NODE_ENV=production are unaffected.',
+      'Verified: npx tsc --noEmit and DATABASE_URL= npx next build both pass clean (the build-phase guard confirmed working -- no pooled URL was configured for this build and it still completed).',
+    ],
+  },
+  {
+    title: 'Academy refund flow double-decrements paidPence after a prior partial Stripe-dashboard refund (BLD-1271)',
+    type: 'ERROR', urgency: 'P1', status: 'IN_REVIEW', assignee: 'claude',
+    value: 7, effort: 3,
+    detail: 'refundEnrolmentPayment (lib/academy-payments.ts) never read the row\'s existing refundedPence before refunding -- it refunded whatever remained unrefunded at Stripe but then unconditionally set refundedPence to the full original amount and decremented enrolment.paidPence by the full amount too. A prior partial refund already reconciled by reconcileEnrolmentPaymentRefund (which correctly decrements paidPence by just its delta) meant a later in-app Refund click double-counted that earlier delta, understating paidPence and overstating the outstanding balance.',
+    notes: [
+      'Fix: the select now also pulls refundedPence, and the paidPence decrement nets against it (delta = amountPence - refundedPence) instead of always decrementing by the full original amountPence -- mirroring the CAS/delta-aware pattern already used by refundBooking\'s refundableRemaining and by reconcileEnrolmentPaymentRefund itself. refundedPence is still stamped to the full amountPence (this action fully refunds whatever remains at Stripe), only the local paidPence decrement changed.',
+      'Verified: npx tsc --noEmit and DATABASE_URL= npx next build both pass clean.',
     ],
   },
 ];

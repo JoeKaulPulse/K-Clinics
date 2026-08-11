@@ -544,7 +544,7 @@ export async function academyInstalmentReminders(): Promise<{ sent: number }> {
 export async function refundEnrolmentPayment(paymentId: string, staffEmail?: string): Promise<{ ok: boolean; error?: string }> {
   const p = await db.enrolmentPayment.findUnique({
     where: { id: paymentId },
-    select: { id: true, enrolmentId: true, amountPence: true, state: true, stripePaymentIntentId: true },
+    select: { id: true, enrolmentId: true, amountPence: true, refundedPence: true, state: true, stripePaymentIntentId: true },
   });
   if (!p) return { ok: false, error: 'Payment not found.' };
   if (p.state !== 'PAID') return { ok: false, error: 'Only PAID payments can be refunded.' };
@@ -563,9 +563,17 @@ export async function refundEnrolmentPayment(paymentId: string, staffEmail?: str
   // charge.refunded echo of THIS refund computes a zero delta instead of
   // decrementing paidPence a second time (its metadata carries paymentId, not
   // bookingId/orderId, so the originatedInApp skip doesn't catch it).
+  //
+  // BLD-1271: net against any refundedPence already recorded — e.g. a prior
+  // partial dashboard refund already reconciled by reconcileEnrolmentPaymentRefund,
+  // which will have decremented paidPence by that delta already. Decrementing by
+  // the full original amountPence here would double-count that portion.
+  const delta = Math.max(0, p.amountPence - p.refundedPence);
   const claimed = await db.enrolmentPayment.updateMany({ where: { id: p.id, state: 'PAID' }, data: { state: 'REFUNDED', refundedPence: p.amountPence } });
   if (claimed.count === 0) return { ok: true };
-  await db.enrolment.update({ where: { id: p.enrolmentId }, data: { paidPence: { decrement: p.amountPence } } }).catch(() => {});
+  if (delta > 0) {
+    await db.enrolment.update({ where: { id: p.enrolmentId }, data: { paidPence: { decrement: delta } } }).catch(() => {});
+  }
   await logAudit({
     action: 'PAYMENT_REFUNDED',
     actor: staffEmail || 'admin',
