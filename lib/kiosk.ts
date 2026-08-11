@@ -42,8 +42,21 @@ export function secretMatches(expected: string | null | undefined, provided: str
 /** Hash a client IP so we never store the raw address (anti-abuse counting only). */
 export function hashIp(ip: string | null | undefined): string | null {
   if (!ip) return null;
-  const salt = process.env.KIOSK_IP_SALT || process.env.ENCRYPTION_KEY || 'k-clinics-kiosk';
+  const salt = kioskIpSalt();
   return createHash('sha256').update(`${salt}:${ip}`).digest('hex').slice(0, 32);
+}
+
+// BLD-1260: fail closed in production instead of silently pseudonymising IPs
+// with a salt that's committed in source (defeats the whole point). Mirrors
+// the keyring pattern in lib/crypto.ts loadActive().
+function kioskIpSalt(): string {
+  const salt = process.env.KIOSK_IP_SALT || process.env.ENCRYPTION_KEY;
+  if (salt) return salt;
+  if (process.env.NODE_ENV === 'production') {
+    throw new Error('KIOSK_IP_SALT (or ENCRYPTION_KEY) is required in production for kiosk IP pseudonymisation.');
+  }
+  // Dev/test-only fallback so the app runs locally without secrets.
+  return 'k-clinics-kiosk';
 }
 
 /** Best-effort client IP from proxy headers. */

@@ -41,6 +41,35 @@ export async function GET(req: Request) {
 
   const user = result.user;
   const { createSession } = await import('@/lib/auth');
+
+  // BLD-1256: mirror the password and passkey login paths — a Google SSO
+  // identity replaces the password, but not mandatory TOTP enrolment. If the
+  // role requires 2FA and the user hasn't enrolled, issue a setup-only
+  // session (middleware confines it to the profile/enrolment page) instead of
+  // a full session, and send them straight there.
+  const { is2faRequiredForRole } = await import('@/lib/security/twofa');
+  if (!user.totpEnabledAt && await is2faRequiredForRole(user.role)) {
+    await createSession({
+      sub: user.id,
+      email: user.email,
+      name: user.name || undefined,
+      role: user.role,
+      grant: user.permGrant ?? [],
+      revoke: user.permRevoke ?? [],
+      epoch: user.sessionEpoch ?? 0,
+      needsSetup: true,
+    });
+    try {
+      const { recordSecurity } = await import('@/lib/security/guard');
+      await recordSecurity('LOGIN_OK', 'admin', user.email, req, { sso: 'google', setup: true });
+    } catch {
+      /* non-fatal */
+    }
+    const setupRes = NextResponse.redirect(new URL('/admin/profile?setup2fa=1', req.url));
+    setupRes.cookies.set('kc_lang', user.locale === 'uk' ? 'uk' : 'en', { httpOnly: false, sameSite: 'lax', path: '/', maxAge: 60 * 60 * 24 * 365 });
+    return setupRes;
+  }
+
   await createSession({
     sub: user.id,
     email: user.email,
