@@ -34,6 +34,10 @@ type DeliverOpts = {
   replyTo?: string;
   preheader?: string;
   meta?: Record<string, unknown>; // recorded on each EmailEvent (e.g. A/B variant)
+  // PRJ-1043.5 (review): skip anyone who already has a SENT EmailEvent for this
+  // campaign. Set on the retry path only (sendCampaignById) — see the note on
+  // deliverCampaign below.
+  skipAlreadySent?: boolean;
 };
 
 const RECIPIENT_SELECT = { id: true, email: true, firstName: true, lastName: true, unsubToken: true } as const;
@@ -70,9 +74,24 @@ export async function deliverToRecipients(recipients: Recipient[], opts: Deliver
   return { sent, failed };
 }
 
-/** Personalise + deliver a campaign to its whole audience. */
+/** Personalise + deliver a campaign to its whole audience.
+ *  With `skipAlreadySent`, anyone who already has a SENT EmailEvent for this
+ *  campaign is dropped — the same filter decideAbTest() applies. That matters on
+ *  the retry paths added for PRJ-1043.5: a send killed at maxDuration mid-loop
+ *  is requeued to SCHEDULED, and without this the retry would re-mail everyone
+ *  already delivered to, then be killed at the same point again — a campaign
+ *  re-sent to the same clients every 15 minutes, forever. With it, each retry
+ *  picks up where the last left off and the campaign finishes. A first send has
+ *  no prior events, so the filter is a no-op there. */
 export async function deliverCampaign(opts: DeliverOpts & { audience: Audience }): Promise<{ sent: number; failed: number }> {
-  const recipients = await db.client.findMany({ where: await audienceWhere(opts.audience), select: RECIPIENT_SELECT, take: 5000 });
+  let recipients = await db.client.findMany({ where: await audienceWhere(opts.audience), select: RECIPIENT_SELECT, take: 5000 });
+  if (opts.skipAlreadySent) {
+    const done = new Set(
+      (await db.emailEvent.findMany({ where: { campaignId: opts.campaignId, status: 'SENT' }, select: { to: true } }))
+        .map((e) => e.to.toLowerCase()),
+    );
+    if (done.size) recipients = recipients.filter((r) => !done.has(r.email.toLowerCase()));
+  }
   return deliverToRecipients(recipients, opts);
 }
 
@@ -91,11 +110,26 @@ export async function sendCampaignById(id: string): Promise<{ ok: boolean; sent?
   if (claimed.count === 0) return { ok: false, error: 'This campaign has already been sent.' };
   let blocks: EmailBlock[] = [];
   try { blocks = JSON.parse(c.body) as EmailBlock[]; } catch { /* empty */ }
-  const { sent, failed } = await deliverCampaign({
-    subject: c.subject, blocks, campaignId: id,
-    audience: { type: (c.audienceType as Audience['type']) || 'all', value: c.audienceValue || undefined },
-    fromName: c.fromName || undefined, replyTo: c.replyTo || undefined, preheader: c.preheader || undefined,
-  });
+  let sent = 0, failed = 0;
+  try {
+    ({ sent, failed } = await deliverCampaign({
+      subject: c.subject, blocks, campaignId: id,
+      audience: { type: (c.audienceType as Audience['type']) || 'all', value: c.audienceValue || undefined },
+      fromName: c.fromName || undefined, replyTo: c.replyTo || undefined, preheader: c.preheader || undefined,
+      // This is the path every requeued/recovered campaign comes back through,
+      // so it must never re-mail a recipient the earlier attempt already reached.
+      skipAlreadySent: true,
+    }));
+  } catch (e) {
+    // PRJ-1043.5: a thrown error here — or the serverless function getting
+    // killed at maxDuration mid-loop — must not leave the row stuck in
+    // SENDING forever (nothing else clears it, and the delete route refuses
+    // to remove a SENDING campaign). Put it back to SCHEDULED, due now, so
+    // the cron dispatcher retries delivery on its next tick.
+    console.error('[email-campaigns] sendCampaignById', id, 'delivery threw:', (e as Error)?.message);
+    await db.campaign.update({ where: { id }, data: { status: 'SCHEDULED', scheduledAt: new Date() } }).catch(() => {});
+    return { ok: false, error: 'Delivery failed — campaign requeued for retry.' };
+  }
   await db.campaign.update({ where: { id }, data: { status: 'SENT', sentAt: new Date(), recipients: sent } });
   return { ok: true, sent, failed };
 }
@@ -188,4 +222,23 @@ export async function dispatchDueCampaigns(): Promise<{ processed: number; sent:
     catch (e) { console.error('[email-cron] A/B decide', d.id, 'failed:', (e as Error)?.message); }
   }
   return { processed: due.length, sent, abDecided };
+}
+
+// Comfortably past the 60s maxDuration on both send paths (sendCampaignById /
+// the immediate-send route), so a still-genuinely-in-flight send is never
+// mistaken for stuck.
+const STALE_SENDING_MS = 12 * 60 * 1000;
+
+/** Recover campaigns stuck in SENDING — e.g. the serverless function that was
+ *  delivering it got killed mid-loop before a surrounding try/catch could run,
+ *  or an older deploy without one. Nothing else ever clears SENDING, so left
+ *  alone the row is stuck forever. Resets it to SCHEDULED, due now, so the
+ *  next cron tick retries delivery (PRJ-1043.5). */
+export async function recoverStuckSendingCampaigns(): Promise<{ recovered: number }> {
+  const cutoff = new Date(Date.now() - STALE_SENDING_MS);
+  const stale = await db.campaign.updateMany({
+    where: { status: 'SENDING', updatedAt: { lt: cutoff } },
+    data: { status: 'SCHEDULED', scheduledAt: new Date() },
+  });
+  return { recovered: stale.count };
 }

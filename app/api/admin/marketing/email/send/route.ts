@@ -155,7 +155,17 @@ export async function POST(req: Request) {
   if ((await countAudience(aud)) === 0) return NextResponse.json({ ok: false, error: 'No opted-in recipients match that audience.' }, { status: 400 });
 
   const campaign = await upsert('SENDING');
-  const { sent, failed } = await deliverCampaign({ subject, blocks, audience: aud, campaignId: campaign.id, fromName, replyTo, preheader });
+  let sent = 0, failed = 0;
+  try {
+    ({ sent, failed } = await deliverCampaign({ subject, blocks, audience: aud, campaignId: campaign.id, fromName, replyTo, preheader }));
+  } catch (e) {
+    // PRJ-1043.5: don't leave the row stuck in SENDING forever if delivery
+    // throws (or the function is killed at maxDuration mid-loop) — requeue it
+    // so the cron dispatcher retries.
+    console.error('[marketing/email/send] delivery threw for campaign', campaign.id, ':', (e as Error)?.message);
+    await db.campaign.update({ where: { id: campaign.id }, data: { status: 'SCHEDULED', scheduledAt: new Date() } }).catch(() => {});
+    return NextResponse.json({ ok: false, error: 'Delivery failed — campaign requeued for retry.' }, { status: 500 });
+  }
   await db.campaign.update({ where: { id: campaign.id }, data: { status: 'SENT', sentAt: new Date(), recipients: sent } }).catch(() => {});
 
   const { logAudit } = await import('@/lib/audit');
