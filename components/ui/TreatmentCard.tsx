@@ -57,7 +57,7 @@ export async function TreatmentCard({ t, index = 0 }: { t: Treatment; index?: nu
           ) : null}
         </div>
         <div className="flex flex-1 flex-col p-7">
-          <h3 className="font-[family-name:var(--font-display)] text-2xl leading-tight transition-colors duration-500 group-hover:text-[var(--color-gold)]">
+          <h3 className="font-[family-name:var(--font-display)] text-2xl leading-tight transition-colors duration-500 group-hover:text-[var(--color-gold-deep)]">
             {t.title}
           </h3>
           <p className="mt-2.5 flex-1 text-sm leading-relaxed text-[var(--color-stone)]">{t.tagline}</p>

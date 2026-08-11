@@ -24,11 +24,11 @@ export function GiftCardPreview({
       <div className="relative flex h-full flex-col justify-between p-5 sm:p-6">
         <div className="flex items-start justify-between">
           <div>
-            {/* Brand rule: render the supplied K mark, never the name as text. */}
+            {/* Brand rule: render the supplied K mark, never the name as text.
+                No strap-line under the logo — see docs/BRAND_GUIDELINES.md. */}
             <div className="h-7" style={{ aspectRatio: '130 / 234' }}>
               <KMark />
             </div>
-            <p className="mt-1.5 text-[0.6rem] uppercase tracking-[0.3em]" style={{ color: soft(t.ink, 65) }}>Aesthetics · Laser · London</p>
           </div>
           <span className="rounded-full px-2.5 py-1 text-[0.6rem] uppercase tracking-[0.2em]" style={{ border: `1px solid ${soft(t.accent, 70)}`, color: t.accent }}>Gift</span>
         </div>
@@ -44,7 +44,10 @@ export function GiftCardPreview({
         </div>
 
         <div className="flex items-end justify-between">
-          <span className="font-[family-name:var(--font-mono,monospace)] text-[0.65rem] tracking-widest" style={{ color: soft(t.ink, 55) }}>KC-GV-••••-••••</span>
+          <span className="flex flex-col gap-0.5">
+            <span className="font-[family-name:var(--font-mono,monospace)] text-[0.65rem] tracking-widest" style={{ color: soft(t.ink, 55) }}>KC-GV-••••-••••</span>
+            <span className="text-[0.55rem] uppercase tracking-[0.25em]" style={{ color: soft(t.ink, 50) }}>Aesthetics · Laser · London</span>
+          </span>
           {purchaserName && message ? <span className="text-[0.65rem]" style={{ color: soft(t.ink, 70) }}>— {purchaserName}</span> : <span aria-hidden />}
         </div>
       </div>
