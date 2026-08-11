@@ -121,7 +121,7 @@ export function ChatWindow({ channelId, variant = 'docked', onRequestClose }: { 
             <button onClick={() => { void api({ op: 'mute', channelId, muted: !channel.muted }).then(refreshChannels); setMenu(false); }} className="block w-full px-3 py-2 text-left text-sm hover:bg-[var(--color-bone)]">{channel.muted ? 'Unmute' : 'Mute'} notifications</button>
             {channel.kind === 'GROUP' && <button onClick={() => { setManage('members'); setMenu(false); }} className="block w-full px-3 py-2 text-left text-sm hover:bg-[var(--color-bone)]">Members & add people</button>}
             {channel.kind === 'GROUP' && channel.myRole === 'OWNER' && <button onClick={() => { setManage('rename'); setMenu(false); }} className="block w-full px-3 py-2 text-left text-sm hover:bg-[var(--color-bone)]">Rename group</button>}
-            {channel.kind === 'GROUP' && <button onClick={() => { if (confirm('Leave this group?')) void api({ op: 'leave', channelId }).then(() => { closeWindow(channelId); refreshChannels(); }); setMenu(false); }} className="block w-full px-3 py-2 text-left text-sm text-[#b23b3b] hover:bg-[var(--color-bone)]">Leave group</button>}
+            {channel.kind === 'GROUP' && <button onClick={() => { if (confirm('Leave this group?')) void api({ op: 'leave', channelId }).then(() => { closeWindow(channelId); refreshChannels(); }); setMenu(false); }} className="block w-full px-3 py-2 text-left text-sm text-[var(--color-blush-deep)] hover:bg-[var(--color-bone)]">Leave group</button>}
           </div>
         )}
       </div>

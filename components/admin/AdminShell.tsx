@@ -340,7 +340,7 @@ export function AdminShell({
                     <div className="border-t border-[var(--color-line)]">
                       <ThemeToggle />
                     </div>
-                    <button onClick={signOut} role="menuitem" className="flex w-full items-center gap-2.5 border-t border-[var(--color-line)] px-4 py-2.5 text-left text-sm text-[#b23b3b] transition-colors hover:bg-[color-mix(in_oklab,#b23b3b_10%,transparent)]">
+                    <button onClick={signOut} role="menuitem" className="flex w-full items-center gap-2.5 border-t border-[var(--color-line)] px-4 py-2.5 text-left text-sm text-[var(--color-blush-deep)] transition-colors hover:bg-[color-mix(in_oklab,var(--color-blush-deep)_10%,transparent)]">
                       <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden><path d="M6 2.5H3.5v11H6M10.5 11l3-3-3-3M13 8H6.5" /></svg>
                       {t('shell.signOut')}
                     </button>

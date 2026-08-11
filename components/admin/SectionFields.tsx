@@ -135,7 +135,7 @@ function FieldInput({ field: f, value, data, onChange }: { field: Field; value: 
                 <span className="flex items-center gap-1">
                   <button onClick={() => onChange(move(items, i, -1))} aria-label="Up" className="text-[var(--color-stone)] hover:text-[var(--color-ink)]">▲</button>
                   <button onClick={() => onChange(move(items, i, 1))} aria-label="Down" className="text-[var(--color-stone)] hover:text-[var(--color-ink)]">▼</button>
-                  <button onClick={() => onChange(items.filter((_, j) => j !== i))} aria-label="Remove" className="ml-1 text-[var(--color-stone)] hover:text-[#c0392b]">✕</button>
+                  <button onClick={() => onChange(items.filter((_, j) => j !== i))} aria-label="Remove" className="ml-1 text-[var(--color-stone)] hover:text-[var(--color-blush-deep)]">✕</button>
                 </span>
               </div>
               <div className="space-y-3">

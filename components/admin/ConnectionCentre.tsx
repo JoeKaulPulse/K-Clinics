@@ -7,7 +7,7 @@ import type { ConnectionCentre as Centre, ConnectionView, ConnectionKey } from '
 const LIGHT: Record<string, { dot: string; label: string; text: string }> = {
   green: { dot: '#2f7152', label: 'Connected', text: 'text-[#2f7152]' },
   amber: { dot: '#bd8b3c', label: 'Needs a step', text: 'text-[#9a6b1f]' },
-  red: { dot: '#c0392b', label: 'Not working', text: 'text-[#c0392b]' },
+  red: { dot: 'var(--color-blush-deep)', label: 'Not working', text: 'text-[var(--color-blush-deep)]' },
   grey: { dot: '#b7a294', label: 'Not checked', text: 'text-[var(--color-stone)]' },
 };
 const SRC: Record<string, { text: string; cls: string }> = {

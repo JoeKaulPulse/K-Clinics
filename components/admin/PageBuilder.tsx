@@ -140,7 +140,7 @@ export function PageBuilder({ initial, revisions, seed, seo: seoInit, reusables 
           ? <button disabled={busy} onClick={publish} className="rounded-full bg-[var(--color-ink)] px-5 py-2 text-sm text-[var(--color-porcelain)] disabled:opacity-50">{busy ? 'Working…' : 'Publish'}</button>
           : <span className="rounded-full bg-[var(--color-bone)] px-4 py-2 text-xs text-[var(--color-stone)]" title="Ask a manager to publish">Draft only</span>}
       </div>
-      {msg && <p className={`mb-3 text-sm ${msg.kind === 'ok' ? 'text-[var(--color-jade)]' : 'text-[#c0392b]'}`}>{msg.text}</p>}
+      {msg && <p className={`mb-3 text-sm ${msg.kind === 'ok' ? 'text-[var(--color-jade)]' : 'text-[var(--color-blush-deep)]'}`}>{msg.text}</p>}
 
       <div className={`grid gap-6 ${previewOn ? 'lg:grid-cols-[minmax(0,28rem)_1fr]' : 'lg:grid-cols-[1fr_18rem]'}`}>
         {/* Canvas */}
@@ -175,7 +175,7 @@ export function PageBuilder({ initial, revisions, seed, seo: seoInit, reusables 
                       {!isRef && <button onClick={() => duplicate(i)} title="Duplicate" aria-label="Duplicate" className="hover:text-[var(--color-ink)]">⧉</button>}
                       <button onClick={() => moveSec(i, -1)} aria-label="Up" className="hover:text-[var(--color-ink)] disabled:opacity-30" disabled={i === 0}>▲</button>
                       <button onClick={() => moveSec(i, 1)} aria-label="Down" className="hover:text-[var(--color-ink)] disabled:opacity-30" disabled={i === sections.length - 1}>▼</button>
-                      <button onClick={() => remove(sec.id)} aria-label="Delete" className="hover:text-[#c0392b]">✕</button>
+                      <button onClick={() => remove(sec.id)} aria-label="Delete" className="hover:text-[var(--color-blush-deep)]">✕</button>
                       {isRef
                         ? <Link href={`/admin/blocks/${refId}`} target="_blank" title="Edit reusable block" className="hover:text-[var(--color-gold-deep)]">↗</Link>
                         : <button onClick={() => setOpenId(open ? null : sec.id)} aria-label="Edit" className="hover:text-[var(--color-ink)]">{open ? '▾' : '▸'}</button>}
@@ -236,7 +236,7 @@ export function PageBuilder({ initial, revisions, seed, seo: seoInit, reusables 
             <div className={`${card} p-4`}>
               <label className="block text-xs font-medium uppercase tracking-[0.12em] text-[var(--color-stone)] mb-1.5">Admin label</label>
               <input className="w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-porcelain)] px-3 py-2 text-sm outline-none focus:border-[var(--color-gold)]" value={title} placeholder={initial.path} aria-label="Admin label" onChange={(e) => setTitle(e.target.value)} />
-              {hasPublished && <button disabled={busy} onClick={unpublish} className="mt-4 text-sm text-[var(--color-stone)] hover:text-[#c0392b] disabled:opacity-50">Unpublish</button>}
+              {hasPublished && <button disabled={busy} onClick={unpublish} className="mt-4 text-sm text-[var(--color-stone)] hover:text-[var(--color-blush-deep)] disabled:opacity-50">Unpublish</button>}
             </div>
             <div className={`${card} p-4`}>
               <h3 className="mb-3 text-xs font-medium uppercase tracking-[0.12em] text-[var(--color-stone)]">Schedule</h3>
@@ -277,7 +277,7 @@ export function PageBuilder({ initial, revisions, seed, seo: seoInit, reusables 
               {audit.length === 0 ? <p className="text-sm text-[var(--color-stone)]">No accessibility or SEO issues found.</p> : (
                 <ul className="space-y-2 text-sm">
                   {audit.map((a, i) => (
-                    <li key={i} className="flex gap-2"><span className={a.level === 'warn' ? 'text-[#c0392b]' : 'text-[var(--color-gold)]'}>{a.level === 'warn' ? '!' : '○'}</span><span className="text-[var(--color-ink-soft)]">{a.text}</span></li>
+                    <li key={i} className="flex gap-2"><span className={a.level === 'warn' ? 'text-[var(--color-blush-deep)]' : 'text-[var(--color-gold)]'}>{a.level === 'warn' ? '!' : '○'}</span><span className="text-[var(--color-ink-soft)]">{a.text}</span></li>
                   ))}
                 </ul>
               )}
@@ -285,7 +285,7 @@ export function PageBuilder({ initial, revisions, seed, seo: seoInit, reusables 
 
             <div className="flex flex-wrap gap-4">
               <button onClick={duplicatePage} className="text-sm text-[var(--color-stone)] hover:text-[var(--color-ink)]">Duplicate page</button>
-              <button onClick={del} className="text-sm text-[var(--color-stone)] hover:text-[#c0392b]">Delete page</button>
+              <button onClick={del} className="text-sm text-[var(--color-stone)] hover:text-[var(--color-blush-deep)]">Delete page</button>
             </div>
           </aside>
         )}

@@ -48,7 +48,7 @@ export function ContractorTaskAssign({ contractors }: { contractors: { id: strin
         <button type="submit" disabled={pending} className="rounded-full bg-[var(--color-ink)] px-4 py-2 text-sm font-medium text-[var(--color-porcelain)] transition-opacity hover:opacity-90 disabled:opacity-50">
           {pending ? 'Adding…' : 'Add task'}
         </button>
-        {error && <span className="text-xs text-[#b23b3b]">{error}</span>}
+        {error && <span className="text-xs text-[var(--color-blush-deep)]">{error}</span>}
       </div>
     </form>
   );
