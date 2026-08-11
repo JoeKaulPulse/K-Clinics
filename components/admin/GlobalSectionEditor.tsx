@@ -40,9 +40,9 @@ export function GlobalSectionEditor({ block }: { block: { id: string; name: stri
       {msg && <p className="mt-2 text-sm text-[var(--color-jade)]">{msg}</p>}
 
       <div className="mt-6 rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-5">
-        {def ? <SectionFields fields={def.fields} data={data} onChange={setData} /> : <p className="text-sm text-[#c0392b]">Unknown section type.</p>}
+        {def ? <SectionFields fields={def.fields} data={data} onChange={setData} /> : <p className="text-sm text-[var(--color-blush-deep)]">Unknown section type.</p>}
       </div>
-      <button onClick={del} className="mt-6 text-sm text-[var(--color-stone)] hover:text-[#c0392b]">Delete block</button>
+      <button onClick={del} className="mt-6 text-sm text-[var(--color-stone)] hover:text-[var(--color-blush-deep)]">Delete block</button>
     </div>
   );
 }

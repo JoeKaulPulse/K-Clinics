@@ -57,7 +57,7 @@ export function HealthFormManager({ formKey, questions }: { formKey: string; que
                 <button type="button" disabled={pending || i === 0} onClick={() => run(() => moveCustomQuestion(q.id, 'up'))} className="rounded px-1.5 py-1 hover:bg-[var(--color-bone)] disabled:opacity-30" title="Move up">↑</button>
                 <button type="button" disabled={pending || i === questions.length - 1} onClick={() => run(() => moveCustomQuestion(q.id, 'down'))} className="rounded px-1.5 py-1 hover:bg-[var(--color-bone)] disabled:opacity-30" title="Move down">↓</button>
                 <button type="button" disabled={pending} onClick={() => run(() => setCustomQuestionActive(q.id, !q.active))} className="rounded-full border border-[var(--color-line)] px-2 py-1 hover:bg-[var(--color-bone)]">{q.active ? 'Hide' : 'Show'}</button>
-                <button type="button" disabled={pending} onClick={() => { if (confirm('Delete this question? Answers already given are kept on file but no longer shown.')) run(() => deleteCustomQuestion(q.id)); }} className="rounded-full px-2 py-1 text-[#b23b3b] hover:bg-[#b23b3b]/10">Delete</button>
+                <button type="button" disabled={pending} onClick={() => { if (confirm('Delete this question? Answers already given are kept on file but no longer shown.')) run(() => deleteCustomQuestion(q.id)); }} className="rounded-full px-2 py-1 text-[var(--color-blush-deep)] hover:bg-[var(--color-blush-deep)]/10">Delete</button>
               </div>
             </li>
           ))}
@@ -79,7 +79,7 @@ export function HealthFormManager({ formKey, questions }: { formKey: string; que
             <textarea name="optionsText" rows={3} placeholder={'One option per line, e.g.\nYes\nNo\nNot sure'} aria-label="Answer options, one per line" className={field} />
           )}
           <label className="flex items-center gap-2 text-sm text-[var(--color-stone)]"><input type="checkbox" name="required" /> Required</label>
-          {error && <p role="alert" aria-live="assertive" className="text-xs text-[#b23b3b]">{error}</p>}
+          {error && <p role="alert" aria-live="assertive" className="text-xs text-[var(--color-blush-deep)]">{error}</p>}
           <div className="flex gap-2">
             <button type="submit" disabled={pending} className="rounded-full bg-[var(--color-ink)] px-4 py-2 text-sm font-medium text-[var(--color-porcelain)] disabled:opacity-50">{pending ? 'Adding…' : 'Add question'}</button>
             <button type="button" onClick={() => { setOpen(false); setError(null); }} className="px-3 py-2 text-sm text-[var(--color-stone)]">Cancel</button>

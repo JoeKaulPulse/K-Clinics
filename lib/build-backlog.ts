@@ -3649,6 +3649,15 @@ export const BUILD_BACKLOG: BacklogItem[] = [
       'Also checked and clear: sitemap consistency (fetched the live sitemap.xml, 161 URLs -- none noindexed, no canonical mismatches, so adding the 9 dentistry URLs keeps the invariant "everything listed is indexable"); robots.txt does not disallow /dentistry; the 8 treatment pages carry unique benefit/process/FAQ copy, so no thin- or duplicate-content cluster. Unrelated pre-existing defect spotted during that sweep and not touched here: sitemap.xml lists /academy/bundles, which 404s.',
     ],
   },
+  {
+    title: 'Hardcoded off-palette error colours instead of --color-blush-deep token (BLD-1261)', type: 'ERROR', urgency: 'P2', status: 'SHIPPED', assignee: 'claude',
+    value: 4, effort: 1,
+    detail: 'A prior read-only investigation found 65 hardcoded off-palette hex hits across 42 .ts/.tsx files (25+ files with #b23b3b, 22+ with #c0392b) used for error/destructive text and UI, instead of the designated --color-blush-deep (#8b4a4a light / #e98a8a dark, app/globals.css @theme) already used correctly in 125+ other files -- same off-palette-hex pattern as PRJ-1032.35 and BLD-995.',
+    notes: [
+      'Fix: mechanical swap only, no logic change. All 64 live hits (excluding this changelog file\'s own historical BLD-995 reference) replaced with the token, matching the call site\'s existing idiom -- text-[#c0392b] to text-[var(--color-blush-deep)], color-mix(in_oklab,#c0392b_12%,transparent) to color-mix(in_oklab,var(--color-blush-deep)_12%,transparent) (same pattern MonthCalendar.tsx already uses), raw CSS color:#c0392b to color:var(--color-blush-deep), and ConnectionCentre.tsx\'s red color-config object (dot: consumed as a raw inline style value, not a class) to dot: \'var(--color-blush-deep)\'. A stale contrast-ratio comment in dashboard/Widgets.tsx naming the old hex literal was also corrected to reference the token. Left alone: the three standalone docs/scripts generators (scripts/make-report-pdf.mjs, docs/api-connections/build-pdf.cjs, docs/api-connections/mock-centre.cjs) -- self-contained HTML/PDF tooling with their own hardcoded palette, never wired to app/globals.css custom properties, and outside the investigation\'s confirmed 65-hit .ts/.tsx/.css scope.',
+      'Verified: npx tsc --noEmit and npm run build both pass clean; re-grep for #b23b3b / #c0392b across the repo (excluding this file\'s own historical BLD-995 note) returns zero hits in live code.',
+    ],
+  },
 ];
 
 // A content hash over every item's title + status + PR, so ANY change (a new

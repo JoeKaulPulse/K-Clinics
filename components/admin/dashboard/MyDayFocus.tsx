@@ -12,7 +12,7 @@ import { ContractorTasks, type ContractorTaskView } from '@/components/admin/Con
 
 const OPEN_STATES = ['TRIAGE', 'IN_PROGRESS', 'IN_REVIEW', 'BLOCKED'] as const;
 const URGENCY_CLS: Record<string, string> = {
-  P0: 'bg-[color-mix(in_oklab,#c0392b_16%,transparent)] text-[#b23b3b]',
+  P0: 'bg-[color-mix(in_oklab,var(--color-blush-deep)_16%,transparent)] text-[var(--color-blush-deep)]',
   P1: 'bg-[var(--color-gold)]/20 text-[var(--color-ink)]',
   P2: 'bg-[var(--color-bone)] text-[var(--color-stone)]',
   P3: 'bg-[var(--color-bone)] text-[var(--color-stone)]',

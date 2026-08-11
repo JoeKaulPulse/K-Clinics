@@ -19,7 +19,7 @@ function Reorder({ onUp, onDown, onDel }: { onUp: () => void; onDown: () => void
     <div className="flex shrink-0 items-center gap-1">
       <button onClick={onUp} aria-label="Move up" className="text-[var(--color-stone)] hover:text-[var(--color-ink)]">▲</button>
       <button onClick={onDown} aria-label="Move down" className="text-[var(--color-stone)] hover:text-[var(--color-ink)]">▼</button>
-      <button onClick={onDel} aria-label="Remove" className="ml-1 text-[var(--color-stone)] hover:text-[#c0392b]">✕</button>
+      <button onClick={onDel} aria-label="Remove" className="ml-1 text-[var(--color-stone)] hover:text-[var(--color-blush-deep)]">✕</button>
     </div>
   );
 }

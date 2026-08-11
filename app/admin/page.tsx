@@ -91,7 +91,7 @@ export default async function AdminOverview() {
               <span className="tabular-nums">{weather.tempC}°</span>
               <span className="ml-1 inline-block max-w-[7rem] truncate align-bottom font-normal text-[var(--color-stone)]">{weather.label}</span>
               {weather.uvMax != null && uv && (
-                <span className="ml-1.5 text-[var(--color-stone)]">· UV <span className={uv.tone === 'high' ? 'text-[#b23b3b]' : uv.tone === 'moderate' ? 'text-[var(--color-gold-deep)]' : 'text-[var(--color-jade)]'}>{weather.uvMax}</span></span>
+                <span className="ml-1.5 text-[var(--color-stone)]">· UV <span className={uv.tone === 'high' ? 'text-[var(--color-blush-deep)]' : uv.tone === 'moderate' ? 'text-[var(--color-gold-deep)]' : 'text-[var(--color-jade)]'}>{weather.uvMax}</span></span>
               )}
             </p>
           </div>
@@ -272,7 +272,10 @@ export default async function AdminOverview() {
     PENDING: 'bg-amber-50 text-amber-800',
     REQUESTED: 'bg-amber-100 text-amber-900',
     COMPLETED: 'bg-[var(--color-bone)] text-[var(--color-stone)]',
-    CANCELLED: 'bg-red-50 text-[#b23b3b]',
+    // Tinted from the same token as the text (like CONFIRMED above) so the pair
+    // stays legible when the admin dark theme flips --color-blush-deep light —
+    // a fixed bg-red-50 behind it would leave pale-on-pale (BLD-1261 review).
+    CANCELLED: 'bg-[color-mix(in_oklab,var(--color-blush-deep)_12%,transparent)] text-[var(--color-blush-deep)]',
     NO_SHOW: 'bg-[var(--color-bone)] text-[var(--color-stone)]',
   };
 

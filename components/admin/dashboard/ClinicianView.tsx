@@ -53,7 +53,7 @@ export async function ClinicianView({ session }: { session: Session }) {
     trailing: inProgress(b)
       ? <span className="rounded-full bg-[color-mix(in_oklab,var(--color-jade)_14%,transparent)] px-2.5 py-1 text-xs font-medium text-[var(--color-jade)]">In progress</span>
       : lateFlag(b)
-        ? <span className="rounded-full bg-[color-mix(in_oklab,#c0392b_12%,transparent)] px-2.5 py-1 text-xs font-medium text-[#b23b3b]">Running late</span>
+        ? <span className="rounded-full bg-[color-mix(in_oklab,var(--color-blush-deep)_12%,transparent)] px-2.5 py-1 text-xs font-medium text-[var(--color-blush-deep)]">Running late</span>
         : b.status === 'COMPLETED'
           ? <span className="rounded-full bg-[var(--color-ink)] px-2.5 py-1 text-xs font-medium text-[var(--color-porcelain)]">Done</span>
           : b.arrivedAt
@@ -95,7 +95,7 @@ export async function ClinicianView({ session }: { session: Session }) {
             </div>
             {/* Clinical-gated quick facts */}
             {canClinical && (focusMedical || focusAllergies) && (
-              <p className="mt-3 flex items-start gap-2 rounded-[var(--radius-sm)] bg-[color-mix(in_oklab,#c0392b_12%,transparent)] px-3 py-2 text-sm text-[var(--color-ink)]">
+              <p className="mt-3 flex items-start gap-2 rounded-[var(--radius-sm)] bg-[color-mix(in_oklab,var(--color-blush-deep)_12%,transparent)] px-3 py-2 text-sm text-[var(--color-ink)]">
                 <span aria-hidden>⚠</span>
                 <span className="min-w-0 break-words">{[focusMedical, focusAllergies && `Allergies: ${focusAllergies}`].filter(Boolean).join(' · ')}</span>
               </p>
