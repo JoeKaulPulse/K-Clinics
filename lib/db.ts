@@ -102,29 +102,47 @@ const tenantExtension = {
 // unchanged; only the static type is widened for the second hop.
 type Extendable = { $extends: (ext: unknown) => unknown };
 
-// BLD-1269: a misconfigured deploy (pooled URL env vars missing/misnamed) used
-// to fall through silently to the direct-connection branch below, which is
-// exactly the "every serverless instance opens its own Postgres connection"
-// pattern that previously exhausted the connection cap under concurrent
-// traffic + deploys (see comment above). Fail loud at boot instead, so that
-// misconfiguration surfaces immediately rather than as an outage under load.
-// Excludes the Next.js build phase (`next build` sets NODE_ENV=production and,
-// on Vercel, VERCEL=1 too, but never touches a real database) so builds without
-// a pooled URL configured — this repo's normal CI/sandbox posture — still pass.
-function assertPooledInProduction(pooled: string | undefined): void {
+// BLD-1269: with no pooled URL configured we fall through to the direct-
+// connection branch below — the "every serverless instance opens its own
+// Postgres connection" shape that previously exhausted the connection cap
+// under concurrent traffic + deploys (see comment above). Surface that in the
+// logs at boot so a genuine misconfiguration is diagnosable.
+//
+// Deliberately a loud log line and NOT a throw. This module is imported at
+// module scope by effectively every route, page and cron, so a throw here is
+// an immediate site-wide 500 rather than a degraded-capacity warning — the
+// same trade-off instrumentation.ts already makes for weak signing secrets
+// ("not a throw: an outage would be worse than the warning"). Escalating a
+// capacity risk into a total outage is the wrong direction.
+//
+// It also would have been a false alarm on the live configuration: today's
+// deployment has no PRISMA_DATABASE_URL/ACCELERATE_URL and reaches Neon
+// through its PgBouncer endpoint (`…-pooler.…neon.tech`, via
+// POSTGRES_PRISMA_URL/DATABASE_URL) with a per-instance cap of max:1 below.
+// That IS pooled — just at the database rather than by Prisma Accelerate — so
+// it is not warned about here. Only a genuinely direct, unpooled endpoint is.
+//
+// The Next.js build phase is excluded (`next build` sets NODE_ENV=production
+// and, on Vercel, VERCEL=1, but is not serving traffic) to keep build logs
+// clean; this repo's CI/sandbox builds run with no database URL at all.
+function warnIfUnpooledInProduction(pooled: string | undefined): void {
   if (pooled) return;
-  const isBuildPhase = process.env.NEXT_PHASE === PHASE_PRODUCTION_BUILD;
-  if (isBuildPhase) return;
+  if (process.env.NEXT_PHASE === PHASE_PRODUCTION_BUILD) return;
   if (!process.env.VERCEL && process.env.NODE_ENV !== 'production') return;
-  throw new Error(
-    'No pooled database URL configured (PRISMA_DATABASE_URL / ACCELERATE_URL / a prisma+postgres:// DATABASE_URL). ' +
-    'Falling back to a direct connection per serverless instance previously exhausted the Postgres connection cap under concurrent traffic + deploys — configure the Accelerate pooler before serving production traffic.',
+  const direct = resolveDirectUrl();
+  // Neon's pooled endpoint, or any PgBouncer-style URL, is already pooled.
+  if (direct && (/-pooler\./i.test(direct) || /[?&]pgbouncer=true/i.test(direct))) return;
+  console.error(
+    '[db] No pooled database URL configured (PRISMA_DATABASE_URL / ACCELERATE_URL / a prisma+postgres:// URL), ' +
+    'and the direct URL in use is not a recognised pooler endpoint. Every serverless instance will open its own ' +
+    'Postgres connection, which previously exhausted the connection cap under concurrent traffic + deploys — ' +
+    'point the runtime at a pooled endpoint (BLD-1269).',
   );
 }
 
 function makeClient(): PrismaClient {
   const pooled = resolvePooledUrl();
-  assertPooledInProduction(pooled);
+  warnIfUnpooledInProduction(pooled);
   let base: Extendable;
   if (pooled) {
     // Route every runtime query through the Accelerate pooler.

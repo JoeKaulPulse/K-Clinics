@@ -569,8 +569,26 @@ export async function refundEnrolmentPayment(paymentId: string, staffEmail?: str
   // which will have decremented paidPence by that delta already. Decrementing by
   // the full original amountPence here would double-count that portion.
   const delta = Math.max(0, p.amountPence - p.refundedPence);
-  const claimed = await db.enrolmentPayment.updateMany({ where: { id: p.id, state: 'PAID' }, data: { state: 'REFUNDED', refundedPence: p.amountPence } });
-  if (claimed.count === 0) return { ok: true };
+  // The claim is CAS'd on refundedPence as well as state, because `delta` was
+  // computed from a read taken BEFORE the Stripe round-trip above. A webhook
+  // reconciliation landing in that window (a partial dashboard refund raises
+  // refundedPence but leaves the row PAID) makes that delta stale, and a
+  // state-only CAS would still succeed and decrement paidPence by the stale,
+  // too-large amount — the very double-count this fix is closing.
+  const claimed = await db.enrolmentPayment.updateMany({
+    where: { id: p.id, state: 'PAID', refundedPence: p.refundedPence },
+    data: { state: 'REFUNDED', refundedPence: p.amountPence },
+  });
+  if (claimed.count === 0) {
+    // Lost the race. Hand the remainder to the reconciler, which re-reads and
+    // retries under its own CAS and is idempotent — correct whether the row was
+    // already flipped to REFUNDED by a concurrent claim (no-op) or merely had
+    // its watermark raised (reconciles only the outstanding delta). The Stripe
+    // refund has already succeeded at this point, so never report failure.
+    await reconcileEnrolmentPaymentRefund(p.stripePaymentIntentId, p.amountPence)
+      .catch((e) => { console.error('[academy] refund reconcile after lost CAS failed (Stripe refund already issued):', (e as Error)?.message); });
+    return { ok: true };
+  }
   if (delta > 0) {
     await db.enrolment.update({ where: { id: p.enrolmentId }, data: { paidPence: { decrement: delta } } }).catch(() => {});
   }
