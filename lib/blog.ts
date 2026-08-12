@@ -140,17 +140,27 @@ const NAV_BLOG_ITEM = new RegExp(
 const LEADING_H1 = /^<h1(?:\s[^>]*)?>([\s\S]*?)<\/h1>\s*/i;
 const MAX_NAV_ITEMS = 4; // observed max is 2 (Cosmetology + Dentistry); leaves headroom without going unbounded
 
+// CodeQL flags chained sequential .replace() calls that decode HTML entities
+// as a double-unescape risk (an earlier replacement's output can be re-matched
+// by a later pattern, e.g. a decoded "&" combining with adjacent literal text
+// into a new entity). Decode every known entity in a single non-overlapping
+// pass instead, so no replacement's output is ever visible to a later one.
+const TITLE_MATCH_ENTITIES: Record<string, string> = {
+  '&#8217;': "'", '&#8216;': "'", '&rsquo;': "'", '&lsquo;': "'",
+  '&#8220;': '"', '&#8221;': '"', '&ldquo;': '"', '&rdquo;': '"',
+  '&#8211;': '-', '&ndash;': '-',
+  '&#8212;': '-', '&mdash;': '-',
+  '&amp;': '&',
+  '&nbsp;': ' ',
+};
+const TITLE_MATCH_ENTITY_RE = /&#8217;|&#8216;|&rsquo;|&lsquo;|&#8220;|&#8221;|&ldquo;|&rdquo;|&#8211;|&ndash;|&#8212;|&mdash;|&amp;|&nbsp;/gi;
+
 /** Normalise HTML/text for a loose title comparison: strip tags, decode the
  *  handful of entities WordPress content carries, lower-case, drop punctuation. */
 function normalizeForTitleMatch(s: string): string {
   return s
     .replace(/<[^>]+>/g, ' ')
-    .replace(/&#8217;|&#8216;|&rsquo;|&lsquo;/gi, "'")
-    .replace(/&#8220;|&#8221;|&ldquo;|&rdquo;/gi, '"')
-    .replace(/&#8211;|&ndash;/gi, '-')
-    .replace(/&#8212;|&mdash;/gi, '-')
-    .replace(/&amp;/gi, '&')
-    .replace(/&nbsp;/gi, ' ')
+    .replace(TITLE_MATCH_ENTITY_RE, (m) => TITLE_MATCH_ENTITIES[m.toLowerCase()] ?? m)
     .toLowerCase()
     .replace(/[^a-z0-9 ]+/g, ' ')
     .replace(/\s+/g, ' ')
