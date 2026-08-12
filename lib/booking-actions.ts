@@ -330,14 +330,24 @@ export async function refundBooking(
   // CAS we re-read the booking and retry (up to 2 times), mirroring the
   // charge.refunded webhook handler's pattern, rather than silently dropping
   // the loyalty/Xero/email side-effects for this refund.
+  //
+  // BLD-1287 (review): the two "nothing left to record" exits below return
+  // straight out instead of breaking. Both mean a concurrent writer has ALREADY
+  // reconciled this money and run the side-effects itself — the in-app refund
+  // route is the only side-effect runner for an in-app refund, because the
+  // charge.refunded webhook skips any refund carrying metadata.bookingId — so
+  // falling through would raise a second Xero credit note, send the client a
+  // second refund email, fire a second GA4 refund event and log a second
+  // PAYMENT_REFUNDED entry for one movement of money. The booking IS refunded
+  // to the returned total, so this is still ok: true; there is simply nothing
+  // further for this call to do.
   let current = booking;
   let totalRefunded = (current.refundedPence ?? 0) + amount;
   let fully = totalRefunded >= (current.chargedPence ?? 0);
-  let claimed = { count: 0 };
   for (let attempt = 0; ; attempt++) {
     if (stripeRefundedTotal != null) {
       const delta = stripeRefundedTotal - (current.refundedPence ?? 0);
-      if (delta <= 0) { totalRefunded = current.refundedPence ?? 0; fully = totalRefunded >= (current.chargedPence ?? 0); break; }
+      if (delta <= 0) return { ok: true, refundedPence: current.refundedPence ?? 0 };
       totalRefunded = (current.refundedPence ?? 0) + delta;
     } else {
       // BLD-1287: cash/ext_*/voucher-paid bookings have no Stripe ground truth to
@@ -349,11 +359,11 @@ export async function refundBooking(
       // re-read could push the recorded total above what was actually charged.
       // Mirrors the ground-truth branch's own early-exit + cap.
       const already = current.refundedPence ?? 0;
-      if (already >= (current.chargedPence ?? 0)) { totalRefunded = already; fully = true; break; }
+      if (already >= (current.chargedPence ?? 0)) return { ok: true, refundedPence: already };
       totalRefunded = Math.min(already + amount, current.chargedPence ?? 0);
     }
     fully = totalRefunded >= (current.chargedPence ?? 0);
-    claimed = await db.booking.updateMany({
+    const claimed = await db.booking.updateMany({
       where: { id: current.id, refundedPence: current.refundedPence },
       data: { refundedPence: totalRefunded, refundedAt: new Date(), refundReason: opts.reason?.slice(0, 500) || current.refundReason || null },
     });
