@@ -62,15 +62,20 @@ export async function POST(req: Request) {
   // treatments on top of the course) this link would leave a remainder that no
   // charge surface can then collect — prepaidAt makes every one of them refuse.
   //
-  // BLD-1186 (review): compare GROSS with GROSS. booking.pricePence is always the
-  // undiscounted figure — addTreatmentToBooking/removeAddonTreatment increment and
-  // decrement it by the add-on's own pricePence, and redeeming points or applying
-  // a voucher never rewrites it — so the only thing this subtraction should ever
-  // surface is the add-ons total. course.pence is now NET of those redemptions, so
-  // testing against it would read a discount as an add-on and refuse to mint the
-  // link (with a misleading "extras on top" message) for precisely the discounted
-  // course BLD-1186 exists to fix. course.grossPence is the same primary-line-item
-  // figure before the netting, which keeps the difference below meaning "add-ons".
+  // BLD-1186 (review): compare GROSS with GROSS. booking.pricePence never gets
+  // rewritten by redeeming points or applying a voucher, and add-ons roll into it
+  // (and, from booking creation, out of it) at their own net-of-discount price —
+  // so the only thing this subtraction should ever surface is the add-ons total.
+  // course.pence is NET of points/voucher redemptions, so testing against it would
+  // read a discount as an add-on and refuse to mint the link (with a misleading
+  // "extras on top" message) for precisely the discounted course BLD-1186 exists
+  // to fix. course.grossPence is the same primary-line-item figure before THAT
+  // netting, which keeps the difference below meaning "add-ons".
+  //
+  // BLD-1286: course.grossPence is now also net of the primary item's OWN
+  // discountPence (the automatic offer/welcome/promo discount, which booking.
+  // pricePence already had netted out from creation) — so this comparison is no
+  // longer just an approximation of "add-ons only" but an exact one.
   if (booking.pricePence > course.grossPence) {
     return NextResponse.json({
       ok: false,
