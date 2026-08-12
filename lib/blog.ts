@@ -59,12 +59,115 @@ export function blocksToHtml(blocks: ArticleBlock[]): string {
 // This is a read-time mitigation only — see BLD-1182 in lib/build-backlog.ts for
 // the separate stored-`excerpt` cleanup.
 export function stripNavChrome(text: string, title?: string): string {
-  const t = text.replace(/^(?:(?:[A-Z][a-z]+\s){0,2}[A-Z][a-z]+\s+Blog\s+)+/, '').trim();
+  // BLD-1289: the real WordPress nav-label text is not reliably Title Case —
+  // live rows carry both "Dentistry blog" and "Dentistry Blog" for the same
+  // label (WP's category-widget markup only ever capitalised the category
+  // word itself; "blog" was typed either way across the dump) — so this must
+  // match case-insensitively or the lower-case rows sail straight through.
+  // `/i` only affects letter-casing, not which characters match, so the shape
+  // (leading run of "<1-3 Capitalized-ish words> Blog") stays exactly as
+  // narrow as before.
+  const t = text.replace(/^(?:(?:[A-Za-z][a-z]+\s){0,2}[A-Za-z][a-z]+\s+Blog\s+)+/i, '').trim();
   const hadNavChrome = t !== text.trim();
   const cleanTitle = title?.trim();
   if (!hadNavChrome || !cleanTitle) return t;
   const escaped = cleanTitle.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
   return t.replace(new RegExp(`^${escaped}\\s+`, 'i'), '').trim();
+}
+
+// BLD-1290: the same WordPress page dump that leaked nav-label text into
+// excerpts (BLD-1182/1289 above) also leaked it, as real markup, into the
+// article body itself — Post.content commonly opens with one or two leftover
+// "category" nav links (e.g. <p><a href="/category/dentistry-blog/">Dentistry
+// blog</a></p>) immediately followed by a second <h1> duplicating the post's
+// own title (the journal template already renders its own H1 from the post
+// title — see app/(marketing)/journal/[slug]/page.tsx). The /category/*-blog/
+// links 404 live (that taxonomy was never migrated) and the duplicate <h1> is
+// a duplicate-H1 SEO/accessibility defect.
+//
+// Confirmed shape (scraped from all 72 live /journal/[slug] pages before
+// writing this): every polluted row opens with 1-2 of
+//   <p><a href="/category/<slug>-blog/">…Blog</a></p>   (usual — wrapped + linked)
+//   <a href="/category/<slug>-blog/">…Blog</a>          (rarer — bare, no <p>)
+//   <p>…Blog</p>                                        (rarer — plain text, no link)
+// where "…Blog" is a short (<=~30 char) label ending in the word "blog", then
+// directly followed by <h1>…</h1> wrapping the title. 65 of 72 rows matched;
+// the other 7 open with ordinary prose and must be left untouched.
+//
+// This is a READ-TIME mitigation, deliberately narrow to that confirmed
+// shape, so a legitimate post is never touched:
+//   1. Peel off a leading run (capped) of nav items matching one of the three
+//      shapes above. Unconditional once matched — a /category/*-blog/ href is
+//      never legitimate body content on this site, and the plain-text variant
+//      must be the ENTIRE contents of its own <p> (not just a prefix), so a
+//      real sentence that happens to mention "blog" is never eaten.
+//   2. Only if step 1 actually stripped something, and what remains starts
+//      with a bare <h1>, additionally check whether that heading's text
+//      loosely matches (first few normalised words) the post's own title.
+//      If so, strip the <h1> too. Gating the H1 strip on BOTH the nav-chrome
+//      match AND the title match is what makes it safe: a post with no
+//      nav-chrome ahead of it is never touched (an admin-authored post that
+//      legitimately opens with its own heading keeps it), and even a
+//      WP-imported post whose real body happens to open with an unrelated
+//      <h1> is left alone (its text won't match the title).
+const NAV_BLOG_LABEL = '[A-Za-z][A-Za-z ]{0,28}?blog';
+const NAV_BLOG_ITEM = new RegExp(
+  '^(?:' +
+    `<p><a\\s+href="\\/category\\/[a-z0-9-]+-blog\\/"[^>]*>\\s*${NAV_BLOG_LABEL}\\s*<\\/a><\\/p>` + '|' +
+    `<a\\s+href="\\/category\\/[a-z0-9-]+-blog\\/"[^>]*>\\s*${NAV_BLOG_LABEL}\\s*<\\/a>` + '|' +
+    `<p>\\s*${NAV_BLOG_LABEL}\\s*<\\/p>` +
+  ')\\s*',
+  'i',
+);
+const LEADING_H1 = /^<h1(?:\s[^>]*)?>([\s\S]*?)<\/h1>\s*/i;
+const MAX_NAV_ITEMS = 4; // observed max is 2 (Cosmetology + Dentistry); leaves headroom without going unbounded
+
+/** Normalise HTML/text for a loose title comparison: strip tags, decode the
+ *  handful of entities WordPress content carries, lower-case, drop punctuation. */
+function normalizeForTitleMatch(s: string): string {
+  return s
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/&#8217;|&#8216;|&rsquo;|&lsquo;/gi, "'")
+    .replace(/&#8220;|&#8221;|&ldquo;|&rdquo;/gi, '"')
+    .replace(/&#8211;|&ndash;/gi, '-')
+    .replace(/&#8212;|&mdash;/gi, '-')
+    .replace(/&amp;/gi, '&')
+    .replace(/&nbsp;/gi, ' ')
+    .toLowerCase()
+    .replace(/[^a-z0-9 ]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+export function stripDuplicateWpChrome(html: string, title?: string): string {
+  let s = html;
+  let strippedNav = false;
+  for (let i = 0; i < MAX_NAV_ITEMS; i++) {
+    const m = NAV_BLOG_ITEM.exec(s);
+    if (!m) break;
+    s = s.slice(m[0].length);
+    strippedNav = true;
+  }
+  if (!strippedNav) return html;
+  const cleanTitle = title?.trim();
+  if (cleanTitle) {
+    const h1 = LEADING_H1.exec(s);
+    if (h1) {
+      // Compare only a word-prefix, not the whole (possibly long) title — some
+      // rows carry unrelated mojibake deeper in the string (a separate,
+      // pre-existing encoding defect from the same import, out of scope here)
+      // that would otherwise break an exact match on an entry we can already
+      // see, from the nav-chrome match, is genuinely WP-imported pollution.
+      const words = (x: string) => normalizeForTitleMatch(x).split(' ').filter(Boolean);
+      const h1Words = words(h1[1]);
+      const titleWords = words(cleanTitle);
+      const n = Math.min(5, titleWords.length);
+      if (n > 0 && h1Words.slice(0, n).join(' ') === titleWords.slice(0, n).join(' ')) {
+        s = s.slice(h1[0].length);
+      }
+    }
+  }
+  return s;
 }
 
 const articleCard = (a: Article): BlogCard => ({ slug: a.slug, title: a.title, excerpt: a.excerpt, category: a.category, readMinutes: a.readMinutes, published: a.published, image: articleImage(a.slug) });
@@ -95,7 +198,7 @@ export async function getBlogPost(slug: string): Promise<BlogPost | null> {
       slug: r.slug, title: r.title, excerpt: r.excerpt ?? '',
       metaDescription: r.metaDescription ?? (r.excerpt ? stripNavChrome(r.excerpt, r.title) : ''),
       category: r.category ?? 'Wellbeing', readMinutes: r.readMinutes, published: (r.publishedAt ?? r.createdAt).toISOString(),
-      updated: r.updatedAt.toISOString(), html: rewriteMigratedImageSrcs(sanitizeHtml(r.content)), keywords: r.keywords, related: r.related, image: resolveMigratedImage(r.coverImage),
+      updated: r.updatedAt.toISOString(), html: stripDuplicateWpChrome(rewriteMigratedImageSrcs(sanitizeHtml(r.content)), r.title), keywords: r.keywords, related: r.related, image: resolveMigratedImage(r.coverImage),
     };
   } catch { /* fall through to native */ }
   const a = getArticle(slug);
