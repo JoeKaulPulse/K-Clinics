@@ -58,21 +58,39 @@ export function blocksToHtml(blocks: ArticleBlock[]): string {
 //      (BLD-1182 review).
 // This is a read-time mitigation only — see BLD-1182 in lib/build-backlog.ts for
 // the separate stored-`excerpt` cleanup.
+//
+// BLD-1289: the word "Blog" is inconsistently cased in the dump — live rows
+// carry "Cosmetology Blog Dentistry blog" on the SAME post, because WP's
+// category-widget markup always capitalised the category word and only "blog"
+// was typed either way — so (1) has to accept both. The category word itself is
+// Title Case in all 72 live rows, so `[Bb]log` is the whole of the widening.
+//
+// BLD-1289 (review): accepting a lower-case "blog" makes (1) alone too blunt to
+// run on its own. "Our blog is where we share…", "This blog explains…" and "The
+// blog covers…" are all "<Capitalized word> blog " and would have their opening
+// words silently deleted from the meta description — the same SEO damage the
+// note above exists to prevent, on a public page, with nothing to flag it. So
+// (1) and (2) are now ONE decision rather than two: the labels are removed only
+// when the post's own title follows them, which is the complete confirmed shape
+// of the leak ("{labels} {Title} {real excerpt}") and is not something ordinary
+// prose reproduces. Verified against all 72 live rows: all 11 polluted meta
+// descriptions are cleaned (the same 11 the looser pattern caught), no other row
+// is touched, and none of the prose cases above is.
 export function stripNavChrome(text: string, title?: string): string {
-  // BLD-1289: the real WordPress nav-label text is not reliably Title Case —
-  // live rows carry both "Dentistry blog" and "Dentistry Blog" for the same
-  // label (WP's category-widget markup only ever capitalised the category
-  // word itself; "blog" was typed either way across the dump) — so this must
-  // match case-insensitively or the lower-case rows sail straight through.
-  // `/i` only affects letter-casing, not which characters match, so the shape
-  // (leading run of "<1-3 Capitalized-ish words> Blog") stays exactly as
-  // narrow as before.
-  const t = text.replace(/^(?:(?:[A-Za-z][a-z]+\s){0,2}[A-Za-z][a-z]+\s+Blog\s+)+/i, '').trim();
-  const hadNavChrome = t !== text.trim();
+  const trimmed = text.trim();
+  const nav = /^(?:(?:[A-Z][a-z]+\s){0,2}[A-Z][a-z]+\s+[Bb]log\s+)+/.exec(trimmed);
+  if (!nav) return trimmed;
+  const rest = trimmed.slice(nav[0].length);
   const cleanTitle = title?.trim();
-  if (!hadNavChrome || !cleanTitle) return t;
+  // No title to corroborate against (legacy callers): fall back to removing the
+  // labels alone, as before.
+  if (!cleanTitle) return rest.trim();
   const escaped = cleanTitle.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-  return t.replace(new RegExp(`^${escaped}\\s+`, 'i'), '').trim();
+  const afterTitle = rest.replace(new RegExp(`^${escaped}\\s+`, 'i'), '');
+  // The title does not follow the labels, so this is not the leaked shape —
+  // leave the text exactly as it is rather than guessing.
+  if (afterTitle === rest) return trimmed;
+  return afterTitle.trim();
 }
 
 // BLD-1290: the same WordPress page dump that leaked nav-label text into
@@ -153,11 +171,12 @@ export function stripDuplicateWpChrome(html: string, title?: string): string {
   if (cleanTitle) {
     const h1 = LEADING_H1.exec(s);
     if (h1) {
-      // Compare only a word-prefix, not the whole (possibly long) title — some
-      // rows carry unrelated mojibake deeper in the string (a separate,
-      // pre-existing encoding defect from the same import, out of scope here)
-      // that would otherwise break an exact match on an entry we can already
-      // see, from the nav-chrome match, is genuinely WP-imported pollution.
+      // Compare only a word-prefix, not the whole (possibly long) title. Some
+      // rows carry unrelated mojibake later in the heading — a separate,
+      // pre-existing encoding defect from the same import, out of scope here —
+      // which would break an exact whole-title match on a row the nav-chrome
+      // match has already shown to be WordPress-import pollution. The shortest
+      // live journal title is 5 words, so the prefix is the full 5 in practice.
       const words = (x: string) => normalizeForTitleMatch(x).split(' ').filter(Boolean);
       const h1Words = words(h1[1]);
       const titleWords = words(cleanTitle);
