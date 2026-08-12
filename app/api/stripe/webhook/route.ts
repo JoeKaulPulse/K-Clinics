@@ -318,6 +318,57 @@ export async function POST(req: Request) {
                 try { const { logAudit } = await import('@/lib/audit'); await logAudit({ action: 'PAYMENT_REFUNDED', actor: 'stripe-webhook', summary: `Chargeback lost on order ${fullOrder.number} — marked refunded + restocked (auto, owner policy)`, meta: { orderId: fullOrder.id, disputeId: dispute.id } }); } catch { /* non-fatal */ }
               }
             }
+          } else if (piId) {
+            // BLD-1288: neither a booking nor a shop order — this PaymentIntent
+            // may instead be a gift-voucher's own purchase or an academy
+            // enrolment fee/deposit/balance payment. Mirrors the same
+            // booking/order/voucher/enrolment fallback chain the charge.refunded
+            // handler below already uses for a dashboard refund, so a LOST
+            // chargeback reconciles the same way: previously this branch matched
+            // booking/order only, so a lost chargeback on a course payment or a
+            // gift-card purchase logged an audit entry + Sentry alert but left
+            // paidPence / enrolment access, and the card's spendable balance,
+            // completely untouched even though the money was clawed back.
+            const voucher = await db.giftVoucher.findFirst({
+              where: { stripePaymentIntentId: piId },
+              select: { id: true, amountPence: true, purchaseRefundedPence: true },
+            });
+            if (voucher) {
+              // Additive, like the booking branch above (dispute.amount is this
+              // dispute's own amount, not a cumulative Stripe ground truth the
+              // way charge.amount_refunded is) — cap at the voucher's face value.
+              const alreadyRecorded = voucher.purchaseRefundedPence ?? 0;
+              const totalRefunded = Math.min(voucher.amountPence, alreadyRecorded + amount);
+              const delta = totalRefunded - alreadyRecorded;
+              if (delta > 0) {
+                const claimedV = await db.giftVoucher.updateMany({
+                  where: { id: voucher.id, purchaseRefundedPence: alreadyRecorded },
+                  data: { purchaseRefundedPence: totalRefunded },
+                });
+                if (claimedV.count > 0) {
+                  try {
+                    const { debitVoucherForPurchaseRefund } = await import('@/lib/gift-vouchers');
+                    await debitVoucherForPurchaseRefund(voucher.id, delta, totalRefunded);
+                  } catch (e) { Sentry.captureException(e, { tags: { area: 'stripe-webhook', sub: 'dispute-voucher-purchase' } }); }
+                  try { const { logAudit } = await import('@/lib/audit'); await logAudit({ action: 'PAYMENT_REFUNDED', actor: 'stripe-webhook', summary: `Chargeback lost on gift-card purchase — £${(delta / 100).toFixed(2)} debited from its balance (auto, owner policy)`, meta: { voucherId: voucher.id, disputeId: dispute.id } }); } catch { /* non-fatal */ }
+                }
+              }
+            } else {
+              const payment = await db.enrolmentPayment.findFirst({
+                where: { stripePaymentIntentId: piId },
+                select: { id: true, refundedPence: true },
+              });
+              if (payment) {
+                // reconcileEnrolmentPaymentRefund takes a CUMULATIVE total (it
+                // mirrors charge.refunded's use of Stripe's own amount_refunded),
+                // so pass the existing watermark plus this dispute's own amount —
+                // it logs its own audit entry, so none is added here.
+                try {
+                  const { reconcileEnrolmentPaymentRefund } = await import('@/lib/academy-payments');
+                  await reconcileEnrolmentPaymentRefund(piId, (payment.refundedPence ?? 0) + amount);
+                } catch (e) { Sentry.captureException(e, { tags: { area: 'stripe-webhook', sub: 'dispute-enrolment' } }); }
+              }
+            }
           }
         }
         try {
