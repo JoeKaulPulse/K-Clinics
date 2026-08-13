@@ -3734,7 +3734,7 @@ export const BUILD_BACKLOG: BacklogItem[] = [
   },
   {
     title: 'NPS detractor comments strip client/booking identity, blocking follow-up (BLD-1305)',
-    type: 'TASK', urgency: 'P1', status: 'IN_REVIEW', assignee: 'claude',
+    type: 'TASK', urgency: 'P1', status: 'IN_REVIEW', assignee: 'claude', pr: PR(1789),
     value: 7, effort: 2,
     detail: 'lib/nps.ts npsSummary() built the comments array shown at /admin/nps as {score, comment, treatment, at} only, dropping the clientId/bookingId that NpsResponse actually stores, so negative written feedback from real clients (detractor scores) could not be traced back to the client for follow-up.',
     notes: [
