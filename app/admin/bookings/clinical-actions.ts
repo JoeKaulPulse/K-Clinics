@@ -146,10 +146,17 @@ export async function overrideBookingPrice(bookingId: string, newBasePence: numb
   const newTotal = pence + addOnPence;
   if (newTotal === booking.pricePence) return { ok: false, error: 'That is already the current price.' };
   // Keep the primary line item in sync so itemised views and exports match.
+  // BLD-1286: the entered `pence` IS the new agreed net price for the item — an
+  // admin override, not an automatic discount — so the item's own discountPence
+  // (any welcome/offer/promo discount recorded at booking time) is reset to 0
+  // here. Every other reader of this pair (courseTotalPence, receiptDetail,
+  // gamification, appointment-session-server) nets pricePence - discountPence to
+  // get the item's real price; leaving the old discountPence in place would make
+  // all of those silently undercut the price staff just typed in.
   const primary = await db.bookingItem.findFirst({ where: { bookingId, isAddon: false }, orderBy: { createdAt: 'asc' }, select: { id: true } }).catch(() => null);
   await db.$transaction([
     db.booking.update({ where: { id: bookingId }, data: { pricePence: newTotal } }),
-    ...(primary ? [db.bookingItem.update({ where: { id: primary.id }, data: { pricePence: pence } })] : []),
+    ...(primary ? [db.bookingItem.update({ where: { id: primary.id }, data: { pricePence: pence, discountPence: 0 } })] : []),
   ]);
   await logAudit({
     action: 'SESSION_EDITED', actor: session.email, actorRole: session.role, bookingId, clientId: booking.clientId,

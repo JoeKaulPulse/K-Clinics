@@ -76,6 +76,16 @@ export function isWithin24h(b: Pick<Booking, 'startAt'>): boolean {
  * always gross (BLD-1186 review). Mixing the two — netted course vs gross
  * booking — makes any "is there anything on top of the course?" test read a
  * discount as an add-on.
+ *
+ * BLD-1286: the primary line item's OWN pricePence is gross of its
+ * discountPence too — the automatic offer/welcome/promo discount recorded at
+ * booking time (app/api/booking/start/route.ts sets booking.pricePence to the
+ * sum of pricePence - discountPence per item, so the booking-level figure is
+ * already net of it, but the raw line-item pricePence read here was not). Net
+ * it off here as well — the same subtraction already used at receipt time
+ * (receiptDetail below) and by the gamification/session-snapshot readers of
+ * this same field — otherwise a BNPL link for a discounted course quotes the
+ * undiscounted price.
  */
 export async function courseTotalPence(bookingId: string): Promise<{ pence: number; grossPence: number; sessions: number; label: string } | null> {
   const booking = await db.booking.findUnique({ where: { id: bookingId }, select: { pricePence: true, treatmentTitle: true, pointsRedeemedPence: true, giftVoucherPence: true } });
@@ -83,12 +93,14 @@ export async function courseTotalPence(bookingId: string): Promise<{ pence: numb
   const primary = await db.bookingItem.findFirst({
     where: { bookingId, isAddon: false },
     orderBy: { createdAt: 'asc' },
-    select: { pricePence: true, sessions: true, label: true },
+    select: { pricePence: true, discountPence: true, sessions: true, label: true },
   });
   // Prefer the primary line item (course total + session count). Fall back to
-  // the booking price for legacy bookings created without line items.
+  // the booking price for legacy bookings created without line items — that
+  // fallback, booking.pricePence, is already net of the item's discountPence
+  // (unlike the raw line-item figure), so it's used as-is.
   const sessions = Math.max(1, primary?.sessions ?? 1);
-  const grossPence = primary?.pricePence ?? booking.pricePence ?? 0;
+  const grossPence = primary ? Math.max(0, primary.pricePence - (primary.discountPence ?? 0)) : (booking.pricePence ?? 0);
   const pence = Math.max(0, grossPence - (booking.pointsRedeemedPence ?? 0) - (booking.giftVoucherPence ?? 0));
   return { pence, grossPence, sessions, label: primary?.label || booking.treatmentTitle };
 }
@@ -318,20 +330,40 @@ export async function refundBooking(
   // CAS we re-read the booking and retry (up to 2 times), mirroring the
   // charge.refunded webhook handler's pattern, rather than silently dropping
   // the loyalty/Xero/email side-effects for this refund.
+  //
+  // BLD-1287 (review): the two "nothing left to record" exits below return
+  // straight out instead of breaking. Both mean a concurrent writer has ALREADY
+  // reconciled this money and run the side-effects itself — the in-app refund
+  // route is the only side-effect runner for an in-app refund, because the
+  // charge.refunded webhook skips any refund carrying metadata.bookingId — so
+  // falling through would raise a second Xero credit note, send the client a
+  // second refund email, fire a second GA4 refund event and log a second
+  // PAYMENT_REFUNDED entry for one movement of money. The booking IS refunded
+  // to the returned total, so this is still ok: true; there is simply nothing
+  // further for this call to do.
   let current = booking;
   let totalRefunded = (current.refundedPence ?? 0) + amount;
   let fully = totalRefunded >= (current.chargedPence ?? 0);
-  let claimed = { count: 0 };
   for (let attempt = 0; ; attempt++) {
     if (stripeRefundedTotal != null) {
       const delta = stripeRefundedTotal - (current.refundedPence ?? 0);
-      if (delta <= 0) { totalRefunded = current.refundedPence ?? 0; fully = totalRefunded >= (current.chargedPence ?? 0); break; }
+      if (delta <= 0) return { ok: true, refundedPence: current.refundedPence ?? 0 };
       totalRefunded = (current.refundedPence ?? 0) + delta;
     } else {
-      totalRefunded = (current.refundedPence ?? 0) + amount;
+      // BLD-1287: cash/ext_*/voucher-paid bookings have no Stripe ground truth to
+      // reconcile against (unlike the branch above), so re-validate the cap
+      // against chargedPence on every retry attempt too — not just the entry
+      // check at the top of this function. A lost CAS means a concurrent refund
+      // attempt (double-click, two staff, a retry) already advanced
+      // refundedPence in between; blindly re-adding `amount` to whatever we
+      // re-read could push the recorded total above what was actually charged.
+      // Mirrors the ground-truth branch's own early-exit + cap.
+      const already = current.refundedPence ?? 0;
+      if (already >= (current.chargedPence ?? 0)) return { ok: true, refundedPence: already };
+      totalRefunded = Math.min(already + amount, current.chargedPence ?? 0);
     }
     fully = totalRefunded >= (current.chargedPence ?? 0);
-    claimed = await db.booking.updateMany({
+    const claimed = await db.booking.updateMany({
       where: { id: current.id, refundedPence: current.refundedPence },
       data: { refundedPence: totalRefunded, refundedAt: new Date(), refundReason: opts.reason?.slice(0, 500) || current.refundReason || null },
     });
