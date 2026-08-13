@@ -60,7 +60,11 @@ export async function npsSummary(days = 365) {
   const rows = await db.npsResponse.findMany({
     where: { score: { not: null }, respondedAt: { gte: since } },
     orderBy: { respondedAt: 'desc' }, take: 500,
-    select: { score: true, comment: true, treatment: true, respondedAt: true },
+    select: {
+      score: true, comment: true, treatment: true, respondedAt: true,
+      clientId: true, bookingId: true,
+      client: { select: { firstName: true, lastName: true } },
+    },
   });
   const n = rows.length;
   const promoters = rows.filter((r) => (r.score ?? 0) >= 9).length;
@@ -69,6 +73,10 @@ export async function npsSummary(days = 365) {
   const nps = n ? Math.round(((promoters - detractors) / n) * 100) : null;
   const avg = n ? rows.reduce((s, r) => s + (r.score ?? 0), 0) / n : null;
   const sentTotal = await db.npsResponse.count({ where: { sentAt: { gte: since } } });
-  const comments = rows.filter((r) => r.comment).slice(0, 30).map((r) => ({ score: r.score, comment: r.comment, treatment: r.treatment, at: r.respondedAt }));
+  const comments = rows.filter((r) => r.comment).slice(0, 30).map((r) => ({
+    score: r.score, comment: r.comment, treatment: r.treatment, at: r.respondedAt,
+    clientId: r.clientId, bookingId: r.bookingId,
+    clientName: r.client ? [r.client.firstName, r.client.lastName].filter(Boolean).join(' ') : null,
+  }));
   return { nps, avg, responses: n, promoters, passives, detractors, sentTotal, comments };
 }
