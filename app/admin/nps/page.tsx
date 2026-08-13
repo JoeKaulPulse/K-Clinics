@@ -49,6 +49,11 @@ export default async function AdminNpsPage() {
                 {s.comments.map((c, i) => (
                   <li key={i} className="rounded-[var(--radius-md)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-4 text-sm">
                     <span className={`mr-2 rounded-full px-2 py-0.5 text-xs font-semibold ${(c.score ?? 0) >= 9 ? 'bg-green-100 text-green-800' : (c.score ?? 0) <= 6 ? 'bg-red-100 text-red-800' : 'bg-[var(--color-bone)] text-[var(--color-stone)]'}`}>{c.score}</span>
+                    {c.clientId && sessionCan(session, 'clients.view') ? (
+                      <a href={`/admin/clients/${c.clientId}`} className="mr-2 font-medium text-[var(--color-ink)] hover:underline">{c.clientName || 'View client'}</a>
+                    ) : c.clientName ? (
+                      <span className="mr-2 font-medium text-[var(--color-ink)]">{c.clientName}</span>
+                    ) : null}
                     <span className="text-[var(--color-ink-soft)]">{c.comment}</span>
                     <span className="ml-2 text-xs text-[var(--color-stone)]">{c.treatment ? `· ${c.treatment} ` : ''}· {fmt(c.at)}</span>
                   </li>
