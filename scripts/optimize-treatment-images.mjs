@@ -24,12 +24,18 @@
 //    flattening it would visibly change the image over a non-matching page
 //    background). Opaque PNGs (the vast majority of these — WordPress-export
 //    photos) convert freely.
-//  - Keeps the original file if the JPEG re-encode isn't actually smaller.
+//  - Keeps the original file if the JPEG re-encode isn't actually smaller
+//    (and, for an in-place re-encode, if it isn't smaller by MIN_GAIN_RATIO —
+//    so re-running this script doesn't put already-optimised files through
+//    another generation of lossy encoding for a fraction of a percent).
 //  - Every rename is applied to the three explicit image maps in import/ and
-//    to the hardcoded articleMap in lib/treatment-images.ts, so nothing that
-//    references a file by its old name breaks. DB-authored content (which
-//    can't be edited from here) is handled by resolveMigratedImage's
-//    basename-fallback match, not by renaming rows.
+//    to the inline filenames in lib/treatment-images.ts and lib/articles.ts,
+//    so nothing that references a file by its old name breaks. DB-authored
+//    content (which can't be edited from here) is handled by the basename
+//    fallback in lib/treatment-images.ts#resolve, not by renaming rows.
+//
+// public/treatments/manifest.json is NOT written here: scripts/gen-image-manifest.mjs
+// regenerates it from the folder on every dev start and prebuild.
 //
 // Usage: node scripts/optimize-treatment-images.mjs [--dry-run]
 import fs from 'fs';
@@ -40,6 +46,11 @@ const DIR = path.resolve(import.meta.dirname, '../public/treatments');
 const SIZE_THRESHOLD = 200 * 1024; // 200KB
 const MAX_DIMENSION = 2400; // px, long edge — generous ceiling for web use
 const JPEG_QUALITY = 82;
+// A re-encode that only shaves a fraction of a percent is an already-optimised
+// file being pushed through a lossy codec again: no real saving, but a fresh
+// round of generation loss and a churny binary diff every time this script is
+// re-run. Only rewrite in place when the saving is worth the quality cost.
+const MIN_GAIN_RATIO = 0.9; // output must be <=90% of the original
 const DRY_RUN = process.argv.includes('--dry-run');
 
 const MAP_FILES = [
@@ -47,7 +58,11 @@ const MAP_FILES = [
   path.resolve(import.meta.dirname, '../import/package-image-map.json'),
   path.resolve(import.meta.dirname, '../import/page-image-map.json'),
 ];
-const TREATMENT_IMAGES_TS = path.resolve(import.meta.dirname, '../lib/treatment-images.ts');
+// Source files that name a treatment image inline, as a single-quoted string.
+const TS_FILES = [
+  path.resolve(import.meta.dirname, '../lib/treatment-images.ts'), // articleMap
+  path.resolve(import.meta.dirname, '../lib/articles.ts'), // Article.image
+];
 
 function basenameOf(file) {
   return file.replace(/\.[^.]+$/, '').toLowerCase();
@@ -99,8 +114,13 @@ for (const file of candidates) {
   }
   const outBuf = await img.jpeg({ quality: JPEG_QUALITY, mozjpeg: true }).toBuffer();
 
-  if (outBuf.length >= before) {
-    console.log(`[skip] ${file} — JPEG (${outBuf.length}) not smaller than original (${before}), keeping as-is.`);
+  // A rename always has to be worth doing (it moves the file); an in-place
+  // re-encode additionally has to clear MIN_GAIN_RATIO so re-runs are a no-op
+  // on files this script has already compressed.
+  const sameName = dest === file;
+  const limit = sameName ? before * MIN_GAIN_RATIO : before;
+  if (outBuf.length >= limit) {
+    console.log(`[skip] ${file} — JPEG (${outBuf.length}) not enough smaller than original (${before}), keeping as-is.`);
     continue;
   }
 
@@ -109,8 +129,16 @@ for (const file of candidates) {
   console.log(`[convert] ${file} (${before}) -> ${dest} (${outBuf.length}, ${(100 * outBuf.length / before).toFixed(1)}%)`);
 
   if (!DRY_RUN) {
-    fs.writeFileSync(destPath, outBuf);
+    // Write to a temp file, drop the source, then move into place. Writing dest
+    // first and unlinking src afterwards is only safe while the two names
+    // differ as FILES: on a case-insensitive filesystem (macOS, Windows) a
+    // `PHOTO.JPG` source and its `PHOTO.jpg` destination are the SAME file, so
+    // the unlink would delete the freshly written output. Going via a temp name
+    // is correct on every filesystem, including the in-place (dest === src) case.
+    const tmpPath = `${destPath}.optimize-tmp`;
+    fs.writeFileSync(tmpPath, outBuf);
     if (destPath !== srcPath) fs.unlinkSync(srcPath);
+    fs.renameSync(tmpPath, destPath);
   }
   if (dest !== file) renames.push({ from: file, to: dest });
 }
@@ -137,13 +165,15 @@ for (const mapPath of MAP_FILES) {
   }
 }
 
-let ts = fs.readFileSync(TREATMENT_IMAGES_TS, 'utf8');
-let tsChanged = 0;
-for (const [from, to] of renameMap) {
-  const needle = `'${from}'`;
-  if (ts.includes(needle)) { ts = ts.split(needle).join(`'${to}'`); tsChanged++; }
-}
-if (tsChanged) {
-  fs.writeFileSync(TREATMENT_IMAGES_TS, ts);
-  console.log(`[optimize-treatment-images] updated ${tsChanged} reference(s) in lib/treatment-images.ts`);
+for (const tsPath of TS_FILES) {
+  let ts = fs.readFileSync(tsPath, 'utf8');
+  let tsChanged = 0;
+  for (const [from, to] of renameMap) {
+    const needle = `'${from}'`;
+    if (ts.includes(needle)) { ts = ts.split(needle).join(`'${to}'`); tsChanged++; }
+  }
+  if (tsChanged) {
+    fs.writeFileSync(tsPath, ts);
+    console.log(`[optimize-treatment-images] updated ${tsChanged} reference(s) in ${path.relative(process.cwd(), tsPath)}`);
+  }
 }

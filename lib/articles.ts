@@ -36,7 +36,7 @@ export const articles: Article[] = [
     readMinutes: 6,
     published: '2026-02-10',
     keywords: ['laser hair removal London', 'how many laser hair removal sessions', 'laser hair removal aftercare'],
-    image: 'Laser-Hair-Removal-1-1.png',
+    image: 'Laser-Hair-Removal-1-1.jpg',
     related: ['laser-hair-removal', 'laser-hair-removal-for-men'],
     blocks: [
       { type: 'p', text: 'Laser hair removal is one of the most requested treatments in aesthetics — and for good reason. Done well, it offers a long-term reduction in unwanted hair with minimal upkeep. Here’s exactly what to expect.' },
