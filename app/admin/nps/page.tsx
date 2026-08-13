@@ -49,6 +49,21 @@ export default async function AdminNpsPage() {
                 {s.comments.map((c, i) => (
                   <li key={i} className="rounded-[var(--radius-md)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-4 text-sm">
                     <span className={`mr-2 rounded-full px-2 py-0.5 text-xs font-semibold ${(c.score ?? 0) >= 9 ? 'bg-green-100 text-green-800' : (c.score ?? 0) <= 6 ? 'bg-red-100 text-red-800' : 'bg-[var(--color-bone)] text-[var(--color-stone)]'}`}>{c.score}</span>
+                    {/* The client's name is the PII here, not the link, so gate
+                        both on clients.view — this page is reachable on
+                        reviews.manage alone, which no default role pairs with
+                        an absent clients.view but a custom permission set can.
+                        Nobody without clients.view can act on the follow-up
+                        anyway. clientId is null once a client is anonymised or
+                        deleted (schema onDelete: SetNull), so the name can
+                        still show without a link. (BLD-1305) */}
+                    {sessionCan(session, 'clients.view') && (c.clientId || c.clientName) ? (
+                      c.clientId ? (
+                        <a href={`/admin/clients/${c.clientId}`} className="mr-2 font-medium text-[var(--color-ink)] hover:underline">{c.clientName || 'View client'}</a>
+                      ) : (
+                        <span className="mr-2 font-medium text-[var(--color-ink)]">{c.clientName}</span>
+                      )
+                    ) : null}
                     <span className="text-[var(--color-ink-soft)]">{c.comment}</span>
                     <span className="ml-2 text-xs text-[var(--color-stone)]">{c.treatment ? `· ${c.treatment} ` : ''}· {fmt(c.at)}</span>
                   </li>

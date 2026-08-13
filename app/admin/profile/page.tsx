@@ -14,7 +14,10 @@ export const dynamic = 'force-dynamic';
 
 export default async function ProfilePage() {
   if (!crmEnabled) return <CrmDisabled />;
-  const session = await getSession();
+  // BLD-1306: middleware confines a needsSetup:true (2FA-pending) session to
+  // this page so it can complete enrolment — getSession() now defaults to
+  // rejecting such sessions everywhere else, so this page must opt in.
+  const session = await getSession(true);
   if (!session) redirect('/admin/login');
 
   const { db } = await import('@/lib/db');
@@ -54,9 +57,15 @@ export default async function ProfilePage() {
         </div>
       )}
 
-      <div className="mt-8 max-w-xl">
-        <ProfileEditor name={me.name} title={me.title} uk={uk} />
-      </div>
+      {/* BLD-1306: a pending session may only reach the 2FA-setup endpoint,
+          so /api/admin/profile and the passkey endpoints both 401 for it.
+          Don't render forms that can only fail — the enrolment card below is
+          the one thing to do on this page until 2FA is set up. */}
+      {!session.needsSetup && (
+        <div className="mt-8 max-w-xl">
+          <ProfileEditor name={me.name} title={me.title} uk={uk} />
+        </div>
+      )}
 
       <div className="mt-8 max-w-xl">
         <TwoFactorSetup enabled={Boolean(me.totpEnabledAt)} />
@@ -65,7 +74,7 @@ export default async function ProfilePage() {
       {/* Passkeys are the OWNER-only export step-up credential (the register
           API rejects every other role). Only render the enrolment UI for the
           owner so staff aren't shown an "Add this device" button that 403s. */}
-      {me.role === 'OWNER' && (
+      {me.role === 'OWNER' && !session.needsSetup && (
         <div className="mt-6 max-w-xl">
           <PasskeyManager />
         </div>

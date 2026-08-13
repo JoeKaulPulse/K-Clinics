@@ -7,7 +7,10 @@ export const runtime = 'nodejs';
 export async function POST(req: Request) {
   if (!crmEnabled) return NextResponse.json({ ok: false }, { status: 503 });
   const { getSession } = await import('@/lib/auth');
-  const session = await getSession();
+  // BLD-1306: this IS the 2FA-setup endpoint, so a needsSetup:true (2FA
+  // required, not yet enrolled) session must be allowed through — every other
+  // /api/admin/* route defaults to rejecting it (see getSession() in lib/auth.ts).
+  const session = await getSession(true);
   if (!session) return NextResponse.json({ ok: false, error: 'Not signed in.' }, { status: 401 });
 
   const body = await req.json().catch(() => ({}));
