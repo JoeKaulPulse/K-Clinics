@@ -30,7 +30,7 @@ export function pageImage(key: string): string | null {
 
 // Journal article → hero image (real photography from the media library).
 const articleMap: Record<string, string> = {
-  'laser-hair-removal-what-to-expect': 'Laser-Hair-Removal-1-1.png',
+  'laser-hair-removal-what-to-expect': 'Laser-Hair-Removal-1-1.jpg',
   'anti-wrinkle-injections-natural-results': 'HydraFacial-Anti-Ageing.png',
   'achieve-the-perfect-smile-veneers-whitening': 'baner-7.jpg',
   'skincare-after-laser-treatments': 'Carbon-Laser-Peel.png',

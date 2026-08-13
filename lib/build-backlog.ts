@@ -3697,6 +3697,18 @@ export const BUILD_BACKLOG: BacklogItem[] = [
       'Verified: npx tsc --noEmit and DATABASE_URL= npx next build both pass clean.',
     ],
   },
+  {
+    title: 'Unoptimized multi-megabyte source images in public/treatments bloat build and image-optimization cost (BLD-1270)',
+    type: 'TASK', urgency: 'P1', status: 'IN_REVIEW', assignee: 'claude',
+    value: 8, effort: 3,
+    detail: 'public/treatments/ was 167MB with 183 PNG/JPEG source files over 200KB (30+ over 1MB, e.g. ppm.png 2.38MB, photo-block-1.png 1.9MB) -- these are the sources next/image optimizes on request, so oversized originals mean slower first-optimization latency, higher Vercel image-optimization cost and a bloated repo.',
+    notes: [
+      'Fix: added scripts/optimize-treatment-images.mjs, a re-runnable batch pass that recompresses every source over 200KB down to JPEG (quality 82, mozjpeg, resized to a 2400px long-edge ceiling if larger) and regenerates manifest.json. Skips any basename that exists under more than one extension in the folder (e.g. both 1.png and 1.jpg -- 123 such collisions found; converting one could silently shadow or collide with the other, and DB-authored WordPress-imported article HTML can reference either by exact original filename via resolveMigratedImage), and skips any source with real alpha transparency (8 files -- JPEG has none, flattening would visibly change the image). 75 of 1253 files qualified and converted cleanly: 56.4MB -> 6.5MB. Folder total: 167MB -> 117MB.',
+      'Format choice, pre-merge correction: the first cut targeted WebP (quality 82), which shrank the same 103 unambiguous files from 63.9MB to 5.1MB -- a better ratio than JPEG -- but broke the production build. lib/og.tsx\'s Open Graph card renderer (Satori/resvg, via next/og) embeds these same treatment/journal images directly as data-URI <img> tags, and that renderer cannot decode WebP raster images: prerendering /laser-hair-removal/opengraph-image failed with "TypeError: u2 is not iterable". JPEG is supported by both next/image and next/og, so it is the only format a batch pass can safely target without knowing in advance which files a future OG card will reference. All WebP output was discarded and the batch re-run as JPEG.',
+      'Every converted filename\'s extension change is propagated to import/slug-image-map.json (2 entries) and the hardcoded articleMap in lib/treatment-images.ts (1 entry) by the script itself, so no explicit reference breaks. lib/treatment-images.ts#resolve() also gained a basename-only fallback (used only when the exact filename isn\'t found, and only for basenames that map to exactly one present file) so DB-authored WordPress article content -- which still cites the pre-conversion filename via resolveMigratedImage and can\'t be edited from a build script -- keeps resolving to the recompressed file.',
+      'Verified: npx tsc --noEmit and DATABASE_URL_UNPOOLED= DATABASE_URL= POSTGRES_URL_NON_POOLING= POSTGRES_PRISMA_URL= POSTGRES_URL= npm run build both pass clean, including /laser-hair-removal/opengraph-image and the rest of the OG-image route manifest that failed under the WebP attempt.',
+    ],
+  },
 ];
 
 // A content hash over every item's title + status + PR, so ANY change (a new
