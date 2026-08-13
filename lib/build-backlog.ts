@@ -3738,7 +3738,9 @@ export const BUILD_BACKLOG: BacklogItem[] = [
     value: 7, effort: 2,
     detail: 'lib/nps.ts npsSummary() built the comments array shown at /admin/nps as {score, comment, treatment, at} only, dropping the clientId/bookingId that NpsResponse actually stores, so negative written feedback from real clients (detractor scores) could not be traced back to the client for follow-up.',
     notes: [
-      'Fix: npsSummary() now selects clientId, bookingId and the related client\'s first/last name alongside the existing fields, and returns them on each comment row. /admin/nps links each comment to /admin/clients/[id] by name when the viewer holds clients.view (falls back to a plain name, or nothing, if not -- clientId can be null on an anonymised/deleted client per the schema\'s onDelete: SetNull).',
+      'Fix: npsSummary() now selects clientId, bookingId and the related client\'s first/last name alongside the existing fields, and returns them on each comment row. /admin/nps shows the client name, linked to /admin/clients/[id], on each comment. clientId can be null on an anonymised/deleted client (schema onDelete: SetNull), in which case the name shows unlinked.',
+      'Review correction (pre-merge): the first cut gated only the LINK on clients.view and fell through to rendering the client\'s name as plain text without it. The name is the PII, not the anchor. /admin/nps is reachable on reviews.manage alone -- no default role holds reviews.manage without clients.view, but a custom permGrant/permRevoke pair can produce exactly that, and such a viewer cannot act on the follow-up anyway. Both branches are now gated on clients.view together.',
+      'Checked for wider exposure: npsSummary() has exactly one consumer (app/admin/nps/page.tsx, itself gated on reviews.manage) -- it is not reachable from any API route or public page, so the added client fields do not widen any other surface.',
       'Verified: npx tsc --noEmit and DATABASE_URL_UNPOOLED= DATABASE_URL= POSTGRES_URL_NON_POOLING= POSTGRES_PRISMA_URL= POSTGRES_URL= npm run build both pass clean.',
     ],
   },
