@@ -1,6 +1,7 @@
 import { NextResponse, after } from 'next/server';
 import { db } from '@/lib/db';
 import { logKioskEvent, runKioskAnalysis } from '@/lib/kiosk';
+import { putKioskBlob } from '@/lib/kiosk-blob';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -44,14 +45,12 @@ export async function POST(req: Request, { params }: { params: Promise<{ token: 
 
   let blobUrl: string;
   try {
-    const { put } = await import('@vercel/blob');
     // Store with the correct extension so the AI step derives the right media
     // type (an iPhone HEIC stored as .jpg was being mislabelled image/jpeg).
     const ext = file.type === 'image/png' ? 'png'
       : file.type === 'image/webp' ? 'webp'
       : (file.type === 'image/heic' || file.type === 'image/heif') ? 'heic' : 'jpg';
-    const blob = await put(`kiosk/${token}-${Date.now()}.${ext}`, file, {
-      access: 'private',
+    const blob = await putKioskBlob(`kiosk/${token}-${Date.now()}.${ext}`, file, {
       addRandomSuffix: false,
       contentType: file.type || 'image/jpeg',
     });

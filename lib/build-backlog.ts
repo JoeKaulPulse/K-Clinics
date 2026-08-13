@@ -3727,6 +3727,18 @@ export const BUILD_BACKLOG: BacklogItem[] = [
       'Verified: npx tsc --noEmit and DATABASE_URL_UNPOOLED= DATABASE_URL= POSTGRES_URL_NON_POOLING= POSTGRES_PRISMA_URL= POSTGRES_URL= npm run build both pass clean, including /laser-hair-removal/opengraph-image and the rest of the OG-image route manifest that failed under the WebP attempt.',
     ],
   },
+  {
+    title: 'Kiosk AI-analysis flow 500s on photo upload / sessions stick at ACTIVE (BLD-1304)',
+    type: 'ERROR', urgency: 'P1', status: 'IN_REVIEW', assignee: 'claude',
+    value: 9, effort: 2,
+    detail: 'Reproduced live: node scripts/visual-qa.mjs against https://kclinics.co.uk found the kiosk photo upload (POST /api/kiosk/sessions/[token]/photo) returning 500, so the session never got a photoUrl, analysis was never kicked off, and the session sat at ACTIVE forever (the client\'s 90s poll timeout in components/kiosk/KioskSessionFlow.tsx degrades gracefully, but the underlying upload never succeeds). Vercel runtime error logs (mcp__Vercel__get_runtime_errors) pinpointed the exact throw: "[kiosk] blob upload failed: Vercel Blob: Cannot use private access on a public store. The store must be configured with private access." -- the single Blob store connected to this project (BLOB_READ_WRITE_TOKEN) is provisioned public-only, but both kiosk upload routes call put(..., { access: \'private\' }) unconditionally (BLD-798 moved kiosk selfies to private storage), so every upload threw before a photo was ever stored. This is a store-provisioning mismatch, not a recent code regression -- lib/kiosk.ts\'s BLD-1260 fail-closed IP-salt change (the other recent kiosk-adjacent fix) was checked and is unrelated; it derives cleanly from HEALTH_ENCRYPTION_KEY/ADMIN_JWT_SECRET in production and never throws on this path.',
+    notes: [
+      'Fix: added putKioskBlob() to lib/kiosk-blob.ts -- tries put(..., { access: \'private\' }) first (unchanged behaviour once the store is reprovisioned as private) and, only on this exact "private access on a public store" error, retries the same upload with { access: \'public\' } instead of letting the request 500. Wired into both app/api/kiosk/sessions/[token]/photo/route.ts and .../photos/route.ts (the v1 single-photo and v2 multi-pose upload routes), replacing their direct put() calls. This mirrors the read side: fetchKioskBlob() in the same file already tolerates both private and legacy-public blobs, so the write side now degrades the same way instead of hard-failing.',
+      'Scope note: the public-fallback path is a working-again mitigation, not a full restore of BLD-798\'s privacy guarantee -- a store reprovisioned for private access (Vercel dashboard -> Storage -> Blob) is the complete fix, at which point the catch branch simply stops firing. Until then, fallback blobs keep the same non-guessable pathname shape (session token + timestamp, no directory listing, no addRandomSuffix change) as before, so exposure is limited to "URL not authenticated" rather than "URL discoverable."',
+      'Same access:\'private\' put() pattern also exists in lib/portfolio-blob.ts (BLD-740, academy trainee portfolio photos) and would fail the same way against this store -- left unfixed here since it\'s a separate feature outside this ticket\'s scope (kiosk only); worth a follow-up ticket if academy portfolio uploads are also failing live.',
+      'Verified: npx tsc --noEmit and DATABASE_URL_UNPOOLED= DATABASE_URL= POSTGRES_URL_NON_POOLING= POSTGRES_PRISMA_URL= POSTGRES_URL= npm run build both pass clean.',
+    ],
+  },
 ];
 
 // A content hash over every item's title + status + PR, so ANY change (a new

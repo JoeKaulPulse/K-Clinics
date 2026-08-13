@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { logKioskEvent } from '@/lib/kiosk';
+import { putKioskBlob } from '@/lib/kiosk-blob';
 import { MAX_KIOSK_PHOTOS } from '@/lib/kiosk-live';
 import { rateLimit } from '@/lib/security/rate-limit';
 
@@ -62,13 +63,11 @@ export async function POST(req: Request, { params }: { params: Promise<{ token: 
 
   let blobUrl: string;
   try {
-    const { put } = await import('@vercel/blob');
     // Correct extension so the AI step derives the right media type.
     const ext = file.type === 'image/png' ? 'png'
       : file.type === 'image/webp' ? 'webp'
       : (file.type === 'image/heic' || file.type === 'image/heif') ? 'heic' : 'jpg';
-    const blob = await put(`kiosk/${token}-p${poseIdx}-${Date.now()}.${ext}`, file, {
-      access: 'private',
+    const blob = await putKioskBlob(`kiosk/${token}-p${poseIdx}-${Date.now()}.${ext}`, file, {
       addRandomSuffix: false,
       contentType: file.type || 'image/jpeg',
     });
