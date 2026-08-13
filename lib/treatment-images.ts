@@ -16,7 +16,41 @@ const available = new Set(present as string[]);
 // doesn't prepend basePath to unoptimized /public images in a static export, so
 // we prefix it here. Empty on Vercel/dev, so paths stay root-relative there.
 const BASE = process.env.NEXT_PUBLIC_BASE_PATH ?? '';
-const resolve = (file?: string) => (file && available.has(file) ? `${BASE}/treatments/${file}` : null);
+
+// BLD-1270: scripts/optimize-treatment-images.mjs recompressed the oversized
+// source images to JPEG, so 75 files changed extension (X.png -> X.jpg). Every
+// reference the repo owns (the import/ maps, articleMap below, lib/articles.ts)
+// was rewritten by that script — but WordPress-imported article bodies live in
+// the DB (Post.content) and still cite the pre-conversion filename, which a
+// build script can't edit. So when the exact filename isn't present, fall back
+// to a basename-only match.
+//
+// Two guards keep the fallback from ever guessing:
+//  - it answers ONLY when a basename maps to exactly one file that is actually
+//    present, the same ambiguity rule the conversion script used to decide what
+//    it was allowed to rename. A basename carrying more than one extension
+//    (both X.png and X.jpg on disk) was never converted, so its exact names
+//    still match above and no guess is needed; declining there is what stops a
+//    stale reference resolving to a different image.
+//  - it applies ONLY to the extensions the conversion script renames. A
+//    reference to any other format (.svg, .webp, .avif) was never rewritten, so
+//    substituting a same-named raster for it would be a guess, not a repair.
+const CONVERTIBLE = /\.(png|jpe?g)$/i;
+const baseKey = (file: string) => file.replace(/\.[^.]+$/, '').toLowerCase();
+const byBase = new Map<string, string[]>();
+for (const f of present as string[]) {
+  const key = baseKey(f);
+  const list = byBase.get(key);
+  if (list) list.push(f);
+  else byBase.set(key, [f]);
+}
+const resolve = (file?: string) => {
+  if (!file) return null;
+  if (available.has(file)) return `${BASE}/treatments/${file}`;
+  if (!CONVERTIBLE.test(file)) return null;
+  const sameBase = byBase.get(baseKey(file));
+  return sameBase && sameBase.length === 1 ? `${BASE}/treatments/${sameBase[0]}` : null;
+};
 
 export function treatmentImage(slug: string): string | null {
   return resolve((treatMap as Record<string, string>)[slug]);
@@ -30,7 +64,7 @@ export function pageImage(key: string): string | null {
 
 // Journal article → hero image (real photography from the media library).
 const articleMap: Record<string, string> = {
-  'laser-hair-removal-what-to-expect': 'Laser-Hair-Removal-1-1.png',
+  'laser-hair-removal-what-to-expect': 'Laser-Hair-Removal-1-1.jpg',
   'anti-wrinkle-injections-natural-results': 'HydraFacial-Anti-Ageing.png',
   'achieve-the-perfect-smile-veneers-whitening': 'baner-7.jpg',
   'skincare-after-laser-treatments': 'Carbon-Laser-Peel.png',
