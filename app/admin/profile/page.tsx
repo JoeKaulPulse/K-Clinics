@@ -14,7 +14,10 @@ export const dynamic = 'force-dynamic';
 
 export default async function ProfilePage() {
   if (!crmEnabled) return <CrmDisabled />;
-  const session = await getSession();
+  // BLD-1306: middleware confines a needsSetup:true (2FA-pending) session to
+  // this page so it can complete enrolment — getSession() now defaults to
+  // rejecting such sessions everywhere else, so this page must opt in.
+  const session = await getSession(true);
   if (!session) redirect('/admin/login');
 
   const { db } = await import('@/lib/db');

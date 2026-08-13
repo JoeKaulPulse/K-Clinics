@@ -176,9 +176,16 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: false, error: 'That password has appeared in a known data breach. Please choose a different one.' }, { status: 422 });
     }
   }
-  // Only an OWNER may create another OWNER.
-  if (role === 'OWNER' && actor.role !== 'OWNER') {
-    return NextResponse.json({ ok: false, error: 'Only an owner can create an owner.' }, { status: 403 });
+  // Only an OWNER may create a staff member with a role other than their own —
+  // mirrors the update-path role gate above (~L108), which only applies a role
+  // change when `actor.role === 'OWNER'`. Without this, a non-owner holding
+  // only `staff.manage` (e.g. a FRONT_DESK delegate) could POST `{role:
+  // 'ADMIN'}` and create an account with far more privilege than they
+  // themselves ever held — self-escalation via a brand-new account (BLD-1303).
+  // A non-owner creating a peer at their own role is not an escalation, so
+  // that case stays allowed.
+  if (role !== actor.role && actor.role !== 'OWNER') {
+    return NextResponse.json({ ok: false, error: 'Only an owner can assign a role other than your own.' }, { status: 403 });
   }
   const exists = await db.adminUser.findUnique({ where: { email: email.toLowerCase() } });
   if (exists) return NextResponse.json({ ok: false, error: 'A staff member with that email already exists.' }, { status: 409 });

@@ -86,7 +86,21 @@ export async function destroySession() {
 // Authoritative session check: verify the JWT, then confirm the account is
 // still active and the token's revocation epoch matches the DB (so deactivation
 // and "sign out everywhere" take effect immediately). Memoised per request.
-export const getSession = cache(async (): Promise<Session | null> => {
+//
+// BLD-1306: a `needsSetup: true` session (2FA required but not yet enrolled —
+// minted by the password/passkey/Google-SSO login paths) is only far enough
+// signed in to complete 2FA setup. middleware.ts confines it to the
+// /admin/profile *page*, but every /api/admin/* route handler either calls
+// this function directly or via requirePermission()/sessionCan(), which is
+// what made this the single choke point: by default we now treat a pending
+// session as unauthenticated (return null) for every one of those callers, so
+// a stolen or just-issued password-only session can't call any permitted API
+// route before enrolling. The two legitimate exceptions — the 2FA-setup
+// endpoint itself and the /admin/profile page that hosts it (the page
+// middleware already confines these sessions to) — opt in explicitly with
+// `getSession(true)`. Logout doesn't need a session at all, so it's
+// unaffected. Consistent with the update-path role gate in app/api/admin/staff/route.ts.
+export const getSession = cache(async (allowPendingSetup = false): Promise<Session | null> => {
   const token = (await cookies()).get(COOKIE)?.value;
   const session = await verifyToken(token);
   if (!session) return null;
@@ -101,6 +115,7 @@ export const getSession = cache(async (): Promise<Session | null> => {
     // on the next request once the DB recovers.
     return null;
   }
+  if (session.needsSetup && !allowPendingSetup) return null;
   return session;
 });
 
