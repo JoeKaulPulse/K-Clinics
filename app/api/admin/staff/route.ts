@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { crmEnabled } from '@/lib/crm';
-import { PERMISSION_KEYS, effectivePermissions } from '@/lib/permissions';
+import { PERMISSION_KEYS, effectivePermissions, roleDefaults } from '@/lib/permissions';
 
 export const runtime = 'nodejs';
 
@@ -176,16 +176,36 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: false, error: 'That password has appeared in a known data breach. Please choose a different one.' }, { status: 422 });
     }
   }
-  // Only an OWNER may create a staff member with a role other than their own —
-  // mirrors the update-path role gate above (~L108), which only applies a role
-  // change when `actor.role === 'OWNER'`. Without this, a non-owner holding
-  // only `staff.manage` (e.g. a FRONT_DESK delegate) could POST `{role:
-  // 'ADMIN'}` and create an account with far more privilege than they
-  // themselves ever held — self-escalation via a brand-new account (BLD-1303).
-  // A non-owner creating a peer at their own role is not an escalation, so
-  // that case stays allowed.
-  if (role !== actor.role && actor.role !== 'OWNER') {
-    return NextResponse.json({ ok: false, error: 'Only an owner can assign a role other than your own.' }, { status: 403 });
+  // BLD-1303: a non-OWNER holding `staff.manage` (a delegate an owner granted
+  // it to — no role has it by default) could previously POST `{role: 'ADMIN'}`
+  // and mint an account with far more privilege than they themselves held. The
+  // clampGrant escalation clamp above only covers permGrant/permRevoke, never
+  // `role`, and the old gate only special-cased `role === 'OWNER'`.
+  //
+  // The rule is the same one clampGrant already applies, just at role level:
+  // you may not create an account that can do something you cannot. So a
+  // non-OWNER may only create a role whose default permission set is a subset
+  // of their own effective permissions — which keeps the legitimate delegation
+  // flow working (an ADMIN delegate can still onboard a PRACTITIONER,
+  // FRONT_DESK or STAFF account, all strict subsets of ADMIN) while blocking
+  // the escalation (FRONT_DESK → ADMIN is not a subset, so it 403s).
+  //
+  // Deliberately NOT a role ranking: the roles are not totally ordered
+  // (PRACTITIONER has clinical access FRONT_DESK lacks, and vice versa), so a
+  // rank would let a FRONT_DESK delegate mint a PRACTITIONER and hand out
+  // clinical access it never had. The subset test is conservative in the safe
+  // direction — it can only ever refuse, never over-grant.
+  //
+  // OWNER stays separately gated: only an OWNER may create an OWNER, even if a
+  // delegate has somehow been granted every individual permission.
+  if (actor.role !== 'OWNER') {
+    if (role === 'OWNER') {
+      return NextResponse.json({ ok: false, error: 'Only an owner can create an owner.' }, { status: 403 });
+    }
+    const targetPerms = roleDefaults(role);
+    if (!targetPerms.every((k) => actorPerms.has(k))) {
+      return NextResponse.json({ ok: false, error: 'You can only create a staff member whose access is within your own.' }, { status: 403 });
+    }
   }
   const exists = await db.adminUser.findUnique({ where: { email: email.toLowerCase() } });
   if (exists) return NextResponse.json({ ok: false, error: 'A staff member with that email already exists.' }, { status: 409 });
