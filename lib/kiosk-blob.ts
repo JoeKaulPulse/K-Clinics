@@ -34,21 +34,61 @@ function contentTypeFromPath(p: string): string {
 }
 
 /**
- * Upload a kiosk selfie, preferring PRIVATE access (BLD-798) and falling back
- * to PUBLIC only if the connected Blob store rejects private uploads outright.
+ * Thrown when the connected Blob store cannot accept a PRIVATE upload because
+ * it is provisioned public-only. Kept distinct from every other upload failure
+ * so the routes can tell the visitor the truth ("temporarily unavailable",
+ * retrying won't help) and raise a config-shaped ops alert, instead of a
+ * generic "please try again" that can never succeed. (BLD-1304)
+ */
+export class KioskBlobStorePublicOnlyError extends Error {
+  readonly code = 'kiosk_blob_store_public_only';
+  constructor(cause?: unknown) {
+    super(
+      'Vercel Blob store is provisioned public-only, so kiosk selfies cannot be stored privately. '
+      + 'Kiosk photo upload stays disabled until the store is re-provisioned with private access '
+      + '(Vercel dashboard → Storage → Blob). See BLD-1304 / BLD-798.',
+      { cause },
+    );
+    this.name = 'KioskBlobStorePublicOnlyError';
+  }
+}
+
+/**
+ * Upload a kiosk selfie to PRIVATE Vercel Blob storage. Private access is not
+ * negotiable here — see the decision record below.
  *
- * BLD-1304: production's Blob store is provisioned public-only, so every
- * `put(..., { access: 'private' })` call was rejected server-side with
+ * BLD-1304: the connected production Blob store is provisioned public-only, so
+ * every `put(..., { access: 'private' })` call is rejected server-side with
  * "Cannot use private access on a public store. The store must be configured
- * with private access." — a hard exception, not a graceful failure, so the
- * upload route 500'd before a photo was ever stored and the session sat at
- * ACTIVE forever (no photo → no analysis kicked off). This mirrors the read
- * side (fetchKioskBlob, above), which already tolerates both tiers — legacy
- * public uploads fall through to a plain fetch. The pathname keeps no
- * directory listing and embeds the high-entropy session token, so a public
- * fallback blob is still effectively unguessable; re-provision the store as
- * private (Vercel dashboard → Storage → Blob) to restore the private tier —
- * once that's done this helper's `catch` path simply stops firing.
+ * with private access." That hard-fails the upload, so no photo is stored and
+ * the AI analysis never runs. Confirmed live in the Vercel runtime error log
+ * (route /api/kiosk/sessions/[token]/photo, still firing 13 Aug).
+ *
+ * REVIEW DECISION (13 Aug, pre-merge) — a public-access fallback was proposed
+ * to get the feature working again tonight. It is deliberately NOT taken,
+ * because it reverses an explicit prior privacy decision on biometric data
+ * without owner sign-off:
+ *   - BLD-798 moved these selfies to private storage precisely because they
+ *     "were public, unauthenticated URLs viewable by anyone for 30 days"
+ *     (see app/api/kiosk/sessions/[token]/photo-view/route.ts). A public
+ *     fallback recreates exactly that state.
+ *   - The fallback's stated mitigation — that the pathname embeds a
+ *     high-entropy session token — does not hold. randomToken(10) is ~50 bits
+ *     and lib/kiosk.ts describes this same token as "short, brute-forceable";
+ *     BLD-1052 therefore made the read relay require the paired 166-bit secret
+ *     AND rate-limit it. A raw public blob URL carries no secret, no rate
+ *     limit, no expiry check and no revocation, so it is strictly weaker than
+ *     the bar an earlier board item already set for reading this same image.
+ *     The token is displayed in-clinic as a QR/URL on the kiosk screen, so it
+ *     is not a secret to begin with.
+ * Broken-but-safe is the better one-night trade: a privacy regression on
+ * visitors' face photos cannot be un-shipped, and the runtime logs show no
+ * genuine visitor uploads in the last 7 days (the only two failures were the
+ * visual-QA harness's own test sessions).
+ *
+ * Fix path is an owner action, not a code change: re-provision the Blob store
+ * with private access (Vercel dashboard → Storage → Blob). Nothing here needs
+ * to change once that is done — this error simply stops being thrown.
  */
 export async function putKioskBlob(
   pathname: string,
@@ -60,8 +100,7 @@ export async function putKioskBlob(
     return await put(pathname, data, { ...opts, access: 'private' });
   } catch (e) {
     if (e instanceof Error && /private access on a public store/i.test(e.message)) {
-      console.warn('[kiosk] Blob store is public-only — uploaded with public access instead of private (BLD-1304); re-provision the store as private when possible.');
-      return await put(pathname, data, { ...opts, access: 'public' });
+      throw new KioskBlobStorePublicOnlyError(e);
     }
     throw e;
   }

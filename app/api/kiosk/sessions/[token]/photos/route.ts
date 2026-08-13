@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { logKioskEvent } from '@/lib/kiosk';
-import { putKioskBlob } from '@/lib/kiosk-blob';
+import { putKioskBlob, KioskBlobStorePublicOnlyError } from '@/lib/kiosk-blob';
 import { MAX_KIOSK_PHOTOS } from '@/lib/kiosk-live';
 import { rateLimit } from '@/lib/security/rate-limit';
 
@@ -73,6 +73,17 @@ export async function POST(req: Request, { params }: { params: Promise<{ token: 
     });
     blobUrl = blob.url;
   } catch (e) {
+    // BLD-1304: same decision as the v1 photo route — a public-only Blob store
+    // is a config fault that retrying cannot fix, and we will not downgrade a
+    // biometric photo to public storage to work around it. See lib/kiosk-blob.ts.
+    if (e instanceof KioskBlobStorePublicOnlyError) {
+      console.error('[kiosk] photo upload disabled (photos):', e.message);
+      try {
+        const Sentry = await import('@sentry/nextjs');
+        Sentry.captureException(e, { level: 'fatal', tags: { area: 'kiosk-photos-upload', cause: 'blob-store-public-only', ref: 'BLD-1304' } });
+      } catch { /* Sentry optional */ }
+      return NextResponse.json({ ok: false, error: 'Photo analysis is temporarily unavailable. Please ask a member of staff.' }, { status: 503 });
+    }
     // PRJ-1032.5: never surface the raw storage error to an anonymous visitor
     // (it can leak bucket names / infra detail). Log the detail, return generic.
     console.error('[kiosk] blob upload failed (photos):', (e as Error)?.message);

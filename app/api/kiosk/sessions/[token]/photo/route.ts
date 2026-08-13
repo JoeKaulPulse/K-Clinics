@@ -1,7 +1,7 @@
 import { NextResponse, after } from 'next/server';
 import { db } from '@/lib/db';
 import { logKioskEvent, runKioskAnalysis } from '@/lib/kiosk';
-import { putKioskBlob } from '@/lib/kiosk-blob';
+import { putKioskBlob, KioskBlobStorePublicOnlyError } from '@/lib/kiosk-blob';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -56,6 +56,19 @@ export async function POST(req: Request, { params }: { params: Promise<{ token: 
     });
     blobUrl = blob.url;
   } catch (e) {
+    // BLD-1304: the store being provisioned public-only is a configuration
+    // fault, not a transient one — retrying can never succeed, and we will not
+    // silently downgrade a biometric photo to public storage to work around it
+    // (see lib/kiosk-blob.ts for the decision record). Tell the visitor the
+    // truth and raise a fatal, config-shaped ops alert so the owner sees it.
+    if (e instanceof KioskBlobStorePublicOnlyError) {
+      console.error('[kiosk] photo upload disabled:', e.message);
+      try {
+        const Sentry = await import('@sentry/nextjs');
+        Sentry.captureException(e, { level: 'fatal', tags: { area: 'kiosk-photo-upload', cause: 'blob-store-public-only', ref: 'BLD-1304' } });
+      } catch { /* Sentry optional */ }
+      return NextResponse.json({ ok: false, error: 'Photo analysis is temporarily unavailable. Please ask a member of staff.' }, { status: 503 });
+    }
     // BLD-713: never surface the raw storage/Blob error to an anonymous visitor
     // (it can leak bucket names, tokens or infra detail). Log the detail and
     // return a generic message.
