@@ -3775,7 +3775,7 @@ export const BUILD_BACKLOG: BacklogItem[] = [
   },
   {
     title: 'Accessibility/security hardening batch: intake questionnaire labels, llms.txt dentistry gate, 2FA rate limit, admin focus indicators (PRJ-1118.2, PRJ-1118.5, PRJ-1118.6, PRJ-1118.7)',
-    type: 'ERROR', urgency: 'P0', status: 'IN_REVIEW', assignee: 'claude',
+    type: 'ERROR', urgency: 'P0', status: 'SHIPPED', assignee: 'claude', pr: PR(1793),
     value: 8, effort: 2,
     detail: 'Four small, independent findings from the 2026-08-14 audit, batched into one PR. PRJ-1118.2: components/portal/AssessmentRunner.tsx renders longtext/date/text intake questions with only a placeholder -- no accessible name, so a screen-reader user filling out the clinical questionnaire hears only "text field". PRJ-1118.5: app/llms.txt/route.ts listed every dentistry treatment unconditionally, never checking the dentistryLive flag every other surface gates on, so an AI answer engine would tell users a GDC-regulated service is bookable before launch. PRJ-1118.6: the 2FA enrolment confirm op (POST /api/admin/2fa) had no rate limit, unlike the sibling disable op (BLD-875), for the identical brute-force risk. PRJ-1118.7: PriceOverride.tsx, SessionRunner.tsx (checkout charge amount) and BrandKitManager.tsx set outline-none on bare inputs with no focus replacement -- keyboard focus was invisible on the exact fields staff use to key in a payment amount.',
     notes: [
@@ -3783,6 +3783,18 @@ export const BUILD_BACKLOG: BacklogItem[] = [
       'Fix (PRJ-1118.5): app/llms.txt/route.ts now gates the Dentistry section on site.dentistryLive, matching every other consumer of that flag (treatment pages, /dentistry hub, JSON-LD) -- when not live it points readers at the /dentistry page to register interest instead of listing bookable treatments.',
       'Fix (PRJ-1118.6): app/api/admin/2fa/route.ts\'s confirm op now calls the same enforceRateLimit wrapper the disable op already uses (8 attempts / 300s, admin scope, key twofa-confirm), closing the brute-force gap on the enrolment code check.',
       'Fix (PRJ-1118.7): added the repo\'s existing focus-visible:ring-2 focus-visible:ring-[var(--color-gold)] convention (already used elsewhere, e.g. components/portal/ReferralCard.tsx) to the bare outline-none inputs in PriceOverride.tsx, SessionRunner.tsx and BrandKitManager.tsx.',
+      'Verified: npx tsc --noEmit and DATABASE_URL_UNPOOLED= DATABASE_URL= POSTGRES_URL_NON_POOLING= POSTGRES_PRISMA_URL= POSTGRES_URL= npm run build both pass clean.',
+    ],
+  },
+  {
+    title: 'Gift voucher stranded on NO_SHOW; job-application CVs and homework files orphaned in Blob storage after deletion/erasure (PRJ-1118.12, BLD-1309)',
+    type: 'ERROR', urgency: 'P1', status: 'IN_REVIEW', assignee: 'claude',
+    value: 6, effort: 2,
+    detail: 'Two independent correctness/reliability findings from the 2026-08-13/14 audits, batched into one PR. PRJ-1118.12: the voucher reservation made at booking time (app/api/admin/bookings/session/route.ts) was only released by cancelBooking() (guarded on !booking.chargedAt); setBookingStatus(\'NO_SHOW\') never touched giftVoucherPence/giftVoucherCode, so a no-show with a partial voucher applied permanently lost that balance -- not returned to the client, not recorded as clinic revenue either. BLD-1309: app/api/cron/daily/route.ts\'s GDPR retention sweep deletes JobApplication rows but never called Blob del() on cvUrl, and eraseStudentData (app/admin/actions.ts) cleared HomeworkSubmission.files without deleting the underlying Blob URLs first -- candidate CVs (name, history, sometimes health disclosures in cover notes) and trainee homework files persisted indefinitely in third-party storage after the referencing record was gone or erased.',
+    notes: [
+      'Fix (PRJ-1118.12): app/admin/bookings/actions.ts\'s setBookingStatus() NO_SHOW branch now releases a reserved-but-unconsumed gift-voucher application, mirroring cancelBooking()\'s BLD-882 guard exactly -- discriminated on chargedAt (a booking already charged before the no-show consumed its voucher as part of that settled sale; that case is a refund decision, not automatic) and re-credited via creditVoucher with a REWARD_REDEEMED audit entry.',
+      'Fix (BLD-1309, job applications): app/api/cron/daily/route.ts now shortlists the cvUrl of every JobApplication row about to be purged by the existing 6/12-month retention sweep, then calls Vercel Blob del() on those URLs AFTER the deleteMany has run -- and only for URLs no surviving row still references, so a failed purge (or a row an admin moved out of the purge set mid-run) can never be left pointing at a CV that no longer downloads. Deletes are chunked for the first-run backlog. Best-effort: a Blob delete failure is logged and does not block the DB purge.',
+      'Fix (BLD-1309, academy homework): app/admin/actions.ts\'s eraseStudentData() now captures every affected HomeworkSubmission.files URL before the erasure transaction clears the column, and deletes them from Blob storage once the transaction commits -- same best-effort, non-blocking pattern.',
       'Verified: npx tsc --noEmit and DATABASE_URL_UNPOOLED= DATABASE_URL= POSTGRES_URL_NON_POOLING= POSTGRES_PRISMA_URL= POSTGRES_URL= npm run build both pass clean.',
     ],
   },

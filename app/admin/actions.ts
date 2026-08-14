@@ -276,6 +276,11 @@ export async function eraseStudentData(studentId: string) {
   const student = await db.academyStudent.findUnique({ where: { id: studentId }, select: { email: true } });
   if (!student) return { ok: false, error: 'Student not found.' };
   const erasedEmail = `erased-${studentId}@redacted.invalid`;
+  // BLD-1309: capture the Blob URLs before files is cleared below, so they can
+  // be deleted from storage too (mirroring lib/kiosk.ts's deleteKioskBlobs) —
+  // clearing the column alone left the uploaded homework files themselves
+  // sitting in Blob storage indefinitely after erasure.
+  const homeworkFileUrls = (await db.homeworkSubmission.findMany({ where: { studentId }, select: { files: true } })).flatMap((h) => h.files);
   await db.$transaction([
     db.academyStudent.update({
       where: { id: studentId },
@@ -312,6 +317,14 @@ export async function eraseStudentData(studentId: string) {
     // the content but keep the row (status/dates) for course records.
     db.homeworkSubmission.updateMany({ where: { studentId }, data: { note: null, feedback: null, files: [] } }),
   ]);
+  if (homeworkFileUrls.length && process.env.BLOB_READ_WRITE_TOKEN) {
+    try {
+      const { del } = await import('@vercel/blob');
+      await del(homeworkFileUrls);
+    } catch (e) {
+      console.error('[eraseStudentData] homework blob delete failed (continuing):', (e as Error)?.message);
+    }
+  }
   await logAudit({ action: 'STUDENT_ERASED', actor: session.email, actorRole: session.role, summary: `Academy student ${student.email} data erased (GDPR Art.17)` });
   revalidatePath('/admin/academy');
   return { ok: true };
