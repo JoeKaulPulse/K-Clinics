@@ -32,7 +32,7 @@ Location: ${site.address.street}, ${site.address.locality}, London. Phone: ${sit
 ${aesthetics.map(line).join('\n')}
 
 ## Dentistry
-${dentistry.map(line).join('\n')}
+${site.dentistryLive ? dentistry.map(line).join('\n') : `Dentistry is opening soon and not yet bookable — see [Dentistry](${base}/dentistry) to register interest.`}
 
 ## Training (K Academy)
 - [Courses & enrolment](${base}/academy): Ofqual-regulated, VTCT & CPD-accredited; blended Thinkific theory + practical days + in-house VTCT exam; Clearpay finance available.

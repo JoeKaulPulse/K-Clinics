@@ -3773,6 +3773,19 @@ export const BUILD_BACKLOG: BacklogItem[] = [
       'Verified: npx tsc --noEmit and DATABASE_URL_UNPOOLED= DATABASE_URL= POSTGRES_URL_NON_POOLING= POSTGRES_PRISMA_URL= POSTGRES_URL= npm run build both pass clean.',
     ],
   },
+  {
+    title: 'Accessibility/security hardening batch: intake questionnaire labels, llms.txt dentistry gate, 2FA rate limit, admin focus indicators (PRJ-1118.2, PRJ-1118.5, PRJ-1118.6, PRJ-1118.7)',
+    type: 'ERROR', urgency: 'P0', status: 'IN_REVIEW', assignee: 'claude',
+    value: 8, effort: 2,
+    detail: 'Four small, independent findings from the 2026-08-14 audit, batched into one PR. PRJ-1118.2: components/portal/AssessmentRunner.tsx renders longtext/date/text intake questions with only a placeholder -- no accessible name, so a screen-reader user filling out the clinical questionnaire hears only "text field". PRJ-1118.5: app/llms.txt/route.ts listed every dentistry treatment unconditionally, never checking the dentistryLive flag every other surface gates on, so an AI answer engine would tell users a GDC-regulated service is bookable before launch. PRJ-1118.6: the 2FA enrolment confirm op (POST /api/admin/2fa) had no rate limit, unlike the sibling disable op (BLD-875), for the identical brute-force risk. PRJ-1118.7: PriceOverride.tsx, SessionRunner.tsx (checkout charge amount) and BrandKitManager.tsx set outline-none on bare inputs with no focus replacement -- keyboard focus was invisible on the exact fields staff use to key in a payment amount.',
+    notes: [
+      'Fix (PRJ-1118.2): gave the question h2 an id (q-${current.id}) in AssessmentRunner.tsx and wired aria-labelledby to it on the longtext/date/text Field() inputs, so a screen reader announces the actual question text.',
+      'Fix (PRJ-1118.5): app/llms.txt/route.ts now gates the Dentistry section on site.dentistryLive, matching every other consumer of that flag (treatment pages, /dentistry hub, JSON-LD) -- when not live it points readers at the /dentistry page to register interest instead of listing bookable treatments.',
+      'Fix (PRJ-1118.6): app/api/admin/2fa/route.ts\'s confirm op now calls the same enforceRateLimit wrapper the disable op already uses (8 attempts / 300s, admin scope, key twofa-confirm), closing the brute-force gap on the enrolment code check.',
+      'Fix (PRJ-1118.7): added the repo\'s existing focus-visible:ring-2 focus-visible:ring-[var(--color-gold)] convention (already used elsewhere, e.g. components/portal/ReferralCard.tsx) to the bare outline-none inputs in PriceOverride.tsx, SessionRunner.tsx and BrandKitManager.tsx.',
+      'Verified: npx tsc --noEmit and DATABASE_URL_UNPOOLED= DATABASE_URL= POSTGRES_URL_NON_POOLING= POSTGRES_PRISMA_URL= POSTGRES_URL= npm run build both pass clean.',
+    ],
+  },
 ];
 
 // A content hash over every item's title + status + PR, so ANY change (a new
