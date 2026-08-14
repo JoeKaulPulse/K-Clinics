@@ -897,7 +897,7 @@ function CheckoutStep({ p, live, sessData, pending, presenting, api, run, onCont
             <div className="flex flex-wrap items-center gap-3">
               <label htmlFor="charge-amount" className="sr-only">Amount in pounds</label>
               <span className="flex items-center gap-1 rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-3 py-2.5 text-sm">
-                £<input id="charge-amount" inputMode="decimal" value={amount} onChange={(e) => setAmount(e.target.value)} className="w-24 outline-none tabular-nums" />
+                £<input id="charge-amount" inputMode="decimal" value={amount} onChange={(e) => setAmount(e.target.value)} className="w-24 rounded-[var(--radius-sm)] outline-none tabular-nums focus-visible:ring-2 focus-visible:ring-[var(--color-gold)]" />
               </span>
               {/* How to take payment */}
               <div className="flex items-center rounded-full border border-[var(--color-line)] p-0.5 text-sm" role="group" aria-label="Payment method">

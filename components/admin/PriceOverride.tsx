@@ -50,7 +50,7 @@ export function PriceOverride({ bookingId, basePence, paid = false }: { bookingI
       <div className="flex flex-wrap items-center gap-2">
         <label htmlFor="price-override-amount" className="sr-only">New treatment price in pounds</label>
         <span className="flex items-center gap-1 rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-2 py-1.5">
-          £<input id="price-override-amount" inputMode="decimal" value={amount} onChange={(e) => setAmount(e.target.value)} className="w-20 outline-none tabular-nums" />
+          £<input id="price-override-amount" inputMode="decimal" value={amount} onChange={(e) => setAmount(e.target.value)} className="w-20 rounded-[var(--radius-sm)] outline-none tabular-nums focus-visible:ring-2 focus-visible:ring-[var(--color-gold)]" />
         </span>
         <input
           value={reason}
