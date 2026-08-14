@@ -235,8 +235,11 @@ export async function GET(req: Request) {
     // The rows are gone — now drop their CVs from Blob storage, but only the
     // ones nothing references any more (a row whose status changed between the
     // shortlist and the purge survived the deleteMany and keeps its file).
-    // Best-effort and deliberately last: a Blob failure leaves an orphaned file
-    // to be swept next run, and must not fail the retention purge itself.
+    // Best-effort and deliberately last. A Blob failure here does leave the file
+    // orphaned for good (its row is gone, so no later run can find the URL
+    // again) — accepted deliberately: the alternative, holding the row back
+    // until storage cooperates, keeps the candidate's personal data in the
+    // database past its retention date, which is the worse of the two.
     if (purgeCvUrls.length && process.env.BLOB_READ_WRITE_TOKEN) {
       try {
         const survivors = new Set(
