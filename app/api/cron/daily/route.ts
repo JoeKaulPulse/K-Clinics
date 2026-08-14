@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import type { Prisma } from '@prisma/client';
 import { crmEnabled } from '@/lib/crm';
 
 export const runtime = 'nodejs';
@@ -196,15 +197,28 @@ export async function GET(req: Request) {
     const jobRejectedCutoff = new Date(Date.now() - 180 * 24 * 60 * 60 * 1000); // 6 months
     const jobAbandonedCutoff = new Date(Date.now() - 365 * 24 * 60 * 60 * 1000); // 12 months
     const tokenExpiredCutoff = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);   // 7 days
+    const jobPurgeWhere: Prisma.JobApplicationWhereInput = {
+      OR: [
+        { status: 'REJECTED', createdAt: { lt: jobRejectedCutoff } },
+        { status: { in: ['NEW', 'REVIEWING'] }, createdAt: { lt: jobAbandonedCutoff } },
+      ],
+    };
+    // BLD-1309: delete the CV from Blob storage before the row goes, mirroring
+    // lib/kiosk.ts's deleteKioskBlobs — otherwise the candidate's CV (name,
+    // history, sometimes health disclosures in the cover note) persists
+    // indefinitely in third-party storage after the referencing row is gone.
+    try {
+      const dueForPurge = await db.jobApplication.findMany({ where: jobPurgeWhere, select: { cvUrl: true } });
+      const cvUrls = dueForPurge.map((j) => j.cvUrl).filter((u): u is string => !!u);
+      if (cvUrls.length && process.env.BLOB_READ_WRITE_TOKEN) {
+        const { del } = await import('@vercel/blob');
+        await del(cvUrls);
+      }
+    } catch (e) {
+      console.error('[cron] job-application CV blob purge failed (continuing):', (e as Error)?.message);
+    }
     const [jobs, , academyTokens] = await Promise.all([
-      db.jobApplication.deleteMany({
-        where: {
-          OR: [
-            { status: 'REJECTED', createdAt: { lt: jobRejectedCutoff } },
-            { status: { in: ['NEW', 'REVIEWING'] }, createdAt: { lt: jobAbandonedCutoff } },
-          ],
-        },
-      }),
+      db.jobApplication.deleteMany({ where: jobPurgeWhere }),
       // Client portal: clear expired reset tokens (no personal data beyond email FK).
       db.client.updateMany({
         where: { resetTokenExp: { lt: tokenExpiredCutoff }, resetTokenHash: { not: null } },

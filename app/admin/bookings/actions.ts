@@ -226,6 +226,26 @@ export async function setBookingStatus(bookingId: string, status: 'COMPLETED' | 
         const { notifyStaffByPermission } = await import('@/lib/notifications');
         await notifyStaffByPermission('bookings.manage', { kind: 'status', category: 'bookings', priority: 'normal', title: `No-show: ${b.treatmentTitle}`, body: b.startAt.toLocaleString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', timeZone: 'Europe/London' }), href: `/admin/bookings/${b.id}` }, session.email);
       } catch { /* non-fatal */ }
+      // PRJ-1118.12: release a reserved-but-unconsumed gift-voucher application,
+      // mirroring cancelBooking's BLD-882 guard — a booking already charged before
+      // the no-show consumed its voucher as part of that settled sale; only an
+      // unconsumed reservation (never charged) returns automatically.
+      if ((b.giftVoucherPence ?? 0) > 0 && b.giftVoucherCode && !b.chargedAt) {
+        try {
+          const cleared = await db.booking.updateMany({
+            where: { id: b.id, giftVoucherCode: b.giftVoucherCode, giftVoucherPence: b.giftVoucherPence },
+            data: { giftVoucherCode: null, giftVoucherPence: 0 },
+          });
+          if (cleared.count > 0) {
+            const { creditVoucher } = await import('@/lib/gift-vouchers');
+            await creditVoucher(b.giftVoucherCode, b.giftVoucherPence);
+            const { logAudit } = await import('@/lib/audit');
+            await logAudit({ action: 'REWARD_REDEEMED', actor: session.email, actorRole: session.role, bookingId: b.id, clientId: b.clientId, summary: `Gift voucher ${b.giftVoucherCode} returned on no-show — £${(b.giftVoucherPence / 100).toFixed(2)} back on the voucher` }).catch(() => {});
+          }
+        } catch (e) {
+          console.error('[setBookingStatus] voucher re-credit failed (continuing):', (e as Error)?.message);
+        }
+      }
     }
     if (status === 'COMPLETED') {
       await db.client.update({ where: { id: b.clientId }, data: { lastVisitAt: new Date() } });
