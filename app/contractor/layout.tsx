@@ -17,7 +17,9 @@ export default function ContractorLayout({ children }: { children: React.ReactNo
       >
         Skip to content
       </a>
-      <main id="main">{children}</main>
+      {/* No <main> wrapper here: both contractor pages already render their own
+          main landmark carrying id="main" for the skip link above. */}
+      {children}
     </div>
   );
 }

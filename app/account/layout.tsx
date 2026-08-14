@@ -22,7 +22,10 @@ export default function AccountLayout({ children }: { children: React.ReactNode 
         >
           Skip to content
         </a>
-        <main id="main">{children}</main>
+        {/* No <main> wrapper here: every /account route already renders its own
+            main landmark (PortalShell, AuthShell, error/not-found). The skip
+            link targets that page-level #main — same pattern as /admin. */}
+        {children}
       </div>
     </MotionProvider>
   );

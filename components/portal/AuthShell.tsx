@@ -58,7 +58,7 @@ export function AuthShell({
       </aside>
 
       {/* Form side */}
-      <main className="flex items-center justify-center px-6 py-16">
+      <main id="main" className="flex items-center justify-center px-6 py-16">
         <div className="w-full max-w-md">
           <div className="mb-8">
             <p className="eyebrow mb-2">{eyebrow}</p>

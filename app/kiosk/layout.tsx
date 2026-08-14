@@ -16,7 +16,9 @@ export default function KioskLayout({ children }: { children: React.ReactNode })
       >
         Skip to content
       </a>
-      <main id="main">{children}</main>
+      {/* No <main> wrapper here: each kiosk route renders its own main
+          landmark carrying id="main" for the skip link above. */}
+      {children}
     </div>
   );
 }

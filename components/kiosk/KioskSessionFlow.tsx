@@ -222,7 +222,7 @@ export function KioskSessionFlow({
   }
 
   return (
-    <main className="flex min-h-screen flex-col items-center justify-center bg-[var(--color-ink)] px-5 py-10 text-[var(--color-porcelain)]">
+    <main id="main" className="flex min-h-screen flex-col items-center justify-center bg-[var(--color-ink)] px-5 py-10 text-[var(--color-porcelain)]">
       {/* WELCOME */}
       {step === 'welcome' && (
         <motion.div initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} className="w-full max-w-sm text-center">

@@ -26,28 +26,30 @@ export function KioskShell({ prices }: { prices: Record<string, number | null> }
 
   if (mode === 'attract') {
     return (
-      <button
-        onClick={begin}
-        className="relative flex min-h-screen w-full flex-col items-center justify-center overflow-hidden bg-[var(--color-ink)] px-8 text-center text-[var(--color-porcelain)]"
-      >
-        <span aria-hidden className="pointer-events-none absolute inset-0 bg-[radial-gradient(120%_90%_at_50%_-10%,color-mix(in_oklab,var(--color-gold)_26%,transparent),transparent_60%)]" />
-        <span className="block h-24 w-16 text-[var(--color-gold-soft)]"><KMark animated /></span>
-        <p className="mt-10 text-sm uppercase tracking-[0.35em] text-[var(--color-gold-soft)]">Islington · London</p>
-        <h1 className="mt-5 max-w-3xl font-[family-name:var(--font-display)] text-[clamp(2.5rem,6vw,5rem)] leading-[1.04]">
-          Discover your <span className="text-gold-shimmer">perfect</span> treatment.
-        </h1>
-        <p className="mt-6 max-w-xl text-lg text-[color-mix(in_oklab,var(--color-porcelain)_75%,transparent)]">
-          Answer a few quick questions and we’ll build your personalised plan — in under a minute.
-        </p>
-        <span className="mt-12 inline-flex items-center gap-3 rounded-full border border-[var(--color-gold-soft)]/40 px-8 py-4 text-lg font-medium text-[var(--color-gold-soft)]">
-          Tap to begin
-        </span>
-      </button>
+      <main id="main">
+        <button
+          onClick={begin}
+          className="relative flex min-h-screen w-full flex-col items-center justify-center overflow-hidden bg-[var(--color-ink)] px-8 text-center text-[var(--color-porcelain)]"
+        >
+          <span aria-hidden className="pointer-events-none absolute inset-0 bg-[radial-gradient(120%_90%_at_50%_-10%,color-mix(in_oklab,var(--color-gold)_26%,transparent),transparent_60%)]" />
+          <span className="block h-24 w-16 text-[var(--color-gold-soft)]"><KMark animated /></span>
+          <p className="mt-10 text-sm uppercase tracking-[0.35em] text-[var(--color-gold-soft)]">Islington · London</p>
+          <h1 className="mt-5 max-w-3xl font-[family-name:var(--font-display)] text-[clamp(2.5rem,6vw,5rem)] leading-[1.04]">
+            Discover your <span className="text-gold-shimmer">perfect</span> treatment.
+          </h1>
+          <p className="mt-6 max-w-xl text-lg text-[color-mix(in_oklab,var(--color-porcelain)_75%,transparent)]">
+            Answer a few quick questions and we’ll build your personalised plan — in under a minute.
+          </p>
+          <span className="mt-12 inline-flex items-center gap-3 rounded-full border border-[var(--color-gold-soft)]/40 px-8 py-4 text-lg font-medium text-[var(--color-gold-soft)]">
+            Tap to begin
+          </span>
+        </button>
+      </main>
     );
   }
 
   return (
-    <div className="min-h-screen bg-[var(--color-porcelain)] px-6 py-8 md:px-10">
+    <main id="main" className="min-h-screen bg-[var(--color-porcelain)] px-6 py-8 md:px-10">
       <div className="mx-auto max-w-4xl">
         <div className="mb-6 flex items-center justify-between">
           <span className="inline-flex items-center gap-2 text-[var(--color-gold-deep)]" aria-label="KClinics">
@@ -61,7 +63,7 @@ export function KioskShell({ prices }: { prices: Record<string, number | null> }
 
         <KioskCapture />
       </div>
-    </div>
+    </main>
   );
 }
 

@@ -58,9 +58,8 @@ export function PortalShell({ firstName, locale: localeProp, children }: { first
 
   return (
     <div className="relative flex min-h-screen flex-col">
-      {/* PRJ-1032.29: keyboard/AT skip link to the main content (parity with the
-          marketing + admin layouts). Visible only when focused. */}
-      <a href="#main" className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-[60] focus:rounded-full focus:bg-[var(--color-ink)] focus:px-4 focus:py-2 focus:text-sm focus:font-medium focus:text-[var(--color-porcelain)]">Skip to content</a>
+      {/* PRJ-1032.29 / BLD-1297: the skip link now lives in app/account/layout.tsx
+          so every /account route has one; it targets the #main below. */}
       {/* Ambient brand wash — the marketing-site depth treatment, kept whisper-soft
           on the light portal so content stays crisp. */}
       <div aria-hidden className="pointer-events-none fixed inset-0 -z-10">

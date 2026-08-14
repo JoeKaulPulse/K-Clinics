@@ -98,7 +98,7 @@ export function KioskDisplay({ svg, token, secret, theme = 'default' }: { svg: s
   const lastPhoto = payload?.photoUrls?.length ? payload.photoUrls[payload.photoUrls.length - 1] : null;
 
   return (
-    <main className="kd-stage" aria-label="K Clinics Skin and Smile kiosk display"
+    <main id="main" className="kd-stage" aria-label="K Clinics Skin and Smile kiosk display"
       style={Object.keys(themeMeta.stageVars).length > 0 ? (themeMeta.stageVars as React.CSSProperties) : undefined}>
       {/* Ambient layer — present in every scene */}
       <div aria-hidden className="kd-shimmer" />

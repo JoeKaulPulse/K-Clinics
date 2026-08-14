@@ -91,7 +91,7 @@ export function AssessmentRunner({ q, locale = 'en' }: { q: Questionnaire; local
   }
 
   return (
-    <div className="flex min-h-screen flex-col">
+    <main id="main" className="flex min-h-screen flex-col">
       {/* Top bar: progress + exit */}
       <div className="sticky top-0 z-10 bg-[var(--color-porcelain)]/90 backdrop-blur-sm">
         <div className="mx-auto flex max-w-2xl items-center gap-4 px-6 py-4">
@@ -168,7 +168,7 @@ export function AssessmentRunner({ q, locale = 'en' }: { q: Questionnaire; local
           </button>
         )}
       </div>
-    </div>
+    </main>
   );
 }
 
@@ -180,7 +180,7 @@ const slide = {
 const trans = { duration: 0.4, ease: [0.16, 1, 0.3, 1] as const };
 
 function Centered({ children }: { children: React.ReactNode }) {
-  return <div className="grid min-h-screen place-items-center px-6">{children}</div>;
+  return <main id="main" className="grid min-h-screen place-items-center px-6">{children}</main>;
 }
 
 function Field({ q, value, set, pick }: { q: Question; value: unknown; set: (id: string, v: unknown) => void; pick: (id: string, v: unknown) => void }) {
