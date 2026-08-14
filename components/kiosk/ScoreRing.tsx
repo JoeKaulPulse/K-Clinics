@@ -8,7 +8,7 @@ export function ScoreRing({ label, score, max = 10 }: { label: string; score: nu
 
   return (
     <div className="flex flex-col items-center gap-2">
-      <div className="relative h-[140px] w-[140px]">
+      <div className="relative h-[104px] w-[104px] sm:h-[140px] sm:w-[140px]">
         <svg viewBox="0 0 140 140" className="h-full w-full -rotate-90">
           <circle cx="70" cy="70" r={r} fill="none" stroke="var(--color-bone)" strokeWidth="10" />
           <circle

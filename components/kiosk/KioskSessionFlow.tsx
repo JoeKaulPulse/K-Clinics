@@ -222,7 +222,7 @@ export function KioskSessionFlow({
   }
 
   return (
-    <main className="flex min-h-screen flex-col items-center justify-center bg-[var(--color-ink)] px-5 py-10 text-[var(--color-porcelain)]">
+    <main id="main" className="flex min-h-screen flex-col items-center justify-center bg-[var(--color-ink)] px-5 py-10 text-[var(--color-porcelain)]">
       {/* WELCOME */}
       {step === 'welcome' && (
         <motion.div initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} className="w-full max-w-sm text-center">
@@ -342,13 +342,14 @@ export function KioskSessionFlow({
 
       {/* ANALYZING */}
       {step === 'analyzing' && (
-        <div className="w-full max-w-sm text-center">
-          <div className="mx-auto h-14 w-14 animate-spin rounded-full border-4 border-[var(--color-gold-soft)]/30 border-t-[var(--color-gold)]" />
+        <div role="status" aria-live="polite" className="w-full max-w-sm text-center">
+          <div aria-hidden="true" className="mx-auto h-14 w-14 animate-spin rounded-full border-4 border-[var(--color-gold-soft)]/30 border-t-[var(--color-gold)]" />
           <h2 className="mt-6 font-[family-name:var(--font-display)] text-2xl">Analysing your skin &amp; smile…</h2>
           <div className="relative mt-3 h-6">
             <AnimatePresence mode="wait">
               <motion.p
                 key={analyzingLine}
+                aria-hidden="true"
                 initial={{ opacity: 0, y: 8 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -8 }}

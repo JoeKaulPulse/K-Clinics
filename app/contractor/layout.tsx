@@ -9,5 +9,17 @@ export const metadata: Metadata = {
 };
 
 export default function ContractorLayout({ children }: { children: React.ReactNode }) {
-  return <div className="min-h-screen bg-[var(--color-porcelain)] text-[var(--color-ink)]">{children}</div>;
+  return (
+    <div className="min-h-screen bg-[var(--color-porcelain)] text-[var(--color-ink)]">
+      <a
+        href="#main"
+        className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-[100] focus:rounded-full focus:bg-[var(--color-ink)] focus:px-5 focus:py-3 focus:text-[var(--color-porcelain)]"
+      >
+        Skip to content
+      </a>
+      {/* No <main> wrapper here: both contractor pages already render their own
+          main landmark carrying id="main" for the skip link above. */}
+      {children}
+    </div>
+  );
 }

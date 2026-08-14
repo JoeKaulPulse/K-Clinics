@@ -15,7 +15,18 @@ export const metadata: Metadata = {
 export default function AccountLayout({ children }: { children: React.ReactNode }) {
   return (
     <MotionProvider>
-      <div className="min-h-screen bg-[var(--color-porcelain)] text-[var(--color-ink)]">{children}</div>
+      <div className="min-h-screen bg-[var(--color-porcelain)] text-[var(--color-ink)]">
+        <a
+          href="#main"
+          className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-[100] focus:rounded-full focus:bg-[var(--color-ink)] focus:px-5 focus:py-3 focus:text-[var(--color-porcelain)]"
+        >
+          Skip to content
+        </a>
+        {/* No <main> wrapper here: every /account route already renders its own
+            main landmark (PortalShell, AuthShell, error/not-found). The skip
+            link targets that page-level #main — same pattern as /admin. */}
+        {children}
+      </div>
     </MotionProvider>
   );
 }

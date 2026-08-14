@@ -72,7 +72,7 @@ export function ResultCard({
         <AnnotatedPhoto src={result.bestPhotoUrl} annotations={annotations} />
       )}
 
-      <div className="mt-6 flex justify-center gap-8">
+      <div className="mt-6 flex justify-center gap-4 sm:gap-8">
         <ScoreRing label="Skin" score={result.skinScore} />
         <ScoreRing label="Smile" score={result.smileScore} />
       </div>

@@ -26,7 +26,7 @@ export default async function ContractorLanding({
     : null;
 
   return (
-    <main className="mx-auto flex min-h-screen w-full max-w-md flex-col px-5 py-10">
+    <main id="main" className="mx-auto flex min-h-screen w-full max-w-md flex-col px-5 py-10">
       <header className="text-center">
         <p className="eyebrow text-[var(--color-gold-deep)]">{site.name}</p>
         <h1 className="mt-2 font-[family-name:var(--font-display)] text-3xl">Contractor sign-in</h1>

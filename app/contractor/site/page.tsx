@@ -55,7 +55,7 @@ export default async function ContractorSitePage() {
   const firstName = contractor.name.split(' ')[0] || contractor.name;
 
   return (
-    <main className="mx-auto w-full max-w-2xl px-5 py-8">
+    <main id="main" className="mx-auto w-full max-w-2xl px-5 py-8">
       <header className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <p className="eyebrow text-[var(--color-gold-deep)]">On site</p>
