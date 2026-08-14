@@ -233,7 +233,13 @@ export async function setBookingStatus(bookingId: string, status: 'COMPLETED' | 
       if ((b.giftVoucherPence ?? 0) > 0 && b.giftVoucherCode && !b.chargedAt) {
         try {
           const cleared = await db.booking.updateMany({
-            where: { id: b.id, giftVoucherCode: b.giftVoucherCode, giftVoucherPence: b.giftVoucherPence },
+            // `chargedAt: null` is in the guard here (cancelBooking deliberately
+            // omits it, because a late fee charged DURING that cancellation sets
+            // chargedAt and must not block the return). Nothing charges on the
+            // no-show path, so any chargedAt landing between the read above and
+            // this write is a concurrent till charge that already netted the
+            // voucher off — matching zero rows is the correct outcome.
+            where: { id: b.id, giftVoucherCode: b.giftVoucherCode, giftVoucherPence: b.giftVoucherPence, chargedAt: null },
             data: { giftVoucherCode: null, giftVoucherPence: 0 },
           });
           if (cleared.count > 0) {

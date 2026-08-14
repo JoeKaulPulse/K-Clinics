@@ -203,19 +203,20 @@ export async function GET(req: Request) {
         { status: { in: ['NEW', 'REVIEWING'] }, createdAt: { lt: jobAbandonedCutoff } },
       ],
     };
-    // BLD-1309: delete the CV from Blob storage before the row goes, mirroring
-    // lib/kiosk.ts's deleteKioskBlobs — otherwise the candidate's CV (name,
-    // history, sometimes health disclosures in the cover note) persists
-    // indefinitely in third-party storage after the referencing row is gone.
+    // BLD-1309: the candidate's CV (name, history, sometimes health disclosures
+    // in the cover note) has to leave Blob storage too — deleting the row alone
+    // left the file itself in third-party storage indefinitely. Shortlist the
+    // URLs now (the row still exists, so cvUrl is still readable); the actual
+    // Blob delete runs AFTER the purge below, never before: a Blob file removed
+    // ahead of a deleteMany that then fails — or ahead of a row an admin moved
+    // out of the purge set in between — would leave a surviving application
+    // pointing at a CV that no longer downloads.
+    let purgeCvUrls: string[] = [];
     try {
       const dueForPurge = await db.jobApplication.findMany({ where: jobPurgeWhere, select: { cvUrl: true } });
-      const cvUrls = dueForPurge.map((j) => j.cvUrl).filter((u): u is string => !!u);
-      if (cvUrls.length && process.env.BLOB_READ_WRITE_TOKEN) {
-        const { del } = await import('@vercel/blob');
-        await del(cvUrls);
-      }
+      purgeCvUrls = Array.from(new Set(dueForPurge.map((j) => j.cvUrl).filter((u): u is string => !!u)));
     } catch (e) {
-      console.error('[cron] job-application CV blob purge failed (continuing):', (e as Error)?.message);
+      console.error('[cron] job-application CV shortlist failed (continuing):', (e as Error)?.message);
     }
     const [jobs, , academyTokens] = await Promise.all([
       db.jobApplication.deleteMany({ where: jobPurgeWhere }),
@@ -231,6 +232,29 @@ export async function GET(req: Request) {
       }),
     ]);
     gdprSweep = { jobs: jobs.count, academyTokens: academyTokens.count };
+    // The rows are gone — now drop their CVs from Blob storage, but only the
+    // ones nothing references any more (a row whose status changed between the
+    // shortlist and the purge survived the deleteMany and keeps its file).
+    // Best-effort and deliberately last: a Blob failure leaves an orphaned file
+    // to be swept next run, and must not fail the retention purge itself.
+    if (purgeCvUrls.length && process.env.BLOB_READ_WRITE_TOKEN) {
+      try {
+        const survivors = new Set(
+          (await db.jobApplication.findMany({ where: { cvUrl: { in: purgeCvUrls } }, select: { cvUrl: true } }))
+            .map((j) => j.cvUrl)
+            .filter((u): u is string => !!u),
+        );
+        const orphaned = purgeCvUrls.filter((u) => !survivors.has(u));
+        if (orphaned.length) {
+          const { del } = await import('@vercel/blob');
+          // Chunked: the delete API takes a bounded number of URLs per call, and
+          // the first run after this ships can have a large backlog of CVs.
+          for (let i = 0; i < orphaned.length; i += 100) await del(orphaned.slice(i, i + 100));
+        }
+      } catch (e) {
+        console.error('[cron] job-application CV blob purge failed (continuing):', (e as Error)?.message);
+      }
+    }
   } catch (e) {
     failures++; console.error('[cron] gdpr-retention sweep failed (continuing):', (e as Error)?.message);
   }
