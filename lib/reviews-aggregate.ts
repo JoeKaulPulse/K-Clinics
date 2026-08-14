@@ -106,7 +106,7 @@ async function googlePlacesSource(): Promise<SourceResult> {
   try {
     const url = `https://maps.googleapis.com/maps/api/place/details/json?place_id=${encodeURIComponent(placeId)}&fields=rating,user_ratings_total,reviews&reviews_sort=newest&key=${key}`;
     // Cache for 1h — short enough that a newly-fixed key shows promptly.
-    const res = await fetch(url, { next: { revalidate: 3600 } });
+    const res = await fetch(url, { next: { revalidate: 3600 }, signal: AbortSignal.timeout(10_000) });
     if (!res.ok) return null;
     const data = (await res.json()) as { result?: { rating?: number; user_ratings_total?: number; reviews?: GooglePlaceReview[] } };
     const r = data.result;

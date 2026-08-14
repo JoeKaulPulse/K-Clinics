@@ -8,5 +8,15 @@ export const metadata: Metadata = {
 };
 
 export default function KioskLayout({ children }: { children: React.ReactNode }) {
-  return <div className="min-h-screen bg-[var(--color-ink)]">{children}</div>;
+  return (
+    <div className="min-h-screen bg-[var(--color-ink)]">
+      <a
+        href="#main"
+        className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-[100] focus:rounded-full focus:bg-[var(--color-gold)] focus:px-5 focus:py-3 focus:text-[var(--color-ink)]"
+      >
+        Skip to content
+      </a>
+      <main id="main">{children}</main>
+    </div>
+  );
 }
