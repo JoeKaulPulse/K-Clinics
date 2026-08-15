@@ -5,6 +5,7 @@ import { NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { qrPngDataUrl } from '@/lib/qr';
 import { site } from '@/lib/site';
+import { K_MARK_LIGHT_B64, K_WORDMARK_LIGHT_B64 } from '@/lib/brand-email-assets';
 
 export const runtime = 'nodejs';
 // Dynamic (DB lookup per result) but CDN-cacheable: the card for a result never
@@ -29,6 +30,11 @@ const FRAUNCES_ITALIC = fontFile('assets/fonts/Fraunces-Italic.ttf');
 const GEIST = fontFile('node_modules/geist/dist/fonts/geist-sans/Geist-Medium.ttf');
 
 const IG_HANDLE = '@' + (site.social.instagram.split('/').filter(Boolean).pop() || 'kclinics');
+
+// BLD-1312: the porcelain-on-dark mark variant — same asset lib/og.tsx uses on
+// its dark ink background, which matches this card's INK backdrop.
+const MARK = `data:image/png;base64,${K_MARK_LIGHT_B64}`;
+const WORDMARK = `data:image/png;base64,${K_WORDMARK_LIGHT_B64}`;
 
 function ScoreRing({ label, score }: { label: string; score: number }) {
   return (
@@ -161,8 +167,18 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
               </div>
             </div>
           </div>
-          <div style={{ display: 'flex', marginTop: 52, fontFamily: 'Geist', fontSize: 28, letterSpacing: 6, textTransform: 'uppercase', color: PORCELAIN }}>
-            K CLINICS — ISLINGTON, LONDON
+          {/* BLD-1312: the real K mark + CLINICS wordmark (brand rule — never
+              typeset the brand name as text to emulate the logo), same lockup
+              pattern as lib/og.tsx. "ISLINGTON, LONDON" is location copy, not
+              the brand name, so it stays as text underneath. */}
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginTop: 52 }}>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={MARK} height={52} alt="" style={{ height: 52 }} />
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={WORDMARK} width={170} alt="K Clinics" style={{ width: 170, marginTop: 10 }} />
+            <div style={{ display: 'flex', marginTop: 14, fontFamily: 'Geist', fontSize: 22, letterSpacing: 6, textTransform: 'uppercase', color: PORCELAIN }}>
+              Islington, London
+            </div>
           </div>
           <div style={{ display: 'flex', marginTop: 16, fontFamily: 'FrauncesItalic', fontSize: 28, color: GOLD_LIGHT }}>
             {IG_HANDLE}
