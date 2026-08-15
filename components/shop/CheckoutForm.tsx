@@ -38,6 +38,17 @@ export function CheckoutForm() {
     if (!j.ok) { setError(j.error || 'Could not start checkout.'); return; }
     if (j.paid) { clear(); setOrderNo(j.number); setStage('done'); return; }
     setClientSecret(j.clientSecret); setOrderId(j.orderId); setStage('pay');
+    // BLD-1310: fire the checkout-start pixels the moment the buyer reaches the
+    // Stripe payment step (mirrors BookingFlow.tsx's begin_checkout/InitiateCheckout).
+    // Value is the server's totalPence (the amount actually being charged: cart
+    // re-priced server-side, shipping added, any gift card deducted) — the local
+    // estTotal would over-report a gift-card order and would not match the
+    // purchase event fired below from /api/shop/confirm's totalPence. Item ids
+    // are product slugs, the same ids ViewItemTracker sends from the product
+    // page, so view_item → begin_checkout → purchase join up in GA4/Meta.
+    const pixelValue = (typeof j.totalPence === 'number' ? j.totalPence : estTotal) / 100;
+    try { (window as Window & { gtag?: (...a: unknown[]) => void }).gtag?.('event', 'begin_checkout', { currency: 'GBP', value: pixelValue, items: items.map((i) => ({ item_id: i.slug, item_name: i.name, item_category: 'shop', quantity: i.qty })) }); } catch { /* analytics best-effort */ }
+    try { (window as Window & { fbq?: (...a: unknown[]) => void }).fbq?.('track', 'InitiateCheckout', { currency: 'GBP', value: pixelValue, content_ids: items.map((i) => i.slug), content_type: 'product' }); } catch { /* analytics best-effort */ }
   }
 
   if (items.length === 0 && stage !== 'done') {
