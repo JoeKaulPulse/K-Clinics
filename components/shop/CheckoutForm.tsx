@@ -38,6 +38,10 @@ export function CheckoutForm() {
     if (!j.ok) { setError(j.error || 'Could not start checkout.'); return; }
     if (j.paid) { clear(); setOrderNo(j.number); setStage('done'); return; }
     setClientSecret(j.clientSecret); setOrderId(j.orderId); setStage('pay');
+    // BLD-1310: fire the checkout-start pixels the moment the buyer reaches the
+    // Stripe payment step (mirrors BookingFlow.tsx's begin_checkout/InitiateCheckout).
+    try { (window as Window & { gtag?: (...a: unknown[]) => void }).gtag?.('event', 'begin_checkout', { currency: 'GBP', value: estTotal / 100, items: items.map((i) => ({ item_id: i.productId, item_name: i.name, item_category: 'shop', quantity: i.qty })) }); } catch { /* analytics best-effort */ }
+    try { (window as Window & { fbq?: (...a: unknown[]) => void }).fbq?.('track', 'InitiateCheckout', { currency: 'GBP', value: estTotal / 100, content_ids: items.map((i) => i.productId), content_type: 'product' }); } catch { /* analytics best-effort */ }
   }
 
   if (items.length === 0 && stage !== 'done') {

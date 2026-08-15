@@ -41,6 +41,10 @@ export function EnrolmentCheckout(props: {
     setBusy(false);
     if (!j.ok) { setError(j.error || 'Could not start the payment.'); return; }
     setClientSecret(j.clientSecret); setPaymentId(j.paymentId); setChargePence(j.amountPence); setStage('pay');
+    // BLD-1310: fire the checkout-start pixels the moment the learner reaches the
+    // Stripe payment step (mirrors BookingFlow.tsx's begin_checkout/InitiateCheckout).
+    try { (window as Window & { gtag?: (...a: unknown[]) => void }).gtag?.('event', 'begin_checkout', { currency: 'GBP', value: (j.amountPence ?? 0) / 100, items: [{ item_id: enrolmentId, item_name: courseTitle, item_category: 'academy' }] }); } catch { /* analytics best-effort */ }
+    try { (window as Window & { fbq?: (...a: unknown[]) => void }).fbq?.('track', 'InitiateCheckout', { currency: 'GBP', value: (j.amountPence ?? 0) / 100, content_ids: [enrolmentId], content_type: 'product' }); } catch { /* analytics best-effort */ }
   }
 
   if (outstandingPence <= 0 || stage === 'done') {
