@@ -43,7 +43,15 @@ export function GiftVoucherFlow({ physicalEnabled = false, physicalFeePence = 0,
       };
       const res = await fetch('/api/gift-vouchers/create', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
       const j = await res.json();
-      if (j.ok && j.clientSecret) { setClientSecret(j.clientSecret); setVoucherId(j.voucherId); setStage('pay'); }
+      if (j.ok && j.clientSecret) {
+        setClientSecret(j.clientSecret); setVoucherId(j.voucherId); setStage('pay');
+        // BLD-1310: fire the checkout-start pixels the moment the buyer reaches the
+        // Stripe payment step (mirrors BookingFlow.tsx's begin_checkout/InitiateCheckout).
+        const itemId = pkg?.slug || 'gift-voucher';
+        const itemName = pkg?.name || 'Gift voucher';
+        try { (window as Window & { gtag?: (...a: unknown[]) => void }).gtag?.('event', 'begin_checkout', { currency: 'GBP', value: amountPence / 100, items: [{ item_id: itemId, item_name: itemName, item_category: 'gift-voucher' }] }); } catch { /* analytics best-effort */ }
+        try { (window as Window & { fbq?: (...a: unknown[]) => void }).fbq?.('track', 'InitiateCheckout', { currency: 'GBP', value: amountPence / 100, content_ids: [itemId], content_type: 'product' }); } catch { /* analytics best-effort */ }
+      }
       else setError(j.error || 'Could not start the purchase.');
     } catch { setError('Network error. Please try again.'); }
     finally { setBusy(false); }
