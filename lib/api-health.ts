@@ -430,21 +430,28 @@ async function checkGithub(): Promise<Outcome> {
 export type CronStaleness = {
   daily: Date | null;
   dispatch: Date | null;
+  kioskCleanup: Date | null;
   dailyOk: boolean;
   dispatchOk: boolean;
-  /** True when either heartbeat has fallen outside its expected window. */
+  kioskCleanupOk: boolean;
+  /** True when any heartbeat has fallen outside its expected window. */
   stale: boolean;
 };
 
-// Expected cadence: daily runner every 24h, dispatcher every 15m — see vercel.json.
+// Expected cadence: daily runner every 24h, dispatcher every 15m, kiosk-cleanup
+// (GDPR purge) daily — see vercel.json.
 const DAILY_MAX_AGE_MS = 26 * 3600000;
 const DISPATCH_MAX_AGE_MS = 30 * 60000;
+const KIOSK_CLEANUP_MAX_AGE_MS = 26 * 3600000;
 
-/** Reads the cron heartbeats (written by app/api/cron/daily + app/api/cron/dispatch)
- *  and reports whether each is within its expected window. Shared by the
- *  /admin/api-health traffic light (checkCron, below) and the /api/health probe
- *  that Vercel Cron polls + alerts on (app/api/health/route.ts), so a silently
- *  broken cron is caught by both without duplicating the staleness thresholds. */
+/** Reads the cron heartbeats (written by app/api/cron/daily, app/api/cron/dispatch
+ *  and app/api/cron/kiosk-cleanup) and reports whether each is within its expected
+ *  window. Shared by the /admin/api-health traffic light (checkCron, below) and the
+ *  /api/health probe that Vercel Cron polls + alerts on (app/api/health/route.ts),
+ *  so a silently broken cron is caught by both without duplicating the staleness
+ *  thresholds. BLD-1272: kiosk-cleanup is the GDPR purge of visitor selfie photos —
+ *  a silently-unfiring run is a PII retention breach with no alert, so it gets the
+ *  same heartbeat treatment as the other two runners. */
 export async function getCronStaleness(): Promise<CronStaleness> {
   const read = async (key: string) => {
     const r = await db.setting.findUnique({ where: { key } });
@@ -452,19 +459,21 @@ export async function getCronStaleness(): Promise<CronStaleness> {
   };
   const daily = await read('cron_daily_last');
   const dispatch = await read('cron_dispatch_last');
+  const kioskCleanup = await read('cron_kiosk_cleanup_last');
   const dailyOk = Boolean(daily && Date.now() - daily.getTime() < DAILY_MAX_AGE_MS);
   const dispatchOk = Boolean(dispatch && Date.now() - dispatch.getTime() < DISPATCH_MAX_AGE_MS);
-  return { daily, dispatch, dailyOk, dispatchOk, stale: !dailyOk || !dispatchOk };
+  const kioskCleanupOk = Boolean(kioskCleanup && Date.now() - kioskCleanup.getTime() < KIOSK_CLEANUP_MAX_AGE_MS);
+  return { daily, dispatch, kioskCleanup, dailyOk, dispatchOk, kioskCleanupOk, stale: !dailyOk || !dispatchOk || !kioskCleanupOk };
 }
 
 async function checkCron(): Promise<Outcome> {
   try {
-    const { daily, dispatch, dailyOk, dispatchOk } = await getCronStaleness();
-    const light: Light = dailyOk && dispatchOk ? 'green' : (daily || dispatch) ? 'amber' : 'red';
+    const { daily, dispatch, kioskCleanup, dailyOk, dispatchOk, kioskCleanupOk } = await getCronStaleness();
+    const light: Light = dailyOk && dispatchOk && kioskCleanupOk ? 'green' : (daily || dispatch || kioskCleanup) ? 'amber' : 'red';
     return {
       light,
-      detail: `Daily ${ago(daily)} · dispatcher ${ago(dispatch)}`,
-      info: light !== 'green' ? ['Reminders, follow-ups and scheduled sends depend on these runners (Vercel cron).'] : undefined,
+      detail: `Daily ${ago(daily)} · dispatcher ${ago(dispatch)} · kiosk cleanup ${ago(kioskCleanup)}`,
+      info: light !== 'green' ? ['Reminders, follow-ups, scheduled sends and the kiosk GDPR photo purge depend on these runners (Vercel cron).'] : undefined,
     };
   } catch (e) { return { light: 'grey', detail: `Could not read heartbeats — ${(e as Error)?.message?.slice(0, 60)}` }; }
 }
@@ -508,7 +517,7 @@ const CHECKS: Def[] = [
   { id: 'public-api', label: 'Public site & API', category: 'Core', critical: true, probe: `GET ${site.url}/api/health`, run: checkPublicApi },
   { id: 'blob', label: 'File storage (Vercel Blob)', category: 'Core', probe: 'Blob list (limit 1)', run: checkBlob },
   { id: 'redis', label: 'Rate limiting (Upstash Redis)', category: 'Core', probe: 'GET …upstash.io/ping', run: checkRedis },
-  { id: 'cron', label: 'Scheduled jobs (Vercel cron)', category: 'Core', critical: true, probe: 'Heartbeats written by /api/cron/daily + /api/cron/dispatch', run: checkCron },
+  { id: 'cron', label: 'Scheduled jobs (Vercel cron)', category: 'Core', critical: true, probe: 'Heartbeats written by /api/cron/daily + /api/cron/dispatch + /api/cron/kiosk-cleanup', run: checkCron },
 
   { id: 'stripe', label: 'Payments (Stripe)', category: 'Payments', critical: true, probe: 'GET api.stripe.com/v1/balance', run: checkStripe },
 

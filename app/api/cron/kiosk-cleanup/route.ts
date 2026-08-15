@@ -78,6 +78,14 @@ export async function GET(req: Request) {
       mediaPurged = expired.length;
     }
 
+    // BLD-1272: record the run so a silently-unfiring GDPR purge is caught by
+    // the same staleness check as the other crons (getCronStaleness in
+    // lib/api-health.ts), rather than going undetected — same pattern as
+    // cron_daily_last / cron_dispatch_last (app/api/cron/daily + dispatch).
+    try {
+      await db.setting.upsert({ where: { key: 'cron_kiosk_cleanup_last' }, update: { value: new Date().toISOString() }, create: { key: 'cron_kiosk_cleanup_last', value: new Date().toISOString() } });
+    } catch { /* non-fatal */ }
+
     return NextResponse.json({ ok: true, deleted, mediaPurged });
   } catch (e) {
     const message = (e as Error)?.message || 'unknown error';

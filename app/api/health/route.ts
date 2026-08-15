@@ -108,10 +108,11 @@ export async function GET(req: Request) {
     if (authed) report.error = (err as Error)?.message?.slice(0, 200) || 'unknown';
   }
 
-  // PRJ-1034.2: cron heartbeats (cron_daily_last/cron_dispatch_last, written by
-  // app/api/cron/daily + app/api/cron/dispatch) were only staleness-checked on
-  // human-viewed admin pages (/admin/status, /admin/api-health) — never here,
-  // so a silently-disabled or misconfigured cron went undetected indefinitely.
+  // PRJ-1034.2: cron heartbeats (cron_daily_last/cron_dispatch_last/
+  // cron_kiosk_cleanup_last, written by app/api/cron/daily + dispatch +
+  // kiosk-cleanup) were only staleness-checked on human-viewed admin pages
+  // (/admin/status, /admin/api-health) — never here, so a silently-disabled
+  // or misconfigured cron went undetected indefinitely.
   // Reuse the same thresholds checkCron() already uses (lib/api-health.ts) so a
   // stale heartbeat fails this probe and rides the alert path below.
   let cronStale = false;
@@ -122,8 +123,10 @@ export async function GET(req: Request) {
       report.cron = {
         dailyLastRun: cron.daily?.toISOString() ?? null,
         dispatchLastRun: cron.dispatch?.toISOString() ?? null,
+        kioskCleanupLastRun: cron.kioskCleanup?.toISOString() ?? null,
         dailyOk: cron.dailyOk,
         dispatchOk: cron.dispatchOk,
+        kioskCleanupOk: cron.kioskCleanupOk,
       };
       cronStale = cron.stale;
       if (cronStale) report.ok = false;
