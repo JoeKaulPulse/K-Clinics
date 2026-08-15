@@ -25,8 +25,9 @@ const send = (url: string, data: unknown) => {
 
 export function BehaviorRecorder() {
   useEffect(() => {
-    // Never record the app areas or the booking flow (personal data is entered there).
-    if (/^\/(admin|account|book|booking)(\/|$)/.test(location.pathname)) return;
+    // Never record the app areas, the booking flow, or the shop checkout (personal
+    // data — name/email/address/DOB — is entered/echoed there; BLD-1314).
+    if (/^\/(admin|account|book|booking|shop)(\/|$)/.test(location.pathname)) return;
     let stop: (() => void) | undefined;
     let cleanup: (() => void) | undefined;
 
