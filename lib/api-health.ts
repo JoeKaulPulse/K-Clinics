@@ -434,7 +434,10 @@ export type CronStaleness = {
   dailyOk: boolean;
   dispatchOk: boolean;
   kioskCleanupOk: boolean;
-  /** True when any heartbeat has fallen outside its expected window. */
+  /** True when a heartbeat that has been written before has fallen outside its
+   *  expected window. A heartbeat key that has never been written at all is
+   *  reported as not-ok (amber on the traffic light) but does NOT set this flag —
+   *  see the note on `kioskCleanupOk` in getCronStaleness. */
   stale: boolean;
 };
 
@@ -463,7 +466,17 @@ export async function getCronStaleness(): Promise<CronStaleness> {
   const dailyOk = Boolean(daily && Date.now() - daily.getTime() < DAILY_MAX_AGE_MS);
   const dispatchOk = Boolean(dispatch && Date.now() - dispatch.getTime() < DISPATCH_MAX_AGE_MS);
   const kioskCleanupOk = Boolean(kioskCleanup && Date.now() - kioskCleanup.getTime() < KIOSK_CLEANUP_MAX_AGE_MS);
-  return { daily, dispatch, kioskCleanup, dailyOk, dispatchOk, kioskCleanupOk, stale: !dailyOk || !dispatchOk || !kioskCleanupOk };
+  // cron_kiosk_cleanup_last is written for the first time by the deploy that
+  // introduced it, so between that deploy and the first 03:30 run the row does
+  // not exist. /api/health turns `stale` into a 503 plus a Sentry error and an
+  // ops-webhook message EVERY five minutes with no dedupe watermark, so counting
+  // a never-written heartbeat as stale would page for up to a day after each
+  // fresh environment comes up and drown out a real outage. A missing row is
+  // therefore reported (kioskCleanupOk false → amber on /admin/api-health and
+  // /admin/status, where a human can see it) but is not alert-worthy; once the
+  // purge has run once, an aged heartbeat behaves exactly like the other two.
+  const kioskCleanupStale = Boolean(kioskCleanup) && !kioskCleanupOk;
+  return { daily, dispatch, kioskCleanup, dailyOk, dispatchOk, kioskCleanupOk, stale: !dailyOk || !dispatchOk || kioskCleanupStale };
 }
 
 async function checkCron(): Promise<Outcome> {
