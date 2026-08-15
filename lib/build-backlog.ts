@@ -3798,6 +3798,17 @@ export const BUILD_BACKLOG: BacklogItem[] = [
       'Verified: npx tsc --noEmit and DATABASE_URL_UNPOOLED= DATABASE_URL= POSTGRES_URL_NON_POOLING= POSTGRES_PRISMA_URL= POSTGRES_URL= npm run build both pass clean.',
     ],
   },
+  {
+    title: 'Session replay captures shop checkout PII unmasked; no DSAR/export path for Academy students (BLD-1314, BLD-1311)',
+    type: 'ERROR', urgency: 'P1', status: 'IN_REVIEW', assignee: 'claude',
+    value: 7, effort: 2,
+    detail: 'Two independent, non-owner-gated privacy/GDPR findings from the Build board, batched into one PR. BLD-1314: components/marketing/BehaviorRecorder.tsx excludes /admin, /account, /book and /booking from rrweb session-replay capture (personal data entered there) but never added /shop -- the shop checkout (components/shop/CheckoutForm.tsx) collects name, email, phone, full address and DOB. maskAllInputs: true masks input values but not text rendered to the page, and no kc-mask class was applied anywhere in the checkout flow, so any PII echoed as page text on a recorded shop route would have been captured into stored replays. Already flagged as a MEDIUM finding in audit/08-frontend-xss.md. BLD-1311: eraseStudentData (app/admin/actions.ts) implements GDPR Art.17 erasure for academy trainees, but no equivalent Art.15 subject-access export existed for a trainee\'s own data -- only the client-side SAR export (/api/admin/clients/[id]/export) existed.',
+    notes: [
+      'Fix (BLD-1314): added /shop to the recorder\'s exclusion regex in components/marketing/BehaviorRecorder.tsx -- now /^\\/(admin|account|book|booking|shop)(\\/|$)/ -- so the recorder never starts on any /shop route (cart, checkout, confirmation). Simpler and more robust than hunting for every PII text node, per the regex already excluding whole route trees the same way for booking/account. Updated audit/08-frontend-xss.md to mark the finding resolved with a one-line note (both the summary bullet and the full write-up).',
+      'Fix (BLD-1311): added GET /api/admin/academy/students/[id]/export, mirroring /api/admin/clients/[id]/export\'s structure (auth check, rate limit, DATA_EXPORTED audit log via logAudit, JSON attachment response). Gated on settings.manage -- the same permission eraseStudentData and every other academy admin write endpoint (app/api/admin/academy/route.ts, .../homework/route.ts) already require. Exports the same data surface eraseStudentData touches or anonymises: the student record (minus passwordHash/resetTokenHash/resetTokenExp), enrolments, funding applications, lesson progress/playback/notes/comments, course reviews, flashcard reviews, forum threads/posts, portfolio entries, exercise/demo/quiz/practice attempts, quiz attempt grants, point events, badges, daily activity and homework submissions. Admin-only endpoint -- no student-facing self-service export UI built, matching the ticket\'s scope.',
+      'Verified: npx tsc --noEmit and DATABASE_URL_UNPOOLED= DATABASE_URL= POSTGRES_URL_NON_POOLING= POSTGRES_PRISMA_URL= POSTGRES_URL= npm run build both pass clean.',
+    ],
+  },
 ];
 
 // A content hash over every item's title + status + PR, so ANY change (a new
