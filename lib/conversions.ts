@@ -89,7 +89,9 @@ async function ga4Event(measurementId: string, apiSecret: string, clientId: stri
 
 /** Meta Conversions API event. `eventId` MUST match the browser pixel's eventID
  *  so Meta de-duplicates the browser + server copies. action_source defaults to
- *  `website`; an in-clinic charge passes `physical_store`. */
+ *  `website` — every event this file sends originates from an online checkout
+ *  or web form, so callers should not override it to `physical_store` unless a
+ *  genuine in-clinic point-of-sale flow is added. */
 async function metaEvent(pixelId: string, token: string, eventName: string, eventId: string, opts: { value?: number; email?: string | null; actionSource?: string; sourceUrl?: string | null }) {
   const user_data: Record<string, string[]> = {};
   if (opts.email) user_data.em = [sha256(opts.email)];
@@ -114,7 +116,11 @@ async function ga4Purchase(measurementId: string, apiSecret: string, clientId: s
 }
 
 async function metaPurchase(pixelId: string, token: string, value: number, input: PurchaseInput) {
-  await metaEvent(pixelId, token, 'Purchase', input.bookingId, { value, email: input.email, actionSource: 'physical_store' });
+  // Every sendPurchase() call site (bookings, shop, gift vouchers, academy) is a
+  // website checkout, so action_source is left to metaEvent's `website` default
+  // (matching the browser Pixel, which has no concept of in-clinic POS at all) —
+  // do NOT hardcode `physical_store` here.
+  await metaEvent(pixelId, token, 'Purchase', input.bookingId, { value, email: input.email });
 }
 
 /** Lead — an enquiry/consultation request (top of funnel; no monetary value).

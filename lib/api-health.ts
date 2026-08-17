@@ -411,6 +411,32 @@ async function checkGa4(): Promise<Outcome> {
   } catch (e) { return netFail(e); }
 }
 
+// BLD-1254: the browser pixels (TrackingScripts) and the server-side CAPI/GA4
+// senders (lib/conversions.ts) both go dark together whenever every provider ID
+// in tracking_config (+ its env fallbacks) is empty — e.g. all three fields
+// cleared in Admin -> SEO -> "Tracking & pixels". That page shows a per-field
+// "Live"/"Not set" dot, but nobody looks at it unless they already suspect a
+// problem. Same amber-not-grey treatment as checkTwilio above: a total loss of
+// ad attribution is a visible warning here, not a quiet grey "not configured".
+async function checkTracking(): Promise<Outcome> {
+  try {
+    const { getTrackingConfig, hasAnyTracking } = await import('@/lib/tracking');
+    const config = await getTrackingConfig();
+    if (!hasAnyTracking(config)) {
+      return {
+        light: 'amber',
+        detail: 'No ad-tracking IDs configured — GA4, Google Ads and the Meta Pixel are ALL off (browser pixels AND server-side CAPI conversions)',
+        info: ['Set at least one ID in Admin → SEO → "Tracking & pixels" to restore attribution.'],
+      };
+    }
+    const live = [config.ga4Id && 'GA4', config.googleAdsId && 'Google Ads', config.metaPixelId && 'Meta Pixel'].filter(Boolean) as string[];
+    const missing = [!config.ga4Id && 'GA4', !config.googleAdsId && 'Google Ads', !config.metaPixelId && 'Meta Pixel'].filter(Boolean) as string[];
+    // Partial config (e.g. no Google Ads yet) is normal and not worth an amber —
+    // only a total blackout (handled above) needs a visible warning.
+    return { light: 'green', detail: missing.length ? `${live.join(' + ')} configured; ${missing.join(' + ')} not set` : `${live.join(' + ')} all configured` };
+  } catch (e) { return { light: 'grey', detail: `Could not read tracking config — ${(e as Error)?.message?.slice(0, 60)}` }; }
+}
+
 async function checkGithub(): Promise<Outcome> {
   try {
     const { getGithubConfig } = await import('@/lib/build-board');
@@ -549,6 +575,7 @@ const CHECKS: Def[] = [
   { id: 'google-ads', label: 'Google Ads', category: 'Marketing', probe: 'OAuth refresh-token grant', run: checkGoogleAds },
   { id: 'tiktok', label: 'TikTok Ads', category: 'Marketing', probe: 'GET advertiser list with stored token', run: checkTikTok },
   { id: 'ga4', label: 'GA4 conversions', category: 'Marketing', probe: 'POST GA4 /debug/mp/collect (validates, records nothing)', run: checkGa4 },
+  { id: 'tracking-ids', label: 'Ad tracking pixels', category: 'Marketing', probe: 'Reads tracking_config — amber if GA4 + Google Ads + Meta Pixel are ALL unset', run: checkTracking },
 
   { id: 'places', label: 'Google rating (Places API)', category: 'Scheduling & Reviews', probe: 'GET maps.googleapis.com place/details', run: checkPlaces },
   { id: 'google-business', label: 'Google Business Profile', category: 'Scheduling & Reviews', probe: 'Accounts + locations list with stored token', run: checkGoogleBusiness },

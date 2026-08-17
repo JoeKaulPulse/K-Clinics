@@ -115,6 +115,18 @@ export async function POST(req: Request) {
       summary: `${row.kind.toLowerCase()} ${status.toLowerCase()} for ${row.staff?.name || row.staff?.email}: ${row.startAt.toLocaleDateString('en-GB')}–${row.endAt.toLocaleDateString('en-GB')}`,
       meta: { timeOffId: id },
     });
+    // PRJ-1118.8: tell the requester the outcome — same staff-notification
+    // mechanism (in-app + email per their prefs) used above for the original
+    // "request" ping to approvers, targeted at the requester by id since we
+    // hold row.staffId, not necessarily their email lower-cased (mirrors the
+    // notifyStaffById doc comment: "e.g. task assignment").
+    const { notifyStaffById } = await import('@/lib/notifications');
+    await notifyStaffById(row.staffId, {
+      kind: 'status', category: 'team', priority: 'high',
+      title: body.op === 'approve' ? 'Your time-off request was approved' : 'Your time-off request was declined',
+      body: `${row.kind.toLowerCase()} · ${row.startAt.toLocaleDateString('en-GB')}–${row.endAt.toLocaleDateString('en-GB')}${note ? ` · ${note.slice(0, 200)}` : ''}`,
+      href: '/admin/time-off',
+    }, session.sub).catch(() => {});
     return NextResponse.json({ ok: true });
   }
 

@@ -419,6 +419,48 @@ export async function notifyStudentReply(studentId: string, lessonId: string): P
   } catch { /* best-effort */ }
 }
 
+/** Best-effort email to a learner that their homework submission was graded
+ *  (BLD-1296). Mirrors notifyStudentReply above: same emailShell template,
+ *  same fire-and-forget call convention from the admin route. Skips SUBMITTED
+ *  (that's the pre-grade state, not a grading outcome) so re-saving without
+ *  changing status never re-notifies. */
+export async function notifyHomeworkGraded(submissionId: string): Promise<void> {
+  const sub = await db.homeworkSubmission.findUnique({
+    where: { id: submissionId },
+    select: {
+      status: true,
+      feedback: true,
+      student: { select: { email: true, firstName: true } },
+      lesson: { select: { title: true, module: { select: { course: { select: { slug: true, title: true } } } } } },
+    },
+  });
+  if (!sub?.student?.email || !sub.lesson || sub.status === 'SUBMITTED') return;
+
+  const outcome = sub.status === 'APPROVED'
+    ? { verb: 'approved', line: 'Your submission has been <strong>approved</strong> — nice work.' }
+    : sub.status === 'NEEDS_REVISION'
+      ? { verb: 'sent back for revision', line: 'Your trainer has asked you to <strong>revise and resubmit</strong> this homework.' }
+      : { verb: 'reviewed', line: 'Your trainer has reviewed your submission.' };
+
+  const base = process.env.NEXT_PUBLIC_SITE_URL || process.env.NEXT_PUBLIC_BASE_URL || 'https://kclinics.co.uk';
+  const url = `${base}/academy/learn/${sub.lesson.module.course.slug}`;
+  try {
+    const { sendEmail, emailShell } = await import('@/lib/email');
+    await sendEmail({
+      to: sub.student.email,
+      subject: `Homework ${outcome.verb} — ${sub.lesson.module.course.title}`,
+      html: emailShell({
+        preheader: `Your homework for ${sub.lesson.title} was ${outcome.verb}.`,
+        body: `<h1 style="font-size:24px;margin:0 0 14px;">Your homework was ${outcome.verb}</h1>
+          <p style="margin:0 0 12px;">Hi ${escapeHtml(sub.student.firstName || 'there')},</p>
+          <p style="margin:0 0 12px;">${outcome.line} This was for <strong>${escapeHtml(sub.lesson.title)}</strong> in <strong>${escapeHtml(sub.lesson.module.course.title)}</strong>.</p>
+          ${sub.feedback ? `<p style="margin:0 0 12px;"><strong>Trainer feedback:</strong><br>${escapeHtml(sub.feedback)}</p>` : ''}
+          <p style="margin:0 0 22px;"><a class="kc-btn" href="${url}" style="display:inline-block;background:#2a2420;color:#f7f1e8;text-decoration:none;padding:13px 26px;border-radius:999px;font-weight:600;">Go to the course &rarr;</a></p>`,
+      }),
+    });
+  } catch { /* best-effort */ }
+}
+
 export type GradeResult = {
   ok: boolean; error?: string;
   scorePct?: number; passed?: boolean; passMark?: number;

@@ -15,6 +15,7 @@ const schema = z.object({
   firstName: z.string().max(80).optional().or(z.literal('')),
   slugs: z.array(z.string().max(80)).min(1).max(3),
   company: z.string().max(0).optional().or(z.literal('')), // honeypot
+  eventId: z.string().max(100).optional(), // shared with the browser Lead pixel for CAPI/GA4 dedup
 });
 
 export async function POST(req: Request) {
@@ -59,5 +60,27 @@ export async function POST(req: Request) {
   );
   const res = await sendEmail({ to: email, subject: 'Your treatment matches — KClinics', html });
   if (!res.ok) return NextResponse.json({ ok: false, error: 'We couldn’t send the email just now — please try again.' }, { status: 502 });
-  return NextResponse.json({ ok: true });
+
+  // Stable event ID shared with the browser pixel so Meta CAPI can deduplicate
+  // (PRJ-1118.9 — same pattern as /api/consult and GroupBookingForm).
+  const eventId = d.eventId || globalThis.crypto.randomUUID();
+
+  // Server-side Lead conversion (GA4 + Meta CAPI), best-effort. No email is
+  // forwarded to Meta's advanced matching: this form's consent line covers only
+  // the results send (see comment above), not marketing — matching ConsultForm's
+  // opt-in gate, which is absent here.
+  try {
+    const { sendLead } = await import('@/lib/conversions');
+    const { consentFromCookieHeader } = await import('@/lib/attribution');
+    const { analyticsConsent, marketingConsent } = consentFromCookieHeader(req.headers.get('cookie'));
+    await sendLead({
+      eventId,
+      clientId: client.id,
+      email: null,
+      sourceUrl: req.headers.get('referer'),
+      analyticsConsent, marketingConsent,
+    });
+  } catch { /* best-effort */ }
+
+  return NextResponse.json({ ok: true, eventId });
 }
