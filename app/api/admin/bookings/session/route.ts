@@ -250,7 +250,7 @@ export async function POST(req: Request) {
       try { const { awardClientSpend } = await import('@/lib/client-loyalty'); await awardClientSpend(bookingId); } catch { /* non-fatal */ }
       try {
         const { logAudit } = await import('@/lib/audit');
-        const label = channel === 'treatwell' ? 'Treatwell' : channel === 'cash' ? 'cash' : channel;
+        const label = channel === 'treatwell' ? 'Treatwell' : channel === 'cash' ? 'cash' : channel === 'card-terminal' ? 'card terminal' : channel;
         // BLD-207: record any ad-hoc price adjustment + reason.
         const dr = body.discountReason ? String(body.discountReason).slice(0, 120) : '';
         const op = body.originalPence ? Math.round(Number(body.originalPence)) : 0;

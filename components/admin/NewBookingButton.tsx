@@ -7,7 +7,8 @@ import { createManualBooking, searchClientsForBooking, logCallNote, resendBookin
 import { clinicLocalToUTC, CLINIC_TZ } from '@/lib/clinic-time';
 import { useDialogBehaviours } from '@/components/ui/Dialog';
 
-type Variant = { id: string; name: string; durationMin: number; pricePence: number };
+type Course = { sessions: number; totalPence: number };
+type Variant = { id: string; name: string; durationMin: number; pricePence: number; courses: Course[] };
 type Treatment = { slug: string; title: string; group: string; variants?: Variant[] };
 type Found = { id: string; firstName: string; lastName: string | null; email: string; phone: string | null; hasDob: boolean; hasCard: boolean };
 type Result = { bookingId: string; manageToken?: string; hasCard?: boolean; clientFirstName?: string; clientEmail?: string; clientHasEmail?: boolean };
@@ -65,8 +66,14 @@ function Modal({ treatments, isAdmin, onClose }: { treatments: Treatment[]; isAd
   const groupTreatments = treatments.filter((t) => t.group === selectedGroup);
   // The chosen category's specific service variants/areas (each its own price + time).
   const variants = treatments.find((t) => t.slug === d.treatmentSlug)?.variants ?? [];
+  const selectedVariant = variants.find((v) => v.id === d.variantId);
+  // BLD-1268: package/course tiers configured on the chosen variant (e.g. 1 / 3
+  // / 6 sessions, each with its own bundle price) — the same data the public
+  // /book flow reads to offer its "Single or a course?" picker. Empty when the
+  // variant has no configured tiers, so plain single-visit bookings are unaffected.
+  const courses = selectedVariant?.courses ?? [];
   // Changing the treatment (directly or via its group) resets to that treatment's first area.
-  const setTreatment = (slug: string) => setD((p) => ({ ...p, treatmentSlug: slug, variantId: treatments.find((t) => t.slug === slug)?.variants?.[0]?.id ?? '' }));
+  const setTreatment = (slug: string) => setD((p) => ({ ...p, treatmentSlug: slug, variantId: treatments.find((t) => t.slug === slug)?.variants?.[0]?.id ?? '', sessions: 1 }));
 
   function handleGroupChange(group: string) {
     setSelectedGroup(group);
@@ -194,7 +201,7 @@ function Modal({ treatments, isAdmin, onClose }: { treatments: Treatment[]; isAd
               </select>
             )}
             {variants.length > 0 && !d.asConsultation && (
-              <select className={f} value={d.variantId} onChange={(e) => set('variantId', e.target.value)} aria-label="Specific service / area">
+              <select className={f} value={d.variantId} onChange={(e) => setD((p) => ({ ...p, variantId: e.target.value, sessions: 1 }))} aria-label="Specific service / area">
                 {variants.map((v) => <option key={v.id} value={v.id}>{v.name} — {priceLabel(v.pricePence)} · {v.durationMin} min</option>)}
               </select>
             )}
@@ -224,8 +231,33 @@ function Modal({ treatments, isAdmin, onClose }: { treatments: Treatment[]; isAd
                 </span>
               </label>
             )}
-            {/* BLD-409: book a course of N sessions in one go. */}
-            {!isConsultationCat && !d.asConsultation && !usePackageId && (
+            {/* BLD-1268: when the chosen variant has configured package/course
+                tiers, offer the same "Single or a course?" picker the public
+                /book flow uses — staff see exactly what's on offer (session
+                count + bundle price) instead of guessing a number that may or
+                may not match a real tier. BLD-409: a treatment with no
+                configured tiers keeps the plain "number of sessions" field, so
+                staff can still book an ad-hoc multi-visit course at the flat
+                per-session rate — no picker is forced where none applies. */}
+            {!isConsultationCat && !d.asConsultation && !usePackageId && courses.length > 0 && (
+              <div>
+                <p className="mb-1.5 text-sm text-[var(--color-stone)]">Single session or a package?</p>
+                <div className="flex flex-wrap gap-2">
+                  <button type="button" onClick={() => set('sessions', 1)} aria-pressed={d.sessions === 1}
+                    className={`rounded-full border px-3.5 py-1.5 text-sm ${d.sessions === 1 ? 'border-[var(--color-gold)] bg-[var(--color-gold-deep)] text-white' : 'border-[var(--color-line)] hover:border-[var(--color-stone-soft)]'}`}>
+                    Single · {priceLabel(selectedVariant?.pricePence ?? 0)}
+                  </button>
+                  {courses.map((c) => (
+                    <button key={c.sessions} type="button" onClick={() => set('sessions', c.sessions)} aria-pressed={d.sessions === c.sessions}
+                      className={`rounded-full border px-3.5 py-1.5 text-sm ${d.sessions === c.sessions ? 'border-[var(--color-gold)] bg-[var(--color-gold-deep)] text-white' : 'border-[var(--color-line)] hover:border-[var(--color-stone-soft)]'}`}>
+                      Package of {c.sessions} · {priceLabel(c.totalPence)}
+                    </button>
+                  ))}
+                </div>
+                <p className="mt-1.5 text-xs text-[var(--color-stone)]">Booking a package reserves this appointment as the first session.</p>
+              </div>
+            )}
+            {!isConsultationCat && !d.asConsultation && !usePackageId && courses.length === 0 && (
               <label className="flex items-center justify-between gap-3 text-sm text-[var(--color-stone)]">
                 Number of sessions
                 <input type="number" min={1} max={50} value={d.sessions} onChange={(e) => set('sessions', Math.max(1, Math.min(50, Math.round(Number(e.target.value) || 1))))} className={`${f} w-24`} />
