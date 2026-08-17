@@ -276,6 +276,18 @@ export async function setBookingStatus(bookingId: string, status: 'COMPLETED' | 
     if (status === 'COMPLETED') {
       await db.client.update({ where: { id: b.clientId }, data: { lastVisitAt: new Date() } });
 
+      // (0) Release any manually-flagged "occupied" room (BLD-506) — the client
+      // has left. finishAppointment() does this on the live-session path, and
+      // since BLD-1249 stamps finishedAt here it now returns early when called
+      // afterwards, so this path has to release the room itself or the in-room
+      // screen stays Occupied until someone taps Vacant.
+      try {
+        const { clearOccupiedForBooking } = await import('@/lib/room-prep');
+        await clearOccupiedForBooking(bookingId);
+      } catch (e) {
+        console.error('[bookings] clear room occupancy on complete failed:', (e as Error)?.message);
+      }
+
       // Completing an appointment closes two loops, neither on the critical path:
       // (1) award the practitioner efficiency / low-waste points, and
       // (2) ask the client for a review (if enabled in settings).
