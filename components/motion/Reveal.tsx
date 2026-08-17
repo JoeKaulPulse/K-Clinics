@@ -16,20 +16,47 @@ type Props = {
 // BLD-1171: whileInView starts children at opacity 0 and relies on the
 // intersection observer firing — on some load paths it never does (confirmed
 // live: in-viewport sections stayed invisible with no scroll), and the old
-// wrapper ignored prefers-reduced-motion entirely. This hook force-reveals an
-// element that is INSIDE the viewport shortly after mount when the observer
-// hasn't; below-the-fold content keeps the scroll reveal.
+// wrapper ignored prefers-reduced-motion entirely.
+//
+// BLD-997: that first fallback was a ONE-SHOT check 1500ms after mount, and it
+// only rescued elements already INSIDE the viewport. Anything below the fold got
+// no backstop at all and stayed entirely at the mercy of the observer this hook
+// exists because we don't trust — so a section a little under the fold could sit
+// at opacity 0 for the whole visit. The Academy banner sits directly beneath a
+// hero whose padding alone is ~340px, which put it squarely in that gap.
+//
+// Two independent mechanisms now, because they fail differently and neither can
+// ever HIDE anything — the worst case of either misfiring is content revealed
+// early:
+//   1. our own IntersectionObserver, separate from framer-motion's, which fires
+//      whenever the element scrolls into view for the life of the page;
+//   2. the original in-viewport timer, kept because it is the only rescue left
+//      if IntersectionObserver itself is what's misbehaving.
 function useViewportFallback() {
   const ref = useRef<HTMLElement | null>(null);
   const [forceShow, setForceShow] = useState(false);
   useEffect(() => {
+    const el = ref.current;
+    // No IntersectionObserver at all: show the content rather than risk hiding it.
+    if (typeof IntersectionObserver === 'undefined') { setForceShow(true); return; }
+
+    let io: IntersectionObserver | null = null;
+    if (el) {
+      io = new IntersectionObserver(
+        (entries) => { if (entries.some((e) => e.isIntersecting)) { setForceShow(true); io?.disconnect(); } },
+        { rootMargin: '0px 0px -5% 0px' },
+      );
+      io.observe(el);
+    }
+
     const t = setTimeout(() => {
-      const el = ref.current;
-      if (!el) return;
-      const r = el.getBoundingClientRect();
+      const node = ref.current;
+      if (!node) return;
+      const r = node.getBoundingClientRect();
       if (r.top < window.innerHeight && r.bottom > 0) setForceShow(true);
     }, 1500);
-    return () => clearTimeout(t);
+
+    return () => { io?.disconnect(); clearTimeout(t); };
   }, []);
   return { ref, forceShow };
 }
