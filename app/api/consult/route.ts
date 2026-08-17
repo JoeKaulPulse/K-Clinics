@@ -110,10 +110,18 @@ export async function POST(req: Request) {
 
     // Tell the team a new enquiry came in. Non-clinical summary only (name + category +
     // treatments); the concerns/message stay encrypted and gated on the consultation page.
+    //
+    // BLD-1345: this has to reach a *person*, not just a bell nobody is watching.
+    // Two things were wrong. (1) The audience was gated on `clients.view` alone,
+    // so anyone given consultation access without client browsing was silently
+    // skipped — it now targets either permission. (2) `email: true` opts this
+    // notification into the email copy; the `messages` category ships with email
+    // off by default, so no named staff member was ever emailed about an enquiry
+    // — the only mail went to the shared CLINIC_NOTIFY_EMAIL inbox below.
     try {
       const { notifyStaffByPermission } = await import('@/lib/notifications');
       const who = [client.firstName, client.lastName].filter(Boolean).join(' ') || 'A new enquiry';
-      await notifyStaffByPermission('clients.view', { kind: 'status', category: 'messages', priority: 'high', title: `New consultation enquiry: ${data.category}`, body: `${who}${data.treatments?.length ? ` · ${data.treatments.slice(0, 3).join(', ')}` : ''}`, href: `/admin/consultations/${consultation.id}` });
+      await notifyStaffByPermission(['consultations.view', 'clients.view'], { kind: 'status', category: 'messages', priority: 'high', email: true, title: `New consultation enquiry: ${data.category}`, body: `${who}${data.treatments?.length ? ` · ${data.treatments.slice(0, 3).join(', ')}` : ''}`, href: `/admin/consultations/${consultation.id}` });
     } catch { /* non-fatal */ }
 
     // Stable event ID shared with the browser pixel so Meta CAPI can deduplicate.
