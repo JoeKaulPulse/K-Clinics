@@ -27,6 +27,7 @@ export async function POST(req: Request) {
     const blob = await put(`build/${Date.now().toString(36)}-${safe}`, file, { access: 'public', addRandomSuffix: false, contentType: file.type || undefined });
     return NextResponse.json({ ok: true, url: blob.url });
   } catch (e) {
+    console.error('[build/upload] failed', e);
     return NextResponse.json({ ok: false, error: (e as Error)?.message || 'Upload failed.' }, { status: 500 });
   }
 }

@@ -97,6 +97,7 @@ export async function POST(req: Request) {
 
   let dump;
   try { dump = await ensureDump(); } catch (e) {
+    console.error('[build/migrate-wp] dump extraction failed', e);
     return NextResponse.json({ ok: false, error: `Could not extract the dump: ${e instanceof Error ? e.message : String(e)}` }, { status: 500 });
   }
 

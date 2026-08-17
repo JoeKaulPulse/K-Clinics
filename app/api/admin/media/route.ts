@@ -57,6 +57,7 @@ export async function POST(req: Request) {
     });
     return NextResponse.json({ ok: true, asset });
   } catch (e) {
+    console.error('[media] upload failed', e);
     return NextResponse.json({ ok: false, error: (e as Error)?.message || 'Upload failed.' }, { status: 500 });
   }
 }

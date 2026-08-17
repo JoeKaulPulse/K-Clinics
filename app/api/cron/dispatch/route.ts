@@ -57,7 +57,10 @@ export async function GET(req: Request) {
     } catch { /* Sentry not initialised */ }
     const webhook = process.env.CRON_ALERT_WEBHOOK_URL;
     if (webhook) {
-      try { await fetch(webhook, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ text: `cron/dispatch failures: ${failures.join('; ')}` }) }); } catch { /* non-fatal */ }
+      // PRJ-1118.10: bound it — a hung webhook endpoint previously stalled this
+      // request indefinitely; on timeout the alert is simply dropped (non-fatal,
+      // matching every other outcome of this best-effort send).
+      try { await fetch(webhook, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ text: `cron/dispatch failures: ${failures.join('; ')}` }), signal: AbortSignal.timeout(8_000) }); } catch { /* non-fatal */ }
     }
     console.error('[cron/dispatch] failures:', failures);
     return NextResponse.json({ ok: false, failures, ...result, chatFollowups: chat.emailed, waitlistExpired: waitlist.expired, waitlistReoffered: waitlist.reoffered, abandonedBookingsReleased: abandoned.released, githubSynced: ghSync.synced, githubRemaining: ghSync.remaining, taskAutomationsFired: taskAutomations.fired, taskAutomationTasks: taskAutomations.tasksCreated }, { status: 500 });

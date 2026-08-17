@@ -23,7 +23,8 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
     if (!m) return new NextResponse('Bad image', { status: 422 });
     const buf = Buffer.from(m[2], 'base64');
     return new NextResponse(buf, { headers: { 'content-type': m[1], 'cache-control': 'private, no-store' } });
-  } catch {
+  } catch (e) {
+    console.error('[bookings/before-photo] decrypt failed', e);
     return new NextResponse('Decrypt failed', { status: 500 });
   }
 }
