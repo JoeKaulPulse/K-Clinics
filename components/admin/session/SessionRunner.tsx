@@ -792,8 +792,13 @@ function CheckoutStep({ p, live, sessData, pending, presenting, api, run, onCont
   const [amount, setAmount] = useState(() => (p.booking.pricePence / 100).toFixed(2));
   const charged = !!live.chargedAt;
   // Unified payment capture (BLD-196): card on file / payment link / terminal /
-  // Treatwell (recorded as paid externally — BLD-200).
-  const [method, setMethod] = useState<'card' | 'link' | 'terminal' | 'treatwell' | 'cash'>(p.hasCardOnFile ? 'card' : 'link');
+  // Treatwell (recorded as paid externally — BLD-200). BLD-1249: "cardTerminal"
+  // is a separate, always-available manual record for a standalone card
+  // machine that isn't wired into Stripe Terminal — unlike 'terminal' above
+  // (a real Stripe Terminal charge, only offered once a device is registered),
+  // this never touches a payment rail; it just logs the sale as settled, the
+  // same way 'cash' and 'treatwell' do.
+  const [method, setMethod] = useState<'card' | 'link' | 'terminal' | 'cardTerminal' | 'treatwell' | 'cash'>(p.hasCardOnFile ? 'card' : 'link');
   const [deviceId, setDeviceId] = useState(p.terminals[0]?.id ?? '');
   const [linkQr, setLinkQr] = useState<{ url: string; qr: string } | null>(null);
   const [payErr, setPayErr] = useState('');
@@ -877,6 +882,12 @@ function CheckoutStep({ p, live, sessData, pending, presenting, api, run, onCont
     setPayBusy(false);
     if (!res.ok) setPayErr(res.error || 'Could not record the payment.');
   }
+  async function takeCardTerminal() {
+    setPayErr(''); setPayBusy(true);
+    const res = await api({ op: 'external', channel: 'card-terminal', amountPence, ...discParams });
+    setPayBusy(false);
+    if (!res.ok) setPayErr(res.error || 'Could not record the payment.');
+  }
 
   return (
     <>
@@ -906,6 +917,8 @@ function CheckoutStep({ p, live, sessData, pending, presenting, api, run, onCont
                 {/* BLD-908: no tab at all unless a configured provider + registered device exist — it was a guaranteed dead end otherwise. */}
                 {p.terminals.length > 0 && <button type="button" onClick={() => { setMethod('terminal'); setLinkQr(null); setPayErr(''); }} aria-pressed={method === 'terminal'} className={`rounded-full px-3 py-1.5 transition-colors ${method === 'terminal' ? 'bg-[var(--color-ink)] text-[var(--color-porcelain)]' : 'text-[var(--color-stone)] hover:text-[var(--color-ink)]'}`}>Terminal</button>}
                 <button type="button" onClick={() => { setMethod('cash'); setLinkQr(null); setPayErr(''); }} aria-pressed={method === 'cash'} className={`rounded-full px-3 py-1.5 transition-colors ${method === 'cash' ? 'bg-[var(--color-ink)] text-[var(--color-porcelain)]' : 'text-[var(--color-stone)] hover:text-[var(--color-ink)]'}`}>Cash</button>
+                {/* BLD-1249: manual record for a standalone card machine — no Stripe Terminal integration required */}
+                <button type="button" onClick={() => { setMethod('cardTerminal'); setLinkQr(null); setPayErr(''); }} aria-pressed={method === 'cardTerminal'} className={`rounded-full px-3 py-1.5 transition-colors ${method === 'cardTerminal' ? 'bg-[var(--color-ink)] text-[var(--color-porcelain)]' : 'text-[var(--color-stone)] hover:text-[var(--color-ink)]'}`}>Card Terminal</button>
                 <button type="button" onClick={() => { setMethod('treatwell'); setLinkQr(null); setPayErr(''); }} aria-pressed={method === 'treatwell'} className={`rounded-full px-3 py-1.5 transition-colors ${method === 'treatwell' ? 'bg-[var(--color-ink)] text-[var(--color-porcelain)]' : 'text-[var(--color-stone)] hover:text-[var(--color-ink)]'}`}>Treatwell</button>
               </div>
             </div>
@@ -993,6 +1006,15 @@ function CheckoutStep({ p, live, sessData, pending, presenting, api, run, onCont
                     {payBusy ? 'Recording…' : `Record ${money(duePence)} cash`}
                   </button>
                   <p className="mt-2 max-w-md text-xs text-[var(--color-stone)]">Records the sale as paid in cash against this booking. Remember to put the cash in the drawer — it’s included in the day-close total.</p>
+                </div>
+              )}
+              {method === 'cardTerminal' && (
+                <div>
+                  <button type="button" disabled={payBusy || !live.finishedAt} onClick={takeCardTerminal}
+                    className="min-h-12 rounded-full bg-[var(--color-gold-deep)] px-7 py-3 font-medium text-white transition-colors hover:bg-[var(--color-ink)] disabled:opacity-40">
+                    {payBusy ? 'Recording…' : `Record ${money(duePence)} on card terminal`}
+                  </button>
+                  <p className="mt-2 max-w-md text-xs text-[var(--color-stone)]">Records the sale as paid on your standalone card machine — nothing is charged from here. Use this when the terminal isn’t wired into the till.</p>
                 </div>
               )}
               {method === 'treatwell' && (
