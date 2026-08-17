@@ -200,7 +200,27 @@ export async function setBookingStatus(bookingId: string, status: 'COMPLETED' | 
   const session = await getSession();
   if (!session || !sessionCan(session, 'bookings.manage')) return { ok: false, error: 'You don’t have permission to update appointments.' };
   const { db } = await import('@/lib/db');
-  await db.booking.update({ where: { id: bookingId }, data: { status } });
+  // BLD-1249: the live checkout screen (SessionRunner) gates every payment
+  // method — including "Record cash" — on booking.finishedAt, not on status.
+  // That field is normally stamped by the live session's "End treatment" step
+  // (clinical-actions.ts finishAppointment). This "Mark completed" shortcut
+  // only ever set status, so a booking completed from here stayed COMPLETED
+  // with finishedAt permanently null — the payment buttons on checkout then
+  // stayed disabled forever with no way to unstick them. Stamp finishedAt
+  // here too, and clear it on "Reset to confirmed" so the two stay in sync.
+  const prior = status === 'COMPLETED' || status === 'CONFIRMED'
+    ? await db.booking.findUnique({ where: { id: bookingId }, select: { startedAt: true, finishedAt: true } })
+    : null;
+  const data: { status: typeof status; finishedAt?: Date | null; actualMinutes?: number | null } = { status };
+  if (status === 'COMPLETED' && prior && !prior.finishedAt) {
+    const finishedAt = new Date();
+    data.finishedAt = finishedAt;
+    data.actualMinutes = prior.startedAt ? Math.max(1, Math.round((finishedAt.getTime() - prior.startedAt.getTime()) / 60000)) : null;
+  } else if (status === 'CONFIRMED' && prior?.finishedAt) {
+    data.finishedAt = null;
+    data.actualMinutes = null;
+  }
+  await db.booking.update({ where: { id: bookingId }, data });
   const b = await db.booking.findUnique({ where: { id: bookingId } });
   if (b) {
     await db.interaction.create({ data: { clientId: b.clientId, type: 'APPOINTMENT', summary: `Booking marked ${status.toLowerCase().replace('_', ' ')}`, author: session.email } });
