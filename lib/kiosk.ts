@@ -47,9 +47,20 @@ export function secretMatches(expected: string | null | undefined, provided: str
   try { return timingSafeEqual(Buffer.from(provided), Buffer.from(expected)); } catch { return false; }
 }
 
-/** Hash a client IP so we never store the raw address (anti-abuse counting only). */
+/** Hash a client IP so we never store the raw address (anti-abuse counting only).
+ *  Returns null when the caller has no identifiable IP — every call site treats a
+ *  null hash as "unknown device" and skips per-IP counting. */
 export function hashIp(ip: string | null | undefined): string | null {
-  if (!ip) return null;
+  // BLD-1351: the hardened resolver returns the literal 'unknown' (never null)
+  // when no proxy header identifies the caller. That string is not an identity.
+  // Hashing it would drop every unidentifiable request into ONE shared bucket —
+  // 3 sessions/day and 5/hour site-wide on /api/kiosk/sessions, 20 shares/hour
+  // on the reward path — so a single missing header would 429 the in-store
+  // kiosk for everyone, and store a fake per-device hash on the session row.
+  // Same contract the rest of the security layer already keeps: guard.loginGate
+  // excludes 'unknown' from per-IP failure counting and ip-activity never blocks
+  // it.
+  if (!ip || ip === 'unknown') return null;
   const salt = kioskIpSalt();
   return createHash('sha256').update(`${salt}:${ip}`).digest('hex').slice(0, 32);
 }
