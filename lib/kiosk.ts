@@ -5,6 +5,14 @@ import { analyzeKioskPhoto, analyzeKioskPhotosV2 } from '@/lib/kiosk-ai';
 import { createPersonalCode } from '@/lib/promo';
 import { site } from '@/lib/site';
 import { marketingConsentFields } from '@/lib/consent';
+import { clientIp } from '@/lib/security/guard';
+
+// BLD-1351: re-export the hardened last-hop IP resolver (x-vercel-forwarded-for /
+// x-real-ip, falling back to the LAST hop of X-Forwarded-For — never the
+// client-controllable first hop) so kiosk session limits, share-reward limits
+// and funnel logging can't be bypassed by spoofing X-Forwarded-For. Kept as a
+// re-export so existing `from '@/lib/kiosk'` call sites need no changes.
+export { clientIp };
 
 // ── Shared kiosk helpers ─────────────────────────────────────────────────────
 // Token/slug generation, IP hashing (no raw IPs stored), funnel event logging,
@@ -70,13 +78,6 @@ function kioskIpSalt(): string {
   }
   // Dev/test-only fallback so the app runs locally without secrets.
   return 'k-clinics-kiosk';
-}
-
-/** Best-effort client IP from proxy headers. */
-export function clientIp(req: Request): string | null {
-  const xff = req.headers.get('x-forwarded-for');
-  if (xff) return xff.split(',')[0].trim();
-  return req.headers.get('x-real-ip');
 }
 
 /** Log a funnel event. Never throws. */
