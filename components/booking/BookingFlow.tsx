@@ -17,6 +17,9 @@ type Course = { sessions: number; totalPence: number };
 type Variant = { id: string; name: string; durationMin: number; displayDurationMin?: number | null; pricePence: number; offerPence: number | null; offerName: string | null; courses: Course[] };
 type Service = { id: string; slug: string; treatmentSlug: string; name: string; category: string; audience: string; variants: Variant[] };
 type ClientInfo = { signedIn: boolean; firstName: string; email: string; gender: string | null; smsReminders: boolean; hasPhone: boolean; welcomeEligible: boolean };
+// BLD-1346: a course the client has bought, with its derived session balance
+// (lib/package-sessions.ts). Only paid packages with sessions left are served.
+type Pkg = { purchaseBookingId: string; label: string; treatmentSlug: string; sessionsTotal: number; sessionsUsed: number; sessionsBooked: number; sessionsRemaining: number; paid: boolean };
 
 const field = 'w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-porcelain)] px-4 py-3 text-[var(--color-ink)] transition-colors placeholder:text-[var(--color-stone)] focus:border-[var(--color-gold)] focus-visible:ring-2 focus-visible:ring-[var(--color-gold)]';
 const label = 'mb-1.5 block text-xs uppercase tracking-[0.16em] text-[var(--color-stone)]';
@@ -56,6 +59,11 @@ export function BookingFlow({ catalogue, client, preselect = null, preselectDate
   const [serviceId, setServiceId] = useState(validPreselect);
   const [variantId, setVariantId] = useState('');
   const [sessions, setSessions] = useState(1);
+  // BLD-1346: courses this client has already paid for and has sessions left on.
+  // When one matches the treatment they're booking, they can spend a session
+  // instead of paying again. The server re-validates before pricing anything.
+  const [packages, setPackages] = useState<Pkg[]>([]);
+  const [usePackageId, setUsePackageId] = useState<string | null>(null);
   // From a waitlist claim link the offered day is pre-filled so the client lands
   // straight on the freed slot (BLD-133 phase 2).
   const [date, setDate] = useState(preselectDate || '');
@@ -115,6 +123,31 @@ export function BookingFlow({ catalogue, client, preselect = null, preselectDate
     addOns.forEach((id) => { const av = catalogue.flatMap((s) => s.variants).find((v) => v.id === id); if (av) d += av.durationMin; });
     return d;
   }, [variant, addOns, catalogue]);
+
+  // BLD-1346: load the client's paid course balances once, when signed in. The
+  // endpoint is scoped to their own record and already filters to packages that
+  // are paid and still have sessions left.
+  useEffect(() => {
+    if (!authed || isDemo) { setPackages([]); return; }
+    let live = true;
+    fetch('/api/account/packages')
+      .then((r) => r.json())
+      .then((j) => { if (live && j.ok) setPackages(j.packages ?? []); })
+      .catch(() => { /* a balance we can't load just means the option isn't offered */ });
+    return () => { live = false; };
+  }, [authed]);
+
+  // The one package that covers the treatment being booked, if any.
+  const matchingPackage = useMemo(
+    () => (service ? packages.find((p) => p.treatmentSlug === service.treatmentSlug && p.sessionsRemaining > 0) : undefined),
+    [packages, service],
+  );
+  // Changing treatment (or switching to a course purchase) invalidates a
+  // selected package from a different treatment — clear it rather than letting
+  // a stale id reach the server and get rejected at the last step.
+  useEffect(() => {
+    if (usePackageId && (matchingPackage?.purchaseBookingId !== usePackageId || sessions > 1)) setUsePackageId(null);
+  }, [matchingPackage, usePackageId, sessions]);
 
   // Live availability from the admin engine (works without Stripe).
   useEffect(() => {
@@ -198,10 +231,17 @@ export function BookingFlow({ catalogue, client, preselect = null, preselectDate
 
   const orderTotal = useMemo(() => {
     if (!variant) return 0;
-    let t = primaryPrice(sessions > 1 ? courseAsVariant(variant, sessions) : variant).price;
+    // BLD-1346: a prepaid session covers the primary treatment only — add-ons
+    // taken in the same visit are still charged, so they stay in the total.
+    let t = usePackageId ? 0 : primaryPrice(sessions > 1 ? courseAsVariant(variant, sessions) : variant).price;
     addOns.forEach((id) => { const av = catalogue.flatMap((s) => s.variants).find((v) => v.id === id); if (av) t += addOnPrice(av).price; });
     return t;
-  }, [variant, sessions, addOns, catalogue, welcome]);
+  }, [variant, sessions, addOns, catalogue, welcome, usePackageId]);
+
+  // money() renders £0 as "On consultation", which is right for a treatment
+  // priced at assessment but wrong for a session the client has already paid
+  // for. Name the £0 honestly in that case (BLD-1346).
+  const totalLabel = usePackageId && orderTotal <= 0 ? 'Nothing to pay — prepaid session' : money(orderTotal);
 
   async function submitBooking() {
     setSubmitting(true); setError('');
@@ -209,7 +249,7 @@ export function BookingFlow({ catalogue, client, preselect = null, preselectDate
     try {
       const res = await fetch('/api/booking/start', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ variantId, sessions, startISO: slot, addOnVariantIds: [...addOns], smsReminders: smsPref, refreshments: [...refreshments], allergyNote, aftercareAck, ageDeclare, promoCode: promo?.ok ? promo.code : undefined, waitlistToken: waitlistToken || undefined }),
+        body: JSON.stringify({ variantId, sessions, startISO: slot, addOnVariantIds: [...addOns], smsReminders: smsPref, refreshments: [...refreshments], allergyNote, aftercareAck, ageDeclare, promoCode: promo?.ok ? promo.code : undefined, waitlistToken: waitlistToken || undefined, usePackageBookingId: usePackageId || undefined }),
       });
       const j = await res.json();
       if (!j.ok) { setError(j.error || 'Could not book.'); setSubmitting(false); return; }
@@ -333,7 +373,35 @@ export function BookingFlow({ catalogue, client, preselect = null, preselectDate
                   );
                 })}
               </div>
-              {variant && variant.courses.length > 0 && (
+              {/* BLD-1346: this client already paid for a course of this
+                  treatment and has sessions left — let them spend one instead
+                  of being quoted the full price again. */}
+              {variant && matchingPackage && (
+                <div className="mt-5 rounded-[var(--radius-md)] border border-[var(--color-gold)] bg-[color-mix(in_oklab,var(--color-gold)_8%,transparent)] p-4">
+                  <label className="flex cursor-pointer items-start gap-3">
+                    <input
+                      type="checkbox"
+                      className="mt-1 size-4 accent-[var(--color-gold-deep)]"
+                      checked={usePackageId === matchingPackage.purchaseBookingId}
+                      onChange={(e) => {
+                        setUsePackageId(e.target.checked ? matchingPackage.purchaseBookingId : null);
+                        if (e.target.checked) setSessions(1); // a package books one visit at a time
+                      }}
+                    />
+                    <span className="text-sm">
+                      <span className="block font-medium">Use one of your prepaid sessions — nothing to pay</span>
+                      <span className="mt-0.5 block text-[var(--color-stone)]">
+                        {matchingPackage.label}: {matchingPackage.sessionsRemaining} of {matchingPackage.sessionsTotal} left
+                        {matchingPackage.sessionsBooked > 0 ? ` · ${matchingPackage.sessionsBooked} already booked` : ''}
+                      </span>
+                    </span>
+                  </label>
+                </div>
+              )}
+
+              {/* A course purchase and spending an existing one are mutually
+                  exclusive — hide the tiers while a prepaid session is selected. */}
+              {variant && variant.courses.length > 0 && !usePackageId && (
                 <div className="mt-5">
                   <p className={label}>Single session or a course?</p>
                   <div className="flex flex-wrap gap-2">
@@ -353,7 +421,7 @@ export function BookingFlow({ catalogue, client, preselect = null, preselectDate
           {stage === 'time' && service && variant && (
             <div>
               <h3 className="font-[family-name:var(--font-display)] text-2xl">{service.name} — {variant.name}</h3>
-              <p className="mt-1 text-sm text-[var(--color-stone)]">{totalDuration} min · {money(orderTotal)}{sessions > 1 ? ` · course of ${sessions}` : ''}</p>
+              <p className="mt-1 text-sm text-[var(--color-stone)]">{totalDuration} min · {totalLabel}{sessions > 1 ? ` · course of ${sessions}` : ''}</p>
               <div className="mt-6">
                 <label className={label} htmlFor="bdate">Select a date</label>
                 {popularDays.length > 0 && (
@@ -472,8 +540,10 @@ export function BookingFlow({ catalogue, client, preselect = null, preselectDate
                 </div>
               </div>
 
-              {/* Promo code */}
-              <div className="mt-6">
+              {/* Promo code. Hidden on a prepaid session: a promo only ever
+                  discounts the primary treatment, which is already £0 here, so
+                  offering the field would just look broken (BLD-1346). */}
+              <div className={`mt-6 ${usePackageId ? 'hidden' : ''}`}>
                 <label htmlFor="bpromo" className={label}>Promo code (optional)</label>
                 <div className="mt-1 flex gap-2">
                   <input id="bpromo" value={promoInput} onChange={(e) => { setPromoInput(e.target.value.toUpperCase()); setPromo(null); }} placeholder="e.g. K10SUMMERREADY" className={`${field} uppercase`} />
@@ -486,8 +556,14 @@ export function BookingFlow({ catalogue, client, preselect = null, preselectDate
 
               <div className="mt-4 rounded-[var(--radius-sm)] bg-[var(--color-porcelain)] p-4 text-sm">
                 <div className="flex justify-between"><span className="text-[var(--color-stone)]">Due today</span><span className="font-medium text-[var(--color-stone)]">Nothing charged until after your visit</span></div>
-                <div className="flex justify-between"><span className="text-[var(--color-stone)]">Total at your visit</span><span className="font-medium text-[var(--color-ink)]">{money(orderTotal)}</span></div>
-                {promo?.ok && <div className="mt-1 flex justify-between text-[var(--color-jade,#3f7a5a)]"><span>Promo {promo.code}</span><span>−{money(promo.discountPence || 0)} applied</span></div>}
+                <div className="flex justify-between"><span className="text-[var(--color-stone)]">Total at your visit</span><span className="font-medium text-[var(--color-ink)]">{totalLabel}</span></div>
+                {promo?.ok && !usePackageId && <div className="mt-1 flex justify-between text-[var(--color-jade,#3f7a5a)]"><span>Promo {promo.code}</span><span>−{money(promo.discountPence || 0)} applied</span></div>}
+                {usePackageId && matchingPackage && (
+                  <div className="mt-1 flex justify-between text-[var(--color-gold-deep)]">
+                    <span>{matchingPackage.label}</span>
+                    <span>1 prepaid session used</span>
+                  </div>
+                )}
                 <p className="mt-2 text-xs text-[var(--color-stone)]">{totalDuration} min · {[service.name, ...[...addOns].map((id) => catalogue.flatMap((s) => s.variants).find((v) => v.id === id)?.name).filter(Boolean)].join(' + ')}</p>
               </div>
 

@@ -6,6 +6,16 @@ import { clinicLocalToUTC } from '@/lib/clinic-time';
 
 const money = (p: number) => `£${(p / 100).toFixed(2)}`;
 
+/** BLD-1347: plain-English outcome of the no-show fee, so staff can see what
+ *  actually happened to the money without opening the audit log. */
+function noShowOutcome(r: { charged?: number; sessionConsumed?: boolean; feeFailed?: boolean; requiresAction?: boolean }): string {
+  if (r.sessionConsumed) return 'One session deducted from their package — nothing charged (the course is already paid).';
+  if (r.charged) return `Charged ${money(r.charged)} to the card on file.`;
+  if (r.requiresAction) return 'The card needs the client to confirm the payment — the fee stays on their outstanding balance.';
+  if (r.feeFailed) return 'The fee could not be charged — it stays on the client’s outstanding balance for follow-up.';
+  return 'No fee was due.';
+}
+
 export function BookingActions({
   bookingId,
   status,
@@ -18,6 +28,7 @@ export function BookingActions({
   canCharge = true,
   prepaid = false,
   pointsRedeemedPence = 0,
+  isPackageSession = false,
 }: {
   bookingId: string;
   status: string;
@@ -34,6 +45,9 @@ export function BookingActions({
   // BLD-733: money off already redeemed against this booking via loyalty points.
   // Nets out of the pre-filled charge amount so staff don't bill the pre-discount price.
   pointsRedeemedPence?: number | null;
+  // BLD-1347: this visit is a session booked against a prepaid course, so a
+  // no-show is paid for with the session itself rather than a card charge.
+  isPackageSession?: boolean;
 }) {
   const [pending, start] = useTransition();
   const [msg, setMsg] = useState('');
@@ -68,9 +82,34 @@ export function BookingActions({
         <div className="flex flex-wrap gap-2">
           <button disabled={pending} onClick={() => start(async () => { const r = await setBookingStatus(bookingId, 'COMPLETED'); setMsg(r.ok ? 'Marked completed.' : r.error || 'Could not update.'); })}
             className="rounded-full bg-[var(--color-ink)] px-4 py-2 text-sm text-[var(--color-porcelain)] disabled:opacity-60">Mark completed</button>
-          <button disabled={pending} onClick={() => start(async () => { const r = await setBookingStatus(bookingId, 'NO_SHOW'); setMsg(r.ok ? 'Marked no-show.' : r.error || 'Could not update.'); })}
-            className="rounded-full border border-[var(--color-line)] px-4 py-2 text-sm hover:bg-[var(--color-bone)] disabled:opacity-60">No-show</button>
+          {/* BLD-1347: a no-show now applies the published 24-hour policy. The
+              fee is taken as a card charge, or as one session off a prepaid
+              package — whichever matches how the client paid. "Waive fee" is
+              the override, and needs the payment permission. */}
+          <button disabled={pending} onClick={() => start(async () => {
+            const r = await setBookingStatus(bookingId, 'NO_SHOW');
+            setMsg(r.ok ? `Marked no-show. ${noShowOutcome(r)}` : r.error || 'Could not update.');
+          })}
+            className="rounded-full border border-[var(--color-line)] px-4 py-2 text-sm hover:bg-[var(--color-bone)] disabled:opacity-60">
+            {isPackageSession ? 'No-show — use a session' : within24h && netPricePence > 0 ? `No-show — charge ${money(netPricePence)}` : 'No-show'}
+          </button>
+          {canCharge && (
+            <button disabled={pending} onClick={() => start(async () => {
+              const r = await setBookingStatus(bookingId, 'NO_SHOW', { waiveFee: true });
+              setMsg(r.ok ? 'Marked no-show — fee waived, nothing charged and no session deducted.' : r.error || 'Could not update.');
+            })}
+              className="rounded-full border border-dashed border-[var(--color-line)] px-4 py-2 text-sm text-[var(--color-stone)] hover:bg-[var(--color-bone)] disabled:opacity-60">No-show — waive fee</button>
+          )}
         </div>
+      )}
+      {active && canManage && (
+        <p className="-mt-4 text-xs text-[var(--color-stone)]">
+          {isPackageSession
+            ? 'A no-show spends one session from the client’s package — the course is already paid, so no card is charged. Waive it to leave their balance untouched.'
+            : within24h && pricePence > 0
+              ? 'A no-show charges the card on file the full fee, per the 24-hour policy. If the charge fails it stays on the client’s outstanding balance.'
+              : 'Nothing is charged for a no-show on a £0 or on-consultation appointment.'}
+        </p>
       )}
 
       {/* Undo a mis-clicked status — reset a no-show (or a not-yet-charged

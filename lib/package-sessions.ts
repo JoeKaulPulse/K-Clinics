@@ -8,12 +8,22 @@ import { db } from '@/lib/db';
 // (BLD-409). Follow-up sessions are ordinary bookings linked back via
 // Booking.packageBookingId. Balances are DERIVED from bookings — used = the
 // completed ones, booked = upcoming ones — so nothing can drift out of sync
-// with the diary. Cancelled/no-show sessions do not consume the package
-// (no-show fees are handled by the ordinary late-cancel path) — UNLESS an admin
-// has explicitly marked a cancelled session as package-consumed (BLD-1096:
-// Booking.packageSessionUsedAt), in which case it counts as used exactly like a
-// completed one. The booking's own status is never changed by that mark — it
-// stays CANCELLED in the diary and appointment history.
+// with the diary.
+//
+// A cancelled or missed session does not consume the package by default —
+// UNLESS it is marked package-consumed (Booking.packageSessionUsedAt), in which
+// case it counts as used exactly like a completed one. That mark is written
+// three ways:
+//   • by an admin, case by case, on a cancelled session (BLD-1096);
+//   • automatically on a NO_SHOW (BLD-1347) — the session IS the fee, because
+//     the money already sits on the purchase booking and the £0 linked session
+//     has no card charge to take;
+//   • automatically on a cancellation inside 24 hours (BLD-1347), under the same
+//     published policy that charges a late-cancellation fee on a paid booking.
+// A staff waive skips the mark, which is the override in both automatic cases.
+//
+// The booking's own status is never changed by the mark — it stays CANCELLED or
+// NO_SHOW in the diary and appointment history.
 
 export type PackageView = {
   purchaseBookingId: string;
@@ -28,11 +38,51 @@ export type PackageView = {
 };
 
 const LIVE = ['PENDING', 'CONFIRMED'] as const;
-// BLD-1096: a linked session still counts toward the package's derived totals
-// when it's either genuinely live/completed, OR it's a cancelled appointment an
-// admin has explicitly marked as package-consumed (kept out of the query by a
+// BLD-1096 / BLD-1347: a linked session still counts toward the package's derived
+// totals when it's either genuinely live/completed, OR it's a cancelled/missed
+// appointment that has been marked package-consumed (kept out of the query by a
 // plain `notIn: ['CANCELLED', 'NO_SHOW']` filter, so that case needs its own OR branch).
-const SESSION_INCLUDED: Prisma.BookingWhereInput = { OR: [{ status: { notIn: ['CANCELLED', 'NO_SHOW'] } }, { status: 'CANCELLED', packageSessionUsedAt: { not: null } }] };
+const SESSION_INCLUDED: Prisma.BookingWhereInput = {
+  OR: [
+    { status: { notIn: ['CANCELLED', 'NO_SHOW'] } },
+    { status: { in: ['CANCELLED', 'NO_SHOW'] }, packageSessionUsedAt: { not: null } },
+  ],
+};
+
+/** Every booking that occupies a slot on this package: the purchase visit itself
+ *  plus each linked session that still counts. Exported so a booking transaction
+ *  can re-check the balance under Serializable isolation against the SAME
+ *  definition the derived view uses, instead of a second, drifting copy. */
+export function packageOccupancyWhere(purchaseBookingId: string): Prisma.BookingWhereInput {
+  return { AND: [{ OR: [{ id: purchaseBookingId }, { packageBookingId: purchaseBookingId }] }, SESSION_INCLUDED] };
+}
+
+/** Has this session been spent — completed, or cancelled/missed and marked
+ *  package-consumed? Shared so the query filter above and the count below can
+ *  never disagree about what "used" means. */
+const isUsed = (s: { status: string; packageSessionUsedAt: Date | null }): boolean =>
+  s.status === 'COMPLETED' || ((s.status === 'CANCELLED' || s.status === 'NO_SHOW') && Boolean(s.packageSessionUsedAt));
+
+/** BLD-1347: spend one session off the client's package balance for a session
+ *  they missed or cancelled late. The money already sits on the purchase
+ *  booking, so consuming the session IS how the fee is taken — the £0 linked
+ *  booking has no card charge to make.
+ *
+ *  Only ever marks a FOLLOW-UP session (one linked back via packageBookingId).
+ *  The course purchase booking itself is excluded for the BLD-1096 reason: a
+ *  cancelled purchase drops the whole package from clientPackages(), so marking
+ *  it would change no balance while claiming a session had been deducted.
+ *  Idempotent — a session already marked is left alone, so a re-run (or a
+ *  status flipped back and forth) can't deduct twice. Never throws.
+ *
+ *  Returns true only when this call was the one that spent the session. */
+export async function consumePackageSession(bookingId: string, by: string): Promise<boolean> {
+  const res = await db.booking.updateMany({
+    where: { id: bookingId, packageBookingId: { not: null }, packageSessionUsedAt: null },
+    data: { packageSessionUsedAt: new Date(), packageSessionUsedBy: by },
+  }).catch(() => ({ count: 0 }));
+  return res.count > 0;
+}
 
 /** All packages a client has bought, newest first. */
 export async function clientPackages(clientId: string): Promise<PackageView[]> {
@@ -54,7 +104,7 @@ export async function clientPackages(clientId: string): Promise<PackageView[]> {
   return purchases.map((p) => {
     const total = p.items[0]?.sessions ?? 1;
     const all = [{ status: p.status, packageSessionUsedAt: null as Date | null }, ...p.packageSessions];
-    const used = all.filter((s) => s.status === 'COMPLETED' || (s.status === 'CANCELLED' && s.packageSessionUsedAt)).length;
+    const used = all.filter(isUsed).length;
     const booked = all.filter((s) => (LIVE as readonly string[]).includes(s.status)).length;
     return {
       purchaseBookingId: p.id,
