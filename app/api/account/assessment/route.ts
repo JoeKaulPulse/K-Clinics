@@ -49,7 +49,8 @@ export async function POST(req: Request) {
       ip: clientIp(req),
     });
     return NextResponse.json({ ok: true, ...res });
-  } catch {
+  } catch (e) {
+    console.error('[account/assessment] save failed', e);
     return NextResponse.json({ ok: false, error: 'Could not save your assessment.' }, { status: 500 });
   }
 }

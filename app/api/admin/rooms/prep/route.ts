@@ -23,7 +23,8 @@ export async function GET(req: Request) {
     const { getRoomsForDay } = await import('@/lib/room-prep');
     const rooms = await getRoomsForDay({ locationId });
     return NextResponse.json({ ok: true, rooms, canManage: sessionCan(session, 'rooms.prep.manage') }, { headers: { 'Cache-Control': 'no-store' } });
-  } catch {
+  } catch (e) {
+    console.error('[rooms/prep] load failed', e);
     return NextResponse.json({ ok: false, error: 'Could not load rooms.' }, { status: 500 });
   }
 }
@@ -46,7 +47,8 @@ export async function POST(req: Request) {
       const { setRoomOccupied, clinicDay } = await import('@/lib/room-prep');
       await setRoomOccupied(roomId, clinicDay(), body.occupied, session.email);
       return NextResponse.json({ ok: true, occupied: body.occupied });
-    } catch {
+    } catch (e) {
+      console.error('[rooms/prep] occupied update failed', e);
       return NextResponse.json({ ok: false, error: 'Could not update the room.' }, { status: 500 });
     }
   }
@@ -59,7 +61,8 @@ export async function POST(req: Request) {
     const { setRoomPrep, clinicDay } = await import('@/lib/room-prep');
     await setRoomPrep(roomId, clinicDay(), status, session.email, note);
     return NextResponse.json({ ok: true, status });
-  } catch {
+  } catch (e) {
+    console.error('[rooms/prep] status update failed', e);
     return NextResponse.json({ ok: false, error: 'Could not update the room.' }, { status: 500 });
   }
 }

@@ -60,6 +60,7 @@ export async function POST(req: Request) {
     });
     return NextResponse.json({ ok: true, doc });
   } catch (e) {
+    console.error('[facility] upload failed', e);
     return NextResponse.json({ ok: false, error: (e as Error)?.message || 'Upload failed.' }, { status: 500 });
   }
 }
