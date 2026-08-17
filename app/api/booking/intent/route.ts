@@ -49,7 +49,8 @@ export async function POST(req: Request) {
       });
     }
     return NextResponse.json({ ok: true });
-  } catch {
+  } catch (e) {
+    console.error('[booking/intent] failed', e);
     return NextResponse.json({ ok: false, error: 'Could not save.' }, { status: 500 });
   }
 }

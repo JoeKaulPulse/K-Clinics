@@ -97,7 +97,10 @@ export async function GET(req: Request) {
     const webhookUrl = process.env.CRON_ALERT_WEBHOOK_URL;
     if (webhookUrl) {
       const body = JSON.stringify({ text: `[kclinics cron] kiosk-cleanup failed: ${message} — check Vercel logs` });
-      try { await fetch(webhookUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body }); } catch { /* non-fatal */ }
+      // PRJ-1118.10: bound it — a hung webhook endpoint previously stalled this
+      // request indefinitely; on timeout the alert is simply dropped (non-fatal,
+      // matching every other outcome of this best-effort send).
+      try { await fetch(webhookUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body, signal: AbortSignal.timeout(8_000) }); } catch { /* non-fatal */ }
     }
     return NextResponse.json({ ok: false, error: message }, { status: 500 });
   }

@@ -96,6 +96,7 @@ export async function POST(req: Request) {
 
     return NextResponse.json({ ok: false, error: 'Unknown operation.' }, { status: 400 });
   } catch (e) {
+    console.error('[pages] op failed', e);
     return NextResponse.json({ ok: false, error: (e as Error)?.message || 'Failed.' }, { status: 500 });
   }
 }

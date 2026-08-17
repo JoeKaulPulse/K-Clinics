@@ -28,7 +28,8 @@ export async function POST(req: Request) {
       create: { email, source: 'dentistry-waitlist' },
     });
     return NextResponse.json({ ok: true });
-  } catch {
+  } catch (e) {
+    console.error('[dentistry-interest] failed', e);
     return NextResponse.json({ ok: false, error: 'Something went wrong. Please try again.' }, { status: 500 });
   }
 }
