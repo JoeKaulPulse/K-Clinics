@@ -337,7 +337,12 @@ export async function finishAppointment(bookingId: string) {
     if (await getSetting('review_requests_enabled')) {
       const { ensureReviewRequest, sendReviewRequest } = await import('@/lib/review-system');
       const review = await ensureReviewRequest(bookingId);
-      if (review) {
+      // Send once only: `channel` is null until the first request goes out
+      // (same guard setBookingStatus already applies). Without it, a visit that
+      // was completed, reset to confirmed and then completed again sends the
+      // client a second review invite — reachable since BLD-1249 made "Reset to
+      // confirmed" clear finishedAt, which re-opens this code path.
+      if (review && review.status === 'PENDING' && !review.channel) {
         await sendReviewRequest(review.id, 'EMAIL');
         await logAudit({ action: 'REVIEW_REQUESTED', actor: session.email, actorRole: session.role, bookingId, clientId: b.clientId, summary: 'Review request sent' });
       }

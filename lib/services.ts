@@ -77,13 +77,17 @@ export async function listServices(includeInactive = false): Promise<ServiceView
   }));
 }
 
-export type BookingTreatment = { slug: string; title: string; group: string; variants: { id: string; name: string; durationMin: number; pricePence: number }[] };
+export type BookingTreatment = { slug: string; title: string; group: string; variants: { id: string; name: string; durationMin: number; pricePence: number; courses: Course[] }[] };
 
 /** The treatment list for the staff "New phone booking" modal: a Consultation
  *  option first (BLD-203), then every bookable treatment category with its
  *  specific service variants/areas (BLD-189), each with its own price + duration.
  *  Shared by every entry point — the Bookings page, the dashboard Quick Actions
- *  and the reception view — so all three stay identical (BLD-447). */
+ *  and the reception view — so all three stay identical (BLD-447).
+ *  BLD-1268: each variant also carries its configured package/course tiers
+ *  (`courses` — e.g. 1/3/6 sessions) so the phone-booking modal can offer the
+ *  same tier picker the public /book flow shows, instead of a blind "number of
+ *  sessions" field staff had to fill in without knowing what packages exist. */
 export async function loadBookingTreatments(): Promise<BookingTreatment[]> {
   const services = await listServices().catch(() => []);
   const namesBySlug = new Map<string, Set<string>>();
@@ -93,7 +97,7 @@ export async function loadBookingTreatments(): Promise<BookingTreatment[]> {
     const multi = (namesBySlug.get(s.treatmentSlug)?.size ?? 0) > 1;
     for (const v of s.variants) {
       const arr = variantsBySlug.get(s.treatmentSlug) ?? [];
-      arr.push({ id: v.id, name: multi ? `${s.name} — ${v.name}` : v.name, durationMin: v.durationMin, pricePence: v.pricePence });
+      arr.push({ id: v.id, name: multi ? `${s.name} — ${v.name}` : v.name, durationMin: v.durationMin, pricePence: v.pricePence, courses: v.courses });
       variantsBySlug.set(s.treatmentSlug, arr);
     }
   }
