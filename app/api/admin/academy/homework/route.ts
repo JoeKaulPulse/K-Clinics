@@ -25,5 +25,9 @@ export async function POST(req: Request) {
     where: { id },
     data: { status: status as (typeof STATUSES)[number], feedback, reviewedBy: session.email, reviewedAt: new Date() },
   });
+  // BLD-1296: tell the student their homework was graded — same fire-and-forget
+  // convention as notifyStudentReply's call site (app/api/admin/lms/route.ts).
+  const { notifyHomeworkGraded } = await import('@/lib/lms');
+  notifyHomeworkGraded(id).catch(() => {});
   return NextResponse.json({ ok: true });
 }

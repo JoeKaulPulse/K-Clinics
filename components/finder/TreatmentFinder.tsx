@@ -124,9 +124,13 @@ export function TreatmentFinder({ gender, prices = {} }: { gender?: string | nul
                       if (emailBusy || !/\S+@\S+\.\S+/.test(email)) { setEmailErr('Enter a valid email.'); return; }
                       setEmailBusy(true); setEmailErr('');
                       try {
-                        const r = await fetch('/api/finder-lead', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email, slugs: results.map((t) => t!.slug) }) });
+                        // Shared id so the browser Lead event de-duplicates against the
+                        // server-side CAPI Lead sent from /api/finder-lead (PRJ-1118.9,
+                        // same pattern as ConsultForm / GroupBookingForm).
+                        const eventId = (typeof crypto !== 'undefined' && crypto.randomUUID) ? crypto.randomUUID() : String(Date.now());
+                        const r = await fetch('/api/finder-lead', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email, slugs: results.map((t) => t!.slug), eventId }) });
                         const j = await r.json().catch(() => ({ ok: false }));
-                        if (j.ok) { setEmailSent(true); trackLead({ detail: { source: 'treatment-finder' } }); }
+                        if (j.ok) { setEmailSent(true); trackLead({ eventId: j.eventId || eventId, detail: { source: 'treatment-finder' } }); }
                         else setEmailErr(j.error || 'Couldn’t send just now — please try again.');
                       } catch { setEmailErr('Couldn’t send just now — please try again.'); }
                       setEmailBusy(false);
