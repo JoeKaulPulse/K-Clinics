@@ -75,7 +75,7 @@ export default async function HomePage() {
 
       {/* Marquee ribbon */}
       <section className="border-y border-[var(--color-line)] bg-[var(--color-bone)] py-8">
-        <Marquee items={['Laser & Skin', 'Aesthetic Dentistry', 'Non-Surgical Lifting', 'Body Contouring', 'Injectable Artistry', 'Smile Design']} />
+        <Marquee items={['Laser & Skin', 'Aesthetic Dentistry', 'Non-Surgical Lifting', 'Body Contouring', 'Injectable Artistry', 'Smile Design']} accentClassName="text-[var(--color-gold-deep)]" />
       </section>
 
       {/* AI consultation feature band */}

@@ -56,7 +56,7 @@ export default async function CoursePage({ params }: { params: Promise<{ slug: s
           <div className="space-y-8">
             {course.accreditations.length > 0 && (
               <div className="flex flex-wrap gap-x-6 gap-y-2 text-sm uppercase tracking-[0.14em] text-[var(--color-stone)]">
-                {course.accreditations.map((a) => <span key={a} className="flex items-center gap-2"><span className="text-[var(--color-gold)]">✦</span>{ACCREDITATION_LABELS[a] ?? a}</span>)}
+                {course.accreditations.map((a) => <span key={a} className="flex items-center gap-2"><span className="text-[var(--color-gold-deep)]">✦</span>{ACCREDITATION_LABELS[a] ?? a}</span>)}
               </div>
             )}
 
@@ -112,7 +112,7 @@ export default async function CoursePage({ params }: { params: Promise<{ slug: s
                   {previews.map((p) => (
                     <li key={p.id}>
                       <Link href={`/academy/${slug}/taster/${p.id}`} className="flex flex-wrap items-center gap-2 rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-bone)] px-4 py-3 text-sm transition-colors hover:border-[var(--color-gold)]">
-                        <span className="text-[var(--color-gold)]">▶</span>
+                        <span className="text-[var(--color-gold-deep)]">▶</span>
                         <span className="font-medium text-[var(--color-ink)]">{p.title}</span>
                         <span className="text-[var(--color-stone)]">· {p.moduleTitle}{p.durationMin ? ` · ${p.durationMin} min` : ''}</span>
                         <span className="ml-auto text-xs font-medium text-[var(--color-gold-deep)]">Free →</span>

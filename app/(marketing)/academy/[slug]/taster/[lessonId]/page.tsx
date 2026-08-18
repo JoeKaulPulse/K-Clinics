@@ -45,7 +45,7 @@ export default async function TasterLessonPage({ params }: { params: Promise<{ s
         {lesson.keyPoints.length > 0 && (
           <div className="mt-7 rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-bone)] p-5">
             <p className="eyebrow mb-3">Key points</p>
-            <ul className="space-y-2">{lesson.keyPoints.map((p, i) => <li key={i} className="flex gap-2.5 text-sm text-[var(--color-ink-soft)]"><span className="mt-1 text-[var(--color-gold)]">✦</span>{p}</li>)}</ul>
+            <ul className="space-y-2">{lesson.keyPoints.map((p, i) => <li key={i} className="flex gap-2.5 text-sm text-[var(--color-ink-soft)]"><span className="mt-1 text-[var(--color-gold-deep)]">✦</span>{p}</li>)}</ul>
           </div>
         )}
         <Downloads items={lesson.attachments} />

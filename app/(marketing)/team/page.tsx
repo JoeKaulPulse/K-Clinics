@@ -105,7 +105,7 @@ function Stars({ rating, count }: { rating: number; count: number }) {
   const full = Math.round(rating);
   return (
     <span className="inline-flex items-center gap-1.5 text-sm">
-      <span className="text-[var(--color-gold)]">{'★★★★★'.slice(0, full)}<span className="text-[var(--color-line)]">{'★★★★★'.slice(full)}</span></span>
+      <span className="text-[var(--color-gold-deep)]">{'★★★★★'.slice(0, full)}<span className="text-[var(--color-line)]">{'★★★★★'.slice(full)}</span></span>
       <span className="text-[var(--color-stone)]">{rating.toFixed(1)}{count > 0 ? ` · ${count} review${count === 1 ? '' : 's'}` : ''}</span>
     </span>
   );

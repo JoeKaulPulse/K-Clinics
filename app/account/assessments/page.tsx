@@ -35,7 +35,7 @@ export default async function AssessmentsPage() {
         <div className="flex items-center justify-between gap-4">
           <span className="text-sm font-medium">{t('asmt.progress', { done: doneCount, total })}</span>
           <span className="inline-flex items-center gap-1.5 text-xs text-[var(--color-stone)]">
-            <svg viewBox="0 0 24 24" className="h-3.5 w-3.5 text-[var(--color-gold)]" fill="none" stroke="currentColor" strokeWidth="1.6"><path d="M12 3l7 3v5c0 4.5-3 7.6-7 9-4-1.4-7-4.5-7-9V6l7-3z" strokeLinejoin="round" /></svg>
+            <svg viewBox="0 0 24 24" className="h-3.5 w-3.5 text-[var(--color-gold-deep)]" fill="none" stroke="currentColor" strokeWidth="1.6"><path d="M12 3l7 3v5c0 4.5-3 7.6-7 9-4-1.4-7-4.5-7-9V6l7-3z" strokeLinejoin="round" /></svg>
             {t('asmt.secure')}
           </span>
         </div>
@@ -52,7 +52,7 @@ export default async function AssessmentsPage() {
           return (
             <div key={q.key} className="group flex flex-wrap items-center justify-between gap-4 rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-6 shadow-[var(--shadow-soft)] transition-all duration-300 hover:-translate-y-0.5 hover:border-[var(--color-gold)]/40 hover:shadow-[var(--shadow-lift)]">
               <div className="flex items-start gap-4">
-                <span className={`mt-0.5 grid h-10 w-10 shrink-0 place-items-center rounded-full ${done ? 'bg-[var(--color-jade)]/15 text-[var(--color-jade)]' : 'bg-[var(--color-gold)]/15 text-[var(--color-gold)]'}`}>
+                <span className={`mt-0.5 grid h-10 w-10 shrink-0 place-items-center rounded-full ${done ? 'bg-[var(--color-jade)]/15 text-[var(--color-jade)]' : 'bg-[var(--color-gold)]/15 text-[var(--color-gold-deep)]'}`}>
                   {done ? (
                     <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none"><path d="M5 13l4 4L19 7" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" /></svg>
                   ) : (

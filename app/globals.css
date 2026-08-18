@@ -546,7 +546,11 @@ html[data-theme='dark'] .text-black { color: var(--color-ink); }
 .logo { transition: transform 0.6s var(--ease-lux); }
 .logo__k { transition: color 0.6s var(--ease-lux); }
 .logo:hover { transform: translateY(-1px); }
-.logo:hover .logo__k { color: var(--color-gold); }
+/* BLD-1274: the default (non-mono) logo sits on porcelain/bone — gold-deep
+   clears AA there. The mono variant (dark hero overlays, dark footer) keeps
+   gold-soft, the token already used for eyebrows/accents on dark surfaces. */
+.logo:hover .logo__k { color: var(--color-gold-deep); }
+.logo--mono:hover .logo__k { color: var(--color-gold-soft); }
 
 /* ── Respect reduced motion ───────────────────────────────────────────────── */
 @media (prefers-reduced-motion: reduce) {
