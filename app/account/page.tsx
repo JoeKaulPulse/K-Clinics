@@ -123,8 +123,12 @@ export default async function DashboardPage() {
                     {' · '}{t('dash.pkgRemaining', { n: p.sessionsRemaining })}
                   </p>
                 </div>
-                <span className={`rounded-full px-3 py-1 text-xs font-medium ${p.paid ? 'bg-[var(--color-jade)]/15 text-[var(--color-jade)]' : 'bg-[var(--color-blush)]/20 text-[var(--color-blush-deep)]'}`}>
-                  {p.paid ? t('dash.pkgPaid') : t('dash.pkgUnpaid')}
+                {/* BLD-1380: three states, not two. A fully refunded course is
+                    neither "Paid" nor "Payment pending" — telling a client who
+                    has had their money back that payment is pending reads as a
+                    demand for money they don't owe. */}
+                <span className={`rounded-full px-3 py-1 text-xs font-medium ${p.paid ? 'bg-[var(--color-jade)]/15 text-[var(--color-jade)]' : p.refunded ? 'bg-[var(--color-line)] text-[var(--color-stone)]' : 'bg-[var(--color-blush)]/20 text-[var(--color-blush-deep)]'}`}>
+                  {p.paid ? t('dash.pkgPaid') : p.refunded ? t('dash.pkgRefunded') : t('dash.pkgUnpaid')}
                 </span>
               </div>
             ))}

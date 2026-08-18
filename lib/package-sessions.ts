@@ -33,7 +33,12 @@ export type PackageView = {
   sessionsUsed: number; // completed sessions (incl. the purchase visit itself)
   sessionsBooked: number; // pending/confirmed, not yet taken
   sessionsRemaining: number; // total − used − booked (never below 0)
-  paid: boolean; // charged or BNPL pre-paid
+  paid: boolean; // settled AND not fully refunded — i.e. the sessions are spendable
+  // BLD-1380: fully refunded (refundedPence >= chargedPence). Distinct from
+  // !paid: the money WAS taken and has since been given back, so every surface
+  // that renders a balance must say "Refunded", never "Payment pending" — the
+  // latter reads as a demand for money the client has already had returned.
+  refunded: boolean;
   purchasedAt: Date;
 };
 
@@ -119,6 +124,7 @@ export async function clientPackages(clientId: string): Promise<PackageView[]> {
       sessionsBooked: booked,
       sessionsRemaining: Math.max(0, total - used - booked),
       paid: Boolean(p.chargedAt || p.prepaidAt) && !fullyRefunded,
+      refunded: fullyRefunded,
       purchasedAt: p.createdAt,
     };
   });

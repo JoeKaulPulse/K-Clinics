@@ -8,7 +8,9 @@ import { linkBookingToPackage, unlinkBookingFromPackage } from '@/app/admin/book
 // client's prepaid course, so it counts against the course balance (or detach
 // one linked in error). Server action re-validates everything; this is just the
 // picker.
-export type LinkablePackage = { purchaseBookingId: string; label: string; sessionsTotal: number; sessionsRemaining: number; paid: boolean };
+// BLD-1380: `refunded` distinguishes a course whose money has been given back
+// from one never paid for — both are !paid, but they need different labels.
+export type LinkablePackage = { purchaseBookingId: string; label: string; sessionsTotal: number; sessionsRemaining: number; paid: boolean; refunded: boolean };
 
 export function PackageLinkControl({ bookingId, linked, options }: { bookingId: string; linked: boolean; options: LinkablePackage[] }) {
   const [pending, start] = useTransition();
@@ -56,13 +58,13 @@ export function PackageLinkControl({ bookingId, linked, options }: { bookingId: 
             <option value="">Choose a course…</option>
             {options.map((o) => (
               <option key={o.purchaseBookingId} value={o.purchaseBookingId}>
-                {o.label} — {o.sessionsRemaining} of {o.sessionsTotal} left{o.paid ? '' : ' (unpaid)'}
+                {o.label} — {o.sessionsRemaining} of {o.sessionsTotal} left{o.paid ? '' : o.refunded ? ' (refunded)' : ' (unpaid)'}
               </option>
             ))}
           </select>
         ) : (
           <span className="text-xs text-[var(--color-ink-soft)]">
-            {options[0].label} — {options[0].sessionsRemaining} of {options[0].sessionsTotal} left{options[0].paid ? '' : ' (unpaid)'}
+            {options[0].label} — {options[0].sessionsRemaining} of {options[0].sessionsTotal} left{options[0].paid ? '' : options[0].refunded ? ' (refunded)' : ' (unpaid)'}
           </span>
         )}
         <button
