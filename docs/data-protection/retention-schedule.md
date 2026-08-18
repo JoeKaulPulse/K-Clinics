@@ -21,7 +21,7 @@ the owner to set, usually against UK clinical, tax or awarding-body guidance.
 
 | Data | Model(s) | Trigger | Retention | Basis |
 | --- | --- | --- | --- | --- |
-| Health assessments / medical history | `HealthAssessment` | Last treatment | **[OWNER TO CONFIRM — UK guidance for adult clinical records is commonly 8 years from last contact; longer for under-18s. Set per the clinic's clinical-records policy.]** | Clinical safety, insurance, professional duty |
+| Health assessments / medical history | `HealthAssessment` | Last treatment | **8 years from last treatment** — purge implemented in the nightly run (PRJ-1069.10), gated on the admin setting "Purge old health assessments"; the owner turning that setting on is the sign-off. Only clients with no treatment inside the 8-year window are touched. Until the setting is enabled, records are retained. | Clinical safety, insurance, professional duty |
 | Clinical treatment notes | `Booking.clinicalNoteEnc`, SOP responses | Last treatment | As clinical records above | As above |
 | Before-photos | `BeforePhoto` | Last treatment | As clinical records above **[OWNER TO CONFIRM]** | Clinical documentation |
 | Signed consents | `SignedConsent`, `ConsentRequest` | Treatment date | As clinical records above **[OWNER TO CONFIRM]** | Evidence of informed consent |
