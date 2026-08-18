@@ -9,6 +9,7 @@ export type ReviewEntry = {
   id: string; title: string; treatmentType: string; treatmentDate: string | null; clientRef: string | null;
   notes: string; photos: Photo[]; status: string; feedback: string | null; consentAttestedAt: string | null; courseTitle: string | null;
   studentName: string; studentEmail: string; createdAt: string; updatedAt: string; reviewedBy: string | null; reviewedAt: string | null;
+  clientLinked: boolean; clientEmail: string | null; // BLD-1291
 };
 
 const dateFmt = (iso: string | null) => (iso ? new Date(iso).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : '—');
@@ -23,6 +24,44 @@ export function PortfolioReview({ entries, statusLabels }: { entries: ReviewEntr
       {entries.length === 0 ? (
         <p className="rounded-[var(--radius-lg)] border border-dashed border-[var(--color-line)] p-6 text-center text-sm text-[var(--color-stone)]">No portfolio case studies yet. Trainees build these from the portal’s Portfolio tab.</p>
       ) : entries.map((e) => <EntryRow key={e.id} entry={e} statusLabels={statusLabels} onChanged={() => router.refresh()} />)}
+    </div>
+  );
+}
+
+// BLD-1291: the free-text "Client ref" keeps cases anonymised for trainees, but
+// the photos are real, identifying clinical images — without a link to the CRM
+// client they are invisible to right-to-erasure and subject-access exports.
+// Staff paste the client's email here once; the server resolves and audit-logs.
+function ClientLink({ entry: e, onChanged }: { entry: ReviewEntry; onChanged: () => void }) {
+  const [email, setEmail] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function act(clientEmail: string) {
+    setBusy(true); setError(null);
+    const res = await fetch('/api/admin/portfolio', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ op: 'linkClient', id: e.id, clientEmail }) });
+    const r = await res.json().catch(() => ({ ok: false, error: 'Request failed.' }));
+    setBusy(false);
+    if (r.ok) { setEmail(''); onChanged(); } else setError(r.error || 'Could not link.');
+  }
+
+  if (e.clientLinked) {
+    return (
+      <p className="text-xs text-[var(--color-stone)]">
+        Photographed client: <span className="text-[var(--color-ink)]">{e.clientEmail || 'linked'}</span> — photos covered by erasure/SAR.{' '}
+        <button onClick={() => act('')} disabled={busy} className="text-[var(--color-gold-deep)] underline-offset-2 hover:underline disabled:opacity-40">Unlink</button>
+        {error && <span role="alert" className="ml-2 text-[var(--color-blush-deep)]">{error}</span>}
+      </p>
+    );
+  }
+  return (
+    <div className="rounded-[var(--radius-sm)] border border-dashed border-[var(--color-line)] p-2.5">
+      <p className="text-xs text-[var(--color-blush-deep)]">Not linked to a client record — these photos won’t be found by an erasure or data-access request.</p>
+      <div className="mt-1.5 flex flex-wrap items-center gap-2">
+        <input value={email} onChange={(ev) => setEmail(ev.target.value)} type="email" placeholder="Client’s email in the CRM" aria-label="Photographed client's email" className="w-64 rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-2.5 py-1.5 text-xs" />
+        <button onClick={() => email.trim() && act(email)} disabled={busy || !email.trim()} className="rounded-full border border-[var(--color-line)] px-3 py-1.5 text-xs hover:border-[var(--color-gold)] disabled:opacity-40">{busy ? 'Linking…' : 'Link client'}</button>
+      </div>
+      {error && <p role="alert" className="mt-1 text-xs text-[var(--color-blush-deep)]">{error}</p>}
     </div>
   );
 }
@@ -77,6 +116,10 @@ function EntryRow({ entry: e, statusLabels, onChanged }: { entry: ReviewEntry; s
           )}
 
           {e.reviewedBy && <p className="text-xs text-[var(--color-stone)]">Last reviewed by {e.reviewedBy} on {dateFmt(e.reviewedAt)}.</p>}
+
+          {/* BLD-1291: link the case to the photographed client's CRM record so
+              the photos are covered by erasure and subject-access requests. */}
+          {e.photos.length > 0 && <ClientLink entry={e} onChanged={onChanged} />}
 
           <div>
             <textarea value={feedback} onChange={(ev) => setFeedback(ev.target.value)} rows={2} placeholder="Feedback for the trainee (required to request changes)…" aria-label="Feedback for trainee" className="w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-3 py-2 text-sm" />
