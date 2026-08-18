@@ -92,7 +92,7 @@ export async function GET(req: Request) {
           const body = JSON.stringify({ text: summary, ...report });
           // BLD-1137: await the alert — the serverless runtime can freeze once
           // the response is sent, so an un-awaited fetch may silently never send.
-          try { await fetch(webhookUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body }); } catch { /* non-fatal */ }
+          try { await fetch(webhookUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body, signal: AbortSignal.timeout(8_000) }); } catch { /* non-fatal */ }
         }
         // Advance the watermark only after the alert has gone out, so a failed
         // run re-alerts on the next cron rather than swallowing the outage.
