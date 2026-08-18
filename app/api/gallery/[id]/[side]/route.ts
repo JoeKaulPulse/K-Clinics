@@ -33,7 +33,14 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
   const type = 'beforeImage' in item ? item.beforeType : item.afterType;
   if (!data) return new Response('Not found', { status: 404 });
 
-  return new Response(Buffer.from(data), {
+  // BLD-1041: rows written since the encryption change are keyring ciphertext;
+  // decryptBytes passes legacy plaintext rows through unchanged until the
+  // nightly backfill upgrades them.
+  const { decryptBytes } = await import('@/lib/crypto');
+  let plain: Buffer;
+  try { plain = decryptBytes(data); } catch { return new Response('Not found', { status: 404 }); }
+
+  return new Response(new Uint8Array(plain), {
     headers: {
       'Content-Type': type || 'image/jpeg',
       // Public content is immutable per (id, updatedAt); pages bust the cache

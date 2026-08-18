@@ -299,6 +299,17 @@ export async function GET(req: Request) {
     failures++; console.error('[cron] consult notification backfill failed (continuing):', (e as Error)?.message);
   }
 
+  // BLD-1041: self-healing encryption backfill for legacy plaintext gallery
+  // before/after photos (bounded per run; latches off when done). Failures
+  // count so alerting fires.
+  let galleryEncrypt = { ran: false, migrated: 0, complete: false };
+  try {
+    const { backfillGalleryEncryptionIfNeeded } = await import('@/lib/gallery-encrypt-backfill');
+    galleryEncrypt = await backfillGalleryEncryptionIfNeeded();
+  } catch (e) {
+    failures++; console.error('[cron] gallery encryption backfill failed (continuing):', (e as Error)?.message);
+  }
+
   // BLD-1356: course-catalogue hygiene. A course card's LEVEL badge comes from
   // Course.level while the title carries its own "Level N" (e.g. "VTCT Level 5
   // Beauty Therapy Diploma" badged LEVEL 3) — independent admin-entered fields,
@@ -471,7 +482,7 @@ export async function GET(req: Request) {
 
   // BLD-153: surface failure to the scheduler — non-200 when anything failed.
   return NextResponse.json(
-    { ok: failures === 0, failures, durationMs: cronDurationMs, ...result, loyalty, membership, gcal, gbiz, gbizPosts, retention, idMeta, pii, gdprSweep, scheduledEmail, adSpend, board, clinicalBackfill, consultBackfill, courseLevels, portfolioMigration, examBank, gamification, authored, courseContent, communityDigest, instalmentDunning },
+    { ok: failures === 0, failures, durationMs: cronDurationMs, ...result, loyalty, membership, gcal, gbiz, gbizPosts, retention, idMeta, pii, gdprSweep, scheduledEmail, adSpend, board, clinicalBackfill, consultBackfill, galleryEncrypt, courseLevels, portfolioMigration, examBank, gamification, authored, courseContent, communityDigest, instalmentDunning },
     { status: failures === 0 ? 200 : 500 },
   );
 }
