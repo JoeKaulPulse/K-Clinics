@@ -49,7 +49,7 @@ export const SETTING_DEFAULTS: Record<SettingKey, boolean> = {
   require_consent: false,
   require_before_photo: true,
   abandoned_booking_recovery: true, // BLD-131: enabled (owner-approved revenue automation)
-  abandoned_order_recovery: true, // BLD-1278: enabled — mirrors abandoned_booking_recovery (BLD-131); the technical review (BLD-1204) already excluded POS/till sales and blank emails, and the copy matches the live booking-recovery flow
+  abandoned_order_recovery: false, // BLD-1278: automation is built and reviewed (BLD-1204 already excluded POS/till sales and blank emails; copy matches the live abandoned_booking_recovery flow) — still ships off pending an explicit owner go-ahead, since flipping this sends live customer emails on the next daily cron with no way to recall them
   booking_intent_recovery: true, // BLD-838: enabled (owner-approved revenue automation)
   no_show_notice: false,
   membership_renewal_nudge: true, // BLD-131: enabled (owner-approved revenue automation)
