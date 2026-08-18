@@ -77,9 +77,12 @@ export async function POST(req: Request, { params }: { params: Promise<{ token: 
     return NextResponse.json({ ok: false, error: 'Upload failed. Please try again.' }, { status: 500 });
   }
 
+  // BLD-1354: record WHICH consent wording was agreed to, not just when — the
+  // version/source evidence Art. 7 + Art. 9 need for a facial photo.
+  const { kioskConsentFields } = await import('@/lib/consent');
   await db.kioskSession.update({
     where: { id: session.id },
-    data: { photoUrl: blobUrl, consentAt: new Date(), status: 'PHOTO_TAKEN' },
+    data: { photoUrl: blobUrl, ...kioskConsentFields('kiosk-v1-photo'), status: 'PHOTO_TAKEN' },
   });
 
   // Funnel events: consent + photo.

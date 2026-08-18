@@ -41,11 +41,17 @@ export async function POST(req: Request, { params }: { params: Promise<{ token: 
     stage: string;
     poseIdx?: { increment: number };
     consentAt?: Date;
+    consentVersion?: string;
+    consentSource?: string;
     ageDeclaredAt?: Date;
   } = { stage };
   if (stage === 'captured') data.poseIdx = { increment: 1 };
   const firstConsent = stage === 'consent' && !session.consentAt;
-  if (firstConsent) data.consentAt = new Date();
+  if (firstConsent) {
+    // BLD-1354: version + source evidence, not just a bare timestamp.
+    const { kioskConsentFields } = await import('@/lib/consent');
+    Object.assign(data, kioskConsentFields('kiosk-v2-consent-step'));
+  }
   if (body?.ageDeclared === true && !session.ageDeclaredAt) data.ageDeclaredAt = new Date();
 
   // `updatedAt` bumps automatically (@updatedAt) on every stage write.

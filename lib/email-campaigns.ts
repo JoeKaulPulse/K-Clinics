@@ -38,6 +38,35 @@ type DeliverOpts = {
 
 const RECIPIENT_SELECT = { id: true, email: true, firstName: true, lastName: true, unsubToken: true } as const;
 
+/** BLD-1307: fetch the WHOLE audience. Every send path used a bare
+ *  `findMany({ take: 5000 })` with no ordering, so a segment larger than 5,000
+ *  opted-in clients got an arbitrary subset silently mailed while the campaign
+ *  recorded the truncated count as if it were the full send. Cursor-paginated so
+ *  memory stays bounded on any audience size. `excludeCampaignId` drops anyone
+ *  who already has an EmailEvent for that campaign — which makes a re-run of an
+ *  interrupted send a safe RESUME (each delivery writes its event immediately)
+ *  and replaces decideAbTest's hand-rolled version of the same exclusion. */
+async function audienceRecipients(aud: Audience, opts?: { excludeCampaignId?: string }): Promise<Recipient[]> {
+  const where = await audienceWhere(aud);
+  const exclude = opts?.excludeCampaignId
+    ? new Set((await db.emailEvent.findMany({ where: { campaignId: opts.excludeCampaignId }, select: { to: true } })).map((e) => e.to.toLowerCase()))
+    : null;
+  const out: Recipient[] = [];
+  const PAGE = 1000;
+  let cursor: string | undefined;
+  for (;;) {
+    const page = await db.client.findMany({
+      where, select: RECIPIENT_SELECT, orderBy: { id: 'asc' }, take: PAGE,
+      ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
+    });
+    if (!page.length) break;
+    cursor = page[page.length - 1].id;
+    for (const r of page) if (!exclude || !exclude.has(r.email.toLowerCase())) out.push(r);
+    if (page.length < PAGE) break;
+  }
+  return out;
+}
+
 /** Personalise + deliver to an explicit list of recipients with bounded
  *  concurrency. Each send is isolated so one failure never aborts the batch. */
 export async function deliverToRecipients(recipients: Recipient[], opts: DeliverOpts): Promise<{ sent: number; failed: number }> {
@@ -70,9 +99,11 @@ export async function deliverToRecipients(recipients: Recipient[], opts: Deliver
   return { sent, failed };
 }
 
-/** Personalise + deliver a campaign to its whole audience. */
+/** Personalise + deliver a campaign to its whole audience (no size cap —
+ *  BLD-1307). Skips anyone already emailed for this campaign, so calling it
+ *  again resumes an interrupted send instead of double-mailing. */
 export async function deliverCampaign(opts: DeliverOpts & { audience: Audience }): Promise<{ sent: number; failed: number }> {
-  const recipients = await db.client.findMany({ where: await audienceWhere(opts.audience), select: RECIPIENT_SELECT, take: 5000 });
+  const recipients = await audienceRecipients(opts.audience, { excludeCampaignId: opts.campaignId });
   return deliverToRecipients(recipients, opts);
 }
 
@@ -116,7 +147,7 @@ export async function startAbTest(id: string): Promise<{ ok: boolean; error?: st
   try { blocks = JSON.parse(c.body) as EmailBlock[]; } catch { /* empty */ }
   const audience: Audience = { type: (c.audienceType as Audience['type']) || 'all', value: c.audienceValue || undefined };
   const common = { blocks, campaignId: id, fromName: c.fromName || undefined, replyTo: c.replyTo || undefined, preheader: c.preheader || undefined };
-  const all = shuffle(await db.client.findMany({ where: await audienceWhere(audience), select: RECIPIENT_SELECT, take: 5000 }));
+  const all = shuffle(await audienceRecipients(audience)); // full audience (BLD-1307)
 
   const pct = Math.min(45, Math.max(5, c.abSamplePct ?? 15));
   const n = Math.floor((all.length * pct) / 100);
@@ -157,10 +188,9 @@ export async function decideAbTest(id: string): Promise<{ ok: boolean; error?: s
   try { blocks = JSON.parse(c.body) as EmailBlock[]; } catch { /* empty */ }
   const audience: Audience = { type: (c.audienceType as Audience['type']) || 'all', value: c.audienceValue || undefined };
 
-  // Everyone in the audience who hasn't already been emailed for this campaign.
-  const already = new Set((await db.emailEvent.findMany({ where: { campaignId: id }, select: { to: true } })).map((e) => e.to.toLowerCase()));
-  const rest = (await db.client.findMany({ where: await audienceWhere(audience), select: RECIPIENT_SELECT, take: 5000 }))
-    .filter((r) => !already.has(r.email.toLowerCase()));
+  // Everyone in the audience who hasn't already been emailed for this campaign
+  // (full audience, no cap — BLD-1307).
+  const rest = await audienceRecipients(audience, { excludeCampaignId: id });
 
   const { sent } = await deliverToRecipients(rest, {
     subject: winningSubject, blocks, campaignId: id,
@@ -173,7 +203,7 @@ export async function decideAbTest(id: string): Promise<{ ok: boolean; error?: s
 
 /** Cron entrypoint: send scheduled campaigns whose time has come, and decide any
  *  A/B tests whose decision window has elapsed. */
-export async function dispatchDueCampaigns(): Promise<{ processed: number; sent: number; abDecided: number }> {
+export async function dispatchDueCampaigns(): Promise<{ processed: number; sent: number; abDecided: number; resumed: number }> {
   const now = new Date();
   const due = await db.campaign.findMany({ where: { status: 'SCHEDULED', scheduledAt: { lte: now } }, select: { id: true }, take: 25 });
   let sent = 0;
@@ -187,5 +217,35 @@ export async function dispatchDueCampaigns(): Promise<{ processed: number; sent:
     try { const r = await decideAbTest(d.id); if (r.ok) { abDecided++; sent += r.sent || 0; } }
     catch (e) { console.error('[email-cron] A/B decide', d.id, 'failed:', (e as Error)?.message); }
   }
-  return { processed: due.length, sent, abDecided };
+
+  // BLD-1307: a send interrupted mid-flight (deploy, function timeout on a
+  // large audience) used to strand the campaign in SENDING forever with part
+  // of the audience unmailed and no way to re-claim it. deliverCampaign now
+  // skips anyone already emailed for the campaign, so finishing the send is a
+  // safe re-run. Only plain sends and decided A/B winner sends are resumed —
+  // an interrupted A/B SAMPLE send (subjectB set, no winner yet) must not be
+  // blasted to the whole audience, so it's logged for a human instead.
+  let resumed = 0;
+  const stuckCutoff = new Date(now.getTime() - 30 * 60_000);
+  const stuck = await db.campaign.findMany({ where: { status: 'SENDING', updatedAt: { lt: stuckCutoff } }, take: 5 });
+  for (const s of stuck) {
+    if (s.subjectB && !s.abWinner) { console.error('[email-cron] campaign', s.id, 'stuck in SENDING mid A/B test — needs a human decision, not auto-resume'); continue; }
+    try {
+      let blocks: EmailBlock[] = [];
+      try { blocks = JSON.parse(s.body) as EmailBlock[]; } catch { /* empty */ }
+      const r = await deliverCampaign({
+        subject: s.abWinner === 'B' ? (s.subjectB || s.subject) : s.subject, blocks, campaignId: s.id,
+        audience: { type: (s.audienceType as Audience['type']) || 'all', value: s.audienceValue || undefined },
+        fromName: s.fromName || undefined, replyTo: s.replyTo || undefined, preheader: s.preheader || undefined,
+        ...(s.abWinner ? { meta: { variant: s.abWinner, phase: 'winner' } } : {}),
+      });
+      // Recount from the per-recipient events so the recorded figure is the
+      // true total across the original attempt + this resume, not just one leg.
+      const sentTotal = await db.emailEvent.count({ where: { campaignId: s.id, status: 'SENT' } });
+      await db.campaign.update({ where: { id: s.id }, data: { status: 'SENT', sentAt: s.sentAt ?? new Date(), recipients: sentTotal } });
+      sent += r.sent; resumed++;
+      console.warn('[email-cron] resumed interrupted campaign', s.id, `— ${r.sent} remaining recipient(s) mailed, ${sentTotal} total`);
+    } catch (e) { console.error('[email-cron] resume of campaign', s.id, 'failed:', (e as Error)?.message); }
+  }
+  return { processed: due.length, sent, abDecided, resumed };
 }
