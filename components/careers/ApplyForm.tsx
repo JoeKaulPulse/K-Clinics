@@ -16,12 +16,27 @@ export function ApplyForm({ roles }: { roles: { id: string; title: string }[] })
 
   // Seed the Role dropdown from ?role=<vacancyId> so "Apply for this role" on a
   // specific vacancy card pre-fills the right role instead of always the first
-  // one in the list (PRJ-1034.12). Falls back to roles[0], set above.
+  // one in the list (PRJ-1034.12). Falls back to roles[0], set above. Covers a
+  // fresh page load — a bookmarked, shared or new-tab link.
   useEffect(() => {
     const role = new URLSearchParams(window.location.search).get('role');
     if (role && roles.some((r) => r.id === role)) set('vacancyId', role);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // The vacancy list and this form share the /careers page, so clicking a
+  // different vacancy's Apply link while already on the page is a same-route,
+  // query-only navigation — this form is already mounted, so the mount-only
+  // effect above won't re-run. ApplyRoleLink dispatches this event on click so
+  // an already-mounted form updates too (PRJ-1034.12).
+  useEffect(() => {
+    function onApplyRole(e: Event) {
+      const id = (e as CustomEvent<string>).detail;
+      if (id && roles.some((r) => r.id === id)) set('vacancyId', id);
+    }
+    window.addEventListener('kclinics:apply-role', onApplyRole as EventListener);
+    return () => window.removeEventListener('kclinics:apply-role', onApplyRole as EventListener);
+  }, [roles]);
 
   async function submit() {
     if (!f.name.trim() || !/\S+@\S+\.\S+/.test(f.email)) { setError('Please enter your name and a valid email.'); return; }

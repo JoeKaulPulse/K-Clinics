@@ -7,7 +7,7 @@ import { NewsletterCapture } from '@/components/layout/NewsletterCapture';
 export const generateMetadata = (): Promise<Metadata> => pageMeta({
   title: 'Get My Plan — AI Skin, Smile & Hair Consultation | KClinics',
   description:
-    'Upload a photo and our AI analyses your skin, smile and hair, then builds a personalised, phased, bookable treatment plan to your budget. Free with a KClinics account.',
+    'Upload a photo and our AI analyses your skin, smile and hair, then builds a personalised, bookable treatment plan to your budget — free with an account.',
   path: '/ai-consultation',
   keywords: ['AI skin analysis London', 'AI consultation aesthetics', 'personalised treatment plan'],
 });
