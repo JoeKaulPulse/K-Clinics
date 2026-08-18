@@ -283,8 +283,16 @@ export async function getBooking(id: string) {
 // and real skip/take pagination instead of a fixed row cap.
 export const ORDERS_PER_PAGE = 50;
 
+// `status` arrives straight off the query string, and Prisma throws a
+// validation error (not an empty result) for a value outside the OrderStatus
+// enum — which would 500 the whole Orders page on a hand-edited or stale URL.
+// Anything unrecognised falls back to the default view instead.
+const ORDER_STATUSES = ['PENDING', 'PAID', 'FULFILLED', 'CANCELLED', 'REFUNDED'] as const;
+
 export async function listOrders(opts: { q?: string; status?: string; page?: number; perPage?: number } = {}) {
-  const { q, status } = opts;
+  const { q } = opts;
+  const raw = (opts.status || '').toUpperCase();
+  const status = (ORDER_STATUSES as readonly string[]).includes(raw) || raw === 'ALL' ? raw : '';
   const perPage = Math.min(Math.max(opts.perPage ?? ORDERS_PER_PAGE, 1), 200);
   const and: Record<string, unknown>[] = [];
   // Default view (no status tab picked) keeps the original behaviour of
