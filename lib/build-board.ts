@@ -957,14 +957,37 @@ export async function routineQueue(limit = 15, offset = 0) {
   // BLD-929: optional window offset so a long session can read past the top
   // `cap` items (the counts below still report the true totals for both lanes).
   const off = Math.max(0, Math.round(offset) || 0);
+  const include = {
+    subtasks: { orderBy: { order: 'asc' as const } },
+    dependencies: { include: { dependsOn: { select: { title: true, status: true } } } },
+    events: { where: { kind: 'comment' }, orderBy: { createdAt: 'desc' as const }, take: 5 },
+  };
   const items = await db.buildItem.findMany({
     where: { assignee: 'claude', status: { in: ['TRIAGE', 'IN_PROGRESS', 'IN_REVIEW'] } },
-    include: {
-      subtasks: { orderBy: { order: 'asc' } },
-      dependencies: { include: { dependsOn: { select: { title: true, status: true } } } },
-      events: { where: { kind: 'comment' }, orderBy: { createdAt: 'desc' }, take: 5 },
-    },
+    include,
   });
+  // BLD-1368: staff feedback was structurally invisible to routine sessions.
+  // Status-BLOCKED items were excluded from this query entirely (the response
+  // field named `blocked` is DEPENDENCY-blocked actionable work — a different
+  // thing), and SHIPPED items — where sign-off feedback lands — were only a
+  // count. A comment the team left on either kind was therefore unreachable by
+  // any autonomous session, so the item never moved. Surface both as a
+  // `feedback` lane: every status-BLOCKED item (any assignee — feedback often
+  // reassigns), plus SHIPPED items with a recent comment from a human actor.
+  // Read-only and additive; the existing POST `update` action already allows
+  // moving BLOCKED back to a working status once the feedback is addressed.
+  const HUMAN = { notIn: ['claude', 'routine', 'system'] };
+  const FEEDBACK_WINDOW_MS = 60 * 24 * 3600_000;
+  const [blockedStatusItems, shippedWithFeedback] = await Promise.all([
+    db.buildItem.findMany({ where: { status: 'BLOCKED' }, include, orderBy: { updatedAt: 'desc' } }),
+    db.buildItem.findMany({
+      where: {
+        status: 'SHIPPED',
+        events: { some: { kind: 'comment', actor: HUMAN, createdAt: { gte: new Date(Date.now() - FEEDBACK_WINDOW_MS) } } },
+      },
+      include, orderBy: { updatedAt: 'desc' }, take: 30,
+    }),
+  ]);
   const byPriority = (a: typeof items[number], b: typeof items[number]) => a.urgency.localeCompare(b.urgency) || veRank(b) - veRank(a) || +new Date(a.createdAt) - +new Date(b.createdAt);
   const serialize = (i: typeof items[number]) => {
     const blockedBy = i.dependencies.filter((d) => !DONE_STATES.includes(d.dependsOn.status)).map((d) => d.dependsOn.title);
@@ -981,15 +1004,24 @@ export async function routineQueue(limit = 15, offset = 0) {
   const ranked = [...items].sort(byPriority);
   const actionable = ranked.filter((i) => i.dependencies.every((d) => DONE_STATES.includes(d.dependsOn.status)));
   const blocked = ranked.filter((i) => i.dependencies.some((d) => !DONE_STATES.includes(d.dependsOn.status)));
+  // BLD-1368: BLOCKED items first (they are stalled work), then shipped items
+  // whose sign-off drew a human comment; each carries recentComments so the
+  // session can read the feedback without any other access.
+  const feedback = [...blockedStatusItems, ...shippedWithFeedback.filter((s) => !blockedStatusItems.some((b) => b.id === s.id))];
   const [continueAt, lastWake] = await Promise.all([getRaw('build_continue_requested_at'), getRaw('build_continue_last_wake_at')]);
   return {
     generatedAt: new Date().toISOString(),
-    guidance: 'Work the highest item in `actionable` first (already ordered by urgency then value:effort). Skip owner-gated items (those waiting on an owner-input subtask you cannot do yourself). Build end-to-end, run `npx tsc --noEmit` and `npm run build`, open a PR on a claude/ branch (no "Closes"), and update lib/build-backlog.ts. Cite each item’s reference ID (`ref`, e.g. BLD-12 / PRJ-3.1) in commit messages, PR titles/bodies and reports so the work is traceable end-to-end.',
+    guidance: 'Work the highest item in `actionable` first (already ordered by urgency then value:effort). Skip owner-gated items (those waiting on an owner-input subtask you cannot do yourself). ALSO check `feedback`: BLOCKED items and shipped items with recent human comments — read each item\'s recentComments, act on the feedback, and move the item along (the update action accepts status changes). Build end-to-end, run `npx tsc --noEmit` and `npm run build`, open a PR on a claude/ branch (no "Closes"), and update lib/build-backlog.ts. Cite each item’s reference ID (`ref`, e.g. BLD-12 / PRJ-3.1) in commit messages, PR titles/bodies and reports so the work is traceable end-to-end.',
     continueRequestedAt: continueAt,
     lastWakeAt: lastWake,
-    counts: { actionable: actionable.length, blocked: blocked.length, awaitingSignoff: await db.buildItem.count({ where: { status: 'SHIPPED' } }) },
+    counts: {
+      actionable: actionable.length, blocked: blocked.length,
+      feedback: feedback.length, blockedStatus: blockedStatusItems.length,
+      awaitingSignoff: await db.buildItem.count({ where: { status: 'SHIPPED' } }),
+    },
     actionable: actionable.slice(off, off + cap).map(serialize),
     blocked: blocked.slice(off, off + cap).map(serialize),
+    feedback: feedback.slice(0, cap).map(serialize),
   };
 }
 
