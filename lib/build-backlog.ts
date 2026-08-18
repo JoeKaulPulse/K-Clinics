@@ -3977,6 +3977,26 @@ export const BUILD_BACKLOG: BacklogItem[] = [
       'NOT visually verified: Chromium cannot egress in this session (ERR_CONNECTION_RESET direct and via proxy; curl reaches the site fine -- the strict explicit-proxy case in CLAUDE.md). Verification was tsc + production build + direct server-rendering of the component asserting the visibility/inert/h1/LCP invariants. Worth a real-browser pass on /: slide transitions, the controls row on mobile widths, and the film slide once the owner supplies a URL.',
     ],
   },
+  {
+    title: 'Team feedback on BLOCKED and SHIPPED board items is invisible to routine sessions, so it never gets actioned',
+    type: 'ERROR', urgency: 'P1', status: 'SHIPPED', assignee: 'claude', pr: PR(1814),
+    value: 8, effort: 2,
+    detail: 'Owner-reported (BLD-1368): the team had left feedback against many blocked items and none of them moved. Root cause: lib/build-board.ts routineQueue() only fetched assignee=claude items in TRIAGE/IN_PROGRESS/IN_REVIEW. Status-BLOCKED items were excluded entirely (the response field named blocked is dependency-blocked actionable work, a different thing), and SHIPPED items -- where sign-off feedback lands, 743 awaiting at the time -- were only a count. A staff comment on either kind was structurally unreachable by any autonomous session. Verified empirically before the fix: paging the entire live queue returned zero human comments across all 75 visible items, while the board actually held 37 status-BLOCKED items, five of them carrying direct staff/owner feedback dating back to 19 June.',
+    notes: [
+      'Fix: routineQueue gains a read-only feedback lane -- every status-BLOCKED item (any assignee, since feedback often reassigns) plus SHIPPED items with a comment from a human actor (not claude/routine/system) in the last 60 days, capped at 30, each serialized with recentComments so a session reads the feedback directly from the queue. counts gains feedback/blockedStatus; the guidance string directs sessions to work the lane. No write-path change -- the existing update action already accepts moving BLOCKED back to a working status.',
+      'Proven immediately after deploy: the first read of the new lane surfaced 39 items (37 status-BLOCKED), five with human feedback that had never been actioned -- BLD-512 (Inna, 19 Jun: canonical support@ address; already fixed in code but never moved -- verified live and marked SHIPPED with a reply), BLD-39 (Inna: QA_TOKEN go-ahead; replied with the one remaining env-var step), BLD-795 (owner P0, already fixed; replied with verification steps), BLD-997 (owner: banner artwork note -- see the separate entry, the offer copy had been dropped by misreading it), and PRJ-1.11 (owner: kiosk leaderboard images uploaded; unblocked to TRIAGE with a scoped plan). BLD-1197 (rotating hero promo) reconciled against the shipped BLD-1348 slider with a three-option ask on the stale June pricing.',
+    ],
+  },
+  {
+    title: 'Academy banner missing the actual three-level VTCT offer it was requested for (BLD-997 follow-up)',
+    type: 'ERROR', urgency: 'P1', status: 'IN_REVIEW', assignee: 'claude',
+    value: 6, effort: 1,
+    detail: 'Surfaced by the BLD-1368 feedback lane. BLD-997 asked for a promotional banner: enrol on all three VTCT levels (L2+L3+L4), 3500 with the 5000 original crossed out, save 1500, and an Enrol Now CTA. A prior pass read the owner 10 Aug comment ("no specific artwork for this campaign, use brand style") as replacing the whole offer and shipped a generic brand banner -- the comment only replaced the artwork. The offer copy never reached the page.',
+    notes: [
+      'Fix: components/academy/AcademyBanner.tsx now renders the offer in the same ink/gold brand treatment -- crossed-out 5000 original (del with screen-reader Was/Now context so the two prices do not read as one number), 3500 in the display face, a Save 1500 badge, and Enrol now linking to #courses (no bundle exists in live data to deep-link: the Learning pathways section renders empty on the live page). Still server-rendered visible with no Reveal wrapper (the BLD-997 visibility lesson). Prices are owner-stated on the item and re-affirmed 10 Aug; they live in this file if the campaign changes.',
+      'Verified: npx tsc --noEmit and npm run build pass clean; edge middleware bundle clean of node:util/types (BLD-1365 regression check). Not visually verified -- no browser egress from this environment.',
+    ],
+  },
 ];
 
 // A content hash over every item's title + status + PR, so ANY change (a new
