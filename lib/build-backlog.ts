@@ -3875,6 +3875,16 @@ export const BUILD_BACKLOG: BacklogItem[] = [
     ],
   },
   {
+    title: 'Shared Dialog component renders its panel under its own backdrop, unclickable in production (BLD-1362)',
+    type: 'ERROR', urgency: 'P0', status: 'IN_REVIEW', assignee: 'claude',
+    value: 8, effort: 1,
+    detail: 'components/ui/Dialog.tsx rendered the backdrop as fixed inset-0 but left the panel wrapper static (no relative/z-index). A positioned element (the backdrop) paints above a non-positioned sibling regardless of DOM order, so every click inside the panel landed on the backdrop\'s onClick={onClose} instead of the panel content -- confirmed live via elementFromPoint against the deployed CSS. At least two production callers passed no className override and were affected today: components/admin/ReplayList.tsx:135 and components/admin/EditClientDetails.tsx:63 -- any button/input inside those dialogs was unpressable, closeable only via backdrop click or the browser back gesture.',
+    notes: [
+      'Fix (BLD-1362): the panel wrapper in components/ui/Dialog.tsx now always carries relative z-10, with any caller-supplied className appended rather than replacing the base classes (previously a caller className fully replaced the (empty) base string). Grepped every consumer of Dialog.tsx (20 files) -- only three actually render the <Dialog> component (CampaignComposer.tsx, EditClientDetails.tsx, ReplayList.tsx); the other seventeen only use the headless useDialogBehaviours/useBodyScrollLock hooks and build their own markup, unaffected by this change. Checked all three real callers\' panel markup for conflicting position/z-index/overflow -- none found. Removed the redundant per-caller workaround in CampaignComposer.tsx (className="relative z-10", added locally during the BLD-1352 review since it landed before this shared fix), now redundant with the shared fix applying unconditionally.',
+      'Verified: npx tsc --noEmit and npm run build both pass clean.',
+    ],
+  },
+  {
     title: 'Admin login page skipped the strict admin CSP; CallRecord.notes stored in plaintext unlike its sibling fields (BLD-1280, BLD-1360)',
     type: 'ERROR', urgency: 'P2', status: 'IN_REVIEW', assignee: 'claude',
     value: 5, effort: 2,
