@@ -39,8 +39,23 @@ export async function onRequestError(
   // give unhandled request errors SOME persisted trace even then (DB fallback +
   // ops webhook; logErrorFallback itself no-ops when SENTRY_DSN IS set, so this
   // never double-reports).
-  try {
-    const { logErrorFallback } = await import('@/lib/error-log-fallback');
-    await logErrorFallback(`${error.name || 'Error'}: ${error.message}`, { route: request.path, digest: error.digest });
-  } catch { /* best-effort */ }
+  //
+  // BLD-1365: the NEXT_RUNTIME guard is load-bearing, not defensive. This file
+  // is bundled into the EDGE runtime too (the middleware function), and even a
+  // dynamic import() is traced into that bundle — error-log-fallback imports
+  // @/lib/db → Prisma/pg → node:util/types, which the Edge runtime rejects, so
+  // without the guard Vercel refuses the whole deployment at "Deploying
+  // outputs" ('The Edge Function "_middleware" is referencing unsupported
+  // modules: node:util/types') even though the build compiles clean. The
+  // bundler inlines NEXT_RUNTIME per target (same mechanism register() above
+  // relies on), so this branch — and the import behind it — is statically
+  // eliminated from the edge bundle. Edge request errors still reach Sentry
+  // via captureRequestError; they only lose the DB fallback, which cannot run
+  // on edge anyway.
+  if (process.env.NEXT_RUNTIME === 'nodejs') {
+    try {
+      const { logErrorFallback } = await import('@/lib/error-log-fallback');
+      await logErrorFallback(`${error.name || 'Error'}: ${error.message}`, { route: request.path, digest: error.digest });
+    } catch { /* best-effort */ }
+  }
 }
