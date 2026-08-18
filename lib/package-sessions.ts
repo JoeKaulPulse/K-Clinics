@@ -96,6 +96,7 @@ export async function clientPackages(clientId: string): Promise<PackageView[]> {
     select: {
       id: true, treatmentSlug: true, treatmentTitle: true, status: true,
       chargedAt: true, prepaidAt: true, createdAt: true,
+      chargedPence: true, refundedPence: true,
       items: { where: { isAddon: false }, orderBy: { createdAt: 'asc' }, take: 1, select: { sessions: true, label: true } },
       packageSessions: { where: SESSION_INCLUDED, select: { status: true, packageSessionUsedAt: true } },
     },
@@ -106,6 +107,9 @@ export async function clientPackages(clientId: string): Promise<PackageView[]> {
     const all = [{ status: p.status, packageSessionUsedAt: null as Date | null }, ...p.packageSessions];
     const used = all.filter(isUsed).length;
     const booked = all.filter((s) => (LIVE as readonly string[]).includes(s.status)).length;
+    // BLD-1380: a fully refunded purchase must not read as paid, or the client
+    // can keep booking/spending sessions they got their money back for.
+    const fullyRefunded = (p.chargedPence ?? 0) > 0 && (p.refundedPence ?? 0) >= (p.chargedPence ?? 0);
     return {
       purchaseBookingId: p.id,
       label: p.items[0]?.label || p.treatmentTitle,
@@ -114,7 +118,7 @@ export async function clientPackages(clientId: string): Promise<PackageView[]> {
       sessionsUsed: used,
       sessionsBooked: booked,
       sessionsRemaining: Math.max(0, total - used - booked),
-      paid: Boolean(p.chargedAt || p.prepaidAt),
+      paid: Boolean(p.chargedAt || p.prepaidAt) && !fullyRefunded,
       purchasedAt: p.createdAt,
     };
   });

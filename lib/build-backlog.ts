@@ -4206,6 +4206,16 @@ export const BUILD_BACKLOG: BacklogItem[] = [
       'The override is removable once prisma ships a release depending on deepmerge-ts >= 8.',
     ],
   },
+  {
+    title: 'Fully refunded package purchases no longer count as spendable sessions (BLD-1380)',
+    type: 'ERROR', urgency: 'P1', status: 'IN_REVIEW', assignee: 'claude',
+    value: 8, effort: 3,
+    detail: 'clientPackages() (lib/package-sessions.ts) computed paid as Boolean(chargedAt || prepaidAt) and never checked refundedPence, so a fully refunded course purchase still showed full sessions remaining and /api/account/packages let the client keep booking and spending sessions after getting their money back.',
+    notes: [
+      'Fix: clientPackages() now also selects chargedPence/refundedPence and excludes a purchase from paid once refundedPence >= chargedPence, mirroring the fully-refunded check already used by refundBooking()/refundableRemaining() in lib/booking-actions.ts. A partial refund still leaves the purchase paid and spendable, matching existing partial-refund handling elsewhere.',
+      'Verified: npx tsc --noEmit and npm run build pass clean.',
+    ],
+  },
 ];
 
 // A content hash over every item's title + status + PR, so ANY change (a new
