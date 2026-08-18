@@ -437,6 +437,32 @@ async function checkTracking(): Promise<Outcome> {
   } catch (e) { return { light: 'grey', detail: `Could not read tracking config — ${(e as Error)?.message?.slice(0, 60)}` }; }
 }
 
+// BLD-1273: every Sentry.captureException/captureMessage call across app/api/**
+// and lib/** (dozens of sites) is a silent no-op whenever SENTRY_DSN isn't set —
+// sentry.server.config.ts / sentry.edge.config.ts / instrumentation-client.ts all
+// skip Sentry.init() without a DSN and only console.warn once at boot. There's no
+// cheap read-only Sentry API to call here (unlike Stripe/Resend/etc.), so this is
+// a config-presence check, same shape as checkTracking above: amber (a visible
+// warning), not grey, because a total loss of error reporting is exactly the
+// class of "staff could assume it's on" misconfiguration that check already
+// treats as amber rather than a quiet grey "not configured".
+async function checkSentry(): Promise<Outcome> {
+  const server = has(process.env.SENTRY_DSN);
+  const client = has(process.env.NEXT_PUBLIC_SENTRY_DSN);
+  if (server && client) return { light: 'green', detail: 'SENTRY_DSN + NEXT_PUBLIC_SENTRY_DSN both set — server and client errors are captured' };
+  if (!server && !client) {
+    return {
+      light: 'amber',
+      detail: 'SENTRY_DSN not set — server + client errors are NOT reported to Sentry (falls back to a DB-logged trace + the ops webhook only when CRON_ALERT_WEBHOOK_URL is set)',
+      info: ['Set SENTRY_DSN (server) and NEXT_PUBLIC_SENTRY_DSN (client) in Vercel env to restore full error reporting.'],
+    };
+  }
+  return {
+    light: 'amber',
+    detail: server ? 'SENTRY_DSN set but NEXT_PUBLIC_SENTRY_DSN missing — client-side (browser) errors are not reported' : 'NEXT_PUBLIC_SENTRY_DSN set but SENTRY_DSN missing — server-side errors are not reported',
+  };
+}
+
 async function checkGithub(): Promise<Outcome> {
   try {
     const { getGithubConfig } = await import('@/lib/build-board');
@@ -582,6 +608,7 @@ const CHECKS: Def[] = [
   { id: 'gcal', label: 'Google Calendar', category: 'Scheduling & Reviews', probe: 'Config + connected staff (parked)', run: checkGoogleCalendar },
   { id: 'caldav', label: 'Clinic calendar (CalDAV)', category: 'Scheduling & Reviews', probe: 'OPTIONS on the CalDAV collection', run: checkCalDav },
 
+  { id: 'sentry', label: 'Error monitoring (Sentry)', category: 'Platform', probe: 'Reads SENTRY_DSN / NEXT_PUBLIC_SENTRY_DSN env presence', run: checkSentry },
   { id: 'github', label: 'GitHub (board mirror)', category: 'Platform', probe: 'GET api.github.com/repos/{repo}', run: checkGithub },
   { id: 'indexnow', label: 'IndexNow (SEO pings)', category: 'Platform', probe: 'GET /indexnow-key.txt + key match', run: checkIndexNow },
   { id: 'weather', label: 'Weather (Open-Meteo)', category: 'Platform', probe: 'GET api.open-meteo.com forecast', run: checkWeather },

@@ -6,7 +6,11 @@ import { getConsent } from '@/components/legal/CookieConsent';
 // First-party heatmap + session-replay capture. Runs ONLY after analytics
 // consent and never on the admin/portal areas. Inputs are masked; we store
 // coarse interaction data only (no keystrokes, no personal data).
-const SAMPLE = 1; // fraction of consenting sessions to record (1 = all)
+// BLD-1276: was 1 (100% of consenting sessions) — rrweb's mutation-observer/DOM
+// snapshot recorder ran continuously for the FULL session on every
+// analytics-consenting marketing visitor. 0.08 (8%) is still a representative
+// sample for heatmap/replay review while cutting the recording cost ~12x.
+const SAMPLE = 0.08; // fraction of consenting sessions to record
 
 function sessionKey(): string {
   try {

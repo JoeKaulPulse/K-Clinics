@@ -177,6 +177,20 @@ export function BookingFlow({ catalogue, client, preselect = null, preselectDate
     } catch { /* private mode / quota — ignore */ }
   }, [serviceId, variantId, sessions, addOns, date, slot, stage]);
 
+  // BLD-1255 — before this, only begin_checkout (upsell -> card) and the final
+  // purchase fired, so the earliest, highest-drop-off steps (treatment/variant
+  // selection, time picking) had zero event coverage. Fires on every stage
+  // change (including the stage the visitor lands on), one raw gtag call per
+  // transition — mirrors the existing begin_checkout/add_payment_info calls
+  // below rather than routing through lib/analytics-events.ts's ga4() helper,
+  // which this file doesn't use. window.gtag only exists once the visitor has
+  // granted analytics consent (components/marketing/TrackingScripts.tsx loads
+  // the script only then), so this is consent-gated the same implicit way as
+  // every other gtag call in this file.
+  useEffect(() => {
+    try { (window as Window & { gtag?: (...a: unknown[]) => void }).gtag?.('event', 'booking_stage', { stage }); } catch { /* analytics best-effort */ }
+  }, [stage]);
+
   // Today is selectable: same-day appointments go through as a request that staff
   // confirm. Future dates book as normal. Clinic-local (UK) date.
   const minDate = useMemo(() => new Date().toLocaleDateString('en-CA'), []);

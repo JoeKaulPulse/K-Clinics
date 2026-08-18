@@ -116,7 +116,13 @@ export function Dialog({ open, onClose, labelledby, label, children, className }
     <div className="fixed inset-0 z-50 flex items-end justify-center sm:items-center" onKeyDown={trapTab}>
       {/* Backdrop */}
       <div className="fixed inset-0 bg-black/60" aria-hidden onClick={onClose} />
-      {/* Panel */}
+      {/* Panel — `relative z-10` is load-bearing, not cosmetic: the backdrop
+          above is `fixed inset-0`, and a positioned element paints above a
+          non-positioned sibling regardless of DOM order, so without this the
+          panel rendered underneath the backdrop and every click inside it
+          landed on the backdrop's onClick={onClose} instead (BLD-1362). Lives
+          here so every <Dialog> caller gets it for free rather than each one
+          re-adding it to its own className. */}
       <div
         ref={panelRef}
         role="dialog"
@@ -124,7 +130,7 @@ export function Dialog({ open, onClose, labelledby, label, children, className }
         aria-labelledby={labelledby}
         aria-label={labelledby ? undefined : label}
         tabIndex={-1}
-        className={className}
+        className={`relative z-10${className ? ` ${className}` : ''}`}
       >
         {children}
       </div>
