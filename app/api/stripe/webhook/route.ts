@@ -273,7 +273,7 @@ export async function POST(req: Request) {
         const amount = dispute.amount ?? 0;
         // Resolve what was charged so the alert links straight to the record.
         const booking = piId ? await db.booking.findFirst({ where: { chargePaymentIntentId: piId }, select: { id: true, clientId: true, treatmentTitle: true } }) : null;
-        const order = !booking && piId ? await db.order.findFirst({ where: { stripePaymentIntentId: piId }, select: { id: true, number: true } }) : null;
+        const order = !booking && piId ? await db.order.findFirst({ where: { stripePaymentIntentId: piId }, select: { id: true, number: true, giftCardCode: true, giftCardPence: true } }) : null;
         const what = booking ? `booking ${booking.treatmentTitle}` : order ? `shop order ${order.number}` : `charge ${typeof dispute.charge === 'string' ? dispute.charge : ''}`;
         const summary = created
           ? `Chargeback opened on ${what} — £${(amount / 100).toFixed(2)} (reason: ${dispute.reason || 'unknown'}). Respond in the Stripe dashboard before the evidence deadline.`
@@ -309,12 +309,19 @@ export async function POST(req: Request) {
               }
             }
           } else if (order) {
-            const fullOrder = await db.order.findFirst({ where: { id: order.id }, select: { id: true, number: true, status: true } });
+            const fullOrder = await db.order.findFirst({ where: { id: order.id }, select: { id: true, number: true, status: true, giftCardCode: true, giftCardPence: true } });
             if (fullOrder && fullOrder.status !== 'REFUNDED') {
               const wasStockDecremented = fullOrder.status === 'PAID' || fullOrder.status === 'FULFILLED';
               const claimed = await db.order.updateMany({ where: { id: fullOrder.id, status: { not: 'REFUNDED' } }, data: { status: 'REFUNDED' } });
               if (claimed.count > 0) {
                 if (wasStockDecremented) { try { const { restockOrder } = await import('@/lib/shop'); await restockOrder(fullOrder.id); } catch (e) { Sentry.captureException(e, { tags: { area: 'stripe-webhook', sub: 'dispute-restock' } }); } }
+                // BLD-1237: mirror the charge.refunded branch below — a lost dispute on
+                // an order that redeemed a gift card as a discount must credit that
+                // reserved balance back, same as any other order refund, otherwise the
+                // balance is stranded on a card nobody can ever spend.
+                if (fullOrder.giftCardCode && fullOrder.giftCardPence > 0) {
+                  try { const { creditVoucher } = await import('@/lib/gift-vouchers'); await creditVoucher(fullOrder.giftCardCode, fullOrder.giftCardPence); } catch (e) { Sentry.captureException(e, { tags: { area: 'stripe-webhook', sub: 'dispute-giftcard-recredit' } }); }
+                }
                 try { const { logAudit } = await import('@/lib/audit'); await logAudit({ action: 'PAYMENT_REFUNDED', actor: 'stripe-webhook', summary: `Chargeback lost on order ${fullOrder.number} — marked refunded + restocked (auto, owner policy)`, meta: { orderId: fullOrder.id, disputeId: dispute.id } }); } catch { /* non-fatal */ }
               }
             }

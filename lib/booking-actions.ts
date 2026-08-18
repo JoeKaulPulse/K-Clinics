@@ -569,7 +569,11 @@ export async function cancelBooking(
   // BLD-733: net off any loyalty points the client already redeemed as money off
   // this booking — otherwise the late fee bills the pre-discount price on top of
   // a discount the client already paid for with points.
-  const chargeablePence = Math.max(0, booking.pricePence - (booking.pointsRedeemedPence ?? 0));
+  // BLD-1236: also net off any gift voucher already applied to this booking, the
+  // same way the staff "charge now" action does (app/admin/bookings/actions.ts,
+  // BLD-882) — otherwise a client who paid part of the price with a voucher is
+  // billed the late fee on the full pre-voucher price on top of that.
+  const chargeablePence = Math.max(0, booking.pricePence - (booking.pointsRedeemedPence ?? 0) - (booking.giftVoucherPence ?? 0));
   let charged = 0;
   let requiresAction = false;
   let feeFailed = false;
@@ -578,11 +582,18 @@ export async function cancelBooking(
   // 0 — otherwise the client's cancellation email and the client record both claim
   // a late fee was taken when no money moved.
   let alreadyPaid = false;
+  // BLD-1236 (review): true once the late fee has actually been settled with the
+  // voucher netted off it — i.e. the voucher was SPENT on the fee. The
+  // voucher-return block below must then leave it spent, exactly as BLD-915 does
+  // for loyalty points; returning it as well would hand the client the discount
+  // AND the balance back, and the clinic would collect pricePence minus the
+  // voucher for a fee that is supposed to be the full price.
+  let feeConsumedVoucher = false;
 
   if (shouldCharge) {
     const res = await chargeBooking(booking, chargeablePence, { late: true });
     if (res.alreadyPaid) alreadyPaid = true;
-    else if (res.ok) charged = chargeablePence;
+    else if (res.ok) { charged = chargeablePence; feeConsumedVoucher = (booking.giftVoucherPence ?? 0) > 0; }
     else if (res.requiresAction) requiresAction = true;
     else feeFailed = true; // charge declined — cancel anyway, but flag for follow-up.
   }
@@ -656,11 +667,14 @@ export async function cancelBooking(
   // fee lands): a booking already charged before cancellation consumed its
   // voucher as part of that settled sale (fully by voucher, or netted off a
   // card/cash remainder) — returning consumed value is a refund decision, made
-  // deliberately via refundBooking, never automatic. A late fee charged DURING
-  // this cancellation is computed from pricePence and never spends the voucher,
-  // so the reservation still returns. Guarded clear so a concurrent removal
-  // can't double-credit.
-  if ((booking.giftVoucherPence ?? 0) > 0 && booking.giftVoucherCode && !booking.chargedAt) {
+  // deliberately via refundBooking, never automatic. Guarded clear so a
+  // concurrent removal can't double-credit.
+  // BLD-1236 (review): a late fee settled DURING this cancellation now nets the
+  // voucher off (above), so it DOES spend it — feeConsumedVoucher blocks the
+  // return in that case. The reservation still returns whenever no fee was
+  // settled: outside the 24h window, fee waived, charge declined, or the client
+  // still has to authenticate it.
+  if ((booking.giftVoucherPence ?? 0) > 0 && booking.giftVoucherCode && !booking.chargedAt && !feeConsumedVoucher) {
     try {
       const cleared = await db.booking.updateMany({
         where: { id: booking.id, giftVoucherCode: booking.giftVoucherCode, giftVoucherPence: booking.giftVoucherPence },
@@ -923,7 +937,9 @@ export async function rescheduleBooking(
   // that then fails with SLOT_TAKEN. If the charge itself hard-fails we undo the
   // move, so the original "no reschedule without payment" rule still holds.
   if (!opts.admin && booking.rescheduleCount >= MAX_FREE_RESCHEDULES && booking.pricePence > 0) {
-    const rescheduleFeePence = Math.max(0, booking.pricePence - (booking.pointsRedeemedPence ?? 0));
+    // BLD-1236: net off an already-applied gift voucher too, same as the
+    // late-cancellation fee above and the staff "charge now" action.
+    const rescheduleFeePence = Math.max(0, booking.pricePence - (booking.pointsRedeemedPence ?? 0) - (booking.giftVoucherPence ?? 0));
     // BLD-1119: res.alreadyPaid means the booking was already paid in full (BNPL
     // course pre-payment / an earlier charge) and nothing was taken — the move
     // stands, but `charged` stays 0 so the client's confirmation email and the
