@@ -569,7 +569,10 @@ export async function cancelBooking(
   // BLD-733: net off any loyalty points the client already redeemed as money off
   // this booking — otherwise the late fee bills the pre-discount price on top of
   // a discount the client already paid for with points.
-  const chargeablePence = Math.max(0, booking.pricePence - (booking.pointsRedeemedPence ?? 0));
+  // BLD-1236: net an applied gift voucher the same way, matching the staff
+  // charge action. A fee that actually lands then CONSUMES the voucher value
+  // (the BLD-882 return below is skipped when charged > 0), exactly like points.
+  const chargeablePence = Math.max(0, booking.pricePence - (booking.pointsRedeemedPence ?? 0) - (booking.giftVoucherPence ?? 0));
   let charged = 0;
   let requiresAction = false;
   let feeFailed = false;
@@ -579,13 +582,20 @@ export async function cancelBooking(
   // a late fee was taken when no money moved.
   let alreadyPaid = false;
 
+  let feeApplied = false;
   if (shouldCharge) {
     const res = await chargeBooking(booking, chargeablePence, { late: true });
     if (res.alreadyPaid) alreadyPaid = true;
-    else if (res.ok) charged = chargeablePence;
+    else if (res.ok) { charged = chargeablePence; feeApplied = true; }
     else if (res.requiresAction) requiresAction = true;
     else feeFailed = true; // charge declined — cancel anyway, but flag for follow-up.
   }
+  // BLD-1236: the moment the late fee successfully applies, the netted voucher
+  // value is CONSUMED by that fee — including when the netted remainder was £0
+  // because the voucher covered the whole fee (chargeBooking(0) reports ok
+  // without touching the card). The BLD-882 return below must skip exactly
+  // these cases; a failed/pending/alreadyPaid outcome consumed nothing.
+  const feeConsumedVoucher = feeApplied && (booking.giftVoucherPence ?? 0) > 0;
 
   await db.booking.update({
     where: { id: booking.id },
@@ -642,7 +652,10 @@ export async function cancelBooking(
   // points were consumed against THAT payment, so returning them here would hand
   // the client the discount and the points back — the same trap as BLD-915. This
   // keeps the pre-BLD-1119 behaviour for those bookings unchanged.
-  if (charged === 0 && !alreadyPaid) {
+  // (BLD-1236: keyed on feeApplied rather than charged — a fee fully covered by
+  // netted points/voucher lands with a £0 card charge, and those points were
+  // still consumed by it.)
+  if (!feeApplied && !alreadyPaid) {
     try {
       const { refundBookingPoints } = await import('@/lib/client-loyalty');
       await refundBookingPoints(booking.id);
@@ -660,7 +673,14 @@ export async function cancelBooking(
   // this cancellation is computed from pricePence and never spends the voucher,
   // so the reservation still returns. Guarded clear so a concurrent removal
   // can't double-credit.
-  if ((booking.giftVoucherPence ?? 0) > 0 && booking.giftVoucherCode && !booking.chargedAt) {
+  // BLD-1236: `!feeConsumedVoucher` joined the guard when the late fee started
+  // netting giftVoucherPence (mirroring the BLD-915 points rule above) — a fee
+  // that actually landed consumed the voucher as money off that fee, so
+  // returning it too would hand the client the discount AND the voucher back.
+  // A failed, pending or waived fee still returns the reservation, as does an
+  // alreadyPaid BNPL settlement (nothing was taken here and the voucher wasn't
+  // consumed by this cancellation).
+  if ((booking.giftVoucherPence ?? 0) > 0 && booking.giftVoucherCode && !booking.chargedAt && !feeConsumedVoucher) {
     try {
       const cleared = await db.booking.updateMany({
         where: { id: booking.id, giftVoucherCode: booking.giftVoucherCode, giftVoucherPence: booking.giftVoucherPence },
@@ -923,7 +943,14 @@ export async function rescheduleBooking(
   // that then fails with SLOT_TAKEN. If the charge itself hard-fails we undo the
   // move, so the original "no reschedule without payment" rule still holds.
   if (!opts.admin && booking.rescheduleCount >= MAX_FREE_RESCHEDULES && booking.pricePence > 0) {
-    const rescheduleFeePence = Math.max(0, booking.pricePence - (booking.pointsRedeemedPence ?? 0));
+    // BLD-1236: net the applied gift voucher as well as points. This charge sets
+    // chargedAt — it IS the booking's settlement — and before this fix the fee
+    // billed the full price while the voucher reservation stayed attached to a
+    // now-charged booking, where nothing could ever consume OR return it: the
+    // client paid in full and lost the voucher value entirely. Netting here
+    // consumes the voucher as part of the settled sale, the same arithmetic the
+    // staff till (chargeBookingAction) applies.
+    const rescheduleFeePence = Math.max(0, booking.pricePence - (booking.pointsRedeemedPence ?? 0) - (booking.giftVoucherPence ?? 0));
     // BLD-1119: res.alreadyPaid means the booking was already paid in full (BNPL
     // course pre-payment / an earlier charge) and nothing was taken — the move
     // stands, but `charged` stays 0 so the client's confirmation email and the

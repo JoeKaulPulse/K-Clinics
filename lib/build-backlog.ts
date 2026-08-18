@@ -4164,6 +4164,48 @@ export const BUILD_BACKLOG: BacklogItem[] = [
       'Verified: npx tsc --noEmit and npm run build pass clean. Backfill and render not exercised against live data (no DB egress from this sandbox); the serve route\'s plaintext tolerance means an unmigrated row renders exactly as before.',
     ],
   },
+  {
+    title: 'Late-cancel and reschedule fees now net an applied gift voucher, and consume it (BLD-1236)',
+    type: 'ERROR', urgency: 'P2', status: 'IN_REVIEW', assignee: 'claude',
+    value: 7, effort: 2,
+    detail: 'cancelBooking()\'s late fee and rescheduleBooking()\'s 4th-reschedule fee netted only pointsRedeemedPence, never giftVoucherPence, while the staff till (chargeBookingAction) nets both. The reschedule case was a genuine client loss: that fee sets chargedAt (it IS the booking\'s settlement), after which the still-attached voucher reservation could never be consumed (till refuses a charged booking) NOR returned (the BLD-882 cancel guard sees chargedAt set) — the client paid full price and lost the voucher value entirely.',
+    notes: [
+      'Fix: both fees net giftVoucherPence exactly like the till. In cancelBooking a fee that actually lands now CONSUMES the voucher — the BLD-882 return is skipped via a feeApplied flag (not `charged === 0`: chargeBooking(0) reports ok when credits cover the whole fee, so a voucher fully covering the fee counts as consumed too). A failed, pending, waived or alreadyPaid outcome still returns the reservation as before. The BLD-915 points-refund guard moved to the same feeApplied flag for the identical £0-remainder edge.',
+      'Deliberately NOT changed: applyNoShowFee (the no-show branch releases the voucher reservation BEFORE the fee under its own documented ordering, so the fee correctly bills the un-netted price — the client keeps the voucher value on the voucher instead; net client cost identical), and the fee maths already netted points everywhere.',
+      'Verified: npx tsc --noEmit and npm run build pass clean.',
+    ],
+  },
+  {
+    title: 'A lost chargeback on a shop order now re-credits the gift card it consumed (BLD-1237)',
+    type: 'ERROR', urgency: 'P2', status: 'IN_REVIEW', assignee: 'claude',
+    value: 6, effort: 1,
+    detail: 'The webhook\'s dispute-lost order branch set status REFUNDED and restocked, but never selected giftCardCode/giftCardPence and never called creditVoucher — unlike the charge.refunded reconciliation, which credits the gift-card portion back. An order part-paid with a gift card only ever disputed the CARD portion, so the consumed gift-card value simply vanished.',
+    notes: [
+      'Fix: the dispute-lost order query selects the gift-card fields and re-credits behind the same atomic status-claim (status != REFUNDED → REFUNDED) that guards restocking, so a redelivered dispute event cannot double-credit. Audit summary notes the re-credit.',
+      'Verified: npx tsc --noEmit and npm run build pass clean. Not exercised against a live Stripe dispute.',
+    ],
+  },
+  {
+    title: 'Kiosk/AI-consultation photo remove control visible on touch; analysis progress announced to screen readers (BLD-1292, BLD-1275)',
+    type: 'TASK', urgency: 'P2', status: 'IN_REVIEW', assignee: 'claude',
+    value: 6, effort: 1,
+    detail: 'BLD-1292: the uploaded-photo ✕ button in KVision was opacity-0 with group-hover reveal only — on the touch-first /ai-consultation and kiosk surfaces there is no hover, so the control was present and tappable but invisible. BLD-1275: the kiosk analysing spinner and rotating status copy had no role="status"/aria-live, so assistive-tech users got no indication analysis started or finished (WCAG 4.1.3).',
+    notes: [
+      'BLD-1292: the remove button is now visible by default and slightly larger (h-7); pointer:fine media override restores the tidy hover/focus-within reveal on mouse devices only.',
+      'BLD-1275: the analysing step and the result-loading branch are role="status" aria-live="polite" regions; the spinner and the 3-second rotating micro-copy are aria-hidden so the announcement is the heading once, not a line every rotation.',
+      'Verified: npx tsc --noEmit and npm run build pass clean.',
+    ],
+  },
+  {
+    title: 'npm audit CI check green again — deepmerge-ts advisory resolved via override (BLD-1366)',
+    type: 'TASK', urgency: 'P2', status: 'IN_REVIEW', assignee: 'claude',
+    value: 4, effort: 1,
+    detail: 'The security workflow\'s `npm audit --omit=dev --audit-level=high` failed on every PR regardless of diff: GHSA-ggr8-5vv4-36mx (deepmerge-ts < 8.0.0, stack exhaustion on recursive object graphs, HIGH) reached the lockfile via prisma → @prisma/config → deepmerge-ts@7.1.5, and no prisma release carried the fixed major yet. Not in the required-checks set, so merges proceeded — but a permanently red check trains everyone to ignore CI.',
+    notes: [
+      'Fix: package.json overrides pin deepmerge-ts to ^8.0.1 (the advisory\'s fixed version). Verified the Prisma CLI still works under the override — prisma generate and prisma migrate diff (both load prisma.config.ts through @prisma/config\'s deepmerge usage) run clean — and `npm audit --omit=dev --audit-level=high` reports 0 vulnerabilities.',
+      'The override is removable once prisma ships a release depending on deepmerge-ts >= 8.',
+    ],
+  },
 ];
 
 // A content hash over every item's title + status + PR, so ANY change (a new

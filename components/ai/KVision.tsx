@@ -168,7 +168,11 @@ export function KVision({ signedIn, firstName, enabled }: { signedIn: boolean; f
                   <div key={p.id} className="group relative aspect-square overflow-hidden rounded-2xl border border-white/10">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img src={p.dataUrl} alt={`Uploaded photo ${idx + 1}`} className="h-full w-full object-cover" />
-                    <button onClick={() => setPhotos((arr) => arr.filter((x) => x.id !== p.id))} aria-label="Remove photo" className="absolute right-1.5 top-1.5 grid h-6 w-6 place-items-center rounded-full bg-black/60 text-xs opacity-0 transition-opacity group-hover:opacity-100">✕</button>
+                    {/* BLD-1292: visible by default — this flow is touch-first
+                        (kiosk / phones have no hover), so hover-only visibility
+                        hid the control entirely. Desktop still gets the tidy
+                        hover reveal via the pointer:fine override. */}
+                    <button onClick={() => setPhotos((arr) => arr.filter((x) => x.id !== p.id))} aria-label="Remove photo" className="absolute right-1.5 top-1.5 grid h-7 w-7 place-items-center rounded-full bg-black/60 text-xs transition-opacity [@media(pointer:fine)]:opacity-0 [@media(pointer:fine)]:group-hover:opacity-100 [@media(pointer:fine)]:group-focus-within:opacity-100">✕</button>
                   </div>
                 ))}
                 {photos.length < 4 && (
