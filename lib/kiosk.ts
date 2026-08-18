@@ -1,4 +1,5 @@
 import 'server-only';
+import * as Sentry from '@sentry/nextjs';
 import { createHash, randomBytes, timingSafeEqual } from 'crypto';
 import { db } from '@/lib/db';
 import { analyzeKioskPhoto, analyzeKioskPhotosV2 } from '@/lib/kiosk-ai';
@@ -245,6 +246,7 @@ export async function runKioskAnalysisV2(sessionId: string): Promise<void> {
     await logKioskEvent('analyzed', sessionId, session.ipHash);
   } catch (e) {
     console.error('[kiosk] v2 analysis save failed:', (e as Error)?.message);
+    Sentry.captureException(e, { tags: { area: 'kiosk-ai-v2' } });
     await db.kioskSession.update({
       where: { id: sessionId },
       data: { status: 'ANALYSIS_FAILED', stage: 'failed' },
