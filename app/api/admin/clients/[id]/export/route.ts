@@ -124,6 +124,24 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
     promoRedemptions,
   };
 
+  // BLD-1291: academy portfolio cases photographing this client (staff-linked
+  // via PortfolioEntry.clientId) — their clinical photos are the subject's
+  // special-category data. Metadata always; photo URLs are the private-store
+  // originals readable only through the authenticated relay, listed so the
+  // record is complete. Cases never linked by staff cannot appear here — the
+  // linking step in Admin → Academy → Portfolio review is what makes a case
+  // reachable.
+  const portfolioCases = await db.portfolioEntry.findMany({
+    where: { clientId: id },
+    select: { id: true, title: true, treatmentType: true, treatmentDate: true, clientRef: true, photos: true, consentAttestedAt: true, status: true, createdAt: true, student: { select: { email: true } } },
+    orderBy: { createdAt: 'desc' },
+  }).catch(() => []);
+  out.academyPortfolioCases = portfolioCases.map((p) => ({
+    id: p.id, title: p.title, treatmentType: p.treatmentType, treatmentDate: p.treatmentDate, clientRef: p.clientRef,
+    photoCount: Array.isArray(p.photos) ? (p.photos as unknown[]).length : 0,
+    consentAttestedAt: p.consentAttestedAt, status: p.status, createdAt: p.createdAt, traineeEmail: p.student?.email ?? null,
+  }));
+
   // PRJ-1032.16: the subject's own incident/accident records are their personal +
   // special-category data (Art. 15) — include them, decrypting the health
   // free-text only under the clinical gate (metadata always; content when clinical).

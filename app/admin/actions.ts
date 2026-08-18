@@ -192,9 +192,20 @@ export async function eraseClientData(clientId: string) {
       stripeFailure = true;
     }
   }
+  // BLD-1291: academy portfolio cases photographing this client — real clinical
+  // photos, reachable only via the staff-linked clientId. Runs after the main
+  // transaction (blob deletion is an external call); a blob-store failure is
+  // surfaced in the audit note for manual follow-up, the DB rows are gone
+  // regardless.
+  let portfolioResult = { entries: 0, blobsFailed: 0 };
+  try {
+    const { erasePortfolioForClient } = await import('@/lib/portfolio');
+    portfolioResult = await erasePortfolioForClient(clientId);
+  } catch (e) { console.error('[erase] portfolio erasure failed (recorded in audit):', (e as Error)?.message); portfolioResult.blobsFailed = -1; }
   const failureNote = [
     calendarFailures ? `${calendarFailures} synced calendar event(s) could not be removed` : null,
     stripeFailure ? 'Stripe customer record could not be scrubbed' : null,
+    portfolioResult.blobsFailed ? `${portfolioResult.blobsFailed === -1 ? 'portfolio erasure errored' : `${portfolioResult.blobsFailed} portfolio photo file(s) could not be deleted from storage`}` : null,
   ].filter(Boolean).join('; ');
   await logAudit({ action: 'CLIENT_ERASED', actor: session.email, actorRole: session.role, clientId, summary: `Client personal + special-category data erased across all records (GDPR right-to-erasure)${failureNote ? ` — ${failureNote}, follow up manually` : ''}`, meta: (calendarFailures || stripeFailure) ? { calendarFailures, stripeFailure } : undefined });
   try {
