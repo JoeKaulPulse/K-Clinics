@@ -15,7 +15,7 @@ export const revalidate = 3600;
 export const generateMetadata = (): Promise<Metadata> => pageMeta({
   title: 'Special Offers & Savings | KClinics London',
   description:
-    'Current offers at KClinics, Islington — 15% off your first visit, complimentary consultations, refer-a-friend rewards, gift vouchers and savings on treatment packages.',
+    'Current offers at KClinics, Islington — 15% off your first visit, complimentary consultations, refer-a-friend rewards and gift vouchers.',
   path: '/offers',
   keywords: ['aesthetics offers London', 'first visit discount clinic', 'treatment package savings'],
 });

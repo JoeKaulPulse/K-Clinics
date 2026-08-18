@@ -49,7 +49,7 @@ export const SETTING_DEFAULTS: Record<SettingKey, boolean> = {
   require_consent: false,
   require_before_photo: true,
   abandoned_booking_recovery: true, // BLD-131: enabled (owner-approved revenue automation)
-  abandoned_order_recovery: false, // BLD-1204: ships dark; owner enables after review
+  abandoned_order_recovery: true, // BLD-1278: enabled — mirrors abandoned_booking_recovery (BLD-131); the technical review (BLD-1204) already excluded POS/till sales and blank emails, and the copy matches the live booking-recovery flow
   booking_intent_recovery: true, // BLD-838: enabled (owner-approved revenue automation)
   no_show_notice: false,
   membership_renewal_nudge: true, // BLD-131: enabled (owner-approved revenue automation)
@@ -121,7 +121,7 @@ export const SETTING_META: Record<SettingKey, { label: string; description: stri
   },
   abandoned_order_recovery: {
     label: 'Abandoned-order recovery emails',
-    description: 'Email a gentle, one-time nudge to shoppers who reached checkout but never completed payment for their shop order (sent 2–72h later, once per order). Off by default — turn on to recover unpaid orders.',
+    description: 'Email a gentle, one-time nudge to shoppers who reached checkout but never completed payment for their shop order (sent 2–72h later, once per order).',
   },
   booking_intent_recovery: {
     label: 'Booking-funnel email recovery',

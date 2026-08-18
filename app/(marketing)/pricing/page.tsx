@@ -19,9 +19,9 @@ import { NewsletterCapture } from '@/components/layout/NewsletterCapture';
 export const revalidate = 3600;
 
 export const generateMetadata = (): Promise<Metadata> => pageMeta({
-  title: 'Price List — Aesthetics & Laser Treatments in London | KClinics',
+  title: 'Price List — Aesthetics & Laser Treatments | KClinics',
   description:
-    'Full, transparent price list for KClinics, Islington — laser hair removal, HIFU lifting, HydraFacial, carbon peel, tattoo & pigmentation removal, body contouring and more. Course savings available.',
+    'Full, transparent price list for KClinics, Islington — laser hair removal, HIFU lifting, HydraFacial, tattoo removal, body contouring and more.',
   path: '/pricing',
   keywords: ['laser hair removal prices London', 'HIFU cost London', 'hydrafacial price', 'tattoo removal cost London', 'aesthetic treatment prices'],
 });

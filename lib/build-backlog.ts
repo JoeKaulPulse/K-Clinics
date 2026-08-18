@@ -3874,6 +3874,18 @@ export const BUILD_BACKLOG: BacklogItem[] = [
       'Verified: npx tsc --noEmit and npm run build both pass clean (DB sync skipped, no DATABASE_URL in this sandbox).',
     ],
   },
+  {
+    title: 'Abandoned shop-order recovery emails enabled, SERP-length meta titles/descriptions trimmed, careers "Apply for this role" now seeds the right role reliably (BLD-1278, BLD-1279, PRJ-1034.12)',
+    type: 'TASK', urgency: 'P3', status: 'IN_REVIEW', assignee: 'claude',
+    value: 4, effort: 2,
+    detail: 'Three independent, non-owner-gated marketing/content/UX fixes batched into one PR. BLD-1278: the shop abandoned-cart recovery email (lib/automations.ts abandonedOrders(), lib/email.ts tmplAbandonedOrder()) was already built, already reviewed (BLD-1204) to exclude POS/till sale rows and blank emails, and the copy already matches the live abandoned-booking flow -- but lib/settings.ts shipped abandoned_order_recovery off by default with only a "ships dark, owner enables after review" comment and no other blocking note. PRJ-1034.12 (partial fix already on main): each vacancy card\'s "Apply for this role" link already carried ?role=<vacancyId>#apply and ApplyForm.tsx already read it on mount, which only covers a fresh page load -- a same-page click (the vacancy list and the form share one /careers page) is a query-only client navigation that never remounts the already-mounted form, so the mount-only effect never re-fires. BLD-1279: 14 marketing pages had a meta description and/or title over Google\'s SERP truncation length.',
+    notes: [
+      'Fix (BLD-1278): flipped abandoned_order_recovery from false to true in lib/settings.ts, matching the already-live abandoned_booking_recovery (BLD-131) default. Read automations.ts\'s abandonedOrders() and its BLD-1204 review fix (already scoped to stripePaymentIntentId not null + non-empty email, so only genuine abandoned web checkouts qualify, never in-clinic till sales) and tmplAbandonedOrder()\'s copy in lib/email.ts -- both correct and already shipped, so nothing beyond an unreviewed default was blocking this. Also dropped the now-stale "Off by default" line from the setting\'s admin description (SETTING_META) since the default is now on.',
+      'Fix (PRJ-1034.12): added components/careers/ApplyRoleLink.tsx, a small client component wrapping each vacancy card\'s Apply link. Its onClick dispatches a kclinics:apply-role CustomEvent carrying the vacancy id, alongside the unchanged href/hash navigation; ApplyForm.tsx now also listens for that event and updates the selected role immediately, so a click while already on /careers (the common path) pre-fills correctly, not just a fresh/bookmarked page load. The existing mount-time query-param read is untouched.',
+      'Fix (BLD-1279): trimmed the meta description (and, where also over budget, the title) defined via pageMeta({...}) in each route\'s own page.tsx (lib/seo.tsx): /book, /academy/funding, /academy, /clinics, /team, /pricing, /membership, /offers, /consultation, /packages, /ai-consultation, /journal, /about, /group-bookings -- descriptions now roughly 135-160 characters (front-loaded keyword/USP, kept as complete sentences) and titles 60 characters or under. All 14 pages in the ticket\'s list are static code-defined metadata; none were CMS/DB-driven, so nothing was skipped.',
+      'Verified: npx tsc --noEmit and npm run build both pass clean.',
+    ],
+  },
 ];
 
 // A content hash over every item's title + status + PR, so ANY change (a new

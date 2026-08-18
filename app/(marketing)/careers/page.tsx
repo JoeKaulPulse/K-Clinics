@@ -3,6 +3,7 @@ import Link from 'next/link';
 import { PageHero } from '@/components/ui/PageHero';
 import { Reveal } from '@/components/motion/Reveal';
 import { ApplyForm } from '@/components/careers/ApplyForm';
+import { ApplyRoleLink } from '@/components/careers/ApplyRoleLink';
 import { site } from '@/lib/site';
 import { pageMeta, JsonLd, breadcrumbLd } from '@/lib/seo';
 
@@ -60,7 +61,7 @@ export default async function CareersPage() {
                   </div>
                   {v.summary && <p className="mt-2 text-[var(--color-ink-soft)]">{v.summary}</p>}
                   {v.description && <p className="mt-3 whitespace-pre-line text-sm text-[var(--color-stone)]">{v.description}</p>}
-                  <Link href={`/careers?role=${v.id}#apply`} className="mt-4 inline-block text-sm font-medium text-[var(--color-gold-deep)] hover:underline">Apply for this role →</Link>
+                  <ApplyRoleLink vacancyId={v.id} className="mt-4 inline-block text-sm font-medium text-[var(--color-gold-deep)] hover:underline" />
                 </div>
               </Reveal>
             ))}

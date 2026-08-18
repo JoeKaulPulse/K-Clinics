@@ -22,7 +22,7 @@ export async function generateMetadata(): Promise<Metadata> {
   return pageMeta({
     title: 'Our Team — Expert Clinicians & Practitioners | KClinics London',
     description:
-      'Meet the KClinics team — qualified aesthetic doctors, laser specialists and cosmetic dentists, with their experience, ratings and specialisms, delivering safe, artful results in Islington, London.',
+      'Meet the KClinics team — qualified aesthetic doctors, laser specialists and cosmetic dentists delivering safe, artful results in Islington, London.',
     path: '/team',
     keywords: ['KClinics team', 'aesthetic doctor London', 'cosmetic dentist Islington', 'laser specialist London'],
     noindex: !published,

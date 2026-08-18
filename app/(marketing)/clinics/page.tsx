@@ -13,7 +13,7 @@ export const revalidate = 3600;
 export const generateMetadata = (): Promise<Metadata> => pageMeta({
   title: 'Our Clinic — Find Us in Islington, London | KClinics',
   description:
-    'Visit KClinics on the border of the City of London and Islington — 4 Charterhouse Buildings, Goswell Road, EC1M 7AN. Step-free access, parking nearby and minutes from Barbican, Farringdon and Old Street.',
+    'Visit KClinics at 4 Charterhouse Buildings, Goswell Road, EC1M 7AN, on the Islington/City of London border. Step-free access, parking nearby.',
   path: '/clinics',
   keywords: ['KClinics location', 'aesthetics clinic Islington', 'clinic near Barbican Farringdon'],
 });
