@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { Hero } from '@/components/home/Hero';
+import { HeroSlider } from '@/components/home/HeroSlider';
 import { GetMyPlanBand } from '@/components/home/GetMyPlanBand';
 import { Testimonials } from '@/components/home/Testimonials';
 import { PinnedExperience } from '@/components/home/PinnedExperience';
@@ -57,7 +57,7 @@ const pillars = [
 
 export default async function HomePage() {
   const { getSiteConfig } = await import('@/lib/site-config');
-  const { dentistryLive } = await getSiteConfig(); // BLD-515: live, admin-toggleable flag
+  const { dentistryLive, hero } = await getSiteConfig(); // BLD-515 dentistry flag; BLD-1348 hero video
   const { getReviewAggregate } = await import('@/lib/reviews-aggregate');
   const aggregate = await getReviewAggregate();
   const rating = aggregate ? { average: aggregate.average, count: aggregate.count } : null;
@@ -71,7 +71,10 @@ export default async function HomePage() {
     <>
       <JsonLd data={breadcrumbLd([{ name: 'Home', path: '/' }])} />
       {aggregate && <JsonLd data={aggregateRatingLd({ average: aggregate.average, count: aggregate.count })} />}
-      <Hero rating={rating} />
+      {/* BLD-1348: owner-requested above-the-fold slider — three slides showcasing
+          the clinic, the academy and the clinic film (video supplied later via
+          Admin → Site). Slide 1 is the previous hero, still server-rendered visible. */}
+      <HeroSlider rating={rating} video={hero} />
 
       {/* Marquee ribbon */}
       <section className="border-y border-[var(--color-line)] bg-[var(--color-bone)] py-8">

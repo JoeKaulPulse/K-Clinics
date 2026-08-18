@@ -1,11 +1,20 @@
 import { Button, ArrowIcon } from '@/components/ui/Button';
 import { KMark } from '@/components/brand/marks';
-import { Reveal } from '@/components/motion/Reveal';
 
 /**
  * Academy homepage banner (BLD-997) — mirrors the flagship homepage Hero's
  * ink + gold-glow + KMark treatment so it reads as one brand, without relying
  * on supplied photography.
+ *
+ * Deliberately NOT wrapped in <Reveal>. Reported live as "banner not showing":
+ * it was shipped, deployed and present in the server HTML, but Reveal renders
+ * its children at style="opacity:0" and hands visibility to a client-side
+ * intersection observer that BLD-1171 already confirmed can silently never
+ * fire. This is the page's primary marketing message sitting just below the
+ * fold — the one place that gamble costs the most — so it renders visible in
+ * the server HTML and stays visible whatever happens to JS. The Reveal backstop
+ * was widened alongside this (see components/motion/Reveal.tsx), but the banner
+ * no longer depends on it being right.
  */
 export function AcademyBanner() {
   return (
@@ -21,7 +30,7 @@ export function AcademyBanner() {
         <KMark className="h-full w-auto" />
       </div>
       <div className="container-lux relative z-10 py-16 md:py-20">
-        <Reveal className="max-w-2xl">
+        <div className="max-w-2xl">
           <p className="eyebrow mb-4 inline-flex items-center gap-2.5 text-[var(--color-gold-soft)]">
             <span className="h-px w-8 bg-[var(--color-gold-soft)]/70" />
             Inside the academy
@@ -36,7 +45,7 @@ export function AcademyBanner() {
           <div className="mt-7">
             <Button href="#courses" variant="gold">See the course range <ArrowIcon /></Button>
           </div>
-        </Reveal>
+        </div>
       </div>
     </section>
   );

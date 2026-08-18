@@ -80,6 +80,15 @@ export function SiteConfigEditor({ initial, revisions }: { initial: SiteConfig; 
             <div className="mt-4"><label className={label}>Description <span className="normal-case text-[var(--color-stone)]">(SEO / meta default)</span></label><textarea className={`${field} min-h-[80px]`} value={c.description} onChange={(e) => top('description', e.target.value)} /></div>
           </section>
 
+          {/* Homepage hero video (BLD-1348) — the slider's film slide plays this;
+              until a URL is supplied it shows the branded generative fallback. */}
+          <section className={card}>
+            <h2 className="mb-1 font-[family-name:var(--font-display)] text-xl">Homepage hero video</h2>
+            <p className="mb-4 text-sm text-[var(--color-stone)]">The homepage slider’s film slide plays this video (muted, looping). Leave blank until the film is ready — the slide shows the brand artwork instead.</p>
+            <div><label className={label}>Video URL <span className="normal-case text-[var(--color-stone)]">(MP4 or WebM)</span></label><input className={field} value={c.hero?.videoUrl || ''} placeholder="https://…/clinic-film.mp4" aria-label="Hero video URL" onChange={(e) => nest('hero', { videoUrl: e.target.value })} /></div>
+            <div className="mt-4"><label className={label}>Poster image URL <span className="normal-case text-[var(--color-stone)]">(optional — shown while the video loads)</span></label><input className={field} value={c.hero?.videoPoster || ''} placeholder="https://…/clinic-film-poster.jpg" aria-label="Hero video poster URL" onChange={(e) => nest('hero', { videoPoster: e.target.value })} /></div>
+          </section>
+
           {/* Announcement bar */}
           <section className={card}>
             <div className="mb-4 flex items-center justify-between">
