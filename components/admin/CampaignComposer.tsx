@@ -31,18 +31,23 @@ export function CampaignComposer({ audience }: { audience: number }) {
   const [discountOn, setDiscountOn] = useState(false);
   const [confirming, setConfirming] = useState<PendingSend | null>(null);
   const [liveCount, setLiveCount] = useState<number | null>(null);
+  const [countFailed, setCountFailed] = useState(false);
   const titleId = useId();
 
   // Re-count the audience for the confirmation dialog whenever it opens, so
   // the number reflects the tag filter actually in the form (the `audience`
   // prop is only the unfiltered total, computed once when the page loaded).
+  // The count is advisory: sendCampaign re-derives its own recipients server
+  // side, so a failed count must not dead-end the dialog — it is reported and
+  // the send stays available.
   useEffect(() => {
     if (!confirming) return;
     let live = true;
     setLiveCount(null);
+    setCountFailed(false);
     previewCampaignAudience(confirming.segment)
       .then((n) => { if (live) setLiveCount(n); })
-      .catch(() => { if (live) setLiveCount(null); });
+      .catch(() => { if (live) setCountFailed(true); });
     return () => { live = false; };
   }, [confirming]);
 
@@ -107,7 +112,13 @@ export function CampaignComposer({ audience }: { audience: number }) {
         </button>
       </form>
 
-      <Dialog open={!!confirming} onClose={() => { if (!pending) setConfirming(null); }} labelledby={titleId}>
+      {/* `relative z-10` on the panel is required, not cosmetic: <Dialog>'s
+          backdrop is `fixed inset-0` while the panel it wraps is left static,
+          and a positioned element paints above a non-positioned sibling
+          whatever the DOM order. Without it the panel renders under the 60%
+          black scrim and every click inside it lands on the backdrop, which
+          calls onClose — so the confirm button could never be pressed. */}
+      <Dialog open={!!confirming} onClose={() => { if (!pending) setConfirming(null); }} labelledby={titleId} className="relative z-10">
         {confirming && body && (
           <div className="max-h-[92vh] w-full max-w-lg overflow-y-auto rounded-t-[var(--radius-xl)] bg-[var(--color-porcelain)] p-6 shadow-[var(--shadow-lift)] sm:rounded-[var(--radius-xl)] md:p-7">
             <h2 id={titleId} className="font-[family-name:var(--font-display)] text-2xl">Send this campaign?</h2>
@@ -117,9 +128,11 @@ export function CampaignComposer({ audience }: { audience: number }) {
               <div>
                 <dt className="text-xs uppercase tracking-wide text-[var(--color-stone)]">Recipients</dt>
                 <dd className="mt-0.5 font-medium">
-                  {liveCount === null
-                    ? 'Counting…'
-                    : <>{liveCount.toLocaleString('en-GB')} opted-in {liveCount === 1 ? 'subscriber' : 'subscribers'}{confirming.segment ? <> tagged “{confirming.segment}”</> : ''}</>}
+                  {countFailed
+                    ? <span className="text-[var(--color-stone)]">Count unavailable. The send still goes to every opted-in subscriber{confirming.segment ? <> tagged “{confirming.segment}”</> : ''}.</span>
+                    : liveCount === null
+                      ? 'Counting…'
+                      : <>{liveCount.toLocaleString('en-GB')} opted-in {liveCount === 1 ? 'subscriber' : 'subscribers'}{confirming.segment ? <> tagged “{confirming.segment}”</> : ''}</>}
                 </dd>
               </div>
               <div>
@@ -136,7 +149,7 @@ export function CampaignComposer({ audience }: { audience: number }) {
 
             <div className="mt-5 flex justify-end gap-3">
               <button type="button" onClick={() => setConfirming(null)} disabled={pending} className="px-4 py-2 text-sm text-[var(--color-stone)] disabled:opacity-50">Cancel</button>
-              <button type="button" onClick={confirmAndSend} disabled={pending || liveCount === null} className="rounded-full bg-[var(--color-gold-deep)] px-6 py-2.5 text-sm text-white disabled:opacity-60">
+              <button type="button" onClick={confirmAndSend} disabled={pending || (liveCount === null && !countFailed)} className="rounded-full bg-[var(--color-gold-deep)] px-6 py-2.5 text-sm text-white disabled:opacity-60">
                 {pending ? 'Sending…' : 'Send campaign'}
               </button>
             </div>
