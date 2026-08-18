@@ -81,9 +81,9 @@ export default function AcademyFundingPage() {
             <h2 className="text-title">What could you use?</h2>
             <p className="mt-5 text-lede leading-relaxed text-[var(--color-stone)]">Answer six quick questions and we’ll show the funding routes that fit your situation, then help you apply. It takes under a minute and there’s no obligation.</p>
             <ul className="mt-6 space-y-3 text-[var(--color-ink-soft)]">
-              <li className="flex items-start gap-3"><span className="mt-1 text-[var(--color-gold)]">✦</span> No credit check to see your options.</li>
-              <li className="flex items-start gap-3"><span className="mt-1 text-[var(--color-gold)]">✦</span> A real person follows up — not an automated decision.</li>
-              <li className="flex items-start gap-3"><span className="mt-1 text-[var(--color-gold)]">✦</span> We confirm exactly what you qualify for before anything is agreed.</li>
+              <li className="flex items-start gap-3"><span className="mt-1 text-[var(--color-gold-deep)]">✦</span> No credit check to see your options.</li>
+              <li className="flex items-start gap-3"><span className="mt-1 text-[var(--color-gold-deep)]">✦</span> A real person follows up — not an automated decision.</li>
+              <li className="flex items-start gap-3"><span className="mt-1 text-[var(--color-gold-deep)]">✦</span> We confirm exactly what you qualify for before anything is agreed.</li>
             </ul>
           </Reveal>
           <Reveal delay={0.1}>

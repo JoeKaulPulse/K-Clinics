@@ -257,7 +257,7 @@ export function Header({ config }: { config: SiteConfig }) {
                                     <span className="block font-[family-name:var(--font-display)] text-lg leading-tight">{l.label}</span>
                                     {l.description && <span className="text-sm text-[var(--color-stone)]">{l.description}</span>}
                                   </span>
-                                  <ArrowIcon className="mt-1 shrink-0 text-[var(--color-gold)] opacity-0 transition-opacity group-hover:opacity-100" />
+                                  <ArrowIcon className="mt-1 shrink-0 text-[var(--color-gold-deep)] opacity-0 transition-opacity group-hover:opacity-100" />
                                 </Link>
                               </li>
                             ))}

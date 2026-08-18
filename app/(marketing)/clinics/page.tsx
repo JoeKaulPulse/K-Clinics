@@ -122,9 +122,9 @@ export default async function ClinicsPage() {
               <p className="eyebrow mb-3">Access for everyone</p>
               <h2 className="text-title">Comfortable, and easy to reach.</h2>
               <ul className="mt-6 space-y-3 text-[var(--color-ink-soft)]">
-                <li className="flex items-start gap-3"><span className="mt-1 text-[var(--color-gold)]">✦</span> Step-free, wheelchair-accessible entrance.</li>
-                <li className="flex items-start gap-3"><span className="mt-1 text-[var(--color-gold)]">✦</span> Accessible parking as close to the entrance as possible.</li>
-                <li className="flex items-start gap-3"><span className="mt-1 text-[var(--color-gold)]">✦</span> Spacious, comfortable waiting areas for clients using mobility aids.</li>
+                <li className="flex items-start gap-3"><span className="mt-1 text-[var(--color-gold-deep)]">✦</span> Step-free, wheelchair-accessible entrance.</li>
+                <li className="flex items-start gap-3"><span className="mt-1 text-[var(--color-gold-deep)]">✦</span> Accessible parking as close to the entrance as possible.</li>
+                <li className="flex items-start gap-3"><span className="mt-1 text-[var(--color-gold-deep)]">✦</span> Spacious, comfortable waiting areas for clients using mobility aids.</li>
               </ul>
               <p className="mt-5 text-sm text-[var(--color-stone)]">Anything you need to make your visit easier? Tell us when you book, or read our <Link href="/info/accessibility" className="link-underline font-medium text-[var(--color-ink)]">accessibility statement</Link>.</p>
             </div>

@@ -83,7 +83,7 @@ export default async function MembershipPage() {
           {EARN.map((e) => (
             <StaggerItem key={e.t}>
               <div className="group flex h-full flex-col rounded-[var(--radius-xl)] border border-[var(--color-line)] bg-[var(--color-bone)] p-7 transition-all duration-700 [transition-timing-function:var(--ease-lux)] hover:-translate-y-1.5 hover:border-[color-mix(in_oklab,var(--color-gold)_45%,var(--color-line))] hover:bg-[var(--color-porcelain)] hover:shadow-[var(--shadow-lift)]">
-                <span className="text-2xl text-[var(--color-gold)]" aria-hidden>{e.icon}</span>
+                <span className="text-2xl text-[var(--color-gold-deep)]" aria-hidden>{e.icon}</span>
                 <p className="mt-4 font-[family-name:var(--font-display)] text-2xl text-gold-gradient">{e.v}</p>
                 <h3 className="mt-1 font-[family-name:var(--font-display)] text-lg">{e.t}</h3>
                 <p className="mt-2 text-sm leading-relaxed text-[var(--color-stone)]">{e.d}</p>

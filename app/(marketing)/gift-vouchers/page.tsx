@@ -68,7 +68,7 @@ export default async function GiftVouchersPage() {
             <p className="mt-4 text-[var(--color-ink-soft)]">Vouchers can be put towards any treatment, product or consultation at KClinics. They’re valid for 12 months, can be used across several visits, and the balance is tracked automatically.</p>
             <ul className="mx-auto mt-6 flex max-w-xl flex-wrap justify-center gap-x-5 gap-y-2">
               {USES.map((u) => (
-                <li key={u} className="flex items-center gap-2 text-sm text-[var(--color-ink-soft)]"><span className="text-[var(--color-gold)]">✦</span> {u}</li>
+                <li key={u} className="flex items-center gap-2 text-sm text-[var(--color-ink-soft)]"><span className="text-[var(--color-gold-deep)]">✦</span> {u}</li>
               ))}
             </ul>
           </div>
