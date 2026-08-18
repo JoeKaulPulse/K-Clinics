@@ -3884,6 +3884,17 @@ export const BUILD_BACKLOG: BacklogItem[] = [
       'Verified: npx tsc --noEmit and npm run build both pass clean.',
     ],
   },
+  {
+    title: 'Admin login page skipped the strict admin CSP; CallRecord.notes stored in plaintext unlike its sibling fields (BLD-1280, BLD-1360)',
+    type: 'ERROR', urgency: 'P2', status: 'IN_REVIEW', assignee: 'claude',
+    value: 5, effort: 2,
+    detail: 'Two independent, non-owner-gated security/privacy findings, batched into one PR. BLD-1280: middleware.ts early-returned for pathname === \'/admin/login\' before the nonce/strict-dynamic CSP block ran, so /admin/login never got the strict per-request-nonce Content-Security-Policy the rest of /admin uses -- it fell through to the public CSP (unsafe-inline, no nonce) on the single highest-value page in the app (credential/2FA entry). The login page\'s own source has no third-party inline scripts that would need an exemption, so this was an oversight, not a deliberate carve-out. BLD-1360: CallRecord.notes (prisma/schema.prisma, a free-text staff note) was written/read as plain text in app/api/admin/calls/route.ts, while every structurally identical field on the same CallRecord model (transcript, recordingUrl, raw) was already wrapped in encClinical/decClinical (lib/yay.ts). A staff note like "client mentioned a reaction to filler last week" sat unencrypted in the database.',
+    notes: [
+      'Fix (BLD-1280): middleware.ts\'s /admin branch no longer early-returns for /admin/login before the CSP block. It still skips the session-redirect and 2FA-redirect checks for that one path (isLogin short-circuits both -- login IS the page those redirects send an unauthenticated visitor to, so gating it the same way would be a redirect loop), but execution now always reaches the per-request-nonce adminCsp() block, so /admin/login gets the identical strict script-src (nonce + strict-dynamic, no unsafe-inline) every other /admin page gets. Grepped app/admin/login/page.tsx, components/admin/AdminLoginForm.tsx and components/portal/AuthShell.tsx for inline <script>/dangerouslySetInnerHTML -- none found, so no hash/nonce exemption was needed.',
+      'Fix (BLD-1360): app/api/admin/calls/route.ts now imports encClinical alongside the existing decClinical import. The \'note\' op\'s update() wraps the incoming text in encClinical(...) before writing CallRecord.notes. Both read sites now decrypt: the \'list\' op\'s row mapper (notes: decClinical(c.notes)) and the \'get\' op\'s response, which previously spread ...c unmodified -- notes: decClinical(c.notes) now overrides the spread, matching the recordingUrl/transcript overrides already on the same line. No schema change and no backfill script: decClinical already tolerates legacy plaintext (tries to decrypt, returns the value as-is on failure per lib/clinical-crypto.ts), so existing plaintext notes rows keep displaying correctly -- only new/updated notes get encrypted going forward. Checked every other read/write of CallRecord.notes (lib/yay.ts ingestCall, app/admin/actions.ts GDPR erasure, the SAR export route) -- none of them read or write actual note content (erasure only nulls it; the export route\'s callRecords select never included notes), so no other call site needed touching.',
+      'Verified: npx tsc --noEmit and npm run build both pass clean.',
+    ],
+  },
 ];
 
 // A content hash over every item's title + status + PR, so ANY change (a new
