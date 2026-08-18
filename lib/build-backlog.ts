@@ -4105,6 +4105,41 @@ export const BUILD_BACKLOG: BacklogItem[] = [
       'The Level 5 card corrects itself on the next nightly run; the 10-step manual edit on the board remains valid if staff want it fixed sooner.',
     ],
   },
+  {
+    title: 'Email campaigns silently capped at 5,000 recipients; interrupted sends stranded forever (BLD-1307)',
+    type: 'ERROR', urgency: 'P1', status: 'IN_REVIEW', assignee: 'claude',
+    value: 7, effort: 3,
+    detail: 'deliverCampaign, startAbTest and decideAbTest all fetched recipients with a bare findMany({ take: 5000 }) and no ordering — an audience larger than 5,000 opted-in clients got an arbitrary subset silently mailed while campaign.recipients recorded the truncated count as if it were the whole send. No error, no banner, no log line. Separately, a send interrupted mid-flight (deploy, function timeout) stayed SENDING forever: the double-send claim only re-claims DRAFT/SCHEDULED, so part of the audience was never mailed and nothing could restart it.',
+    notes: [
+      'Fix: a shared audienceRecipients() cursor-paginates the WHOLE audience (1,000-row pages, bounded memory, stable id ordering) — the cap is gone rather than warned about, which is what the editor UI already promises (it shows countAudience as the audience size). All three send paths use it; decideAbTest\'s hand-rolled "already emailed" exclusion folded into the same helper.',
+      'Resume instead of strand: deliverCampaign now excludes anyone who already has an EmailEvent for the campaign (each delivery writes its event immediately), so re-running an interrupted send is safe. dispatchDueCampaigns picks up campaigns stuck in SENDING for >30 minutes and finishes them, recounting campaign.recipients from the per-recipient events so the recorded figure is the true total. An interrupted A/B SAMPLE send (subjectB set, no winner yet) is deliberately NOT auto-resumed — blasting the full audience with variant A would be wrong — it logs for a human instead; a decided winner send resumes with the winning subject.',
+      'The audit filed this as an IDEA wanting an owner-reviewed batching plan; built the truncation fix directly because the safe end-state is unambiguous — the marketer already chose the audience and the UI already told them its size, so mailing exactly that audience is the only correct behaviour. Nothing about send volume policy changed: sends still go through the same consent-gated marketableClientWhere().',
+      'Verified: npx tsc --noEmit and npm run build pass clean. Not exercised against a live send from this sandbox.',
+    ],
+  },
+  {
+    title: 'A fully-refunded academy student kept indefinite course access (BLD-1308)',
+    type: 'ERROR', urgency: 'P1', status: 'IN_REVIEW', assignee: 'claude',
+    value: 7, effort: 2,
+    detail: 'refundEnrolmentPayment and reconcileEnrolmentPaymentRefund rolled back paidPence and marked the payment row REFUNDED but never touched Enrolment.status — and studentCanAccess() grants LMS access purely on status (PAID/ENROLLED/COMPLETED), so a student refunded in full kept the whole course forever. The admin Refund button also gave no warning, unlike Cancel which warns about fees.',
+    notes: [
+      'Fix: revokeAccessIfFullyRefunded(), called from both refund paths (in-app Stripe refund and the dashboard-refund webhook reconciler). It fires ONLY when paidPence has reached 0 and the enrolment is PAID or ENROLLED — then CAS-downgrades to CANCELLED (guarded on status+paidPence, so an instalment payment landing mid-refund keeps access) and audit-logs the auto-revoke.',
+      'Judgement calls, resolved conservatively: a PARTIAL refund leaves money on the enrolment, so status (and access) is untouched — whether remaining money still buys access is a staff decision, and the Cancel action remains available. A COMPLETED enrolment is never auto-cancelled — the student finished the course and that record stands; the refund is still audit-logged. If the owner wants a paid-threshold rule instead of the £0 trigger, that is a one-line change in the helper.',
+      'UI: the Refund confirm now states the amount and, when the refund returns everything the learner has paid, warns that the enrolment will be cancelled and access removed automatically.',
+      'Verified: npx tsc --noEmit and npm run build pass clean. Not exercised against a live Stripe refund from this sandbox.',
+    ],
+  },
+  {
+    title: 'Kiosk facial-photo AI consent now records version + source evidence (BLD-1354)',
+    type: 'TASK', urgency: 'P1', status: 'IN_REVIEW', assignee: 'claude',
+    value: 7, effort: 2,
+    detail: 'KioskSession.consentAt was a bare timestamp stamped before a visitor\'s facial photo went to the AI provider — no record of WHAT wording was agreed or WHERE, unlike the codebase\'s own aiConsultationConsentFields() pattern on the booking-page AI flow, which documents that a bare timestamp is not demonstrable consent (UK GDPR Art. 7 + Art. 9 special-category biometric data). If the kiosk consent copy ever changed there would be no way to prove what an earlier visitor agreed to.',
+    notes: [
+      'Fix: additive KioskSession.consentVersion/consentSource columns (migration committed, no @unique — deploy-gate safe), a KIOSK_CONSENT_VERSION constant + kioskConsentFields() helper in lib/consent.ts mirroring the AI-consult pattern, stamped at all three consent write sites (v1 single-photo upload, v2 consent step, v2 photo-upload fallback) with distinct sources so the capture surface is provable too.',
+      'No consent WORDING changed — the initial version (2026-08-v1) simply pins the copy already live in the kiosk "Quick consent" step, so no owner sign-off was needed to start recording evidence. Any future copy change must bump KIOSK_CONSENT_VERSION (comment at the constant says so).',
+      'Verified: npx tsc --noEmit and npm run build pass clean; migration generated offline via prisma migrate diff.',
+    ],
+  },
 ];
 
 // A content hash over every item's title + status + PR, so ANY change (a new

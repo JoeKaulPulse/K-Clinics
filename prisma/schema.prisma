@@ -4236,6 +4236,13 @@ model KioskSession {
   ipHash    String?
   photoUrl  String? // kept for back-compat with the single-photo v1 flow
   consentAt DateTime?
+  // BLD-1354: demonstrable consent (UK GDPR Art. 7 + Art. 9) for AI processing
+  // of the visitor's facial photo — WHAT wording (version) and WHERE (source)
+  // the tick was captured, mirroring aiConsultationConsentFields() on the
+  // booking-page AI flow. A bare timestamp can't prove what was agreed to once
+  // the consent copy changes.
+  consentVersion String?
+  consentSource  String?
   result    KioskResult?
   createdAt DateTime     @default(now())
   expiresAt DateTime

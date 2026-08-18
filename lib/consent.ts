@@ -41,6 +41,16 @@ export function aiConsultationConsentFields(source: string) {
   return { consentAt: new Date(), consentVersion: AI_CONSULTATION_CONSENT_VERSION, consentSource: source.slice(0, 60) };
 }
 
+// BLD-1354: same demonstrable-consent evidence for the KIOSK facial-photo AI
+// flow, which previously stamped only a bare consentAt timestamp. Bump the
+// version whenever the kiosk consent wording changes (the "Quick consent" step
+// in components/kiosk/KioskSessionFlow.tsx, and the v1 single-photo flow's
+// consent copy). The initial version stamps the copy live as of Aug 2026.
+export const KIOSK_CONSENT_VERSION = '2026-08-v1';
+export function kioskConsentFields(source: string) {
+  return { consentAt: new Date(), consentVersion: KIOSK_CONSENT_VERSION, consentSource: source.slice(0, 60) };
+}
+
 /**
  * Base Prisma where-clause for a client who may LAWFULLY receive marketing email
  * (BLD-242): opted in, not unsubscribed, AND with recorded consent evidence

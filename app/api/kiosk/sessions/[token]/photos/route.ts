@@ -97,7 +97,8 @@ export async function POST(req: Request, { params }: { params: Promise<{ token: 
       photoUrls: { push: blobUrl },
       // Back-compat: photoUrl mirrors the FIRST captured photo.
       ...(session.photoUrl ? {} : { photoUrl: blobUrl }),
-      ...(session.consentAt ? {} : { consentAt: new Date() }),
+      // BLD-1354: version + source evidence, not just a bare timestamp.
+      ...(session.consentAt ? {} : (await import('@/lib/consent')).kioskConsentFields('kiosk-v2-photo-upload')),
       status: 'PHOTO_TAKEN',
     },
   });

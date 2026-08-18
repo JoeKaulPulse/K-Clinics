@@ -241,7 +241,10 @@ function PaymentPanel({ enrolment: e, onAct }: { enrolment: Enrolment; onAct: (p
                 <div className="flex items-center gap-2">
                   <span className={`rounded-full px-2 py-0.5 text-[0.6rem] font-medium uppercase tracking-wide ${STATE_BADGE[p.state] ?? STATE_BADGE.SCHEDULED}`}>{p.state}</span>
                   {p.state !== 'PAID' && <button onClick={() => onAct({ op: 'markPaymentPaid', paymentId: p.id, method: p.method || 'BANK_TRANSFER' })} className="text-xs text-[var(--color-gold-deep)] hover:underline">Mark paid</button>}
-                  {p.state === 'PAID' && <button onClick={() => { if (confirm('Issue a Stripe refund for this payment?')) onAct({ op: 'refundPayment', paymentId: p.id }); }} className="text-xs text-[var(--color-blush-deep)] hover:underline">Refund</button>}
+                  {/* BLD-1308: warn like the Cancel action does — and if this refund
+                      returns everything the learner has paid, their course access
+                      ends automatically (enrolment auto-cancels at £0 paid). */}
+                  {p.state === 'PAID' && <button onClick={() => { if (confirm(`Issue a Stripe refund for this ${money(p.amountPence)} payment?${e.paidPence - p.amountPence <= 0 && ['PAID', 'ENROLLED'].includes(e.status) ? ' This refunds everything the learner has paid, so the enrolment will be cancelled and their course access removed automatically.' : ''}`)) onAct({ op: 'refundPayment', paymentId: p.id }); }} className="text-xs text-[var(--color-blush-deep)] hover:underline">Refund</button>}
                   <button onClick={() => { if (confirm('Remove this payment row?')) onAct({ op: 'removePayment', paymentId: p.id }); }} aria-label="Remove payment" className="text-xs text-[var(--color-blush-deep)] hover:underline">✕</button>
                 </div>
               </li>

@@ -540,6 +540,41 @@ export async function academyInstalmentReminders(): Promise<{ sent: number }> {
   return { sent };
 }
 
+/** BLD-1308: a refund that hands back EVERYTHING the student paid must also end
+ *  their course access — refunds previously rolled back paidPence and marked
+ *  the payment row REFUNDED but never touched Enrolment.status, and
+ *  studentCanAccess() grants LMS access purely on status (PAID/ENROLLED/
+ *  COMPLETED), so a fully-refunded student kept indefinite access.
+ *
+ *  Deliberately narrow: only fires when paidPence has reached 0 (a PARTIAL
+ *  refund leaves money on the enrolment, and whether that still buys access is
+ *  a staff judgement — status stays untouched), and only downgrades PAID or
+ *  ENROLLED. A COMPLETED enrolment is left alone — the student finished the
+ *  course and the record of that stands; the refund itself is already
+ *  audit-logged. CAS-guarded on status+paidPence so a concurrent instalment
+ *  payment landing mid-refund keeps access. Called from both refund paths
+ *  (in-app Stripe refund and the dashboard-refund webhook reconciler). */
+async function revokeAccessIfFullyRefunded(enrolmentId: string, actor: string): Promise<void> {
+  const e = await db.enrolment.findUnique({
+    where: { id: enrolmentId },
+    select: { status: true, paidPence: true, studentId: true, course: { select: { title: true } } },
+  }).catch(() => null);
+  if (!e || e.paidPence > 0) return;
+  if (e.status !== 'PAID' && e.status !== 'ENROLLED') return;
+  const claimed = await db.enrolment.updateMany({
+    where: { id: enrolmentId, status: { in: ['PAID', 'ENROLLED'] }, paidPence: { lte: 0 } },
+    data: { status: 'CANCELLED' },
+  }).catch(() => ({ count: 0 }));
+  if (claimed.count === 0) return;
+  await logAudit({
+    action: 'PAYMENT_REFUNDED',
+    actor,
+    enrolmentId,
+    summary: `Enrolment cancelled after full refund — every payment on ${e.course?.title || 'the course'} was refunded, so course access is revoked (BLD-1308)`,
+    meta: { autoRevoked: true },
+  }).catch(() => {});
+}
+
 /** Issue a Stripe refund for a PAID online academy payment and mark it REFUNDED. */
 export async function refundEnrolmentPayment(paymentId: string, staffEmail?: string): Promise<{ ok: boolean; error?: string }> {
   const p = await db.enrolmentPayment.findUnique({
@@ -599,6 +634,7 @@ export async function refundEnrolmentPayment(paymentId: string, staffEmail?: str
     summary: `Academy payment £${(p.amountPence / 100).toFixed(2)} refunded via Stripe`,
     meta: { paymentId, amountPence: p.amountPence },
   }).catch(() => {});
+  await revokeAccessIfFullyRefunded(p.enrolmentId, staffEmail || 'admin'); // BLD-1308
   return { ok: true };
 }
 
@@ -645,6 +681,7 @@ export async function reconcileEnrolmentPaymentRefund(piId: string, totalRefunde
       summary: `Academy payment refund £${(delta / 100).toFixed(2)}${fully ? ' (full)' : ' (partial)'} reconciled from Stripe`,
       meta: { paymentId: payment.id, deltaPence: delta, totalRefundedPence: target, piId },
     }).catch(() => {});
+    await revokeAccessIfFullyRefunded(payment.enrolmentId, 'stripe-webhook'); // BLD-1308
     return;
   }
   throw new Error(`enrolment refund CAS conflict persisted for PI ${piId} — deferring to Stripe redelivery`);
