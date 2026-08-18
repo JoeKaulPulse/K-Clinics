@@ -103,7 +103,7 @@ export function PracticeRunner({ courses }: { courses: Course[] }) {
     return (
       <>
         <div className="rounded-[var(--radius-xl)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-8 text-center">
-          {passed ? <KMascot variant={scorePct === 100 ? 'perfect' : 'pass'} size={68} className="mx-auto" /> : <div className="mx-auto grid h-20 w-20 place-items-center rounded-full bg-[var(--color-bone)]"><span className="text-3xl">📈</span></div>}
+          {passed ? <KMascot variant={scorePct === 100 ? 'perfect' : 'pass'} size={68} className="mx-auto" tone="light" /> : <div className="mx-auto grid h-20 w-20 place-items-center rounded-full bg-[var(--color-bone)]"><span className="text-3xl">📈</span></div>}
           <p className="mt-4 font-[family-name:var(--font-display)] text-3xl">{scorePct}%</p>
           <p className="mt-1 text-sm text-[var(--color-stone)]">You got {correctCount} of {questions.length} right.</p>
           <div className="mt-6 flex justify-center gap-3">

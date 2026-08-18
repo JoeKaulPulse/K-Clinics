@@ -26,7 +26,7 @@ export function Logo({
 
   return (
     <span
-      className={`logo group inline-flex flex-col items-center gap-2.5 leading-none ${className}`}
+      className={`logo group inline-flex flex-col items-center gap-2.5 leading-none ${mono ? 'logo--mono' : ''} ${className}`}
       style={{ color }}
       aria-label={site.name}
     >

@@ -118,7 +118,7 @@ export default async function PricingPage() {
                                     formatPence(v.pricePence)
                                   )}
                                   {!unavailable && (
-                                    <svg viewBox="0 0 24 24" aria-hidden className="h-4 w-4 shrink-0 text-[var(--color-gold)] opacity-50 transition-opacity group-hover:opacity-100" fill="none"><path d="M9 6l6 6-6 6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" /></svg>
+                                    <svg viewBox="0 0 24 24" aria-hidden className="h-4 w-4 shrink-0 text-[var(--color-gold-deep)] opacity-50 transition-opacity group-hover:opacity-100" fill="none"><path d="M9 6l6 6-6 6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" /></svg>
                                   )}
                                 </span>
                               </>

@@ -47,7 +47,9 @@ export function Stars({
   rating = 5,
   size = 'h-4 w-4',
   className = '',
-  colorClass = 'text-[var(--color-gold)]',
+  // BLD-1274: default AA-safe for the (much more common) light-surface callers;
+  // dark-section callers (Hero, Testimonials) already pass an explicit override.
+  colorClass = 'text-[var(--color-gold-deep)]',
   trackClass = 'text-[color-mix(in_oklab,currentColor_22%,transparent)]',
   shimmer = true,
 }: {

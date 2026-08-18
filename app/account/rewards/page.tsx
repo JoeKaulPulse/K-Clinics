@@ -86,7 +86,7 @@ export default async function RewardsPage() {
               { icon: <Glyph name="gift" className="h-3.5 w-3.5" />, text: t('rw.howReferral') },
             ].map((row) => (
               <li key={row.text} className="flex items-start gap-2.5 text-sm text-[var(--color-stone)]">
-                <span aria-hidden className="grid h-6 w-6 shrink-0 place-items-center rounded-full bg-[var(--color-gold)]/12 text-xs text-[var(--color-gold)]">{row.icon}</span>
+                <span aria-hidden className="grid h-6 w-6 shrink-0 place-items-center rounded-full bg-[var(--color-gold)]/12 text-xs text-[var(--color-gold-deep)]">{row.icon}</span>
                 {row.text}
               </li>
             ))}
