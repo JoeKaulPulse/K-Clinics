@@ -39,8 +39,9 @@ import { site } from '@/lib/site';
 
 const AUTOPLAY_MS = 7000;
 const SWIPE_MIN_PX = 48;
-const SLIDE_COUNT = 3;
-const SLIDE_LABELS = ['The clinic', 'K Academy', 'Inside KClinics'];
+const SLIDE_COUNT = 4;
+// BLD-1197: slide 2 is the Signature Facial promotion (prices owner-confirmed 18 Aug).
+const SLIDE_LABELS = ['The clinic', 'Signature Facial offer', 'K Academy', 'Inside KClinics'];
 
 const ease = 'cubic-bezier(0.16,1,0.3,1)';
 
@@ -85,7 +86,7 @@ export function HeroSlider({
     return () => evs.forEach((ev) => window.removeEventListener(ev, arm));
   }, []);
   const [visitedFilm, setVisitedFilm] = useState(false);
-  useEffect(() => { if (index === 2) setVisitedFilm(true); }, [index]);
+  useEffect(() => { if (index === 3) setVisitedFilm(true); }, [index]);
   const filmArmed = interacted && visitedFilm;
   const touch = useRef<{ x: number; y: number } | null>(null);
 
@@ -109,7 +110,7 @@ export function HeroSlider({
   useEffect(() => {
     const v = videoRef.current;
     if (!v) return;
-    if (index === 2 && !reduce) v.play().catch(() => { /* autoplay blocked — poster/fallback stays */ });
+    if (index === 3 && !reduce) v.play().catch(() => { /* autoplay blocked — poster/fallback stays */ });
     else v.pause();
   }, [index, reduce]);
 
@@ -216,8 +217,43 @@ export function HeroSlider({
         </div>
       </div>
 
-      {/* ── Slide 2 — K Academy ── */}
+      {/* ── Slide 2 — Signature Facial promotion (BLD-1197; £150/£210 owner-confirmed 18 Aug) ── */}
       <div role="group" aria-roledescription="slide" aria-label={`2 of ${SLIDE_COUNT}: ${SLIDE_LABELS[1]}`} inert={index !== 1} className={slide(1)} style={{ transitionTimingFunction: ease }}>
+        <span aria-hidden className="pointer-events-none absolute inset-0 bg-[radial-gradient(120%_100%_at_75%_25%,color-mix(in_oklab,var(--color-gold)_26%,transparent),transparent_56%)]" />
+        <span aria-hidden className="pointer-events-none absolute inset-0 bg-[radial-gradient(100%_100%_at_50%_125%,color-mix(in_oklab,#000_45%,transparent),transparent_52%)]" />
+        <div aria-hidden className="pointer-events-none absolute right-[-8%] top-1/2 hidden h-[110%] -translate-y-1/2 text-[var(--color-gold-soft)] opacity-[0.3] md:block">
+          <KMark className="h-full w-auto" />
+        </div>
+
+        <div className="container-lux relative z-10 py-32">
+          <div className="max-w-2xl">
+            <p className="eyebrow mb-6 inline-flex items-center gap-2.5 text-[var(--color-gold-soft)]">
+              <span className="h-px w-8 bg-[var(--color-gold-soft)]/70" />
+              Limited-time offer
+            </p>
+            {/* Same 4rem cap as the other later slides — see the LCP note on slide 3. */}
+            <h2 className="font-[family-name:var(--font-display)] text-[clamp(2.25rem,1.4rem+2.9vw,4rem)] leading-[1.04] tracking-[-0.02em]">
+              The Signature Facial, <span className="text-gold-shimmer">at its best price.</span>
+            </h2>
+            <p className="mt-7 max-w-xl text-lg leading-relaxed text-[color-mix(in_oklab,var(--color-porcelain)_80%,transparent)]">
+              Cleanse, resurface and glow — our prescriptive signature facial, tailored to your skin
+              by the clinicians who know it best.
+            </p>
+            <p className="mt-6 flex flex-wrap items-baseline gap-x-4 gap-y-2">
+              <del className="text-xl text-[color-mix(in_oklab,var(--color-porcelain)_55%,transparent)]"><span className="sr-only">Was </span>£210</del>
+              <span className="font-[family-name:var(--font-display)] text-4xl text-[var(--color-gold-soft)] md:text-5xl"><span className="sr-only">Now </span>£150</span>
+              <span className="rounded-full border border-[var(--color-gold-soft)]/60 px-3 py-1 text-sm font-medium uppercase tracking-[0.12em] text-[var(--color-gold-soft)]">Save £60</span>
+            </p>
+            <div className="mt-9 flex flex-wrap items-center gap-3">
+              <Button href="/book?treatment=face-treatments" variant="gold" size="lg">Book the offer <ArrowIcon /></Button>
+              <Button href="/face-treatments" variant="outline" size="lg">About the facial</Button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* ── Slide 3 — K Academy ── */}
+      <div role="group" aria-roledescription="slide" aria-label={`3 of ${SLIDE_COUNT}: ${SLIDE_LABELS[2]}`} inert={index !== 2} className={slide(2)} style={{ transitionTimingFunction: ease }}>
         <span aria-hidden className="pointer-events-none absolute inset-0 bg-[radial-gradient(120%_100%_at_20%_20%,color-mix(in_oklab,var(--color-gold)_22%,transparent),transparent_58%)]" />
         <span aria-hidden className="pointer-events-none absolute inset-0 bg-[radial-gradient(100%_100%_at_50%_125%,color-mix(in_oklab,#000_45%,transparent),transparent_52%)]" />
         <div aria-hidden className="pointer-events-none absolute right-[-8%] top-1/2 hidden h-[110%] -translate-y-1/2 text-[var(--color-gold-soft)] opacity-[0.3] md:block">
@@ -249,8 +285,8 @@ export function HeroSlider({
         </div>
       </div>
 
-      {/* ── Slide 3 — the clinic film (owner-supplied video; branded fallback) ── */}
-      <div role="group" aria-roledescription="slide" aria-label={`3 of ${SLIDE_COUNT}: ${SLIDE_LABELS[2]}`} inert={index !== 2} className={slide(2)} style={{ transitionTimingFunction: ease }}>
+      {/* ── Slide 4 — the clinic film (owner-supplied video; branded fallback) ── */}
+      <div role="group" aria-roledescription="slide" aria-label={`4 of ${SLIDE_COUNT}: ${SLIDE_LABELS[3]}`} inert={index !== 3} className={slide(3)} style={{ transitionTimingFunction: ease }}>
         {video?.videoUrl && !videoFailed && filmArmed ? (
           <video
             ref={videoRef}
