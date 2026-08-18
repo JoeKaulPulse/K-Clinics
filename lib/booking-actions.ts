@@ -152,7 +152,10 @@ async function receiptDetail(bookingId: string, paymentMethodId?: string | null)
 export async function chargeBooking(
   booking: BookingWithClient,
   amountPence: number,
-  opts: { late?: boolean } = {},
+  // BLD-1347: `reason` only labels the charge (Stripe description + receipt
+  // subject) so a missed appointment isn't billed as a "late cancellation".
+  // The idempotency key stays keyed on `late`, so the two can never both charge.
+  opts: { late?: boolean; reason?: 'late-cancel' | 'no-show' } = {},
   // `alreadyPaid` means this call took NO money because the booking was already
   // settled (an earlier charge, or a BNPL course pre-payment). Callers that
   // report a fee to the client must treat it as "nothing charged", not as a
@@ -187,8 +190,8 @@ export async function chargeBooking(
       payment_method: booking.stripePaymentMethodId,
       off_session: true,
       confirm: true,
-      description: `${opts.late ? 'Late cancellation' : 'Treatment'} — ${booking.treatmentTitle}`,
-      metadata: { bookingId: booking.id, late: String(Boolean(opts.late)) },
+      description: `${opts.late ? (opts.reason === 'no-show' ? 'Missed appointment' : 'Late cancellation') : 'Treatment'} — ${booking.treatmentTitle}`,
+      metadata: { bookingId: booking.id, late: String(Boolean(opts.late)), ...(opts.reason ? { reason: opts.reason } : {}) },
     }, {
       // …and a stable idempotency key so concurrent creates collapse to ONE
       // PaymentIntent at Stripe (one charge per booking, treatment vs late-fee).
@@ -219,7 +222,7 @@ export async function chargeBooking(
       const detail = opts.late ? null : await receiptDetail(booking.id, booking.stripePaymentMethodId).catch(() => null);
       const receipt = await sendEmail({
         to: booking.client.email,
-        subject: opts.late ? 'Late-cancellation fee — KClinics' : `Receipt — ${booking.treatmentTitle}`,
+        subject: opts.late ? (opts.reason === 'no-show' ? 'Missed appointment fee — KClinics' : 'Late-cancellation fee — KClinics') : `Receipt — ${booking.treatmentTitle}`,
         html: tmplChargeReceipt({ firstName: booking.client.firstName, treatment: booking.treatmentTitle, pricePence: amountPence, late: opts.late, vat, ...(detail ?? {}) }),
       });
       if (!receipt.ok) console.error('[charge] receipt email failed:', receipt.error);
@@ -556,6 +559,13 @@ export async function cancelBooking(
 
   const late = isWithin24h(booking);
   const shouldCharge = late && !opts.waiveFee && booking.pricePence > 0;
+  // BLD-1347: a session booked against a prepaid course carries no money of its
+  // own (pricePence is 0 — the course was paid on the purchase booking), so the
+  // `pricePence > 0` guard above means a late cancellation cost the client
+  // nothing AND left their balance untouched, letting the course be stretched
+  // indefinitely by cancelling late. Under the same 24-hour policy that charges
+  // a fee on a paid booking, the session itself is what's spent here.
+  const shouldConsumeSession = late && !opts.waiveFee && Boolean(booking.packageBookingId);
   // BLD-733: net off any loyalty points the client already redeemed as money off
   // this booking — otherwise the late fee bills the pre-discount price on top of
   // a discount the client already paid for with points.
@@ -596,8 +606,23 @@ export async function cancelBooking(
     where: { bookingId: booking.id, status: { not: 'COMPLETED' } },
     data: { status: 'CANCELLED', completedAt: new Date() },
   }).catch(() => {});
+
+  // BLD-1347: spend the prepaid session (the status stays CANCELLED; only the
+  // package balance moves). Idempotent, and never touches a course purchase.
+  let sessionConsumed = false;
+  if (shouldConsumeSession) {
+    const { consumePackageSession } = await import('@/lib/package-sessions');
+    sessionConsumed = await consumePackageSession(booking.id, opts.by);
+    if (sessionConsumed) {
+      await logAudit({
+        action: 'SESSION_EDITED', actor: opts.by, bookingId: booking.id, clientId: booking.clientId,
+        summary: `Cancelled inside 24h (${booking.treatmentTitle}) — one prepaid session deducted from the client's package balance under the cancellation policy`,
+      }).catch(() => {});
+    }
+  }
+
   await db.interaction.create({
-    data: { clientId: booking.clientId, type: 'APPOINTMENT', summary: `Cancelled ${booking.treatmentTitle}${late ? ' (within 24h)' : ''}${charged ? ` — charged £${(charged / 100).toFixed(2)}` : feeFailed ? ' — LATE FEE FAILED (follow up)' : alreadyPaid ? ' — no fee taken (already paid in full)' : opts.waiveFee && late ? ' — fee waived' : ''}`, author: opts.by },
+    data: { clientId: booking.clientId, type: 'APPOINTMENT', summary: `Cancelled ${booking.treatmentTitle}${late ? ' (within 24h)' : ''}${charged ? ` — charged £${(charged / 100).toFixed(2)}` : sessionConsumed ? ' — one prepaid package session deducted' : feeFailed ? ' — LATE FEE FAILED (follow up)' : alreadyPaid ? ' — no fee taken (already paid in full)' : opts.waiveFee && late ? ' — fee waived' : ''}`, author: opts.by },
   });
 
   if (feeFailed) {
@@ -680,6 +705,89 @@ export async function cancelBooking(
     bestEffort(import('@/lib/google-calendar').then((m) => m.removeBookingFromClinician(booking.id))),
   ]);
   return { ok: true, charged, requiresAction, feeFailed };
+}
+
+/**
+ * BLD-1347 — apply the published no-show fee when staff mark an appointment as
+ * a no-show. The policy (lib/info-pages.ts) is the same one cancelBooking
+ * enforces: inside 24 hours, or not attending, incurs the full treatment fee.
+ * Until now the no-show path took nothing at all — it only left a derived debt
+ * on lib/outstanding.ts that blocked the client's online rebooking.
+ *
+ * How the fee is taken depends on how the client paid:
+ *  - prepaid course session (pricePence 0, money sits on the purchase booking)
+ *    → spend one session off their package balance; there is no card charge to
+ *      make, and the session is the thing of value they consumed;
+ *  - already settled (an earlier charge, or a BNPL course pre-payment)
+ *    → nothing to take; reported as alreadyPaid so no email claims a fee;
+ *  - otherwise → charge the card on file for the price net of any loyalty
+ *    points already redeemed as money off, exactly as the late-cancel path does.
+ *
+ * `waiveFee` is the staff override: it writes feeWaived, which clears the
+ * derived outstanding balance and skips both the charge and the session.
+ *
+ * Never throws — a fee problem must not stop the appointment being marked.
+ * Call AFTER any gift-voucher release so the pre-fee chargedAt semantics that
+ * BLD-882 relies on still hold.
+ */
+export async function applyNoShowFee(
+  bookingId: string,
+  opts: { by: string; waiveFee?: boolean },
+): Promise<{ charged: number; sessionConsumed: boolean; waived: boolean; alreadyPaid: boolean; requiresAction: boolean; feeFailed: boolean }> {
+  const nil = { charged: 0, sessionConsumed: false, waived: false, alreadyPaid: false, requiresAction: false, feeFailed: false };
+  const booking = await db.booking.findUnique({ where: { id: bookingId }, include: { client: true } }).catch(() => null);
+  if (!booking) return nil;
+
+  if (opts.waiveFee) {
+    // Clears the derived outstanding balance (lib/outstanding.ts filters on it),
+    // so waiving reopens the client's online booking with nothing else to reset.
+    await db.booking.update({ where: { id: bookingId }, data: { feeWaived: true } }).catch(() => {});
+    await logAudit({
+      action: 'BOOKING_NO_SHOW', actor: opts.by, bookingId, clientId: booking.clientId,
+      summary: `No-show fee waived on ${booking.treatmentTitle} (£${(booking.pricePence / 100).toFixed(2)})`,
+    }).catch(() => {});
+    return { ...nil, waived: true };
+  }
+
+  // Guard a mis-click: an appointment still more than 24 hours away cannot have
+  // been missed, and must never charge a card on a fat-finger.
+  if (!isWithin24h(booking)) return nil;
+
+  // A prepaid package session: the balance is the fee.
+  if (booking.packageBookingId) {
+    const { consumePackageSession } = await import('@/lib/package-sessions');
+    const sessionConsumed = await consumePackageSession(bookingId, opts.by);
+    if (sessionConsumed) {
+      await logAudit({
+        action: 'BOOKING_NO_SHOW', actor: opts.by, bookingId, clientId: booking.clientId,
+        summary: `No-show on ${booking.treatmentTitle} — one prepaid session deducted from the client's package balance (no card charge; the course is already paid)`,
+      }).catch(() => {});
+    }
+    return { ...nil, sessionConsumed };
+  }
+
+  if (booking.pricePence <= 0) return nil; // on-consultation / £0 — nothing to take
+
+  // BLD-733 parity: bill the price net of points already redeemed as money off,
+  // so the fee doesn't re-charge a discount the client paid for with points.
+  const chargeablePence = Math.max(0, booking.pricePence - (booking.pointsRedeemedPence ?? 0));
+  if (chargeablePence <= 0) return nil;
+
+  const res = await chargeBooking(booking, chargeablePence, { late: true, reason: 'no-show' }).catch(() => ({ ok: false, error: 'charge failed' }));
+  if (res.ok && 'alreadyPaid' in res && res.alreadyPaid) return { ...nil, alreadyPaid: true };
+  if (res.ok) {
+    await logAudit({
+      action: 'PAYMENT_CHARGED', actor: opts.by, bookingId, clientId: booking.clientId,
+      summary: `No-show fee charged: £${(chargeablePence / 100).toFixed(2)} — ${booking.treatmentTitle}`,
+    }).catch(() => {});
+    return { ...nil, charged: chargeablePence };
+  }
+  if ('requiresAction' in res && res.requiresAction) return { ...nil, requiresAction: true };
+  await logAudit({
+    action: 'PAYMENT_FAILED', actor: opts.by, bookingId, clientId: booking.clientId,
+    summary: `No-show fee (£${(chargeablePence / 100).toFixed(2)}) failed — follow up. It stays on the client's outstanding balance.`,
+  }).catch(() => {});
+  return { ...nil, feeFailed: true };
 }
 
 export function isWithin48h(b: Pick<Booking, 'startAt'>): boolean {

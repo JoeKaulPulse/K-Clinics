@@ -273,6 +273,19 @@ export async function GET(req: Request) {
     failures++; console.error('[cron] clinical-encryption backfill failed (continuing):', (e as Error)?.message);
   }
 
+  // BLD-1345: one-time retro push for consultation enquiries that never reached
+  // a person (the per-user email copy never fired and the in-app row only started
+  // being written on 2026-08-05). Sends one summary to the staff who work the
+  // enquiries, then latches itself off. Best-effort.
+  let consultBackfill: { ran: boolean; consultations: number; emailed: number; warning?: string } = { ran: false, consultations: 0, emailed: 0 };
+  try {
+    const { backfillConsultNotificationsIfNeeded } = await import('@/lib/consult-notify-backfill');
+    consultBackfill = await backfillConsultNotificationsIfNeeded();
+    if (consultBackfill.warning) { failures++; console.error('[cron] consult notification backfill:', consultBackfill.warning); }
+  } catch (e) {
+    failures++; console.error('[cron] consult notification backfill failed (continuing):', (e as Error)?.message);
+  }
+
   // BLD-740: one-time re-home of legacy PUBLIC portfolio photos into the
   // private blob store (bounded per run; self-disables via a Settings key once
   // a pass finds nothing left). Failures count so the alerting fires.
@@ -419,7 +432,7 @@ export async function GET(req: Request) {
 
   // BLD-153: surface failure to the scheduler — non-200 when anything failed.
   return NextResponse.json(
-    { ok: failures === 0, failures, durationMs: cronDurationMs, ...result, loyalty, membership, gcal, gbiz, retention, idMeta, pii, gdprSweep, scheduledEmail, adSpend, board, clinicalBackfill, portfolioMigration, examBank, gamification, authored, courseContent, communityDigest, instalmentDunning },
+    { ok: failures === 0, failures, durationMs: cronDurationMs, ...result, loyalty, membership, gcal, gbiz, retention, idMeta, pii, gdprSweep, scheduledEmail, adSpend, board, clinicalBackfill, consultBackfill, portfolioMigration, examBank, gamification, authored, courseContent, communityDigest, instalmentDunning },
     { status: failures === 0 ? 200 : 500 },
   );
 }

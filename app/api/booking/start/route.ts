@@ -62,6 +62,43 @@ export async function POST(req: Request) {
 
   const { db } = await import('@/lib/db');
 
+  // ── BLD-1346: spend a session off a course the client already paid for ──
+  // Re-validated in full here rather than trusted from the browser: the client
+  // sends only an id, and a booking is priced at £0 only if that id really is
+  // one of THEIR packages, for THIS treatment, paid, with a session left.
+  let packageBookingId: string | null = null;
+  let packageSessionsTotal = 0;
+  if (d.usePackageBookingId) {
+    if (primaryStatus === 'CONSULTATION') {
+      return NextResponse.json({ ok: false, error: 'A consultation can’t use a package session.' }, { status: 409 });
+    }
+    if (d.sessions > 1) {
+      return NextResponse.json({ ok: false, error: 'A package session books one visit at a time — choose “single session”.' }, { status: 409 });
+    }
+    const { clientPackages } = await import('@/lib/package-sessions');
+    const pkg = (await clientPackages(client.id)).find((p) => p.purchaseBookingId === d.usePackageBookingId);
+    if (!pkg) {
+      return NextResponse.json({ ok: false, error: 'We couldn’t find that course on your account. Please refresh and try again.' }, { status: 404 });
+    }
+    if (pkg.treatmentSlug !== primary.service.treatmentSlug) {
+      return NextResponse.json({ ok: false, error: `That course is for a different treatment (${pkg.label}).` }, { status: 409 });
+    }
+    if (pkg.sessionsRemaining < 1) {
+      return NextResponse.json({ ok: false, error: 'There are no sessions left on that course — every one is already booked or used.' }, { status: 409 });
+    }
+    // Unlike the staff flow (which can knowingly book an unpaid package), the
+    // client-facing path requires the course to be settled — otherwise an unpaid
+    // purchase would hand out free visits.
+    if (!pkg.paid) {
+      return NextResponse.json({ ok: false, error: 'That course hasn’t been paid for yet, so its sessions can’t be booked online. Please call us.' }, { status: 409 });
+    }
+    packageBookingId = pkg.purchaseBookingId;
+    packageSessionsTotal = pkg.sessionsTotal;
+  }
+  // The package covers the primary treatment only; any add-on chosen in the same
+  // slot is still priced and charged normally.
+  const usingPackage = Boolean(packageBookingId);
+
   // ── Build line items + pricing ──
   type Item = { variantId: string; treatmentSlug: string; label: string; sessions: number; durationMin: number; pricePence: number; discountPence: number; isAddon: boolean };
   const items: Item[] = [];
@@ -69,7 +106,11 @@ export async function POST(req: Request) {
   // Primary — single session or a course (course total when a matching course exists).
   // "On consultation" books as a £0 card-on-file hold; the price is set by staff later.
   const onConsultation = primaryStatus === 'CONSULTATION';
-  let base = onConsultation ? 0 : primary.variant.pricePence;
+  // BLD-1346: a package session is £0 — the money already sits on the course
+  // purchase booking. Everything downstream keys off `base`, so the offer,
+  // welcome-discount and promo blocks below all self-skip at a base of 0
+  // (each is guarded on `base > 0`), and no discount is burned on a free visit.
+  let base = onConsultation || usingPackage ? 0 : primary.variant.pricePence;
   let sessions = 1;
   if (!onConsultation && d.sessions > 1) {
     const course = primary.variant.courses.find((c) => c.sessions === d.sessions);
@@ -98,7 +139,11 @@ export async function POST(req: Request) {
   items.push({
     variantId: primary.variant.id, treatmentSlug: primary.service.treatmentSlug,
     label: `${primary.service.name} — ${primary.variant.name}`, sessions,
-    durationMin: primary.variant.durationMin, pricePence: base, discountPence: primaryDiscount, isAddon: false,
+    durationMin: primary.variant.durationMin, pricePence: base,
+    // A prepaid session is £0 with nothing discounted off it. A fixed-amount
+    // offer would otherwise leave a phantom discountPence on a £0 line item —
+    // harmless to the total, but it would misreport on receipts and reports.
+    discountPence: usingPackage ? 0 : primaryDiscount, isAddon: false,
   });
 
   for (const ao of addOns) {
@@ -180,6 +225,15 @@ export async function POST(req: Request) {
   const bufferMin = bookingFor(treatmentSlug).bufferMin ?? 0;
   const endBuffered = new Date(end.getTime() + bufferMin * 60_000);
   const result = await db.$transaction(async (tx) => {
+    // BLD-1346: re-check the package balance INSIDE the transaction. The
+    // validation above reads a derived balance outside it, so two bookings
+    // submitted at once could each see the last session free and both spend it.
+    // Serializable isolation makes this recount authoritative.
+    if (packageBookingId) {
+      const { packageOccupancyWhere } = await import('@/lib/package-sessions');
+      const occupied = await tx.booking.count({ where: packageOccupancyWhere(packageBookingId) });
+      if (occupied >= packageSessionsTotal) return 'PACKAGE_FULL' as const;
+    }
     if (!sameDayRequest) {
       const overlapping = await tx.booking.findMany({
         where: { status: { in: ['PENDING', 'CONFIRMED'] }, startAt: { lt: endBuffered }, endAt: { gt: start } },
@@ -203,6 +257,7 @@ export async function POST(req: Request) {
         aftercareAckAt: d.aftercareAck ? new Date() : null,
         stripeCustomerId: customerId,
         practitionerId,
+        packageBookingId, // BLD-1346: null unless this visit spends a prepaid session
         ...attribution,
         resources: resourceIds.length ? { connect: resourceIds.map((id) => ({ id })) } : undefined,
         items: { create: items },
@@ -213,6 +268,9 @@ export async function POST(req: Request) {
     if (err.code === 'P2034' || /write conflict|deadlock|could not serialize/i.test(err.message || '')) return 'CONFLICT' as const;
     throw e;
   });
+  if (result === 'PACKAGE_FULL') {
+    return NextResponse.json({ ok: false, error: 'There are no sessions left on that course — every one is already booked or used.' }, { status: 409 });
+  }
   if (result === 'CONFLICT' || !result) {
     return NextResponse.json({ ok: false, error: 'That time was just taken. Please choose another slot.' }, { status: 409 });
   }
@@ -278,7 +336,19 @@ export async function POST(req: Request) {
   }
 
   const { logAudit } = await import('@/lib/audit');
-  await logAudit({ action: 'BOOKING_CREATED', actor: 'client', clientId: client.id, bookingId: booking.id, summary: `Booking created: ${title}${sessions > 1 ? ` (course of ${sessions})` : ''} on ${start.toLocaleString('en-GB', { timeZone: CLINIC_TZ })}`, meta: { totalPence: totalPrice, items: items.length, sessions } });
+  await logAudit({ action: 'BOOKING_CREATED', actor: 'client', clientId: client.id, bookingId: booking.id, summary: `Booking created: ${title}${sessions > 1 ? ` (course of ${sessions})` : ''} on ${start.toLocaleString('en-GB', { timeZone: CLINIC_TZ })}`, meta: { totalPence: totalPrice, items: items.length, sessions, ...(packageBookingId ? { packageBookingId } : {}) } });
+
+  // BLD-1346: a package session leaves its own trail, with the session number,
+  // so the balance movement is auditable the same way the staff flow's is.
+  if (packageBookingId) {
+    const { packageSessionNumber } = await import('@/lib/package-sessions');
+    const n = await packageSessionNumber(booking.id).catch(() => null);
+    await logAudit({
+      action: 'BOOKING_CREATED', actor: 'client', clientId: client.id, bookingId: booking.id,
+      summary: `Package session booked online${n ? ` (session ${n.session} of ${n.total})` : ''} — covered by the course purchase, £${(totalPrice / 100).toFixed(2)} to collect`,
+      meta: { packageBookingId },
+    }).catch(() => {});
+  }
 
   // Server-side Schedule conversion (GA4 begin_checkout + Meta CAPI Schedule),
   // deduped with the browser pixel via the booking id. The Purchase event fires

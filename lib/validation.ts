@@ -135,6 +135,11 @@ export const bookingStartSchema = z.object({
   ageDeclare: z.boolean().default(false), // "I confirm I am 18 or over"
   promoCode: z.string().max(40).optional().or(z.literal('')),
   waitlistToken: z.string().max(64).optional().or(z.literal('')), // BLD-133 claim link
+  // BLD-1346: spend a session the client has already paid for on a course.
+  // The id is the package's purchase booking; everything about it (ownership,
+  // treatment match, remaining balance, paid status) is re-validated server-side
+  // in /api/booking/start — a client can never price their own booking.
+  usePackageBookingId: z.string().max(64).optional().or(z.literal('')),
 });
 export type BookingStartInput = z.infer<typeof bookingStartSchema>;
 

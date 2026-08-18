@@ -228,7 +228,7 @@ export default async function BookingDetail({ params }: { params: Promise<{ id: 
         <div>
           <span className="inline-block rounded-full bg-[var(--color-bone)] px-3 py-1 text-xs uppercase tracking-[0.16em]">{b.status}</span>
           {/* BLD-1096: cancelled, but the client's prepaid package still absorbed the session. */}
-          {b.status === 'CANCELLED' && b.packageSessionUsedAt && (
+          {['CANCELLED', 'NO_SHOW'].includes(b.status) && b.packageSessionUsedAt && (
             <span className="ml-2 inline-block rounded-full bg-[color-mix(in_oklab,var(--color-gold)_18%,transparent)] px-3 py-1 text-xs font-medium uppercase tracking-[0.16em] text-[var(--color-gold-deep)]">Package session used</span>
           )}
           <h1 className="mt-3 font-[family-name:var(--font-display)] text-3xl">{b.treatmentTitle}</h1>
@@ -423,12 +423,13 @@ export default async function BookingDetail({ params }: { params: Promise<{ id: 
               canCharge={sessionCan(session, 'bookings.charge')}
               pointsRedeemedPence={b.pointsRedeemedPence}
               prepaid={Boolean(b.prepaidAt)}
+              isPackageSession={packageEligible}
             />
             {/* BLD-1096: admin-only — mark a cancelled appointment as still
                 having consumed one session of the client's package. Only
                 offered once there's a package to deduct from (or it's already
                 marked, so the undo control stays reachable). */}
-            {b.status === 'CANCELLED' && sessionIsAdmin(session) && (packageEligible || b.packageSessionUsedAt) && (
+            {['CANCELLED', 'NO_SHOW'].includes(b.status) && sessionIsAdmin(session) && (packageEligible || b.packageSessionUsedAt) && (
               <div className="mt-6">
                 <PackageSessionToggle bookingId={b.id} usedAt={b.packageSessionUsedAt ? b.packageSessionUsedAt.toISOString() : null} usedBy={b.packageSessionUsedBy} />
               </div>

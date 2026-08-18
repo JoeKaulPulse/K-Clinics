@@ -195,10 +195,22 @@ export async function approveBookingRequestAction(bookingId: string): Promise<{ 
   return { ok: true };
 }
 
-export async function setBookingStatus(bookingId: string, status: 'COMPLETED' | 'NO_SHOW' | 'CONFIRMED'): Promise<{ ok: boolean; error?: string }> {
+// BLD-1347: `opts.waiveFee` is the override on the no-show branch. Without it a
+// no-show now applies the published 24-hour policy — the full fee is taken, as a
+// card charge or as one session off a prepaid package (see noShowFee below).
+export async function setBookingStatus(
+  bookingId: string,
+  status: 'COMPLETED' | 'NO_SHOW' | 'CONFIRMED',
+  opts: { waiveFee?: boolean } = {},
+): Promise<{ ok: boolean; error?: string; charged?: number; sessionConsumed?: boolean; feeFailed?: boolean; requiresAction?: boolean }> {
   if (!crmEnabled) return { ok: false, error: 'CRM disabled' };
   const session = await getSession();
   if (!session || !sessionCan(session, 'bookings.manage')) return { ok: false, error: 'You don’t have permission to update appointments.' };
+  // Taking money needs the payment permission; waiving a fee that is owed is a
+  // financial concession, so it needs it too. Marking the no-show itself doesn't.
+  if (status === 'NO_SHOW' && opts.waiveFee && !sessionCan(session, 'bookings.charge')) {
+    return { ok: false, error: 'You don’t have permission to waive a no-show fee.' };
+  }
   const { db } = await import('@/lib/db');
   // BLD-1249: the live checkout screen (SessionRunner) gates every payment
   // method — including "Record cash" — on booking.finishedAt, not on status.
@@ -211,7 +223,13 @@ export async function setBookingStatus(bookingId: string, status: 'COMPLETED' | 
   const prior = status === 'COMPLETED' || status === 'CONFIRMED'
     ? await db.booking.findUnique({ where: { id: bookingId }, select: { startedAt: true, finishedAt: true } })
     : null;
-  const data: { status: typeof status; finishedAt?: Date | null; actualMinutes?: number | null } = { status };
+  const data: { status: typeof status; finishedAt?: Date | null; actualMinutes?: number | null; packageSessionUsedAt?: Date | null; packageSessionUsedBy?: string | null } = { status };
+  // BLD-1347: "Reset to confirmed" undoes a mis-clicked no-show, so it must also
+  // hand back the prepaid session that no-show spent. The derived balance already
+  // stops counting it (isUsed needs a CANCELLED/NO_SHOW status), but leaving the
+  // mark behind would make the booking-detail badge claim a session was used on a
+  // live appointment.
+  if (status === 'CONFIRMED') { data.packageSessionUsedAt = null; data.packageSessionUsedBy = null; }
   if (status === 'COMPLETED' && prior && !prior.finishedAt) {
     const finishedAt = new Date();
     data.finishedAt = finishedAt;
@@ -221,6 +239,7 @@ export async function setBookingStatus(bookingId: string, status: 'COMPLETED' | 
     data.actualMinutes = null;
   }
   await db.booking.update({ where: { id: bookingId }, data });
+  let fee: { charged: number; sessionConsumed: boolean; waived: boolean; alreadyPaid: boolean; requiresAction: boolean; feeFailed: boolean } | null = null;
   const b = await db.booking.findUnique({ where: { id: bookingId } });
   if (b) {
     await db.interaction.create({ data: { clientId: b.clientId, type: 'APPOINTMENT', summary: `Booking marked ${status.toLowerCase().replace('_', ' ')}`, author: session.email } });
@@ -271,6 +290,18 @@ export async function setBookingStatus(bookingId: string, status: 'COMPLETED' | 
         } catch (e) {
           console.error('[setBookingStatus] voucher re-credit failed (continuing):', (e as Error)?.message);
         }
+      }
+
+      // BLD-1347: apply the published no-show fee — a card charge, or one
+      // session off a prepaid package, or nothing when staff waived it. Runs
+      // LAST in this branch, after the voucher release above, so that release
+      // still sees the pre-fee chargedAt the BLD-882 guard depends on. Never
+      // throws: a payment problem must not stop the appointment being marked.
+      try {
+        const { applyNoShowFee } = await import('@/lib/booking-actions');
+        fee = await applyNoShowFee(bookingId, { by: session.email, waiveFee: opts.waiveFee });
+      } catch (e) {
+        console.error('[setBookingStatus] no-show fee failed (continuing):', (e as Error)?.message);
       }
     }
     if (status === 'COMPLETED') {
@@ -362,7 +393,13 @@ export async function setBookingStatus(bookingId: string, status: 'COMPLETED' | 
   }
   revalidatePath(`/admin/bookings/${bookingId}`);
   revalidatePath('/admin/bookings');
-  return { ok: true };
+  // BLD-1347: the client's package balance and outstanding-fee warning both
+  // render off this booking, so refresh their record too.
+  if (b && fee && (fee.sessionConsumed || fee.charged > 0 || fee.waived)) revalidatePath(`/admin/clients/${b.clientId}`);
+  return {
+    ok: true,
+    ...(fee ? { charged: fee.charged, sessionConsumed: fee.sessionConsumed, feeFailed: fee.feeFailed, requiresAction: fee.requiresAction } : {}),
+  };
 }
 
 // Staff cancel with optional fee waiver (override of the within-24h charge).
@@ -442,7 +479,10 @@ export async function markPackageSessionUsed(bookingId: string): Promise<{ ok: b
     select: { status: true, clientId: true, treatmentTitle: true, packageBookingId: true, packageSessionUsedAt: true },
   });
   if (!booking) return { ok: false, error: 'Booking not found.' };
-  if (booking.status !== 'CANCELLED') return { ok: false, error: 'Only a cancelled appointment can be marked this way.' };
+  // BLD-1347: a no-show now consumes the session automatically, but staff still
+  // need the manual mark on both statuses — to re-apply it after an
+  // unmark/undo, and for a cancellation the policy left untouched.
+  if (booking.status !== 'CANCELLED' && booking.status !== 'NO_SHOW') return { ok: false, error: 'Only a cancelled or missed appointment can be marked this way.' };
   if (booking.packageSessionUsedAt) return { ok: true }; // idempotent
   // Review fix (BLD-1096): only a FOLLOW-UP session (one linked back to a
   // purchase via packageBookingId) can be marked. The course purchase booking
