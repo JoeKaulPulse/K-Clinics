@@ -299,6 +299,32 @@ export async function GET(req: Request) {
     failures++; console.error('[cron] consult notification backfill failed (continuing):', (e as Error)?.message);
   }
 
+  // BLD-1356: course-catalogue hygiene. A course card's LEVEL badge comes from
+  // Course.level while the title carries its own "Level N" (e.g. "VTCT Level 5
+  // Beauty Therapy Diploma" badged LEVEL 3) — independent admin-entered fields,
+  // so a typo in one publishes a contradiction to every /academy visitor. The
+  // title is the qualification's actual name, so it wins: when both express a
+  // plain level and they disagree, align the badge to the title. Deliberately
+  // narrow — a level field that is anything other than "Level N" is left alone.
+  let courseLevels = 0;
+  try {
+    const { db } = await import('@/lib/db');
+    const courses = await db.course.findMany({ where: { active: true }, select: { id: true, slug: true, title: true, level: true } });
+    for (const c of courses) {
+      const fromTitle = c.title.match(/\blevel\s*(\d+)\b/i)?.[1];
+      const plainLevel = c.level?.match(/^\s*level\s*(\d+)\s*$/i)?.[1];
+      if (fromTitle && plainLevel && fromTitle !== plainLevel) {
+        await db.course.update({ where: { id: c.id }, data: { level: `Level ${fromTitle}` } });
+        courseLevels++;
+        console.warn(`[cron] course level badge corrected to match title: ${c.title} (${c.level} → Level ${fromTitle})`);
+        const { revalidatePath } = await import('next/cache');
+        revalidatePath('/academy'); revalidatePath(`/academy/${c.slug}`);
+      }
+    }
+  } catch (e) {
+    failures++; console.error('[cron] course level hygiene failed (continuing):', (e as Error)?.message);
+  }
+
   // BLD-740: one-time re-home of legacy PUBLIC portfolio photos into the
   // private blob store (bounded per run; self-disables via a Settings key once
   // a pass finds nothing left). Failures count so the alerting fires.
@@ -445,7 +471,7 @@ export async function GET(req: Request) {
 
   // BLD-153: surface failure to the scheduler — non-200 when anything failed.
   return NextResponse.json(
-    { ok: failures === 0, failures, durationMs: cronDurationMs, ...result, loyalty, membership, gcal, gbiz, gbizPosts, retention, idMeta, pii, gdprSweep, scheduledEmail, adSpend, board, clinicalBackfill, consultBackfill, portfolioMigration, examBank, gamification, authored, courseContent, communityDigest, instalmentDunning },
+    { ok: failures === 0, failures, durationMs: cronDurationMs, ...result, loyalty, membership, gcal, gbiz, gbizPosts, retention, idMeta, pii, gdprSweep, scheduledEmail, adSpend, board, clinicalBackfill, consultBackfill, courseLevels, portfolioMigration, examBank, gamification, authored, courseContent, communityDigest, instalmentDunning },
     { status: failures === 0 ? 200 : 500 },
   );
 }

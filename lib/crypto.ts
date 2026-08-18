@@ -86,6 +86,13 @@ export function activeKeyId(): string {
   return aesRing()[0].id;
 }
 
+/** Ids of RETIRED ring keys (everything after the active key). Empty when no
+ *  rotation is in progress. Used by the key-rotation sweep (BLD-1180) so it can
+ *  target ciphertext on old keys precisely, never plaintext. */
+export function retiredKeyIds(): string[] {
+  return aesRing().slice(1).map((k) => k.id);
+}
+
 /** True if a blob was written with the current active key (used by the sweep). */
 export function isOnActiveKey(blob: string): boolean {
   const parts = blob.split('.');

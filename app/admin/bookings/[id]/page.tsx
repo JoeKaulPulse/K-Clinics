@@ -22,6 +22,7 @@ import { ScheduleFollowUp } from '@/components/admin/ScheduleFollowUp';
 import { BnplPaymentButton } from '@/components/admin/BnplPaymentButton';
 import { SameDayRequestActions } from '@/components/admin/SameDayRequestActions';
 import { PackageSessionToggle } from '@/components/admin/PackageSessionToggle';
+import { PackageLinkControl, type LinkablePackage } from '@/components/admin/PackageLinkControl';
 import { sessionCan, sessionIsAdmin } from '@/lib/auth';
 import { site } from '@/lib/site';
 
@@ -163,6 +164,21 @@ export default async function BookingDetail({ params }: { params: Promise<{ id: 
   // there is no balance left for the mark to deduct from (see the same note on
   // markPackageSessionUsed in app/admin/bookings/actions.ts).
   const packageEligible = Boolean(b.packageBookingId);
+  // BLD-1375: offer to retro-link this appointment to a prepaid course the
+  // client holds for the SAME treatment (appointments booked by phone or before
+  // the course existed never get the link, so the balance over-counts). Only a
+  // single-session booking that isn't itself a course, isn't already linked and
+  // wasn't charged separately qualifies — the server action re-validates all of
+  // it. A cancelled/missed appointment doesn't occupy a slot until marked used,
+  // so those may link to a fully-used course too (e.g. to record the mark next).
+  let linkablePackages: LinkablePackage[] = [];
+  if (canManageBk && !b.packageBookingId && courseSessions === 1 && !b.chargedAt) {
+    const { clientPackages } = await import('@/lib/package-sessions');
+    const occupies = !['CANCELLED', 'NO_SHOW'].includes(b.status);
+    linkablePackages = (await clientPackages(b.clientId).catch(() => []))
+      .filter((p) => p.treatmentSlug === b.treatmentSlug && p.purchaseBookingId !== b.id && (!occupies || p.sessionsRemaining > 0))
+      .map(({ purchaseBookingId, label, sessionsTotal, sessionsRemaining, paid }) => ({ purchaseBookingId, label, sessionsTotal, sessionsRemaining, paid }));
+  }
   // BLD-1066: surface the client's unpaid late-cancel/no-show balance on every
   // one of their appointments, so it's seen the moment a booking is opened.
   const { outstandingBalance } = await import('@/lib/outstanding');
@@ -432,6 +448,13 @@ export default async function BookingDetail({ params }: { params: Promise<{ id: 
             {['CANCELLED', 'NO_SHOW'].includes(b.status) && sessionIsAdmin(session) && (packageEligible || b.packageSessionUsedAt) && (
               <div className="mt-6">
                 <PackageSessionToggle bookingId={b.id} usedAt={b.packageSessionUsedAt ? b.packageSessionUsedAt.toISOString() : null} usedBy={b.packageSessionUsedBy} />
+              </div>
+            )}
+            {/* BLD-1375: attach this appointment to a prepaid course (or detach
+                one linked in error) so the course balance matches reality. */}
+            {canManageBk && (linkablePackages.length > 0 || packageEligible) && (
+              <div className="mt-6">
+                <PackageLinkControl bookingId={b.id} linked={packageEligible} options={linkablePackages} />
               </div>
             )}
           </div>
