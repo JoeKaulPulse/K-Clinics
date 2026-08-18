@@ -309,13 +309,21 @@ export async function POST(req: Request) {
               }
             }
           } else if (order) {
-            const fullOrder = await db.order.findFirst({ where: { id: order.id }, select: { id: true, number: true, status: true } });
+            const fullOrder = await db.order.findFirst({ where: { id: order.id }, select: { id: true, number: true, status: true, giftCardCode: true, giftCardPence: true } });
             if (fullOrder && fullOrder.status !== 'REFUNDED') {
               const wasStockDecremented = fullOrder.status === 'PAID' || fullOrder.status === 'FULFILLED';
               const claimed = await db.order.updateMany({ where: { id: fullOrder.id, status: { not: 'REFUNDED' } }, data: { status: 'REFUNDED' } });
               if (claimed.count > 0) {
                 if (wasStockDecremented) { try { const { restockOrder } = await import('@/lib/shop'); await restockOrder(fullOrder.id); } catch (e) { Sentry.captureException(e, { tags: { area: 'stripe-webhook', sub: 'dispute-restock' } }); } }
-                try { const { logAudit } = await import('@/lib/audit'); await logAudit({ action: 'PAYMENT_REFUNDED', actor: 'stripe-webhook', summary: `Chargeback lost on order ${fullOrder.number} — marked refunded + restocked (auto, owner policy)`, meta: { orderId: fullOrder.id, disputeId: dispute.id } }); } catch { /* non-fatal */ }
+                // BLD-1237: an order that part-paid with a gift card only disputed
+                // the CARD portion — the gift-card value it consumed was never in
+                // the chargeback, so it goes back on the card, mirroring the
+                // charge.refunded reconciliation above. Behind the same status
+                // claim, so a redelivered dispute event can't double-credit.
+                if (fullOrder.giftCardCode && fullOrder.giftCardPence > 0) {
+                  try { const { creditVoucher } = await import('@/lib/gift-vouchers'); await creditVoucher(fullOrder.giftCardCode, fullOrder.giftCardPence); } catch (e) { Sentry.captureException(e, { tags: { area: 'stripe-webhook', sub: 'dispute-giftcard-recredit' } }); }
+                }
+                try { const { logAudit } = await import('@/lib/audit'); await logAudit({ action: 'PAYMENT_REFUNDED', actor: 'stripe-webhook', summary: `Chargeback lost on order ${fullOrder.number} — marked refunded + restocked${fullOrder.giftCardPence > 0 ? ' + gift card re-credited' : ''} (auto, owner policy)`, meta: { orderId: fullOrder.id, disputeId: dispute.id } }); } catch { /* non-fatal */ }
               }
             }
           } else if (piId) {

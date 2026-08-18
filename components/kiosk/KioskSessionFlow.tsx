@@ -342,10 +342,15 @@ export function KioskSessionFlow({
 
       {/* ANALYZING */}
       {step === 'analyzing' && (
-        <div className="w-full max-w-sm text-center">
-          <div className="mx-auto h-14 w-14 animate-spin rounded-full border-4 border-[var(--color-gold-soft)]/30 border-t-[var(--color-gold)]" />
+        // BLD-1275 (WCAG 4.1.3): role="status" + aria-live so assistive tech
+        // announces that analysis has started and is progressing — the spinner
+        // and rotating copy were purely visual before. The rotating micro-copy
+        // is aria-hidden (announcing every 3s line would be noise); the heading
+        // inside the live region is the one announcement.
+        <div role="status" aria-live="polite" className="w-full max-w-sm text-center">
+          <div aria-hidden className="mx-auto h-14 w-14 animate-spin rounded-full border-4 border-[var(--color-gold-soft)]/30 border-t-[var(--color-gold)]" />
           <h2 className="mt-6 font-[family-name:var(--font-display)] text-2xl">Analysing your skin &amp; smile…</h2>
-          <div className="relative mt-3 h-6">
+          <div aria-hidden className="relative mt-3 h-6">
             <AnimatePresence mode="wait">
               <motion.p
                 key={analyzingLine}
@@ -370,8 +375,9 @@ export function KioskSessionFlow({
         </motion.div>
       )}
       {step === 'result' && !result && (
-        <div className="text-center">
-          <div className="mx-auto h-14 w-14 animate-spin rounded-full border-4 border-[var(--color-gold-soft)]/30 border-t-[var(--color-gold)]" />
+        // BLD-1275: announced for the same WCAG 4.1.3 reason as the analysing step.
+        <div role="status" aria-live="polite" className="text-center">
+          <div aria-hidden className="mx-auto h-14 w-14 animate-spin rounded-full border-4 border-[var(--color-gold-soft)]/30 border-t-[var(--color-gold)]" />
           <p className="mt-4 text-sm text-[var(--color-blush)]">Loading your result…</p>
         </div>
       )}

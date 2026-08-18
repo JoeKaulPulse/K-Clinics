@@ -5,7 +5,7 @@
   "engines": {
     "node": ">=20.9.0 <23.0.0"
   },
-  "description": "K Clinics — premium aesthetics & aesthetic dentistry, Islington London.",
+  "description": "K Clinics \u2014 premium aesthetics & aesthetic dentistry, Islington London.",
   "scripts": {
     "dev": "node scripts/gen-image-manifest.mjs && next dev",
     "postinstall": "prisma generate",
@@ -78,6 +78,7 @@
     "postcss": "^8.5.15",
     "@hono/node-server": "^1.19.13",
     "undici": "^6.27.0",
-    "sharp": "^0.35.3"
+    "sharp": "^0.35.3",
+    "deepmerge-ts": "^8.0.1"
   }
 }
