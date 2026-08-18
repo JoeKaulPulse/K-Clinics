@@ -23,12 +23,16 @@ const K_ANIM: Record<CelebrationVariant, { animate: TargetAndTransition; transit
   complete: { animate: { scale: [0.5, 1.12, 1], y: [12, 0, 0], rotate: [-6, 0, 0] }, transition: { duration: 1.15, ease: 'easeOut' } },
 };
 
-/** The animated K. `size` is the glyph width in px (the mark is ~1.8× tall). */
-export function KMascot({ variant = 'idle', size = 88, className = '' }: { variant?: CelebrationVariant; size?: number; className?: string }) {
+/** The animated K. `size` is the glyph width in px (the mark is ~1.8× tall).
+ *  BLD-1274: `tone` picks the AA-safe colour for the surface it sits on — 'dark'
+ *  (default) for the full-screen ink overlays this was designed for, 'light' for
+ *  callers that place it on a porcelain/bone card (e.g. PracticeRunner). */
+export function KMascot({ variant = 'idle', size = 88, className = '', tone = 'dark' }: { variant?: CelebrationVariant; size?: number; className?: string; tone?: 'dark' | 'light' }) {
   const a = K_ANIM[variant];
   const drawn = variant === 'perfect' || variant === 'badge';
+  const toneClass = tone === 'light' ? 'text-[var(--color-gold-deep)]' : 'text-[var(--color-gold)]';
   return (
-    <motion.div style={{ width: size, height: size * (234 / 130) }} className={`text-[var(--color-gold)] ${className}`} animate={a.animate} transition={a.transition}>
+    <motion.div style={{ width: size, height: size * (234 / 130) }} className={`${toneClass} ${className}`} animate={a.animate} transition={a.transition}>
       <KMark animated={drawn} />
     </motion.div>
   );

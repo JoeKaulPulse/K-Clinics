@@ -205,7 +205,7 @@ function LessonPanel({ lesson, done, onComplete, onNext }: { lesson: LessonView;
   // View-only PDFs open in the secure in-app viewer (no download); downloadable
   // ones are plain links. Kept in step with the immersive player.
   const [pdfView, setPdfView] = useState<{ index: number; name: string } | null>(null);
-  const pdfIcon = <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden className="shrink-0 text-[var(--color-gold)]"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><polyline points="14 2 14 8 20 8" /><line x1="12" y1="18" x2="12" y2="12" /><line x1="9" y1="15" x2="15" y2="15" /></svg>;
+  const pdfIcon = <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden className="shrink-0 text-[var(--color-gold-deep)]"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><polyline points="14 2 14 8 20 8" /><line x1="12" y1="18" x2="12" y2="12" /><line x1="9" y1="15" x2="15" y2="15" /></svg>;
   return (
     <article>
       <p className="eyebrow mb-2">{lesson.durationMin ? `${lesson.durationMin} min` : 'Lesson'}</p>
@@ -251,7 +251,7 @@ function LessonPanel({ lesson, done, onComplete, onNext }: { lesson: LessonView;
       {lesson.keyPoints.length > 0 && (
         <div className="mt-7 rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-bone)] p-5">
           <p className="eyebrow mb-3">Key points</p>
-          <ul className="space-y-2">{lesson.keyPoints.map((p, i) => <li key={i} className="flex gap-2.5 text-sm text-[var(--color-ink-soft)]"><span className="mt-1 text-[var(--color-gold)]">✦</span>{p}</li>)}</ul>
+          <ul className="space-y-2">{lesson.keyPoints.map((p, i) => <li key={i} className="flex gap-2.5 text-sm text-[var(--color-ink-soft)]"><span className="mt-1 text-[var(--color-gold-deep)]">✦</span>{p}</li>)}</ul>
         </div>
       )}
 
@@ -376,7 +376,7 @@ function QuizPanel({ quiz, state, onGraded, onBadges, onNext }: { quiz: QuizView
 
       {result && !quiz.isSurvey && (
         <div className={`mt-5 rounded-[var(--radius-lg)] border p-5 ${result.passed ? 'border-[var(--color-gold)]/40 bg-[var(--color-gold)]/8' : 'border-[var(--color-blush)]/40 bg-[var(--color-blush)]/8'}`}>
-          <p className="flex items-center gap-2 font-[family-name:var(--font-display)] text-2xl">{result.passed && <Glyph name="sparkle" className="h-5 w-5 text-[var(--color-gold)]" />}{result.passed ? 'Passed' : 'Not quite yet'}</p>
+          <p className="flex items-center gap-2 font-[family-name:var(--font-display)] text-2xl">{result.passed && <Glyph name="sparkle" className="h-5 w-5 text-[var(--color-gold-deep)]" />}{result.passed ? 'Passed' : 'Not quite yet'}</p>
           <p className="mt-1 text-sm text-[var(--color-ink-soft)]">You scored <strong>{result.scorePct}%</strong> ({result.passMark}% needed). {result.passed ? 'Well done — the module is complete.' : 'Review the feedback below and try again.'}</p>
         </div>
       )}

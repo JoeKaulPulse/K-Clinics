@@ -81,7 +81,7 @@ export function ResultCard({
         <ul className="mt-6 space-y-2">
           {result.insights.map((ins, i) => (
             <li key={i} className="flex gap-2 text-sm text-[var(--color-ink)]">
-              <span className="text-[var(--color-gold)]">✦</span>
+              <span className="text-[var(--color-gold-deep)]">✦</span>
               <span>{ins}</span>
             </li>
           ))}

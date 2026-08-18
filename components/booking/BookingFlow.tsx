@@ -344,7 +344,7 @@ export function BookingFlow({ catalogue, client, preselect = null, preselectDate
                 <label className={label} htmlFor="bdate">Select a date</label>
                 {popularDays.length > 0 && (
                   <div className="mb-3">
-                    <p className="mb-1.5 text-xs text-[var(--color-stone)]"><span className="text-[var(--color-gold)]">★</span> Popular days — you’ll likely be seen sooner</p>
+                    <p className="mb-1.5 text-xs text-[var(--color-stone)]"><span className="text-[var(--color-gold-deep)]">★</span> Popular days — you’ll likely be seen sooner</p>
                     <div className="flex flex-wrap gap-2">
                       {popularDays.map((d) => (
                         <button key={d} type="button" aria-pressed={date === d} onClick={() => setDate(d)} className={`rounded-full border px-3 py-2.5 text-sm transition-all ${date === d ? 'border-[var(--color-gold)] bg-[var(--color-gold-deep)] text-white' : 'border-[var(--color-gold)] bg-[var(--color-gold)]/10 hover:bg-[var(--color-gold)]/20'}`}>
@@ -388,13 +388,13 @@ export function BookingFlow({ catalogue, client, preselect = null, preselectDate
                             const selected = slot === s;
                             return (
                               <button key={s} type="button" aria-pressed={selected} onClick={() => setSlot(s)} title={isPref ? 'Sooner-seen slot — fits neatly with the day’s other appointments' : undefined} className={`relative rounded-full border px-4 py-2.5 text-sm transition-all ${selected ? 'border-[var(--color-gold)] bg-[var(--color-gold-deep)] text-white' : isPref ? 'border-[var(--color-gold)] bg-[var(--color-gold)]/10 hover:bg-[var(--color-gold)]/20' : 'border-[var(--color-line)] hover:border-[var(--color-stone-soft)]'}`}>
-                                {!selected && isPref && <span aria-hidden className="mr-1 text-[var(--color-gold)]">★</span>}
+                                {!selected && isPref && <span aria-hidden className="mr-1 text-[var(--color-gold-deep)]">★</span>}
                                 {new Date(s).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/London' })}
                               </button>
                             );
                           })}
                         </div>
-                        {preferred.length > 0 && <p className="mt-2 text-xs text-[var(--color-stone)]"><span className="text-[var(--color-gold)]">★</span> Recommended — these times fit neatly around the day’s other appointments, so you’re often seen more promptly.</p>}
+                        {preferred.length > 0 && <p className="mt-2 text-xs text-[var(--color-stone)]"><span className="text-[var(--color-gold-deep)]">★</span> Recommended — these times fit neatly around the day’s other appointments, so you’re often seen more promptly.</p>}
                       </>
                     )}
                   </div>

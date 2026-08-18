@@ -18,7 +18,7 @@ import { useReducedMotionSafe } from '@/components/motion/use-reduced-motion-saf
  * direction. A signature award-site flourish. Falls back to a CSS marquee for
  * reduced-motion.
  */
-export function Marquee({ items, className = '', baseSpeed = 40 }: { items: string[]; className?: string; baseSpeed?: number }) {
+export function Marquee({ items, className = '', baseSpeed = 40, accentClassName = 'text-[var(--color-gold)]' }: { items: string[]; className?: string; baseSpeed?: number; /** BLD-1274: the ✦ glyph colour — pass the gold-deep token when the marquee sits on a light (porcelain/bone) surface so it clears AA. Default gold suits the dark/tinted sections most callers use. */ accentClassName?: string }) {
   const reduce = useReducedMotionSafe();
   const row = [...items, ...items, ...items];
 
@@ -27,17 +27,17 @@ export function Marquee({ items, className = '', baseSpeed = 40 }: { items: stri
       <div className={`relative flex overflow-hidden ${className}`} aria-hidden>
         <div className="flex shrink-0 items-center whitespace-nowrap">
           {row.map((it, i) => (
-            <Item key={i} text={it} />
+            <Item key={i} text={it} accentClassName={accentClassName} />
           ))}
         </div>
       </div>
     );
   }
 
-  return <MarqueeInner items={row} className={className} baseSpeed={baseSpeed} />;
+  return <MarqueeInner items={row} className={className} baseSpeed={baseSpeed} accentClassName={accentClassName} />;
 }
 
-function MarqueeInner({ items, className, baseSpeed }: { items: string[]; className: string; baseSpeed: number }) {
+function MarqueeInner({ items, className, baseSpeed, accentClassName }: { items: string[]; className: string; baseSpeed: number; accentClassName: string }) {
   const ref = useRef<HTMLDivElement>(null);
   const baseX = useMotionValue(0);
   const { scrollY } = useScroll();
@@ -66,18 +66,18 @@ function MarqueeInner({ items, className, baseSpeed }: { items: string[]; classN
     <div ref={ref} className={`relative flex overflow-hidden ${className}`} aria-hidden>
       <motion.div style={{ x, skewX: skew }} className="flex shrink-0 items-center whitespace-nowrap">
         {items.map((it, i) => (
-          <Item key={i} text={it} />
+          <Item key={i} text={it} accentClassName={accentClassName} />
         ))}
       </motion.div>
     </div>
   );
 }
 
-function Item({ text }: { text: string }) {
+function Item({ text, accentClassName }: { text: string; accentClassName: string }) {
   return (
     <span className="flex items-center">
       <span className="font-[family-name:var(--font-display)] text-[clamp(1.25rem,1rem+3vw,2.75rem)] tracking-tight">{text}</span>
-      <span className="mx-5 text-[var(--color-gold)] md:mx-8">✦</span>
+      <span className={`mx-5 md:mx-8 ${accentClassName}`}>✦</span>
     </span>
   );
 }
