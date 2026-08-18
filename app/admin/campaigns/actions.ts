@@ -4,6 +4,20 @@ import { revalidatePath } from 'next/cache';
 import { crmEnabled } from '@/lib/crm';
 import { getSession } from '@/lib/auth';
 
+// Live recipient count for the send-confirmation dialog (BLD-1352) — mirrors
+// the same lawful-basis filtering `sendCampaign` below uses, so the number
+// shown before sending matches who actually receives it. Reuses the audience
+// helper from the richer campaign editor (lib/email-campaigns.ts) rather than
+// re-deriving the where-clause here.
+export async function previewCampaignAudience(tag: string): Promise<number> {
+  if (!crmEnabled) return 0;
+  const session = await getSession();
+  if (!session) return 0;
+  const { countAudience } = await import('@/lib/email-campaigns');
+  const t = tag.trim();
+  return countAudience(t ? { type: 'tag', value: t } : { type: 'all' });
+}
+
 // Sends a broadcast to all opted-in, non-unsubscribed clients (optionally a tag).
 export async function sendCampaign(formData: FormData) {
   if (!crmEnabled) return { ok: false, error: 'CRM disabled' };
