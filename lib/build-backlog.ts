@@ -4053,6 +4053,18 @@ export const BUILD_BACKLOG: BacklogItem[] = [
       'Verified: npx tsc --noEmit and npm run build pass clean; edge middleware bundle clean of node:util/types.',
     ],
   },
+  {
+    title: 'Latest News section fed automatically from the Google Business Profile (BLD-481)',
+    type: 'TASK', urgency: 'P2', status: 'IN_REVIEW', assignee: 'claude',
+    value: 6, effort: 3,
+    detail: 'Owner decision (18 Aug, in session): build the full auto-pull rather than a manual news section. The ask (June): a Latest News section on the website that mirrors whatever the clinic publishes in the Google Business Profile "From the Business" section, pictures included, with no manual re-entry. Key discovery that unblocked it: the existing Google Business connection already carries the business.manage scope (the same one localPosts needs), so no re-consent or new OAuth surface was required -- the earlier blocker note assumed one.',
+    notes: [
+      'New GbpPost mirror table (additive; resource name as @id, so no @unique added to an existing table -- deploy-gate safe). lib/google-business.ts gains syncGooglePosts() (pages localPosts, upserts, and mirror-deletes rows no longer live on Google so taken-down posts vanish from the site) and latestNews() for the section query. The daily cron syncs posts right after the existing review sync, guarded by the same googleBusinessConnected() check; a failed posts sync logs but does not page -- the section degrades to "no news", never an error.',
+      'components/home/LatestNews.tsx renders the three newest LIVE posts as brand-styled cards (topic label, date, summary clamped at 220 chars, image as a plain lazy img since Google CDN hosts are not in next/image remotePatterns, whole card linking to the post CTA or its Google view). Renders null until posts exist, so the homepage is byte-identical until the first sync lands. Placed after the Testimonials section.',
+      'Runtime prerequisite, not code: the sync only produces rows once the Google Business connection is live and a location is selected (Admin -> Marketing -> Connections). BLD-636 reports the GA4 side of Google returning 401; if the Business connection is similarly stale, reconnecting it is the one owner step before news appears.',
+      'Verified: npx tsc --noEmit and npm run build pass clean; edge bundle clean. Not exercised against the live Google API from this environment.',
+    ],
+  },
 ];
 
 // A content hash over every item's title + status + PR, so ANY change (a new

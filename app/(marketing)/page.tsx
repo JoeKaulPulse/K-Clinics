@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { HeroSlider } from '@/components/home/HeroSlider';
 import { GetMyPlanBand } from '@/components/home/GetMyPlanBand';
 import { Testimonials } from '@/components/home/Testimonials';
+import { LatestNews } from '@/components/home/LatestNews';
 import { PinnedExperience } from '@/components/home/PinnedExperience';
 import { HorizontalGallery } from '@/components/home/HorizontalGallery';
 import { TrustStrip } from '@/components/home/TrustStrip';
@@ -247,6 +248,9 @@ export default async function HomePage() {
           </div>
         </section>
       )}
+
+      {/* Latest news — GBP posts mirror (BLD-481); renders nothing until posts sync */}
+      <LatestNews />
 
       {/* BLD-771: live discounts visible to first-time visitors — the strip
           renders nothing when no offers are on, so the page is unchanged then. */}

@@ -1884,6 +1884,29 @@ model Review {
 // Google Business Profile reviews imported via the My Business API. Stored
 // separately from Review (which requires a Client) because the reviewer is an
 // external Google user. Powers the in-admin Google review list + replies.
+// BLD-481: mirror of the Google Business Profile "From the Business" posts, so
+// the site's Latest News section shows whatever the clinic publishes on Google
+// with no manual re-entry. Synced by the daily cron (lib/google-business.ts
+// syncGooglePosts); rows removed on Google are removed here on the next sync.
+// New table with the resource name as @id — no @unique added to an existing
+// table, per the non-destructive deploy gate.
+model GbpPost {
+  // Full post resource name: accounts/{a}/locations/{l}/localPosts/{p}
+  googleName String    @id
+  summary    String?   @db.Text
+  topicType  String? // STANDARD | EVENT | OFFER | ALERT
+  state      String? // LIVE | REJECTED | PROCESSING
+  mediaUrl   String? // first photo's googleUrl, if any
+  ctaUrl     String?
+  ctaType    String? // LEARN_MORE | BOOK | CALL | ...
+  searchUrl  String? // the post as seen on Google
+  createTime DateTime?
+  updateTime DateTime?
+  syncedAt   DateTime  @updatedAt
+
+  @@index([createTime])
+}
+
 model GoogleReview {
   id              String    @id @default(cuid())
   // Full review resource name: accounts/{a}/locations/{l}/reviews/{r} (unique).
