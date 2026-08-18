@@ -4228,6 +4228,19 @@ export const BUILD_BACKLOG: BacklogItem[] = [
       'Verified: npx tsc --noEmit and npm run build pass clean. No data deleted until the owner enables the setting.',
     ],
   },
+  {
+    title: 'Academy portfolio photos of real clients reachable by erasure and SAR via a staff client link (BLD-1291)',
+    type: 'TASK', urgency: 'P1', status: 'IN_REVIEW', assignee: 'claude',
+    value: 8, effort: 4,
+    detail: 'PortfolioEntry stores fully identifying before/after clinical photos of real clients with only a free-text clientRef ("Client A") — neither eraseClientData nor the SAR export could find them, and consent rests on a trainee tick-box attestation rather than a record from the photographed person. Built the reachability half; the consent-capture redesign remains an owner decision.',
+    notes: [
+      'Schema: additive nullable PortfolioEntry.clientId FK to Client (SetNull on client delete, indexed; migration committed, no @unique). Staff link a case to the real client from the portfolio review screen (Admin → Academy → Portfolio) by pasting the client\'s CRM email — a dashed warning box shows on any case with photos that has no link, and a linked case shows the covered-by-erasure/SAR state with an Unlink control. Server resolves the email, audit-logs link and unlink (NOTE_ADDED with the client id), gated on settings.manage like the rest of the review surface. Trainees never see or search the clinic client list — the link is staff-only by design.',
+      'Erasure: eraseClientData now calls erasePortfolioForClient() after the main transaction — deletes every linked case AND its photo files from the blob store (best-effort with the count of failed file deletions surfaced in the CLIENT_ERASED audit note for manual follow-up; the DB rows are gone regardless).',
+      'SAR: the Art. 15 export gains an academyPortfolioCases section (title, treatment, dates, photo count, consent-attestation timestamp, trainee email) for every linked case.',
+      'Deliberately NOT built (owner decision, stays open on the board): replacing the trainee self-attestation with a SignedConsent-style record captured from the photographed person — that is consent DESIGN for special-category biometric data. Also note the structural limit: only cases staff have linked are reachable; existing unlinked cases need a one-time linking pass, which the review screen\'s warning boxes now drive.',
+      'Verified: npx tsc --noEmit and npm run build pass clean; migration generated offline. Blob deletion not exercised from this sandbox.',
+    ],
+  },
 ];
 
 // A content hash over every item's title + status + PR, so ANY change (a new
