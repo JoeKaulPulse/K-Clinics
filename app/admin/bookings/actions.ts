@@ -507,6 +507,99 @@ export async function markPackageSessionUsed(bookingId: string): Promise<{ ok: b
   return { ok: true };
 }
 
+// BLD-1375 — retro-link an existing appointment to a client's prepaid course
+// (owner request: "link all appointments to her 6-session package"). Sessions
+// booked THROUGH the package flows link automatically; appointments booked
+// separately (by phone, or before the course was set up) never get the link, so
+// the package balance over-counts what's left. This attaches such an
+// appointment to the purchase after the fact. Validation mirrors the client
+// booking flow (app/api/booking/start): same client, same treatment, and — when
+// the appointment will occupy a slot — a session genuinely left, re-counted
+// inside a Serializable transaction against the same occupancy definition the
+// derived balance uses.
+export async function linkBookingToPackage(bookingId: string, purchaseBookingId: string): Promise<{ ok: boolean; error?: string }> {
+  if (!crmEnabled) return { ok: false, error: 'CRM disabled' };
+  const session = await getSession();
+  if (!session || !sessionCan(session, 'bookings.manage')) return { ok: false, error: 'You don’t have permission to manage bookings.' };
+  if (!purchaseBookingId || bookingId === purchaseBookingId) return { ok: false, error: 'Pick the course purchase to link this appointment to.' };
+  const { db } = await import('@/lib/db');
+  const b = await db.booking.findUnique({
+    where: { id: bookingId },
+    select: {
+      clientId: true, status: true, treatmentSlug: true, treatmentTitle: true, packageBookingId: true, chargedAt: true,
+      items: { where: { isAddon: false }, orderBy: { createdAt: 'asc' }, take: 1, select: { sessions: true } },
+    },
+  });
+  if (!b) return { ok: false, error: 'Booking not found.' };
+  if (b.packageBookingId) return { ok: false, error: 'This appointment is already linked to a package. Unlink it first if it belongs to a different course.' };
+  if ((b.items[0]?.sessions ?? 1) > 1) return { ok: false, error: 'This appointment IS a course purchase — it can’t also be a session of another package.' };
+  // An appointment paid on its own card charge isn't a package session — linking
+  // it would spend a prepaid session AND keep the money, double-charging the
+  // client. Refund the standalone charge first if it should come off the course.
+  if (b.chargedAt) return { ok: false, error: 'This appointment was charged separately, so it can’t also use a prepaid package session. Refund that charge first if it should come off the course.' };
+
+  const { clientPackages, packageOccupancyWhere } = await import('@/lib/package-sessions');
+  const pkg = (await clientPackages(b.clientId)).find((p) => p.purchaseBookingId === purchaseBookingId);
+  if (!pkg) return { ok: false, error: 'That course isn’t on this client’s account.' };
+  if (pkg.treatmentSlug !== b.treatmentSlug) return { ok: false, error: `That course is for a different treatment (${pkg.label}).` };
+
+  // A live or completed appointment occupies a slot the moment it's linked
+  // (that's the point, for retro-linking taken sessions); a cancelled/missed
+  // one only counts if staff later mark it used, so no balance is needed yet.
+  const occupies = !['CANCELLED', 'NO_SHOW'].includes(b.status);
+  try {
+    const linked = await db.$transaction(async (tx) => {
+      if (occupies) {
+        const total = (await tx.bookingItem.findFirst({ where: { bookingId: purchaseBookingId, isAddon: false }, orderBy: { createdAt: 'asc' }, select: { sessions: true } }))?.sessions ?? 1;
+        const occupied = await tx.booking.count({ where: packageOccupancyWhere(purchaseBookingId) });
+        if (occupied >= total) return false;
+      }
+      await tx.booking.update({ where: { id: bookingId }, data: { packageBookingId: purchaseBookingId } });
+      return true;
+    }, { isolationLevel: 'Serializable' });
+    if (!linked) return { ok: false, error: 'That course has no sessions left — every session is already taken or booked.' };
+  } catch {
+    return { ok: false, error: 'Could not link just now (another update was in flight). Please try again.' };
+  }
+
+  const { logAudit } = await import('@/lib/audit');
+  await logAudit({
+    action: 'SESSION_EDITED', actor: session.email, actorRole: session.role, bookingId, clientId: b.clientId,
+    summary: `Appointment (${b.treatmentTitle}, ${b.status.toLowerCase().replace('_', ' ')}) linked to package ${pkg.label} — now counts against the course balance`,
+    meta: { packageBookingId: purchaseBookingId },
+  }).catch(() => {});
+  revalidatePath(`/admin/bookings/${bookingId}`);
+  revalidatePath(`/admin/bookings/${purchaseBookingId}`);
+  revalidatePath('/admin/bookings');
+  revalidatePath(`/admin/clients/${b.clientId}`);
+  return { ok: true };
+}
+
+// Undo of the above — detaches the appointment from the package (and clears any
+// "session used" mark, which is meaningless without the link). Same gate.
+export async function unlinkBookingFromPackage(bookingId: string): Promise<{ ok: boolean; error?: string }> {
+  if (!crmEnabled) return { ok: false, error: 'CRM disabled' };
+  const session = await getSession();
+  if (!session || !sessionCan(session, 'bookings.manage')) return { ok: false, error: 'You don’t have permission to manage bookings.' };
+  const { db } = await import('@/lib/db');
+  const b = await db.booking.findUnique({ where: { id: bookingId }, select: { clientId: true, treatmentTitle: true, packageBookingId: true } });
+  if (!b) return { ok: false, error: 'Booking not found.' };
+  if (!b.packageBookingId) return { ok: true }; // idempotent
+
+  await db.booking.update({ where: { id: bookingId }, data: { packageBookingId: null, packageSessionUsedAt: null, packageSessionUsedBy: null } });
+  const { logAudit } = await import('@/lib/audit');
+  await logAudit({
+    action: 'SESSION_EDITED', actor: session.email, actorRole: session.role, bookingId, clientId: b.clientId,
+    summary: `Appointment (${b.treatmentTitle}) unlinked from its package — no longer counts against the course balance`,
+    meta: { packageBookingId: b.packageBookingId },
+  }).catch(() => {});
+  revalidatePath(`/admin/bookings/${bookingId}`);
+  revalidatePath(`/admin/bookings/${b.packageBookingId}`);
+  revalidatePath('/admin/bookings');
+  revalidatePath(`/admin/clients/${b.clientId}`);
+  return { ok: true };
+}
+
 // Undo the mark above — restores the session to the client's package balance.
 // Same admin-only gate; the booking's CANCELLED status is untouched either way.
 export async function unmarkPackageSessionUsed(bookingId: string): Promise<{ ok: boolean; error?: string }> {

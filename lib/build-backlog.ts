@@ -688,11 +688,14 @@ export const BUILD_BACKLOG: BacklogItem[] = [
     title: 'SaaS Phase 0 — modularise in place (monorepo, affected-only builds)', type: 'TASK', urgency: 'P3', status: 'TRIAGE', assignee: 'claude',
     value: 8, effort: 7,
     detail: 'Turborepo/Nx monorepo + remote caching + affected-only builds; enforce module boundaries; extract framework-agnostic domain packages shared by both tracks. No infra change. Exit gate: live build cost per change ↓ ≥50%; boundary lint green; live unaffected. This is the front-loaded value step (also reduces the deploy-herd pain) with zero infra risk.',
-    notes: ['Proposed first concrete spike (§18.2): move one domain (e.g. Learning) into a shared package and demonstrate affected-only builds.'],
-    // The plan is explicit (§18.1): nothing executes until the owner baselines it.
-    // Wiring that gate as a dependency keeps the phases out of the actionable
-    // queue until sign-off, instead of looking like startable work.
-    dependsOn: ['SaaS — final sign-off to baseline the platform plan'],
+    notes: [
+      'Proposed first concrete spike (§18.2): move one domain (e.g. Learning) into a shared package and demonstrate affected-only builds.',
+      'Owner go-ahead 18 Aug 2026 (in session with Joe): start Phase 0 now — modularise in place only, no infra change. The sign-off gate stays on Phases 1+ (they still depend on the baseline decision); Phase 0 was explicitly released from it.',
+    ],
+    // §18.1's sign-off gate originally held every phase. The owner released
+    // Phase 0 on 18 Aug 2026 (zero-infra-risk, front-loaded value), so its
+    // dependsOn is removed; Phases 1+ still chain behind the gate via Phase 0's
+    // own completion and the plan baseline.
   },
   {
     title: 'SaaS Phase 1 — platform foundation (K8s, gateway, identity, observability)', type: 'TASK', urgency: 'P3', status: 'TRIAGE', assignee: 'claude',
@@ -4063,6 +4066,43 @@ export const BUILD_BACKLOG: BacklogItem[] = [
       'components/home/LatestNews.tsx renders the three newest LIVE posts as brand-styled cards (topic label, date, summary clamped at 220 chars, image as a plain lazy img since Google CDN hosts are not in next/image remotePatterns, whole card linking to the post CTA or its Google view). Renders null until posts exist, so the homepage is byte-identical until the first sync lands. Placed after the Testimonials section.',
       'Runtime prerequisite, not code: the sync only produces rows once the Google Business connection is live and a location is selected (Admin -> Marketing -> Connections). BLD-636 reports the GA4 side of Google returning 401; if the Business connection is similarly stale, reconnecting it is the one owner step before news appears.',
       'Verified: npx tsc --noEmit and npm run build pass clean; edge bundle clean. Not exercised against the live Google API from this environment.',
+    ],
+  },
+  {
+    title: 'Key-rotation sweep only re-encrypted 4 of ~25 encrypted columns — its "0 remaining" key-removal gate was false (BLD-1180)',
+    type: 'ERROR', urgency: 'P1', status: 'IN_REVIEW', assignee: 'claude',
+    value: 8, effort: 4,
+    detail: 'lib/key-rotation.ts tracked only healthAssessment.cipher, booking.clinicalNoteEnc, externalConnection.tokensEnc and managedSecret.valueEnc, while encryptJson/encClinical write to ~25 columns across the codebase (signed consents, AI findings and images, before photos, TOTP secrets, Google refresh tokens, client medical flags/allergies, consultation concerns/messages/medical notes, consultation notes, chat messages, interactions, tasks, follow-ups, incidents, call notes/transcripts/recordings, CallRecord.raw). Following the documented runbook — remove the retired key once the sweep reports 0 remaining — would have silently and permanently destroyed the special-category data still sitting on the old key in every untracked column.',
+    notes: [
+      'Rewrite: a SWEEP registry of every encrypted column ({model, field, pk, kind json|clinical}), swept generically. Matching is by keyring key-id PREFIX against RETIRED ring keys only (new retiredKeyIds() in lib/crypto.ts) — never plaintext, so the encClinical columns that legally hold legacy plaintext are untouched; the separate clinical-encryption backfill owns upgrading those. "0 remaining" is now a truthful key-removal gate.',
+      'Integrity-hashed models handled bespoke: HealthAssessment and SignedConsent recompute integrityHash with the new cipher (the hash binds cipher to metadata — clientId/type/version/questionnaireKey and clientId/templateKey/contentHash respectively), so a re-encrypted row still verifies on read.',
+      'CallRecord.raw is a Json column holding an encClinical string (lib/yay.ts) — Prisma cannot prefix-filter Json, so it gets a fetch-then-test pass (NOT { raw: { equals: Prisma.DbNull } }, client-side key-id check).',
+      'Double-encryption guard: decClinical returns an undecryptable blob UNCHANGED (its plaintext tolerance); re-encrypting that would wrap ciphertext in ciphertext and turn reads to gibberish. reEncClinical now throws on dec === blob, so such a row stays on the stale count where a human can see it instead of being corrupted.',
+      'rotationStatus() pending is a Record keyed by column label; the integrations page renders it generically, so new registry entries surface without UI edits. Each record is isolated — one bad row logs and continues, never aborts the batch.',
+      'Verified: npx tsc --noEmit and npm run build pass clean. Not run against real data — no DB egress from this sandbox; the sweep only activates when HEALTH_ENCRYPTION_KEYS_OLD is set (rotationActive()), which it currently is not.',
+    ],
+  },
+  {
+    title: 'Staff can retro-link an appointment to a client’s prepaid course so the package balance matches reality (BLD-1375)',
+    type: 'TASK', urgency: 'P1', status: 'IN_REVIEW', assignee: 'claude',
+    value: 7, effort: 3,
+    detail: 'Owner request via Holly Gillis: all her appointments should come off her fully-paid 6-session package, but sessions booked by phone (or before the course was set up) are ordinary bookings with no packageBookingId, so the derived balance over-counts what is left and each visit looks individually billable. There was no way to attach an existing appointment to a package after the fact.',
+    notes: [
+      'New linkBookingToPackage / unlinkBookingFromPackage server actions (app/admin/bookings/actions.ts), gated on bookings.manage. Link validation mirrors the client booking flow: the course must be on the SAME client’s account, for the SAME treatment slug; the appointment must not itself be a course purchase, must not already be linked, and must not have its own card charge (linking a separately-charged visit would spend a prepaid session AND keep the money — the error says to refund first).',
+      'Balance safety: a live or completed appointment occupies a slot the moment it is linked, so the action recounts occupancy INSIDE a Serializable transaction via the shared packageOccupancyWhere() predicate (same definition the derived balance uses) and refuses when the course is full. A cancelled/missed appointment does not occupy until staff mark it used, so it may link without a free slot (e.g. to record the mark next). Unlink also clears packageSessionUsedAt/By — a mark without a link is meaningless.',
+      'UI: PackageLinkControl on the booking detail page — offers matching courses (label, sessions left, unpaid flagged) with a one-click link when the client holds a course for that treatment, and an unlink control on a linked appointment. Both states audit-logged (SESSION_EDITED) and revalidate the booking, the purchase, the diary and the client profile.',
+      'For Holly specifically: staff open each of her appointments and click "Link appointment" — completed past visits immediately count as used sessions, upcoming ones as booked, and the package card on her profile shows the corrected remaining count.',
+      'Verified: npx tsc --noEmit and npm run build pass clean. Not exercised against real data (no DB egress from this sandbox).',
+    ],
+  },
+  {
+    title: 'Academy course card level badge self-heals to match the course title (BLD-1356)',
+    type: 'ERROR', urgency: 'P2', status: 'IN_REVIEW', assignee: 'claude',
+    value: 6, effort: 1,
+    detail: 'Live /academy showed one card badged LEVEL 3 directly above the heading "VTCT Level 5 Beauty Therapy Diploma" — Course.level and Course.title are independent admin-entered fields with no derivation between them, so a typo in one publishes a contradiction to every visitor. Staff steps to fix the row were posted on the board 18 Aug 08:58 but the data had not been corrected; admin-credentialed access is not available from this environment to fix the row directly.',
+    notes: [
+      'Fix: a data-hygiene step in the daily cron — when an active course’s title contains a plain "Level N" AND its level field is itself a plain "Level M" with N ≠ M, the badge is aligned to the title (the title is the qualification’s actual name) and the /academy pages revalidate. Deliberately narrow: a level field that is anything other than a bare "Level N" (or a title with no level in it) is never touched, so descriptive level text cannot be clobbered. Corrections are logged and surfaced in the cron result as courseLevels.',
+      'The Level 5 card corrects itself on the next nightly run; the 10-step manual edit on the board remains valid if staff want it fixed sooner.',
     ],
   },
 ];
