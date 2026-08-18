@@ -111,7 +111,7 @@ export async function GET(req: Request) {
   }
   // Behaviour-analytics retention: prune old session replays (90d) and heatmap
   // points (180d) so storage stays bounded and we hold data no longer than needed.
-  let retention = { replays: 0, heatmap: 0, calls: 0, enquiries: 0 };
+  let retention = { replays: 0, heatmap: 0, calls: 0, enquiries: 0, assessments: 0 };
   try {
     const { db } = await import('@/lib/db');
     const { Prisma } = await import('@prisma/client');
@@ -154,7 +154,25 @@ export async function GET(req: Request) {
     // (messages cascade) — account-linked threads are covered by erasure.
     const anonChatCutoff = new Date(Date.now() - 365 * 24 * 60 * 60 * 1000);
     await db.chatConversation.deleteMany({ where: { clientId: null, updatedAt: { lt: anonChatCutoff } } }).catch((e: Error) => { console.error('[cron] anon chat retention failed (continuing):', e?.message); });
-    retention = { replays: r.count, heatmap: h.count, calls: calls.count, enquiries: enquiries.count };
+    // PRJ-1069.10: health assessments past the 8-year clinical window — the
+    // most sensitive rows in the database were the ONLY clinical records
+    // exempt from the consentCutoff sweep above, kept indefinitely by default.
+    // Gated on the health_retention_purge setting: deletion is irreversible,
+    // so the owner flipping that toggle in Settings IS the documented sign-off
+    // this purge was waiting for. Conservative scope — only clients with no
+    // treatment inside the window (the retention schedule's "8 years from last
+    // treatment" trigger), so an active client's history is never touched.
+    let assessmentsPurged = 0;
+    try {
+      const { getSetting } = await import('@/lib/settings');
+      if (await getSetting('health_retention_purge')) {
+        const purged = await db.healthAssessment.deleteMany({
+          where: { submittedAt: { lt: consentCutoff }, client: { bookings: { none: { startAt: { gte: consentCutoff } } } } },
+        });
+        assessmentsPurged = purged.count;
+      }
+    } catch (e) { failures++; console.error('[cron] health-assessment retention failed (continuing):', (e as Error)?.message); }
+    retention = { replays: r.count, heatmap: h.count, calls: calls.count, enquiries: enquiries.count, assessments: assessmentsPurged };
   } catch (e) {
     failures++; console.error('[cron] analytics retention failed (continuing):', (e as Error)?.message);
   }
@@ -298,6 +316,24 @@ export async function GET(req: Request) {
   } catch (e) {
     failures++; console.error('[cron] consult notification backfill failed (continuing):', (e as Error)?.message);
   }
+
+  // BLD-1277: data-residency guard. The processors register records the
+  // production database as Neon in AWS eu-west-2 (London) — every client,
+  // booking and encrypted health record lives there, and nothing previously
+  // verified it stayed that way. Alert-only: if DATABASE_URL ever points at a
+  // host outside the approved regions (say a well-meaning migration to a US
+  // endpoint), this fails the cron so the existing alerting pages, rather than
+  // silently exporting special-category data. Approved list overridable via
+  // DB_APPROVED_REGIONS (comma-separated substrings) when the owner sanctions
+  // a move.
+  try {
+    const dbHost = process.env.DATABASE_URL ? new URL(process.env.DATABASE_URL).hostname : '';
+    const approved = (process.env.DB_APPROVED_REGIONS || 'eu-west-2').split(',').map((s) => s.trim()).filter(Boolean);
+    if (dbHost && !approved.some((r) => dbHost.includes(r))) {
+      failures++;
+      console.error(`[cron] DATA RESIDENCY: database host ${dbHost} matches none of the approved regions (${approved.join(', ')}) — clinical data may have left the UK/EU. Verify and update the processors register + DB_APPROVED_REGIONS.`);
+    }
+  } catch { /* malformed URL — the app would be down long before this check */ }
 
   // BLD-1041: self-healing encryption backfill for legacy plaintext gallery
   // before/after photos (bounded per run; latches off when done). Failures

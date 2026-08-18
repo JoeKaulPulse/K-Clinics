@@ -4206,6 +4206,28 @@ export const BUILD_BACKLOG: BacklogItem[] = [
       'The override is removable once prisma ships a release depending on deepmerge-ts >= 8.',
     ],
   },
+  {
+    title: 'Database residency verified as UK (Neon, AWS eu-west-2) and guarded by a nightly region check (BLD-1277)',
+    type: 'TASK', urgency: 'P2', status: 'IN_REVIEW', assignee: 'claude',
+    value: 7, effort: 1,
+    detail: 'docs/data-protection/processors.md self-flagged the primary Postgres host — every client, booking and encrypted health record — as [OWNER TO CONFIRM: which provider + region], and nothing in code verified residency, so a well-meaning migration to a US endpoint would silently move special-category data across borders.',
+    notes: [
+      'Verified from the production DATABASE_URL host (*.eu-west-2.aws.neon.tech): the database is Neon on AWS eu-west-2 (London) — UK residency, no cross-border transfer for data at rest. Processors register row updated with the fact, the verification date and the Neon DPA link.',
+      'Guard: the daily cron now parses the DATABASE_URL hostname and fails the run (alert-only — existing cron alerting pages; nothing is blocked) if it matches none of the approved region substrings. Approved list defaults to eu-west-2 and is overridable via DB_APPROVED_REGIONS when the owner sanctions a move.',
+      'Verified: npx tsc --noEmit and npm run build pass clean.',
+    ],
+  },
+  {
+    title: 'Health assessments gain the 8-year clinical retention purge, gated on an owner toggle (PRJ-1069.10)',
+    type: 'TASK', urgency: 'P2', status: 'IN_REVIEW', assignee: 'claude',
+    value: 6, effort: 2,
+    detail: 'The nightly retention sweep purges SignedConsent and BeforePhoto after 8 years, but HealthAssessment — the raw encrypted allergy/medication/condition/pregnancy answers, the most sensitive category in the database — was exempt, so historic health answers were kept indefinitely by default, against the retention schedule\'s own stated 8-year basis.',
+    notes: [
+      'The audit required owner sign-off before deleting real health data, so the purge ships OFF by default behind a new admin setting ("Purge old health assessments (8-year clinical window)", settings.manage surface) — the owner flipping the toggle IS the sign-off, and the retention schedule row now says exactly that.',
+      'Scope is deliberately more conservative than the adjacent consent/photo purges: rows older than 8 years AND belonging to clients with no treatment inside the window (the schedule\'s "8 years from last treatment" trigger) — an active client\'s history is never touched. Purge count surfaced in the cron retention summary as assessments.',
+      'Verified: npx tsc --noEmit and npm run build pass clean. No data deleted until the owner enables the setting.',
+    ],
+  },
 ];
 
 // A content hash over every item's title + status + PR, so ANY change (a new
