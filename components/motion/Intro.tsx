@@ -1,64 +1,90 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
-import { useSearchParams } from 'next/navigation';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
 import { KMark, ClinicsWordmark } from '@/components/brand/marks';
 
 // Total on-screen budget: HOLD_MS visible, then EXIT_S sliding away — kept
 // well under a second so the curtain never sits between a visitor and the
-// page for long (BLD-1359). Click/tap anywhere skips straight to the exit.
+// page for long (BLD-1359). Click, tap, Enter/Space or Escape skips it.
 const HOLD_MS = 400;
 const EXIT_S = 0.25;
+
+/** Ad-click / campaign params, matching the set lib/attribution.ts already
+ *  treats as paid traffic. Read from window.location rather than
+ *  useSearchParams() so nothing ties the intro's lifetime to the router's
+ *  URL state — see the effect below. */
+function isPaidLanding(search: string): boolean {
+  const p = new URLSearchParams(search);
+  if (p.has('gclid') || p.has('fbclid') || p.has('ttclid')) return true;
+  return Array.from(p.keys()).some((key) => key.toLowerCase().startsWith('utm_'));
+}
 
 /**
  * Brand intro curtain — on first load of the session, a refined ink panel
  * with the K mark wipes upward to reveal the page. Shows once per session,
  * and skips entirely for reduced-motion and for paid-traffic landings
- * (gclid/fbclid/utm_*), where intent is already high and the curtain would
- * only hide the CTA. Dismisses instantly on click/tap for anyone who wants
- * in sooner.
+ * (gclid/fbclid/ttclid/utm_*), where intent is already high and the curtain
+ * would only hide the CTA. Click, tap, Enter/Space or Escape dismisses it
+ * immediately for anyone who wants in sooner.
  */
 export function Intro() {
   const reduce = useReducedMotion();
-  const searchParams = useSearchParams();
   const [show, setShow] = useState(false);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Decided once per mount, so a re-run of the effect re-arms the dismiss timer
+  // instead of hitting the sessionStorage guard and leaving the curtain up with
+  // nothing left to take it down.
+  const decisionRef = useRef<'show' | 'skip' | null>(null);
+  const doneRef = useRef(false);
+
+  const dismiss = useCallback(() => {
+    doneRef.current = true;
+    if (timerRef.current) {
+      clearTimeout(timerRef.current);
+      timerRef.current = null;
+    }
+    setShow(false);
+    document.body.style.overflow = '';
+  }, []);
 
   useEffect(() => {
     if (reduce) return;
-    if (sessionStorage.getItem('kc_intro_seen')) return;
 
-    // Paid traffic (ad click landing straight on /book, etc.) is already
-    // high-intent — never block the CTA with the curtain.
-    const isPaidLanding =
-      searchParams.has('gclid') ||
-      searchParams.has('fbclid') ||
-      Array.from(searchParams.keys()).some((key) => key.toLowerCase().startsWith('utm_'));
-    if (isPaidLanding) {
-      sessionStorage.setItem('kc_intro_seen', '1');
-      return;
+    if (decisionRef.current === null) {
+      if (sessionStorage.getItem('kc_intro_seen')) {
+        decisionRef.current = 'skip';
+      } else {
+        sessionStorage.setItem('kc_intro_seen', '1');
+        // Paid traffic (an ad click landing straight on /book, etc.) is already
+        // high-intent — never block the CTA with the curtain.
+        decisionRef.current = isPaidLanding(window.location.search) ? 'skip' : 'show';
+      }
     }
+    if (decisionRef.current !== 'show' || doneRef.current) return;
 
     setShow(true);
-    sessionStorage.setItem('kc_intro_seen', '1');
-    // Lock scroll during the intro.
-    document.body.style.overflow = 'hidden';
-    timerRef.current = setTimeout(() => {
-      setShow(false);
-      document.body.style.overflow = '';
-    }, HOLD_MS);
+    document.body.style.overflow = 'hidden'; // lock scroll during the intro
+    timerRef.current = setTimeout(dismiss, HOLD_MS);
     return () => {
-      if (timerRef.current) clearTimeout(timerRef.current);
+      if (timerRef.current) {
+        clearTimeout(timerRef.current);
+        timerRef.current = null;
+      }
       document.body.style.overflow = '';
     };
-  }, [reduce, searchParams]);
+  }, [reduce, dismiss]);
 
-  const skip = () => {
-    if (timerRef.current) clearTimeout(timerRef.current);
-    setShow(false);
-    document.body.style.overflow = '';
-  };
+  // Keyboard parity with click/tap. Escape works wherever focus happens to be;
+  // the curtain itself is focusable, so Tab → Enter/Space skips it too.
+  useEffect(() => {
+    if (!show) return;
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') dismiss();
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [show, dismiss]);
 
   return (
     <AnimatePresence>
@@ -69,8 +95,15 @@ export function Intro() {
           initial={{ y: 0 }}
           exit={{ y: '-100%' }}
           transition={{ duration: EXIT_S, ease: [0.76, 0, 0.24, 1] }}
-          onClick={skip}
+          onClick={dismiss}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+              e.preventDefault();
+              dismiss();
+            }
+          }}
           role="button"
+          tabIndex={0}
           aria-label="Skip intro"
         >
           <motion.div
