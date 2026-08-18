@@ -218,7 +218,7 @@ function SectionView({ section: { type, data } }: { section: Section }) {
               <details key={i} className="group px-6">
                 <summary className="flex cursor-pointer list-none items-center justify-between py-5 font-[family-name:var(--font-display)] text-lg">
                   {it.q}
-                  <span className="ml-4 text-[var(--color-gold)] transition-transform group-open:rotate-45">+</span>
+                  <span className="ml-4 text-[var(--color-gold-deep)] transition-transform group-open:rotate-45">+</span>
                 </summary>
                 <p className="pb-5 text-[var(--color-stone)]">{it.a}</p>
               </details>
@@ -257,7 +257,7 @@ function SectionView({ section: { type, data } }: { section: Section }) {
 
     case 'marquee': {
       const items = arr<{ value?: string } | string>(data.items).map((x) => (typeof x === 'string' ? x : str(x?.value))).filter(Boolean);
-      return <div className="border-y border-[var(--color-line)] py-6"><Marquee items={items} /></div>;
+      return <div className="border-y border-[var(--color-line)] py-6"><Marquee items={items} accentClassName="text-[var(--color-gold-deep)]" /></div>;
     }
 
     case 'twoColumn':

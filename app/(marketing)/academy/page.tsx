@@ -72,9 +72,9 @@ export default async function AcademyPage() {
       <section className="container-lux pt-12">
         <div className="flex flex-wrap items-center justify-center gap-x-8 gap-y-3 text-sm uppercase tracking-[0.16em] text-[var(--color-stone)]">
           {Object.values(ACCREDITATION_LABELS).map((l) => (
-            <span key={l} className="flex items-center gap-2"><span className="text-[var(--color-gold)]">✦</span>{l}</span>
+            <span key={l} className="flex items-center gap-2"><span className="text-[var(--color-gold-deep)]">✦</span>{l}</span>
           ))}
-          <span className="flex items-center gap-2"><span className="text-[var(--color-gold)]">✦</span>Levels 2–7</span>
+          <span className="flex items-center gap-2"><span className="text-[var(--color-gold-deep)]">✦</span>Levels 2–7</span>
         </div>
       </section>
 

@@ -53,9 +53,9 @@ export default async function ReferPage() {
           <div className="rounded-[var(--radius-2xl)] border border-[var(--color-line)] bg-[var(--color-bone)] p-8 md:p-12">
             <h2 className="text-title">Generous by design.</h2>
             <ul className="mt-6 space-y-3 text-[var(--color-ink-soft)]">
-              <li className="flex items-start gap-3"><span className="mt-1 text-[var(--color-gold)]">✦</span> <span><strong className="text-[var(--color-ink)]">£25 for your friend</strong> — off their very first treatment, on top of their 15% new-client welcome.</span></li>
-              <li className="flex items-start gap-3"><span className="mt-1 text-[var(--color-gold)]">✦</span> <span><strong className="text-[var(--color-ink)]">£25 for you</strong> — credited automatically once their first qualifying treatment (£100+) is complete.</span></li>
-              <li className="flex items-start gap-3"><span className="mt-1 text-[var(--color-gold)]">✦</span> <span><strong className="text-[var(--color-ink)]">No limit</strong> — refer as many friends as you like; the credit stacks for your next visits.</span></li>
+              <li className="flex items-start gap-3"><span className="mt-1 text-[var(--color-gold-deep)]">✦</span> <span><strong className="text-[var(--color-ink)]">£25 for your friend</strong> — off their very first treatment, on top of their 15% new-client welcome.</span></li>
+              <li className="flex items-start gap-3"><span className="mt-1 text-[var(--color-gold-deep)]">✦</span> <span><strong className="text-[var(--color-ink)]">£25 for you</strong> — credited automatically once their first qualifying treatment (£100+) is complete.</span></li>
+              <li className="flex items-start gap-3"><span className="mt-1 text-[var(--color-gold-deep)]">✦</span> <span><strong className="text-[var(--color-ink)]">No limit</strong> — refer as many friends as you like; the credit stacks for your next visits.</span></li>
             </ul>
             <p className="mt-6 text-sm text-[var(--color-stone)]">Credit is held in your account as reward points (£1 = 100 points) and applied at checkout. Referral rewards apply when the referred friend’s first treatment is £100 or more. Questions? Call <a href={site.phoneHref} className="link-underline font-medium text-[var(--color-ink)]">{site.phone}</a>.</p>
             <div className="mt-8">
