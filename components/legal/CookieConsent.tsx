@@ -126,7 +126,12 @@ export function CookieConsent() {
           ) : (
             <p className="mt-2 text-sm leading-relaxed text-[var(--color-stone)]">
               We use essential cookies, plus analytics and marketing cookies if you consent.{' '}
-              <button type="button" onClick={() => setExpanded(true)} className="underline underline-offset-2 hover:text-[var(--color-ink)]">
+              {/* The Privacy Policy link stays visible in the collapsed state:
+                  the banner must offer direct access to the full cookie
+                  information before a consent choice is made, not only after
+                  the visitor expands "Learn more". */}
+              <Link href="/info/privacy-policy" className="underline underline-offset-2 hover:text-[var(--color-ink)]">Privacy Policy</Link>.{' '}
+              <button type="button" onClick={() => setExpanded(true)} aria-expanded={false} className="underline underline-offset-2 hover:text-[var(--color-ink)]">
                 Learn more
               </button>
             </p>
