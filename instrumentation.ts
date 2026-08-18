@@ -35,4 +35,12 @@ export async function onRequestError(
 ) {
   const { captureRequestError } = await import('@sentry/nextjs');
   captureRequestError(error, request, context);
+  // BLD-1273: Sentry's captureRequestError above is a no-op without SENTRY_DSN —
+  // give unhandled request errors SOME persisted trace even then (DB fallback +
+  // ops webhook; logErrorFallback itself no-ops when SENTRY_DSN IS set, so this
+  // never double-reports).
+  try {
+    const { logErrorFallback } = await import('@/lib/error-log-fallback');
+    await logErrorFallback(`${error.name || 'Error'}: ${error.message}`, { route: request.path, digest: error.digest });
+  } catch { /* best-effort */ }
 }
