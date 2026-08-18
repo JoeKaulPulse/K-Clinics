@@ -4206,6 +4206,16 @@ export const BUILD_BACKLOG: BacklogItem[] = [
       'The override is removable once prisma ships a release depending on deepmerge-ts >= 8.',
     ],
   },
+  {
+    title: 'Homepage \'15% off\' hero CTA now routes straight to instant signup (BLD-1383)',
+    type: 'TASK', urgency: 'P2', status: 'IN_REVIEW', assignee: 'claude',
+    value: 6, effort: 1,
+    detail: 'The homepage hero\'s \'Free consultation - 15% off your first visit\' link (components/home/HeroSlider.tsx) pointed to /consultation, a staff-follow-up lead form, while the discount is actually granted instantly by creating a free account (lib/client-auth.ts grants a one-time 15% first-treatment discount on signup). High-intent visitors clicking the discount promise were routed into the slower staff-follow-up funnel instead of the self-serve path that delivers it immediately.',
+    notes: [
+      'Fix: the hero link now points at /book (the same self-serve booking/signup route used elsewhere in the hero) instead of /consultation. The standalone /consultation page and form are untouched for visitors who want a conversation first.',
+      'Verified: npx tsc --noEmit and npm run build pass clean.',
+    ],
+  },
 ];
 
 // A content hash over every item's title + status + PR, so ANY change (a new
