@@ -112,13 +112,9 @@ export function CampaignComposer({ audience }: { audience: number }) {
         </button>
       </form>
 
-      {/* `relative z-10` on the panel is required, not cosmetic: <Dialog>'s
-          backdrop is `fixed inset-0` while the panel it wraps is left static,
-          and a positioned element paints above a non-positioned sibling
-          whatever the DOM order. Without it the panel renders under the 60%
-          black scrim and every click inside it lands on the backdrop, which
-          calls onClose — so the confirm button could never be pressed. */}
-      <Dialog open={!!confirming} onClose={() => { if (!pending) setConfirming(null); }} labelledby={titleId} className="relative z-10">
+      {/* <Dialog> applies `relative z-10` to the panel itself (BLD-1362), so
+          no per-caller override is needed here any more. */}
+      <Dialog open={!!confirming} onClose={() => { if (!pending) setConfirming(null); }} labelledby={titleId}>
         {confirming && body && (
           <div className="max-h-[92vh] w-full max-w-lg overflow-y-auto rounded-t-[var(--radius-xl)] bg-[var(--color-porcelain)] p-6 shadow-[var(--shadow-lift)] sm:rounded-[var(--radius-xl)] md:p-7">
             <h2 id={titleId} className="font-[family-name:var(--font-display)] text-2xl">Send this campaign?</h2>
