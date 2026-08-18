@@ -94,18 +94,24 @@ export async function GET(req: Request) {
   }
   // Import the latest Google Business reviews (no-op until connected).
   let gbiz = { ok: false, imported: 0 };
+  let gbizPosts = { ok: false, imported: 0, removed: 0 };
   try {
-    const { googleBusinessConnected, syncGoogleReviews } = await import('@/lib/google-business');
+    const { googleBusinessConnected, syncGoogleReviews, syncGooglePosts } = await import('@/lib/google-business');
     if (await googleBusinessConnected()) {
       gbiz = await syncGoogleReviews();
       if (!gbiz.ok) { failures++; console.error('[cron] google reviews sync reported failure'); }
+      // BLD-481: mirror the "From the Business" posts for the Latest News
+      // section. Best-effort like the review sync; the section renders nothing
+      // until posts exist, so a failed sync degrades to "no news", never an error.
+      gbizPosts = await syncGooglePosts();
+      if (!gbizPosts.ok) console.error('[cron] google posts sync reported failure (non-fatal):', (gbizPosts as { detail?: string }).detail);
     }
   } catch (e) {
-    failures++; console.error('[cron] google reviews sync failed (continuing):', (e as Error)?.message);
+    failures++; console.error('[cron] google reviews/posts sync failed (continuing):', (e as Error)?.message);
   }
   // Behaviour-analytics retention: prune old session replays (90d) and heatmap
   // points (180d) so storage stays bounded and we hold data no longer than needed.
-  let retention = { replays: 0, heatmap: 0, calls: 0 };
+  let retention = { replays: 0, heatmap: 0, calls: 0, enquiries: 0 };
   try {
     const { db } = await import('@/lib/db');
     const { Prisma } = await import('@prisma/client');
@@ -118,7 +124,13 @@ export async function GET(req: Request) {
     // months — the call facts (who/when/duration) stay, the content is scrubbed.
     const callCutoff = new Date(Date.now() - 395 * 24 * 60 * 60 * 1000);
     const secEventCutoff = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000);
-    const [r, h, , , , calls] = await Promise.all([
+    // PRJ-1032.20: consultation enquiries from people who never went on to book
+    // are purged 2 years after the enquiry (owner-confirmed 2026-08-18; see
+    // docs/data-protection/retention-schedule.md). Scoped to clients with no
+    // bookings at all, so an enquiry that became (or later becomes) a client
+    // relationship keeps its history; ConsultationNote rows cascade.
+    const enquiryCutoff = new Date(Date.now() - 2 * 365 * 24 * 60 * 60 * 1000);
+    const [r, h, , , , calls, enquiries] = await Promise.all([
       db.replaySession.deleteMany({ where: { startedAt: { lt: replayCutoff } } }), // cascades to chunks
       db.heatmapEvent.deleteMany({ where: { at: { lt: heatCutoff } } }),
       db.signedConsent.deleteMany({ where: { signedAt: { lt: consentCutoff } } }),
@@ -132,6 +144,7 @@ export async function GET(req: Request) {
         where: { startedAt: { lt: callCutoff }, OR: [{ transcript: { not: null } }, { recordingUrl: { not: null } }, { fromNumber: { not: 'REDACTED' } }] },
         data: { transcript: null, recordingUrl: null, raw: Prisma.DbNull, transcriptStatus: 'unavailable', fromNumber: 'REDACTED', toNumber: 'REDACTED' },
       }),
+      db.consultation.deleteMany({ where: { createdAt: { lt: enquiryCutoff }, client: { bookings: { none: {} } } } }),
     ]);
     // GDPR: SecurityEvent rows hold IP + email + UA — no need beyond 90 days.
     await db.securityEvent.deleteMany({ where: { createdAt: { lt: secEventCutoff } } }).catch(() => {});
@@ -141,7 +154,7 @@ export async function GET(req: Request) {
     // (messages cascade) — account-linked threads are covered by erasure.
     const anonChatCutoff = new Date(Date.now() - 365 * 24 * 60 * 60 * 1000);
     await db.chatConversation.deleteMany({ where: { clientId: null, updatedAt: { lt: anonChatCutoff } } }).catch((e: Error) => { console.error('[cron] anon chat retention failed (continuing):', e?.message); });
-    retention = { replays: r.count, heatmap: h.count, calls: calls.count };
+    retention = { replays: r.count, heatmap: h.count, calls: calls.count, enquiries: enquiries.count };
   } catch (e) {
     failures++; console.error('[cron] analytics retention failed (continuing):', (e as Error)?.message);
   }
@@ -432,7 +445,7 @@ export async function GET(req: Request) {
 
   // BLD-153: surface failure to the scheduler — non-200 when anything failed.
   return NextResponse.json(
-    { ok: failures === 0, failures, durationMs: cronDurationMs, ...result, loyalty, membership, gcal, gbiz, retention, idMeta, pii, gdprSweep, scheduledEmail, adSpend, board, clinicalBackfill, consultBackfill, portfolioMigration, examBank, gamification, authored, courseContent, communityDigest, instalmentDunning },
+    { ok: failures === 0, failures, durationMs: cronDurationMs, ...result, loyalty, membership, gcal, gbiz, gbizPosts, retention, idMeta, pii, gdprSweep, scheduledEmail, adSpend, board, clinicalBackfill, consultBackfill, portfolioMigration, examBank, gamification, authored, courseContent, communityDigest, instalmentDunning },
     { status: failures === 0 ? 200 : 500 },
   );
 }

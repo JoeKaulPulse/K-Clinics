@@ -252,6 +252,73 @@ export async function syncGoogleReviews(): Promise<{ ok: boolean; imported: numb
   }
 }
 
+// ── "From the Business" posts (BLD-481) ─────────────────────────────────────
+// Mirror the clinic's Google Business Profile posts into GbpPost so the site's
+// Latest News section shows them automatically. The existing connection's
+// business.manage scope already covers localPosts — no re-consent needed.
+type GBLocalPost = {
+  name?: string; summary?: string; topicType?: string; state?: string;
+  createTime?: string; updateTime?: string; searchUrl?: string;
+  callToAction?: { actionType?: string; url?: string };
+  media?: { googleUrl?: string; sourceUrl?: string }[];
+};
+
+/** Import every GBP post (idempotent); posts deleted on Google are removed here
+ *  so the site never shows news the clinic has taken down. */
+export async function syncGooglePosts(): Promise<{ ok: boolean; imported: number; removed: number; detail?: string }> {
+  const loc = await resolveLocation();
+  if (!loc) return { ok: false, imported: 0, removed: 0, detail: 'Choose which business location to import posts from first.' };
+  const access = await token();
+  if (!access) return { ok: false, imported: 0, removed: 0, detail: 'Not connected — connect Google Business first.' };
+
+  let pageToken: string | undefined;
+  let imported = 0;
+  const seen: string[] = [];
+  try {
+    do {
+      const url = new URL(`${MB_V4}/${loc}/localPosts`);
+      url.searchParams.set('pageSize', '20');
+      if (pageToken) url.searchParams.set('pageToken', pageToken);
+      const res = await fetch(url, { headers: { Authorization: `Bearer ${access}` }, signal: AbortSignal.timeout(10_000) });
+      if (!res.ok) return { ok: false, imported, removed: 0, detail: `Google API ${res.status}: ${(await res.text().catch(() => '')).slice(0, 200)}` };
+      const data = (await res.json()) as { localPosts?: GBLocalPost[]; nextPageToken?: string };
+      for (const p of data.localPosts || []) {
+        if (!p.name) continue;
+        seen.push(p.name);
+        const row = {
+          summary: p.summary || null,
+          topicType: p.topicType || null,
+          state: p.state || null,
+          mediaUrl: p.media?.[0]?.googleUrl || p.media?.[0]?.sourceUrl || null,
+          ctaUrl: p.callToAction?.url || null,
+          ctaType: p.callToAction?.actionType || null,
+          searchUrl: p.searchUrl || null,
+          createTime: p.createTime ? new Date(p.createTime) : null,
+          updateTime: p.updateTime ? new Date(p.updateTime) : null,
+        };
+        await db.gbpPost.upsert({ where: { googleName: p.name }, update: row, create: { googleName: p.name, ...row } });
+        imported++;
+      }
+      pageToken = data.nextPageToken;
+    } while (pageToken);
+    // Mirror deletions — the table only ever holds this location's live posts.
+    const gone = await db.gbpPost.deleteMany({ where: { googleName: { notIn: seen.length ? seen : ['-'] } } });
+    return { ok: true, imported, removed: gone.count };
+  } catch (e) {
+    return { ok: false, imported, removed: 0, detail: (e as Error)?.message || 'Sync failed.' };
+  }
+}
+
+/** The live posts for the site's Latest News section, newest first. */
+export async function latestNews(take = 3): Promise<{ googleName: string; summary: string | null; mediaUrl: string | null; ctaUrl: string | null; searchUrl: string | null; topicType: string | null; createTime: Date | null }[]> {
+  return db.gbpPost.findMany({
+    where: { OR: [{ state: 'LIVE' }, { state: null }] },
+    orderBy: { createTime: 'desc' },
+    take,
+    select: { googleName: true, summary: true, mediaUrl: true, ctaUrl: true, searchUrl: true, topicType: true, createTime: true },
+  }).catch(() => []);
+}
+
 /** Post (or update) the owner's public reply to a Google review. */
 export async function replyToGoogleReview(googleName: string, comment: string): Promise<{ ok: boolean; error?: string }> {
   const access = await token();

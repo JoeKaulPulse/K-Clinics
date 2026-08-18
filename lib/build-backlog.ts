@@ -4041,6 +4041,30 @@ export const BUILD_BACKLOG: BacklogItem[] = [
       'Verified: npx tsc --noEmit and npm run build both pass clean (DB sync skipped, no DATABASE_URL in this sandbox). Not exercised against real data or a real Stripe charge -- this sandbox has no DB egress.',
     ],
   },
+  {
+    title: 'Signature Facial promo slide on the homepage slider; 2-year consultation-enquiry retention purge (BLD-1197, PRJ-1032.20)',
+    type: 'TASK', urgency: 'P1', status: 'IN_REVIEW', assignee: 'claude',
+    value: 6, effort: 2,
+    detail: 'Two owner decisions from the 18 Aug blocked-lane sweep, built together. BLD-1197: the rotating-hero capability shipped as BLD-1348; the remaining ask was the Signature Facial promotion slide, held because the June prices needed re-confirmation -- owner confirmed 150/210 stands (18 Aug, in session). PRJ-1032.20: consultation enquiries (including from people who never became clients) were kept indefinitely with the retention schedule marked [OWNER TO CONFIRM]; owner set the window at 2 years if no booking follows (18 Aug, in session).',
+    notes: [
+      'BLD-1197: HeroSlider gains slide 2 of 4 -- Signature Facial offer, 150 with 210 crossed out (del with screen-reader Was/Now context), Save 60 badge, CTAs to /book?treatment=face-treatments and /face-treatments -- in the same ink/gold treatment as the other slides. Film slide references renumbered (index 2 to 3) in the autoplay/arming effects and aria labels. Heading keeps the 4rem LCP cap. Verified by direct server-render: 4 slides labelled 1-4, slide 1 visible with the only h1, 3 inert, 4 dots, promo copy present.',
+      'PRJ-1032.20: the nightly cron retention block now deletes Consultation rows (ConsultationNote cascades) older than 2 years whose client has no bookings at all -- an enquiry that became a client relationship keeps its history. docs/data-protection/retention-schedule.md row updated from [OWNER TO CONFIRM] to the confirmed 2-year window with the decision date. Purge count surfaced in the cron retention summary as enquiries.',
+      'Also re-verified during the sweep: BLD-489 (tenant scope on academy route ops) is already fixed in code -- updateEnrolment/removeCohort/removeEnrolment all carry tenantId in their where clauses with the BLD-489 comment; the board item had simply never moved, same pattern as BLD-512. BLD-804 (nonexistent slugs return 200) was investigated and deliberately NOT fixed blind: the route code is orthodox (top-of-page notFound, dynamicParams defaults), and the live 200s point at Next 16 shell-streaming committing the status before the DB lookup resolves -- a robust fix needs a preview-deploy test loop this environment cannot drive (preview URLs are auth-walled).',
+      'Verified: npx tsc --noEmit and npm run build pass clean; edge middleware bundle clean of node:util/types.',
+    ],
+  },
+  {
+    title: 'Latest News section fed automatically from the Google Business Profile (BLD-481)',
+    type: 'TASK', urgency: 'P2', status: 'IN_REVIEW', assignee: 'claude',
+    value: 6, effort: 3,
+    detail: 'Owner decision (18 Aug, in session): build the full auto-pull rather than a manual news section. The ask (June): a Latest News section on the website that mirrors whatever the clinic publishes in the Google Business Profile "From the Business" section, pictures included, with no manual re-entry. Key discovery that unblocked it: the existing Google Business connection already carries the business.manage scope (the same one localPosts needs), so no re-consent or new OAuth surface was required -- the earlier blocker note assumed one.',
+    notes: [
+      'New GbpPost mirror table (additive; resource name as @id, so no @unique added to an existing table -- deploy-gate safe). lib/google-business.ts gains syncGooglePosts() (pages localPosts, upserts, and mirror-deletes rows no longer live on Google so taken-down posts vanish from the site) and latestNews() for the section query. The daily cron syncs posts right after the existing review sync, guarded by the same googleBusinessConnected() check; a failed posts sync logs but does not page -- the section degrades to "no news", never an error.',
+      'components/home/LatestNews.tsx renders the three newest LIVE posts as brand-styled cards (topic label, date, summary clamped at 220 chars, image as a plain lazy img since Google CDN hosts are not in next/image remotePatterns, whole card linking to the post CTA or its Google view). Renders null until posts exist, so the homepage is byte-identical until the first sync lands. Placed after the Testimonials section.',
+      'Runtime prerequisite, not code: the sync only produces rows once the Google Business connection is live and a location is selected (Admin -> Marketing -> Connections). BLD-636 reports the GA4 side of Google returning 401; if the Business connection is similarly stale, reconnecting it is the one owner step before news appears.',
+      'Verified: npx tsc --noEmit and npm run build pass clean; edge bundle clean. Not exercised against the live Google API from this environment.',
+    ],
+  },
 ];
 
 // A content hash over every item's title + status + PR, so ANY change (a new

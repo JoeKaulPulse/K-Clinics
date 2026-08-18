@@ -34,7 +34,7 @@ the owner to set, usually against UK clinical, tax or awarding-body guidance.
 | Data | Model(s) | Trigger | Retention | Basis |
 | --- | --- | --- | --- | --- |
 | Client identity + contact | `Client` | Last visit / account closure | **[OWNER TO CONFIRM — e.g. keep while an active client; review after a period of inactivity]** | Contract / legitimate interests |
-| Consultations / enquiries | `Consultation`, `ConsultationNote` | Enquiry date | **[OWNER TO CONFIRM — e.g. 2 years if no booking follows]** | Legitimate interests |
+| Consultations / enquiries | `Consultation`, `ConsultationNote` | Enquiry date | **2 years if no booking follows** (owner-confirmed 2026-08-18, PRJ-1032.20; purged by the daily cron) | Legitimate interests |
 | Live chat | `ChatConversation`, `ChatMessage` | Last message | **[OWNER TO CONFIRM]** | Legitimate interests |
 | Waitlist entries | `WaitlistEntry` | Window end / booked | Delete once the window passes / booked | Legitimate interests |
 | Reviews / NPS | `Review`, `NpsResponse` | Submission | **[OWNER TO CONFIRM]** | Legitimate interests / consent for public display |
