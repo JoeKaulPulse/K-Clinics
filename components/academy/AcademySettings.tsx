@@ -116,18 +116,18 @@ export function AcademySettings({ passkeys: initial, hasPassword }: { passkeys: 
             <div>
               <label htmlFor="pw-current" className="block text-sm text-[var(--color-stone)]">Current password</label>
               <input id="pw-current" type="password" autoComplete="current-password" value={pwCurrent} onChange={(e) => setPwCurrent(e.target.value)} required
-                className="mt-1 w-full rounded-[var(--radius-md)] border border-[var(--color-line)] bg-white px-4 py-2.5 text-sm outline-none focus:border-[var(--color-gold)]" />
+                className="mt-1 w-full rounded-[var(--radius-md)] border border-[var(--color-line)] bg-white px-4 py-2.5 text-sm outline-none focus:border-[var(--color-gold)] focus-visible:ring-2 focus-visible:ring-[var(--color-gold)]" />
             </div>
           )}
           <div>
             <label htmlFor="pw-new" className="block text-sm text-[var(--color-stone)]">New password</label>
             <input id="pw-new" type="password" autoComplete="new-password" minLength={8} value={pwNew} onChange={(e) => setPwNew(e.target.value)} required
-              className="mt-1 w-full rounded-[var(--radius-md)] border border-[var(--color-line)] bg-white px-4 py-2.5 text-sm outline-none focus:border-[var(--color-gold)]" />
+              className="mt-1 w-full rounded-[var(--radius-md)] border border-[var(--color-line)] bg-white px-4 py-2.5 text-sm outline-none focus:border-[var(--color-gold)] focus-visible:ring-2 focus-visible:ring-[var(--color-gold)]" />
           </div>
           <div>
             <label htmlFor="pw-confirm" className="block text-sm text-[var(--color-stone)]">Confirm new password</label>
             <input id="pw-confirm" type="password" autoComplete="new-password" minLength={8} value={pwConfirm} onChange={(e) => setPwConfirm(e.target.value)} required
-              className="mt-1 w-full rounded-[var(--radius-md)] border border-[var(--color-line)] bg-white px-4 py-2.5 text-sm outline-none focus:border-[var(--color-gold)]" />
+              className="mt-1 w-full rounded-[var(--radius-md)] border border-[var(--color-line)] bg-white px-4 py-2.5 text-sm outline-none focus:border-[var(--color-gold)] focus-visible:ring-2 focus-visible:ring-[var(--color-gold)]" />
           </div>
         </div>
         <button type="submit" disabled={pwBusy} className="mt-4 inline-flex items-center gap-2 rounded-full bg-[var(--color-ink)] px-5 py-2.5 text-sm font-medium text-[var(--color-porcelain)] transition-colors hover:bg-[var(--color-espresso)] disabled:opacity-60">

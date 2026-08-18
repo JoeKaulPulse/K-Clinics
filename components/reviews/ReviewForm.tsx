@@ -63,10 +63,10 @@ export function ReviewForm({ token, googleUrl }: { token: string; googleUrl: str
       </div>
 
       <div>
-        <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="A headline for your review (optional)" className="w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-4 py-3 outline-none focus:border-[var(--color-gold)]" />
+        <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="A headline for your review (optional)" className="w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-4 py-3 outline-none focus:border-[var(--color-gold)] focus-visible:ring-2 focus-visible:ring-[var(--color-gold)]" />
       </div>
       <div>
-        <textarea value={body} onChange={(e) => setBody(e.target.value)} rows={5} placeholder="Tell us about your visit…" className="w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-4 py-3 outline-none focus:border-[var(--color-gold)]" />
+        <textarea value={body} onChange={(e) => setBody(e.target.value)} rows={5} placeholder="Tell us about your visit…" className="w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-4 py-3 outline-none focus:border-[var(--color-gold)] focus-visible:ring-2 focus-visible:ring-[var(--color-gold)]" />
       </div>
       <label className="flex cursor-pointer items-start gap-3 text-sm text-[var(--color-stone)]">
         <input type="checkbox" checked={consent} onChange={(e) => setConsent(e.target.checked)} className="mt-0.5 h-4 w-4 shrink-0 accent-[var(--color-gold)]" />

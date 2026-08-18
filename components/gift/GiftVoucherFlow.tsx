@@ -10,7 +10,7 @@ import { GIFT_CARD_THEMES, DEFAULT_THEME_ID } from '@/lib/gift-card-themes';
 import { trackPurchase } from '@/lib/analytics-events';
 
 const PRESETS = [2500, 5000, 7500, 10000, 15000, 25000];
-const field = 'w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-porcelain)] px-4 py-3 text-[var(--color-ink)] outline-none focus:border-[var(--color-gold)]';
+const field = 'w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-porcelain)] px-4 py-3 text-[var(--color-ink)] outline-none focus:border-[var(--color-gold)] focus-visible:ring-2 focus-visible:ring-[var(--color-gold)]';
 const label = 'mb-1.5 block text-xs uppercase tracking-[0.16em] text-[var(--color-stone)]';
 const money = (p: number) => `£${(p / 100).toLocaleString('en-GB')}`;
 

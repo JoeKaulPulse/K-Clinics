@@ -85,7 +85,7 @@ function AssignmentPicker({
   );
 }
 
-const fieldCls = 'w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-3 py-2 text-sm outline-none transition-colors focus:border-[var(--color-gold)]';
+const fieldCls = 'w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-3 py-2 text-sm outline-none transition-colors focus:border-[var(--color-gold)] focus-visible:ring-2 focus-visible:ring-[var(--color-gold)]';
 
 function CreateForm({ services, groups, onDone }: { services: Service[]; groups: string[]; onDone: () => void }) {
   const router = useRouter();
@@ -174,7 +174,7 @@ function Card({ r, services, groups }: { r: TemplateRow; services: Service[]; gr
         </div>
         <div className="flex shrink-0 items-center gap-3">
           <label className="text-xs text-[var(--color-stone)]">Category
-            <select value={category} onChange={(e) => setCategory(e.target.value)} className="ml-1.5 rounded-[var(--radius-xs)] border border-[var(--color-line)] bg-white px-2 py-1 text-xs outline-none focus:border-[var(--color-gold)]">{Array.from(new Set([...CATEGORIES, category])).map((c) => <option key={c} value={c}>{c}</option>)}</select>
+            <select value={category} onChange={(e) => setCategory(e.target.value)} className="ml-1.5 rounded-[var(--radius-xs)] border border-[var(--color-line)] bg-white px-2 py-1 text-xs outline-none focus:border-[var(--color-gold)] focus-visible:ring-2 focus-visible:ring-[var(--color-gold)]">{Array.from(new Set([...CATEGORIES, category])).map((c) => <option key={c} value={c}>{c}</option>)}</select>
           </label>
           <button onClick={() => setPreview((v) => !v)} className="text-xs text-[var(--color-gold-deep)] hover:underline">{preview ? 'Edit' : 'Preview'}</button>
           <button onClick={toggle} className="text-xs text-[var(--color-stone)] hover:underline">{r.active ? 'Disable' : 'Enable'}</button>

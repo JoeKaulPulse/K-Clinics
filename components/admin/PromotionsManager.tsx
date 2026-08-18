@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation';
 type Universal = { id: string; code: string; label: string | null; discountType: string; percent: number | null; amountPence: number | null; redeemedCount: number; maxRedemptions: number | null; active: boolean; startsAt: string | null; expiresAt: string | null; treatmentSlugs: string[] };
 type Batch = { campaignId: string; name: string; count: number; redeemed: number };
 
-const field = 'w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-3 py-2 text-sm outline-none focus:border-[var(--color-gold)]';
+const field = 'w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-3 py-2 text-sm outline-none focus:border-[var(--color-gold)] focus-visible:ring-2 focus-visible:ring-[var(--color-gold)]';
 const label = 'block text-xs font-medium text-[var(--color-stone)]';
 const fmtDate = (iso: string | null) => (iso ? new Date(iso).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : null);
 const value = (p: Universal) => (p.discountType === 'FIXED' ? `£${((p.amountPence ?? 0) / 100).toLocaleString('en-GB')} off` : `${p.percent}% off`);

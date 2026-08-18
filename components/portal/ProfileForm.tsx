@@ -81,7 +81,7 @@ export function ProfileForm({ initial, locale = 'en' }: { initial: Initial; loca
   );
 }
 
-const f = 'w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-4 py-3 outline-none focus:border-[var(--color-gold)] disabled:opacity-60';
+const f = 'w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-4 py-3 outline-none focus:border-[var(--color-gold)] focus-visible:ring-2 focus-visible:ring-[var(--color-gold)] disabled:opacity-60';
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <label className="block">

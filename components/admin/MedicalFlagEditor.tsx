@@ -48,7 +48,7 @@ export function MedicalFlagEditor({ clientId, initial, setBy, setAt }: { clientI
               rows={2}
               placeholder="e.g. Diabetes — confirm before laser; or Pregnant — defer injectables"
               aria-label="Medical flag"
-              className="w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-3 py-2 text-sm outline-none focus:border-[var(--color-gold)]"
+              className="w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-3 py-2 text-sm outline-none focus:border-[var(--color-gold)] focus-visible:ring-2 focus-visible:ring-[var(--color-gold)]"
             />
             <p className="mt-1 text-xs text-[var(--color-stone)]">A concise alert clinicians must review before each appointment. Detailed history stays in the encrypted assessments.</p>
             {err && <p role="alert" aria-live="assertive" className="mt-1 text-xs text-[var(--color-blush-deep)]">{err}</p>}

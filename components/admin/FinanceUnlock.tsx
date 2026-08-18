@@ -52,13 +52,13 @@ export function FinanceUnlock({ hasPin, next }: { hasPin: boolean; next: string 
         value={pin} onChange={(e) => setPin(e.target.value.replace(/\D/g, '').slice(0, 6))}
         inputMode="numeric" autoFocus type="password"
         placeholder="••••••" aria-label="PIN"
-        className="mt-5 w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-3 py-3 text-center text-2xl tracking-[0.5em] outline-none focus:border-[var(--color-gold)]"
+        className="mt-5 w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-3 py-3 text-center text-2xl tracking-[0.5em] outline-none focus:border-[var(--color-gold)] focus-visible:ring-2 focus-visible:ring-[var(--color-gold)]"
       />
       {mode === 'set' && (
         <input
           value={confirm} onChange={(e) => setConfirm(e.target.value.replace(/\D/g, '').slice(0, 6))}
           inputMode="numeric" type="password" placeholder="Confirm PIN" aria-label="Confirm PIN"
-          className="mt-3 w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-3 py-3 text-center text-2xl tracking-[0.5em] outline-none focus:border-[var(--color-gold)]"
+          className="mt-3 w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-3 py-3 text-center text-2xl tracking-[0.5em] outline-none focus:border-[var(--color-gold)] focus-visible:ring-2 focus-visible:ring-[var(--color-gold)]"
         />
       )}
       {err && <p role="alert" aria-live="assertive" className="mt-3 text-sm text-[var(--color-blush-deep)]">{err}</p>}

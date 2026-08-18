@@ -15,7 +15,7 @@ async function post(payload: object) {
   return res.ok;
 }
 
-const field = 'w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-3 py-2 text-sm outline-none focus:border-[var(--color-gold)]';
+const field = 'w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-3 py-2 text-sm outline-none focus:border-[var(--color-gold)] focus-visible:ring-2 focus-visible:ring-[var(--color-gold)]';
 const gbp = (p: number | null) => (p == null ? null : `£${(p / 100).toLocaleString('en-GB', { maximumFractionDigits: 2 })}`);
 
 export function InventoryManager({ items, expiring, canManage, uk, hasISClinical }: { items: Item[]; expiring: Expiring[]; canManage: boolean; uk: boolean; hasISClinical: boolean }) {

@@ -7,7 +7,7 @@ type Row = { id: string; name: string; category: string | null; contactName: str
 type Call = { id: string; direction: string; startedAt: string; durationSec: number; fromNumber: string; toNumber: string };
 type Full = Row & { website: string | null; addressLine: string | null; city: string | null; postcode: string | null; country: string | null; notes: string | null; calls: Call[] };
 
-const field = 'w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-3 py-2 text-sm outline-none focus:border-[var(--color-gold)]';
+const field = 'w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-3 py-2 text-sm outline-none focus:border-[var(--color-gold)] focus-visible:ring-2 focus-visible:ring-[var(--color-gold)]';
 const label = 'mb-1 block text-xs uppercase tracking-[0.12em] text-[var(--color-stone)]';
 
 async function post(payload: object) {

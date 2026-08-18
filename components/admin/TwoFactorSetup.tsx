@@ -70,7 +70,7 @@ export function TwoFactorSetup({ enabled }: { enabled: boolean }) {
           <code className="block break-all rounded-[var(--radius-sm)] bg-[var(--color-bone)] px-3 py-2 text-sm tracking-wider">{secret}</code>
           <p className="text-xs text-[var(--color-stone)]">On a phone you can also tap <a href={uri} className="link-underline">this link</a> to add it automatically.</p>
           <label className="block text-sm text-[var(--color-stone)]">2. Enter the 6-digit code it shows:
-            <input value={code} onChange={(e) => setCode(e.target.value)} inputMode="numeric" placeholder="123456" className="mt-1 w-40 rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-3 py-2 text-sm outline-none focus:border-[var(--color-gold)]" />
+            <input value={code} onChange={(e) => setCode(e.target.value)} inputMode="numeric" placeholder="123456" className="mt-1 w-40 rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-3 py-2 text-sm outline-none focus:border-[var(--color-gold)] focus-visible:ring-2 focus-visible:ring-[var(--color-gold)]" />
           </label>
           {err && <p role="alert" aria-live="assertive" className="text-sm text-[var(--color-blush-deep)]">{err}</p>}
           <div className="flex gap-2">

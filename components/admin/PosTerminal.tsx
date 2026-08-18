@@ -111,7 +111,7 @@ export function PosTerminal({ products }: { products: P[] }) {
     <div className="grid gap-6 lg:grid-cols-[1fr_360px]">
       {/* Products */}
       <div>
-        <input value={q} onChange={(e) => setQ(e.target.value)} onKeyDown={onScan} autoFocus placeholder="Scan a barcode, or search products…" aria-label="Scan barcode or search products" className="mb-4 w-full rounded-full border border-[var(--color-line)] bg-[var(--color-porcelain)] px-5 py-3 outline-none focus:border-[var(--color-gold)]" />
+        <input value={q} onChange={(e) => setQ(e.target.value)} onKeyDown={onScan} autoFocus placeholder="Scan a barcode, or search products…" aria-label="Scan barcode or search products" className="mb-4 w-full rounded-full border border-[var(--color-line)] bg-[var(--color-porcelain)] px-5 py-3 outline-none focus:border-[var(--color-gold)] focus-visible:ring-2 focus-visible:ring-[var(--color-gold)]" />
         {products.length === 0 ? (
           <p className="text-sm text-[var(--color-stone)]">No active products yet. Add them in Catalogue → Products.</p>
         ) : (

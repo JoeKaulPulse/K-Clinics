@@ -153,7 +153,7 @@ export function WorkspaceClient() {
     setCreatingGroup(false);
   }
 
-  const inputCls = 'border border-[var(--color-border)] rounded-lg px-3 py-2 text-sm bg-[var(--color-surface)] focus:outline-none focus:ring-2 focus:ring-[var(--color-gold)]';
+  const inputCls = 'border border-[var(--color-border)] rounded-lg px-3 py-2 text-sm bg-[var(--color-surface-alt)] focus:outline-none focus:ring-2 focus:ring-[var(--color-gold)]';
   const btnCls = 'px-4 py-2 rounded-lg text-sm font-medium transition-colors';
 
   return (
@@ -197,7 +197,7 @@ export function WorkspaceClient() {
         {tab === 'users' && !loading && !error && (
           <div className="space-y-6">
             {/* Create user form */}
-            <details className="rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)]">
+            <details className="rounded-lg border border-[var(--color-border)] bg-[var(--color-surface-alt)]">
               <summary className="px-4 py-3 text-sm font-medium cursor-pointer">Create new Workspace user</summary>
               <form onSubmit={handleCreateUser} className="p-4 space-y-3">
                 <div className="grid grid-cols-2 gap-3">
@@ -302,7 +302,7 @@ export function WorkspaceClient() {
         {/* Groups tab */}
         {tab === 'groups' && !loading && !error && (
           <div className="space-y-6">
-            <details className="rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)]">
+            <details className="rounded-lg border border-[var(--color-border)] bg-[var(--color-surface-alt)]">
               <summary className="px-4 py-3 text-sm font-medium cursor-pointer">Create new group / shared inbox</summary>
               <form onSubmit={handleCreateGroup} className="p-4 space-y-3">
                 <input className={`${inputCls} w-full`} type="email" placeholder="support@kclinics.co.uk" aria-label="Group email" value={newGroupEmail} onChange={(e) => setNewGroupEmail(e.target.value)} required />

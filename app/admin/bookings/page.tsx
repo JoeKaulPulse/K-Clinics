@@ -89,18 +89,18 @@ export default async function BookingsPage({ searchParams }: { searchParams: Pro
               </svg>
             </span>
             <input name="q" defaultValue={q} placeholder="Client or treatment…"
-              className="block h-11 w-56 rounded-full border border-[var(--color-line)] bg-[var(--color-porcelain)] pl-9 pr-4 text-sm outline-none transition-shadow placeholder:text-[var(--color-stone)] focus:border-[var(--color-gold)] focus:shadow-[0_0_0_3px_color-mix(in_oklab,var(--color-gold)_22%,transparent)]" />
+              className="block h-11 w-56 rounded-full border border-[var(--color-line)] bg-[var(--color-porcelain)] pl-9 pr-4 text-sm outline-none transition-shadow placeholder:text-[var(--color-stone)] focus:border-[var(--color-gold)] focus-visible:ring-2 focus-visible:ring-[var(--color-gold)] focus:shadow-[0_0_0_3px_color-mix(in_oklab,var(--color-gold)_22%,transparent)]" />
           </span>
         </label>
         <label className="text-xs text-[var(--color-stone)]">
           From
           <input type="date" name="from" defaultValue={from}
-            className="mt-1 block h-11 rounded-full border border-[var(--color-line)] bg-[var(--color-porcelain)] px-4 text-sm outline-none transition-shadow focus:border-[var(--color-gold)] focus:shadow-[0_0_0_3px_color-mix(in_oklab,var(--color-gold)_22%,transparent)]" />
+            className="mt-1 block h-11 rounded-full border border-[var(--color-line)] bg-[var(--color-porcelain)] px-4 text-sm outline-none transition-shadow focus:border-[var(--color-gold)] focus-visible:ring-2 focus-visible:ring-[var(--color-gold)] focus:shadow-[0_0_0_3px_color-mix(in_oklab,var(--color-gold)_22%,transparent)]" />
         </label>
         <label className="text-xs text-[var(--color-stone)]">
           To
           <input type="date" name="to" defaultValue={to}
-            className="mt-1 block h-11 rounded-full border border-[var(--color-line)] bg-[var(--color-porcelain)] px-4 text-sm outline-none transition-shadow focus:border-[var(--color-gold)] focus:shadow-[0_0_0_3px_color-mix(in_oklab,var(--color-gold)_22%,transparent)]" />
+            className="mt-1 block h-11 rounded-full border border-[var(--color-line)] bg-[var(--color-porcelain)] px-4 text-sm outline-none transition-shadow focus:border-[var(--color-gold)] focus-visible:ring-2 focus-visible:ring-[var(--color-gold)] focus:shadow-[0_0_0_3px_color-mix(in_oklab,var(--color-gold)_22%,transparent)]" />
         </label>
         <button className="h-11 rounded-full bg-[var(--color-ink)] px-4 text-sm font-medium text-[var(--color-porcelain)] transition-colors hover:bg-[var(--color-ink-soft)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-gold)]">Apply</button>
         {(q || from || to) && (

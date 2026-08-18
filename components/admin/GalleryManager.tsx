@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation';
 type Item = { id: string; category: string; treatmentSlug: string | null; caption: string | null; published: boolean; consent: boolean; v: number };
 
 const CATEGORIES = ['Veneers', 'Composite Bonding', 'Teeth Whitening', 'Clear Aligners', 'Braces', 'Dentures', 'Botox', 'Dermal Fillers', 'Lip Fillers', 'HydraGlow Facial', 'Chemical Peel', 'Microneedling', 'PRP Therapy', 'Laser Hair Removal', 'IPL Phototherapy', 'Body Contouring', 'SMAS HIFU Lifting', 'RF Lifting', 'Anti-Cellulite'];
-const field = 'w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-3 py-2 text-sm outline-none focus:border-[var(--color-gold)]';
+const field = 'w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-3 py-2 text-sm outline-none focus:border-[var(--color-gold)] focus-visible:ring-2 focus-visible:ring-[var(--color-gold)]';
 
 // Downscale an image file to a JPEG data URL (max 1400px, quality ~0.82).
 function downscale(file: File): Promise<string> {

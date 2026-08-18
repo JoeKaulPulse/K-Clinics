@@ -42,7 +42,7 @@ export function WorkspaceSeatAudit() {
   const missing = a.staffWithoutMailbox ?? [];
 
   return (
-    <div className="rounded-lg border border-[var(--color-border)] bg-[var(--color-surface)] p-4">
+    <div className="rounded-lg border border-[var(--color-border)] bg-[var(--color-surface-alt)] p-4">
       <div className="flex flex-wrap items-center gap-x-8 gap-y-3">
         <Stat label="Paid seats" value={a.seats} />
         <Stat label="Active" value={a.active} />

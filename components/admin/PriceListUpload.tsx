@@ -3,7 +3,7 @@
 import { useRef, useState } from 'react';
 
 type Section = { header: string; slugGuess: string | null; raw: string; count: number; samples: string[]; zeroPriceNames: string[]; treatmentSlug: string; include: boolean; confirmZero: boolean };
-const field = 'rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-porcelain)] px-2 py-1.5 text-sm outline-none focus:border-[var(--color-gold)]';
+const field = 'rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-porcelain)] px-2 py-1.5 text-sm outline-none focus:border-[var(--color-gold)] focus-visible:ring-2 focus-visible:ring-[var(--color-gold)]';
 
 export function PriceListUpload({ treatments, onImported }: { treatments: { slug: string; title: string }[]; onImported: () => void }) {
   const fileRef = useRef<HTMLInputElement>(null);

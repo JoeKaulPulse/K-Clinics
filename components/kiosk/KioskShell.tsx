@@ -95,7 +95,7 @@ function KioskCapture() {
         <input
           type="email" inputMode="email" autoComplete="off" value={email} onChange={(e) => setEmail(e.target.value)}
           placeholder="you@email.com"
-          className="flex-1 rounded-full border border-[var(--color-line)] bg-[var(--color-porcelain)] px-5 py-3.5 text-lg outline-none focus:border-[var(--color-gold)]"
+          className="flex-1 rounded-full border border-[var(--color-line)] bg-[var(--color-porcelain)] px-5 py-3.5 text-lg outline-none focus:border-[var(--color-gold)] focus-visible:ring-2 focus-visible:ring-[var(--color-gold)]"
         />
         <button onClick={submit} disabled={status === 'busy'} className="rounded-full bg-[var(--color-gold-deep)] px-7 py-3.5 text-lg font-medium text-white disabled:opacity-60">
           {status === 'busy' ? 'Sending…' : 'Send my plan'}

@@ -241,11 +241,11 @@ function Field({ q, value, set, pick }: { q: Question; value: unknown; set: (id:
   }
 
   if (q.type === 'longtext') {
-    return <textarea autoFocus rows={4} placeholder={q.placeholder} aria-labelledby={`q-${q.id}`} className="w-full rounded-[var(--radius-md)] border border-[var(--color-line)] bg-white px-4 py-3 text-lg outline-none focus:border-[var(--color-gold)]" value={(value as string) || ''} onChange={(e) => set(q.id, e.target.value)} />;
+    return <textarea autoFocus rows={4} placeholder={q.placeholder} aria-labelledby={`q-${q.id}`} className="w-full rounded-[var(--radius-md)] border border-[var(--color-line)] bg-white px-4 py-3 text-lg outline-none focus:border-[var(--color-gold)] focus-visible:ring-2 focus-visible:ring-[var(--color-gold)]" value={(value as string) || ''} onChange={(e) => set(q.id, e.target.value)} />;
   }
   if (q.type === 'date') {
-    return <input type="date" autoFocus aria-labelledby={`q-${q.id}`} className="rounded-[var(--radius-md)] border border-[var(--color-line)] bg-white px-4 py-3 text-lg outline-none focus:border-[var(--color-gold)]" value={(value as string) || ''} onChange={(e) => set(q.id, e.target.value)} />;
+    return <input type="date" autoFocus aria-labelledby={`q-${q.id}`} className="rounded-[var(--radius-md)] border border-[var(--color-line)] bg-white px-4 py-3 text-lg outline-none focus:border-[var(--color-gold)] focus-visible:ring-2 focus-visible:ring-[var(--color-gold)]" value={(value as string) || ''} onChange={(e) => set(q.id, e.target.value)} />;
   }
   // text
-  return <input type="text" autoFocus placeholder={q.placeholder} aria-labelledby={`q-${q.id}`} className="w-full rounded-[var(--radius-md)] border border-[var(--color-line)] bg-white px-4 py-3 text-lg outline-none focus:border-[var(--color-gold)]" value={(value as string) || ''} onChange={(e) => set(q.id, e.target.value)} />;
+  return <input type="text" autoFocus placeholder={q.placeholder} aria-labelledby={`q-${q.id}`} className="w-full rounded-[var(--radius-md)] border border-[var(--color-line)] bg-white px-4 py-3 text-lg outline-none focus:border-[var(--color-gold)] focus-visible:ring-2 focus-visible:ring-[var(--color-gold)]" value={(value as string) || ''} onChange={(e) => set(q.id, e.target.value)} />;
 }

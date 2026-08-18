@@ -13,7 +13,7 @@ export function ConsumablesPanel({ bookingId, items, used }: { bookingId: string
   const [batchNo, setBatchNo] = useState('');
   const [err, setErr] = useState('');
 
-  const field = 'rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-2 py-1.5 text-sm outline-none focus:border-[var(--color-gold)]';
+  const field = 'rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-2 py-1.5 text-sm outline-none focus:border-[var(--color-gold)] focus-visible:ring-2 focus-visible:ring-[var(--color-gold)]';
 
   function add() {
     if (!itemId || !qty || Number(qty) <= 0) { setErr('Pick an item and quantity.'); return; }

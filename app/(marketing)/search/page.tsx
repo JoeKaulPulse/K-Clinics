@@ -24,7 +24,7 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
         <form action="/search" method="get" className="mx-auto mt-6 flex max-w-xl gap-2">
           <input
             name="q" defaultValue={q} autoFocus placeholder="Search treatments, articles…" aria-label="Search"
-            className="min-w-0 flex-1 rounded-full border border-white/20 bg-white/10 px-5 py-3 text-[var(--color-porcelain)] placeholder:text-[var(--color-porcelain)]/50 outline-none focus:border-[var(--color-gold)]"
+            className="min-w-0 flex-1 rounded-full border border-white/20 bg-white/10 px-5 py-3 text-[var(--color-porcelain)] placeholder:text-[var(--color-porcelain)]/50 outline-none focus:border-[var(--color-gold)] focus-visible:ring-2 focus-visible:ring-[var(--color-gold)]"
           />
           <button className="shrink-0 rounded-full bg-[var(--color-gold-deep)] px-6 py-3 text-sm font-medium text-white">Search</button>
         </form>

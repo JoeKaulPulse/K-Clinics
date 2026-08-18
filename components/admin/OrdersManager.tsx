@@ -12,13 +12,13 @@ export type OrderRow = {
 const money = (p: number) => `£${(p / 100).toLocaleString('en-GB', { minimumFractionDigits: p % 100 ? 2 : 0 })}`;
 const STATUS: Record<string, string> = { PENDING: 'bg-[var(--color-gold)]/20 text-[var(--color-ink)]', PAID: 'bg-blue-100 text-blue-800', FULFILLED: 'bg-[var(--color-jade)]/15 text-[var(--color-ink)]', REFUNDED: 'bg-[var(--color-bone)] text-[var(--color-stone)]', CANCELLED: 'bg-[var(--color-blush)]/30 text-[var(--color-ink)]' };
 
-export function OrdersManager({ rows, canManage }: { rows: OrderRow[]; canManage: boolean }) {
+export function OrdersManager({ rows, canManage, emptyHint }: { rows: OrderRow[]; canManage: boolean; emptyHint?: string }) {
   const [open, setOpen] = useState<string | null>(null);
   if (rows.length === 0) return (
     <div className="rounded-[var(--radius-lg)] border border-dashed border-[var(--color-line)] bg-[var(--color-porcelain)]">
       <EmptyState
-        title="No orders yet"
-        hint="Retail orders placed in the online shop appear here to fulfil, add tracking and manage."
+        title={emptyHint ? 'No orders match' : 'No orders yet'}
+        hint={emptyHint ?? 'Retail orders placed in the online shop appear here to fulfil, add tracking and manage.'}
         icon={<><path d="M5 8h14l-1 11a2 2 0 0 1-2 1.8H8a2 2 0 0 1-2-1.8Z" /><path d="M9 8V6a3 3 0 0 1 6 0v2" /></>}
       />
     </div>

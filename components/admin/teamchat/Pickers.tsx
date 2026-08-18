@@ -58,7 +58,7 @@ export function GifPicker({ onPick, onClose }: { onPick: (g: DraftAttachment) =>
     <div ref={ref} className={`${POP} left-0 w-72 p-2`}>
       <input
         autoFocus value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search GIFs…" aria-label="Search GIFs"
-        className="mb-2 w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-2.5 py-1.5 text-sm outline-none focus:border-[var(--color-gold)]"
+        className="mb-2 w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-2.5 py-1.5 text-sm outline-none focus:border-[var(--color-gold)] focus-visible:ring-2 focus-visible:ring-[var(--color-gold)]"
       />
       {!configured ? (
         <p className="px-1 py-6 text-center text-xs text-[var(--color-stone)]">GIF search isn’t set up yet. Add a <span className="font-mono">TENOR_API_KEY</span> or <span className="font-mono">GIPHY_API_KEY</span> to enable it.</p>

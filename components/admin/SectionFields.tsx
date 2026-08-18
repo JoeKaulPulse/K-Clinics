@@ -6,7 +6,7 @@ import type { Block } from '@/lib/blocks';
 import { BlockEditor } from '@/components/admin/BlockEditor';
 import { MediaField } from '@/components/admin/MediaPicker';
 
-const fld = 'w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-porcelain)] px-3 py-2 text-sm outline-none focus:border-[var(--color-gold)]';
+const fld = 'w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-porcelain)] px-3 py-2 text-sm outline-none focus:border-[var(--color-gold)] focus-visible:ring-2 focus-visible:ring-[var(--color-gold)]';
 const lbl = 'block text-xs font-medium uppercase tracking-[0.12em] text-[var(--color-stone)] mb-1.5';
 
 type Data = Record<string, unknown>;

@@ -158,7 +158,7 @@ export function GlobalSearch({ placeholder, pages = [] }: { placeholder: string;
           }}
           placeholder={placeholder}
           aria-label={placeholder}
-          className="h-11 w-full rounded-[var(--radius-md)] border border-[var(--color-line)] bg-white pl-9 pr-16 text-sm text-[var(--color-ink)] outline-none transition-shadow placeholder:text-[var(--color-stone)] focus:border-[var(--color-gold)] focus:shadow-[0_0_0_3px_color-mix(in_oklab,var(--color-gold)_22%,transparent)]"
+          className="h-11 w-full rounded-[var(--radius-md)] border border-[var(--color-line)] bg-white pl-9 pr-16 text-sm text-[var(--color-ink)] outline-none transition-shadow placeholder:text-[var(--color-stone)] focus:border-[var(--color-gold)] focus-visible:ring-2 focus-visible:ring-[var(--color-gold)] focus:shadow-[0_0_0_3px_color-mix(in_oklab,var(--color-gold)_22%,transparent)]"
         />
         <span className="absolute right-2.5 flex items-center gap-1">
           {loading && (

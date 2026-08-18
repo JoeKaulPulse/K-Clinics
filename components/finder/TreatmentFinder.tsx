@@ -136,7 +136,7 @@ export function TreatmentFinder({ gender, prices = {} }: { gender?: string | nul
                       setEmailBusy(false);
                     }}
                   >
-                    <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@example.com" aria-label="Email address for your results" className="min-w-[14rem] flex-1 rounded-full border border-[var(--color-line)] bg-white px-4 py-2.5 text-sm outline-none focus:border-[var(--color-gold)]" />
+                    <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="you@example.com" aria-label="Email address for your results" className="min-w-[14rem] flex-1 rounded-full border border-[var(--color-line)] bg-white px-4 py-2.5 text-sm outline-none focus:border-[var(--color-gold)] focus-visible:ring-2 focus-visible:ring-[var(--color-gold)]" />
                     <button type="submit" disabled={emailBusy} className="rounded-full bg-[var(--color-ink)] px-5 py-2.5 text-sm font-medium text-[var(--color-porcelain)] disabled:opacity-50">{emailBusy ? 'Sending…' : 'Send'}</button>
                   </form>
                   {emailErr && <p role="alert" aria-live="assertive" className="mt-2 text-xs text-[var(--color-blush-deep)]">{emailErr}</p>}

@@ -333,7 +333,7 @@ export function AdminShell({
                     </Link>
                     <label className="block px-4 py-2.5">
                       <span className="mb-1 block text-[0.6rem] uppercase tracking-[0.14em] text-[var(--color-stone)]">{t('shell.language')}</span>
-                      <select value={locale} onChange={(e) => changeLanguage(e.target.value as Locale)} className="w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-porcelain)] px-2 py-1.5 text-sm outline-none focus:border-[var(--color-gold)]">
+                      <select value={locale} onChange={(e) => changeLanguage(e.target.value as Locale)} className="w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-porcelain)] px-2 py-1.5 text-sm outline-none focus:border-[var(--color-gold)] focus-visible:ring-2 focus-visible:ring-[var(--color-gold)]">
                         {LOCALES.map((l) => <option key={l} value={l}>{LOCALE_LABELS[l]}</option>)}
                       </select>
                     </label>

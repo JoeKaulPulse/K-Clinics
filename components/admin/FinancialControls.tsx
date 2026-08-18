@@ -57,7 +57,7 @@ export function FinancialControls({ refundWindowDays, minMarginPct, vat, kiosk }
         <p className="mt-1 text-sm text-[var(--color-stone)]">How long after a payment staff can refund a booking from the platform (Stripe allows up to 180 days).</p>
         <div className="mt-3 flex flex-wrap items-end gap-2">
           <label className="text-xs text-[var(--color-stone)]">Refund window (days)<br />
-            <input value={days} onChange={(e) => { setDays(e.target.value.replace(/\D/g, '').slice(0, 3)); setMsg(''); }} inputMode="numeric" className="mt-1 w-28 rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-3 py-2 text-sm outline-none focus:border-[var(--color-gold)]" />
+            <input value={days} onChange={(e) => { setDays(e.target.value.replace(/\D/g, '').slice(0, 3)); setMsg(''); }} inputMode="numeric" className="mt-1 w-28 rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-3 py-2 text-sm outline-none focus:border-[var(--color-gold)] focus-visible:ring-2 focus-visible:ring-[var(--color-gold)]" />
           </label>
           <button onClick={save} disabled={busy || !(Number(days) >= 1)} className="rounded-full bg-[var(--color-ink)] px-4 py-2 text-sm text-[var(--color-porcelain)] disabled:opacity-50">{busy ? 'Saving…' : 'Save'}</button>
           {msg && <span className="text-sm text-[var(--color-stone)]">{msg}</span>}
@@ -69,7 +69,7 @@ export function FinancialControls({ refundWindowDays, minMarginPct, vat, kiosk }
         <p className="mt-1 text-sm text-[var(--color-stone)]">A minimum margin target. Services below it are flagged in Reports → Profitability by service. Set 0 to turn off.</p>
         <div className="mt-3 flex flex-wrap items-end gap-2">
           <label className="text-xs text-[var(--color-stone)]">Minimum margin (%)<br />
-            <input value={margin} onChange={(e) => { setMargin(e.target.value.replace(/\D/g, '').slice(0, 3)); setMarginMsg(''); }} inputMode="numeric" className="mt-1 w-24 rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-3 py-2 text-sm outline-none focus:border-[var(--color-gold)]" />
+            <input value={margin} onChange={(e) => { setMargin(e.target.value.replace(/\D/g, '').slice(0, 3)); setMarginMsg(''); }} inputMode="numeric" className="mt-1 w-24 rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-3 py-2 text-sm outline-none focus:border-[var(--color-gold)] focus-visible:ring-2 focus-visible:ring-[var(--color-gold)]" />
           </label>
           <button onClick={saveMargin} disabled={marginBusy} className="rounded-full bg-[var(--color-ink)] px-4 py-2 text-sm text-[var(--color-porcelain)] disabled:opacity-50">{marginBusy ? 'Saving…' : 'Save'}</button>
           {marginMsg && <span className="text-sm text-[var(--color-stone)]">{marginMsg}</span>}
@@ -85,7 +85,7 @@ export function FinancialControls({ refundWindowDays, minMarginPct, vat, kiosk }
         </label>
         <div className="mt-3 flex flex-wrap items-end gap-2">
           <label className="text-xs text-[var(--color-stone)]">Discount (%)<br />
-            <input value={kPct} onChange={(e) => { setKPct(e.target.value.replace(/\D/g, '').slice(0, 3)); setKMsg(''); }} inputMode="numeric" className="mt-1 w-24 rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-3 py-2 text-sm outline-none focus:border-[var(--color-gold)]" />
+            <input value={kPct} onChange={(e) => { setKPct(e.target.value.replace(/\D/g, '').slice(0, 3)); setKMsg(''); }} inputMode="numeric" className="mt-1 w-24 rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-3 py-2 text-sm outline-none focus:border-[var(--color-gold)] focus-visible:ring-2 focus-visible:ring-[var(--color-gold)]" />
           </label>
           <button onClick={saveKiosk} disabled={kBusy || !(Number(kPct) >= 1)} className="rounded-full bg-[var(--color-ink)] px-4 py-2 text-sm text-[var(--color-porcelain)] disabled:opacity-50">{kBusy ? 'Saving…' : 'Save'}</button>
           {kMsg && <span className="text-sm text-[var(--color-stone)]">{kMsg}</span>}
@@ -106,7 +106,7 @@ export function FinancialControls({ refundWindowDays, minMarginPct, vat, kiosk }
         <p className="mt-2 text-sm text-[var(--color-stone)]">Prices always include VAT — the displayed price is what the client pays; reports extract the VAT portion from it.</p>
         <div className="mt-3 flex flex-wrap items-end gap-2">
           <label className="text-xs text-[var(--color-stone)]">Standard rate (%)<br />
-            <input value={rate} onChange={(e) => { setRate(e.target.value.replace(/\D/g, '').slice(0, 3)); setVatMsg(''); }} inputMode="numeric" className="mt-1 w-24 rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-3 py-2 text-sm outline-none focus:border-[var(--color-gold)]" />
+            <input value={rate} onChange={(e) => { setRate(e.target.value.replace(/\D/g, '').slice(0, 3)); setVatMsg(''); }} inputMode="numeric" className="mt-1 w-24 rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-3 py-2 text-sm outline-none focus:border-[var(--color-gold)] focus-visible:ring-2 focus-visible:ring-[var(--color-gold)]" />
           </label>
           <button onClick={saveVat} disabled={vatBusy} className="rounded-full bg-[var(--color-ink)] px-4 py-2 text-sm text-[var(--color-porcelain)] disabled:opacity-50">{vatBusy ? 'Saving…' : 'Save VAT settings'}</button>
           {vatMsg && <span className="text-sm text-[var(--color-stone)]">{vatMsg}</span>}

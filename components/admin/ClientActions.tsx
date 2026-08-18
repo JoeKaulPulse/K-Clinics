@@ -4,7 +4,7 @@ import { useState, useTransition } from 'react';
 import { addNote, togglePinNote, setConsultStatus, sendManualEmail, sendPortalInvite } from '@/app/admin/actions';
 
 const STATUSES = ['NEW', 'CONTACTED', 'BOOKED', 'COMPLETED', 'CLOSED'];
-const fieldCls = 'w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-porcelain)] px-3 py-2 text-sm outline-none focus:border-[var(--color-gold)]';
+const fieldCls = 'w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-porcelain)] px-3 py-2 text-sm outline-none focus:border-[var(--color-gold)] focus-visible:ring-2 focus-visible:ring-[var(--color-gold)]';
 
 const NOTE_TYPE_OPTIONS = [
   { value: 'NOTE', label: 'General note' },
@@ -30,7 +30,7 @@ export function StatusSelect({ consultId, clientId, current }: { consultId: stri
           if (r && r.ok === false) { setValue(prev); alert(r.error || 'Could not update status.'); }
         });
       }}
-      className="rounded-full border border-[var(--color-line)] bg-[var(--color-porcelain)] px-3 py-1 text-xs outline-none focus:border-[var(--color-gold)]"
+      className="rounded-full border border-[var(--color-line)] bg-[var(--color-porcelain)] px-3 py-1 text-xs outline-none focus:border-[var(--color-gold)] focus-visible:ring-2 focus-visible:ring-[var(--color-gold)]"
     >
       {STATUSES.map((s) => <option key={s} value={s}>{s}</option>)}
     </select>
@@ -68,7 +68,7 @@ export function AddNote({ clientId, clinical = false }: { clientId: string; clin
         onChange={(e) => setVal(e.target.value)}
       />
       <div className="flex flex-wrap items-center gap-2">
-        <select value={type} onChange={(e) => setType(e.target.value)} className="rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-porcelain)] px-2 py-1.5 text-xs outline-none focus:border-[var(--color-gold)]">
+        <select value={type} onChange={(e) => setType(e.target.value)} className="rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-porcelain)] px-2 py-1.5 text-xs outline-none focus:border-[var(--color-gold)] focus-visible:ring-2 focus-visible:ring-[var(--color-gold)]">
           {options.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
         </select>
         <label className="flex items-center gap-1.5 text-xs text-[var(--color-stone)]">

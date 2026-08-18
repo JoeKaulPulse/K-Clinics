@@ -33,7 +33,7 @@ export function AwardPoints({ staff }: { staff: Staff[] }) {
     else { const j = await res.json().catch(() => ({})); setMsg(j.error || 'Could not award.'); }
   }
 
-  const field = 'w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-3 py-2 text-sm outline-none focus:border-[var(--color-gold)]';
+  const field = 'w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-3 py-2 text-sm outline-none focus:border-[var(--color-gold)] focus-visible:ring-2 focus-visible:ring-[var(--color-gold)]';
 
   if (!open) return <button onClick={() => setOpen(true)} className="rounded-full bg-[var(--color-ink)] px-5 py-2 text-sm text-[var(--color-porcelain)]">+ Award points</button>;
 

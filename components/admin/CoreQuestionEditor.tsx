@@ -50,7 +50,7 @@ export function CoreQuestionEditor({ formKey, version, questions }: { formKey: s
             <div className="flex items-start gap-2">
               <span className="mt-2 text-xs tabular-nums text-[var(--color-stone)]">{i + 1}</span>
               <div className="min-w-0 flex-1">
-                <textarea value={q.prompt} onChange={(e) => edit(i, { prompt: e.target.value })} rows={2} className="w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] px-2 py-1.5 text-sm outline-none focus:border-[var(--color-gold)]" />
+                <textarea value={q.prompt} onChange={(e) => edit(i, { prompt: e.target.value })} rows={2} className="w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] px-2 py-1.5 text-sm outline-none focus:border-[var(--color-gold)] focus-visible:ring-2 focus-visible:ring-[var(--color-gold)]" />
                 <div className="mt-1 flex flex-wrap items-center gap-3 text-xs text-[var(--color-stone)]">
                   <span className="rounded-full bg-[var(--color-bone)] px-2 py-0.5">{q.type}</span>
                   <label className="flex items-center gap-1"><input type="checkbox" checked={!!q.required} onChange={(e) => edit(i, { required: e.target.checked })} /> required</label>

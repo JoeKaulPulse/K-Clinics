@@ -413,7 +413,7 @@ function QuizPanel({ quiz, state, onGraded, onBadges, onNext }: { quiz: QuizView
                     value={typeof answers[q.id] === 'string' ? (answers[q.id] as string) : ''}
                     onChange={(e) => setText(q.id, e.target.value)}
                     placeholder="Type your answer…"
-                    className={`w-full rounded-[var(--radius-sm)] border px-4 py-2.5 text-sm ${r ? (r.correct ? 'border-[var(--color-gold)] bg-[var(--color-gold)]/10' : 'border-[var(--color-blush)] bg-[var(--color-blush)]/10') : 'border-[var(--color-line)] bg-white focus:border-[var(--color-gold)] focus:outline-none'}`}
+                    className={`w-full rounded-[var(--radius-sm)] border px-4 py-2.5 text-sm ${r ? (r.correct ? 'border-[var(--color-gold)] bg-[var(--color-gold)]/10' : 'border-[var(--color-blush)] bg-[var(--color-blush)]/10') : 'border-[var(--color-line)] bg-white focus:border-[var(--color-gold)] focus-visible:ring-2 focus-visible:ring-[var(--color-gold)] focus:outline-none'}`}
                   />
                   {r && <p className={`mt-2 text-xs font-medium ${r.correct ? 'text-[var(--color-gold-deep)]' : 'text-[var(--color-blush-deep)]'}`}>{r.correct ? '✓ Correct' : '✗ Not quite'}</p>}
                 </div>
