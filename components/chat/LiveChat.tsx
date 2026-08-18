@@ -140,7 +140,7 @@ export function LiveChat() {
                 </div>
               )}
               {!token && (
-                <input value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Email (optional — so we can reply if you leave)" className="mb-2 w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-3 py-2 text-xs outline-none focus:border-[var(--color-gold)]" />
+                <input value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Email (optional — so we can reply if you leave)" className="mb-2 w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-3 py-2 text-xs outline-none focus:border-[var(--color-gold)] focus-visible:ring-2 focus-visible:ring-[var(--color-gold)]" />
               )}
               {token && msgs.length > 0 && (
                 <button onClick={emailMe} className="mb-2 text-[0.7rem] text-[var(--color-stone)] underline hover:text-[var(--color-ink)]">Email me this chat</button>
@@ -151,7 +151,7 @@ export function LiveChat() {
                   onChange={(e) => setDraft(e.target.value)}
                   onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); } }}
                   placeholder="Type a message…"
-                  className="min-w-0 flex-1 rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-3 py-2 text-sm outline-none focus:border-[var(--color-gold)]"
+                  className="min-w-0 flex-1 rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-3 py-2 text-sm outline-none focus:border-[var(--color-gold)] focus-visible:ring-2 focus-visible:ring-[var(--color-gold)]"
                 />
                 <button onClick={send} disabled={busy || !draft.trim()} aria-label="Send" className="grid w-10 shrink-0 place-items-center rounded-[var(--radius-sm)] bg-[var(--color-ink)] text-[var(--color-porcelain)] disabled:opacity-50">→</button>
               </div>

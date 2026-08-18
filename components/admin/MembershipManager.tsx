@@ -9,7 +9,7 @@ export type TierRow = {
   perks: string[]; color: string | null; active: boolean; members: number;
 };
 
-const field = 'w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-2.5 py-1.5 text-sm outline-none focus:border-[var(--color-gold)]';
+const field = 'w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-2.5 py-1.5 text-sm outline-none focus:border-[var(--color-gold)] focus-visible:ring-2 focus-visible:ring-[var(--color-gold)]';
 
 export function MembershipManager({ rows }: { rows: TierRow[] }) {
   const router = useRouter();

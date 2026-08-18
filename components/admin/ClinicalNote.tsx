@@ -34,7 +34,7 @@ export function ClinicalNote({ bookingId, initial, savedBy, savedAt }: {
         rows={6}
         placeholder="What was done this session — products/settings used, observations, advice given, follow-up…"
         aria-label="Treatment note"
-        className="w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-4 py-3 text-sm leading-relaxed outline-none focus:border-[var(--color-gold)]"
+        className="w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-4 py-3 text-sm leading-relaxed outline-none focus:border-[var(--color-gold)] focus-visible:ring-2 focus-visible:ring-[var(--color-gold)]"
       />
       <div className="mt-3 flex flex-wrap items-center gap-3">
         <button onClick={save} disabled={pending || !dirty} className="rounded-full bg-[var(--color-gold-deep)] px-5 py-2 text-sm font-medium text-white hover:bg-[var(--color-ink)] disabled:opacity-50">

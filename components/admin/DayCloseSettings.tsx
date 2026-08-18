@@ -36,7 +36,7 @@ export function DayCloseSettings({ initial }: { initial: DayCloseConfig }) {
     } catch { setError('Network error.'); setStatus('error'); }
   }
 
-  const field = 'rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-3 py-2 text-sm outline-none focus:border-[var(--color-gold)]';
+  const field = 'rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-3 py-2 text-sm outline-none focus:border-[var(--color-gold)] focus-visible:ring-2 focus-visible:ring-[var(--color-gold)]';
 
   return (
     <div className="max-w-2xl space-y-8">

@@ -24,7 +24,7 @@ export function AdjustClientPoints({ clientId }: { clientId: string }) {
     else { const j = await res.json().catch(() => ({})); setMsg(j.error || 'Could not apply.'); }
   }
 
-  const field = 'w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-3 py-2 text-sm outline-none focus:border-[var(--color-gold)]';
+  const field = 'w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-3 py-2 text-sm outline-none focus:border-[var(--color-gold)] focus-visible:ring-2 focus-visible:ring-[var(--color-gold)]';
 
   if (!open) return <button onClick={() => setOpen(true)} className="text-xs font-medium text-[var(--color-gold-deep)] hover:underline">+ Adjust points</button>;
 

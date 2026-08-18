@@ -57,7 +57,7 @@ export function DayClosePanel() {
           <select
             value={locId ?? ''}
             onChange={(e) => { setLocId(e.target.value); load(e.target.value); }}
-            className="mt-1.5 block rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-3 py-2 text-sm outline-none focus:border-[var(--color-gold)]"
+            className="mt-1.5 block rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-3 py-2 text-sm outline-none focus:border-[var(--color-gold)] focus-visible:ring-2 focus-visible:ring-[var(--color-gold)]"
           >
             {data.locations.map((l) => <option key={l.id} value={l.id}>{l.name}</option>)}
           </select>

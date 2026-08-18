@@ -41,7 +41,7 @@ async function post(body: object) {
   return res.json().catch(() => ({ ok: false }));
 }
 
-const field = 'rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-porcelain)] px-3 py-2 text-sm text-[var(--color-ink)] outline-none focus:border-[var(--color-gold)]';
+const field = 'rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-porcelain)] px-3 py-2 text-sm text-[var(--color-ink)] outline-none focus:border-[var(--color-gold)] focus-visible:ring-2 focus-visible:ring-[var(--color-gold)]';
 
 export function FundingApplications({ applications }: { applications: FundingView[] }) {
   const [rows, setRows] = useState(applications);

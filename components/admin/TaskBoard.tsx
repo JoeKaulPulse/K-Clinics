@@ -110,7 +110,7 @@ function CreateTask({ staff, uk }: { staff: Staff[]; uk: boolean }) {
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState('');
   const L = (en: string, ukt: string) => (uk ? ukt : en);
-  const field = 'w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-3 py-2 text-sm outline-none focus:border-[var(--color-gold)]';
+  const field = 'w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-3 py-2 text-sm outline-none focus:border-[var(--color-gold)] focus-visible:ring-2 focus-visible:ring-[var(--color-gold)]';
 
   async function submit() {
     if (!title.trim()) { setMsg(L('Add a title.', 'Додайте назву.')); return; }
@@ -249,7 +249,7 @@ function Row({ t, staff, uk, orphanSub }: { t: Task; staff: Staff[]; uk: boolean
               <input value={subTitle} onChange={(e) => setSubTitle(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && addSub()} autoFocus
                 placeholder={L(`Sub-task of ${t.ref || 'this task'}…`, `Підзавдання ${t.ref || 'цього завдання'}…`)}
                 aria-label={L('Sub-task title', 'Назва підзавдання')}
-                className="min-w-0 flex-1 rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-3 py-1.5 text-sm outline-none focus:border-[var(--color-gold)]" />
+                className="min-w-0 flex-1 rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-3 py-1.5 text-sm outline-none focus:border-[var(--color-gold)] focus-visible:ring-2 focus-visible:ring-[var(--color-gold)]" />
               <button onClick={addSub} disabled={subBusy || !subTitle.trim()} className="rounded-[var(--radius-sm)] bg-[var(--color-ink)] px-3 py-1.5 text-sm text-[var(--color-porcelain)] disabled:opacity-50">
                 {subBusy ? L('Adding…', 'Додавання…') : L('Add', 'Додати')}
               </button>
@@ -280,7 +280,7 @@ function Row({ t, staff, uk, orphanSub }: { t: Task; staff: Staff[]; uk: boolean
                 <input value={cText} onChange={(e) => setCText(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && addComment()}
                   placeholder={L('Write a comment…', 'Напишіть коментар…')}
                   aria-label={L('Write a comment', 'Напишіть коментар')}
-                  className="min-w-0 flex-1 rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-3 py-1.5 text-sm outline-none focus:border-[var(--color-gold)]" />
+                  className="min-w-0 flex-1 rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-3 py-1.5 text-sm outline-none focus:border-[var(--color-gold)] focus-visible:ring-2 focus-visible:ring-[var(--color-gold)]" />
                 <button onClick={addComment} disabled={cBusy || !cText.trim()} className="rounded-[var(--radius-sm)] bg-[var(--color-gold-deep)] px-3 py-1.5 text-sm font-medium text-white hover:bg-[var(--color-ink)] disabled:opacity-50">
                   {cBusy ? L('…', '…') : L('Send', 'Надіслати')}
                 </button>

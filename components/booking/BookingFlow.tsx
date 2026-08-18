@@ -18,7 +18,7 @@ type Variant = { id: string; name: string; durationMin: number; displayDurationM
 type Service = { id: string; slug: string; treatmentSlug: string; name: string; category: string; audience: string; variants: Variant[] };
 type ClientInfo = { signedIn: boolean; firstName: string; email: string; gender: string | null; smsReminders: boolean; hasPhone: boolean; welcomeEligible: boolean };
 
-const field = 'w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-porcelain)] px-4 py-3 text-[var(--color-ink)] transition-colors placeholder:text-[var(--color-stone)] focus:border-[var(--color-gold)]';
+const field = 'w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-porcelain)] px-4 py-3 text-[var(--color-ink)] transition-colors placeholder:text-[var(--color-stone)] focus:border-[var(--color-gold)] focus-visible:ring-2 focus-visible:ring-[var(--color-gold)]';
 const label = 'mb-1.5 block text-xs uppercase tracking-[0.16em] text-[var(--color-stone)]';
 const money = (p: number) => (p <= 0 ? 'On consultation' : `£${(p / 100).toLocaleString('en-GB', { minimumFractionDigits: p % 100 ? 2 : 0 })}`);
 
@@ -829,7 +829,7 @@ function SaveProgress({ treatmentSlug, variantLabel }: { treatmentSlug: string; 
     <div className="mt-8 rounded-[var(--radius-md)] border border-[var(--color-line)] bg-[var(--color-bone)]/50 p-4">
       <label htmlFor="bintent" className={label}>Email me my selection so I can finish later (optional)</label>
       <div className="mt-1 flex flex-wrap items-center gap-2">
-        <input id="bintent" type="email" autoComplete="email" value={email} onChange={(e) => { setEmail(e.target.value); if (status === 'saved') setStatus(''); }} onBlur={save} placeholder="you@email.com" aria-label="Email me my selection" className="min-w-0 flex-1 rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-3 py-2 text-sm focus:border-[var(--color-gold)]" />
+        <input id="bintent" type="email" autoComplete="email" value={email} onChange={(e) => { setEmail(e.target.value); if (status === 'saved') setStatus(''); }} onBlur={save} placeholder="you@email.com" aria-label="Email me my selection" className="min-w-0 flex-1 rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-3 py-2 text-sm focus:border-[var(--color-gold)] focus-visible:ring-2 focus-visible:ring-[var(--color-gold)]" />
         <input type="text" tabIndex={-1} autoComplete="off" value={company} onChange={(e) => setCompany(e.target.value)} className="absolute -left-[9999px] h-0 w-0" aria-hidden />
         <button type="button" onClick={save} disabled={status === 'saving' || !valid} className="shrink-0 rounded-full border border-[var(--color-line)] px-4 py-2 text-sm font-medium hover:border-[var(--color-gold)] disabled:opacity-50">{status === 'saving' ? '…' : 'Save'}</button>
       </div>
@@ -848,7 +848,7 @@ function WaitlistCTA({ treatmentSlug, treatmentTitle, date, client }: { treatmen
   const [busy, setBusy] = useState(false);
   const [done, setDone] = useState(false);
   const [err, setErr] = useState('');
-  const inp = 'min-w-0 flex-1 rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-3 py-2 text-sm focus:border-[var(--color-gold)]';
+  const inp = 'min-w-0 flex-1 rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-3 py-2 text-sm focus:border-[var(--color-gold)] focus-visible:ring-2 focus-visible:ring-[var(--color-gold)]';
   const dayLabel = new Date(date).toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' });
 
   async function join() {

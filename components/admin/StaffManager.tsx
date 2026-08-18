@@ -292,7 +292,7 @@ function Editor({ staff, actorRole, onClose, onSaved }: { staff: Staff | null; a
   );
 }
 
-const field = 'w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-3 py-2.5 text-sm outline-none focus:border-[var(--color-gold)] disabled:opacity-60';
+const field = 'w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-3 py-2.5 text-sm outline-none focus:border-[var(--color-gold)] focus-visible:ring-2 focus-visible:ring-[var(--color-gold)] disabled:opacity-60';
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
@@ -320,7 +320,7 @@ function ProfileEditor({ staff, onClose, onSaved }: { staff: Staff; onClose: () 
   // Modal behaviours (focus-in, Tab trap, Escape, focus restore) — shared Dialog primitive (BLD-849/BLD-803).
   const { panelRef, onKeyDown } = useDialogBehaviours(onClose);
   const set = <K extends keyof typeof f>(k: K, v: (typeof f)[K]) => setF((s) => ({ ...s, [k]: v }));
-  const field = 'w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-3 py-2 text-sm outline-none focus:border-[var(--color-gold)]';
+  const field = 'w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-3 py-2 text-sm outline-none focus:border-[var(--color-gold)] focus-visible:ring-2 focus-visible:ring-[var(--color-gold)]';
 
   async function save() {
     setBusy(true); setErr('');

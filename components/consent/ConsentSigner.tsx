@@ -172,7 +172,7 @@ export function ConsentSigner({
             <div className="mt-5 rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-6">
               <label htmlFor="signer-name" className="block text-xs font-medium uppercase tracking-[0.16em] text-[var(--color-stone)]">Full name</label>
               <input id="signer-name" value={name} onChange={(e) => setName(e.target.value)} autoComplete="name"
-                className="mt-1.5 w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-3 py-3 text-base outline-none transition-colors focus:border-[var(--color-gold)]" />
+                className="mt-1.5 w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-3 py-3 text-base outline-none transition-colors focus:border-[var(--color-gold)] focus-visible:ring-2 focus-visible:ring-[var(--color-gold)]" />
 
               <div className="mt-5">
                 <div className="flex items-center justify-between">
@@ -189,7 +189,7 @@ export function ConsentSigner({
                   <input
                     id="typed-signature" value={typedSig} onChange={(e) => setTypedSig(e.target.value)}
                     autoComplete="off" placeholder="Type your full name here"
-                    className="mt-1.5 w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-3 py-3 text-base italic outline-none transition-colors focus:border-[var(--color-gold)]"
+                    className="mt-1.5 w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-3 py-3 text-base italic outline-none transition-colors focus:border-[var(--color-gold)] focus-visible:ring-2 focus-visible:ring-[var(--color-gold)]"
                     style={{ fontFamily: 'var(--font-display), cursive' }}
                   />
                 </div>

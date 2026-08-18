@@ -6,7 +6,7 @@ import type { FooterColumn } from '@/lib/site-config';
 // Editor for the header mega-menu and footer link columns. Operates on the
 // site config's `nav` object; saving is handled by the parent (SiteConfigEditor).
 
-const fld = 'w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-porcelain)] px-2.5 py-1.5 text-sm outline-none focus:border-[var(--color-gold)]';
+const fld = 'w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-porcelain)] px-2.5 py-1.5 text-sm outline-none focus:border-[var(--color-gold)] focus-visible:ring-2 focus-visible:ring-[var(--color-gold)]';
 const card = 'rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-5';
 const ghost = 'rounded-full border border-[var(--color-line)] px-3 py-1.5 text-sm text-[var(--color-ink-soft)] hover:border-[var(--color-gold)] hover:text-[var(--color-gold-deep)]';
 

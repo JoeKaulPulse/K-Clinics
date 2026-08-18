@@ -153,7 +153,7 @@ export function Composer({ channel, meId, onSent, replyTo, onCancelReply }: {
           onChange={(e) => onChange(e.target.value)} onKeyDown={onKeyDown}
           placeholder="Message…"
           aria-label="Message"
-          className="max-h-28 min-h-[2.25rem] flex-1 resize-none rounded-[var(--radius-md)] border border-[var(--color-line)] bg-white px-3 py-2 text-sm outline-none focus:border-[var(--color-gold)]"
+          className="max-h-28 min-h-[2.25rem] flex-1 resize-none rounded-[var(--radius-md)] border border-[var(--color-line)] bg-white px-3 py-2 text-sm outline-none focus:border-[var(--color-gold)] focus-visible:ring-2 focus-visible:ring-[var(--color-gold)]"
         />
         <button
           type="button" onClick={() => void send()} disabled={sending || (!text.trim() && drafts.length === 0)}

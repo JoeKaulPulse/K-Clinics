@@ -6,7 +6,7 @@ import type { CatalogueReward } from '@/components/admin/RewardsCatalogue';
 
 export type PendingRedemption = { id: string; staffName: string; rewardName: string; costPoints: number; createdAt: string };
 
-const field = 'w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-3 py-2 text-sm outline-none focus:border-[var(--color-gold)]';
+const field = 'w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-3 py-2 text-sm outline-none focus:border-[var(--color-gold)] focus-visible:ring-2 focus-visible:ring-[var(--color-gold)]';
 
 export function RewardManager({
   rewards,

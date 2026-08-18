@@ -12,7 +12,7 @@ type Summary = { endOperating: number; endReserves: number; lowestOperating: num
 type Balance = { source: string; label: string; connected: boolean; availablePence: number; pendingPence: number; currency: string; detail?: string };
 
 const gbp = (p: number) => `£${(p / 100).toLocaleString('en-GB', { maximumFractionDigits: 0 })}`;
-const field = 'rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-3 py-2 text-sm outline-none focus:border-[var(--color-gold)]';
+const field = 'rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-3 py-2 text-sm outline-none focus:border-[var(--color-gold)] focus-visible:ring-2 focus-visible:ring-[var(--color-gold)]';
 
 async function post(payload: object) {
   const res = await fetch('/api/admin/cashflow', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });

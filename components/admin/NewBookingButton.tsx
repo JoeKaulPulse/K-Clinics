@@ -13,7 +13,7 @@ type Treatment = { slug: string; title: string; group: string; variants?: Varian
 type Found = { id: string; firstName: string; lastName: string | null; email: string; phone: string | null; hasDob: boolean; hasCard: boolean };
 type Result = { bookingId: string; manageToken?: string; hasCard?: boolean; clientFirstName?: string; clientEmail?: string; clientHasEmail?: boolean };
 
-const f = 'w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-3 py-2.5 text-sm outline-none focus:border-[var(--color-gold)]';
+const f = 'w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-3 py-2.5 text-sm outline-none focus:border-[var(--color-gold)] focus-visible:ring-2 focus-visible:ring-[var(--color-gold)]';
 const priceLabel = (p: number) => (p > 0 ? `£${(p / 100).toLocaleString('en-GB', { minimumFractionDigits: p % 100 ? 2 : 0 })}` : 'On consultation');
 
 export function NewBookingButton({ treatments, isAdmin = false }: { treatments: Treatment[]; isAdmin?: boolean }) {

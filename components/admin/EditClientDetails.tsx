@@ -21,7 +21,7 @@ const GENDERS = [
   { value: '', label: '—' }, { value: 'FEMALE', label: 'Female' }, { value: 'MALE', label: 'Male' },
   { value: 'NON_BINARY', label: 'Non-binary' }, { value: 'OTHER', label: 'Other / self-describe' }, { value: 'PREFER_NOT_TO_SAY', label: 'Prefer not to say' },
 ];
-const f = 'w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-3 py-2 text-sm outline-none focus:border-[var(--color-gold)]';
+const f = 'w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-3 py-2 text-sm outline-none focus:border-[var(--color-gold)] focus-visible:ring-2 focus-visible:ring-[var(--color-gold)]';
 
 export function EditClientDetails({ client }: { client: EditableClient }) {
   const router = useRouter();

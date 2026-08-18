@@ -145,7 +145,7 @@ function SopChecklist({ bookingId, title, steps, saved, acknowledged, disabled }
                   onChange={(e) => setResponse(i, e.target.value)}
                   placeholder="Client's response / note…"
                   aria-label="Client response"
-                  className="mt-1.5 ml-7 w-[calc(100%-1.75rem)] rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-3 py-1.5 text-sm outline-none focus:border-[var(--color-gold)]"
+                  className="mt-1.5 ml-7 w-[calc(100%-1.75rem)] rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-3 py-1.5 text-sm outline-none focus:border-[var(--color-gold)] focus-visible:ring-2 focus-visible:ring-[var(--color-gold)]"
                 />
               )}
             </li>

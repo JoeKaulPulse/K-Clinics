@@ -243,7 +243,7 @@ export function BuildBoard({ canManage, isAdmin, github, staff, me }: { canManag
 
       {/* Search + view switcher + sync state */}
       <div className="mb-3 flex flex-wrap items-center gap-3">
-        <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search ref, title, detail, people… (all words must match)" aria-label="Search board items" className="min-w-0 flex-1 rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-3 py-2 text-sm outline-none focus:border-[var(--color-gold)]" />
+        <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search ref, title, detail, people… (all words must match)" aria-label="Search board items" className="min-w-0 flex-1 rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-3 py-2 text-sm outline-none focus:border-[var(--color-gold)] focus-visible:ring-2 focus-visible:ring-[var(--color-gold)]" />
         <div className="flex rounded-full border border-[var(--color-line)] bg-white p-0.5 text-xs">
           {(['kanban', 'list', 'timeline', 'projects'] as const).map((v) => (
             <button key={v} onClick={() => { setView(v); if (v === 'projects') setProjectFilter(null); }} className={`rounded-full px-3 py-1 capitalize ${view === v ? 'bg-[var(--color-ink)] text-[var(--color-porcelain)]' : 'text-[var(--color-stone)]'}`}>{v}</button>
@@ -261,7 +261,7 @@ export function BuildBoard({ canManage, isAdmin, github, staff, me }: { canManag
       {/* Filter + sort bar */}
       {view !== 'projects' && (
         <div className="mb-5 flex flex-wrap items-center gap-2 text-xs text-[var(--color-stone)]">
-          {(() => { const sel = 'rounded-full border border-[var(--color-line)] bg-white px-2.5 py-1.5 outline-none focus:border-[var(--color-gold)]'; return (<>
+          {(() => { const sel = 'rounded-full border border-[var(--color-line)] bg-white px-2.5 py-1.5 outline-none focus:border-[var(--color-gold)] focus-visible:ring-2 focus-visible:ring-[var(--color-gold)]'; return (<>
             <span className="text-[var(--color-stone)]">Filter</span>
             <select aria-label="Priority" value={fUrgency} onChange={(e) => setFUrgency(e.target.value)} className={sel}>
               <option value="">All priorities</option>
@@ -299,8 +299,8 @@ export function BuildBoard({ canManage, isAdmin, github, staff, me }: { canManag
           <h2 className="font-[family-name:var(--font-display)] text-lg">Connect GitHub</h2>
           <p className="mt-1 text-sm text-[var(--color-stone)]">Link a repo so items push to issues, P0/P1 auto-create one, and the “Continue working” button can wake Claude. Use a fine-grained token with <strong>Metadata: Read</strong> + <strong>Issues: Read &amp; write</strong>.</p>
           <div className="mt-3 flex flex-wrap items-end gap-2">
-            <label className="text-xs text-[var(--color-stone)]">Repository<br /><input value={ghForm.repo} onChange={(e) => setGhForm((f) => ({ ...f, repo: e.target.value }))} placeholder="owner/name" className="mt-1 w-56 rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-3 py-2 text-sm outline-none focus:border-[var(--color-gold)]" /></label>
-            <label className="text-xs text-[var(--color-stone)]">Access token<br /><input type="password" value={ghForm.token} onChange={(e) => setGhForm((f) => ({ ...f, token: e.target.value }))} placeholder="github_pat_… / ghp_…" className="mt-1 w-64 rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-3 py-2 text-sm outline-none focus:border-[var(--color-gold)]" /></label>
+            <label className="text-xs text-[var(--color-stone)]">Repository<br /><input value={ghForm.repo} onChange={(e) => setGhForm((f) => ({ ...f, repo: e.target.value }))} placeholder="owner/name" className="mt-1 w-56 rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-3 py-2 text-sm outline-none focus:border-[var(--color-gold)] focus-visible:ring-2 focus-visible:ring-[var(--color-gold)]" /></label>
+            <label className="text-xs text-[var(--color-stone)]">Access token<br /><input type="password" value={ghForm.token} onChange={(e) => setGhForm((f) => ({ ...f, token: e.target.value }))} placeholder="github_pat_… / ghp_…" className="mt-1 w-64 rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-3 py-2 text-sm outline-none focus:border-[var(--color-gold)] focus-visible:ring-2 focus-visible:ring-[var(--color-gold)]" /></label>
             <button onClick={connectGh} disabled={ghForm.busy} className="rounded-full bg-[var(--color-ink)] px-5 py-2 text-sm font-medium text-[var(--color-porcelain)] disabled:opacity-50">{ghForm.busy ? 'Connecting…' : 'Connect & test'}</button>
             {canManage && gh.connected && <button onClick={disconnectGh} className="text-xs text-[var(--color-blush-deep)] hover:underline">Disconnect</button>}
           </div>
@@ -701,7 +701,7 @@ function TaskModal({ item, allItems, projects, canManage, isAdmin, gh, staff, on
         </ul>
         {canManage && (
           <div className="mt-2 flex flex-wrap items-center gap-2">
-            <input value={stTitle} onChange={(e) => setStTitle(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && addSub()} placeholder="Add a subtask…" aria-label="Add a subtask" className="min-w-0 flex-1 rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-3 py-1.5 text-sm outline-none focus:border-[var(--color-gold)]" />
+            <input value={stTitle} onChange={(e) => setStTitle(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && addSub()} placeholder="Add a subtask…" aria-label="Add a subtask" className="min-w-0 flex-1 rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-3 py-1.5 text-sm outline-none focus:border-[var(--color-gold)] focus-visible:ring-2 focus-visible:ring-[var(--color-gold)]" />
             <label className="flex items-center gap-1 text-[0.65rem] text-[var(--color-stone)]"><input type="checkbox" checked={stOwner} onChange={(e) => setStOwner(e.target.checked)} className="h-3.5 w-3.5 accent-[var(--color-gold)]" /> owner input</label>
             <button onClick={addSub} disabled={stBusy || !stTitle.trim()} className="rounded-[var(--radius-sm)] bg-[var(--color-ink)] px-3 py-1.5 text-sm text-[var(--color-porcelain)] disabled:opacity-50">Add</button>
           </div>
@@ -800,7 +800,7 @@ function CommentBox({ id, onDone }: { id: string; onDone: () => void }) {
   async function send() { if (!v.trim() || busy) return; setBusy(true); const r = await post({ op: 'comment', id, body: v }); setBusy(false); if (r.ok) { setV(''); onDone(); } }
   return (
     <div className="mt-3 flex items-start gap-2">
-      <MentionInput value={v} onChange={setV} onSubmit={send} placeholder="Add a note… (@ to mention; @claude to nudge me)" className="w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-3 py-2 text-sm outline-none focus:border-[var(--color-gold)]" />
+      <MentionInput value={v} onChange={setV} onSubmit={send} placeholder="Add a note… (@ to mention; @claude to nudge me)" className="w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-3 py-2 text-sm outline-none focus:border-[var(--color-gold)] focus-visible:ring-2 focus-visible:ring-[var(--color-gold)]" />
       <button disabled={busy || !v.trim()} onClick={send} className="rounded-[var(--radius-sm)] bg-[var(--color-ink)] px-4 py-2 text-sm font-medium text-[var(--color-porcelain)] disabled:opacity-50">Note</button>
     </div>
   );
@@ -826,8 +826,8 @@ function IdeaModal({ onClose, onDone }: { onClose: () => void; onDone: () => voi
       <div ref={panelRef} role="dialog" aria-modal="true" aria-labelledby="idea-modal-title" tabIndex={-1} className="my-12 w-full max-w-md rounded-[var(--radius-lg)] bg-[var(--color-porcelain)] p-6 shadow-[var(--shadow-lift)]" onClick={(e) => e.stopPropagation()}>
         <h2 id="idea-modal-title" className="font-[family-name:var(--font-display)] text-xl">💡 Add an idea</h2>
         <p className="mt-1 text-sm text-[var(--color-stone)]">Drop it in — Claude scores it (value/effort) and triages it into the workflow automatically.</p>
-        <input value={title} onChange={(e) => setTitle(e.target.value)} autoFocus placeholder="The idea, in a line" aria-label="Idea title" className="mt-4 w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-3 py-2 text-sm outline-none focus:border-[var(--color-gold)]" />
-        <textarea value={detail} onChange={(e) => setDetail(e.target.value)} rows={4} placeholder="Any context, why it matters, links… (optional)" aria-label="Idea details" className="mt-2 w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-3 py-2 text-sm outline-none focus:border-[var(--color-gold)]" />
+        <input value={title} onChange={(e) => setTitle(e.target.value)} autoFocus placeholder="The idea, in a line" aria-label="Idea title" className="mt-4 w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-3 py-2 text-sm outline-none focus:border-[var(--color-gold)] focus-visible:ring-2 focus-visible:ring-[var(--color-gold)]" />
+        <textarea value={detail} onChange={(e) => setDetail(e.target.value)} rows={4} placeholder="Any context, why it matters, links… (optional)" aria-label="Idea details" className="mt-2 w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-3 py-2 text-sm outline-none focus:border-[var(--color-gold)] focus-visible:ring-2 focus-visible:ring-[var(--color-gold)]" />
         {err && <p role="alert" aria-live="assertive" className="mt-2 text-sm text-[var(--color-blush-deep)]">{err}</p>}
         <div className="mt-4 flex justify-end gap-2">
           <button onClick={onClose} className="rounded-full px-4 py-2 text-sm text-[var(--color-stone)]">Cancel</button>

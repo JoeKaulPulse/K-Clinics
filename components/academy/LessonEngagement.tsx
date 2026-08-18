@@ -127,7 +127,7 @@ export function LessonEngagement({ lessonId }: { lessonId: string }) {
           onChange={(e) => onNoteChange(e.target.value)}
           rows={6}
           placeholder="Jot down anything you want to remember from this lesson. Only you can see this."
-          className="w-full rounded-[var(--radius-md)] border border-[var(--color-line)] bg-white px-3.5 py-3 text-sm leading-relaxed focus:border-[var(--color-gold)] focus:outline-none"
+          className="w-full rounded-[var(--radius-md)] border border-[var(--color-line)] bg-white px-3.5 py-3 text-sm leading-relaxed focus:border-[var(--color-gold)] focus-visible:ring-2 focus-visible:ring-[var(--color-gold)] focus:outline-none"
         />
       </section>
 

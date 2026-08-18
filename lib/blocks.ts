@@ -100,8 +100,16 @@ export function blocksToHtml(blocks: Block[]): string {
       }
       case 'quote': return b.text.trim()
         ? `<blockquote><p>${inlineToHtml(b.text)}</p>${b.cite?.trim() ? `<cite>${inlineToHtml(b.cite)}</cite>` : ''}</blockquote>` : '';
+      // No width/height/aspect-ratio is captured anywhere blocks are authored
+      // (see components/admin/BlockEditor.tsx's image block — src/alt/caption
+      // only), and this function is synchronous so it can't probe the image
+      // for its real dimensions. Reserve a fixed-aspect-ratio box inline via
+      // `style` (rather than relying on callers to carry matching CSS) so the
+      // <img> never causes layout shift on load, at the cost of cropping any
+      // image that isn't already close to 16:9 (acceptable for editorial
+      // content images; border-radius/margin stay in the .journal-prose CSS).
       case 'image': { const src = safeUrl(b.src); return src
-        ? `<figure><img src="${escAttr(src)}" alt="${escAttr(b.alt || '')}" loading="lazy" />${b.caption?.trim() ? `<figcaption>${inlineToHtml(b.caption)}</figcaption>` : ''}</figure>` : ''; }
+        ? `<figure><img src="${escAttr(src)}" alt="${escAttr(b.alt || '')}" loading="lazy" style="aspect-ratio:16/9;width:100%;height:auto;object-fit:cover;display:block" />${b.caption?.trim() ? `<figcaption>${inlineToHtml(b.caption)}</figcaption>` : ''}</figure>` : ''; }
       case 'callout': return b.text.trim() ? `<aside class="journal-callout">${inlineToHtml(b.text)}</aside>` : '';
       case 'cta': { const href = safeUrl(b.href); return href && b.label.trim()
         ? `<p class="journal-cta"><a href="${escAttr(href)}">${inlineToHtml(b.label)}</a></p>` : ''; }

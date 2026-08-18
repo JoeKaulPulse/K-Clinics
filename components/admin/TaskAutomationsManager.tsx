@@ -45,7 +45,7 @@ const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
 // ── Shared class strings ─────────────────────────────────────────────────────
 const field =
-  'w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-3 py-2 text-sm outline-none focus:border-[var(--color-gold)]';
+  'w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-3 py-2 text-sm outline-none focus:border-[var(--color-gold)] focus-visible:ring-2 focus-visible:ring-[var(--color-gold)]';
 const labelCls = 'mb-1 block text-xs font-medium uppercase tracking-[0.14em] text-[var(--color-stone)]';
 const primaryBtn =
   'rounded-full bg-[var(--color-gold-deep)] px-5 py-2 text-sm font-medium text-white hover:bg-[var(--color-ink)] disabled:opacity-50';
