@@ -14,7 +14,7 @@ export const revalidate = false;
 export const generateMetadata = (): Promise<Metadata> => pageMeta({
   title: 'Treatment Packages & Programmes in London | KClinics',
   description:
-    'Curated treatment packages at KClinics, Islington — Total Rejuvenation, Perfect Skin, Smooth & Slim and Ultimate Hair-Free programmes for transformative, lasting results.',
+    'Curated treatment packages at KClinics, Islington — Total Rejuvenation, Perfect Skin, Smooth & Slim and Ultimate Hair-Free programmes.',
   path: '/packages',
   keywords: ['treatment packages London', 'skin programme London', 'body sculpting package', 'laser hair removal package'],
 });

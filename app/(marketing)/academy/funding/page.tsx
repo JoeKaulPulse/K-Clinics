@@ -11,7 +11,7 @@ import { pageMeta, JsonLd, breadcrumbLd } from '@/lib/seo';
 export const generateMetadata = (): Promise<Metadata> => pageMeta({
   title: 'Funding & Finance — Pay for Your Training | K Academy London',
   description:
-    'Ways to fund your aesthetics training at K Academy, Islington. Monthly course finance, employer sponsorship, and government and council funding routes including Advanced Learner Loans and the Mayor of London Adult Skills Fund. Check what you could use.',
+    'Ways to fund your aesthetics training at K Academy, Islington — course finance, employer sponsorship, Advanced Learner Loans and council funding routes.',
   path: '/academy/funding',
   keywords: ['aesthetics course funding', 'advanced learner loan aesthetics', 'pay monthly aesthetics training', 'adult skills fund London', 'student funding aesthetics academy'],
 });
