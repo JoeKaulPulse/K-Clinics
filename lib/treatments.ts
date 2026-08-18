@@ -854,6 +854,19 @@ export const formatPrice = (pence: number | null | undefined) =>
 // ── Helpers ──────────────────────────────────────────────────────────────────
 export const getTreatment = (slug: string) => treatments.find((t) => t.slug === slug);
 export const treatmentSlugs = treatments.map((t) => t.slug);
+
+// BLD-1251: which treatment pages are HEALTH data in an ad platform's hands.
+// Sending "Dentures" or "Intimate Rejuvenation" as the item label to Meta/GA4
+// ties a health condition to an identifiable ad profile — special-category
+// (Art. 9) territory the generic cookie-banner consent doesn't cover. Every
+// dentistry page is health care by definition; the aesthetics list is the
+// explicitly intimate/medical subset. Pages matching here still fire view
+// events (so remarketing audiences and conversion counting keep working), but
+// with the label generalised to the category (see app/(marketing)/[slug]).
+const AD_SENSITIVE_AESTHETICS = /intimate|body-contouring/;
+export function adSensitiveTreatment(t: { slug: string; category: 'aesthetics' | 'dentistry' }): boolean {
+  return t.category === 'dentistry' || AD_SENSITIVE_AESTHETICS.test(t.slug);
+}
 export const aesthetics = treatments.filter((t) => t.category === 'aesthetics');
 export const dentistry = treatments.filter((t) => t.category === 'dentistry');
 

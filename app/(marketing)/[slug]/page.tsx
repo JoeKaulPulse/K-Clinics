@@ -1,6 +1,6 @@
 import { notFound } from 'next/navigation';
 import type { Metadata } from 'next';
-import { treatmentSlugs } from '@/lib/treatments';
+import { treatmentSlugs, adSensitiveTreatment } from '@/lib/treatments';
 import { lowestPenceForTreatment } from '@/lib/services';
 import { getMergedTreatment } from '@/lib/treatment-content';
 import { getPublishedPage, pageMetaFromSections } from '@/lib/pages';
@@ -76,7 +76,16 @@ export default async function TreatmentPage({ params }: { params: Promise<{ slug
             breadcrumbLd([{ name: 'Home', path: '/' }, { name: categoryLabel, path: categoryHref }, { name: t.title, path: `/${t.slug}` }]),
           ]}
         />
-        <ViewItemTracker id={t.slug} name={t.title} category={t.category} valuePence={fromPence ?? 0} />
+        {/* BLD-1251: a health-sensitive page (all dentistry, intimate/medical
+            aesthetics) still fires its consent-gated view event, but with the
+            label generalised to the category and no price — Meta/GA4 never
+            receive "Dentures"/"Intimate Rejuvenation" tied to an ad profile.
+            Non-sensitive treatments keep full per-treatment granularity. */}
+        {adSensitiveTreatment(t) ? (
+          <ViewItemTracker id={t.category} name={t.category === 'dentistry' ? 'Dentistry treatment' : 'Aesthetics treatment'} category={t.category} />
+        ) : (
+          <ViewItemTracker id={t.slug} name={t.title} category={t.category} valuePence={fromPence ?? 0} />
+        )}
         <TreatmentTemplate t={t} />
       </>
     );

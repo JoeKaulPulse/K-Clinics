@@ -1,7 +1,7 @@
 import 'server-only';
 import { Prisma } from '@prisma/client';
 import { db } from '@/lib/db';
-import { activeKeyId, retiredKeyIds, encryptJson, decryptJson, integrityHash } from '@/lib/crypto';
+import { activeKeyId, retiredKeyIds, encryptJson, decryptJson, integrityHash, bytesKeyId, encryptBytes, decryptBytes } from '@/lib/crypto';
 import { encClinical, decClinical } from '@/lib/clinical-crypto';
 
 // Safe, idempotent re-encryption of records still on a retired key, onto the
@@ -108,6 +108,18 @@ export async function rotationStatus(): Promise<RotationStatus> {
   // Integrity-hashed models
   pending.healthAssessments = await db.healthAssessment.count({ where: staleWhere('cipher')! }).catch(() => 0);
   pending.signedConsents = await db.signedConsent.count({ where: staleWhere('cipher')! }).catch(() => 0);
+  // GalleryItem before/after — Bytes columns (BLD-1041). Prisma can't
+  // prefix-filter Bytes, so scan and test client-side; the table is small
+  // (published cases), and plaintext rows (bytesKeyId null — the backfill's
+  // job, not this sweep's) never count.
+  pending.galleryPhotos = 0;
+  const gIds = await db.galleryItem.findMany({ select: { id: true } }).catch(() => [] as { id: string }[]);
+  for (const { id } of gIds) {
+    const g = await db.galleryItem.findUnique({ where: { id }, select: { beforeImage: true, afterImage: true } }).catch(() => null);
+    if (!g) continue;
+    const b = bytesKeyId(g.beforeImage), a = bytesKeyId(g.afterImage);
+    if ((b && retired.includes(b)) || (a && retired.includes(a))) pending.galleryPhotos++;
+  }
 
   const total = Object.values(pending).reduce((s, n) => s + n, 0);
   return { activeKeyId: activeKeyId(), pending, total };
@@ -178,6 +190,32 @@ export async function reencryptBatch(limit = 300): Promise<{ migrated: number; r
       });
     }
     budget -= rows.length;
+  }
+
+  // GalleryItem before/after — Bytes columns (BLD-1041), tested client-side
+  // like CallRecord.raw below. Only re-keys sides whose blob is on a RETIRED
+  // key; plaintext (bytesKeyId null) is the encryption backfill's job.
+  if (budget > 0) {
+    const retired = retiredKeyIds();
+    const gIds = await db.galleryItem.findMany({ select: { id: true } }).catch(() => [] as { id: string }[]);
+    for (const { id } of gIds) {
+      if (budget <= 0) break;
+      const g = await db.galleryItem.findUnique({ where: { id }, select: { beforeImage: true, afterImage: true } }).catch(() => null);
+      if (!g) continue;
+      const bId = bytesKeyId(g.beforeImage), aId = bytesKeyId(g.afterImage);
+      const staleBefore = !!bId && retired.includes(bId);
+      const staleAfter = !!aId && retired.includes(aId);
+      if (!staleBefore && !staleAfter) continue;
+      budget--;
+      // Re-encryption happens INSIDE safe() so an undecryptable blob (decryptBytes
+      // throws) fails this record only, never the batch.
+      await safe(async () => {
+        const data: Record<string, Uint8Array<ArrayBuffer>> = {};
+        if (staleBefore) data.beforeImage = encryptBytes(decryptBytes(g.beforeImage));
+        if (staleAfter) data.afterImage = encryptBytes(decryptBytes(g.afterImage));
+        await db.galleryItem.update({ where: { id }, data });
+      });
+    }
   }
 
   // CallRecord.raw — Json column holding an encClinical string (lib/yay.ts);

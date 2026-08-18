@@ -41,14 +41,16 @@ export async function POST(req: Request) {
       const before = decodeImage(b.beforeImage);
       const after = decodeImage(b.afterImage);
       if (!before || !after) return bad('Both a before and an after image are required (max 4MB each).');
+      // BLD-1041: clinical photos are encrypted at rest, matching BeforePhoto.
+      const { encryptBytes } = await import('@/lib/crypto');
       const count = await db.galleryItem.count();
       const item = await db.galleryItem.create({
         data: {
           category: (b.category as string).slice(0, 60),
           treatmentSlug: (b.treatmentSlug as string)?.trim() || null,
           caption: (b.caption as string)?.slice(0, 200) || null,
-          beforeImage: before.buf, beforeType: before.type,
-          afterImage: after.buf, afterType: after.type,
+          beforeImage: encryptBytes(before.buf), beforeType: before.type,
+          afterImage: encryptBytes(after.buf), afterType: after.type,
           consent: !!b.consent,
           // BLD-1037: the consent tick is an attestation — record who made it and
           // when, so a published clinical photo has a durable evidence trail.
@@ -76,8 +78,10 @@ export async function POST(req: Request) {
         data.consentAt = b.consent ? new Date() : null;
       }
       if (b.clientId !== undefined) data.clientId = (b.clientId as string)?.trim() || null; // BLD-765
-      if (b.beforeImage) { const i = decodeImage(b.beforeImage); if (!i) return bad('Invalid before image.'); data.beforeImage = i.buf; data.beforeType = i.type; }
-      if (b.afterImage) { const i = decodeImage(b.afterImage); if (!i) return bad('Invalid after image.'); data.afterImage = i.buf; data.afterType = i.type; }
+      // BLD-1041: encrypted at rest, same as create.
+      const { encryptBytes } = await import('@/lib/crypto');
+      if (b.beforeImage) { const i = decodeImage(b.beforeImage); if (!i) return bad('Invalid before image.'); data.beforeImage = encryptBytes(i.buf); data.beforeType = i.type; }
+      if (b.afterImage) { const i = decodeImage(b.afterImage); if (!i) return bad('Invalid after image.'); data.afterImage = encryptBytes(i.buf); data.afterType = i.type; }
       await db.galleryItem.update({ where: { id: String(b.id) }, data });
       return ok();
     }

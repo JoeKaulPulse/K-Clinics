@@ -4140,6 +4140,30 @@ export const BUILD_BACKLOG: BacklogItem[] = [
       'Verified: npx tsc --noEmit and npm run build pass clean; migration generated offline via prisma migrate diff.',
     ],
   },
+  {
+    title: 'Health-sensitive treatment page views no longer send the treatment name to Meta/GA4 (BLD-1251)',
+    type: 'TASK', urgency: 'P1', status: 'IN_REVIEW', assignee: 'claude',
+    value: 8, effort: 2,
+    detail: 'trackViewItem() on every /[slug] treatment page sent the raw treatment name — Dentures, Dental Implant Placement, Intimate Rejuvenation, Body Contouring — to Meta Pixel (content_name) and GA4 (item_name) under generic cookie-banner consent. Tying a named health condition/procedure interest to an identifiable ad profile is UK GDPR Art. 9 special-category territory that generic marketing consent does not cover.',
+    notes: [
+      'Fix: new adSensitiveTreatment() in lib/treatments.ts — every dentistry page (dental care is health data by definition) plus the explicitly intimate/medical aesthetics subset (intimate-rejuvenation, body-contouring, extendable regex). Sensitive pages still fire their consent-gated view event so remarketing audiences and conversion counting keep working, but with the label generalised to the category ("Dentistry treatment"/"Aesthetics treatment"), the id set to the category, and no price (a distinctive price would fingerprint the treatment). Non-sensitive aesthetics pages keep full per-treatment granularity, so most ad-reporting detail is preserved.',
+      'The audit offered two routes — generalise the label OR add a dedicated Art.9 consent gate. Chose generalisation for the sensitive subset: it removes the special-category data from the transfer entirely (no consent wording for the owner to sign off, no consent-rate hit to campaign volume), which is strictly safer than asking visitors to consent to health-data ad sharing.',
+      'Scope: browser-side view_item/ViewContent (the audited surface). Booking-flow events carry the treatment via the URL the pixel sees regardless; if the owner wants those generalised too it is a follow-up decision, noted on the board.',
+      'Verified: npx tsc --noEmit and npm run build pass clean.',
+    ],
+  },
+  {
+    title: 'Gallery before/after photos encrypted at rest with keyring + self-healing backfill (BLD-1041)',
+    type: 'TASK', urgency: 'P1', status: 'IN_REVIEW', assignee: 'claude',
+    value: 7, effort: 4,
+    detail: 'GalleryItem.beforeImage/afterImage were raw Bytes columns — draft/unpublished cases under staff review and clientId-linked real patient photos sat cleartext in the primary DB, unlike the parallel BeforePhoto.dataEnc model, undermining the "clinical photos are always encrypted" posture the rest of the schema establishes.',
+    notes: [
+      'New binary keyring primitives in lib/crypto.ts: encryptBytes/decryptBytes/isEncryptedBytes/bytesKeyId — AES-256-GCM with the same versioned ring as encryptJson, in a self-describing binary format ("KCB1" magic + keyId + iv + tag + ct) stored in the SAME Bytes column, so no schema change and no destructive migration. decryptBytes passes legacy plaintext through unchanged (the decClinical tolerance), so reads work identically before, during and after migration.',
+      'Write paths (admin gallery create/update) now encrypt; the serve route decrypts (and 404s rather than streams an undecryptable blob). A nightly self-healing backfill (lib/gallery-encrypt-backfill.ts, 40 rows/run — images are MB-scale) upgrades legacy rows in place, CAS-guarded on updatedAt so an admin replacing an image mid-backfill is never clobbered, and latches off via a Settings key after a clean pass — the BLD-248 pattern.',
+      'Key rotation: gallery photos joined the BLD-1180 sweep as a bespoke client-side-tested pass (Prisma cannot prefix-filter Bytes), with a galleryPhotos pending count in rotationStatus — so the "0 remaining" key-removal gate covers them too. Plaintext rows never enter the sweep; they are the backfill\'s job.',
+      'Verified: npx tsc --noEmit and npm run build pass clean. Backfill and render not exercised against live data (no DB egress from this sandbox); the serve route\'s plaintext tolerance means an unmigrated row renders exactly as before.',
+    ],
+  },
 ];
 
 // A content hash over every item's title + status + PR, so ANY change (a new
