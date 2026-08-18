@@ -16,7 +16,7 @@ export const revalidate = 3600;
 export const generateMetadata = (): Promise<Metadata> => pageMeta({
   title: 'Membership & Beauty Points Rewards | KClinics London',
   description:
-    'Join KClinics’ free Beauty Points programme — earn 1 point per £1, plus bonuses for reviews, birthdays and referrals. Redeem points as money off future treatments in Islington, London.',
+    'Join KClinics’ free Beauty Points programme — earn 1 point per £1, plus bonuses for reviews, birthdays and referrals, redeemable on treatments.',
   path: '/membership',
   keywords: ['clinic membership London', 'beauty rewards programme', 'loyalty points aesthetics'],
 });

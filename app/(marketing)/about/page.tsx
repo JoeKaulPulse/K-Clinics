@@ -15,7 +15,7 @@ import { pageMeta, JsonLd, breadcrumbLd } from '@/lib/seo';
 export const revalidate = 3600;
 
 export const generateMetadata = (): Promise<Metadata> => pageMeta({
-  title: 'About KClinics — Premium Aesthetics & Dentistry, Islington London',
+  title: 'About KClinics — Aesthetics & Dentistry, Islington London',
   description:
     'Meet KClinics: a premium Islington clinic uniting advanced aesthetics and aesthetic dentistry, built on clinical excellence, artistry and uncommon care.',
   path: '/about',

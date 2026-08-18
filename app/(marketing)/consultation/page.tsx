@@ -12,7 +12,7 @@ export const revalidate = 3600;
 export const generateMetadata = (): Promise<Metadata> => pageMeta({
   title: 'Book a Free Consultation — Islington, London | KClinics',
   description:
-    'Request your complimentary consultation at KClinics, Islington. Tell us your goals and our expert team will design a bespoke treatment plan. New clients enjoy 15% off.',
+    'Request your complimentary consultation at KClinics, Islington. Tell us your goals and our expert team will design your bespoke treatment plan.',
   path: '/consultation',
   keywords: ['free consultation London', 'aesthetics consultation Islington', 'book consultation clinic'],
 });

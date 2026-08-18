@@ -7,8 +7,8 @@ import { pageMeta, JsonLd, breadcrumbLd } from '@/lib/seo';
 export const revalidate = false;
 
 export const generateMetadata = (): Promise<Metadata> => pageMeta({
-  title: 'Group & Party Bookings — Birthdays, Hen Parties | KClinics London',
-  description: 'Book the clinic for your celebration — birthdays, hen and bridal parties, corporate days. A private, luxe aesthetics experience for your group in Islington, London.',
+  title: 'Group & Party Bookings — Hen Parties | KClinics London',
+  description: 'Book the clinic for your celebration — birthdays, hen and bridal parties, corporate days. A private, luxe aesthetics experience in Islington, London.',
   path: '/group-bookings',
   keywords: ['group booking aesthetics London', 'birthday party clinic', 'hen party facials London', 'bridal party skincare', 'corporate beauty day'],
 });
