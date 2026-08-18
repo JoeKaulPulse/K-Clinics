@@ -59,6 +59,10 @@ function initSentry(bufferedErrors: { kind: 'error' | 'rejection'; value: unknow
       };
       window.addEventListener('kc-consent', onConsent);
     }
+  }).catch(() => {
+    // Chunk fetch can fail (stale HTML after a deploy, offline). Swallow it:
+    // an unhandled rejection here would be reported by nothing and only add
+    // console noise.
   });
 }
 
