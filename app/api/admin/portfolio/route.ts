@@ -19,5 +19,13 @@ export async function POST(req: Request) {
     const r = await reviewEntry(session.email, String(b.id), str(b.status), str(b.feedback));
     return NextResponse.json(r, { status: r.ok ? 200 : 400 });
   }
+  // BLD-1291: link a case to the photographed client (empty email = unlink) so
+  // the photos are reachable by erasure and the SAR export.
+  if (b.op === 'linkClient') {
+    if (!b.id) return NextResponse.json({ ok: false, error: 'Missing id.' }, { status: 400 });
+    const { linkPortfolioClient } = await import('@/lib/portfolio');
+    const r = await linkPortfolioClient(session.email, String(b.id), str(b.clientEmail));
+    return NextResponse.json(r, { status: r.ok ? 200 : 400 });
+  }
   return NextResponse.json({ ok: false, error: 'Unknown action.' }, { status: 400 });
 }

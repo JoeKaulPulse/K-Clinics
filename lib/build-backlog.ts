@@ -4207,6 +4207,41 @@ export const BUILD_BACKLOG: BacklogItem[] = [
     ],
   },
   {
+    title: 'Database residency verified as UK (Neon, AWS eu-west-2) and guarded by a nightly region check (BLD-1277)',
+    type: 'TASK', urgency: 'P2', status: 'IN_REVIEW', assignee: 'claude',
+    value: 7, effort: 1,
+    detail: 'docs/data-protection/processors.md self-flagged the primary Postgres host — every client, booking and encrypted health record — as [OWNER TO CONFIRM: which provider + region], and nothing in code verified residency, so a well-meaning migration to a US endpoint would silently move special-category data across borders.',
+    notes: [
+      'Verified from the production DATABASE_URL host (*.eu-west-2.aws.neon.tech): the database is Neon on AWS eu-west-2 (London) — UK residency, no cross-border transfer for data at rest. Processors register row updated with the fact, the verification date and the Neon DPA link.',
+      'Guard: the daily cron now parses the DATABASE_URL hostname and fails the run (alert-only — existing cron alerting pages; nothing is blocked) if it matches none of the approved region substrings. Approved list defaults to eu-west-2 and is overridable via DB_APPROVED_REGIONS when the owner sanctions a move.',
+      'Verified: npx tsc --noEmit and npm run build pass clean.',
+    ],
+  },
+  {
+    title: 'Health assessments gain the 8-year clinical retention purge, gated on an owner toggle (PRJ-1069.10)',
+    type: 'TASK', urgency: 'P2', status: 'IN_REVIEW', assignee: 'claude',
+    value: 6, effort: 2,
+    detail: 'The nightly retention sweep purges SignedConsent and BeforePhoto after 8 years, but HealthAssessment — the raw encrypted allergy/medication/condition/pregnancy answers, the most sensitive category in the database — was exempt, so historic health answers were kept indefinitely by default, against the retention schedule\'s own stated 8-year basis.',
+    notes: [
+      'The audit required owner sign-off before deleting real health data, so the purge ships OFF by default behind a new admin setting ("Purge old health assessments (8-year clinical window)", settings.manage surface) — the owner flipping the toggle IS the sign-off, and the retention schedule row now says exactly that.',
+      'Scope is deliberately more conservative than the adjacent consent/photo purges: rows older than 8 years AND belonging to clients with no treatment inside the window (the schedule\'s "8 years from last treatment" trigger) — an active client\'s history is never touched. Purge count surfaced in the cron retention summary as assessments.',
+      'Verified: npx tsc --noEmit and npm run build pass clean. No data deleted until the owner enables the setting.',
+    ],
+  },
+  {
+    title: 'Academy portfolio photos of real clients reachable by erasure and SAR via a staff client link (BLD-1291)',
+    type: 'TASK', urgency: 'P1', status: 'IN_REVIEW', assignee: 'claude',
+    value: 8, effort: 4,
+    detail: 'PortfolioEntry stores fully identifying before/after clinical photos of real clients with only a free-text clientRef ("Client A") — neither eraseClientData nor the SAR export could find them, and consent rests on a trainee tick-box attestation rather than a record from the photographed person. Built the reachability half; the consent-capture redesign remains an owner decision.',
+    notes: [
+      'Schema: additive nullable PortfolioEntry.clientId FK to Client (SetNull on client delete, indexed; migration committed, no @unique). Staff link a case to the real client from the portfolio review screen (Admin → Academy → Portfolio) by pasting the client\'s CRM email — a dashed warning box shows on any case with photos that has no link, and a linked case shows the covered-by-erasure/SAR state with an Unlink control. Server resolves the email, audit-logs link and unlink (NOTE_ADDED with the client id), gated on settings.manage like the rest of the review surface. Trainees never see or search the clinic client list — the link is staff-only by design.',
+      'Erasure: eraseClientData now calls erasePortfolioForClient() after the main transaction — deletes every linked case AND its photo files from the blob store (best-effort with the count of failed file deletions surfaced in the CLIENT_ERASED audit note for manual follow-up; the DB rows are gone regardless).',
+      'SAR: the Art. 15 export gains an academyPortfolioCases section (title, treatment, dates, photo count, consent-attestation timestamp, trainee email) for every linked case.',
+      'Deliberately NOT built (owner decision, stays open on the board): replacing the trainee self-attestation with a SignedConsent-style record captured from the photographed person — that is consent DESIGN for special-category biometric data. Also note the structural limit: only cases staff have linked are reachable; existing unlinked cases need a one-time linking pass, which the review screen\'s warning boxes now drive.',
+      'Verified: npx tsc --noEmit and npm run build pass clean; migration generated offline. Blob deletion not exercised from this sandbox.',
+    ],
+  },
+  {
     title: 'Cron-alert webhook fetch in api-health now bounded, matching its sibling routes (BLD-1382)',
     type: 'ERROR', urgency: 'P2', status: 'IN_REVIEW', assignee: 'claude',
     value: 6, effort: 1,

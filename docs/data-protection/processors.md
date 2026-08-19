@@ -19,7 +19,7 @@ registry (`lib/integrations.ts`), `docs/INTEGRATIONS.md` and the code paths cite
 | Processor | Personal data it receives | Purpose | Location / transfer basis | DPA |
 | --- | --- | --- | --- | --- |
 | **Vercel** | All data passing through the app (requests, responses, logs); file uploads in **Vercel Blob** (CVs, homework, facility docs, media). | Hosting, serverless functions, file storage, CDN. | US-based; relies on SCCs / UK Addendum. **[OWNER TO CONFIRM: function/region.]** | https://vercel.com/legal/dpa |
-| **Database host** (Neon / Vercel Postgres / Supabase) | The entire database — clients, bookings, clinical records (encrypted), staff, academy. | Primary data store (PostgreSQL). | **[OWNER TO CONFIRM: which provider + region; EU/UK region strongly preferred for clinical data.]** | Neon: https://neon.tech/dpa · Supabase: https://supabase.com/legal/dpa |
+| **Neon** (PostgreSQL) | The entire database — clients, bookings, clinical records (encrypted), staff, academy. | Primary data store (PostgreSQL). | **UK — AWS eu-west-2 (London)**. Verified 2026-08-18 from the production `DATABASE_URL` host (`*.eu-west-2.aws.neon.tech`); no cross-border transfer for data at rest. The daily cron alerts if the connection string ever points outside the approved regions (BLD-1277, `DB_APPROVED_REGIONS`). | https://neon.tech/dpa |
 
 ---
 
