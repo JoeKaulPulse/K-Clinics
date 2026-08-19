@@ -72,7 +72,8 @@ export function ResultCard({
         <AnnotatedPhoto src={result.bestPhotoUrl} annotations={annotations} />
       )}
 
-      <div className="mt-6 flex justify-center gap-8">
+      {/* BLD-1294: tighter gap on mobile so two rings always fit the card. */}
+      <div className="mt-6 flex justify-center gap-4 sm:gap-8">
         <ScoreRing label="Skin" score={result.skinScore} />
         <ScoreRing label="Smile" score={result.smileScore} />
       </div>
