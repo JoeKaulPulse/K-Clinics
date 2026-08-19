@@ -268,14 +268,27 @@ function LabelDiagram({ exercise, result, busy, onGrade }: SubProps) {
     setSel(null);
   }
 
+  // BLD-1390: a plain -translate-x-1/2 centers the label on the point, so a
+  // point near x=0% or x=100% pushes half the (whitespace-nowrap) label
+  // outside the overflow-hidden image. Ease the horizontal translate toward
+  // 0% (label grows rightward from the point) near the left edge and toward
+  // -100% (label grows leftward) near the right edge, so it always renders
+  // inside the image instead of being clipped.
+  const edgePad = 12;
+  const labelTranslateX = (x: number) => {
+    if (x <= edgePad) return -(x / edgePad) * 50;
+    if (x >= 100 - edgePad) return -50 - ((x - (100 - edgePad)) / edgePad) * 50;
+    return -50;
+  };
+
   return (
     <div>
       <div className="relative w-full overflow-hidden rounded-[var(--radius-md)] border border-[var(--color-line)]">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         {exercise.imageUrl ? <img src={exercise.imageUrl} alt={exercise.title} className="block w-full select-none" draggable={false} /> : <div className="grid h-48 place-items-center text-sm text-[var(--color-stone)]">No image</div>}
         {points.map((p, i) => (
-          <button key={i} onClick={() => !result && setSel(i)} disabled={!!result} style={{ left: `${p.x}%`, top: `${p.y}%` }}
-            className={`absolute -translate-x-1/2 -translate-y-1/2 whitespace-nowrap rounded-full border px-2 py-0.5 text-[0.7rem] font-medium ${result ? (result.results?.[i] ? 'border-[var(--color-gold-deep)] bg-[var(--color-gold)]/90 text-[var(--color-ink)]' : 'border-[var(--color-blush-deep)] bg-[var(--color-blush-deep)] text-white') : sel === i ? 'border-[var(--color-ink)] bg-[var(--color-ink)] text-[var(--color-porcelain)] ring-2 ring-[var(--color-ink)]' : 'border-[var(--color-ink)] bg-white text-[var(--color-ink)]'}`}>
+          <button key={i} onClick={() => !result && setSel(i)} disabled={!!result} style={{ left: `${p.x}%`, top: `${p.y}%`, transform: `translate(${labelTranslateX(p.x)}%, -50%)` }}
+            className={`absolute whitespace-nowrap rounded-full border px-2 py-0.5 text-[0.7rem] font-medium ${result ? (result.results?.[i] ? 'border-[var(--color-gold-deep)] bg-[var(--color-gold)]/90 text-[var(--color-ink)]' : 'border-[var(--color-blush-deep)] bg-[var(--color-blush-deep)] text-white') : sel === i ? 'border-[var(--color-ink)] bg-[var(--color-ink)] text-[var(--color-porcelain)] ring-2 ring-[var(--color-ink)]' : 'border-[var(--color-ink)] bg-white text-[var(--color-ink)]'}`}>
             {i in assign ? bank[assign[i]] : result ? (reveal?.[i]?.label ?? i + 1) : i + 1}
           </button>
         ))}

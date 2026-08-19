@@ -261,18 +261,18 @@ export default async function AdminOverview() {
   ].filter((x) => x.show);
 
   const toneCls: Record<string, string> = {
-    red: 'border-red-300 bg-red-50 text-red-800',
-    amber: 'border-amber-300 bg-amber-50 text-amber-900',
+    red: 'border-[var(--color-blush-deep)]/40 bg-[var(--color-blush)]/15 text-[var(--color-blush-deep)]',
+    amber: 'border-[var(--color-gold-deep)]/40 bg-[var(--color-gold)]/15 text-[var(--color-gold-deep)]',
     blush: 'border-[var(--color-blush)]/40 bg-[var(--color-blush)]/10 text-[var(--color-ink)]',
     ink: 'border-[var(--color-line)] bg-[var(--color-porcelain)] text-[var(--color-ink)]',
   };
 
   const bookingStatusCls: Record<string, string> = {
     CONFIRMED: 'bg-[color-mix(in_oklab,var(--color-jade)_12%,transparent)] text-[var(--color-jade)]',
-    PENDING: 'bg-amber-50 text-amber-800',
-    REQUESTED: 'bg-amber-100 text-amber-900',
+    PENDING: 'bg-[var(--color-gold)]/15 text-[var(--color-gold-deep)]',
+    REQUESTED: 'bg-[var(--color-gold)]/25 text-[var(--color-gold-deep)]',
     COMPLETED: 'bg-[var(--color-bone)] text-[var(--color-stone)]',
-    CANCELLED: 'bg-red-50 text-[#b23b3b]',
+    CANCELLED: 'bg-[var(--color-blush)]/15 text-[var(--color-blush-deep)]',
     NO_SHOW: 'bg-[var(--color-bone)] text-[var(--color-stone)]',
   };
 
