@@ -248,7 +248,9 @@ export default async function ClientDetail({ params }: { params: Promise<{ id: s
                 <Link key={p.purchaseBookingId} href={`/admin/bookings/${p.purchaseBookingId}`} className="block rounded-[var(--radius-md)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-3.5 transition-colors hover:border-[var(--color-gold)]">
                   <div className="flex flex-wrap items-baseline justify-between gap-2">
                     <span className="font-medium">{p.label}</span>
-                    <span className={`rounded-full px-2.5 py-0.5 text-xs ${p.paid ? 'bg-[var(--color-jade)]/15 text-[var(--color-jade)]' : 'bg-[var(--color-blush)]/20 text-[var(--color-blush-deep)]'}`}>{p.paid ? 'Paid' : 'Not yet paid'}</span>
+                    {/* BLD-1380: a fully refunded course is not "Not yet paid" —
+                        staff must not chase money the clinic has given back. */}
+                    <span className={`rounded-full px-2.5 py-0.5 text-xs ${p.paid ? 'bg-[var(--color-jade)]/15 text-[var(--color-jade)]' : p.refunded ? 'bg-[var(--color-line)] text-[var(--color-stone)]' : 'bg-[var(--color-blush)]/20 text-[var(--color-blush-deep)]'}`}>{p.paid ? 'Paid' : p.refunded ? 'Refunded' : 'Not yet paid'}</span>
                   </div>
                   <p className="mt-1 text-sm text-[var(--color-stone)]">
                     Course of {p.sessionsTotal} · {p.sessionsUsed} used · {p.sessionsBooked} booked · <span className="font-medium text-[var(--color-ink)]">{p.sessionsRemaining} remaining</span>
