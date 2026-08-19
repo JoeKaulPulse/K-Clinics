@@ -43,7 +43,9 @@ export async function POST(req: Request) {
       if (!b.id) return bad();
       const title = str(b.title).slice(0, 160) || 'Bundle';
       const slug = await uniqueSlug(str(b.slug) || title, String(b.id));
-      await db.courseBundle.update({ where: { id: String(b.id) }, data: { title, slug, summary: str(b.summary).slice(0, 300) || null, description: str(b.description).slice(0, 4000) || null, heroImage: str(b.heroImage).slice(0, 1000) || null, pricePence: optPence(b.pricePence), active: b.active === undefined ? true : !!b.active } });
+      // BLD-1376: time-boxed promo pricing, same shape as the course promo (BLD-490).
+      const optDate = (v: unknown): Date | null => { const s = str(v); if (!s) return null; const d = new Date(s); return isNaN(d.getTime()) ? null : d; };
+      await db.courseBundle.update({ where: { id: String(b.id) }, data: { title, slug, summary: str(b.summary).slice(0, 300) || null, description: str(b.description).slice(0, 4000) || null, heroImage: str(b.heroImage).slice(0, 1000) || null, pricePence: optPence(b.pricePence), promoPrice: optPence(b.promoPrice), promoStartAt: optDate(b.promoStartAt), promoEndAt: optDate(b.promoEndAt), active: b.active === undefined ? true : !!b.active } });
       return ok({ slug });
     }
     case 'deleteBundle': {

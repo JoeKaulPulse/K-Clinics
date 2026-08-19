@@ -56,8 +56,11 @@ export async function POST(req: Request) {
       if (bundle) {
         const inBundle = await db.course.findFirst({ where: { id: course.id, slug: { in: bundle.courses.map((c) => c.slug) } }, select: { id: true } });
         if (inBundle) {
+          // BLD-1376: honour a live promotional bundle price in the recorded claim.
+          const { getActivePromo } = await import('@/lib/academy-utils');
+          const effective = getActivePromo(bundle) ?? bundle.pricePence;
           bundleTitle = bundle.title;
-          bundleNote = `Applied via the "${bundle.title}" pathway bundle${bundle.pricePence != null ? ` — bundle price £${(bundle.pricePence / 100).toLocaleString('en-GB')}` : ''}. Apply the pathway pricing (agreed course fee) when offering the place. (BLD-1393)`;
+          bundleNote = `Applied via the "${bundle.title}" pathway bundle${effective != null ? ` — bundle price £${(effective / 100).toLocaleString('en-GB')}${getActivePromo(bundle) != null ? ' (promotional)' : ''}` : ''}. Apply the pathway pricing (agreed course fee) when offering the place. (BLD-1393)`;
         }
       }
     } catch { /* invalid claim — ignore */ }

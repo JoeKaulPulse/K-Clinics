@@ -4309,6 +4309,18 @@ export const BUILD_BACKLOG: BacklogItem[] = [
       'Verified: npx tsc --noEmit clean, npm run build clean, edge bundle clean.',
     ],
   },
+  {
+    title: 'Promotional pricing for academy course bundles; real review rating on the homepage trust strip (BLD-1376, BLD-1159)',
+    type: 'TASK', urgency: 'P2', status: 'SHIPPED', assignee: 'claude',
+    value: 6, effort: 3,
+    detail: 'BLD-1376 (owner request): bundles could only show a standard price — no limited-time offers. BLD-1159: the homepage trust strip listed only self-declared credentials while the real aggregate review rating already existed elsewhere on the page.',
+    notes: [
+      'BLD-1376: CourseBundle gains promoPrice/promoStartAt/promoEndAt (additive migration, mirrors the Course promo fields from BLD-490; the shared getActivePromo() decides what is live, so bundle and course promos can never disagree on timing semantics). Admin: the bundle editor (Admin → Academy → Bundles) gains "Promo price £" + start/end date fields; clearing the promo price ends the promo without touching the standard price. Public: the bundle detail page shows the promo price with the standard price struck through, a "Special offer" chip and savings vs booking separately; the academy catalogue card shows promo + struck standard price. The BLD-1393 application tagging records the effective (promotional) bundle price so staff quote the promo correctly. "Buy 2 / buy 3 for £X" deals need no new machinery — create a bundle with those courses and set its price (now promo-able).',
+      'BLD-1159: the trust strip pulls getReviewAggregate() (Google + verified internal, same source as the hero) and shows "{avg} ★ / N verified client reviews" as a fourth cell — only once real reviews exist, so the strip never fabricates. Third-party marks (CQC, Save Face…) remain owner-gated per the component\'s own rule: never list a credential before it is granted.',
+      'BLD-1279 verified already fixed on main during the same pass — every flagged meta description now measures 134–155 chars and titles ≤60 in code AND on the live pages (an earlier SEO batch trimmed them); board row was stale.',
+      'Verified: npx tsc --noEmit clean, npm run build clean, edge bundle clean; migration generated offline.',
+    ],
+  },
 ];
 
 // A content hash over every item's title + status + PR, so ANY change (a new
