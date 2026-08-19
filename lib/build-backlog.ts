@@ -4321,6 +4321,16 @@ export const BUILD_BACKLOG: BacklogItem[] = [
       'Verified: npx tsc --noEmit clean, npm run build clean, edge bundle clean; migration generated offline.',
     ],
   },
+  {
+    title: 'Admin review star ratings announced to screen readers (BLD-1262)',
+    type: 'TASK', urgency: 'P3', status: 'SHIPPED', assignee: 'claude',
+    value: 3, effort: 1,
+    detail: 'The admin reviews Stars component rendered raw ★/☆ glyphs distinguished only by colour — screen readers announced five star characters and low-vision staff had no numeric fallback (WCAG). The glyph run is now aria-hidden inside a span whose aria-label reads "N out of 5 stars" (or "No rating").',
+    notes: [
+      'Also verified in the same pass: PRJ-1034.12 (careers Apply seeds the selected role) was already fixed on main by the BLD-1372 batch — ApplyForm reads ?role= and validates it against the vacancy list; board row closed as delivered.',
+      'Verified: npx tsc --noEmit and npm run build pass clean.',
+    ],
+  },
 ];
 
 // A content hash over every item's title + status + PR, so ANY change (a new
