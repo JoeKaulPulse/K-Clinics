@@ -4331,6 +4331,17 @@ export const BUILD_BACKLOG: BacklogItem[] = [
       'Verified: npx tsc --noEmit and npm run build pass clean.',
     ],
   },
+  {
+    title: 'Confirmation guard on destructive medical-record clears; audit trail on gift-voucher redeem/cancel (BLD-1414, BLD-1416)',
+    type: 'ERROR', urgency: 'P2', status: 'IN_REVIEW', assignee: 'claude',
+    value: 5, effort: 2,
+    detail: 'BLD-1414: MedicalFlagEditor and PatchTestEditor wiped a client medical-flag/patch-test record on a bare onClick with no confirmation, unlike every other destructive admin action in the codebase. BLD-1416: the gift-vouchers admin route redeemed and cancelled voucher balances with no logAudit call, unlike every other money-mutating admin handler.',
+    notes: [
+      'BLD-1414: components/admin/MedicalFlagEditor.tsx and components/admin/PatchTestEditor.tsx each gain a clear() wrapper that runs window.confirm(...) before calling save(\'\')/save(null), matching the existing guard style (e.g. TwoFactorSetup.tsx\'s disable(), CredentialsManager.tsx\'s clear()) — the Clear button now calls the guarded wrapper instead of save directly. No other behaviour changed.',
+      'BLD-1416: app/api/admin/gift-vouchers/route.ts\'s redeem and cancel branches now call logAudit with action REWARD_REDEEMED, matching the established convention for every other gift-voucher balance change in the codebase (app/api/admin/bookings/session/route.ts, lib/shop.ts, lib/booking-actions.ts, the Stripe webhook). Actor/actorRole come from the staff session, summary embeds the voucher code, amount and an optional staff-supplied reason, and meta carries voucherCode/amountPence/reason for the audit trail.',
+      'Verified: npx tsc --noEmit and npm run build pass clean.',
+    ],
+  },
 ];
 
 // A content hash over every item's title + status + PR, so ANY change (a new

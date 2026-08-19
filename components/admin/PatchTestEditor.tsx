@@ -21,6 +21,11 @@ export function PatchTestEditor({ clientId, result, setBy, setAt }: { clientId: 
     });
   }
 
+  function clear() {
+    if (!window.confirm('Clear this patch test record? The result will no longer show for this client.')) return;
+    save(null);
+  }
+
   const passed = result === 'PASSED';
   const failed = result === 'FAILED';
 
@@ -48,7 +53,7 @@ export function PatchTestEditor({ clientId, result, setBy, setAt }: { clientId: 
         <div className="mt-3 flex items-center gap-2">
           {!passed && <button disabled={pending} onClick={() => save('PASSED')} className="rounded-full bg-[var(--color-gold-deep)] px-4 py-1.5 text-xs font-medium text-white disabled:opacity-60">{pending ? 'Saving…' : 'Record passed'}</button>}
           {!failed && <button disabled={pending} onClick={() => save('FAILED')} className="rounded-full border border-[var(--color-blush)] px-4 py-1.5 text-xs font-medium text-[var(--color-blush-deep)] disabled:opacity-60">{pending ? 'Saving…' : 'Record failed'}</button>}
-          {result && <button disabled={pending} onClick={() => save(null)} className="text-xs text-[var(--color-stone)] hover:text-[var(--color-blush-deep)]">Clear</button>}
+          {result && <button disabled={pending} onClick={clear} className="text-xs text-[var(--color-stone)] hover:text-[var(--color-blush-deep)]">Clear</button>}
         </div>
       </div>
     </section>
