@@ -4253,6 +4253,16 @@ export const BUILD_BACKLOG: BacklogItem[] = [
       'Verified: npx tsc --noEmit and npm run build pass clean.',
     ],
   },
+  {
+    title: 'Cron-alert webhook fetch in api-health now bounded, matching its sibling routes (BLD-1382)',
+    type: 'ERROR', urgency: 'P2', status: 'IN_REVIEW', assignee: 'claude',
+    value: 6, effort: 1,
+    detail: 'app/api/admin/api-health/route.ts posted to CRON_ALERT_WEBHOOK_URL with no AbortSignal.timeout, unlike the identical alert-fetch in cron/daily, cron/dispatch and cron/kiosk-cleanup, which all added an 8s bound after a hung webhook previously stalled a request indefinitely (PRJ-1118.10). This route was missed, and it fires exactly when a critical outage is detected.',
+    notes: [
+      'Fix: added signal: AbortSignal.timeout(8_000) to match the sibling routes exactly.',
+      'Verified: npx tsc --noEmit and npm run build pass clean.',
+    ],
+  },
 ];
 
 // A content hash over every item's title + status + PR, so ANY change (a new
