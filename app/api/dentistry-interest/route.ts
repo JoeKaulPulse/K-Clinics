@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import * as Sentry from '@sentry/nextjs';
 import { z } from 'zod';
 import { crmEnabled } from '@/lib/crm';
 
@@ -29,7 +30,10 @@ export async function POST(req: Request) {
     });
     return NextResponse.json({ ok: true });
   } catch (e) {
-    console.error('[dentistry-interest] failed', e);
+    // BLD-1417: log only the message — the exception can echo the just-submitted
+    // email address back into the log line; the full exception still reaches Sentry.
+    console.error('[dentistry-interest] failed:', (e as Error)?.message);
+    Sentry.captureException(e, { tags: { area: 'dentistry-interest' } });
     return NextResponse.json({ ok: false, error: 'Something went wrong. Please try again.' }, { status: 500 });
   }
 }

@@ -68,6 +68,13 @@ export default async function AppointmentSessionPage({ params }: { params: Promi
     allergyNote = b.allergyNote ? decClinical(b.allergyNote) : null;
     medicalFlag = b.client.medicalFlag ? decClinical(b.client.medicalFlag) : null;
     if (b.clinicalNoteEnc) { try { const { decryptJson } = await import('@/lib/crypto'); clinicalNote = decryptJson<{ note: string }>(b.clinicalNoteEnc).note; } catch { /* ignore */ } }
+    // BLD-1419: the live treatment-session screen decrypts allergies/medical
+    // flag/clinical note for display — a medical-record view; audit it
+    // (throttled per viewer/client/hour).
+    if (session.email) {
+      const { auditClinicalView } = await import('@/lib/clinical-view-audit');
+      auditClinicalView({ actor: session.email, actorRole: session.role, clientId: b.client.id, surface: 'session-runner', bookingId: b.id });
+    }
   }
 
   // Aftercare guide for this treatment's group (curated, client-facing).
