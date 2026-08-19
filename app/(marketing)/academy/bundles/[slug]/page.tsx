@@ -86,8 +86,15 @@ export default async function BundlePage({ params }: { params: Promise<{ slug: s
               ) : (
                 <p className="mt-1 font-[family-name:var(--font-display)] text-3xl text-[var(--color-ink)]">On enquiry</p>
               )}
-              <p className="mt-2 text-sm text-[var(--color-stone)]">Apply to any course in the pathway to get started — our team will help you plan the full route and any funding.</p>
-              <div className="mt-4"><Button href={`/academy/${bundle.courses[0].slug}`} variant="gold">Start with course 1 <ArrowIcon /></Button></div>
+              {/* BLD-1393: be explicit about HOW the bundle price is honoured —
+                  applications are per-course, and without this (plus the
+                  ?bundle= tag below) a visitor shown "Save £X" would apply to
+                  course 1 with nothing connecting their enrolment to the
+                  bundle price. */}
+              <p className="mt-2 text-sm text-[var(--color-stone)]">
+                Apply to the first course to get started — your application is tagged with this pathway, and our team applies the {bundle.pricePence != null ? 'bundle price' : 'pathway pricing'} when they confirm your place.
+              </p>
+              <div className="mt-4"><Button href={`/academy/${bundle.courses[0].slug}?bundle=${encodeURIComponent(bundle.slug)}#apply`} variant="gold">Start with course 1 <ArrowIcon /></Button></div>
             </div>
             <p className="text-center text-sm text-[var(--color-stone)]">Questions about this pathway? <Link href="/academy/portal" className="link-underline font-medium text-[var(--color-ink)]">Talk to our team</Link></p>
           </div>

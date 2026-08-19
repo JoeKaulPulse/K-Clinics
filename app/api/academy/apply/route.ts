@@ -12,6 +12,10 @@ const schema = z.object({
   phone: z.string().max(40).optional().or(z.literal('')),
   experience: z.string().max(2000).optional().or(z.literal('')),
   financeInterest: z.boolean().default(false),
+  // BLD-1393: pathway-bundle claim carried from the bundle page's CTA. Server-
+  // validated below — an unknown slug or one that doesn't contain this course
+  // is ignored, never parroted into staff-facing notes.
+  bundleSlug: z.string().max(80).optional().or(z.literal('')),
   company: z.string().max(0).optional().or(z.literal('')), // honeypot
 });
 
@@ -37,6 +41,28 @@ export async function POST(req: Request) {
   const { currentTenantId } = await import('@/lib/tenant');
   const tenantId = course.tenantId ?? (await currentTenantId());
 
+  // BLD-1393: the bundle page advertises a pathway price, but applications are
+  // per-course — without recording the claim here, the "Save £X" promise
+  // evaporated and the applicant would be enrolled at the full single-course
+  // price. Validate the claimed bundle really exists and contains THIS course,
+  // then record it in the enrolment notes so the team applies the bundle
+  // pricing via the agreed-fee field when confirming the place.
+  let bundleNote: string | null = null;
+  let bundleTitle: string | null = null;
+  if (d.bundleSlug) {
+    try {
+      const { getBundle } = await import('@/lib/academy');
+      const bundle = await getBundle(d.bundleSlug);
+      if (bundle) {
+        const inBundle = await db.course.findFirst({ where: { id: course.id, slug: { in: bundle.courses.map((c) => c.slug) } }, select: { id: true } });
+        if (inBundle) {
+          bundleTitle = bundle.title;
+          bundleNote = `Applied via the "${bundle.title}" pathway bundle${bundle.pricePence != null ? ` — bundle price £${(bundle.pricePence / 100).toLocaleString('en-GB')}` : ''}. Apply the pathway pricing (agreed course fee) when offering the place. (BLD-1393)`;
+        }
+      }
+    } catch { /* invalid claim — ignore */ }
+  }
+
   const enrolment = await db.enrolment.create({
     data: {
       tenantId,
@@ -46,6 +72,7 @@ export async function POST(req: Request) {
       applicantName: d.name, applicantEmail: d.email.toLowerCase(), applicantPhone: d.phone || null,
       experience: d.experience || null, financeInterest: d.financeInterest,
       status: 'APPLIED', pricePence: course.pricePence,
+      notes: bundleNote,
     },
   });
 
@@ -55,7 +82,7 @@ export async function POST(req: Request) {
     await notifyStaffByPermission('settings.manage', {
       kind: 'status', category: 'academy', priority: 'high',
       title: 'New academy application',
-      body: `${d.name} applied for ${course.title}${d.financeInterest ? ' (interested in finance)' : ''}`,
+      body: `${d.name} applied for ${course.title}${bundleTitle ? ` via the "${bundleTitle}" pathway bundle — apply the bundle price` : ''}${d.financeInterest ? ' (interested in finance)' : ''}`,
       href: '/admin/academy/enrolments',
       groupKey: `academy-apply-${enrolment.id}`,
     });
@@ -66,7 +93,7 @@ export async function POST(req: Request) {
     const { sendEmail, emailShell } = await import('@/lib/email');
     const notifyTo = process.env.ACADEMY_NOTIFY_EMAIL || process.env.CLINIC_NOTIFY_EMAIL || 'support@kclinics.co.uk';
     await Promise.allSettled([
-      sendEmail({ to: notifyTo, subject: `New academy application — ${course.title}`, html: emailShell({ preheader: `${d.name} applied for ${course.title}`, body: `<h1 style="font-size:22px;margin:0 0 16px;">New academy application</h1><p><strong>${escapeHtml(d.name)}</strong> applied for <strong>${escapeHtml(course.title)}</strong>.</p><p>Email: ${escapeHtml(d.email)}<br>Phone: ${escapeHtml(d.phone || '—')}<br>Finance (Clearpay) interest: ${d.financeInterest ? 'Yes' : 'No'}</p><p>Experience:<br>${escapeHtml(d.experience || '—')}</p>` }) }),
+      sendEmail({ to: notifyTo, subject: `New academy application — ${course.title}`, html: emailShell({ preheader: `${d.name} applied for ${course.title}`, body: `<h1 style="font-size:22px;margin:0 0 16px;">New academy application</h1><p><strong>${escapeHtml(d.name)}</strong> applied for <strong>${escapeHtml(course.title)}</strong>.</p><p>Email: ${escapeHtml(d.email)}<br>Phone: ${escapeHtml(d.phone || '—')}<br>Finance (Clearpay) interest: ${d.financeInterest ? 'Yes' : 'No'}</p>${bundleTitle ? `<p><strong>Pathway bundle:</strong> ${escapeHtml(bundleTitle)} — apply the bundle price when offering the place.</p>` : ''}<p>Experience:<br>${escapeHtml(d.experience || '—')}</p>` }) }),
       sendEmail({ to: d.email, subject: `Your application — ${course.title}`, html: emailShell({ preheader: `We've received your application for ${course.title}`, body: `<h1 style="font-size:24px;margin:0 0 16px;">Thank you, ${escapeHtml(d.name.split(' ')[0])}.</h1><p>We've received your application for <strong>${escapeHtml(course.title)}</strong> at K Academy. Our team will be in touch shortly to confirm your place${d.financeInterest ? ', discuss Clearpay financing' : ''} and next steps.</p><p>With warmth,<br>The K Academy team</p>` }) }),
     ]);
   } catch { /* email failure must not fail the application */ }

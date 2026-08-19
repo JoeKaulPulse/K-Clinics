@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import { Suspense } from 'react';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { PageHero } from '@/components/ui/PageHero';
@@ -162,7 +163,12 @@ export default async function CoursePage({ params }: { params: Promise<{ slug: s
               )}
               {course.pricePence > 0 && <p className="mt-2 text-sm text-[var(--color-stone)]">Spread the cost monthly, or check if you qualify for <Link href="/academy/funding" className="link-underline font-medium text-[var(--color-ink)]">government or council funding</Link>. No payment is taken until your place is confirmed.</p>}
             </div>
-            <ApplyForm courseId={course.id} courseTitle={course.title} cohorts={cohortOptions} />
+            {/* BLD-1393: Suspense bounds the useSearchParams bailout inside
+                ApplyForm (it reads the ?bundle= pathway tag) so this ISR page's
+                shell stays statically rendered. */}
+            <Suspense fallback={null}>
+              <ApplyForm courseId={course.id} courseTitle={course.title} cohorts={cohortOptions} />
+            </Suspense>
             <p className="text-center text-sm text-[var(--color-stone)]">Already training with us? <Link href="/academy/portal" className="link-underline font-medium text-[var(--color-ink)]">Trainee login</Link></p>
           </div>
         </Reveal>
