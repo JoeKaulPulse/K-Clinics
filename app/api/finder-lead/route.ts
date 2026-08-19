@@ -55,8 +55,11 @@ export async function POST(req: Request) {
     return `<li style="margin-bottom:8px"><a href="${base}/${t.slug}"><strong>${t.title}</strong></a> — ${t.tagline}${from ? ` (from ${formatPrice(from)})` : ''}</li>`;
   }).join('');
   const { sendEmail, tmplManual } = await import('@/lib/email');
+  const { escapeHtml } = await import('@/lib/sanitize');
   const html = tmplManual(
-    `<p>Hi ${firstName || 'there'},</p><p>Here are the treatments our finder suggested for you:</p><ol>${rows}</ol><p>Your clinician will confirm the right plan at a complimentary consultation — <a href="${base}/consultation">book yours here</a>.</p>`,
+    // BLD-1385: firstName is unauthenticated user input — escape before splicing
+    // into the raw HTML body (same pattern as lib/client-loyalty.ts's tmplManual calls).
+    `<p>Hi ${escapeHtml(firstName) || 'there'},</p><p>Here are the treatments our finder suggested for you:</p><ol>${rows}</ol><p>Your clinician will confirm the right plan at a complimentary consultation — <a href="${base}/consultation">book yours here</a>.</p>`,
   );
   const res = await sendEmail({ to: email, subject: 'Your treatment matches — KClinics', html });
   if (!res.ok) return NextResponse.json({ ok: false, error: 'We couldn’t send the email just now — please try again.' }, { status: 502 });

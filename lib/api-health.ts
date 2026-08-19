@@ -528,7 +528,12 @@ export async function getCronStaleness(): Promise<CronStaleness> {
   // /admin/status, where a human can see it) but is not alert-worthy; once the
   // purge has run once, an aged heartbeat behaves exactly like the other two.
   const kioskCleanupStale = Boolean(kioskCleanup) && !kioskCleanupOk;
-  return { daily, dispatch, kioskCleanup, dailyOk, dispatchOk, kioskCleanupOk, stale: !dailyOk || !dispatchOk || kioskCleanupStale };
+  // BLD-1381: same reasoning applies to daily/dispatch — a fresh DB, preview
+  // branch or staging reset has never had the chance to write these heartbeats
+  // either, so a missing row must not page (mirrors kioskCleanupStale above).
+  const dailyStale = Boolean(daily) && !dailyOk;
+  const dispatchStale = Boolean(dispatch) && !dispatchOk;
+  return { daily, dispatch, kioskCleanup, dailyOk, dispatchOk, kioskCleanupOk, stale: dailyStale || dispatchStale || kioskCleanupStale };
 }
 
 async function checkCron(): Promise<Outcome> {
