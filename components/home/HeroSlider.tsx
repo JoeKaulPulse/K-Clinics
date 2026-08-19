@@ -209,7 +209,7 @@ export function HeroSlider({
                   <span className="hidden h-4 w-px bg-white/15 sm:block" />
                 </>
               )}
-              <Link href="/consultation" className="link-underline font-medium text-[var(--color-gold-soft)]">
+              <Link href="/book" className="link-underline font-medium text-[var(--color-gold-soft)]">
                 Free consultation · 15% off your first visit
               </Link>
             </div>
