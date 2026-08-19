@@ -4339,6 +4339,7 @@ export const BUILD_BACKLOG: BacklogItem[] = [
     notes: [
       'BLD-1414: components/admin/MedicalFlagEditor.tsx and components/admin/PatchTestEditor.tsx each gain a clear() wrapper that runs window.confirm(...) before calling save(\'\')/save(null), matching the existing guard style (e.g. TwoFactorSetup.tsx\'s disable(), CredentialsManager.tsx\'s clear()) — the Clear button now calls the guarded wrapper instead of save directly. No other behaviour changed.',
       'BLD-1416: app/api/admin/gift-vouchers/route.ts\'s redeem and cancel branches now call logAudit with action REWARD_REDEEMED, matching the established convention for every other gift-voucher balance change in the codebase (app/api/admin/bookings/session/route.ts, lib/shop.ts, lib/booking-actions.ts, the Stripe webhook). Actor/actorRole come from the staff session, summary embeds the voucher code, amount and an optional staff-supplied reason, and meta carries voucherCode/amountPence/reason for the audit trail.',
+      'BLD-1416 follow-up (review fix): the redeem audit first recorded the amount the staff member typed, not the amount actually deducted — redeemVoucher() caps the deduction at the live balance, so a £100 entry against a £30 card redeemed £30 while the audit row claimed £100. redeemVoucher() now returns redeemedPence (the capped figure) and the route audits that; the requested figure is kept in meta.requestedPence only when the two differ.',
       'Verified: npx tsc --noEmit and npm run build pass clean.',
     ],
   },

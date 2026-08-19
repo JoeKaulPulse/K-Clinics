@@ -29,13 +29,18 @@ export async function POST(req: Request) {
         // balance moves (app/api/admin/bookings/session/route.ts, lib/shop.ts).
         const { logAudit } = await import('@/lib/audit');
         const reason = body.reason ? String(body.reason).slice(0, 200) : undefined;
+        // redeemVoucher caps the deduction at the live balance, so the requested
+        // amount is not necessarily what was taken (staff typing £100 against a
+        // £30 card redeems £30). The audit trail records the amount actually
+        // deducted, and keeps the requested figure only when the two differ.
+        const redeemedPence = res.redeemedPence ?? amountPence;
         await logAudit({
           action: 'REWARD_REDEEMED',
           actor: session.email,
           actorRole: session.role,
           clientId: voucher?.claimedByClientId ?? null,
-          summary: `Gift voucher ${voucher?.code || id} redeemed £${(amountPence / 100).toFixed(2)} by staff${reason ? ` — ${reason}` : ''}`,
-          meta: { voucherCode: voucher?.code, amountPence, reason },
+          summary: `Gift voucher ${voucher?.code || id} redeemed £${(redeemedPence / 100).toFixed(2)} by staff${reason ? ` — ${reason}` : ''}`,
+          meta: { voucherCode: voucher?.code, amountPence: redeemedPence, ...(redeemedPence !== amountPence ? { requestedPence: amountPence } : {}), reason },
         }).catch(() => {});
       }
       return NextResponse.json(res, { status: res.ok ? 200 : 400 });

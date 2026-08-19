@@ -233,8 +233,12 @@ export async function deliverDueVouchers(): Promise<number> {
   return sent;
 }
 
-/** Staff: deduct from a voucher's balance (manual redemption). */
-export async function redeemVoucher(id: string, amountPence: number): Promise<{ ok: boolean; error?: string; balancePence?: number }> {
+/** Staff: deduct from a voucher's balance (manual redemption). `redeemedPence`
+ *  is the amount actually taken, which is capped at the live balance — it can be
+ *  less than the requested `amountPence`, so callers that record or display the
+ *  redemption (the audit trail in app/api/admin/gift-vouchers/route.ts) must use
+ *  this and not the requested figure. */
+export async function redeemVoucher(id: string, amountPence: number): Promise<{ ok: boolean; error?: string; balancePence?: number; redeemedPence?: number }> {
   const v = await db.giftVoucher.findUnique({ where: { id } });
   if (!v) return { ok: false, error: 'Voucher not found.' };
   if (v.status !== 'ACTIVE') return { ok: false, error: v.status === 'PENDING' ? 'This voucher isn’t active yet (payment pending).' : 'This voucher is no longer valid.' };
@@ -251,7 +255,7 @@ export async function redeemVoucher(id: string, amountPence: number): Promise<{ 
   if (res.count === 0) return { ok: false, error: 'This voucher no longer has enough balance.' };
   const after = await db.giftVoucher.findUnique({ where: { id }, select: { balancePence: true } });
   if (after?.balancePence === 0) await db.giftVoucher.updateMany({ where: { id, balancePence: 0 }, data: { status: 'REDEEMED' } });
-  return { ok: true, balancePence: after?.balancePence ?? 0 };
+  return { ok: true, balancePence: after?.balancePence ?? 0, redeemedPence: take };
 }
 
 /** Reserve up to `maxPence` from a live voucher by code, ATOMICALLY — the live
