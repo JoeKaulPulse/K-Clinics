@@ -395,6 +395,7 @@ model Client {
   callRecords    CallRecord[]
   academyStudents AcademyStudent[] // BLD-528: linked K Academy trainee account(s) (same person, by email)
   incidents      Incident[] // BLD-760: staff-only internal incident (accident) reports
+  portfolioEntries PortfolioEntry[] @relation("ClientPortfolioEntries") // BLD-1291: academy cases photographing this client
 
   @@index([createdAt])
   @@index([dob])
@@ -2503,6 +2504,11 @@ model PortfolioEntry {
   treatmentType String // e.g. Anti-wrinkle, Dermal filler, Skin
   treatmentDate DateTime?
   clientRef     String? // anonymised reference, e.g. "Client A"
+  // BLD-1291: staff-assisted link to the ACTUAL photographed client, so the
+  // photos are reachable by Art. 17 erasure and the SAR export. The free-text
+  // clientRef alone left fully identifying clinical photos invisible to both.
+  client   Client? @relation("ClientPortfolioEntries", fields: [clientId], references: [id], onDelete: SetNull)
+  clientId String?
   notes         String          @db.Text
   photos        Json            @default("[]") // [{ url, caption?, kind: 'before'|'after'|'other' }]
   consentAttestedAt DateTime? // BLD-740: trainee attested the photographed subject consented to storage & review
@@ -2516,6 +2522,7 @@ model PortfolioEntry {
   @@index([studentId, status])
   @@index([tenantId, status])
   @@index([courseId])
+  @@index([clientId])
 }
 
 // BLD-535: interactive self-check exercises (hotspots on an image, match pairs,

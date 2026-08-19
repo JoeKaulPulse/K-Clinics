@@ -33,7 +33,8 @@ export type SettingKey =
   | 'kiosk_discount_enabled'     // the storefront kiosk issues a share-to-claim discount code
   | 'reminder_72h'               // send a 3-day-ahead appointment reminder (BLD-126)
   | 'reminder_48h'               // send a 2-day-ahead appointment reminder (BLD-126)
-  | 'contractor_checkin_enabled'; // PRJ-63: contractors self-sign-in at reception via QR
+  | 'contractor_checkin_enabled' // PRJ-63: contractors self-sign-in at reception via QR
+  | 'health_retention_purge';    // PRJ-1069.10: purge health assessments past the 8-year clinical window (owner sign-off = this toggle)
 
 export const SETTING_DEFAULTS: Record<SettingKey, boolean> = {
   allow_clinician_choice: false,
@@ -64,6 +65,7 @@ export const SETTING_DEFAULTS: Record<SettingKey, boolean> = {
   reminder_72h: true,
   reminder_48h: true,
   contractor_checkin_enabled: false, // PRJ-63: ships dark; owner enables after review
+  health_retention_purge: false, // PRJ-1069.10: irreversible health-data deletion — the owner turning this on IS the sign-off
 };
 
 export const SETTING_META: Record<SettingKey, { label: string; description: string }> = {
@@ -178,6 +180,10 @@ export const SETTING_META: Record<SettingKey, { label: string; description: stri
   contractor_checkin_enabled: {
     label: 'Contractor reception check-in',
     description: 'When on, contractors can scan a QR at reception to sign in for their visit — finding their existing profile by name/email or registering a new one (which staff then approve). They see only their assigned jobs, facility plans and a visit timer — never client, clinical or financial data. Off by default.',
+  },
+  health_retention_purge: {
+    label: 'Purge old health assessments (8-year clinical window)',
+    description: 'When on, the nightly run permanently deletes health-assessment answers (allergies, medications, conditions) more than 8 years old, and only for clients with no treatment in those 8 years — the same retention window already applied to signed consents and before-photos. Deletion is irreversible; turning this on is the sign-off recorded in the retention schedule. Off by default.',
   },
 };
 
