@@ -29,7 +29,12 @@ export default async function BundlePage({ params }: { params: Promise<{ slug: s
   if (!bundle || bundle.courses.length === 0) notFound();
 
   const individualTotal = bundle.courses.reduce((sum, c) => sum + (c.pricePence || 0), 0);
-  const saving = bundle.pricePence != null && individualTotal > bundle.pricePence ? individualTotal - bundle.pricePence : null;
+  // BLD-1376: a live time-boxed promo overrides the standard bundle price for
+  // display; savings compare the EFFECTIVE price against booking separately.
+  const { getActivePromo } = await import('@/lib/academy-utils');
+  const promo = getActivePromo(bundle);
+  const effectivePence = promo ?? bundle.pricePence;
+  const saving = effectivePence != null && individualTotal > effectivePence ? individualTotal - effectivePence : null;
 
   return (
     <>
@@ -75,11 +80,17 @@ export default async function BundlePage({ params }: { params: Promise<{ slug: s
           <div className="space-y-6 lg:sticky lg:top-28">
             <div className="rounded-[var(--radius-xl)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-6">
               <p className="text-xs uppercase tracking-[0.16em] text-[var(--color-stone)]">Pathway</p>
-              {bundle.pricePence != null ? (
+              {effectivePence != null ? (
                 <>
                   <div className="mt-1 flex flex-wrap items-baseline gap-3">
-                    <span className="font-[family-name:var(--font-display)] text-3xl text-[var(--color-ink)]">{formatFee(bundle.pricePence)}</span>
-                    {saving != null && <span className="text-lg text-[var(--color-stone)] line-through">{formatFee(individualTotal)}</span>}
+                    <span className={`font-[family-name:var(--font-display)] text-3xl ${promo != null ? 'text-[var(--color-gold-deep)]' : 'text-[var(--color-ink)]'}`}>{formatFee(effectivePence)}</span>
+                    {/* Promo: strike the standard bundle price; otherwise strike the per-course total. */}
+                    {promo != null && bundle.pricePence != null && bundle.pricePence > promo ? (
+                      <span className="text-lg text-[var(--color-stone)] line-through">{formatFee(bundle.pricePence)}</span>
+                    ) : saving != null ? (
+                      <span className="text-lg text-[var(--color-stone)] line-through">{formatFee(individualTotal)}</span>
+                    ) : null}
+                    {promo != null && <span className="rounded-full bg-[var(--color-gold)]/15 px-2.5 py-0.5 text-xs font-medium text-[var(--color-gold-deep)]">Special offer</span>}
                   </div>
                   {saving != null && <p className="mt-2 text-sm font-medium text-[var(--color-gold-deep)]">Save {formatFee(saving)} versus booking separately.</p>}
                 </>

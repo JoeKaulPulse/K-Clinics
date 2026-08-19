@@ -27,6 +27,8 @@ export default async function AdminAcademyBundlesPage() {
   const bundles: AdminBundle[] = bundleRows.map((b) => ({
     id: b.id, title: b.title, slug: b.slug, summary: b.summary, description: b.description,
     heroImage: b.heroImage, pricePence: b.pricePence, active: b.active,
+    // BLD-1376: promotional pricing (ISO strings for the client component).
+    promoPrice: b.promoPrice, promoStartAt: b.promoStartAt?.toISOString() ?? null, promoEndAt: b.promoEndAt?.toISOString() ?? null,
     items: b.items.map((i) => ({ id: i.id, courseId: i.courseId, courseTitle: i.course.title })),
   }));
   const courses = courseRows.map((c) => ({ id: c.id, title: c.title }));

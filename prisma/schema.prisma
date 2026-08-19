@@ -2112,6 +2112,11 @@ model CourseBundle {
   description String?            @db.Text
   heroImage   String?
   pricePence  Int? // optional combined price (display only)
+  // BLD-1376: time-boxed promotional pricing for the bundle, mirroring the
+  // Course promo fields (BLD-490). getActivePromo() decides what is live.
+  promoPrice   Int? // pence — promotional bundle price when set
+  promoStartAt DateTime? // null = promo starts immediately
+  promoEndAt   DateTime? // null = promo never expires
   active      Boolean            @default(true)
   order       Int                @default(0)
   items       CourseBundleItem[]

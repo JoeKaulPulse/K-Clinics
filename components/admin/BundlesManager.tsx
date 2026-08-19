@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 
 // BLD-532: staff authoring for course bundles / pathways.
 export type BundleItem = { id: string; courseId: string; courseTitle: string };
-export type AdminBundle = { id: string; title: string; slug: string; summary: string | null; description: string | null; heroImage: string | null; pricePence: number | null; active: boolean; items: BundleItem[] };
+export type AdminBundle = { id: string; title: string; slug: string; summary: string | null; description: string | null; heroImage: string | null; pricePence: number | null; promoPrice: number | null; promoStartAt: string | null; promoEndAt: string | null; active: boolean; items: BundleItem[] };
 
 const field = 'w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-2.5 py-1.5 text-sm';
 const label = 'block text-xs font-medium text-[var(--color-stone)]';
@@ -37,12 +37,16 @@ function BundleRow({ bundle, courses, busy, act }: { bundle: AdminBundle; course
   const [description, setDescription] = useState(bundle.description ?? '');
   const [heroImage, setHeroImage] = useState(bundle.heroImage ?? '');
   const [pricePounds, setPricePounds] = useState(bundle.pricePence != null ? String(bundle.pricePence / 100) : '');
+  // BLD-1376: promotional pricing (mirrors the course promo fields, BLD-490).
+  const [promoPounds, setPromoPounds] = useState(bundle.promoPrice != null ? String(bundle.promoPrice / 100) : '');
+  const [promoStart, setPromoStart] = useState(bundle.promoStartAt ? bundle.promoStartAt.slice(0, 10) : '');
+  const [promoEnd, setPromoEnd] = useState(bundle.promoEndAt ? bundle.promoEndAt.slice(0, 10) : '');
   const [active, setActive] = useState(bundle.active);
   const inBundle = new Set(bundle.items.map((i) => i.courseId));
   const addable = courses.filter((c) => !inBundle.has(c.id));
 
   function save() {
-    act({ op: 'updateBundle', id: bundle.id, title, slug, summary, description, heroImage, active, pricePence: pricePounds === '' ? '' : Math.round(Number(pricePounds) * 100) });
+    act({ op: 'updateBundle', id: bundle.id, title, slug, summary, description, heroImage, active, pricePence: pricePounds === '' ? '' : Math.round(Number(pricePounds) * 100), promoPrice: promoPounds === '' ? '' : Math.round(Number(promoPounds) * 100), promoStartAt: promoStart, promoEndAt: promoEnd });
   }
   const move = (i: number, d: number) => { const a = bundle.items.map((x) => x.id); const j = i + d; if (j < 0 || j >= a.length) return; [a[i], a[j]] = [a[j], a[i]]; act({ op: 'reorderItems', ids: a }); };
 
@@ -62,6 +66,12 @@ function BundleRow({ bundle, courses, busy, act }: { bundle: AdminBundle; course
             <label className={label}>Combined price £ (optional)<input className={`${field} mt-1`} value={pricePounds} onChange={(e) => setPricePounds(e.target.value)} placeholder="e.g. 1995" /></label>
             <label className={`${label} sm:col-span-2`}>Description<textarea rows={3} className={`${field} mt-1`} value={description} onChange={(e) => setDescription(e.target.value)} /></label>
             <label className={label}>Hero image URL (optional)<input className={`${field} mt-1`} value={heroImage} onChange={(e) => setHeroImage(e.target.value)} /></label>
+            {/* BLD-1376: time-boxed promotional bundle price. Empty promo price = no promo. */}
+            <label className={label}>Promo price £ (optional)<input className={`${field} mt-1`} value={promoPounds} onChange={(e) => setPromoPounds(e.target.value)} placeholder="e.g. 1495" /></label>
+            <div className="grid grid-cols-2 gap-3">
+              <label className={label}>Promo starts<input type="date" className={`${field} mt-1`} value={promoStart} onChange={(e) => setPromoStart(e.target.value)} /></label>
+              <label className={label}>Promo ends<input type="date" className={`${field} mt-1`} value={promoEnd} onChange={(e) => setPromoEnd(e.target.value)} /></label>
+            </div>
             <label className="flex items-center gap-2 self-end text-xs text-[var(--color-stone)]"><input type="checkbox" checked={active} onChange={(e) => setActive(e.target.checked)} /> Show on the public catalogue</label>
           </div>
           <button onClick={save} disabled={busy} className={btnDark}>Save bundle</button>

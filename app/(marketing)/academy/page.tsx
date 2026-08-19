@@ -148,7 +148,19 @@ export default async function AcademyPage() {
                   <h3 className="mt-1 font-[family-name:var(--font-display)] text-xl leading-tight">{b.title}</h3>
                   {b.summary && <p className="mt-2 flex-1 text-sm text-[var(--color-porcelain)]/75">{b.summary}</p>}
                   <div className="mt-4 flex items-center justify-between">
-                    <span className="text-sm font-medium">{b.pricePence != null ? formatFee(b.pricePence) : 'On enquiry'}</span>
+                    {/* BLD-1376: show a live bundle promo with the standard price struck through. */}
+                    {(() => {
+                      const bp = getActivePromo(b);
+                      if (bp != null) {
+                        return (
+                          <span className="text-sm font-medium text-[var(--color-gold-soft)]">
+                            {formatFee(bp)}{' '}
+                            {b.pricePence != null && b.pricePence > bp && <s className="ml-1 font-normal text-[var(--color-porcelain)]/55">{formatFee(b.pricePence)}</s>}
+                          </span>
+                        );
+                      }
+                      return <span className="text-sm font-medium">{b.pricePence != null ? formatFee(b.pricePence) : 'On enquiry'}</span>;
+                    })()}
                     <span className="text-sm text-[var(--color-gold-soft)] group-hover:underline">View pathway →</span>
                   </div>
                 </Link>
