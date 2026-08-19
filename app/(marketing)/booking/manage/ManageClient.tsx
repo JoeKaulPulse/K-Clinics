@@ -3,7 +3,9 @@
 import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/Button';
 // BLD-1421: reuse the fresh-booking flow's waitlist CTA instead of a dead end.
-import { WaitlistCTA } from '@/components/booking/BookingFlow';
+// Imported from its own module, not from BookingFlow, so this page doesn't pull
+// the booking wizard and the Stripe SDK into its client bundle.
+import { WaitlistCTA } from '@/components/booking/WaitlistCTA';
 
 type B = {
   treatmentTitle: string;

@@ -12,6 +12,7 @@ import { DemoCard } from '@/components/booking/DemoCard';
 import { Button, ArrowIcon } from '@/components/ui/Button';
 import { REFRESHMENTS } from '@/lib/hospitality';
 import { trackPurchase } from '@/lib/analytics-events';
+import { WaitlistCTA } from '@/components/booking/WaitlistCTA';
 
 type Course = { sessions: number; totalPence: number };
 type Variant = { id: string; name: string; durationMin: number; displayDurationMin?: number | null; pricePence: number; offerPence: number | null; offerName: string | null; courses: Course[] };
@@ -912,48 +913,6 @@ function SaveProgress({ treatmentSlug, variantLabel }: { treatmentSlug: string; 
       {status === 'saved'
         ? <p className="mt-1.5 text-sm text-[var(--color-jade,#3f7a5a)]">Saved ✓ We’ll email you a link to pick up where you left off — for this treatment only, no marketing.</p>
         : <p className="mt-1.5 text-xs text-[var(--color-stone)]">We’ll only use this to send you back to this selection — you’re not signed up to anything.</p>}
-    </div>
-  );
-}
-
-// BLD-133 — "notify me if a slot frees" shown when a chosen day is fully booked.
-// Exported (BLD-1421) so the reschedule flow (ManageClient.tsx) can offer the
-// same waitlist CTA in its own no-slots state instead of a dead "please call
-// us" message. `client` only needs firstName/email to prefill the form — a
-// narrower type than BookingFlow's full ClientInfo so callers without a signed-
-// in session (e.g. the token-based manage-booking page) aren't forced to
-// fabricate the rest of it.
-export function WaitlistCTA({ treatmentSlug, treatmentTitle, date, client }: { treatmentSlug: string; treatmentTitle: string; date: string; client: { firstName: string; email: string } }) {
-  const [open, setOpen] = useState(false);
-  const [name, setName] = useState(client.firstName || '');
-  const [email, setEmail] = useState(client.email || '');
-  const [busy, setBusy] = useState(false);
-  const [done, setDone] = useState(false);
-  const [err, setErr] = useState('');
-  const inp = 'min-w-0 flex-1 rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-3 py-2 text-sm focus:border-[var(--color-gold)] focus-visible:ring-2 focus-visible:ring-[var(--color-gold)]';
-  const dayLabel = new Date(date).toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' });
-
-  async function join() {
-    setErr('');
-    if (!name.trim() || !/\S+@\S+\.\S+/.test(email)) { setErr('Enter your name and a valid email.'); return; }
-    setBusy(true);
-    try {
-      const r = await fetch('/api/waitlist', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ treatmentSlug, name, email, fromDate: date, toDate: date }) }).then((x) => x.json());
-      if (r.ok) setDone(true); else setErr(r.error || 'Could not join the waitlist.');
-    } catch { setErr('Network error — please try again.'); } finally { setBusy(false); }
-  }
-
-  if (done) return <p className="mt-3 rounded-[var(--radius-sm)] bg-[var(--color-gold)]/10 px-3 py-2 text-sm text-[var(--color-ink)]">You’re on the waitlist for {dayLabel} — we’ll email you if a slot opens.</p>;
-  if (!open) return <button type="button" onClick={() => setOpen(true)} className="mt-3 rounded-full border border-[var(--color-gold)] px-4 py-2 text-sm text-[var(--color-gold-deep)] transition-colors hover:bg-[var(--color-gold)]/10">🔔 Notify me if a slot opens that day</button>;
-  return (
-    <div className="mt-3 rounded-[var(--radius-md)] border border-[var(--color-line)] bg-[var(--color-bone)]/50 p-3">
-      <p className="text-sm text-[var(--color-stone)]">We’ll email you if a {treatmentTitle} slot frees up on {dayLabel}.</p>
-      <div className="mt-2 flex flex-wrap items-center gap-2">
-        <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Your name" aria-label="Your name" className={inp} />
-        <input value={email} onChange={(e) => setEmail(e.target.value)} type="email" placeholder="Email" aria-label="Email" className={inp} />
-        <button type="button" onClick={join} disabled={busy} className="rounded-full bg-[var(--color-gold-deep)] px-4 py-2 text-sm font-medium text-white disabled:opacity-50">{busy ? 'Joining…' : 'Join waitlist'}</button>
-      </div>
-      {err && <p role="alert" aria-live="assertive" className="mt-1 text-xs text-[var(--color-blush-deep)]">{err}</p>}
     </div>
   );
 }
