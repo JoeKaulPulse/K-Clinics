@@ -3968,7 +3968,7 @@ export const BUILD_BACKLOG: BacklogItem[] = [
   },
   {
     title: 'Homepage above-the-fold slider: 3 sections showcasing the business, with a video slot',
-    type: 'TASK', urgency: 'P1', status: 'IN_REVIEW', assignee: 'claude',
+    type: 'TASK', urgency: 'P1', status: 'SHIPPED', assignee: 'claude',
     value: 8, effort: 4,
     detail: 'Owner request (BLD-1348). Replace the single static homepage hero with an above-the-fold slider of three slides showcasing the elements of the business, including a video slot whose film the owner will supply later. Built: components/home/HeroSlider.tsx replaces components/home/Hero.tsx (deleted -- it was only imported by the homepage). Slide 1 is the previous hero verbatim (the clinic; the page LCP); slide 2 is K Academy (accredited training, CTAs to /academy and /academy/funding); slide 3 is the clinic film ("One address. Every kind of confidence.", CTAs to /ai-consultation and /about) -- it plays the owner-supplied video muted/looping when a URL is set, and shows the branded GenerativeArt until then. The video URL and optional poster are a new SiteConfig.hero section (lib/site-config.ts), editable at Admin -> Site -> "Homepage hero video", so the film goes live by pasting a URL -- no deploy. Storage decision validated by recon: all site video already lives on Vercel Blob URLs and the CSP media-src already allows https:.',
     notes: [
@@ -3992,7 +3992,7 @@ export const BUILD_BACKLOG: BacklogItem[] = [
   },
   {
     title: 'Academy banner missing the actual three-level VTCT offer it was requested for (BLD-997 follow-up)',
-    type: 'ERROR', urgency: 'P1', status: 'IN_REVIEW', assignee: 'claude',
+    type: 'ERROR', urgency: 'P1', status: 'SHIPPED', assignee: 'claude',
     value: 6, effort: 1,
     detail: 'Surfaced by the BLD-1368 feedback lane. BLD-997 asked for a promotional banner: enrol on all three VTCT levels (L2+L3+L4), 3500 with the 5000 original crossed out, save 1500, and an Enrol Now CTA. A prior pass read the owner 10 Aug comment ("no specific artwork for this campaign, use brand style") as replacing the whole offer and shipped a generic brand banner -- the comment only replaced the artwork. The offer copy never reached the page.',
     notes: [
@@ -4002,7 +4002,7 @@ export const BUILD_BACKLOG: BacklogItem[] = [
   },
   {
     title: 'No notifications reach staff for new consultation requests',
-    type: 'ERROR', urgency: 'P0', status: 'IN_REVIEW', assignee: 'claude',
+    type: 'ERROR', urgency: 'P0', status: 'SHIPPED', assignee: 'claude',
     value: 9, effort: 3,
     detail: 'Owner-reported P0 (BLD-1345). A new consultation request (POST /api/consult, the only writer of Consultation rows -- every public form, /consultation, /contact, group booking and franchise enquiry, funnels through it) reached staff through exactly one channel a person actually sees: a single email to CLINIC_NOTIFY_EMAIL || site.email, a shared inbox rather than the individuals who work the enquiries. Three compounding gaps. (1) The per-user email copy never fired: CATEGORY_DEFAULTS in lib/notifications.ts sets email:false for every category including messages, and maybeEmail() returns early unless a user has manually opted that category into email, which nobody had -- so no named staff member was ever emailed about an enquiry. (2) Web-push is inert: lib/push.ts no-ops until VAPID_PUBLIC_KEY/VAPID_PRIVATE_KEY are set, and they are not. (3) The in-app StaffNotification row was therefore the only per-person signal, it only started being written on 2026-08-05 (commit f071d29), and it is visible only while signed into the admin with the bell open. The audience was also gated on clients.view alone rather than the consultation-specific consultations.view, so a staff member granted consultation access without client browsing was silently excluded.',
     notes: [
@@ -4016,7 +4016,7 @@ export const BUILD_BACKLOG: BacklogItem[] = [
   },
   {
     title: 'Prepaid course sessions are invisible in the public booking flow',
-    type: 'TASK', urgency: 'P1', status: 'IN_REVIEW', assignee: 'claude',
+    type: 'TASK', urgency: 'P1', status: 'SHIPPED', assignee: 'claude',
     value: 8, effort: 4,
     detail: 'Owner-reported (BLD-1346). A client who has bought a multi-session course could only spend those prepaid sessions when a staff member booked them in by phone: app/admin/bookings/create-action.ts accepts usePackageBookingId and creates the visit at GBP 0 linked to the purchase (BLD-1014), and components/admin/NewBookingButton.tsx shows the balance. The public account booking flow (components/booking/BookingFlow.tsx -> POST /api/booking/start) had no equivalent -- bookingStartSchema had no usePackageBookingId and the route never read clientPackages() -- so a client with 5 of 6 sessions left who booked online was quoted and charged the full single-session price again, with no sign anywhere in the flow that they had a balance.',
     notes: [
@@ -4030,7 +4030,7 @@ export const BUILD_BACKLOG: BacklogItem[] = [
   },
   {
     title: 'A no-show is never charged, and a prepaid course session missed or late-cancelled costs the client nothing',
-    type: 'ERROR', urgency: 'P1', status: 'IN_REVIEW', assignee: 'claude',
+    type: 'ERROR', urgency: 'P1', status: 'SHIPPED', assignee: 'claude',
     value: 8, effort: 4,
     detail: 'Owner-reported (BLD-1347). Two linked holes against the published 24-hour policy (lib/info-pages.ts: cancellations within 24 hours, or non-attendance, incur the full treatment fee). (1) setBookingStatus(bookingId, NO_SHOW) set the status, sent a rebooking email, notified the diary and released a gift voucher -- it never charged the card on file. lib/outstanding.ts then reported the full price as an outstanding debt that blocked online rebooking (BLD-1066), but no money was ever taken, and there was no waive path on the no-show branch at all (feeWaived is only ever written by cancelBooking), so the debt could not be cleared except by charging manually. cancelBooking already auto-charges the identical fee for a late cancellation, so the two paths disagreed. (2) A session booked against a prepaid course is created at pricePence 0 (the money sits on the purchase booking), and lib/package-sessions.ts did not count CANCELLED or NO_SHOW sessions as used. Combined with the pricePence > 0 guards in outstandingBalance() and in cancelBooking\'s shouldCharge, a client on a prepaid course who no-showed or cancelled inside 24 hours paid nothing AND kept the session -- the balance was never decremented, so the course could be stretched indefinitely by missing appointments.',
     notes: [
@@ -4046,7 +4046,7 @@ export const BUILD_BACKLOG: BacklogItem[] = [
   },
   {
     title: 'Signature Facial promo slide on the homepage slider; 2-year consultation-enquiry retention purge (BLD-1197, PRJ-1032.20)',
-    type: 'TASK', urgency: 'P1', status: 'IN_REVIEW', assignee: 'claude',
+    type: 'TASK', urgency: 'P1', status: 'SHIPPED', assignee: 'claude',
     value: 6, effort: 2,
     detail: 'Two owner decisions from the 18 Aug blocked-lane sweep, built together. BLD-1197: the rotating-hero capability shipped as BLD-1348; the remaining ask was the Signature Facial promotion slide, held because the June prices needed re-confirmation -- owner confirmed 150/210 stands (18 Aug, in session). PRJ-1032.20: consultation enquiries (including from people who never became clients) were kept indefinitely with the retention schedule marked [OWNER TO CONFIRM]; owner set the window at 2 years if no booking follows (18 Aug, in session).',
     notes: [
@@ -4058,7 +4058,7 @@ export const BUILD_BACKLOG: BacklogItem[] = [
   },
   {
     title: 'Latest News section fed automatically from the Google Business Profile (BLD-481)',
-    type: 'TASK', urgency: 'P2', status: 'IN_REVIEW', assignee: 'claude',
+    type: 'TASK', urgency: 'P2', status: 'SHIPPED', assignee: 'claude',
     value: 6, effort: 3,
     detail: 'Owner decision (18 Aug, in session): build the full auto-pull rather than a manual news section. The ask (June): a Latest News section on the website that mirrors whatever the clinic publishes in the Google Business Profile "From the Business" section, pictures included, with no manual re-entry. Key discovery that unblocked it: the existing Google Business connection already carries the business.manage scope (the same one localPosts needs), so no re-consent or new OAuth surface was required -- the earlier blocker note assumed one.',
     notes: [
@@ -4070,7 +4070,7 @@ export const BUILD_BACKLOG: BacklogItem[] = [
   },
   {
     title: 'Key-rotation sweep only re-encrypted 4 of ~25 encrypted columns — its "0 remaining" key-removal gate was false (BLD-1180)',
-    type: 'ERROR', urgency: 'P1', status: 'IN_REVIEW', assignee: 'claude',
+    type: 'ERROR', urgency: 'P1', status: 'SHIPPED', assignee: 'claude',
     value: 8, effort: 4,
     detail: 'lib/key-rotation.ts tracked only healthAssessment.cipher, booking.clinicalNoteEnc, externalConnection.tokensEnc and managedSecret.valueEnc, while encryptJson/encClinical write to ~25 columns across the codebase (signed consents, AI findings and images, before photos, TOTP secrets, Google refresh tokens, client medical flags/allergies, consultation concerns/messages/medical notes, consultation notes, chat messages, interactions, tasks, follow-ups, incidents, call notes/transcripts/recordings, CallRecord.raw). Following the documented runbook — remove the retired key once the sweep reports 0 remaining — would have silently and permanently destroyed the special-category data still sitting on the old key in every untracked column.',
     notes: [
@@ -4084,7 +4084,7 @@ export const BUILD_BACKLOG: BacklogItem[] = [
   },
   {
     title: 'Staff can retro-link an appointment to a client’s prepaid course so the package balance matches reality (BLD-1375)',
-    type: 'TASK', urgency: 'P1', status: 'IN_REVIEW', assignee: 'claude',
+    type: 'TASK', urgency: 'P1', status: 'SHIPPED', assignee: 'claude',
     value: 7, effort: 3,
     detail: 'Owner request via Holly Gillis: all her appointments should come off her fully-paid 6-session package, but sessions booked by phone (or before the course was set up) are ordinary bookings with no packageBookingId, so the derived balance over-counts what is left and each visit looks individually billable. There was no way to attach an existing appointment to a package after the fact.',
     notes: [
@@ -4097,7 +4097,7 @@ export const BUILD_BACKLOG: BacklogItem[] = [
   },
   {
     title: 'Academy course card level badge self-heals to match the course title (BLD-1356)',
-    type: 'ERROR', urgency: 'P2', status: 'IN_REVIEW', assignee: 'claude',
+    type: 'ERROR', urgency: 'P2', status: 'SHIPPED', assignee: 'claude',
     value: 6, effort: 1,
     detail: 'Live /academy showed one card badged LEVEL 3 directly above the heading "VTCT Level 5 Beauty Therapy Diploma" — Course.level and Course.title are independent admin-entered fields with no derivation between them, so a typo in one publishes a contradiction to every visitor. Staff steps to fix the row were posted on the board 18 Aug 08:58 but the data had not been corrected; admin-credentialed access is not available from this environment to fix the row directly.',
     notes: [
@@ -4107,7 +4107,7 @@ export const BUILD_BACKLOG: BacklogItem[] = [
   },
   {
     title: 'Email campaigns silently capped at 5,000 recipients; interrupted sends stranded forever (BLD-1307)',
-    type: 'ERROR', urgency: 'P1', status: 'IN_REVIEW', assignee: 'claude',
+    type: 'ERROR', urgency: 'P1', status: 'SHIPPED', assignee: 'claude',
     value: 7, effort: 3,
     detail: 'deliverCampaign, startAbTest and decideAbTest all fetched recipients with a bare findMany({ take: 5000 }) and no ordering — an audience larger than 5,000 opted-in clients got an arbitrary subset silently mailed while campaign.recipients recorded the truncated count as if it were the whole send. No error, no banner, no log line. Separately, a send interrupted mid-flight (deploy, function timeout) stayed SENDING forever: the double-send claim only re-claims DRAFT/SCHEDULED, so part of the audience was never mailed and nothing could restart it.',
     notes: [
@@ -4119,7 +4119,7 @@ export const BUILD_BACKLOG: BacklogItem[] = [
   },
   {
     title: 'A fully-refunded academy student kept indefinite course access (BLD-1308)',
-    type: 'ERROR', urgency: 'P1', status: 'IN_REVIEW', assignee: 'claude',
+    type: 'ERROR', urgency: 'P1', status: 'SHIPPED', assignee: 'claude',
     value: 7, effort: 2,
     detail: 'refundEnrolmentPayment and reconcileEnrolmentPaymentRefund rolled back paidPence and marked the payment row REFUNDED but never touched Enrolment.status — and studentCanAccess() grants LMS access purely on status (PAID/ENROLLED/COMPLETED), so a student refunded in full kept the whole course forever. The admin Refund button also gave no warning, unlike Cancel which warns about fees.',
     notes: [
@@ -4131,7 +4131,7 @@ export const BUILD_BACKLOG: BacklogItem[] = [
   },
   {
     title: 'Kiosk facial-photo AI consent now records version + source evidence (BLD-1354)',
-    type: 'TASK', urgency: 'P1', status: 'IN_REVIEW', assignee: 'claude',
+    type: 'TASK', urgency: 'P1', status: 'SHIPPED', assignee: 'claude',
     value: 7, effort: 2,
     detail: 'KioskSession.consentAt was a bare timestamp stamped before a visitor\'s facial photo went to the AI provider — no record of WHAT wording was agreed or WHERE, unlike the codebase\'s own aiConsultationConsentFields() pattern on the booking-page AI flow, which documents that a bare timestamp is not demonstrable consent (UK GDPR Art. 7 + Art. 9 special-category biometric data). If the kiosk consent copy ever changed there would be no way to prove what an earlier visitor agreed to.',
     notes: [
@@ -4142,7 +4142,7 @@ export const BUILD_BACKLOG: BacklogItem[] = [
   },
   {
     title: 'Health-sensitive treatment page views no longer send the treatment name to Meta/GA4 (BLD-1251)',
-    type: 'TASK', urgency: 'P1', status: 'IN_REVIEW', assignee: 'claude',
+    type: 'TASK', urgency: 'P1', status: 'SHIPPED', assignee: 'claude',
     value: 8, effort: 2,
     detail: 'trackViewItem() on every /[slug] treatment page sent the raw treatment name — Dentures, Dental Implant Placement, Intimate Rejuvenation, Body Contouring — to Meta Pixel (content_name) and GA4 (item_name) under generic cookie-banner consent. Tying a named health condition/procedure interest to an identifiable ad profile is UK GDPR Art. 9 special-category territory that generic marketing consent does not cover.',
     notes: [
@@ -4154,7 +4154,7 @@ export const BUILD_BACKLOG: BacklogItem[] = [
   },
   {
     title: 'Gallery before/after photos encrypted at rest with keyring + self-healing backfill (BLD-1041)',
-    type: 'TASK', urgency: 'P1', status: 'IN_REVIEW', assignee: 'claude',
+    type: 'TASK', urgency: 'P1', status: 'SHIPPED', assignee: 'claude',
     value: 7, effort: 4,
     detail: 'GalleryItem.beforeImage/afterImage were raw Bytes columns — draft/unpublished cases under staff review and clientId-linked real patient photos sat cleartext in the primary DB, unlike the parallel BeforePhoto.dataEnc model, undermining the "clinical photos are always encrypted" posture the rest of the schema establishes.',
     notes: [
@@ -4166,7 +4166,7 @@ export const BUILD_BACKLOG: BacklogItem[] = [
   },
   {
     title: 'Late-cancel and reschedule fees now net an applied gift voucher, and consume it (BLD-1236)',
-    type: 'ERROR', urgency: 'P2', status: 'IN_REVIEW', assignee: 'claude',
+    type: 'ERROR', urgency: 'P2', status: 'SHIPPED', assignee: 'claude',
     value: 7, effort: 2,
     detail: 'cancelBooking()\'s late fee and rescheduleBooking()\'s 4th-reschedule fee netted only pointsRedeemedPence, never giftVoucherPence, while the staff till (chargeBookingAction) nets both. The reschedule case was a genuine client loss: that fee sets chargedAt (it IS the booking\'s settlement), after which the still-attached voucher reservation could never be consumed (till refuses a charged booking) NOR returned (the BLD-882 cancel guard sees chargedAt set) — the client paid full price and lost the voucher value entirely.',
     notes: [
@@ -4177,7 +4177,7 @@ export const BUILD_BACKLOG: BacklogItem[] = [
   },
   {
     title: 'A lost chargeback on a shop order now re-credits the gift card it consumed (BLD-1237)',
-    type: 'ERROR', urgency: 'P2', status: 'IN_REVIEW', assignee: 'claude',
+    type: 'ERROR', urgency: 'P2', status: 'SHIPPED', assignee: 'claude',
     value: 6, effort: 1,
     detail: 'The webhook\'s dispute-lost order branch set status REFUNDED and restocked, but never selected giftCardCode/giftCardPence and never called creditVoucher — unlike the charge.refunded reconciliation, which credits the gift-card portion back. An order part-paid with a gift card only ever disputed the CARD portion, so the consumed gift-card value simply vanished.',
     notes: [
@@ -4187,7 +4187,7 @@ export const BUILD_BACKLOG: BacklogItem[] = [
   },
   {
     title: 'Kiosk/AI-consultation photo remove control visible on touch; analysis progress announced to screen readers (BLD-1292, BLD-1275)',
-    type: 'TASK', urgency: 'P2', status: 'IN_REVIEW', assignee: 'claude',
+    type: 'TASK', urgency: 'P2', status: 'SHIPPED', assignee: 'claude',
     value: 6, effort: 1,
     detail: 'BLD-1292: the uploaded-photo ✕ button in KVision was opacity-0 with group-hover reveal only — on the touch-first /ai-consultation and kiosk surfaces there is no hover, so the control was present and tappable but invisible. BLD-1275: the kiosk analysing spinner and rotating status copy had no role="status"/aria-live, so assistive-tech users got no indication analysis started or finished (WCAG 4.1.3).',
     notes: [
@@ -4198,7 +4198,7 @@ export const BUILD_BACKLOG: BacklogItem[] = [
   },
   {
     title: 'npm audit CI check green again — deepmerge-ts advisory resolved via override (BLD-1366)',
-    type: 'TASK', urgency: 'P2', status: 'IN_REVIEW', assignee: 'claude',
+    type: 'TASK', urgency: 'P2', status: 'SHIPPED', assignee: 'claude',
     value: 4, effort: 1,
     detail: 'The security workflow\'s `npm audit --omit=dev --audit-level=high` failed on every PR regardless of diff: GHSA-ggr8-5vv4-36mx (deepmerge-ts < 8.0.0, stack exhaustion on recursive object graphs, HIGH) reached the lockfile via prisma → @prisma/config → deepmerge-ts@7.1.5, and no prisma release carried the fixed major yet. Not in the required-checks set, so merges proceeded — but a permanently red check trains everyone to ignore CI.',
     notes: [
@@ -4208,7 +4208,7 @@ export const BUILD_BACKLOG: BacklogItem[] = [
   },
   {
     title: 'Database residency verified as UK (Neon, AWS eu-west-2) and guarded by a nightly region check (BLD-1277)',
-    type: 'TASK', urgency: 'P2', status: 'IN_REVIEW', assignee: 'claude',
+    type: 'TASK', urgency: 'P2', status: 'SHIPPED', assignee: 'claude',
     value: 7, effort: 1,
     detail: 'docs/data-protection/processors.md self-flagged the primary Postgres host — every client, booking and encrypted health record — as [OWNER TO CONFIRM: which provider + region], and nothing in code verified residency, so a well-meaning migration to a US endpoint would silently move special-category data across borders.',
     notes: [
@@ -4219,7 +4219,7 @@ export const BUILD_BACKLOG: BacklogItem[] = [
   },
   {
     title: 'Health assessments gain the 8-year clinical retention purge, gated on an owner toggle (PRJ-1069.10)',
-    type: 'TASK', urgency: 'P2', status: 'IN_REVIEW', assignee: 'claude',
+    type: 'TASK', urgency: 'P2', status: 'SHIPPED', assignee: 'claude',
     value: 6, effort: 2,
     detail: 'The nightly retention sweep purges SignedConsent and BeforePhoto after 8 years, but HealthAssessment — the raw encrypted allergy/medication/condition/pregnancy answers, the most sensitive category in the database — was exempt, so historic health answers were kept indefinitely by default, against the retention schedule\'s own stated 8-year basis.',
     notes: [
@@ -4230,7 +4230,7 @@ export const BUILD_BACKLOG: BacklogItem[] = [
   },
   {
     title: 'Academy portfolio photos of real clients reachable by erasure and SAR via a staff client link (BLD-1291)',
-    type: 'TASK', urgency: 'P1', status: 'IN_REVIEW', assignee: 'claude',
+    type: 'TASK', urgency: 'P1', status: 'SHIPPED', assignee: 'claude',
     value: 8, effort: 4,
     detail: 'PortfolioEntry stores fully identifying before/after clinical photos of real clients with only a free-text clientRef ("Client A") — neither eraseClientData nor the SAR export could find them, and consent rests on a trainee tick-box attestation rather than a record from the photographed person. Built the reachability half; the consent-capture redesign remains an owner decision.',
     notes: [
