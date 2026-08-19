@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { Button, ArrowIcon } from '@/components/ui/Button';
 
 type Cohort = { id: string; label: string };
@@ -14,12 +15,18 @@ export function ApplyForm({ courseId, courseTitle, cohorts }: { courseId: string
   const [done, setDone] = useState(false);
   const [error, setError] = useState('');
   const set = <K extends keyof typeof f>(k: K, v: (typeof f)[K]) => setF((p) => ({ ...p, [k]: v }));
+  // BLD-1393: a bundle page's "Start with course 1" tags the application with
+  // ?bundle=<slug>, read here (client-side, so the ISR page shell stays static)
+  // and passed to the apply API, which validates it server-side and records the
+  // pathway claim for staff so the bundle price is applied at enrolment. The
+  // page wraps this form in <Suspense> for the useSearchParams bailout.
+  const bundleSlug = useSearchParams().get('bundle') || '';
 
   async function submit() {
     if (!f.name.trim() || !/\S+@\S+\.\S+/.test(f.email)) { setError('Please enter your name and a valid email.'); return; }
     setBusy(true); setError('');
     try {
-      const res = await fetch('/api/academy/apply', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...f, courseId }) });
+      const res = await fetch('/api/academy/apply', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...f, courseId, ...(bundleSlug ? { bundleSlug } : {}) }) });
       const j = await res.json();
       if (j.ok) setDone(true); else setError(j.error || 'Could not submit your application.');
     } catch { setError('Network error. Please try again.'); }
@@ -42,6 +49,11 @@ export function ApplyForm({ courseId, courseTitle, cohorts }: { courseId: string
     <div className="rounded-[var(--radius-xl)] border border-[var(--color-line)] bg-[var(--color-bone)] p-6 md:p-8">
       <h3 className="font-[family-name:var(--font-display)] text-2xl">Apply for this course</h3>
       <p className="mt-1 text-sm text-[var(--color-stone)]">Tell us a little about you and we’ll confirm your place and next steps.</p>
+      {bundleSlug && (
+        <p className="mt-3 rounded-[var(--radius-sm)] bg-[color-mix(in_oklab,var(--color-gold)_12%,transparent)] px-3 py-2 text-sm text-[var(--color-ink-soft)]">
+          You’re applying as part of the <strong className="font-medium">{bundleSlug.replace(/-/g, ' ')}</strong> pathway — our team applies the pathway pricing when they confirm your place.
+        </p>
+      )}
       <div className="mt-6 grid gap-4 sm:grid-cols-2">
         <div className="sm:col-span-2"><label htmlFor="apply-name" className={label}>Full name *</label><input id="apply-name" autoComplete="name" className={field} value={f.name} onChange={(e) => set('name', e.target.value)} /></div>
         <div><label htmlFor="apply-email" className={label}>Email *</label><input id="apply-email" type="email" autoComplete="email" className={field} value={f.email} onChange={(e) => set('email', e.target.value)} /></div>

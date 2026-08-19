@@ -45,6 +45,12 @@ export default async function ConsultationDetail({ params }: { params: Promise<{
         createdAt: n.createdAt.toISOString(),
       }))
     : [];
+  // BLD-1240/1392: opening a consultation with clinical access decrypts
+  // concerns/notes for display — audit the view (throttled per viewer/client/hour).
+  if (clinical && session?.email) {
+    const { auditClinicalView } = await import('@/lib/clinical-view-audit');
+    auditClinicalView({ actor: session.email, actorRole: session.role, clientId: consult.clientId, surface: 'consultation-detail' });
+  }
 
   return (
     <AdminShell user={session?.email} can={can}>

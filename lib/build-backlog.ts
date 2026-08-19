@@ -4298,6 +4298,17 @@ export const BUILD_BACKLOG: BacklogItem[] = [
       'Verified: npx tsc --noEmit clean, npm run lint exits 0 (201 warnings visible for incremental cleanup), npm run build clean, edge bundle clean.',
     ],
   },
+  {
+    title: 'Bundle applications carry the pathway price claim end-to-end; clinical-data views audited at the flagged decrypt sites (BLD-1393, BLD-1240, BLD-1392)',
+    type: 'TASK', urgency: 'P2', status: 'SHIPPED', assignee: 'claude',
+    value: 7, effort: 3,
+    detail: 'BLD-1393: the academy bundle page advertised a pathway price and "Save £X", but its only CTA led to a per-course application with no bundleId anywhere in the checkout chain — the moment a bundle went live, applicants would be mis-sold into full-price single-course enrolment. BLD-1240/BLD-1392 (same finding from two audits): decClinical() decrypts Art. 9 health data at 15+ display sites but only two ever wrote a view-audit row, so the "who viewed whose medical record" trail barely existed.',
+    notes: [
+      'BLD-1393: the bundle CTA now tags the application (?bundle=<slug>, read client-side in ApplyForm so the ISR course page shell stays static, Suspense-bounded). The apply API validates the claim server-side (bundle exists, is active, and contains the applied course — a spoofed slug is ignored, never parroted), then records it in Enrolment.notes with the bundle price and an instruction to apply the pathway pricing via the agreed-fee field, and flags it in the staff notification + email. Bundle page copy now says explicitly that the team applies the bundle price at enrolment. Deliberately NOT built (product decision, still open on the ticket): a self-serve bundle-priced checkout; the recorded claim + agreed-fee flow makes the promise honest today.',
+      'BLD-1240/1392: new lib/clinical-view-audit.ts — auditClinicalView(), a shared fire-and-forget emission throttled to one row per (viewer, client, surface) per hour per instance (cold starts duplicate rather than drop, the right failure direction for an audit trail). Adopted at the four flagged sites: global admin search (consultation snippets), the clinician dashboard focus card (allergies/medical flag), the consultation detail page, and the booking detail allergy note. Calls/health-assessments already audited. Remaining sites (chat admin, incidents) can adopt the same one-liner incrementally — the architectural pattern the audits asked sign-off on now exists and is proven.',
+      'Verified: npx tsc --noEmit clean, npm run build clean, edge bundle clean.',
+    ],
+  },
 ];
 
 // A content hash over every item's title + status + PR, so ANY change (a new

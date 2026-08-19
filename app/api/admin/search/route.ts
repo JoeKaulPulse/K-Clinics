@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { crmEnabled } from '@/lib/crm';
 import { decClinical } from '@/lib/clinical-crypto';
+import { auditClinicalView } from '@/lib/clinical-view-audit';
 
 export const runtime = 'nodejs';
 
@@ -39,8 +40,15 @@ export async function GET(req: Request) {
     safe(can('consultations.view'), async () =>
       // NB: concerns/message are encrypted at rest, so they can't be matched by a
       // SQL `contains` filter — consultations are searched by client name only.
-      (await db.consultation.findMany({ where: { client: nameOr }, orderBy: { createdAt: 'desc' }, take: 5, select: { id: true, concerns: true, client: { select: { firstName: true, lastName: true } } } }))
-        .map((c) => ({ id: c.id, title: fullName(c.client.firstName, c.client.lastName, 'Consultation'), sub: canClinical ? snip(decClinical(c.concerns)) : undefined, href: `/admin/consultations` }))),
+      (await db.consultation.findMany({ where: { client: nameOr }, orderBy: { createdAt: 'desc' }, take: 5, select: { id: true, clientId: true, concerns: true, client: { select: { firstName: true, lastName: true } } } }))
+        .map((c) => {
+          // BLD-1240/1392: decrypting concerns for the result snippet IS a
+          // medical-record view — audit it (throttled per viewer/client/hour).
+          if (canClinical && c.concerns) {
+            auditClinicalView({ actor: session.email, actorRole: session.role, clientId: c.clientId, surface: 'admin-search' });
+          }
+          return { id: c.id, title: fullName(c.client.firstName, c.client.lastName, 'Consultation'), sub: canClinical ? snip(decClinical(c.concerns)) : undefined, href: `/admin/consultations` };
+        })),
     safe(can('reviews.manage'), async () =>
       (await db.review.findMany({ where: { OR: [{ title: ci }, { body: ci }, { client: nameOr }] }, orderBy: { updatedAt: 'desc' }, take: 5, select: { id: true, rating: true, body: true, client: { select: { firstName: true, lastName: true } } } }))
         .map((r) => ({ id: r.id, title: `${fullName(r.client.firstName, r.client.lastName, 'Review')}${r.rating ? ` · ${r.rating}★` : ''}`, sub: snip(r.body), href: `/admin/reviews` }))),

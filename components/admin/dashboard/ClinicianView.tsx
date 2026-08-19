@@ -71,6 +71,12 @@ export async function ClinicianView({ session }: { session: Session }) {
   }
   const focusAllergies = focus && canClinical ? decClinical(focus.client.allergies) : null;
   const focusMedical = focus && canClinical ? decClinical(focus.client.medicalFlag) : null;
+  // BLD-1240/1392: showing decrypted allergies/medical flag on the dashboard is
+  // a medical-record view — audit it (throttled per viewer/client/hour).
+  if (focus && canClinical && (focusAllergies || focusMedical) && session?.email) {
+    const { auditClinicalView } = await import('@/lib/clinical-view-audit');
+    auditClinicalView({ actor: session.email, actorRole: session.role, clientId: focus.client.id, surface: 'clinician-dashboard', bookingId: focus.id });
+  }
 
   const doneCount = mine.filter((b) => b.status === 'COMPLETED').length;
 

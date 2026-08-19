@@ -93,7 +93,16 @@ export default async function BookingDetail({ params }: { params: Promise<{ id: 
   // never see it decrypted, here or in the "Visit prep" panel.
   const canClinical = sessionCan(session, 'clients.clinical.view');
   if (visitPrefs?.allergyNote) {
-    if (canClinical) { const { decClinical } = await import('@/lib/clinical-crypto'); visitPrefs.allergyNote = decClinical(visitPrefs.allergyNote); }
+    if (canClinical) {
+      const { decClinical } = await import('@/lib/clinical-crypto');
+      visitPrefs.allergyNote = decClinical(visitPrefs.allergyNote);
+      // BLD-1240/1392: decrypting the allergy note for display is a
+      // medical-record view — audit it (throttled per viewer/client/hour).
+      if (session?.email) {
+        const { auditClinicalView } = await import('@/lib/clinical-view-audit');
+        auditClinicalView({ actor: session.email, actorRole: session.role, clientId: b.clientId, surface: 'booking-detail', bookingId: b.id });
+      }
+    }
     else visitPrefs.allergyNote = null;
   }
   const { refreshmentLabel } = await import('@/lib/hospitality');
