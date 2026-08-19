@@ -709,6 +709,15 @@ model Booking {
   // and the credit note raised for each refund.
   xeroInvoiceId     String?
   xeroCreditNoteIds String[]  @default([])
+  // BLD-1386: the Xero TaxType posted on the original sale invoice's line item,
+  // captured at push time. Refunds are allowed up to REFUND_WINDOW_DAYS later,
+  // during which the clinic's VAT registration or the service's VAT class can
+  // change — recomputing the tax type fresh at refund time could then raise a
+  // credit note with a different rate than the sale, corrupting that
+  // transaction's VAT return. pushBookingRefundToXero reuses this verbatim
+  // instead. Additive, nullable — bookings pushed before this existed have
+  // null here and fall back to the live computation (no regression).
+  xeroTaxType       String?
 
   // Cancellation.
   cancelledAt  DateTime?
