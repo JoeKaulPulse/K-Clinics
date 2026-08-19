@@ -4,7 +4,7 @@ import { workspaceConfigured, listWorkspaceUsers } from '@/lib/google-workspace'
 
 export async function GET() {
   const session = await getSession();
-  if (!session || !sessionCan(session, 'settings.manage')) {
+  if (!session || !sessionCan(session, 'workspace.manage')) {
     return NextResponse.json({ ok: false, error: 'Forbidden' }, { status: 403 });
   }
   const configured = await workspaceConfigured();

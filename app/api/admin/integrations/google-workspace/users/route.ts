@@ -4,7 +4,7 @@ import { listWorkspaceUsersResult, createWorkspaceUser } from '@/lib/google-work
 
 export async function GET() {
   const session = await getSession();
-  if (!session || !sessionCan(session, 'settings.manage')) {
+  if (!session || !sessionCan(session, 'workspace.manage')) {
     return NextResponse.json({ ok: false, error: 'Forbidden' }, { status: 403 });
   }
   const r = await listWorkspaceUsersResult();
@@ -14,13 +14,19 @@ export async function GET() {
 
 export async function POST(req: NextRequest) {
   const session = await getSession();
-  if (!session || !sessionCan(session, 'settings.manage')) {
+  if (!session || !sessionCan(session, 'workspace.manage')) {
     return NextResponse.json({ ok: false, error: 'Forbidden' }, { status: 403 });
   }
   const body = await req.json().catch(() => null);
   const { email, firstName, lastName, password } = body ?? {};
   if (!email || !firstName || !lastName || !password) {
     return NextResponse.json({ ok: false, error: 'email, firstName, lastName and password are required.' }, { status: 400 });
+  }
+  // BLD-1413: same breach check as staff account creation (app/api/admin/staff/route.ts)
+  // and client signup (lib/client-auth.ts) — fails open on a HaveIBeenPwned outage.
+  const { isBreachedPassword } = await import('@/lib/security/breached-password');
+  if (await isBreachedPassword(password)) {
+    return NextResponse.json({ ok: false, error: 'That password has appeared in a known data breach. Please choose a different one.' }, { status: 422 });
   }
   const user = await createWorkspaceUser({ email, firstName, lastName, password });
   if (!user) return NextResponse.json({ ok: false, error: 'Could not create user — check the service account has write scopes.' }, { status: 500 });

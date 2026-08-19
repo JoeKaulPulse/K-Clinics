@@ -315,6 +315,13 @@ export default async function AdminOverview() {
     medicalFlag: canClinical ? decClinical(nextBk.client.medicalFlag) ?? null : null,
   } : null;
 
+  // BLD-1419: decrypting allergies/medicalFlag for the next-arrival card is a
+  // medical-record view — audit it (throttled per viewer/client/hour).
+  if (nextArrival && canClinical && session?.email) {
+    const { auditClinicalView } = await import('@/lib/clinical-view-audit');
+    auditClinicalView({ actor: session.email, actorRole: session.role, clientId: nextArrival.clientId, surface: 'admin-dashboard', bookingId: nextArrival.id });
+  }
+
   return (
     <AdminShell user={session?.email} can={can} locale={locale}>
       <DashboardShell role={role} view={renderedView} heading={heading} aside={clockWeather}>

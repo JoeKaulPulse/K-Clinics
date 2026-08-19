@@ -73,6 +73,7 @@ export const PERMISSIONS: Permission[] = [
   { key: 'settings.manage', group: 'Administration', label: 'Manage settings', description: 'Edit clinic settings and configuration.', sensitive: true },
   { key: 'content.publish', group: 'Administration', label: 'Publish website content', description: 'Make page-builder changes live. Without this, an editor can draft but not publish.', sensitive: true },
   { key: 'security.manage', group: 'Administration', label: 'Security centre', description: 'View threats, manage lockouts, 2FA policy and key rotation.', sensitive: true },
+  { key: 'workspace.manage', group: 'Administration', label: 'Manage Google Workspace', description: 'Create/suspend Google Workspace accounts and manage Google Group membership.', sensitive: true },
 
   // Scheduling
   { key: 'calendar.view', group: 'Scheduling', label: 'View calendar', description: 'See the clinic calendar and appointments.' },
@@ -134,7 +135,7 @@ export const PERMISSION_KEYS = PERMISSIONS.map((p) => p.key);
 const ALL = PERMISSION_KEYS;
 const ROLE_DEFAULTS: Record<Role, string[]> = {
   OWNER: ALL,
-  ADMIN: ALL.filter((k) => k !== 'staff.manage' && k !== 'settings.manage' && k !== 'security.manage').concat(['staff.view']),
+  ADMIN: ALL.filter((k) => k !== 'staff.manage' && k !== 'settings.manage' && k !== 'security.manage' && k !== 'workspace.manage').concat(['staff.view']),
   PRACTITIONER: [
     'dashboard.view',
     'bookings.view',
