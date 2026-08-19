@@ -91,7 +91,7 @@ export default async function AdminOverview() {
               <span className="tabular-nums">{weather.tempC}°</span>
               <span className="ml-1 inline-block max-w-[7rem] truncate align-bottom font-normal text-[var(--color-stone)]">{weather.label}</span>
               {weather.uvMax != null && uv && (
-                <span className="ml-1.5 text-[var(--color-stone)]">· UV <span className={uv.tone === 'high' ? 'text-[#b23b3b]' : uv.tone === 'moderate' ? 'text-[var(--color-gold-deep)]' : 'text-[var(--color-jade)]'}>{weather.uvMax}</span></span>
+                <span className="ml-1.5 text-[var(--color-stone)]">· UV <span className={uv.tone === 'high' ? 'text-[var(--color-blush-deep)]' : uv.tone === 'moderate' ? 'text-[var(--color-gold-deep)]' : 'text-[var(--color-jade)]'}>{weather.uvMax}</span></span>
               )}
             </p>
           </div>

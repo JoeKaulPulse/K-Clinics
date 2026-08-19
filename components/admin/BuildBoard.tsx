@@ -677,7 +677,7 @@ function TaskModal({ item, allItems, projects, canManage, isAdmin, gh, staff, on
             <button
               onClick={del}
               title="Permanently delete this task and its subtasks"
-              className="rounded-full border border-[var(--color-blush)]/50 px-3 py-1.5 text-xs text-[#b23b3b] transition-colors hover:bg-[color-mix(in_oklab,#c0392b_10%,transparent)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#b23b3b]/40"
+              className="rounded-full border border-[var(--color-blush)]/50 px-3 py-1.5 text-xs text-[var(--color-blush-deep)] transition-colors hover:bg-[color-mix(in_oklab,var(--color-blush-deep)_10%,transparent)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-blush-deep)]/40"
             >
               Delete task
             </button>

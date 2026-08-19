@@ -131,7 +131,7 @@ function CreateForm({ services, groups, onDone }: { services: Service[]; groups:
       <div className="mt-4 flex items-center gap-3">
         <button onClick={create} disabled={busy} className="rounded-full bg-[var(--color-ink)] px-5 py-2 text-sm font-medium text-[var(--color-porcelain)] disabled:opacity-50">{busy ? 'Creating…' : 'Create form'}</button>
         <button onClick={onDone} className="text-sm text-[var(--color-stone)] hover:text-[var(--color-ink)]">Cancel</button>
-        {msg && <span className="text-sm text-[#b23b3b]">{msg}</span>}
+        {msg && <span className="text-sm text-[var(--color-blush-deep)]">{msg}</span>}
       </div>
     </section>
   );

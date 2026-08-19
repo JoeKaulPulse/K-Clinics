@@ -29,7 +29,7 @@ export function AcademyForgotPasswordForm() {
     return (
       <div className="rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-bone)] p-6">
         <p className="font-medium text-[var(--color-ink)]">Check your email</p>
-        <p className="mt-2 text-sm text-[var(--color-stone)]">If an account exists for that address, a reset link has been sent. It's valid for 60 minutes.</p>
+        <p className="mt-2 text-sm text-[var(--color-stone)]">If an account exists for that address, a reset link has been sent. It&rsquo;s valid for 60 minutes.</p>
         <Link href="/academy/portal" className="mt-4 inline-block text-sm font-medium text-[var(--color-gold-deep)]">← Back to sign in</Link>
       </div>
     );

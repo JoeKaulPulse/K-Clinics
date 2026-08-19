@@ -55,7 +55,7 @@ export function PriceListUpload({ treatments, onImported }: { treatments: { slug
         <button onClick={() => fileRef.current?.click()} disabled={busy} className="shrink-0 rounded-full bg-[var(--color-ink)] px-5 py-2 text-sm text-[var(--color-porcelain)] disabled:opacity-50">{busy ? 'Reading…' : 'Choose .xlsx'}</button>
         <input ref={fileRef} type="file" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" hidden onChange={(e) => { const f = e.target.files?.[0]; if (f) upload(f); if (fileRef.current) fileRef.current.value = ''; }} />
       </div>
-      {msg && <p className={`mt-3 text-sm ${msg.kind === 'ok' ? 'text-[var(--color-jade)]' : 'text-[#c0392b]'}`}>{msg.text}</p>}
+      {msg && <p className={`mt-3 text-sm ${msg.kind === 'ok' ? 'text-[var(--color-jade)]' : 'text-[var(--color-blush-deep)]'}`}>{msg.text}</p>}
 
       {sections.length > 0 && (
         <div className="mt-4">
@@ -75,7 +75,7 @@ export function PriceListUpload({ treatments, onImported }: { treatments: { slug
                   <span className="text-right text-sm text-[var(--color-stone)]">{s.count}</span>
                 </div>
                 {s.include && s.zeroPriceNames.length > 0 && (
-                  <div className="mt-2 rounded-[var(--radius-sm)] border border-[#c0392b]/30 bg-[#c0392b]/5 p-2 text-xs text-[#c0392b]">
+                  <div className="mt-2 rounded-[var(--radius-sm)] border border-[var(--color-blush-deep)]/30 bg-[var(--color-blush-deep)]/5 p-2 text-xs text-[var(--color-blush-deep)]">
                     <p className="font-medium">{s.zeroPriceNames.length} row(s) parsed as £0: {s.zeroPriceNames.join(', ')}</p>
                     <label className="mt-1 flex items-center gap-1.5">
                       <input type="checkbox" checked={s.confirmZero} onChange={(e) => set(i, { confirmZero: e.target.checked })} />

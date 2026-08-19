@@ -84,7 +84,7 @@ export function ArrivalPrep({ a }: { a: NextArrival }) {
         </div>
 
         {(a.medicalFlag || a.allergies) && (
-          <p className="mt-3 flex items-start gap-2 rounded-[var(--radius-sm)] bg-[color-mix(in_oklab,#c0392b_12%,transparent)] px-3 py-2 text-sm text-[var(--color-ink)]">
+          <p className="mt-3 flex items-start gap-2 rounded-[var(--radius-sm)] bg-[color-mix(in_oklab,var(--color-blush-deep)_12%,transparent)] px-3 py-2 text-sm text-[var(--color-ink)]">
             <span aria-hidden>⚠</span>
             <span className="min-w-0 break-words">{[a.medicalFlag, a.allergies && `Allergies: ${a.allergies}`].filter(Boolean).join(' · ')}</span>
           </p>

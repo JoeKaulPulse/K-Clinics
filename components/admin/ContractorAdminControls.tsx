@@ -35,7 +35,7 @@ export function BlockButton({ id }: { id: string }) {
   const { pending, run } = useAction();
   return (
     <button type="button" disabled={pending} onClick={() => run(() => blockContractor(id))}
-      className={`${btn} bg-[#b23b3b] text-[var(--color-porcelain)]`}>
+      className={`${btn} bg-[var(--color-blush-deep)] text-[var(--color-porcelain)]`}>
       {pending ? '…' : 'Block'}
     </button>
   );

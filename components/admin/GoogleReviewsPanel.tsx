@@ -187,6 +187,7 @@ export function GoogleReviewsPanel({ connected, configured, locationSet, reviews
           ) : connected ? (
             <button onClick={disconnect} disabled={!!busy} className="rounded-full border border-[var(--color-line)] px-4 py-2 text-sm text-[var(--color-stone)] hover:border-[var(--color-blush)]">Disconnect</button>
           ) : configured ? (
+            // eslint-disable-next-line @next/next/no-html-link-for-pages -- OAuth redirect endpoint, must be a full navigation
             <a href="/api/admin/integrations/google-business/connect" className="rounded-full bg-[var(--color-gold-deep)] px-4 py-2 text-sm font-medium text-white">Connect Google Business</a>
           ) : null}
         </div>

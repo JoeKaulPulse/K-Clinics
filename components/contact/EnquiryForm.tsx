@@ -80,7 +80,7 @@ export function EnquiryForm() {
           <input id="email" name="email" type="email" required autoComplete="email" className={field} placeholder="you@email.com" />
         </div>
         <div className="md:col-span-2">
-          <label htmlFor="interest" className={label}>I'm interested in</label>
+          <label htmlFor="interest" className={label}>I&rsquo;m interested in</label>
           <select id="interest" name="interest" className={field} defaultValue="">
             <option value="" disabled>Select a treatment…</option>
             <option value="General enquiry">General enquiry</option>

@@ -466,7 +466,7 @@ function QuestionRow({ q, index, total, busy, act, ids, isSurvey = false }: { q:
               {imageUrl && <button onClick={() => setImageUrl('')} className="text-xs text-[var(--color-blush-deep)] hover:underline">Remove</button>}
             </div>
             {imageUrl && (
-              <label className={`${label} mt-2`}>Image description (read aloud by screen readers — describe what the image shows, e.g. "Cross-section of skin showing the epidermis, dermis and hypodermis layers")
+              <label className={`${label} mt-2`}>Image description (read aloud by screen readers — describe what the image shows, e.g. &ldquo;Cross-section of skin showing the epidermis, dermis and hypodermis layers&rdquo;)
                 <input className={`${field} mt-1`} value={imageAlt} onChange={(e) => setImageAlt(e.target.value)} placeholder="Describe what the image shows" />
               </label>
             )}

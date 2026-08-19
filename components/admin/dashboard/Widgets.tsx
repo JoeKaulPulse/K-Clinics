@@ -73,10 +73,11 @@ export function StatTile({
             role="img"
             aria-label={`${up ? 'Up' : 'Down'} ${Math.abs(trend)} percent`}
             // BLD-226 a11y: down-trend was --color-blush (#cdb4a3, 1.69:1 on
-            // porcelain — effectively invisible). Use the admin danger red
-            // (#b23b3b, 5.03:1 AA); the rotated arrow + aria-label carry the
-            // direction too, so meaning never rests on colour alone.
-            className={`inline-flex items-center gap-1 text-xs font-medium tabular-nums ${up ? 'text-[var(--color-jade)]' : 'text-[#b23b3b]'}`}
+            // porcelain — effectively invisible). Use the error token
+            // --color-blush-deep (BLD-1261; passes AA on light surfaces); the
+            // rotated arrow + aria-label carry the direction too, so meaning
+            // never rests on colour alone.
+            className={`inline-flex items-center gap-1 text-xs font-medium tabular-nums ${up ? 'text-[var(--color-jade)]' : 'text-[var(--color-blush-deep)]'}`}
           >
             <svg width="9" height="9" viewBox="0 0 12 12" fill="none" aria-hidden className={up ? '' : 'rotate-180'}>
               <path d="M6 2.5 10 9 2 9Z" fill="currentColor" />

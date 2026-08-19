@@ -212,3 +212,56 @@ export async function restockOrder(orderId: string): Promise<void> {
     await db.product.updateMany({ where: { id: it.productId, trackInventory: true }, data: { stockQty: { increment: it.qty } } }).catch(() => {});
   }
 }
+
+// BLD-1253: shop checkout creates a plain PaymentIntent (not an auto-expiring
+// Checkout Session), so a customer who reserved gift-card balance and then
+// closed the tab left the order PENDING forever with the reserved balance
+// stranded — reserveVoucher() decremented it, and nothing ever cancelled the
+// order or called undoVoucherReservation. Bookings have had this sweep since
+// PRJ-1043.3 (releaseAbandonedPendingBookings); this is the order-side mirror,
+// run from the daily cron. The 7-day cutoff sits well past the 2–72h
+// abandoned-order recovery emails (lib/automations.ts), so a "finish your
+// order" link keeps working for its whole window. Scoped to WEB checkouts via
+// `stripePaymentIntentId not null` — the same discriminator the recovery
+// email uses (POS orders only get a PI id once already PAID).
+export async function releaseAbandonedPendingOrders(): Promise<{ released: number; recreditedPence: number }> {
+  const { db } = await import('@/lib/db');
+  const cutoff = new Date(Date.now() - 7 * 24 * 3600e3);
+  const rows = await db.order.findMany({
+    where: { status: 'PENDING', stripePaymentIntentId: { not: null }, createdAt: { lt: cutoff } },
+    select: { id: true, number: true, clientId: true, giftCardCode: true, giftCardPence: true, stripePaymentIntentId: true },
+    take: 100,
+  });
+  let released = 0, recreditedPence = 0;
+  if (!rows.length) return { released, recreditedPence };
+  const { stripe, stripeEnabled } = await import('@/lib/stripe');
+  for (const o of rows) {
+    // Never cancel an order whose payment actually went through late — the
+    // webhook/finalizeOrder path owns those. Cancel the PI first so a payment
+    // can't land AFTER we cancel the order (finalizeOrder would flag it as a
+    // stranded payment needing staff review).
+    if (stripeEnabled && o.stripePaymentIntentId) {
+      try {
+        const pi = await stripe().paymentIntents.retrieve(o.stripePaymentIntentId);
+        if (pi.status === 'succeeded' || pi.status === 'processing') continue;
+        if (pi.status !== 'canceled') await stripe().paymentIntents.cancel(o.stripePaymentIntentId).catch(() => {});
+      } catch { /* PI unreadable at Stripe — treat as abandoned */ }
+    }
+    // CAS on status so a concurrent webhook finalisation wins cleanly.
+    const claimed = await db.order.updateMany({ where: { id: o.id, status: 'PENDING' }, data: { status: 'CANCELLED' } });
+    if (claimed.count === 0) continue;
+    released++;
+    // PENDING orders never decremented stock (that happens at PAID), so the
+    // only thing to hand back is the reserved gift-card balance.
+    if (o.giftCardCode && o.giftCardPence > 0) {
+      const { undoVoucherReservation } = await import('@/lib/gift-vouchers');
+      await undoVoucherReservation(o.giftCardCode, o.giftCardPence);
+      recreditedPence += o.giftCardPence;
+      try {
+        const { logAudit } = await import('@/lib/audit');
+        await logAudit({ action: 'REWARD_REDEEMED', actor: 'system', clientId: o.clientId, summary: `Gift card ${o.giftCardCode} re-credited £${(o.giftCardPence / 100).toFixed(2)} — abandoned shop order ${o.number} auto-cancelled after 7 days (BLD-1253)`, meta: { orderId: o.id } });
+      } catch { /* non-fatal */ }
+    }
+  }
+  return { released, recreditedPence };
+}
