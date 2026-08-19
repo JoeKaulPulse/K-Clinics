@@ -15,7 +15,18 @@ export const metadata: Metadata = {
 export default function AccountLayout({ children }: { children: React.ReactNode }) {
   return (
     <MotionProvider>
-      <div className="min-h-screen bg-[var(--color-porcelain)] text-[var(--color-ink)]">{children}</div>
+      <div className="min-h-screen bg-[var(--color-porcelain)] text-[var(--color-ink)]">
+        {/* BLD-1297: skip link + main landmark, mirroring the marketing and
+            admin layouts, so keyboard/screen-reader users can bypass any page
+            chrome. First focusable element on every /account page. */}
+        <a
+          href="#main"
+          className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-[100] focus:rounded-full focus:bg-[var(--color-ink)] focus:px-5 focus:py-3 focus:text-[var(--color-porcelain)]"
+        >
+          Skip to content
+        </a>
+        <main id="main">{children}</main>
+      </div>
     </MotionProvider>
   );
 }

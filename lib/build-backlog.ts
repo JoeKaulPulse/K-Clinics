@@ -4273,6 +4273,19 @@ export const BUILD_BACKLOG: BacklogItem[] = [
       'Verified: npx tsc --noEmit and npm run build pass clean.',
     ],
   },
+  {
+    title: 'Gift-card strap-line moved out of the logo lock-up; kiosk score rings fit mobile; account portal skip link; web-push sends bounded (BLD-1239, BLD-1294, BLD-1297, BLD-1209)',
+    type: 'TASK', urgency: 'P2', status: 'SHIPPED', assignee: 'claude',
+    value: 6, effort: 2,
+    detail: 'Four small audit fixes batched. BLD-1239: the gift-card preview rendered "Aesthetics · Laser · London" directly beneath the K mark — the exact strap-line-under-the-logo pattern docs/BRAND_GUIDELINES.md forbids, live on the buyer-facing customiser. BLD-1294: two fixed 140px score rings + a 32px gap (312px) overflowed the max-w-md p-6 shareable kiosk result card at 320–390px viewports — the mobile-first viral surface. BLD-1297: the 12 Aug audit claim ("no skip link anywhere") was already stale for the marketing and admin layouts, but the client account portal genuinely had none. BLD-1209: webpush.sendNotification had no timeout and is awaited from the Stripe webhook dispute handler and the daily cron via notifyStaffByPermission — one unresponsive push endpoint could stall the whole notify call.',
+    notes: [
+      'BLD-1239: descriptor moved to the card footer above the voucher code, out of the logo lock-up. The emailShell header carries a similar descriptor 18px under the wordmark — that layout was part of the owner-reviewed email rebuild, so it was left untouched and flagged on the board for a brand call rather than changed unilaterally.',
+      'BLD-1294: rings are h-28 (112px) below sm and 140px above, gap-4 on mobile; the SVG scales via its viewBox so the ring geometry is unchanged. Score numeral steps down one size on mobile to stay inside the smaller ring.',
+      'BLD-1297: skip link + <main id="main"> landmark added to app/account/layout.tsx, mirroring the marketing/admin pattern; the account 404 page\'s own <main> became a div so the landmark stays unique. The kiosk layout is deliberately untouched — it is a chrome-less device surface with no nav to skip. PRJ-1118.11 investigated in the same pass: code-splitting PinnedExperience would NOT remove motion/react from the homepage bundle (Reveal/ScrollReveal/CountUp import it statically on the same page), so the audit\'s suggested fix is a placebo — noted on that item instead of shipping indirection.',
+      'BLD-1209: each webpush.sendNotification is wrapped in a 10s bounded race (mirroring lib/booking-actions.ts bestEffort); the 404/410 subscription pruning is preserved, a timeout simply falls through as a failed best-effort send.',
+      'Verified: npx tsc --noEmit and npm run build pass clean.',
+    ],
+  },
 ];
 
 // A content hash over every item's title + status + PR, so ANY change (a new
