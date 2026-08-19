@@ -11,11 +11,13 @@ export const metadata: Metadata = { title: 'Manage your booking | KClinics', rob
 export default async function ManageBookingPage({ searchParams }: { searchParams: Promise<{ t?: string }> }) {
   const { t } = await searchParams;
 
-  let booking: { treatmentTitle: string; treatmentSlug: string; startISO: string; status: string; pricePence: number; within24h: boolean; within48h: boolean; cancelled: boolean; rescheduleCount: number } | null = null;
+  let booking: { treatmentTitle: string; treatmentSlug: string; startISO: string; status: string; pricePence: number; within24h: boolean; within48h: boolean; cancelled: boolean; rescheduleCount: number; clientFirstName: string; clientEmail: string } | null = null;
   if (crmEnabled && t) {
     try {
       const { db, withDbRetry } = await import('@/lib/db');
-      const b = await withDbRetry(() => db.booking.findUnique({ where: { manageToken: t } }));
+      // BLD-1421: also pull the client's name/email so a no-slots reschedule can
+      // offer the same WaitlistCTA as fresh booking, prefilled like BookingFlow.
+      const b = await withDbRetry(() => db.booking.findUnique({ where: { manageToken: t }, include: { client: { select: { firstName: true, email: true } } } }));
       if (b) {
         booking = {
           treatmentTitle: b.treatmentTitle,
@@ -27,6 +29,8 @@ export default async function ManageBookingPage({ searchParams }: { searchParams
           within48h: b.startAt.getTime() - Date.now() < 48 * 60 * 60 * 1000,
           cancelled: b.status === 'CANCELLED',
           rescheduleCount: b.rescheduleCount,
+          clientFirstName: b.client.firstName,
+          clientEmail: b.client.email,
         };
       }
     } catch (e) {

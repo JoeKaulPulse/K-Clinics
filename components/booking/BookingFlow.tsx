@@ -917,7 +917,13 @@ function SaveProgress({ treatmentSlug, variantLabel }: { treatmentSlug: string; 
 }
 
 // BLD-133 — "notify me if a slot frees" shown when a chosen day is fully booked.
-function WaitlistCTA({ treatmentSlug, treatmentTitle, date, client }: { treatmentSlug: string; treatmentTitle: string; date: string; client: ClientInfo }) {
+// Exported (BLD-1421) so the reschedule flow (ManageClient.tsx) can offer the
+// same waitlist CTA in its own no-slots state instead of a dead "please call
+// us" message. `client` only needs firstName/email to prefill the form — a
+// narrower type than BookingFlow's full ClientInfo so callers without a signed-
+// in session (e.g. the token-based manage-booking page) aren't forced to
+// fabricate the rest of it.
+export function WaitlistCTA({ treatmentSlug, treatmentTitle, date, client }: { treatmentSlug: string; treatmentTitle: string; date: string; client: { firstName: string; email: string } }) {
   const [open, setOpen] = useState(false);
   const [name, setName] = useState(client.firstName || '');
   const [email, setEmail] = useState(client.email || '');

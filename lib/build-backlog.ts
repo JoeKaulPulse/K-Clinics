@@ -4331,6 +4331,19 @@ export const BUILD_BACKLOG: BacklogItem[] = [
       'Verified: npx tsc --noEmit and npm run build pass clean.',
     ],
   },
+  {
+    title: 'Account portal duplicate main landmark fixed; kiosk reward claim gets an explicit opt-in tick; reschedule offers the waitlist; offer countdowns surfaced (BLD-1420, BLD-1421, BLD-1422, BLD-1423)',
+    type: 'TASK', urgency: 'P2', status: 'IN_REVIEW', assignee: 'claude',
+    value: 6, effort: 3,
+    detail: 'Four conversion/a11y fixes from the live Build & Issues board. BLD-1423: components/portal/PortalShell.tsx rendered its own <main id="main"> nested inside the one app/account/layout.tsx already provides, duplicating the DOM id the skip-link targets and breaking AT landmark navigation. BLD-1420: components/kiosk/ClaimReward.tsx implied marketing consent from passive "by continuing you agree" text, with no tick-box and no way to decline it — unlike EnquiryForm/GiftVoucherFlow/GroupBookingForm\'s explicit, off-by-default marketingOptIn checkbox — and lib/kiosk.ts#claimKioskDiscount hard-coded marketingOptIn: true on every new client it created regardless of what (if anything) the visitor agreed to. BLD-1421: the reschedule flow in app/(marketing)/booking/manage/ManageClient.tsx dead-ended on "No availability... please call us" with no waitlist option, while the fresh-booking flow (BookingFlow.tsx) offers WaitlistCTA in the identical no-slots situation. BLD-1422: OffersStrip and AnnouncementBar both already fetch endAt for every live promotion but never rendered it — no expiry/urgency signal anywhere on / or /pricing/offers despite the data already being on hand.',
+    notes: [
+      'BLD-1423: the inner <main id="main" className="flex-1 py-9 md:py-14"> in PortalShell.tsx is now a plain <div> with the same className; the outer app/account/layout.tsx <main id="main"> remains the one landmark for every /account/* page.',
+      'BLD-1420: ClaimReward.tsx gains a checkbox (default unchecked) using the same accent-[var(--color-gold)] + wording pattern as EnquiryForm, and sends marketingOptIn in the POST body to /api/kiosk/results/[id]/claim. The route passes it through to claimKioskDiscount(resultId, email, firstName, marketingOptIn), which now creates a brand-new client with marketingOptIn set to whatever the visitor actually ticked, stamping marketingConsentFields(\'kiosk\') only when true — an existing client\'s own preference is still never overwritten by an unverified kiosk-typed email (BLD-892), unchanged.',
+      'BLD-1421: WaitlistCTA is now exported from components/booking/BookingFlow.tsx (its client prop narrowed to {firstName, email} so callers without a full signed-in ClientInfo, like the token-based manage page, aren\'t forced to fabricate one). app/(marketing)/booking/manage/page.tsx now selects the client\'s firstName/email alongside the booking and passes them through; ManageClient.tsx renders WaitlistCTA in its no-slots reschedule branch with the booking\'s treatmentSlug/treatmentTitle and the chosen rescheduleDate, the same shape BookingFlow.tsx already passes.',
+      'BLD-1422: new lib/offer-countdown.ts#offerCountdownLabel(endAt) — deliberately not server-only so both the async server component OffersStrip and the \'use client\' AnnouncementBar can import it — returns "Ends today" / "Ends tomorrow" / "Ends in N days" by calendar-date difference (stable through the day), or null for a missing/already-past endAt so nothing renders (no crash, no "Ends never"). OffersStrip shows it as a small pill beside each offer\'s discount badge; AnnouncementBar shows it as a pill beside the message, both using existing --color-gold tokens, no raw hex.',
+      'Verified: npx tsc --noEmit and npm run build pass clean.',
+    ],
+  },
 ];
 
 // A content hash over every item's title + status + PR, so ANY change (a new
