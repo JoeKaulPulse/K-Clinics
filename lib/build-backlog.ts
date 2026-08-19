@@ -4241,6 +4241,18 @@ export const BUILD_BACKLOG: BacklogItem[] = [
       'Verified: npx tsc --noEmit and npm run build pass clean; migration generated offline. Blob deletion not exercised from this sandbox.',
     ],
   },
+  {
+    title: 'Fully refunded package purchases no longer count as spendable sessions (BLD-1380)',
+    type: 'ERROR', urgency: 'P1', status: 'IN_REVIEW', assignee: 'claude',
+    value: 8, effort: 3,
+    detail: 'clientPackages() (lib/package-sessions.ts) computed paid as Boolean(chargedAt || prepaidAt) and never checked refundedPence, so a fully refunded course purchase still showed full sessions remaining and /api/account/packages let the client keep booking and spending sessions after getting their money back.',
+    notes: [
+      'Fix: clientPackages() now also selects chargedPence/refundedPence and excludes a purchase from paid once refundedPence >= chargedPence, mirroring the fully-refunded check already used by refundBooking()/refundableRemaining() in lib/booking-actions.ts. A partial refund still leaves the purchase paid and spendable, matching existing partial-refund handling elsewhere.',
+      'Review fix: the first cut collapsed two different states into paid=false, so every surface rendering that flag labelled a refunded course as money still owed - the client portal showed "Payment pending" (uk: "Очікує оплати") on their own dashboard, and staff saw "Not yet paid". PackageView now carries a separate refunded flag and the four render sites (app/account/page.tsx, app/admin/clients/[id]/page.tsx, components/admin/PackageLinkControl.tsx, components/admin/NewBookingButton.tsx) show a neutral "Refunded" instead. Spendability is unchanged: paid stays false, so /api/account/packages and /api/booking/start still refuse the sessions.',
+      'Known gap, not addressed here: a BNPL/Klarna course records money on prepaidAt/prepaidPence and has no chargePaymentIntentId, so a Stripe-dashboard refund of one never writes refundedPence and this check cannot see it. Pre-existing - refundBooking() already refuses prepaid bookings outright. Worth its own item.',
+      'Verified: npx tsc --noEmit and npm run build pass clean.',
+    ],
+  },
 ];
 
 // A content hash over every item's title + status + PR, so ANY change (a new

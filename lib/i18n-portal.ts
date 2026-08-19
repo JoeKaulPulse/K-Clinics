@@ -164,6 +164,9 @@ export const PORTAL_DICT: Record<string, Entry> = {
   'dash.pkgBooked': { en: '{n} booked', uk: 'заброньовано {n}' },
   'dash.pkgPaid': { en: 'Paid', uk: 'Оплачено' },
   'dash.pkgUnpaid': { en: 'Payment pending', uk: 'Очікує оплати' },
+  // BLD-1380: a fully refunded course. Never shown as "Payment pending" — the
+  // client has had their money back and owes nothing.
+  'dash.pkgRefunded': { en: 'Refunded', uk: 'Повернуто кошти' },
   'dash.nextAppt': { en: 'Next appointment', uk: 'Наступний запис' },
   'dash.inDays': { en: 'in {n} days', uk: 'через {n} дн.' },
   'dash.tomorrow': { en: 'Tomorrow', uk: 'Завтра' },

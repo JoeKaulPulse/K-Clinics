@@ -177,7 +177,7 @@ export default async function BookingDetail({ params }: { params: Promise<{ id: 
     const occupies = !['CANCELLED', 'NO_SHOW'].includes(b.status);
     linkablePackages = (await clientPackages(b.clientId).catch(() => []))
       .filter((p) => p.treatmentSlug === b.treatmentSlug && p.purchaseBookingId !== b.id && (!occupies || p.sessionsRemaining > 0))
-      .map(({ purchaseBookingId, label, sessionsTotal, sessionsRemaining, paid }) => ({ purchaseBookingId, label, sessionsTotal, sessionsRemaining, paid }));
+      .map(({ purchaseBookingId, label, sessionsTotal, sessionsRemaining, paid, refunded }) => ({ purchaseBookingId, label, sessionsTotal, sessionsRemaining, paid, refunded }));
   }
   // BLD-1066: surface the client's unpaid late-cancel/no-show balance on every
   // one of their appointments, so it's seen the moment a booking is opened.
