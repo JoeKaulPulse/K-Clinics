@@ -25,9 +25,20 @@ const clean = (v: unknown) => (typeof v === 'string' ? v.trim().slice(0, 40) : '
 // field falls back here, fully disabling Meta means clearing this default too.
 const DEFAULT_META_PIXEL_ID = '872329642090480';
 
+// BLD-1384: same failure mode as the Meta Pixel above, hit before it was fixed —
+// if the GA4 measurement ID / Google Ads conversion ID is never saved in
+// Admin → SEO → Tracking (fresh env, cleared Setting row), the GA4 tag and the
+// Google Ads conversion tag silently never fire site-wide. These are the IDs
+// PR #774 (fix(tracking): activate the Meta Pixel) confirmed were live in
+// production at the time (both public, client-side identifiers, not secrets).
+// A value saved in Admin → SEO, or the NEXT_PUBLIC_GA4_ID / NEXT_PUBLIC_GOOGLE_ADS_ID
+// env vars, overrides these.
+const DEFAULT_GA4_ID = 'G-EC16PXFXN0';
+const DEFAULT_GOOGLE_ADS_ID = 'AW-17853644523';
+
 const ENV_FALLBACK: TrackingConfig = {
-  ga4Id: clean(process.env.NEXT_PUBLIC_GA4_ID),
-  googleAdsId: clean(process.env.NEXT_PUBLIC_GOOGLE_ADS_ID),
+  ga4Id: clean(process.env.NEXT_PUBLIC_GA4_ID) || DEFAULT_GA4_ID,
+  googleAdsId: clean(process.env.NEXT_PUBLIC_GOOGLE_ADS_ID) || DEFAULT_GOOGLE_ADS_ID,
   metaPixelId: clean(process.env.NEXT_PUBLIC_META_PIXEL_ID) || DEFAULT_META_PIXEL_ID,
 };
 

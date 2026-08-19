@@ -1,9 +1,13 @@
+import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { crmEnabled } from '@/lib/crm';
 import { ReviewForm } from '@/components/reviews/ReviewForm';
 import { KMark } from '@/components/brand/marks';
 
 export const dynamic = 'force-dynamic';
+// BLD-1388: unguessable per-client token page — noindex like the other
+// token-gated pages (app/nps/[token], app/live/[token], app/follow-up/[token]).
+export const metadata: Metadata = { title: 'Your feedback — KClinics', robots: { index: false, follow: false } };
 
 export default async function ReviewPage({ params }: { params: Promise<{ token: string }> }) {
   const { token } = await params;

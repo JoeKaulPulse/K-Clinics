@@ -158,6 +158,7 @@ export function ConsultForm() {
                   <button
                     key={val}
                     type="button"
+                    aria-pressed={d.category === val}
                     onClick={() => set('category', val)}
                     className={`rounded-[var(--radius-md)] border p-5 text-left transition-all ${d.category === val ? 'border-[var(--color-gold)] bg-[var(--color-porcelain)] shadow-[var(--shadow-soft)]' : 'border-[var(--color-line)] hover:border-[var(--color-stone-soft)]'}`}
                   >
@@ -255,6 +256,7 @@ function Group({ title, items, selected, onToggle }: { title: string; items: typ
             <button
               key={t.slug}
               type="button"
+              aria-pressed={on}
               onClick={() => onToggle(t.title)}
               className={`rounded-full border px-4 py-2 text-sm transition-all ${on ? 'border-[var(--color-gold)] bg-[var(--color-gold-deep)] text-white' : 'border-[var(--color-line)] text-[var(--color-ink-soft)] hover:border-[var(--color-stone-soft)]'}`}
             >

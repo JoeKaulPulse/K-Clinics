@@ -133,7 +133,7 @@ export function KVision({ signedIn, firstName, enabled }: { signedIn: boolean; f
               <div className="mt-6 grid gap-2 sm:grid-cols-2">
                 {BUDGETS.map((b) => {
                   const on = budget?.label === b.label;
-                  return <button key={b.label} onClick={() => setBudget(b)} className={`rounded-2xl border p-4 text-left transition-all ${on ? 'border-[var(--color-gold,#a98a6d)] bg-[var(--color-gold,#a98a6d)]/10' : 'border-white/15 hover:border-white/40'}`}>
+                  return <button key={b.label} aria-pressed={on} onClick={() => setBudget(b)} className={`rounded-2xl border p-4 text-left transition-all ${on ? 'border-[var(--color-gold,#a98a6d)] bg-[var(--color-gold,#a98a6d)]/10' : 'border-white/15 hover:border-white/40'}`}>
                     <span className="text-base font-medium">{b.label}</span>
                   </button>;
                 })}
@@ -160,7 +160,7 @@ export function KVision({ signedIn, firstName, enabled }: { signedIn: boolean; f
             <motion.div key="capture" {...fade} className="mx-auto max-w-2xl">
               <Heading kicker="Step 2" title="What would you like us to look at?" />
               <div className="mt-5 flex flex-wrap gap-2">
-                {AREAS.map((a) => { const on = areas.has(a.id); return <button key={a.id} onClick={() => setAreas((p) => { const n = new Set(p); n.has(a.id) ? n.delete(a.id) : n.add(a.id); return n.size ? n : p; })} className={`rounded-full border px-4 py-2 text-sm transition-all ${on ? 'border-[var(--color-gold,#a98a6d)] bg-[var(--color-gold,#a98a6d)] text-[var(--color-night)]' : 'border-white/15 text-[var(--color-night-muted)] hover:border-white/40'}`}>{a.label}</button>; })}
+                {AREAS.map((a) => { const on = areas.has(a.id); return <button key={a.id} aria-pressed={on} onClick={() => setAreas((p) => { const n = new Set(p); n.has(a.id) ? n.delete(a.id) : n.add(a.id); return n.size ? n : p; })} className={`rounded-full border px-4 py-2 text-sm transition-all ${on ? 'border-[var(--color-gold,#a98a6d)] bg-[var(--color-gold,#a98a6d)] text-[var(--color-night)]' : 'border-white/15 text-[var(--color-night-muted)] hover:border-white/40'}`}>{a.label}</button>; })}
               </div>
               <p className="mt-3 text-sm text-[var(--color-night-faint)]">{AREAS.find((a) => areas.has(a.id))?.hint} For the most accurate read, use <span className="text-[var(--color-night-muted)]">Take photo</span> and follow the on-screen face guide.</p>
               <div className="mt-7 grid grid-cols-2 gap-3 sm:grid-cols-4">
