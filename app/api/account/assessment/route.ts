@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import * as Sentry from '@sentry/nextjs';
 import { assessmentSchema } from '@/lib/validation';
 import { crmEnabled } from '@/lib/crm';
 
@@ -50,7 +51,10 @@ export async function POST(req: Request) {
     });
     return NextResponse.json({ ok: true, ...res });
   } catch (e) {
-    console.error('[account/assessment] save failed', e);
+    // BLD-1417: e can echo the just-submitted health-assessment answers back
+    // into the log line — log only the message, keep the full exception in Sentry.
+    console.error('[account/assessment] save failed:', (e as Error)?.message);
+    Sentry.captureException(e, { tags: { area: 'account/assessment' } });
     return NextResponse.json({ ok: false, error: 'Could not save your assessment.' }, { status: 500 });
   }
 }
