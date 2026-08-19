@@ -56,7 +56,9 @@ function Modal({ treatments, isAdmin, onClose }: { treatments: Treatment[]; isAd
   // BLD-1014: the selected client's package balances — when one matches the
   // chosen treatment with sessions remaining, staff can book it as a package
   // session (no charge; the purchase already carries the money).
-  type Pkg = { purchaseBookingId: string; label: string; treatmentSlug: string; sessionsTotal: number; sessionsUsed: number; sessionsBooked: number; sessionsRemaining: number; paid: boolean };
+  // BLD-1380: `refunded` — a fully refunded course reads as !paid, but staff
+  // must see "refunded", not "NOT yet paid", before booking against it.
+  type Pkg = { purchaseBookingId: string; label: string; treatmentSlug: string; sessionsTotal: number; sessionsUsed: number; sessionsBooked: number; sessionsRemaining: number; paid: boolean; refunded: boolean };
   const [packages, setPackages] = useState<Pkg[]>([]);
   const [usePackageId, setUsePackageId] = useState<string | null>(null);
   // The standalone "Consultation" category is already a consultation; the toggle
@@ -226,7 +228,7 @@ function Modal({ treatments, isAdmin, onClose }: { treatments: Treatment[]; isAd
                   <span className="block font-medium">Use package session — nothing to charge</span>
                   <span className="text-xs text-[var(--color-stone)]">
                     {matchingPackage.label}: {matchingPackage.sessionsUsed} used · {matchingPackage.sessionsBooked} booked · {matchingPackage.sessionsRemaining} left of {matchingPackage.sessionsTotal}
-                    {matchingPackage.paid ? ' · paid' : ' · NOT yet paid'}
+                    {matchingPackage.paid ? ' · paid' : matchingPackage.refunded ? ' · REFUNDED' : ' · NOT yet paid'}
                   </span>
                 </span>
               </label>
