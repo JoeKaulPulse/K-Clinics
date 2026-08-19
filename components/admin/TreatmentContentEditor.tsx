@@ -88,9 +88,9 @@ export function TreatmentContentEditor({ slug, base, override }: { slug: string;
         <aside className="space-y-4 lg:sticky lg:top-6 lg:self-start">
           <div className={card}>
             <button disabled={busy} onClick={save} className="w-full rounded-full bg-[var(--color-ink)] px-5 py-3 text-sm text-[var(--color-porcelain)] disabled:opacity-50">{busy ? 'Saving…' : 'Save changes'}</button>
-            {msg && <p className={`mt-3 text-sm ${msg.k === 'ok' ? 'text-[var(--color-jade)]' : 'text-[#c0392b]'}`}>{msg.t}</p>}
+            {msg && <p className={`mt-3 text-sm ${msg.k === 'ok' ? 'text-[var(--color-jade)]' : 'text-[var(--color-blush-deep)]'}`}>{msg.t}</p>}
             <p className="mt-3 text-xs text-[var(--color-stone)]">Saved changes publish to the live page within a minute.</p>
-            {override && <button disabled={busy} onClick={reset} className="mt-4 w-full text-sm text-[var(--color-stone)] hover:text-[#c0392b]">Reset to built-in content</button>}
+            {override && <button disabled={busy} onClick={reset} className="mt-4 w-full text-sm text-[var(--color-stone)] hover:text-[var(--color-blush-deep)]">Reset to built-in content</button>}
           </div>
         </aside>
       </div>
@@ -111,7 +111,7 @@ function Repeater({ title, items, setItems, cols, blank, textarea, labels }: {
             <div className="mb-2 flex items-center justify-end gap-1 text-[var(--color-stone)]">
               <button onClick={() => setItems(move(items, i, -1))} aria-label="Up" className="hover:text-[var(--color-ink)]">▲</button>
               <button onClick={() => setItems(move(items, i, 1))} aria-label="Down" className="hover:text-[var(--color-ink)]">▼</button>
-              <button onClick={() => setItems(items.filter((_, j) => j !== i))} aria-label="Remove" className="ml-1 hover:text-[#c0392b]">✕</button>
+              <button onClick={() => setItems(items.filter((_, j) => j !== i))} aria-label="Remove" className="ml-1 hover:text-[var(--color-blush-deep)]">✕</button>
             </div>
             <div className="space-y-2">
               {cols.map((c) => (

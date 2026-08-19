@@ -9,11 +9,11 @@ import { EmptyWidget } from '@/components/admin/dashboard/Widgets';
 const PREP: Record<RoomPrepState, { label: string; cls: string; dot: string }> = {
   READY: { label: 'Ready', cls: 'border-[var(--color-jade)]/40 bg-[color-mix(in_oklab,var(--color-jade)_12%,transparent)] text-[var(--color-jade)]', dot: 'bg-[var(--color-jade)]' },
   CLEANING: { label: 'Cleaning', cls: 'border-[var(--color-gold)]/50 bg-[color-mix(in_oklab,var(--color-gold)_14%,transparent)] text-[var(--color-gold-deep)]', dot: 'bg-[var(--color-gold)]' },
-  DIRTY: { label: 'Needs clean', cls: 'border-[#c0392b]/30 bg-[color-mix(in_oklab,#c0392b_10%,transparent)] text-[#b23b3b]', dot: 'bg-[#c0392b]' },
+  DIRTY: { label: 'Needs clean', cls: 'border-[var(--color-blush-deep)]/30 bg-[color-mix(in_oklab,var(--color-blush-deep)_10%,transparent)] text-[var(--color-blush-deep)]', dot: 'bg-[var(--color-blush-deep)]' },
 };
 // Occupancy takes visual priority over cleanliness on the badge — at a glance the
 // question is "can I use this room?", and an occupied room can't be used (BLD-506).
-const OCCUPIED_BADGE = { label: 'Occupied', cls: 'border-[#b23b3b]/40 bg-[color-mix(in_oklab,#c0392b_12%,transparent)] text-[#b23b3b]', dot: 'bg-[#c0392b]' };
+const OCCUPIED_BADGE = { label: 'Occupied', cls: 'border-[var(--color-blush-deep)]/40 bg-[color-mix(in_oklab,var(--color-blush-deep)_12%,transparent)] text-[var(--color-blush-deep)]', dot: 'bg-[var(--color-blush-deep)]' };
 const ORDER: RoomPrepState[] = ['DIRTY', 'CLEANING', 'READY'];
 
 export function RoomAvailabilityBoard({
@@ -53,12 +53,12 @@ export function RoomAvailabilityBoard({
             <div className="mt-3 text-sm">
               {room.occupiedNow && room.current ? (
                 <p className="text-[var(--color-ink-soft)]">
-                  <span className="font-medium text-[#b23b3b]">In use</span> · {room.current.treatment}
+                  <span className="font-medium text-[var(--color-blush-deep)]">In use</span> · {room.current.treatment}
                   <span className="text-[var(--color-stone)]"> · {room.current.client}</span>
                 </p>
               ) : room.occupiedManual ? (
                 <p className="text-[var(--color-ink-soft)]">
-                  <span className="font-medium text-[#b23b3b]">Occupied</span>
+                  <span className="font-medium text-[var(--color-blush-deep)]">Occupied</span>
                   {room.occupiedBy && <span className="text-[var(--color-stone)]"> · marked by {room.occupiedBy}</span>}
                 </p>
               ) : room.next ? (
@@ -100,7 +100,7 @@ export function RoomAvailabilityBoard({
                     aria-pressed={room.occupiedManual}
                     disabled={busyId === room.id}
                     className={`rounded-full px-2.5 py-1 text-xs font-medium transition-colors disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-gold)] ${
-                      room.occupiedManual ? 'bg-[#b23b3b] text-white' : 'text-[var(--color-stone)] hover:text-[var(--color-ink)]'
+                      room.occupiedManual ? 'bg-[var(--color-blush-deep)] text-white' : 'text-[var(--color-stone)] hover:text-[var(--color-ink)]'
                     }`}
                   >
                     Occupied

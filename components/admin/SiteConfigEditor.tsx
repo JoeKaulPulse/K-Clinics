@@ -157,7 +157,7 @@ export function SiteConfigEditor({ initial, revisions }: { initial: SiteConfig; 
                 <div key={i} className="grid grid-cols-[8rem_1fr_2rem] items-center gap-3">
                   <input className={field} value={k} placeholder="platform" aria-label="Social platform" onChange={(e) => { const rows = socialRows.map((r) => [...r] as [string, string]); rows[i][0] = e.target.value.toLowerCase(); setSocial(rows); }} />
                   <input className={field} value={v} placeholder="https://…" aria-label="Social profile URL" onChange={(e) => { const rows = socialRows.map((r) => [...r] as [string, string]); rows[i][1] = e.target.value; setSocial(rows); }} />
-                  <button className="text-[var(--color-stone)] hover:text-[#c0392b]" onClick={() => setSocial(socialRows.filter((_, j) => j !== i) as [string, string][])} aria-label="Remove">✕</button>
+                  <button className="text-[var(--color-stone)] hover:text-[var(--color-blush-deep)]" onClick={() => setSocial(socialRows.filter((_, j) => j !== i) as [string, string][])} aria-label="Remove">✕</button>
                 </div>
               ))}
             </div>
@@ -187,7 +187,7 @@ export function SiteConfigEditor({ initial, revisions }: { initial: SiteConfig; 
         <aside className="space-y-4 lg:sticky lg:top-6 lg:self-start">
           <div className={card}>
             <button disabled={busy} onClick={save} className="w-full rounded-full bg-[var(--color-ink)] px-5 py-3 text-sm text-[var(--color-porcelain)] disabled:opacity-50">{busy ? 'Saving…' : 'Save changes'}</button>
-            {msg && <p className={`mt-3 text-sm ${msg.kind === 'ok' ? 'text-[var(--color-jade)]' : 'text-[#c0392b]'}`}>{msg.text}</p>}
+            {msg && <p className={`mt-3 text-sm ${msg.kind === 'ok' ? 'text-[var(--color-jade)]' : 'text-[var(--color-blush-deep)]'}`}>{msg.text}</p>}
             <p className="mt-3 text-xs text-[var(--color-stone)]">Saved changes publish immediately across the live site.</p>
           </div>
 

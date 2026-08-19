@@ -304,7 +304,7 @@ export default async function BookingDetail({ params }: { params: Promise<{ id: 
             {canClinical ? (
               <>
                 {b.client.medicalFlag && (
-                  <p className="mb-3 rounded-[var(--radius-sm)] bg-[color-mix(in_oklab,#c0392b_14%,transparent)] px-3 py-2 text-sm font-medium text-[var(--color-ink)]">⚠ {b.client.medicalFlag}</p>
+                  <p className="mb-3 rounded-[var(--radius-sm)] bg-[color-mix(in_oklab,var(--color-blush-deep)_14%,transparent)] px-3 py-2 text-sm font-medium text-[var(--color-ink)]">⚠ {b.client.medicalFlag}</p>
                 )}
                 {b.client.allergies && <p className="mb-3 text-sm"><span className="text-[var(--color-stone)]">Allergies:</span> {b.client.allergies}</p>}
               </>

@@ -10,8 +10,8 @@ const CATEGORY_LABEL: Record<string, string> = {
   messages: 'Messages', bookings: 'Bookings', clinical: 'Clinical', finance: 'Finance', reviews: 'Reviews',
   inventory: 'Inventory', team: 'Team', academy: 'Academy', marketing: 'Marketing', system: 'System',
 };
-const PRIORITY_ACCENT: Record<string, string> = { urgent: 'border-l-2 border-l-[#c0392b]', high: 'border-l-2 border-l-[var(--color-gold)]', normal: '', low: '' };
-const PRIORITY_DOT: Record<string, string> = { urgent: 'bg-[#c0392b]', high: 'bg-[var(--color-gold)]', normal: 'bg-[var(--color-stone-soft)]', low: 'bg-[var(--color-line)]' };
+const PRIORITY_ACCENT: Record<string, string> = { urgent: 'border-l-2 border-l-[var(--color-blush-deep)]', high: 'border-l-2 border-l-[var(--color-gold)]', normal: '', low: '' };
+const PRIORITY_DOT: Record<string, string> = { urgent: 'bg-[var(--color-blush-deep)]', high: 'bg-[var(--color-gold)]', normal: 'bg-[var(--color-stone-soft)]', low: 'bg-[var(--color-line)]' };
 
 const ago = (iso: string) => {
   const s = Math.max(0, Math.round((Date.now() - new Date(iso).getTime()) / 1000));

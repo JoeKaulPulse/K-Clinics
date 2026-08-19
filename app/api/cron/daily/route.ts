@@ -317,6 +317,20 @@ export async function GET(req: Request) {
     failures++; console.error('[cron] consult notification backfill failed (continuing):', (e as Error)?.message);
   }
 
+  // BLD-1253: release web-shop orders abandoned before payment. The checkout
+  // uses a plain PaymentIntent (never auto-expires), so a closed tab left the
+  // order PENDING forever with any reserved gift-card balance stranded. Orders
+  // stuck PENDING >7 days (well past the 2–72h recovery emails) are cancelled
+  // and the gift-card reservation re-credited; a late-succeeded payment is
+  // skipped for the webhook to finalise.
+  let staleOrders = { released: 0, recreditedPence: 0 };
+  try {
+    const { releaseAbandonedPendingOrders } = await import('@/lib/shop');
+    staleOrders = await releaseAbandonedPendingOrders();
+  } catch (e) {
+    failures++; console.error('[cron] abandoned-order release failed (continuing):', (e as Error)?.message);
+  }
+
   // BLD-1277: data-residency guard. The processors register records the
   // production database as Neon in AWS eu-west-2 (London) — every client,
   // booking and encrypted health record lives there, and nothing previously
@@ -518,7 +532,7 @@ export async function GET(req: Request) {
 
   // BLD-153: surface failure to the scheduler — non-200 when anything failed.
   return NextResponse.json(
-    { ok: failures === 0, failures, durationMs: cronDurationMs, ...result, loyalty, membership, gcal, gbiz, gbizPosts, retention, idMeta, pii, gdprSweep, scheduledEmail, adSpend, board, clinicalBackfill, consultBackfill, galleryEncrypt, courseLevels, portfolioMigration, examBank, gamification, authored, courseContent, communityDigest, instalmentDunning },
+    { ok: failures === 0, failures, durationMs: cronDurationMs, ...result, loyalty, membership, gcal, gbiz, gbizPosts, retention, idMeta, pii, gdprSweep, scheduledEmail, adSpend, board, clinicalBackfill, consultBackfill, galleryEncrypt, courseLevels, staleOrders, portfolioMigration, examBank, gamification, authored, courseContent, communityDigest, instalmentDunning },
     { status: failures === 0 ? 200 : 500 },
   );
 }

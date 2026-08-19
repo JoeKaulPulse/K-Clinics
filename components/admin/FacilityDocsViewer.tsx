@@ -71,7 +71,7 @@ export function FacilityDocsViewer({ docs, canManage = false }: { docs: Facility
                 </a>
                 {canManage && (
                   <button type="button" onClick={() => remove(d.id)} disabled={busy === d.id}
-                    className="absolute right-2 top-2 rounded-full bg-[var(--color-ink)]/80 px-2 py-1 text-[0.65rem] font-medium text-[var(--color-porcelain)] opacity-0 transition-opacity hover:bg-[#b23b3b] group-hover:opacity-100 disabled:opacity-50">
+                    className="absolute right-2 top-2 rounded-full bg-[var(--color-ink)]/80 px-2 py-1 text-[0.65rem] font-medium text-[var(--color-porcelain)] opacity-0 transition-opacity hover:bg-[var(--color-blush-deep)] group-hover:opacity-100 disabled:opacity-50">
                     {busy === d.id ? '…' : 'Delete'}
                   </button>
                 )}

@@ -108,7 +108,7 @@ export default async function MyDayPage({ searchParams }: { searchParams: Promis
         <div className="border-l border-[var(--color-line)] pl-3 leading-tight">
           <p className="font-medium text-[var(--color-ink)]"><span className="tabular-nums">{weather.tempC}°</span> <span className="font-normal text-[var(--color-stone)]">{weather.label}</span></p>
           {weather.uvMax != null && uv && (
-            <p className="text-xs text-[var(--color-stone)]">UV <span className="tabular-nums">{weather.uvMax}</span> · <span className={uv.tone === 'high' ? 'text-[#b23b3b]' : uv.tone === 'moderate' ? 'text-[var(--color-gold-deep)]' : 'text-[var(--color-jade)]'}>{uv.label}</span></p>
+            <p className="text-xs text-[var(--color-stone)]">UV <span className="tabular-nums">{weather.uvMax}</span> · <span className={uv.tone === 'high' ? 'text-[var(--color-blush-deep)]' : uv.tone === 'moderate' ? 'text-[var(--color-gold-deep)]' : 'text-[var(--color-jade)]'}>{uv.label}</span></p>
           )}
         </div>
       )}

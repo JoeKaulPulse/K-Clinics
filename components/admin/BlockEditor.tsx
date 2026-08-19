@@ -280,7 +280,7 @@ const EDITOR_CSS = `
 .be-row:hover .be-tools,.be-row:focus-within .be-tools{opacity:1;}
 .be-tag{font-size:0.6rem;letter-spacing:0.1em;text-transform:uppercase;color:var(--color-stone);background:var(--color-bone);border-radius:999px;padding:2px 8px;white-space:nowrap;}
 .be-del{color:var(--color-stone);font-size:0.7rem;width:1.3rem;height:1.3rem;border-radius:999px;}
-.be-del:hover{color:#c0392b;background:var(--color-bone);}
+.be-del:hover{color:var(--color-blush-deep);background:var(--color-bone);}
 .be-insert{height:0;overflow:visible;display:flex;justify-content:center;position:relative;z-index:2;}
 .be-add{display:inline-flex;align-items:center;justify-content:center;width:1.4rem;height:1.4rem;margin-top:-0.1rem;border-radius:999px;background:var(--color-porcelain);border:1px solid var(--color-line);color:var(--color-stone);opacity:0;transition:opacity .15s,color .15s,border-color .15s;}
 .be-row:hover .be-add{opacity:1;}

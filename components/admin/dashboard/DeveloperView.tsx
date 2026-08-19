@@ -14,7 +14,7 @@ const REPO_URL = 'https://github.com/JoeKaulPulse/K-Clinics';
 const VERCEL_URL = 'https://vercel.com/kaul-joe/k-clinics';
 
 const URGENCY_CLS: Record<string, string> = {
-  P0: 'bg-[color-mix(in_oklab,#c0392b_16%,transparent)] text-[#b23b3b]',
+  P0: 'bg-[color-mix(in_oklab,var(--color-blush-deep)_16%,transparent)] text-[var(--color-blush-deep)]',
   P1: 'bg-[var(--color-gold)]/20 text-[var(--color-ink)]',
   P2: 'bg-[var(--color-bone)] text-[var(--color-stone)]',
   P3: 'bg-[var(--color-bone)] text-[var(--color-stone)]',

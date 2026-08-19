@@ -79,7 +79,7 @@ export function MediaGrid({ onPick, compact }: { onPick?: (asset: Asset) => void
         <p className="mt-1 text-xs text-[var(--color-stone)]">PNG, JPG, WebP, SVG · up to 8 MB each</p>
         <input ref={fileRef} type="file" accept="image/*" multiple hidden onChange={(e) => upload(e.target.files)} />
       </div>
-      {err && <p role="alert" aria-live="assertive" className="mt-3 text-sm text-[#c0392b]">{err}</p>}
+      {err && <p role="alert" aria-live="assertive" className="mt-3 text-sm text-[var(--color-blush-deep)]">{err}</p>}
       {needsStore && (
         <p className="mt-2 rounded-[var(--radius-md)] border border-[color-mix(in_oklab,#d9a441_45%,transparent)] bg-[var(--color-bone)] p-3 text-sm">
           To enable uploads: in Vercel open <strong>Storage → Create Database → Blob</strong>, connect it to this project (adds <code>BLOB_READ_WRITE_TOKEN</code>), then redeploy.
@@ -108,7 +108,7 @@ export function MediaGrid({ onPick, compact }: { onPick?: (asset: Asset) => void
                 </button>
                 <div className="pointer-events-none absolute inset-x-0 top-0 flex justify-end gap-1 p-1.5 opacity-0 transition-opacity group-hover:opacity-100">
                   <button type="button" onClick={() => navigator.clipboard?.writeText(a.url)} title="Copy URL" className="pointer-events-auto rounded bg-black/45 px-1.5 py-0.5 text-[0.65rem] text-white hover:bg-black/70">Copy</button>
-                  <button type="button" onClick={() => remove(a.id)} title="Delete" className="pointer-events-auto rounded bg-black/45 px-1.5 py-0.5 text-[0.65rem] text-white hover:bg-[#c0392b]">✕</button>
+                  <button type="button" onClick={() => remove(a.id)} title="Delete" className="pointer-events-auto rounded bg-black/45 px-1.5 py-0.5 text-[0.65rem] text-white hover:bg-[var(--color-blush-deep)]">✕</button>
                 </div>
               </div>
               {!compact && (
@@ -148,7 +148,7 @@ export function MediaField({ value, onChange, label }: { value: string; onChange
           <input className="w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-porcelain)] px-3 py-2 text-sm outline-none focus:border-[var(--color-gold)] focus-visible:ring-2 focus-visible:ring-[var(--color-gold)]" value={value} placeholder="https://… or choose from library" aria-label={label || 'Image URL'} onChange={(e) => onChange(e.target.value)} />
         </div>
         <button type="button" onClick={() => setOpen(true)} className="shrink-0 rounded-full border border-[var(--color-line)] px-4 py-2 text-sm hover:border-[var(--color-gold)] hover:text-[var(--color-gold-deep)]">Library</button>
-        {value && <button type="button" onClick={() => onChange('')} className="shrink-0 text-sm text-[var(--color-stone)] hover:text-[#c0392b]">Clear</button>}
+        {value && <button type="button" onClick={() => onChange('')} className="shrink-0 text-sm text-[var(--color-stone)] hover:text-[var(--color-blush-deep)]">Clear</button>}
       </div>
 
       {open && (
