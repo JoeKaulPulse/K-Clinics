@@ -3,7 +3,7 @@ import { HeroSlider } from '@/components/home/HeroSlider';
 import { GetMyPlanBand } from '@/components/home/GetMyPlanBand';
 import { Testimonials } from '@/components/home/Testimonials';
 import { LatestNews } from '@/components/home/LatestNews';
-import { PinnedExperienceLazy } from '@/components/home/PinnedExperienceLazy';
+import { PinnedExperience } from '@/components/home/PinnedExperience';
 import { HorizontalGallery } from '@/components/home/HorizontalGallery';
 import { TrustStrip } from '@/components/home/TrustStrip';
 import { Reveal, Stagger, StaggerItem } from '@/components/motion/Reveal';
@@ -198,7 +198,7 @@ export default async function HomePage() {
       <TrustStrip />
 
       {/* The experience — pinned scrollytelling */}
-      <PinnedExperienceLazy />
+      <PinnedExperience />
 
       {/* Packages teaser */}
       <section className="section container-lux">

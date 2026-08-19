@@ -260,17 +260,25 @@ export default async function AdminOverview() {
     { show: canBuild && buildBlocked > 0, label: 'Blocked build items', value: buildBlocked, href: '/admin/build', tone: 'amber' },
   ].filter((x) => x.show);
 
+  // BLD-1391: --color-gold-deep is only rated AA on *plain* porcelain (4.54:1);
+  // laying a gold tint behind it drops it to 3.4–4.0:1 on the admin's bone
+  // background, under the 4.5:1 needed for this small badge text. The amber
+  // tones therefore keep the gold tint + gold-deep border as the warning cue but
+  // take --color-ink for the label itself (9.9–11.4:1 in both themes), matching
+  // how the `blush` tone below already pairs a tint with ink text. The blush
+  // tones clear AA on their own (4.9–5.3:1 light, 5.4–5.8:1 dark) and keep
+  // --color-blush-deep.
   const toneCls: Record<string, string> = {
     red: 'border-[var(--color-blush-deep)]/40 bg-[var(--color-blush)]/15 text-[var(--color-blush-deep)]',
-    amber: 'border-[var(--color-gold-deep)]/40 bg-[var(--color-gold)]/15 text-[var(--color-gold-deep)]',
+    amber: 'border-[var(--color-gold-deep)]/40 bg-[var(--color-gold)]/15 text-[var(--color-ink)]',
     blush: 'border-[var(--color-blush)]/40 bg-[var(--color-blush)]/10 text-[var(--color-ink)]',
     ink: 'border-[var(--color-line)] bg-[var(--color-porcelain)] text-[var(--color-ink)]',
   };
 
   const bookingStatusCls: Record<string, string> = {
     CONFIRMED: 'bg-[color-mix(in_oklab,var(--color-jade)_12%,transparent)] text-[var(--color-jade)]',
-    PENDING: 'bg-[var(--color-gold)]/15 text-[var(--color-gold-deep)]',
-    REQUESTED: 'bg-[var(--color-gold)]/25 text-[var(--color-gold-deep)]',
+    PENDING: 'bg-[var(--color-gold)]/15 text-[var(--color-ink)]',
+    REQUESTED: 'bg-[var(--color-gold)]/25 text-[var(--color-ink)]',
     COMPLETED: 'bg-[var(--color-bone)] text-[var(--color-stone)]',
     CANCELLED: 'bg-[var(--color-blush)]/15 text-[var(--color-blush-deep)]',
     NO_SHOW: 'bg-[var(--color-bone)] text-[var(--color-stone)]',
