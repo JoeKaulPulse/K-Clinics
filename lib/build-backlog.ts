@@ -4383,6 +4383,17 @@ export const BUILD_BACKLOG: BacklogItem[] = [
       'Verified: npx tsc --noEmit and npm run build pass clean.',
     ],
   },
+  {
+    title: 'Booking signup validation errors now shown inline per field; no-show fee waiver refunds redeemed loyalty points (BLD-1436, BLD-1443)',
+    type: 'TASK', urgency: 'P1', status: 'SHIPPED', assignee: 'claude',
+    value: 8, effort: 3,
+    detail: 'BLD-1436: AccountStep\'s signup() in components/booking/BookingFlow.tsx validated first name, last name, email, phone, password length and consent, but any failure fell through to one generic "please complete all required fields" banner at the bottom of the step — only date of birth had its own inline error next to the field. BLD-1443: lib/booking-actions.ts\'s applyNoShowFee() returned on its waiveFee/feeFailed/requiresAction branches with no call to refundBookingPoints(), unlike the sibling cancelBooking() in the same file, so a client who redeemed loyalty points as a discount and then had a no-show fee waived by staff kept the points spent.',
+    notes: [
+      'BLD-1436: signup() now builds a per-field errors record (Record<string, string>, keyed firstName/lastName/email/phone/dob/password/consent) instead of short-circuiting to setError() on the first failing check. Each of the six fields\' inputs gained aria-invalid plus its own inline message rendered directly beneath it, same styling as the existing date-of-birth error (text-xs text-[var(--color-blush-deep)]). The date-of-birth field keeps its own live-computed dobMsg, now falling back to the submitted errors.dob so an empty date of birth still surfaces a message on submit (previously only shown via the generic banner). All six validation rules and their messages are unchanged; only the generic banner is now reserved for a true network/API failure on submit, not client-side field validation.',
+      'BLD-1443: applyNoShowFee()\'s waiveFee, requiresAction and feeFailed branches each now call the same `const { refundBookingPoints } = await import(\'@/lib/client-loyalty\'); await refundBookingPoints(booking.id);` pattern cancelBooking() uses, wrapped in the same try/catch-and-log-and-continue style (non-fatal — a refund failure never blocks the no-show fee outcome from being recorded). The packageBookingId, pricePence<=0 and within-24h mis-click-guard branches are unchanged: none of them represent a fee that was genuinely due but not taken.',
+      'Verified: npx tsc --noEmit and npm run build pass clean.',
+    ],
+  },
 ];
 
 // A content hash over every item's title + status + PR, so ANY change (a new

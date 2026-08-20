@@ -666,17 +666,30 @@ function AccountStep({ onAuthed, setError }: { onAuthed: (i: { firstName: string
   const [mode, setMode] = useState<'signup' | 'login'>('signup');
   const [f, setF] = useState({ firstName: '', lastName: '', email: '', phone: '', dob: '', password: '', gender: '', marketingOptIn: false, sms: false, consent: false, company: '' });
   const [busy, setBusy] = useState(false);
+  // BLD-1436: per-field signup validation errors, shown inline next to the
+  // field that failed rather than as one generic banner. Keyed by field name;
+  // dob keeps its own live-computed pattern below (dobMsg) and is folded in
+  // here only as a fallback for the case dobMsg doesn't cover (empty dob —
+  // dobMsg only evaluates once the field has a value).
+  const [errors, setErrors] = useState<Record<string, string>>({});
   // Today's date (browser-local), used as the DOB field's max and to keep the
   // inline age check in sync with it.
   const maxDob = useMemo(() => new Date().toLocaleDateString('en-CA'), []);
-  const dobMsg = f.dob ? dobError(f.dob) : null;
+  const dobMsg = (f.dob ? dobError(f.dob) : null) || errors.dob || null;
 
   async function signup() {
     const digits = (f.phone.match(/\d/g) || []).length;
     const dobErr = dobError(f.dob);
-    if (!f.firstName || !f.lastName.trim() || !/\S+@\S+\.\S+/.test(f.email) || digits < 7 || dobErr || f.password.length < 8 || !f.consent) {
-      setError(dobErr || 'Please complete all required fields (surname, a valid mobile, date of birth, password 8+) and accept the terms.'); return;
-    }
+    const fieldErrors: Record<string, string> = {};
+    if (!f.firstName) fieldErrors.firstName = 'First name is required.';
+    if (!f.lastName.trim()) fieldErrors.lastName = 'Last name is required.';
+    if (!/\S+@\S+\.\S+/.test(f.email)) fieldErrors.email = 'Enter a valid email address.';
+    if (digits < 7) fieldErrors.phone = 'Enter a valid mobile number.';
+    if (dobErr) fieldErrors.dob = dobErr;
+    if (f.password.length < 8) fieldErrors.password = 'Password must be at least 8 characters.';
+    if (!f.consent) fieldErrors.consent = 'Please accept the booking terms to continue.';
+    if (Object.keys(fieldErrors).length > 0) { setErrors(fieldErrors); return; }
+    setErrors({});
     setBusy(true); setError('');
     try {
       const res = await fetch('/api/account/signup', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ firstName: f.firstName, lastName: f.lastName, email: f.email, phone: f.phone, dob: f.dob, password: f.password, gender: f.gender || undefined, marketingOptIn: f.marketingOptIn, consent: f.consent, locale: 'en', company: f.company }) });
@@ -737,12 +750,12 @@ function AccountStep({ onAuthed, setError }: { onAuthed: (i: { firstName: string
 
       {mode === 'signup' ? (
         <div className="mt-6 grid gap-4 sm:grid-cols-2">
-          <div><label htmlFor="bf-firstName" className={label}>First name *</label><input id="bf-firstName" autoComplete="given-name" className={field} value={f.firstName} onChange={(e) => setF({ ...f, firstName: e.target.value })} /></div>
-          <div><label htmlFor="bf-lastName" className={label}>Last name *</label><input id="bf-lastName" autoComplete="family-name" className={field} value={f.lastName} onChange={(e) => setF({ ...f, lastName: e.target.value })} /></div>
-          <div className="sm:col-span-2"><label htmlFor="bf-email" className={label}>Email *</label><input id="bf-email" type="email" autoComplete="email" className={field} value={f.email} onChange={(e) => setF({ ...f, email: e.target.value })} /></div>
-          <div><label htmlFor="bf-phone" className={label}>Mobile *</label><input id="bf-phone" type="tel" autoComplete="tel" className={field} value={f.phone} onChange={(e) => setF({ ...f, phone: e.target.value })} /></div>
+          <div><label htmlFor="bf-firstName" className={label}>First name *</label><input id="bf-firstName" autoComplete="given-name" aria-invalid={!!errors.firstName} className={field} value={f.firstName} onChange={(e) => setF({ ...f, firstName: e.target.value })} />{errors.firstName && <p className="mt-1.5 text-xs text-[var(--color-blush-deep)]">{errors.firstName}</p>}</div>
+          <div><label htmlFor="bf-lastName" className={label}>Last name *</label><input id="bf-lastName" autoComplete="family-name" aria-invalid={!!errors.lastName} className={field} value={f.lastName} onChange={(e) => setF({ ...f, lastName: e.target.value })} />{errors.lastName && <p className="mt-1.5 text-xs text-[var(--color-blush-deep)]">{errors.lastName}</p>}</div>
+          <div className="sm:col-span-2"><label htmlFor="bf-email" className={label}>Email *</label><input id="bf-email" type="email" autoComplete="email" aria-invalid={!!errors.email} className={field} value={f.email} onChange={(e) => setF({ ...f, email: e.target.value })} />{errors.email && <p className="mt-1.5 text-xs text-[var(--color-blush-deep)]">{errors.email}</p>}</div>
+          <div><label htmlFor="bf-phone" className={label}>Mobile *</label><input id="bf-phone" type="tel" autoComplete="tel" aria-invalid={!!errors.phone} className={field} value={f.phone} onChange={(e) => setF({ ...f, phone: e.target.value })} />{errors.phone && <p className="mt-1.5 text-xs text-[var(--color-blush-deep)]">{errors.phone}</p>}</div>
           <div><label htmlFor="bf-dob" className={label}>Date of birth *</label><input id="bf-dob" type="date" autoComplete="bday" max={maxDob} aria-invalid={!!dobMsg} className={field} value={f.dob} onChange={(e) => setF({ ...f, dob: e.target.value })} />{dobMsg && <p className="mt-1.5 text-xs text-[var(--color-blush-deep)]">{dobMsg}</p>}</div>
-          <div className="sm:col-span-2"><label htmlFor="bf-password" className={label}>Password (8+) <span className="font-normal text-[var(--color-stone)]">— optional; or continue as a guest below</span></label><input id="bf-password" type="password" autoComplete="new-password" className={field} value={f.password} onChange={(e) => setF({ ...f, password: e.target.value })} /></div>
+          <div className="sm:col-span-2"><label htmlFor="bf-password" className={label}>Password (8+) <span className="font-normal text-[var(--color-stone)]">— optional; or continue as a guest below</span></label><input id="bf-password" type="password" autoComplete="new-password" aria-invalid={!!errors.password} className={field} value={f.password} onChange={(e) => setF({ ...f, password: e.target.value })} />{errors.password && <p className="mt-1.5 text-xs text-[var(--color-blush-deep)]">{errors.password}</p>}</div>
           <div className="sm:col-span-2"><label htmlFor="bf-gender" className={label}>Gender (optional — tailors recommendations)</label>
             <select id="bf-gender" className={field} value={f.gender} onChange={(e) => setF({ ...f, gender: e.target.value })}>
               <option value="">Prefer not to say</option>
@@ -755,7 +768,10 @@ function AccountStep({ onAuthed, setError }: { onAuthed: (i: { firstName: string
           <label className="flex items-start gap-3 text-sm text-[var(--color-stone)] sm:col-span-2"><input type="checkbox" checked={f.marketingOptIn} onChange={(e) => setF({ ...f, marketingOptIn: e.target.checked })} className="mt-1 h-4 w-4 accent-[var(--color-gold)]" />Keep me updated with offers and skincare tips. We may also use your contact details, in hashed form, to show you our offers on social media — see our Privacy Policy.</label>
           {/* BLD-1067: the full consequence chain is named at the tick, and the
               acceptance is now recorded server-side (when/where/version). */}
-          <label className="flex items-start gap-3 text-sm text-[var(--color-stone)] sm:col-span-2"><input type="checkbox" checked={f.consent} onChange={(e) => setF({ ...f, consent: e.target.checked })} className="mt-1 h-4 w-4 accent-[var(--color-gold)]" />I agree to the booking terms: my card is saved but not charged now; I’ll be charged when the service is delivered; cancellations within 24 hours and missed appointments are charged in full; an unpaid fee must be settled before I can book again. *</label>
+          <div className="sm:col-span-2">
+            <label className="flex items-start gap-3 text-sm text-[var(--color-stone)]"><input type="checkbox" checked={f.consent} onChange={(e) => setF({ ...f, consent: e.target.checked })} aria-invalid={!!errors.consent} className="mt-1 h-4 w-4 accent-[var(--color-gold)]" />I agree to the booking terms: my card is saved but not charged now; I’ll be charged when the service is delivered; cancellations within 24 hours and missed appointments are charged in full; an unpaid fee must be settled before I can book again. *</label>
+            {errors.consent && <p className="mt-1.5 text-xs text-[var(--color-blush-deep)]">{errors.consent}</p>}
+          </div>
         </div>
       ) : (
         <div className="mt-6 grid gap-4">
