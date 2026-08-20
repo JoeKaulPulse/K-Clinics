@@ -53,9 +53,13 @@ export default async function ArticlePage({ params }: { params: Promise<{ slug: 
           {a.excerpt && <p className="mt-5 text-lede leading-relaxed text-[var(--color-stone)]">{a.excerpt}</p>}
           <div className="mt-7 flex items-center gap-3 border-t border-[var(--color-line)] pt-6">
             {/* BLD-1445: real K monogram (components/brand/marks.tsx), not a typed
-                letter dressed up to look like the logo. */}
+                letter dressed up to look like the logo. The mark is sized by an
+                explicitly-dimensioned wrapper (it renders at width/height 100%),
+                which is how every other KMark call site in the app does it —
+                relying on `w-auto` to derive the width from the viewBox is the
+                one sizing route with known browser inconsistencies. */}
             <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-[var(--color-ink)] text-[var(--color-gold-soft)]">
-              <KMark className="h-6 w-auto" />
+              <span className="block h-6 w-[0.85rem]"><KMark /></span>
             </span>
             <div className="text-sm">
               <p className="font-medium text-[var(--color-ink)]">The KClinics team</p>

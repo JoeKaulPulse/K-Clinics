@@ -50,18 +50,26 @@ const securityHeaders = [
   { key: 'X-DNS-Prefetch-Control', value: 'on' },
 ];
 
-// BLD-1444: static files served straight out of public/ (treatment photos,
-// brand marks, icons, the hero before/after pair) get no explicit Cache-Control
-// today, unlike hashed _next/static output which Next already caches
-// aggressively. These paths are content-hashed-in-filename or effectively
-// immutable in practice, so cache them for a year.
+// BLD-1444: image files served straight out of public/ (treatment photos, brand
+// marks, icons, the hero before/after pair) get no explicit Cache-Control today,
+// unlike hashed _next/static output which Next already caches aggressively.
+// A new photo effectively always arrives under a new filename, so a year is safe;
+// replacing one IN PLACE under the same name would be served stale to returning
+// visitors, so re-upload under a new name rather than overwriting.
 const publicAssetHeaders = [{ key: 'Cache-Control', value: 'public, max-age=31536000, immutable' }];
+// `headers()` matches the request PATH, not the filesystem — it cannot tell a
+// file in public/ from a page route. /treatments is a real marketing page
+// (app/(marketing)/treatments/page.tsx) and `/treatments/:path*` matches it, so
+// an unscoped prefix rule would pin the HTML for that page in every returning
+// visitor's browser for a year. Every rule below therefore requires an image
+// extension, which no page route can have.
+const IMG_EXT = '(png|jpg|jpeg|webp|avif|svg|gif|ico)';
 
 const headers = async () => [
   { source: '/(.*)', headers: securityHeaders },
-  { source: '/treatments/:path*', headers: publicAssetHeaders },
-  { source: '/brand/:path*', headers: publicAssetHeaders },
-  { source: '/hero/:path*', headers: publicAssetHeaders },
+  { source: `/treatments/:path*.:ext${IMG_EXT}`, headers: publicAssetHeaders },
+  { source: `/brand/:path*.:ext${IMG_EXT}`, headers: publicAssetHeaders },
+  { source: `/hero/:path*.:ext${IMG_EXT}`, headers: publicAssetHeaders },
   { source: '/icon-192.png', headers: publicAssetHeaders },
   { source: '/icon-512.png', headers: publicAssetHeaders },
   { source: '/icon-maskable-512.png', headers: publicAssetHeaders },
