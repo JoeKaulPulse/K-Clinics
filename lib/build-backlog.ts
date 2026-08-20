@@ -4383,6 +4383,16 @@ export const BUILD_BACKLOG: BacklogItem[] = [
       'Verified: npx tsc --noEmit and npm run build pass clean.',
     ],
   },
+  {
+    title: 'Treatment pages show treatment-specific testimonial quotes alongside the star rating (BLD-1447)',
+    type: 'TASK', urgency: 'P2', status: 'SHIPPED', assignee: 'claude',
+    value: 7, effort: 3,
+    detail: 'lib/reviews-aggregate.ts already tags each internal ReviewCard with a treatment field and returns the full cards array from getReviewAggregate(), but components/treatment/TreatmentTemplate.tsx already destructured it into treatment-matched cards, only with a bug: when zero cards named the exact treatment (the common case for less-reviewed treatments), it fell back to rendering quotes for unrelated treatments under that treatment\'s rating — a customer\'s Botox review appearing on the Laser Hair Removal page, for example, which misrepresents what the quote is about.',
+    notes: [
+      'components/treatment/TreatmentTemplate.tsx: testimonialCards now filters aggregate.cards to card.treatment === t.title (exact match) and slices to the first 2, with no fallback to aggregate\'s general card pool — when nothing matches, testimonialCards is empty and the existing `{testimonialCards.length > 0 && ...}` guard renders nothing extra, leaving the star rating (rating.average/rating.count) as the only thing shown, exactly as before. Matching cards render as blockquote cards directly under the star-rating link, reusing the existing rounded-[var(--radius-md)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-5 card pattern already used elsewhere on the page (e.g. the pricing-status card), each showing a per-card Stars rating, the quote body and the author — no placeholder text, no fabricated content, only real cards returned by getReviewAggregate().',
+      'Verified: npx tsc --noEmit and npm run build pass clean.',
+    ],
+  },
 ];
 
 // A content hash over every item's title + status + PR, so ANY change (a new
