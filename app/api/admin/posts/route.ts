@@ -26,6 +26,12 @@ export async function POST(req: Request) {
     revalidatePath('/journal'); revalidatePath('/sitemap.xml');
     if (slug) revalidatePath(`/journal/${slug}`);
   };
+  // BLD-1424: reviews/staff/seo/academy all ping IndexNow on publish — the
+  // journal, the site's most frequently updated content type, was missed.
+  // Fire-and-forget, same pattern as the other admin routes.
+  const pingIndexNow = (slug: string) => {
+    import('@/lib/indexnow').then((m) => m.indexNow(['/journal', `/journal/${slug}`])).catch(() => {});
+  };
 
   if (body.op === 'delete') {
     if (!body.id) return NextResponse.json({ ok: false, error: 'No id.' }, { status: 400 });
@@ -69,10 +75,12 @@ export async function POST(req: Request) {
         data: { ...data, publishedAt: status === 'PUBLISHED' ? (existing?.publishedAt ?? new Date()) : null },
       });
       await revalidateJournal(post.slug);
+      if (status === 'PUBLISHED') pingIndexNow(post.slug);
       return NextResponse.json({ ok: true, id: post.id, slug: post.slug });
     }
     const post = await db.post.create({ data: { ...data, source: 'admin', publishedAt: status === 'PUBLISHED' ? new Date() : null } });
     await revalidateJournal(post.slug);
+    if (status === 'PUBLISHED') pingIndexNow(post.slug);
     return NextResponse.json({ ok: true, id: post.id, slug: post.slug });
   } catch (e) {
     const msg = (e as Error)?.message || '';

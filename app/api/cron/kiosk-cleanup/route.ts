@@ -78,6 +78,20 @@ export async function GET(req: Request) {
       mediaPurged = expired.length;
     }
 
+    // ── Pass 3: sweep sessions wedged in 'analyzing' ─────────────────────────
+    // BLD-1418: the AI analysis runs via after() inside a 60s function; if that
+    // background call is platform-killed rather than throwing, lib/kiosk.ts's
+    // own catch (which resets stage to 'failed') never runs and the row is
+    // stuck claimed forever. The analyze route itself now allows re-claiming a
+    // session stuck past 90s, so most visitors self-recover on retry — this is
+    // the backstop for ones nobody retries, so they don't sit "analyzing"
+    // indefinitely in the DB.
+    const stuckCutoff = new Date(Date.now() - 10 * 60 * 1000);
+    const { count: stuckSwept } = await db.kioskSession.updateMany({
+      where: { stage: 'analyzing', analyzingSince: { lt: stuckCutoff } },
+      data: { status: 'ANALYSIS_FAILED', stage: 'failed' },
+    });
+
     // BLD-1272: record the run so a silently-unfiring GDPR purge is caught by
     // the same staleness check as the other crons (getCronStaleness in
     // lib/api-health.ts), rather than going undetected — same pattern as
@@ -86,7 +100,7 @@ export async function GET(req: Request) {
       await db.setting.upsert({ where: { key: 'cron_kiosk_cleanup_last' }, update: { value: new Date().toISOString() }, create: { key: 'cron_kiosk_cleanup_last', value: new Date().toISOString() } });
     } catch { /* non-fatal */ }
 
-    return NextResponse.json({ ok: true, deleted, mediaPurged });
+    return NextResponse.json({ ok: true, deleted, mediaPurged, stuckSwept });
   } catch (e) {
     const message = (e as Error)?.message || 'unknown error';
     console.error('[cron/kiosk-cleanup] failed:', e);

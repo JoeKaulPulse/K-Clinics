@@ -52,9 +52,21 @@ export async function POST(req: Request, { params }: { params: Promise<{ token: 
   // 'analyzing' schedules; the loser gets the same success shape and follows
   // progress over SSE. A failed run resets stage to 'failed' (lib/kiosk.ts),
   // so retries after a genuine failure still pass this claim.
+  // BLD-1418: if the background after() call itself is platform-killed before
+  // it can reset stage (rather than throwing, which lib/kiosk.ts already
+  // catches), the row wedges in 'analyzing' forever and this claim never
+  // re-passes. maxDuration is 60s, so a session still claimed well past that
+  // is dead, not slow — allow re-claiming it rather than trusting stage alone.
+  const STUCK_MS = 90_000;
   const claimed = await db.kioskSession.updateMany({
-    where: { id: session.id, stage: { not: 'analyzing' } },
-    data: { stage: 'analyzing' },
+    where: {
+      id: session.id,
+      OR: [
+        { stage: { not: 'analyzing' } },
+        { stage: 'analyzing', analyzingSince: { lt: new Date(Date.now() - STUCK_MS) } },
+      ],
+    },
+    data: { stage: 'analyzing', analyzingSince: new Date() },
   });
   if (claimed.count === 0) return NextResponse.json({ ok: true, already: true });
 

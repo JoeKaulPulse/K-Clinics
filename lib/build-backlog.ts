@@ -4371,6 +4371,17 @@ export const BUILD_BACKLOG: BacklogItem[] = [
       'Verified: npx tsc --noEmit and npm run build pass clean.',
     ],
   },
+  {
+    title: 'Kiosk analysis sessions no longer wedge in analyzing forever; IndexNow wired to journal publishing (BLD-1418, BLD-1424)',
+    type: 'ERROR', urgency: 'P2', status: 'IN_REVIEW', assignee: 'claude',
+    value: 6, effort: 3,
+    detail: 'BLD-1418: app/api/kiosk/sessions/[token]/analyze/route.ts claims a session by flipping stage to analyzing then runs the AI call via after() inside a 60s function; if that background call is platform-killed rather than throwing, lib/kiosk.ts\'s own catch (which resets stage to failed) never runs, so the row is stuck claimed forever and every retry no-ops against the stale claim. BLD-1424: lib/indexnow.ts\'s indexNow() is called from the reviews, staff, seo and academy admin routes but never from app/api/admin/posts/route.ts, the journal\'s admin route and the site\'s most frequently updated content type.',
+    notes: [
+      'BLD-1418: added KioskSession.analyzingSince (nullable DateTime, additive schema change) stamped whenever a session is claimed into analyzing. The claim query in the analyze route now also accepts a session already in stage analyzing if analyzingSince is older than 90s (well past the 60s maxDuration, so a session still claimed by then is dead, not slow) — a client retry after a wedge self-recovers immediately. app/api/cron/kiosk-cleanup/route.ts (existing daily GDPR sweep) gained a third pass that flips any session still stuck in analyzing after 10 minutes to status ANALYSIS_FAILED / stage failed, matching lib/kiosk.ts\'s own failure shape exactly — the backstop for sessions nobody retries.',
+      'BLD-1424: app/api/admin/posts/route.ts now fires indexNow([\'/journal\', `/journal/${slug}`]) on create and update, only when the post\'s status is PUBLISHED, using the same fire-and-forget dynamic-import pattern as the staff/academy routes.',
+      'Verified: npx tsc --noEmit and npm run build pass clean.',
+    ],
+  },
 ];
 
 // A content hash over every item's title + status + PR, so ANY change (a new

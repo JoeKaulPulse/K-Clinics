@@ -4269,13 +4269,17 @@ model KioskSession {
   expiresAt DateTime
 
   // ── Kiosk v2 live session (phone ↔ storefront display) ──
-  stage         String    @default("idle") // live stage machine (lib/kiosk-live.ts)
-  poseIdx       Int       @default(0) // current pose in the capture sequence
-  photoUrls     String[]  @default([]) // multi-capture (max 4)
-  liveFrame     String?   @db.Text // latest mirror frame as data-URL jpeg ≤120KB
-  liveFrameAt   DateTime?
-  ageDeclaredAt DateTime? // when the explicit 18+ tap happened
-  updatedAt     DateTime  @default(now()) @updatedAt
+  stage          String    @default("idle") // live stage machine (lib/kiosk-live.ts)
+  poseIdx        Int       @default(0) // current pose in the capture sequence
+  photoUrls      String[]  @default([]) // multi-capture (max 4)
+  liveFrame      String?   @db.Text // latest mirror frame as data-URL jpeg ≤120KB
+  liveFrameAt    DateTime?
+  ageDeclaredAt  DateTime? // when the explicit 18+ tap happened
+  // BLD-1418: when the session was claimed into 'analyzing' — lets a re-POST
+  // re-claim a session whose background job was platform-killed before it
+  // could reset stage itself, and lets the cron sweep find abandoned ones.
+  analyzingSince DateTime?
+  updatedAt      DateTime  @default(now()) @updatedAt
 
   // BLD-137 slice 2: per-location attribution (plain scope tag, matches FacilityDoc/ContractorVisit pattern)
   locationId String? // optional Location.id — set from ?location= on /kiosk/display
