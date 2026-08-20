@@ -4383,6 +4383,18 @@ export const BUILD_BACKLOG: BacklogItem[] = [
       'Verified: npx tsc --noEmit and npm run build pass clean.',
     ],
   },
+  {
+    title: 'Homepage FAQ structured data matched to visible accordion; journal byline uses the real K mark; long-lived cache headers on public assets (BLD-1442, BLD-1445, BLD-1444)',
+    type: 'TASK', urgency: 'P2', status: 'SHIPPED', assignee: 'claude',
+    value: 7, effort: 2,
+    detail: 'Three small audit fixes batched. BLD-1442: the homepage emitted faqLd(allGeneralFaqs) (the full flattened FAQ list) as FAQPage JSON-LD, but the visible accordion two lines below only rendered the first 6 — Google can disable the FAQPage rich result when structured data doesn\'t match visible content. BLD-1445: the journal article byline rendered a typed "K" in the display font inside a circular avatar next to "The KClinics team" — the exact "typed name dressed up to look like the logo" pattern docs/BRAND_GUIDELINES.md forbids. BLD-1444: next.config.mjs\'s headers() only set security headers on the /(.*) catch-all — treatment photos, brand marks and other public/ assets got no explicit long-lived Cache-Control, unlike hashed _next/static output which Next already caches aggressively.',
+    notes: [
+      'BLD-1442: app/(marketing)/page.tsx now slices allGeneralFaqs.slice(0, 6) once into a local homeFaqs and passes that same array to both faqLd() (JSON-LD) and FaqAccordion (visible render), so the two can\'t drift apart again.',
+      'BLD-1445: app/(marketing)/journal/[slug]/page.tsx now imports KMark from components/brand/marks.tsx and renders it inside the existing h-10 w-10 circular avatar span (KMark className="h-6 w-auto", preserving the SVG\'s own aspect ratio) instead of a typed "K" <span> in the display font.',
+      'BLD-1444: next.config.mjs\'s headers() gained additional entries (alongside the untouched /(.*) security-headers rule) matching the real top-level asset paths under public/ — /treatments/:path*, /brand/:path*, /hero/:path*, and the four root icon files — each set to Cache-Control: public, max-age=31536000, immutable.',
+      'Verified: npx tsc --noEmit and npm run build pass clean.',
+    ],
+  },
 ];
 
 // A content hash over every item's title + status + PR, so ANY change (a new

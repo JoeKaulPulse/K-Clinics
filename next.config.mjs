@@ -50,7 +50,23 @@ const securityHeaders = [
   { key: 'X-DNS-Prefetch-Control', value: 'on' },
 ];
 
-const headers = async () => [{ source: '/(.*)', headers: securityHeaders }];
+// BLD-1444: static files served straight out of public/ (treatment photos,
+// brand marks, icons, the hero before/after pair) get no explicit Cache-Control
+// today, unlike hashed _next/static output which Next already caches
+// aggressively. These paths are content-hashed-in-filename or effectively
+// immutable in practice, so cache them for a year.
+const publicAssetHeaders = [{ key: 'Cache-Control', value: 'public, max-age=31536000, immutable' }];
+
+const headers = async () => [
+  { source: '/(.*)', headers: securityHeaders },
+  { source: '/treatments/:path*', headers: publicAssetHeaders },
+  { source: '/brand/:path*', headers: publicAssetHeaders },
+  { source: '/hero/:path*', headers: publicAssetHeaders },
+  { source: '/icon-192.png', headers: publicAssetHeaders },
+  { source: '/icon-512.png', headers: publicAssetHeaders },
+  { source: '/icon-maskable-512.png', headers: publicAssetHeaders },
+  { source: '/icon.svg', headers: publicAssetHeaders },
+];
 
 const redirects = async () => [
   // Preserve SEO equity from the legacy site's URL structure.
