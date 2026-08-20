@@ -4347,6 +4347,18 @@ export const BUILD_BACKLOG: BacklogItem[] = [
     ],
   },
   {
+    title: 'Confirmation guard on destructive medical-record clears; audit trail on gift-voucher redeem/cancel (BLD-1414, BLD-1416)',
+    type: 'ERROR', urgency: 'P2', status: 'IN_REVIEW', assignee: 'claude',
+    value: 5, effort: 2,
+    detail: 'BLD-1414: MedicalFlagEditor and PatchTestEditor wiped a client medical-flag/patch-test record on a bare onClick with no confirmation, unlike every other destructive admin action in the codebase. BLD-1416: the gift-vouchers admin route redeemed and cancelled voucher balances with no logAudit call, unlike every other money-mutating admin handler.',
+    notes: [
+      'BLD-1414: components/admin/MedicalFlagEditor.tsx and components/admin/PatchTestEditor.tsx each gain a clear() wrapper that runs window.confirm(...) before calling save(\'\')/save(null), matching the existing guard style (e.g. TwoFactorSetup.tsx\'s disable(), CredentialsManager.tsx\'s clear()) — the Clear button now calls the guarded wrapper instead of save directly. No other behaviour changed.',
+      'BLD-1416: app/api/admin/gift-vouchers/route.ts\'s redeem and cancel branches now call logAudit with action REWARD_REDEEMED, matching the established convention for every other gift-voucher balance change in the codebase (app/api/admin/bookings/session/route.ts, lib/shop.ts, lib/booking-actions.ts, the Stripe webhook). Actor/actorRole come from the staff session, summary embeds the voucher code, amount and an optional staff-supplied reason, and meta carries voucherCode/amountPence/reason for the audit trail.',
+      'BLD-1416 follow-up (review fix): the redeem audit first recorded the amount the staff member typed, not the amount actually deducted — redeemVoucher() caps the deduction at the live balance, so a £100 entry against a £30 card redeemed £30 while the audit row claimed £100. redeemVoucher() now returns redeemedPence (the capped figure) and the route audits that; the requested figure is kept in meta.requestedPence only when the two differ.',
+      'Verified: npx tsc --noEmit and npm run build pass clean.',
+    ],
+  },
+  {
     title: 'Clinical-view audit gap closed at 3 more decrypt sites; chat transcripts gated on clinical permission; PII scrubbed from 3 more error logs; Google Workspace admin split into its own OWNER-only permission (BLD-1419, BLD-1415, BLD-1417, BLD-1413)',
     type: 'ERROR', urgency: 'P2', status: 'IN_REVIEW', assignee: 'claude',
     value: 7, effort: 3,
