@@ -272,9 +272,10 @@ export async function getOohCampaignId(): Promise<string> {
 export type ClaimResult = { ok: true; code: string; pct: number; days: number } | { ok: false; error: string };
 
 /** Issue the share-to-claim discount: requires the session to have been SHARED,
- *  creates/links a marketing-opted-in client, mints a single-use campaign code,
- *  emails it, and records it on the result. Idempotent per result. */
-export async function claimKioskDiscount(resultId: string, emailRaw: string, firstNameRaw: string): Promise<ClaimResult> {
+ *  creates/links a client (marketing opt-in per the visitor's explicit tick —
+ *  BLD-1420), mints a single-use campaign code, emails it, and records it on
+ *  the result. Idempotent per result. */
+export async function claimKioskDiscount(resultId: string, emailRaw: string, firstNameRaw: string, marketingOptIn = false): Promise<ClaimResult> {
   const email = (emailRaw || '').trim().toLowerCase();
   const firstName = (firstNameRaw || '').trim().slice(0, 60);
   if (!/\S+@\S+\.\S+/.test(email)) return { ok: false, error: 'Enter a valid email.' };
@@ -294,19 +295,20 @@ export async function claimKioskDiscount(resultId: string, emailRaw: string, fir
   const days = Math.max(1, await getConfigNumber('kiosk_discount_days'));
   const expiresAt = new Date(Date.now() + days * 24 * 60 * 60 * 1000);
 
-  // Find or create a marketing-opted-in client (kiosk is an explicit opt-in).
-  // The kiosk's explicit 18+ tap carries over to the client record so later
-  // bookings inherit the declaration (attribution per KIOSK_V2_CONTRACT.md).
+  // Find or create the client. The kiosk's explicit 18+ tap carries over to the
+  // client record so later bookings inherit the declaration (attribution per
+  // KIOSK_V2_CONTRACT.md).
   const ageDeclaredAt = result.session.ageDeclaredAt;
   // BLD-892: the claim email is typed at the kiosk and unverified, so it must
   // NEVER flip an EXISTING client's marketing preference — someone entering
   // another person's address (or one that previously opted out) can't fabricate
-  // consent for them. A brand-new client is created WITH the kiosk opt-in (the
-  // visitor tapped the explicit consent + 18+ gate on the kiosk); an existing
-  // record keeps its own preference and we refresh consent evidence (BLD-128,
-  // GDPR Art. 7) only when it is already opted in. The age declaration carries
-  // over to the record either way. The upsert stays atomic against a concurrent
-  // create.
+  // consent for them. A brand-new client is created with WHATEVER the visitor's
+  // own explicit checkbox said (BLD-1420: off by default, same pattern as
+  // EnquiryForm/GiftVoucherFlow — no more passive-text implied opt-in); an
+  // existing record keeps its own preference and we refresh consent evidence
+  // (BLD-128, GDPR Art. 7) only when it is already opted in. The age
+  // declaration carries over to the record either way. The upsert stays atomic
+  // against a concurrent create.
   const existingClient = await db.client.findUnique({ where: { email }, select: { marketingOptIn: true } });
   const kioskUpdate: Record<string, unknown> = {};
   if (existingClient?.marketingOptIn) Object.assign(kioskUpdate, marketingConsentFields('kiosk'));
@@ -315,7 +317,7 @@ export async function claimKioskDiscount(resultId: string, emailRaw: string, fir
     await db.client.upsert({
       where: { email },
       update: kioskUpdate,
-      create: { email, firstName, marketingOptIn: true, source: 'kiosk', ...marketingConsentFields('kiosk'), ...(ageDeclaredAt ? { ageDeclaredAt } : {}) },
+      create: { email, firstName, marketingOptIn, source: 'kiosk', ...(marketingOptIn ? marketingConsentFields('kiosk') : {}), ...(ageDeclaredAt ? { ageDeclaredAt } : {}) },
     });
   } catch (e) { console.error('[kiosk] client upsert failed (continuing):', (e as Error)?.message); }
 

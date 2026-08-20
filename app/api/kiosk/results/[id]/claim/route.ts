@@ -14,6 +14,6 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   }
   const { id } = await params;
   const body = await req.json().catch(() => ({}));
-  const r = await claimKioskDiscount(id, String(body?.email || ''), String(body?.firstName || ''));
+  const r = await claimKioskDiscount(id, String(body?.email || ''), String(body?.firstName || ''), Boolean(body?.marketingOptIn));
   return NextResponse.json(r, { status: r.ok ? 200 : 400 });
 }

@@ -2,6 +2,10 @@
 
 import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/Button';
+// BLD-1421: reuse the fresh-booking flow's waitlist CTA instead of a dead end.
+// Imported from its own module, not from BookingFlow, so this page doesn't pull
+// the booking wizard and the Stripe SDK into its client bundle.
+import { WaitlistCTA } from '@/components/booking/WaitlistCTA';
 
 type B = {
   treatmentTitle: string;
@@ -13,6 +17,8 @@ type B = {
   within48h: boolean;
   cancelled: boolean;
   rescheduleCount: number;
+  clientFirstName: string;
+  clientEmail: string;
 };
 
 type Slot = { startISO: string; label: string };
@@ -210,7 +216,15 @@ export function ManageClient({ token, booking }: { token: string; booking: B }) 
                 </div>
               )}
               {!loadingSlots && rescheduleDate && slots.length === 0 && (
-                <p className="mt-3 text-sm text-[var(--color-stone)]">No availability on this date. Please try another day or call us.</p>
+                <div>
+                  <p className="mt-3 text-sm text-[var(--color-stone)]">No availability on this date. Please try another day or call us.</p>
+                  <WaitlistCTA
+                    treatmentSlug={booking.treatmentSlug}
+                    treatmentTitle={booking.treatmentTitle}
+                    date={rescheduleDate}
+                    client={{ firstName: booking.clientFirstName, email: booking.clientEmail }}
+                  />
+                </div>
               )}
               {selectedSlot && (
                 <Button onClick={submitReschedule} variant="gold" className="mt-5">

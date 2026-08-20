@@ -9,6 +9,10 @@ import Link from 'next/link';
 export function ClaimReward({ resultId, hasShared = false }: { resultId: string; hasShared?: boolean }) {
   const [email, setEmail] = useState('');
   const [firstName, setFirstName] = useState('');
+  // BLD-1420: explicit, off-by-default marketing tick — same pattern as
+  // EnquiryForm/GiftVoucherFlow/GroupBookingForm, replacing the old passive
+  // "by continuing you agree" text that implied consent without a checkbox.
+  const [marketingOptIn, setMarketingOptIn] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [done, setDone] = useState<{ code: string; pct: number; days: number } | null>(null);
@@ -19,7 +23,7 @@ export function ClaimReward({ resultId, hasShared = false }: { resultId: string;
     try {
       const r = await fetch(`/api/kiosk/results/${resultId}/claim`, {
         method: 'POST', headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ email, firstName }),
+        body: JSON.stringify({ email, firstName, marketingOptIn }),
       }).then((x) => x.json());
       if (r.ok) setDone({ code: r.code, pct: r.pct, days: r.days });
       else setError(r.error || 'Could not claim — please try again.');
@@ -62,12 +66,19 @@ export function ClaimReward({ resultId, hasShared = false }: { resultId: string;
         <input value={email} onChange={(e) => setEmail(e.target.value)} type="email" inputMode="email" placeholder="Email" autoComplete="email"
           className="w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-3 py-3 text-base outline-none focus:border-[var(--color-gold)] focus-visible:ring-2 focus-visible:ring-[var(--color-gold)]" />
       </div>
+      {/* BLD-1420: explicit, off-by-default opt-in — same wording/consent-stamping
+          pattern as EnquiryForm/GiftVoucherFlow (marketingConsentFields('kiosk')
+          in lib/kiosk.ts), instead of implying consent from passive text. */}
+      <label className="mt-4 flex items-start gap-3 text-left text-sm text-[var(--color-stone)]">
+        <input type="checkbox" checked={marketingOptIn} onChange={(e) => setMarketingOptIn(e.target.checked)} className="mt-1 h-4 w-4 accent-[var(--color-gold)]" />
+        Keep me updated with offers, events and skincare tips. Unsubscribe anytime.
+      </label>
       {error && <p role="alert" aria-live="assertive" className="mt-3 text-center text-sm text-[var(--color-blush-deep)]">{error}</p>}
       <button onClick={claim} disabled={busy || !email.trim() || !firstName.trim()}
         className="mt-4 w-full rounded-[var(--radius-md)] bg-[var(--color-gold)] px-4 py-4 text-base font-medium text-[var(--color-ink)] transition hover:opacity-90 disabled:opacity-50">
         {busy ? 'Claiming…' : 'Create account & claim →'}
       </button>
-      <p className="mt-2 text-center text-[0.7rem] text-[var(--color-stone)]">By continuing you agree to receive your reward and occasional offers. Unsubscribe anytime.</p>
+      <p className="mt-2 text-center text-[0.7rem] text-[var(--color-stone)]">Your reward code is issued either way. Single use, valid a limited number of days.</p>
     </div>
   );
 }
