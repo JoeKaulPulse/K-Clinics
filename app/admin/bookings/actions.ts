@@ -408,6 +408,11 @@ export async function cancelBookingAction(bookingId: string, opts: { reason?: st
   const session = await getSession();
   if (!session) return { ok: false, error: 'Unauthorised' };
   if (!sessionCan(session, 'bookings.manage')) return { ok: false, error: 'You don’t have permission to manage bookings.' };
+  // BLD-1437: waiving the cancellation fee is a financial concession, same as
+  // waiving a no-show fee above — it needs bookings.charge, not just bookings.manage.
+  if (opts.waiveFee && !sessionCan(session, 'bookings.charge')) {
+    return { ok: false, error: 'You don’t have permission to waive fees.' };
+  }
   const { cancelBooking } = await import('@/lib/booking-actions');
   const res = await cancelBooking(bookingId, { by: session.email, reason: opts.reason, waiveFee: opts.waiveFee });
   revalidatePath(`/admin/bookings/${bookingId}`);
