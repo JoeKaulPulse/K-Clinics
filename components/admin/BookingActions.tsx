@@ -247,7 +247,10 @@ export function BookingActions({
           )}
           <input value={reason} onChange={(e) => setReason(e.target.value)} placeholder="Reason (optional)" aria-label="Cancellation reason"
             className="mb-2 w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-porcelain)] px-3 py-2 text-sm outline-none focus:border-[var(--color-gold)] focus-visible:ring-2 focus-visible:ring-[var(--color-gold)]" />
-          {within24h && (
+          {/* BLD-1437: the waiver now needs the payment permission server-side,
+              the same as the "No-show — waive fee" button above. Hide the tick
+              from staff who can't use it rather than dead-ending them on an error. */}
+          {within24h && canCharge && (
             <label className="mb-3 flex items-center gap-2 text-sm text-[var(--color-stone)]">
               <input type="checkbox" checked={waive} onChange={(e) => setWaive(e.target.checked)} className="h-4 w-4 accent-[var(--color-gold)]" />
               Waive the late-cancellation fee (override)

@@ -411,7 +411,18 @@ export async function cancelBookingAction(bookingId: string, opts: { reason?: st
   // BLD-1437: waiving the cancellation fee is a financial concession, same as
   // waiving a no-show fee above — it needs bookings.charge, not just bookings.manage.
   if (opts.waiveFee && !sessionCan(session, 'bookings.charge')) {
-    return { ok: false, error: 'You don’t have permission to waive fees.' };
+    // Exception: declining a same-day REQUEST. That booking was never
+    // confirmed, holds no slot and has no card on file, so there is no fee to
+    // concede — and SameDayRequestActions must pass waiveFee, because a
+    // same-day request is by definition inside 24h and cancelling it without
+    // the waiver would bill the client in full for an appointment the clinic
+    // itself refused. Read the status server-side; the caller's flag alone is
+    // not trusted for this.
+    const { db } = await import('@/lib/db');
+    const b = await db.booking.findUnique({ where: { id: bookingId }, select: { status: true } });
+    if (b?.status !== 'REQUESTED') {
+      return { ok: false, error: 'You don’t have permission to waive fees.' };
+    }
   }
   const { cancelBooking } = await import('@/lib/booking-actions');
   const res = await cancelBooking(bookingId, { by: session.email, reason: opts.reason, waiveFee: opts.waiveFee });
