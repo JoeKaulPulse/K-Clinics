@@ -1,4 +1,4 @@
-import { NextResponse } from 'next/server';
+import { NextResponse, after } from 'next/server';
 import { crmEnabled } from '@/lib/crm';
 
 export const runtime = 'nodejs';
@@ -25,6 +25,18 @@ export async function POST(req: Request) {
     const { revalidatePath } = await import('next/cache');
     revalidatePath('/journal'); revalidatePath('/sitemap.xml');
     if (slug) revalidatePath(`/journal/${slug}`);
+  };
+  // BLD-1424: reviews/staff/seo/academy all ping IndexNow on publish — the
+  // journal, the site's most frequently updated content type, was missed.
+  // Fire-and-forget so the editor's save isn't held up by the ping, but inside
+  // after() rather than as a bare floating promise: the function can be frozen
+  // as soon as the response is sent, and a pending fetch dies with it (same
+  // reason the kiosk routes schedule their background work this way).
+  const pingIndexNow = (slug: string) => {
+    after(async () => {
+      const { indexNow } = await import('@/lib/indexnow');
+      await indexNow(['/journal', `/journal/${slug}`]);
+    });
   };
 
   if (body.op === 'delete') {
@@ -69,10 +81,12 @@ export async function POST(req: Request) {
         data: { ...data, publishedAt: status === 'PUBLISHED' ? (existing?.publishedAt ?? new Date()) : null },
       });
       await revalidateJournal(post.slug);
+      if (status === 'PUBLISHED') pingIndexNow(post.slug);
       return NextResponse.json({ ok: true, id: post.id, slug: post.slug });
     }
     const post = await db.post.create({ data: { ...data, source: 'admin', publishedAt: status === 'PUBLISHED' ? new Date() : null } });
     await revalidateJournal(post.slug);
+    if (status === 'PUBLISHED') pingIndexNow(post.slug);
     return NextResponse.json({ ok: true, id: post.id, slug: post.slug });
   } catch (e) {
     const msg = (e as Error)?.message || '';
