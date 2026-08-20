@@ -86,11 +86,45 @@ export async function GET(req: Request) {
     // session stuck past 90s, so most visitors self-recover on retry — this is
     // the backstop for ones nobody retries, so they don't sit "analyzing"
     // indefinitely in the DB.
+    // A NULL analyzingSince never satisfies `lt`, so it needs its own branch:
+    // sessions already claimed when analyzingSince shipped backfill as NULL,
+    // and the public stage route can set 'analyzing' without stamping it.
+    // `updatedAt` is the fallback clock (it bumps on every write to the row).
     const stuckCutoff = new Date(Date.now() - 10 * 60 * 1000);
-    const { count: stuckSwept } = await db.kioskSession.updateMany({
-      where: { stage: 'analyzing', analyzingSince: { lt: stuckCutoff } },
-      data: { status: 'ANALYSIS_FAILED', stage: 'failed' },
+    const stuck = await db.kioskSession.findMany({
+      where: {
+        stage: 'analyzing',
+        OR: [
+          { analyzingSince: { lt: stuckCutoff } },
+          { analyzingSince: null, updatedAt: { lt: stuckCutoff } },
+        ],
+      },
+      select: { id: true, result: { select: { id: true } } },
+      take: MEDIA_SWEEP_BATCH,
     });
+
+    let stuckSwept = 0;
+    let stuckRecovered = 0;
+    if (stuck.length) {
+      // A wedged session that nevertheless has a KioskResult got killed between
+      // the result write and the session write in runKioskAnalysisV2 — the
+      // analysis DID complete, so finish it the way that function would rather
+      // than marking a good result failed.
+      const doneIds = stuck.filter((s) => s.result).map((s) => s.id);
+      const failedIds = stuck.filter((s) => !s.result).map((s) => s.id);
+      if (doneIds.length) {
+        ({ count: stuckRecovered } = await db.kioskSession.updateMany({
+          where: { id: { in: doneIds } },
+          data: { status: 'ANALYZED', stage: 'reveal', liveFrame: null, liveFrameAt: null },
+        }));
+      }
+      if (failedIds.length) {
+        ({ count: stuckSwept } = await db.kioskSession.updateMany({
+          where: { id: { in: failedIds } },
+          data: { status: 'ANALYSIS_FAILED', stage: 'failed' },
+        }));
+      }
+    }
 
     // BLD-1272: record the run so a silently-unfiring GDPR purge is caught by
     // the same staleness check as the other crons (getCronStaleness in
@@ -100,7 +134,7 @@ export async function GET(req: Request) {
       await db.setting.upsert({ where: { key: 'cron_kiosk_cleanup_last' }, update: { value: new Date().toISOString() }, create: { key: 'cron_kiosk_cleanup_last', value: new Date().toISOString() } });
     } catch { /* non-fatal */ }
 
-    return NextResponse.json({ ok: true, deleted, mediaPurged, stuckSwept });
+    return NextResponse.json({ ok: true, deleted, mediaPurged, stuckSwept, stuckRecovered });
   } catch (e) {
     const message = (e as Error)?.message || 'unknown error';
     console.error('[cron/kiosk-cleanup] failed:', e);
