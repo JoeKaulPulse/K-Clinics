@@ -129,7 +129,7 @@ export function ChatWindow({ channelId, variant = 'docked', onRequestClose }: { 
       {manage && <ManagePanel mode={manage} channelId={channelId} onDone={() => { setManage(null); void refreshChannels(); }} roster={roster} memberIds={channel.members.map((m) => m.id)} currentName={channel.title} />}
 
       {/* Messages */}
-      <div ref={scrollRef} className="flex-1 space-y-1 overflow-y-auto overflow-x-hidden px-3 py-3">
+      <div ref={scrollRef} role="log" aria-live="polite" aria-relevant="additions" className="flex-1 space-y-1 overflow-y-auto overflow-x-hidden px-3 py-3">
         {messages.length === 0 && (
           <div className="grid h-full place-items-center px-6 text-center">
             <div>

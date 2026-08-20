@@ -4383,6 +4383,16 @@ export const BUILD_BACKLOG: BacklogItem[] = [
       'Verified: npx tsc --noEmit and npm run build pass clean.',
     ],
   },
+  {
+    title: 'Admin team chat message stream announced to screen readers (BLD-1439)',
+    type: 'ERROR', urgency: 'P2', status: 'SHIPPED', assignee: 'claude',
+    value: 4, effort: 1,
+    detail: 'ChatWindow.tsx appended new polled messages into a plain <div> with no aria-live, so incoming chat messages from the poll loop were never announced to screen reader users.',
+    notes: [
+      'BLD-1439: the messages list <div> in components/admin/teamchat/ChatWindow.tsx (the one mapped over by the poll loop\'s messages state and scrolled via scrollRef) now carries role="log" aria-live="polite" aria-relevant="additions", so a screen reader announces each new message as it arrives instead of staying silent. No layout, styling or other behaviour changed.',
+      'Verified: npx tsc --noEmit and npm run build pass clean.',
+    ],
+  },
 ];
 
 // A content hash over every item's title + status + PR, so ANY change (a new
