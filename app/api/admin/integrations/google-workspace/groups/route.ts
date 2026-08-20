@@ -4,7 +4,7 @@ import { listGroupsResult, createGroup } from '@/lib/google-workspace';
 
 export async function GET() {
   const session = await getSession();
-  if (!session || !sessionCan(session, 'settings.manage')) {
+  if (!session || !sessionCan(session, 'workspace.manage')) {
     return NextResponse.json({ ok: false, error: 'Forbidden' }, { status: 403 });
   }
   const r = await listGroupsResult();
@@ -14,7 +14,7 @@ export async function GET() {
 
 export async function POST(req: NextRequest) {
   const session = await getSession();
-  if (!session || !sessionCan(session, 'settings.manage')) {
+  if (!session || !sessionCan(session, 'workspace.manage')) {
     return NextResponse.json({ ok: false, error: 'Forbidden' }, { status: 403 });
   }
   const body = await req.json().catch(() => null);
