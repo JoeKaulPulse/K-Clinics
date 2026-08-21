@@ -67,7 +67,7 @@ export const SETTING_DEFAULTS: Record<SettingKey, boolean> = {
   reminder_48h: true,
   contractor_checkin_enabled: false, // PRJ-63: ships dark; owner enables after review
   health_retention_purge: false, // PRJ-1069.10: irreversible health-data deletion — the owner turning this on IS the sign-off
-  tcs_reminder_email: false, // BLD-1452: built and reviewed (mirrors abandoned_order_recovery/BLD-1278) — ships off pending an explicit owner go-ahead. termsAcceptedAt is also null for every staff-created/legacy client that has never signed up, booked or enquired online (BLD-1067), so the first run after enabling could reach a much larger and older audience than "someone who recently skipped the tick" — the owner should confirm that's the intended reach before flipping this on.
+  tcs_reminder_email: false, // BLD-1452: built and reviewed (mirrors abandoned_order_recovery/BLD-1278) — ships off pending an explicit owner go-ahead. termsAcceptedAt is also null for every staff-created/legacy client that has never signed up, booked or enquired online (BLD-1067), so the first run after enabling could reach a much larger and older audience than "someone who recently skipped the tick" — the owner should confirm that's the intended reach before flipping this on. Review fix: the audience is limited to clients with no portal password, because completing signup is the only self-serve action that records the acceptance, and each client is asked at most three times.
 };
 
 export const SETTING_META: Record<SettingKey, { label: string; description: string }> = {
@@ -189,7 +189,7 @@ export const SETTING_META: Record<SettingKey, { label: string; description: stri
   },
   tcs_reminder_email: {
     label: 'T&Cs acceptance reminder emails',
-    description: 'Email clients whose profile still shows "T&Cs not yet accepted", asking them to accept the Terms & Conditions and add a payment card via a direct link to their account. Sent at most once every 14 days per client. Off by default — this also reaches staff-created/legacy clients who have simply never signed up, booked or enquired online, so review the likely audience before turning it on.',
+    description: 'Email clients whose profile still shows "T&Cs not yet accepted", asking them to finish setting up their online account — the signup tick is what records the acceptance. Only clients who have never set a portal password are emailed (for anyone else there is nothing on the site they can click to accept), at most once every 14 days and no more than three times each. Off by default — it reaches staff-created/legacy clients who have simply never signed up, booked or enquired online, so review the likely audience before turning it on.',
   },
 };
 

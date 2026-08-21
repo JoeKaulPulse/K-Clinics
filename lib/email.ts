@@ -963,22 +963,26 @@ export function tmplAbandonedOrder(o: { firstName: string; resumeUrl: string }) 
 }
 
 // BLD-1452: nudge for a client whose profile still shows no recorded T&Cs
-// acceptance — asks them to accept the Terms & Conditions and add a payment
-// card, both done from the same account/login link. Mirrors
-// tmplAbandonedBooking's tone; care-class (sent regardless of marketing
-// opt-in, only suppressed by a hard unsubscribe).
-export function tmplTcsReminder(o: { firstName: string; loginUrl: string }) {
+// acceptance — points them at account setup, which is where the acceptance is
+// actually captured (the tick on the signup form; registerClient records it
+// even when the client already exists). Review fix: the first draft asked them
+// to "add a payment card to your account" from the same link, which no screen
+// in /account does — a card is saved by Stripe during a booking — so the copy
+// now says what genuinely happens instead of asking for something the link
+// can't deliver. Mirrors tmplAbandonedBooking's tone; care-class (sent
+// regardless of marketing opt-in, only suppressed by a hard unsubscribe).
+export function tmplTcsReminder(o: { firstName: string; signupUrl: string }) {
   return emailShell({
-    preheader: 'Two quick things to finish setting up your account',
+    preheader: 'One quick thing to finish setting up your account',
     body: `${heroBand('reminder')}
-    <h1 style="font-size:25px;margin:0 0 14px;">Just two things left, ${escape(o.firstName)}.</h1>
-    <p>Your KClinics account is nearly ready. Before your next visit, we just need you to:</p>
+    <h1 style="font-size:25px;margin:0 0 14px;">One quick thing, ${escape(o.firstName)}.</h1>
+    <p>Your KClinics account is nearly ready — we just don't have your acceptance of our Terms &amp; Conditions on file yet. Finishing your account setup records it and takes about a minute.</p>
     <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:16px 0 22px;font-family:Helvetica,Arial,sans-serif;">
       ${checkItem('Accept our Terms &amp; Conditions')}
-      ${checkItem('Add a payment card to your account')}
+      ${checkItem('Set up your online account, so your appointments and forms are in one place')}
     </table>
-    <p style="margin:26px 0;">${btn(o.loginUrl, 'Go to my account')}</p>
-    <p style="font-size:14px;color:#91766e;">Both only take a moment. If you have any questions, just reply to this email or call us — we're happy to help.</p>
+    <p style="margin:26px 0;">${btn(o.signupUrl, 'Finish setting up my account')}</p>
+    <p style="font-size:14px;color:#91766e;">Your card is saved securely at the time you book — nothing is taken then, and our cancellation policy is set out in the terms. If you have any questions, just reply to this email or call us — we're happy to help.</p>
     <p style="margin-top:20px;">With warmth,<br>The KClinics team</p>`,
   });
 }
