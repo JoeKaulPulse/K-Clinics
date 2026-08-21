@@ -4443,6 +4443,7 @@ export const BUILD_BACKLOG: BacklogItem[] = [
       'BLD-1458: changed the grid to grid-cols-1 sm:grid-cols-2, and added min-w-0 break-words to the phone and email anchors, matching the same min-width:auto grid-overflow fix already applied elsewhere in the codebase (BLD-1125-era table wrappers, kanban card guards).',
       'BLD-1459: replaced the page\'s flat py-16 sm:py-24 with pb-16 pt-[calc(var(--header-h,5.25rem)+2rem)] sm:pb-24 on the <main>, the same pt-[calc(var(--header-h,5.25rem)+Xrem)] convention already used by every other non-hero content page (app/(marketing)/shop/checkout/page.tsx, app/(marketing)/shop/cart/CartClient.tsx, app/(marketing)/shop/[slug]/page.tsx, app/(marketing)/journal/[slug]/page.tsx) rather than inventing a new spacing value.',
       'Verified: npx tsc --noEmit and npm run build pass clean.',
+      'Review fix (BLD-1458): min-w-0 was on the anchors, where it does nothing -- min-width does not apply to a non-replaced inline element, and the automatic minimum size that forces the grid wide belongs to the grid ITEM. Moved it to the two wrapping divs; break-words stays on the anchors, which is what wraps the address once the track is allowed to shrink. The sm:grid-cols-2 behaviour above the breakpoint is unchanged either way.',
     ],
   },
 ];
