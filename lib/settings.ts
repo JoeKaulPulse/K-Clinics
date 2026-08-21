@@ -34,7 +34,8 @@ export type SettingKey =
   | 'reminder_72h'               // send a 3-day-ahead appointment reminder (BLD-126)
   | 'reminder_48h'               // send a 2-day-ahead appointment reminder (BLD-126)
   | 'contractor_checkin_enabled' // PRJ-63: contractors self-sign-in at reception via QR
-  | 'health_retention_purge';    // PRJ-1069.10: purge health assessments past the 8-year clinical window (owner sign-off = this toggle)
+  | 'health_retention_purge'     // PRJ-1069.10: purge health assessments past the 8-year clinical window (owner sign-off = this toggle)
+  | 'tcs_reminder_email';        // BLD-1452: email clients with no recorded T&Cs acceptance, asking them to accept + add a card
 
 export const SETTING_DEFAULTS: Record<SettingKey, boolean> = {
   allow_clinician_choice: false,
@@ -66,6 +67,7 @@ export const SETTING_DEFAULTS: Record<SettingKey, boolean> = {
   reminder_48h: true,
   contractor_checkin_enabled: false, // PRJ-63: ships dark; owner enables after review
   health_retention_purge: false, // PRJ-1069.10: irreversible health-data deletion — the owner turning this on IS the sign-off
+  tcs_reminder_email: false, // BLD-1452: built and reviewed (mirrors abandoned_order_recovery/BLD-1278) — ships off pending an explicit owner go-ahead. termsAcceptedAt is also null for every staff-created/legacy client that has never signed up, booked or enquired online (BLD-1067), so the first run after enabling could reach a much larger and older audience than "someone who recently skipped the tick" — the owner should confirm that's the intended reach before flipping this on.
 };
 
 export const SETTING_META: Record<SettingKey, { label: string; description: string }> = {
@@ -184,6 +186,10 @@ export const SETTING_META: Record<SettingKey, { label: string; description: stri
   health_retention_purge: {
     label: 'Purge old health assessments (8-year clinical window)',
     description: 'When on, the nightly run permanently deletes health-assessment answers (allergies, medications, conditions) more than 8 years old, and only for clients with no treatment in those 8 years — the same retention window already applied to signed consents and before-photos. Deletion is irreversible; turning this on is the sign-off recorded in the retention schedule. Off by default.',
+  },
+  tcs_reminder_email: {
+    label: 'T&Cs acceptance reminder emails',
+    description: 'Email clients whose profile still shows "T&Cs not yet accepted", asking them to accept the Terms & Conditions and add a payment card via a direct link to their account. Sent at most once every 14 days per client. Off by default — this also reaches staff-created/legacy clients who have simply never signed up, booked or enquired online, so review the likely audience before turning it on.',
   },
 };
 

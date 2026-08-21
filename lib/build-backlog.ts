@@ -4434,6 +4434,20 @@ export const BUILD_BACKLOG: BacklogItem[] = [
       'Verified: npx tsc --noEmit and npm run build pass clean (npm run build with DB_SYNC_NONFATAL=true, since this build environment cannot reach the production Neon database over raw TCP -- confirmed via a direct TCP probe -- the same network-policy constraint noted elsewhere for this sandbox; prisma db push is untouched by this PR).',
     ],
   },
+  {
+    title: 'Reminder email for clients with T&Cs not yet accepted, asking them to accept and add a card (BLD-1452)',
+    type: 'TASK', urgency: 'P2', status: 'SHIPPED', assignee: 'claude',
+    value: 6, effort: 3,
+    detail: 'BLD-1452: a client whose profile shows "T&Cs not yet accepted" (Client.termsAcceptedAt null, tracked since BLD-1067) had no automated follow-up asking them to complete the acceptance and add a payment card on the website -- both actions live behind the same account/login flow, so a single email can prompt for both.',
+    notes: [
+      'Built lib/automations.ts#tcsReminders(), wired into runDailyAutomations() alongside the other opt-in daily automations. It queries Client rows where termsAcceptedAt is null and email/unsubscribed allow a care-class send (canEmailCare -- transactional, not gated on marketing consent, same class as abandonedBookings/abandonedOrders/bookingIntentRecovery), sends lib/email.ts#tmplTcsReminder() with a direct link to /account/login, and logs an EmailEvent with the new EmailKind.TCS_REMINDER.',
+      'Cadence/idempotency: new Client.tcsReminderSentAt (nullable DateTime, additive) records the last send. A client is only picked up again after TCS_REMINDER_CADENCE_DAYS (14) have passed, mirroring EnrolmentPayment.lastRemindedAt (BLD-857). The field is claimed with a conditional updateMany (same predicate as the selecting query) before the send, so two overlapping cron runs cannot double-send the same client -- the same claim-before-send pattern courseContentReady (BLD-1231) uses; a failed send releases the claim so it retries next run. Runs are capped at TCS_REMINDER_MAX_PER_RUN (500) sends, the rest draining on later runs, matching the take: 500 caps used elsewhere in this file.',
+      'Gated behind a new settings key, tcs_reminder_email, defaulted to false. Following the BLD-1278 convention (abandoned_order_recovery: built and reviewed, shipped off pending an explicit owner go-ahead): termsAcceptedAt is null not only for a client who recently skipped the tick, but for every staff-created or legacy client who has never signed up, booked or enquired online (per BLD-1067\'s admin-page comment), so enabling this could reach a much larger and older audience than "someone who recently lapsed." That is a real-email-to-real-clients decision for the owner, not something to default on. The default-off rationale is recorded inline in lib/settings.ts next to the toggle.',
+      'Template: tmplTcsReminder() in lib/email.ts reuses emailShell() (brand mark via the existing cid:kmark/cid:kwordmark attachments -- no literal brand-name text standing in for the logo) and the existing reminder hero band, with a two-item checklist (accept T&Cs, add a payment card) and one CTA button to site.url + /account/login, the same login path lib/email.ts#tmplPasswordChanged already links to.',
+      'Schema: added Client.tcsReminderSentAt (nullable DateTime) and EmailKind.TCS_REMINDER -- both additive, safe under prisma db push without --accept-data-loss (no new @unique, no column removed or narrowed).',
+      'Verified: npx tsc --noEmit and npm run build pass clean (DB env vars unset for the build, since prebuilds db-sync step cannot reach the database from this sandbox -- prisma db push is untouched by this PR).',
+    ],
+  },
 ];
 
 // A content hash over every item's title + status + PR, so ANY change (a new

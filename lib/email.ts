@@ -962,6 +962,27 @@ export function tmplAbandonedOrder(o: { firstName: string; resumeUrl: string }) 
   });
 }
 
+// BLD-1452: nudge for a client whose profile still shows no recorded T&Cs
+// acceptance — asks them to accept the Terms & Conditions and add a payment
+// card, both done from the same account/login link. Mirrors
+// tmplAbandonedBooking's tone; care-class (sent regardless of marketing
+// opt-in, only suppressed by a hard unsubscribe).
+export function tmplTcsReminder(o: { firstName: string; loginUrl: string }) {
+  return emailShell({
+    preheader: 'Two quick things to finish setting up your account',
+    body: `${heroBand('reminder')}
+    <h1 style="font-size:25px;margin:0 0 14px;">Just two things left, ${escape(o.firstName)}.</h1>
+    <p>Your KClinics account is nearly ready. Before your next visit, we just need you to:</p>
+    <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:16px 0 22px;font-family:Helvetica,Arial,sans-serif;">
+      ${checkItem('Accept our Terms &amp; Conditions')}
+      ${checkItem('Add a payment card to your account')}
+    </table>
+    <p style="margin:26px 0;">${btn(o.loginUrl, 'Go to my account')}</p>
+    <p style="font-size:14px;color:#91766e;">Both only take a moment. If you have any questions, just reply to this email or call us — we're happy to help.</p>
+    <p style="margin-top:20px;">With warmth,<br>The KClinics team</p>`,
+  });
+}
+
 // BLD-1231: sent once, the day a course's first module publishes, to every
 // paid/enrolled student who was stuck on the portal's "content coming soon"
 // dead end.
