@@ -10,9 +10,22 @@ const HAIKU = 'claude-haiku-4-5-20251001';
 
 // BLD-1461: shared bounded-retry POST to the Anthropic Messages API, mirroring
 // the callClaude()/callHaiku() pattern in lib/ai-consultation.ts and
-// lib/chat-ai.ts (BLD-334) -- one retry on a transient failure (network error /
-// timeout / 5xx), 600ms backoff. A 4xx is not retried (it won't succeed), and a
-// failed call never produced a completion, so retrying can't double-bill.
+// lib/chat-ai.ts (BLD-334) -- one retry on a transient failure (connection
+// error / 5xx), 600ms backoff. A 4xx is not retried (it won't succeed), and a
+// rejected or errored call never produced a completion, so retrying can't
+// double-bill.
+//
+// Review fix (BLD-1461): our own timeout is the one failure that is NOT
+// retried here, unlike the sibling call sites. Both kiosk routes run this
+// inside after() under maxDuration = 60 (app/api/kiosk/sessions/[token]/photo
+// and .../analyze), so a second full-length attempt after a 30s timeout tips
+// the worst case past 60s -- the function is killed mid-attempt and takes the
+// graceful ANALYSIS_FAILED write with it, leaving the session stuck in
+// PHOTO_TAKEN and the kiosk polling for ever (the exact failure BLD-451 fixed).
+// A timed-out request is also the one case that may already have been processed
+// and billed upstream, which is what analyzeKioskPhotosV2's original budget rule
+// was guarding. Connection-level failures fail fast, never reach the model, and
+// still retry.
 async function postAnthropicWithRetry(key: string, body: object, timeoutMs = 30_000): Promise<Response> {
   for (let attempt = 0; attempt < 2; attempt++) {
     const ac = new AbortController();
@@ -25,12 +38,14 @@ async function postAnthropicWithRetry(key: string, body: object, timeoutMs = 30_
         body: JSON.stringify(body),
       });
       if (!res.ok && res.status >= 500 && attempt === 0) {
+        // Release the connection: nothing reads this body, and it is discarded.
+        await res.body?.cancel().catch(() => {});
         await new Promise((r) => setTimeout(r, 600));
         continue;
       }
       return res;
     } catch (e) {
-      if (attempt === 0) { await new Promise((r) => setTimeout(r, 600)); continue; }
+      if (attempt === 0 && !ac.signal.aborted) { await new Promise((r) => setTimeout(r, 600)); continue; }
       throw e;
     } finally {
       clearTimeout(timer);
@@ -123,7 +138,8 @@ export async function analyzeKioskPhoto(photoUrl: string): Promise<KioskAiResult
     const media = mediaTypeFromUrl(photoUrl);
 
     // 2) Call Claude with a 30s timeout (same pattern as callClaude in lib/ai-consultation.ts),
-    // with one bounded retry on a transient failure (BLD-1461, see postAnthropicWithRetry above).
+    // with one bounded retry on a 5xx or connection error (BLD-1461, see
+    // postAnthropicWithRetry above; a timed-out call is not retried).
     const res = await postAnthropicWithRetry(key, {
       model: HAIKU,
       max_tokens: 600,
@@ -331,8 +347,10 @@ export async function analyzeKioskPhotosV2(photoUrls: string[]): Promise<KioskAi
     }
 
     // 2) One Sonnet call, all photos attached, 30s timeout, with one bounded
-    //    retry on a transient failure (BLD-1461): a failed call never billed,
-    //    so retrying can't double-bill the session (see postAnthropicWithRetry above).
+    //    retry on a 5xx or a connection error (BLD-1461): neither reached the
+    //    model, so retrying can't double-bill the session. A timed-out call is
+    //    still never retried, which keeps the original budget rule intact (see
+    //    postAnthropicWithRetry above).
     const content: unknown[] = [
       { type: 'text', text: `Here are my ${photos.length} kiosk selfies — score my skin & smile!` },
     ];
