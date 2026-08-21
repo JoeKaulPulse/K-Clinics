@@ -762,6 +762,15 @@ export async function applyNoShowFee(
     // Clears the derived outstanding balance (lib/outstanding.ts filters on it),
     // so waiving reopens the client's online booking with nothing else to reset.
     await db.booking.update({ where: { id: bookingId }, data: { feeWaived: true } }).catch(() => {});
+    // BLD-1443 parity with cancelBooking: the fee wasn't actually taken, so any
+    // loyalty points the client redeemed as money off this booking are returned
+    // rather than staying spent against a charge that never happened.
+    try {
+      const { refundBookingPoints } = await import('@/lib/client-loyalty');
+      await refundBookingPoints(booking.id);
+    } catch (e) {
+      console.error('[applyNoShowFee] points refund failed (continuing):', (e as Error)?.message);
+    }
     await logAudit({
       action: 'BOOKING_NO_SHOW', actor: opts.by, bookingId, clientId: booking.clientId,
       summary: `No-show fee waived on ${booking.treatmentTitle} (£${(booking.pricePence / 100).toFixed(2)})`,
@@ -802,7 +811,24 @@ export async function applyNoShowFee(
     }).catch(() => {});
     return { ...nil, charged: chargeablePence };
   }
-  if ('requiresAction' in res && res.requiresAction) return { ...nil, requiresAction: true };
+  // BLD-1443: neither branch below actually took the fee (further action is
+  // pending, or the charge was declined), so any redeemed points are returned —
+  // same parity with cancelBooking as the waiveFee branch above.
+  if ('requiresAction' in res && res.requiresAction) {
+    try {
+      const { refundBookingPoints } = await import('@/lib/client-loyalty');
+      await refundBookingPoints(booking.id);
+    } catch (e) {
+      console.error('[applyNoShowFee] points refund failed (continuing):', (e as Error)?.message);
+    }
+    return { ...nil, requiresAction: true };
+  }
+  try {
+    const { refundBookingPoints } = await import('@/lib/client-loyalty');
+    await refundBookingPoints(booking.id);
+  } catch (e) {
+    console.error('[applyNoShowFee] points refund failed (continuing):', (e as Error)?.message);
+  }
   await logAudit({
     action: 'PAYMENT_FAILED', actor: opts.by, bookingId, clientId: booking.clientId,
     summary: `No-show fee (£${(chargeablePence / 100).toFixed(2)}) failed — follow up. It stays on the client's outstanding balance.`,
