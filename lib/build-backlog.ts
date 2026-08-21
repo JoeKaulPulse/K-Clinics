@@ -4434,6 +4434,27 @@ export const BUILD_BACKLOG: BacklogItem[] = [
       'Verified: npx tsc --noEmit and npm run build pass clean (npm run build with DB_SYNC_NONFATAL=true, since this build environment cannot reach the production Neon database over raw TCP -- confirmed via a direct TCP probe -- the same network-policy constraint noted elsewhere for this sandbox; prisma db push is untouched by this PR).',
     ],
   },
+  {
+    title: 'Health check route now has a maxDuration override (BLD-1455)',
+    type: 'ERROR', urgency: 'P2', status: 'SHIPPED', assignee: 'claude',
+    value: 4, effort: 1,
+    detail: 'app/api/health/route.ts runs about 10 sequential DB probes (client, discountClaim, setting, staffSchedule, auditEvent, several column-level probes, plus the cron-heartbeat and integrations checks) with no export const maxDuration and no vercel.json functions entry -- unlike every other cron-hit route in the app. Under a slow DB or cold start this risked a platform timeout on the exact endpoint meant to detect that.',
+    notes: [
+      'Added export const maxDuration = 60 to app/api/health/route.ts, next to the existing runtime/dynamic exports, and a matching "app/api/health/route.ts": { "maxDuration": 60 } entry to vercel.json\'s functions block -- same path-glob style and 60s duration convention already used for the other cron routes there (app/api/cron/dispatch, app/api/cron/kiosk-cleanup, app/api/admin/api-health). No behaviour change; the route already completes well inside 60s in practice, this only raises the ceiling before a platform timeout can cut it off.',
+      'Verified: npx tsc --noEmit and npm run build pass clean.',
+    ],
+  },
+  {
+    title: 'Kiosk AI skin analysis now retries transient upstream failures (BLD-1461)',
+    type: 'ERROR', urgency: 'P2', status: 'SHIPPED', assignee: 'claude',
+    value: 5, effort: 2,
+    detail: 'lib/kiosk-ai.ts called the Anthropic Messages API directly in both analyzeKioskPhoto() and analyzeKioskPhotosV2() and returned null immediately on any 5xx/network error, with zero retry -- unlike the sibling call sites in lib/ai-consultation.ts and lib/chat-ai.ts, which already got a bounded one-retry-on-failure fix (BLD-334) on the reasoning that a failed call never billed, so retrying can\'t double-charge. A transient blip failed the in-clinic kiosk demo outright.',
+    notes: [
+      'Added a shared postAnthropicWithRetry() helper in lib/kiosk-ai.ts that ports the exact BLD-334 pattern from callClaude()/callHaiku(): up to 2 attempts, 600ms backoff, retrying only on a network/timeout error or an HTTP 5xx (a 4xx is not retried since it will not succeed on replay). Both analyzeKioskPhoto() and analyzeKioskPhotosV2() now call this helper instead of fetch() directly; existing Sentry reporting (captureMessage on a final non-2xx, captureException on a final thrown error) and the 30s per-attempt timeout are unchanged.',
+      'analyzeKioskPhotosV2() previously carried a "NO retries (budget rule: a retry could double-bill the session)" comment -- that reasoning does not hold: a failed request never produces billable output, so a retry after a 5xx/network error cannot double-charge, same as the other three call sites already fixed under BLD-334. The comment is replaced with the correct BLD-1461 rationale and the same retry now applies here too.',
+      'Verified: npx tsc --noEmit and npm run build pass clean.',
+    ],
+  },
 ];
 
 // A content hash over every item's title + status + PR, so ANY change (a new

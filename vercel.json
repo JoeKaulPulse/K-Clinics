@@ -28,6 +28,7 @@
     "app/api/cron/dispatch/route.ts": { "maxDuration": 60 },
     "app/api/cron/kiosk-cleanup/route.ts": { "maxDuration": 60 },
     "app/api/admin/api-health/route.ts": { "maxDuration": 60 },
-    "app/api/admin/export/route.ts": { "maxDuration": 300 }
+    "app/api/admin/export/route.ts": { "maxDuration": 300 },
+    "app/api/health/route.ts": { "maxDuration": 60 }
   }
 }
