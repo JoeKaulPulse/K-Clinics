@@ -81,7 +81,7 @@ export function FranchiseEnquiryForm() {
         <Button size="lg" type="submit" disabled={busy}>{busy ? 'Sending…' : <>Send enquiry <ArrowIcon /></>}</Button>
         <p className="text-sm text-[var(--color-stone)]">Or call <a href={site.phoneHref} className="link-underline font-medium text-[var(--color-ink)]">{site.phone}</a></p>
       </div>
-      {status === 'error' && <p className="mt-4 rounded-[var(--radius-sm)] bg-[var(--color-blush)]/25 px-4 py-3 text-sm text-[var(--color-ink)]">Something went wrong — please call us or email {site.email}.</p>}
+      {status === 'error' && <p role="alert" aria-live="assertive" className="mt-4 rounded-[var(--radius-sm)] bg-[var(--color-blush)]/25 px-4 py-3 text-sm text-[var(--color-ink)]">Something went wrong — please call us or email {site.email}.</p>}
       <p className="mt-4 text-xs leading-relaxed text-[var(--color-stone)]">By submitting, you agree to be contacted about your enquiry. We never share your details.</p>
     </form>
   );

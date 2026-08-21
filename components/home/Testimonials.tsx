@@ -11,11 +11,16 @@ export type TestimonialCard = { author: string; body: string; treatment?: string
 
 export function Testimonials({ reviews, rating }: { reviews: TestimonialCard[]; rating?: { average: number; count: number } | null }) {
   const [i, setI] = useState(0);
-  const [paused, setPaused] = useState(false);
+  const [hovered, setHovered] = useState(false);
+  const [focused, setFocused] = useState(false);
+  // Explicit user override — a persistent way to stop auto-advance regardless
+  // of hover/focus state, per WCAG 2.2.2 (Pause, Stop, Hide).
+  const [userPaused, setUserPaused] = useState(false);
   const reduce = useReducedMotionSafe();
+  const paused = hovered || focused || userPaused;
   const go = (dir: number) => setI((p) => (p + dir + reviews.length) % reviews.length);
 
-  // Auto-advance, pausing on hover / reduced-motion.
+  // Auto-advance, pausing on hover / focus / explicit pause / reduced-motion.
   const timer = useRef<ReturnType<typeof setInterval> | null>(null);
   useEffect(() => {
     if (reduce || paused || reviews.length < 2) return;
@@ -29,8 +34,10 @@ export function Testimonials({ reviews, rating }: { reviews: TestimonialCard[]; 
   return (
     <div
       className="grid gap-12 lg:grid-cols-[0.9fr_1.1fr] lg:items-center"
-      onMouseEnter={() => setPaused(true)}
-      onMouseLeave={() => setPaused(false)}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+      onFocus={() => setFocused(true)}
+      onBlur={() => setFocused(false)}
     >
       <div>
         <p className="eyebrow mb-4">In our clients’ words</p>
@@ -90,6 +97,17 @@ export function Testimonials({ reviews, rating }: { reviews: TestimonialCard[]; 
               >
                 →
               </button>
+              {!reduce && (
+                <button
+                  type="button"
+                  onClick={() => setUserPaused((p) => !p)}
+                  aria-label={userPaused ? 'Play testimonials rotation' : 'Pause testimonials rotation'}
+                  aria-pressed={userPaused}
+                  className="grid h-11 w-11 place-items-center rounded-full border border-white/20 text-[var(--color-porcelain)] transition-colors hover:border-[var(--color-gold)] hover:text-[var(--color-gold)]"
+                >
+                  {userPaused ? '▶' : '❚❚'}
+                </button>
+              )}
             </div>
             {/* Progress dots */}
             <div className="flex items-center gap-2">

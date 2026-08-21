@@ -4434,6 +4434,17 @@ export const BUILD_BACKLOG: BacklogItem[] = [
       'Verified: npx tsc --noEmit and npm run build pass clean (npm run build with DB_SYNC_NONFATAL=true, since this build environment cannot reach the production Neon database over raw TCP -- confirmed via a direct TCP probe -- the same network-policy constraint noted elsewhere for this sandbox; prisma db push is untouched by this PR).',
     ],
   },
+  {
+    title: 'Homepage testimonials carousel had no keyboard pause control; GroupBookingForm and FranchiseEnquiryForm submit errors were not announced to screen readers (BLD-1457, BLD-1456)',
+    type: 'ERROR', urgency: 'P1', status: 'IN_REVIEW', assignee: 'claude',
+    value: 5, effort: 2,
+    detail: 'BLD-1457: components/home/Testimonials.tsx auto-advanced every 6s and only paused via onMouseEnter/onMouseLeave -- a keyboard user tabbing to the carousel\'s own Previous/Next/dot controls never paused it, and there was no visible pause control, failing WCAG 2.2.2 (Pause, Stop, Hide), a Level A criterion. BLD-1456: GroupBookingForm.tsx and FranchiseEnquiryForm.tsx rendered their submit-error message as a plain <p> with no role/aria-live, unlike every comparable lead form in the codebase (ConsultForm, ReviewForm, ApplyForm, SignupForm), so a failed submission was silent to screen-reader users.',
+    notes: [
+      'BLD-1457: added onFocus/onBlur handlers on the carousel container alongside the existing onMouseEnter/onMouseLeave, so focus-within pauses rotation the same way hover-within already does. Focus/hover alone does not fully satisfy 2.2.2 (focus moves away once a control is activated), so also added a visible pause/play toggle button matching the existing Previous/Next controls\' style (same h-11 w-11 rounded-full border), with aria-label reading "Pause testimonials rotation" / "Play testimonials rotation" and aria-pressed reflecting state -- an explicit, persistent way to stop auto-advance regardless of focus. The toggle is omitted when prefers-reduced-motion is already honoured (autoplay never runs).',
+      'BLD-1456: matched the exact pattern used by ConsultForm/ReviewForm/ApplyForm/SignupForm -- role="alert" aria-live="assertive" added to both forms\' existing error <p>, no visual change.',
+      'Verified: npx tsc --noEmit and npm run build pass clean (DB sync env vars unset so prebuild\'s db-sync step skips cleanly, no DATABASE_URL reachable from this sandbox).',
+    ],
+  },
 ];
 
 // A content hash over every item's title + status + PR, so ANY change (a new
