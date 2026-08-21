@@ -410,9 +410,9 @@ async function ContactInfoSection({ data }: { data: Record<string, unknown> }) {
           <p className="font-[family-name:var(--font-display)] text-2xl leading-snug">{c.address.street}<br />{c.address.locality}<br />{c.address.region} {c.address.postalCode}</p>
           <a href={c.mapLink} target="_blank" rel="noopener noreferrer" className="link-underline mt-3 inline-block text-sm font-medium text-[var(--color-gold-deep)]">Get directions →</a>
         </div>
-        <div className="grid grid-cols-2 gap-8">
-          <div><p className="eyebrow mb-2">Call</p><a href={c.phoneHref} className="link-underline text-lg">{c.phone}</a></div>
-          <div><p className="eyebrow mb-2">Email</p><a href={c.emailHref} className="link-underline text-lg">{c.email}</a></div>
+        <div className="grid grid-cols-1 gap-8 sm:grid-cols-2">
+          <div><p className="eyebrow mb-2">Call</p><a href={c.phoneHref} className="link-underline min-w-0 break-words text-lg">{c.phone}</a></div>
+          <div><p className="eyebrow mb-2">Email</p><a href={c.emailHref} className="link-underline min-w-0 break-words text-lg">{c.email}</a></div>
         </div>
         {data.showHours !== false && (
           <div>

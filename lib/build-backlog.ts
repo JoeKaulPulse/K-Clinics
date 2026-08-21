@@ -4434,6 +4434,17 @@ export const BUILD_BACKLOG: BacklogItem[] = [
       'Verified: npx tsc --noEmit and npm run build pass clean (npm run build with DB_SYNC_NONFATAL=true, since this build environment cannot reach the production Neon database over raw TCP -- confirmed via a direct TCP probe -- the same network-policy constraint noted elsewhere for this sandbox; prisma db push is untouched by this PR).',
     ],
   },
+  {
+    title: 'CMS contact-info section overflows on narrow phones; fixed transparent header overlaps the /roadmap page H1 (BLD-1458, BLD-1459)',
+    type: 'ERROR', urgency: 'P2', status: 'SHIPPED', assignee: 'claude',
+    value: 5, effort: 2,
+    detail: 'BLD-1458: SectionRenderer\'s ContactInfoSection (components/cms/SectionRenderer.tsx) rendered phone/email in a static grid-cols-2 with no responsive stacking or word-break; the support email at text-lg exceeded the available column width at 375px, and CSS Grid\'s default min-width:auto forced the whole grid wider than its container, causing horizontal overflow on the marketing pages that use this CMS section. BLD-1459: app/(marketing)/roadmap/page.tsx opens straight into its body content with no hero section, but the site\'s fixed/transparent-until-scroll header (light-colored nav text, designed to sit over a dark hero) has a real height of var(--header-h, 5.25rem) -- below the sm breakpoint the page\'s own py-16 (4rem) top padding was less than that, so the header visually overlapped the page\'s H1 with poor contrast.',
+    notes: [
+      'BLD-1458: changed the grid to grid-cols-1 sm:grid-cols-2, and added min-w-0 break-words to the phone and email anchors, matching the same min-width:auto grid-overflow fix already applied elsewhere in the codebase (BLD-1125-era table wrappers, kanban card guards).',
+      'BLD-1459: replaced the page\'s flat py-16 sm:py-24 with pb-16 pt-[calc(var(--header-h,5.25rem)+2rem)] sm:pb-24 on the <main>, the same pt-[calc(var(--header-h,5.25rem)+Xrem)] convention already used by every other non-hero content page (app/(marketing)/shop/checkout/page.tsx, app/(marketing)/shop/cart/CartClient.tsx, app/(marketing)/shop/[slug]/page.tsx, app/(marketing)/journal/[slug]/page.tsx) rather than inventing a new spacing value.',
+      'Verified: npx tsc --noEmit and npm run build pass clean.',
+    ],
+  },
 ];
 
 // A content hash over every item's title + status + PR, so ANY change (a new
