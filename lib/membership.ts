@@ -1,5 +1,6 @@
 import 'server-only';
 import { db } from '@/lib/db';
+import { escapeHtml } from '@/lib/sanitize';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // K Circle membership. Status tiers earned from a client's rolling 12-month
@@ -132,16 +133,23 @@ async function sendTierUpgradeEmail(client: { email: string; firstName: string |
   const { sendEmail, emailShell } = await import('@/lib/email');
   const { site } = await import('@/lib/site');
   const base = (process.env.NEXT_PUBLIC_SITE_URL || site.url).replace(/\/$/, '');
-  const accent = tier.color || '#a98a6d';
-  const perks = tier.perks.map((p) => `<li style="margin:0 0 6px;">${p}</li>`).join('');
+  // BLD-1438: same hole as the tier-nudge and renewal emails in lib/automations.ts.
+  // name/perks/color come from MembershipTier rows, which app/api/admin/membership
+  // lets anyone with discounts.manage (FRONT_DESK holds it) write with only a
+  // length cap — and perks land inside <li> elements here. firstName is worse
+  // still: the client types it themselves at signup. All four are escaped before
+  // they reach the HTML.
+  const accent = escapeHtml(tier.color || '#a98a6d');
+  const tierName = escapeHtml(tier.name);
+  const perks = tier.perks.map((p) => `<li style="margin:0 0 6px;">${escapeHtml(p)}</li>`).join('');
   const body = `
     <p style="font-family:Helvetica,Arial,sans-serif;font-size:13px;letter-spacing:1.5px;text-transform:uppercase;color:${accent};margin:0 0 8px;">K Circle membership</p>
-    <h1 style="margin:0 0 12px;font-size:26px;">Congratulations, you’ve reached ${tier.name}</h1>
-    <p style="margin:0 0 14px;">Hi ${client.firstName || 'there'}, thank you for being one of our valued clients — you’ve been upgraded to <strong>${tier.name}</strong>. Here’s what you now enjoy:</p>
+    <h1 style="margin:0 0 12px;font-size:26px;">Congratulations, you’ve reached ${tierName}</h1>
+    <p style="margin:0 0 14px;">Hi ${escapeHtml(client.firstName || 'there')}, thank you for being one of our valued clients — you’ve been upgraded to <strong>${tierName}</strong>. Here’s what you now enjoy:</p>
     <ul style="margin:0 0 18px;padding-left:20px;font-size:15px;line-height:1.6;">${perks}</ul>
     <p style="margin:6px 0 18px;"><a href="${base}/book" style="display:inline-block;background:${accent};color:#fff;text-decoration:none;padding:13px 26px;border-radius:999px;font-size:14px;">Book your next visit</a></p>
     <p style="margin:0;font-size:13px;color:#8a7d72;">See your status any time in your <a href="${base}/account/rewards" style="color:${accent};">rewards</a>.</p>`;
-  const res = await sendEmail({ to: client.email, subject: `You’ve reached ${tier.name} — welcome to the next level of K Circle`, html: emailShell({ body, preheader: `Your K Circle membership has been upgraded to ${tier.name}.` }) });
+  const res = await sendEmail({ to: client.email, subject: `You’ve reached ${tier.name} — welcome to the next level of K Circle`, html: emailShell({ body, preheader: `Your K Circle membership has been upgraded to ${tierName}.` }) });
   await db.emailEvent.create({ data: { clientId: client.clientId, kind: 'MEMBERSHIP', to: client.email, subject: `K Circle: upgraded to ${tier.name}`, status: res.ok ? 'SENT' : 'FAILED', providerId: res.id, error: res.error, meta: { type: 'upgrade' } } }).catch(() => {});
 }
 

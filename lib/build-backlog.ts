@@ -4333,7 +4333,7 @@ export const BUILD_BACKLOG: BacklogItem[] = [
   },
   {
     title: 'Account portal duplicate main landmark fixed; kiosk reward claim gets an explicit opt-in tick; reschedule offers the waitlist; offer countdowns surfaced (BLD-1420, BLD-1421, BLD-1422, BLD-1423)',
-    type: 'TASK', urgency: 'P2', status: 'IN_REVIEW', assignee: 'claude',
+    type: 'TASK', urgency: 'P2', status: 'SHIPPED', assignee: 'claude', pr: PR(1841),
     value: 6, effort: 3,
     detail: 'Four conversion/a11y fixes from the live Build & Issues board. BLD-1423: components/portal/PortalShell.tsx rendered its own <main id="main"> nested inside the one app/account/layout.tsx already provides, duplicating the DOM id the skip-link targets and breaking AT landmark navigation. BLD-1420: components/kiosk/ClaimReward.tsx implied marketing consent from passive "by continuing you agree" text, with no tick-box and no way to decline it — unlike EnquiryForm/GiftVoucherFlow/GroupBookingForm\'s explicit, off-by-default marketingOptIn checkbox — and lib/kiosk.ts#claimKioskDiscount hard-coded marketingOptIn: true on every new client it created regardless of what (if anything) the visitor agreed to. BLD-1421: the reschedule flow in app/(marketing)/booking/manage/ManageClient.tsx dead-ended on "No availability... please call us" with no waitlist option, while the fresh-booking flow (BookingFlow.tsx) offers WaitlistCTA in the identical no-slots situation. BLD-1422: OffersStrip and AnnouncementBar both already fetch endAt for every live promotion but never rendered it — no expiry/urgency signal anywhere on / or /pricing/offers despite the data already being on hand.',
     notes: [
@@ -4348,7 +4348,7 @@ export const BUILD_BACKLOG: BacklogItem[] = [
   },
   {
     title: 'Confirmation guard on destructive medical-record clears; audit trail on gift-voucher redeem/cancel (BLD-1414, BLD-1416)',
-    type: 'ERROR', urgency: 'P2', status: 'IN_REVIEW', assignee: 'claude',
+    type: 'ERROR', urgency: 'P2', status: 'SHIPPED', assignee: 'claude', pr: PR(1840),
     value: 5, effort: 2,
     detail: 'BLD-1414: MedicalFlagEditor and PatchTestEditor wiped a client medical-flag/patch-test record on a bare onClick with no confirmation, unlike every other destructive admin action in the codebase. BLD-1416: the gift-vouchers admin route redeemed and cancelled voucher balances with no logAudit call, unlike every other money-mutating admin handler.',
     notes: [
@@ -4360,7 +4360,7 @@ export const BUILD_BACKLOG: BacklogItem[] = [
   },
   {
     title: 'Clinical-view audit gap closed at 3 more decrypt sites; chat transcripts gated on clinical permission; PII scrubbed from 3 more error logs; Google Workspace admin split into its own OWNER-only permission (BLD-1419, BLD-1415, BLD-1417, BLD-1413)',
-    type: 'ERROR', urgency: 'P2', status: 'IN_REVIEW', assignee: 'claude',
+    type: 'ERROR', urgency: 'P2', status: 'SHIPPED', assignee: 'claude', pr: PR(1839),
     value: 7, effort: 3,
     detail: 'BLD-1419: three more decClinical()-for-display sites never called the auditClinicalView() helper introduced for the BLD-1240/1392 batch — the admin dashboard next-arrival card, the clinical task detail on the Tasks board, and the live treatment-session screen (SessionRunner\'s data feed). BLD-1415: ChatMessage.body is Art. 9 clinical data (visitors routinely disclose symptoms/medical history to the AI concierge), but the chat route decrypted it for any staff with plain clients.view, the same class of gap already fixed for call transcripts (calls.view for the log, clients.clinical.view for the recording/transcript). BLD-1417: account/assessment, dentistry-interest and newsletter still did console.error(\'...\', e) — e can echo the just-submitted health-assessment answers or an email address straight into Vercel logs. BLD-1413: every Google Workspace admin route (create/suspend accounts, alias, group membership, seat audit) was gated on the generic settings.manage — any staff member granted that one permission for, say, editing clinic hours could also mint or suspend Google accounts and manage Google Group membership, a blast radius comparable to a financial export or key rotation.',
     notes: [
@@ -4373,7 +4373,7 @@ export const BUILD_BACKLOG: BacklogItem[] = [
   },
   {
     title: 'Kiosk analysis sessions no longer wedge in analyzing forever; IndexNow wired to journal publishing (BLD-1418, BLD-1424)',
-    type: 'ERROR', urgency: 'P2', status: 'IN_REVIEW', assignee: 'claude',
+    type: 'ERROR', urgency: 'P2', status: 'SHIPPED', assignee: 'claude', pr: PR(1842),
     value: 6, effort: 3,
     detail: 'BLD-1418: app/api/kiosk/sessions/[token]/analyze/route.ts claims a session by flipping stage to analyzing then runs the AI call via after() inside a 60s function; if that background call is platform-killed rather than throwing, lib/kiosk.ts\'s own catch (which resets stage to failed) never runs, so the row is stuck claimed forever and every retry no-ops against the stale claim. BLD-1424: lib/indexnow.ts\'s indexNow() is called from the reviews, staff, seo and academy admin routes but never from app/api/admin/posts/route.ts, the journal\'s admin route and the site\'s most frequently updated content type.',
     notes: [
@@ -4391,6 +4391,30 @@ export const BUILD_BACKLOG: BacklogItem[] = [
     notes: [
       'BLD-1439: the messages list <div> in components/admin/teamchat/ChatWindow.tsx (the one mapped over by the poll loop\'s messages state and scrolled via scrollRef) now carries role="log" aria-live="polite" aria-relevant="additions", so a screen reader announces each new message as it arrives instead of staying silent. No layout, styling or other behaviour changed.',
       'Review fix (pre-merge): a live region on the scroll container alone made the change net-negative. ChatWindow renders that container as soon as the channel resolves and only then fetches history, so up to 40 existing messages were inserted into an already-mounted live region — opening any conversation would have read the whole recent backlog aloud, and "Load earlier" another 40 on top. aria-live is now bound to an `announce` flag: off during the initial load and around a pagination fetch (both state updates commit together with the prepended messages, so the region is already muted when they reach the DOM), switched on in the requestAnimationFrame after the opening batch paints. role="log" and aria-relevant="additions" are unchanged, so poll-loop arrivals and sent messages still announce.',
+      'Verified: npx tsc --noEmit and npm run build pass clean.',
+    ],
+  },
+  {
+    title: 'Treatment pages show treatment-specific testimonial quotes alongside the star rating (BLD-1447)',
+    type: 'TASK', urgency: 'P2', status: 'SHIPPED', assignee: 'claude',
+    value: 7, effort: 3,
+    detail: 'lib/reviews-aggregate.ts already tags each internal ReviewCard with a treatment field and returns the full cards array from getReviewAggregate(), but components/treatment/TreatmentTemplate.tsx already destructured it into treatment-matched cards, only with a bug: when zero cards named the exact treatment (the common case for less-reviewed treatments), it fell back to rendering quotes for unrelated treatments under that treatment\'s rating — a customer\'s Botox review appearing on the Laser Hair Removal page, for example, which misrepresents what the quote is about.',
+    notes: [
+      'components/treatment/TreatmentTemplate.tsx: testimonialCards now filters aggregate.cards to card.treatment === t.title (exact match) and slices to the first 2, with no fallback to aggregate\'s general card pool — when nothing matches, testimonialCards is empty and the existing `{testimonialCards.length > 0 && ...}` guard renders nothing extra, leaving the star rating (rating.average/rating.count) as the only thing shown, exactly as before. Matching cards render as blockquote cards directly under the star-rating link, reusing the existing rounded-[var(--radius-md)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-5 card pattern already used elsewhere on the page (e.g. the pricing-status card), each showing a per-card Stars rating, the quote body and the author — no placeholder text, no fabricated content, only real cards returned by getReviewAggregate().',
+      'Verified: npx tsc --noEmit and npm run build pass clean.',
+    ],
+  },
+  {
+    title: 'Late-cancellation fee waiver requires the same permission as the no-show waiver; membership tier fields escaped in transactional emails (BLD-1437, BLD-1438)',
+    type: 'ERROR', urgency: 'P2', status: 'SHIPPED', assignee: 'claude',
+    value: 7, effort: 2,
+    detail: 'BLD-1437: app/admin/bookings/actions.ts\'s cancelBookingAction only checked bookings.manage before honouring opts.waiveFee, so a PRACTITIONER (who has bookings.manage but not bookings.charge) could waive the late-cancellation fee — the sibling no-show waiver in the same file already required bookings.charge for that. BLD-1438: lib/automations.ts interpolated staff-editable MembershipTier fields (name, perks, color — editable by anyone with discounts.manage, which FRONT_DESK holds) unescaped into the tier-nudge and membership-renewal transactional HTML emails, while the client\'s own firstName on the same lines was already escaped.',
+    notes: [
+      'BLD-1437: cancelBookingAction now requires sessionCan(session, \'bookings.charge\') whenever opts.waiveFee is truthy, returning the same { ok: false, error } shape as the neighbouring permission checks in the file. The base cancel action still only needs bookings.manage; charge permission is only checked when a fee waiver is requested.',
+      'Review fix (pre-merge): the first cut of the BLD-1437 gate broke the same-day request decline for PRACTITIONER. SameDayRequestActions.decline() always calls cancelBookingAction with waiveFee: true, and that panel renders for anyone with bookings.manage, so every practitioner declining a same-day request hit "You don\'t have permission to waive fees" and the decline dead-ended. It cannot simply drop the waiver either: a same-day request is inside 24h by definition, so cancelling it unwaived would bill the client in full for an appointment the clinic refused. The gate now re-reads the booking status server-side (not the caller\'s flag) and exempts status REQUESTED only — a booking that was never confirmed, holds no slot and has no card on file, so there is no fee to concede. Every other waiver still needs bookings.charge.',
+      'Review fix (pre-merge): BookingActions.tsx showed the "Waive the late-cancellation fee (override)" tick to staff without bookings.charge, who would then get the new server-side refusal on submit. The tick is now gated on canCharge, matching the "No-show — waive fee" button in the same component.',
+      'BLD-1438: in tierNudges() and membershipRenewal(), next.name/tier.name, next.perks/tier.perks and next.color/tier.color are now wrapped in the same escapeHtml() helper already used for c.firstName, at every point they land in the emailShell body or preheader (which is also interpolated straight into the email HTML). Email subject lines and the internal emailEvent audit-log subject strings are plain text, not HTML, and were left untouched.',
+      'Review fix (pre-merge, BLD-1438): the fix stopped at lib/automations.ts and left the identical hole open in lib/membership.ts#sendTierUpgradeEmail — the K Circle tier-upgrade email, which interpolated the same tier.name, tier.color and tier.perks (the perks straight into <li> elements) with no escaping, from the same MembershipTier rows that app/api/admin/membership/route.ts lets any discounts.manage holder write with only a length cap. That email also interpolated client.firstName raw, which automations.ts had already been escaping, so the client\'s own signup input was a live vector there too. All four are now escaped, perks per item.',
       'Verified: npx tsc --noEmit and npm run build pass clean.',
     ],
   },
