@@ -229,6 +229,13 @@ export async function pushBookingToClinician(bookingId: string): Promise<{ ok: b
   const calId = encodeURIComponent(staff.googleCalendarId || 'primary');
   const base = `https://www.googleapis.com/calendar/v3/calendars/${calId}/events`;
   const existing = b.googleEventId;
+  // PATCH (existing event) is idempotent. The POST (first push) is not: if a
+  // fetchWithRetry attempt times out after Google has already inserted the
+  // event, the retry inserts a second one and only the last id is stored. The
+  // duplicate is a stray "KClinics appointment" on the clinician's calendar,
+  // tagged with extendedProperties.private.kcBookingId so it can be found —
+  // the same class of accepted duplicate-send risk as the email/SMS retries
+  // (BLD-1038), and not worth the 409-handling a client-supplied event id needs.
   const res = await fetchWithRetry(existing ? `${base}/${encodeURIComponent(existing)}` : base, {
     method: existing ? 'PATCH' : 'POST',
     headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
