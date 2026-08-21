@@ -271,10 +271,21 @@ export default async function ClientDetail({ params }: { params: Promise<{ id: s
             // price. Show its position in the course instead; the full price stays
             // on the purchase booking itself, where it belongs.
             const packageByPurchaseId = new Map(packages.map((p) => [p.purchaseBookingId, p]));
+            // Review fix (BLD-1453): the position must be counted with the SAME
+            // rule lib/package-sessions.ts uses (SESSION_INCLUDED) — a cancelled
+            // or missed session occupies a slot only once it has been marked
+            // package-consumed. Counting every row instead would shift the
+            // numbering here away from the "Session X of N" on the booking
+            // detail page, and could even print a number above the course total.
+            const occupiesSlot = (b: (typeof c.bookings)[number]) =>
+              (b.status !== 'CANCELLED' && b.status !== 'NO_SHOW') || b.packageSessionUsedAt != null;
             const sessionsByPurchaseId = new Map<string, typeof c.bookings>();
             for (const b of c.bookings) {
               const purchaseId = b.packageBookingId ?? (packageByPurchaseId.has(b.id) ? b.id : null);
               if (!purchaseId) continue;
+              // The purchase booking always holds its own first slot; a linked
+              // session only holds one while it counts.
+              if (purchaseId !== b.id && !occupiesSlot(b)) continue;
               const arr = sessionsByPurchaseId.get(purchaseId) ?? [];
               arr.push(b);
               sessionsByPurchaseId.set(purchaseId, arr);
@@ -295,7 +306,7 @@ export default async function ClientDetail({ params }: { params: Promise<{ id: s
                       <p className="mt-0.5 text-xs text-[var(--color-stone)]">
                         {fmtClinicDate(b.startAt, { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' })} · {fmtClinicTime(b.startAt)}
                         {isLinkedSession && pkg
-                          ? ` · Package session${sessionNumber > 0 ? ` ${sessionNumber} of ${pkg.sessionsTotal}` : ''}`
+                          ? ` · Package session${sessionNumber > 0 ? ` ${sessionNumber} of ${pkg.sessionsTotal}` : ''}${b.pricePence > 0 ? ` · ${fmtPence(b.pricePence)}` : ''}`
                           : isPackagePurchase && pkg
                             ? ` · Package purchase — Course of ${pkg.sessionsTotal}${b.pricePence > 0 ? ` · ${fmtPence(b.pricePence)}` : ''}`
                             : b.pricePence > 0 ? ` · ${fmtPence(b.pricePence)}` : ''}
