@@ -265,9 +265,28 @@ export default async function ClientDetail({ params }: { params: Promise<{ id: s
           <h2 className="mb-3 font-[family-name:var(--font-display)] text-xl">Appointments</h2>
           {(() => {
             const fmtPence = (p: number) => formatPrice(p);
+            // BLD-1453: a booking linked to a package purchase (packageBookingId set)
+            // must never display the package's full price as if it were its own —
+            // that reads as an individual treatment charged at the whole course's
+            // price. Show its position in the course instead; the full price stays
+            // on the purchase booking itself, where it belongs.
+            const packageByPurchaseId = new Map(packages.map((p) => [p.purchaseBookingId, p]));
+            const sessionsByPurchaseId = new Map<string, typeof c.bookings>();
+            for (const b of c.bookings) {
+              const purchaseId = b.packageBookingId ?? (packageByPurchaseId.has(b.id) ? b.id : null);
+              if (!purchaseId) continue;
+              const arr = sessionsByPurchaseId.get(purchaseId) ?? [];
+              arr.push(b);
+              sessionsByPurchaseId.set(purchaseId, arr);
+            }
+            for (const arr of sessionsByPurchaseId.values()) arr.sort((a, b) => +new Date(a.startAt) - +new Date(b.startAt));
             const Row = ({ b }: { b: (typeof c.bookings)[number] }) => {
               const cancelled = b.status === 'CANCELLED' || b.status === 'NO_SHOW';
               const consentOk = consentSet.has(b.id);
+              const isPackagePurchase = packageByPurchaseId.has(b.id);
+              const pkg = isPackagePurchase ? packageByPurchaseId.get(b.id) : b.packageBookingId ? packageByPurchaseId.get(b.packageBookingId) : undefined;
+              const sessionNumber = pkg ? (sessionsByPurchaseId.get(pkg.purchaseBookingId)?.findIndex((x) => x.id === b.id) ?? -1) + 1 : 0;
+              const isLinkedSession = !isPackagePurchase && !!pkg;
               return (
                 <Link href={`/admin/bookings/${b.id}`} className="block rounded-[var(--radius-md)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-3.5 transition-colors hover:border-[var(--color-gold)]">
                   <div className="flex items-start justify-between gap-3">
@@ -275,7 +294,11 @@ export default async function ClientDetail({ params }: { params: Promise<{ id: s
                       <p className="text-sm font-medium">{b.treatmentTitle}</p>
                       <p className="mt-0.5 text-xs text-[var(--color-stone)]">
                         {fmtClinicDate(b.startAt, { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' })} · {fmtClinicTime(b.startAt)}
-                        {b.pricePence > 0 ? ` · ${fmtPence(b.pricePence)}` : ''}
+                        {isLinkedSession && pkg
+                          ? ` · Package session${sessionNumber > 0 ? ` ${sessionNumber} of ${pkg.sessionsTotal}` : ''}`
+                          : isPackagePurchase && pkg
+                            ? ` · Package purchase — Course of ${pkg.sessionsTotal}${b.pricePence > 0 ? ` · ${fmtPence(b.pricePence)}` : ''}`
+                            : b.pricePence > 0 ? ` · ${fmtPence(b.pricePence)}` : ''}
                       </p>
                     </div>
                     <span className={`shrink-0 rounded-full px-2.5 py-0.5 text-[0.65rem] font-medium uppercase tracking-wide ${BK_BADGE[b.status] ?? 'bg-[var(--color-bone)]'}`}>{b.status.toLowerCase().replace('_', ' ')}</span>
