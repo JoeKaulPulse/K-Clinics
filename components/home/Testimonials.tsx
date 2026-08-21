@@ -14,10 +14,15 @@ export function Testimonials({ reviews, rating }: { reviews: TestimonialCard[]; 
   const [hovered, setHovered] = useState(false);
   const [focused, setFocused] = useState(false);
   // Explicit user override — a persistent way to stop auto-advance regardless
-  // of hover/focus state, per WCAG 2.2.2 (Pause, Stop, Hide).
-  const [userPaused, setUserPaused] = useState(false);
+  // of hover/focus state, per WCAG 2.2.2 (Pause, Stop, Hide). Three states, not
+  // two: null follows hover/focus, true is paused, false is play anyway. Review
+  // fix (BLD-1457): a plain boolean could not express the last one, and pressing
+  // the control focuses it, so Play left the carousel stopped by its own focus
+  // (and on touch by a mouseenter that never gets a mouseleave) while the button
+  // showed a pause icon over a carousel that never moved.
+  const [override, setOverride] = useState<boolean | null>(null);
   const reduce = useReducedMotionSafe();
-  const paused = hovered || focused || userPaused;
+  const paused = override ?? (hovered || focused);
   const go = (dir: number) => setI((p) => (p + dir + reviews.length) % reviews.length);
 
   // Auto-advance, pausing on hover / focus / explicit pause / reduced-motion.
@@ -100,12 +105,11 @@ export function Testimonials({ reviews, rating }: { reviews: TestimonialCard[]; 
               {!reduce && (
                 <button
                   type="button"
-                  onClick={() => setUserPaused((p) => !p)}
-                  aria-label={userPaused ? 'Play testimonials rotation' : 'Pause testimonials rotation'}
-                  aria-pressed={userPaused}
+                  onClick={() => setOverride(override !== true)}
+                  aria-label={override === true ? 'Play testimonials rotation' : 'Pause testimonials rotation'}
                   className="grid h-11 w-11 place-items-center rounded-full border border-white/20 text-[var(--color-porcelain)] transition-colors hover:border-[var(--color-gold)] hover:text-[var(--color-gold)]"
                 >
-                  {userPaused ? '▶' : '❚❚'}
+                  {override === true ? '▶' : '❚❚'}
                 </button>
               )}
             </div>
