@@ -70,9 +70,9 @@ export async function TreatmentTemplate({ t }: { t: Treatment }) {
   // where the actual buying decision happens.
   const [pricing, vatNote, aggregate] = await Promise.all([pricingForTreatment(t.slug), getVatNote(), getReviewAggregate()]);
   const rating = aggregate ? { average: aggregate.average, count: aggregate.count } : null;
-  // Prefer testimonials naming this exact treatment; fall back to the general pool.
-  const treatmentCards = aggregate?.cards.filter((c) => c.treatment === t.title) ?? [];
-  const testimonialCards = (treatmentCards.length ? treatmentCards : aggregate?.cards ?? []).slice(0, 2);
+  // BLD-1447: quotes naming this exact treatment only — no fallback to the general
+  // pool. Most treatments have none yet; the star rating alone still renders.
+  const testimonialCards = (aggregate?.cards.filter((c) => c.treatment === t.title) ?? []).slice(0, 2);
   const fromPence = pricing?.fromPence ?? null;
   const fromOfferPence = pricing?.fromOfferPence ?? null;
   const offerName = pricing?.offerName ?? null;
@@ -314,10 +314,9 @@ export async function TreatmentTemplate({ t }: { t: Treatment }) {
                 <div className="mt-5 space-y-4">
                   {testimonialCards.map((c, i) => (
                     <blockquote key={i} className="rounded-[var(--radius-md)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-5">
-                      <p className="text-sm leading-relaxed text-[var(--color-ink-soft)]">“{c.body}”</p>
-                      <footer className="mt-3 text-xs font-medium text-[var(--color-gold-deep)]">
-                        {c.author}{c.treatment ? ` · ${c.treatment}` : ''}
-                      </footer>
+                      <Stars rating={c.rating} size="h-3.5 w-3.5" />
+                      <p className="mt-2 text-sm leading-relaxed text-[var(--color-ink-soft)]">“{c.body}”</p>
+                      <footer className="mt-3 text-xs font-medium text-[var(--color-gold-deep)]">{c.author}</footer>
                     </blockquote>
                   ))}
                 </div>
