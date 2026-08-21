@@ -4420,6 +4420,18 @@ export const BUILD_BACKLOG: BacklogItem[] = [
       'Verified: npx tsc --noEmit and npm run build pass clean.',
     ],
   },
+  {
+    title: 'Xero, Google Calendar and Google Business API calls now retry transient failures with backoff (BLD-1446)',
+    type: 'TASK', urgency: 'P2', status: 'SHIPPED', assignee: 'claude',
+    value: 6, effort: 3,
+    detail: 'lib/xero.ts, lib/google-calendar.ts and lib/google-business.ts all called fetch() directly with only an AbortSignal timeout -- a single transient 429/5xx or dropped connection failed the call outright, unlike lib/sms.ts and lib/email.ts, which both already retry a bounded few times with backoff for exactly this failure mode (BLD-1038).',
+    notes: [
+      'Added lib/fetch-retry.ts, a shared fetchWithRetry() wrapper: up to 3 attempts, backing off 700ms/1400ms between them, retrying only on HTTP 429/5xx or a network/timeout error (a 4xx auth/validation failure returns immediately, same as before). Each attempt gets its own fresh AbortSignal.timeout(10_000) generated inside the helper, rather than reusing one signal object across retries -- reusing the caller-supplied signal would have left later retries with little or no time budget once the first attempt had eaten into the 10s window.',
+      'Every fetch() call site in the three files (5 in lib/xero.ts, 6 in lib/google-calendar.ts, 8 in lib/google-business.ts -- OAuth token exchanges, the Xero Accounting API reads/writes and Bank Summary report, the Google Calendar events sync/push/delete, and the Google Business accounts/locations/reviews/posts/reply calls) now goes through fetchWithRetry() with a per-integration label for the retry log line. Existing status handling (403 permission prompts, 404 stale-event recreation, 429/403 treated as pending Business Profile access) is unchanged -- fetchWithRetry returns the same Response shape as fetch, so callers that inspect res.status/res.ok needed no other changes.',
+      'lib/sms.ts and lib/email.ts keep their own inline retry logic (email\'s also parses the error message for rate-limit detection rather than only checking res.status, which fetchWithRetry does not do) -- left as-is to avoid touching two already-tested, higher-volume send paths for a change scoped to the three integrations named in the finding.',
+      'Verified: npx tsc --noEmit and npm run build pass clean (npm run build with DB_SYNC_NONFATAL=true, since this build environment cannot reach the production Neon database over raw TCP -- confirmed via a direct TCP probe -- the same network-policy constraint noted elsewhere for this sandbox; prisma db push is untouched by this PR).',
+    ],
+  },
 ];
 
 // A content hash over every item's title + status + PR, so ANY change (a new
