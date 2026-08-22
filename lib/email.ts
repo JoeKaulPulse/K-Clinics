@@ -964,7 +964,7 @@ export function tmplAbandonedOrder(o: { firstName: string; resumeUrl: string }) 
 
 // BLD-1452: nudge for a client whose profile still shows no recorded T&Cs
 // acceptance — points them at account setup, which is where the acceptance is
-// actually captured (the tick on the signup form; registerClient records it
+// actually captured (the tick on the signup form; signupClient records it
 // even when the client already exists). Review fix: the first draft asked them
 // to "add a payment card to your account" from the same link, which no screen
 // in /account does — a card is saved by Stripe during a booking — so the copy

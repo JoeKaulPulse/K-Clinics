@@ -262,7 +262,7 @@ async function abandonedOrders(t: Tally) {
 //
 //  1. Only clients who can actually act on it. Acceptance is recorded in
 //     exactly one place a client can reach on their own — the signup tick, via
-//     registerClient() (lib/client-auth.ts), which stamps termsAcceptedAt even
+//     signupClient() (lib/client-auth.ts), which stamps termsAcceptedAt even
 //     when the Client row already exists. There is no "accept the T&Cs" screen
 //     and no "add a card" screen in /account: a card is saved by Stripe during
 //     a booking, and the portal booking route (/api/booking/start) does not
