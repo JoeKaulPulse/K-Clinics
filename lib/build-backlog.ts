@@ -4442,6 +4442,7 @@ export const BUILD_BACKLOG: BacklogItem[] = [
     notes: [
       'Added export const maxDuration = 60 to app/api/health/route.ts, next to the existing runtime/dynamic exports, and a matching "app/api/health/route.ts": { "maxDuration": 60 } entry to vercel.json\'s functions block -- same path-glob style and 60s duration convention already used for the other cron routes there (app/api/cron/dispatch, app/api/cron/kiosk-cleanup, app/api/admin/api-health). No behaviour change; the route already completes well inside 60s in practice, this only raises the ceiling before a platform timeout can cut it off.',
       'Verified: npx tsc --noEmit and npm run build pass clean.',
+      'Shipped: merged to main as 3ffe8c7 via PR #1853 -- /api/health now declares maxDuration = 60 in the route and in vercel.json.',
     ],
   },
   {
@@ -4454,6 +4455,7 @@ export const BUILD_BACKLOG: BacklogItem[] = [
       'analyzeKioskPhotosV2() previously carried a "NO retries (budget rule: a retry could double-bill the session)" comment -- that reasoning does not hold: a failed request never produces billable output, so a retry after a 5xx/network error cannot double-charge, same as the other three call sites already fixed under BLD-334. The comment is replaced with the correct BLD-1461 rationale and the same retry now applies here too.',
       'Verified: npx tsc --noEmit and npm run build pass clean.',
       'Review fix: the helper no longer retries after its own 30s timeout, only after a 5xx or a connection error. Both kiosk routes run the analysis inside after() under maxDuration = 60, so two full-length attempts (30s + 0.6s + 30s) overrun the function budget -- the process is killed mid-attempt and the graceful ANALYSIS_FAILED write goes with it, leaving the session stuck in PHOTO_TAKEN and the kiosk polling for ever, which is the failure BLD-451 fixed. A timed-out request is also the one case that may already have been processed upstream, so skipping it keeps analyzeKioskPhotosV2 original budget rule honest. The discarded 5xx response body is now cancelled before the retry rather than left unread.',
+      'Shipped: merged to main as 3ffe8c7 via PR #1853 -- one bounded retry on a 5xx or connection error; a request that hits our own 30s timeout is not retried, keeping the worst case inside the routes\' 60s budget.',
     ],
   },
   {
@@ -4466,11 +4468,12 @@ export const BUILD_BACKLOG: BacklogItem[] = [
       'BLD-1459: replaced the page\'s flat py-16 sm:py-24 with pb-16 pt-[calc(var(--header-h,5.25rem)+2rem)] sm:pb-24 on the <main>, the same pt-[calc(var(--header-h,5.25rem)+Xrem)] convention already used by every other non-hero content page (app/(marketing)/shop/checkout/page.tsx, app/(marketing)/shop/cart/CartClient.tsx, app/(marketing)/shop/[slug]/page.tsx, app/(marketing)/journal/[slug]/page.tsx) rather than inventing a new spacing value.',
       'Verified: npx tsc --noEmit and npm run build pass clean.',
       'Review fix (BLD-1458): min-w-0 was on the anchors, where it does nothing -- min-width does not apply to a non-replaced inline element, and the automatic minimum size that forces the grid wide belongs to the grid ITEM. Moved it to the two wrapping divs; break-words stays on the anchors, which is what wraps the address once the track is allowed to shrink. The sm:grid-cols-2 behaviour above the breakpoint is unchanged either way.',
+      'Shipped: merged to main as 5641110 via PR #1852 -- contact-info grid stacks on mobile with min-w-0 on the grid items, and /roadmap uses the standard header offset.',
     ],
   },
   {
     title: 'Homepage testimonials carousel had no keyboard pause control; GroupBookingForm and FranchiseEnquiryForm submit errors were not announced to screen readers (BLD-1457, BLD-1456)',
-    type: 'ERROR', urgency: 'P1', status: 'IN_REVIEW', assignee: 'claude',
+    type: 'ERROR', urgency: 'P1', status: 'SHIPPED', assignee: 'claude',
     value: 5, effort: 2,
     detail: 'BLD-1457: components/home/Testimonials.tsx auto-advanced every 6s and only paused via onMouseEnter/onMouseLeave -- a keyboard user tabbing to the carousel\'s own Previous/Next/dot controls never paused it, and there was no visible pause control, failing WCAG 2.2.2 (Pause, Stop, Hide), a Level A criterion. BLD-1456: GroupBookingForm.tsx and FranchiseEnquiryForm.tsx rendered their submit-error message as a plain <p> with no role/aria-live, unlike every comparable lead form in the codebase (ConsultForm, ReviewForm, ApplyForm, SignupForm), so a failed submission was silent to screen-reader users.',
     notes: [
@@ -4478,6 +4481,7 @@ export const BUILD_BACKLOG: BacklogItem[] = [
       'BLD-1456: matched the exact pattern used by ConsultForm/ReviewForm/ApplyForm/SignupForm -- role="alert" aria-live="assertive" added to both forms\' existing error <p>, no visual change.',
       'Verified: npx tsc --noEmit and npm run build pass clean (DB sync env vars unset so prebuild\'s db-sync step skips cleanly, no DATABASE_URL reachable from this sandbox).',
       'Review fix (BLD-1457): the pause state was a boolean ORed with hover and focus, so Play could not win against them. Activating the control focuses it, which means pressing Play left the carousel paused by its own focus and showed a pause icon over a carousel that never moved -- the same dead end on touch, where mouseenter fires with no matching mouseleave. It is now a three-state override (null follows hover/focus, true pauses, false plays regardless), so the control always does what it says. Dropped aria-pressed: the accessible name already flips between Pause and Play, and both together announce as "Play ... pressed", which says the opposite of what the button does.',
+      'Shipped: merged to main as 36b18ee via PR #1851 -- focus now pauses the carousel alongside hover, a visible pause/play toggle satisfies WCAG 2.2.2, and both lead forms announce submit errors.',
     ],
   },
   {
@@ -4494,16 +4498,18 @@ export const BUILD_BACKLOG: BacklogItem[] = [
       'Verified: npx tsc --noEmit and npm run build pass clean (DB env vars unset for the build, since prebuilds db-sync step cannot reach the database from this sandbox -- prisma db push is untouched by this PR).',
       'Review fix (audience): the first draft mailed every client with termsAcceptedAt null and pointed them at /account/login to "accept our Terms & Conditions and add a payment card". Neither action exists there: acceptance is recorded only by the signup tick (signupClient stamps it even when the Client row already exists), the portal booking route /api/booking/start does not record it at all, and no screen in /account adds a card -- Stripe saves one during a booking. A client who already holds a portal password therefore had no way to clear the flag and would have been asked for ever. The query now also requires passwordHash: null, the CTA goes to /account/signup, and the copy says what actually happens with the card instead of asking for it.',
       'Review fix (bound): attempts are now capped at TCS_REMINDER_MAX_PER_CLIENT (3) per client, counted from the EmailEvent history (sent or failed) in one groupBy per run. Without it an unanswered nudge repeated every 14 days for ever, and a hard-bouncing address was retried on EVERY run, because the release-on-failure sets tcsReminderSentAt back to null and makes the row due again immediately -- one bad address would have logged a FAILED EmailEvent and errored the daily cron once a day indefinitely. A capped client is still stamped so it leaves the query window instead of starving the clients queued behind it.',
+      'Shipped: merged to main as a1c1dd2 via PR #1850 -- daily tcsReminders() automation, gated off by default behind tcs_reminder_email. Pre-merge review fix: the code comments and the note above cited registerClient(), which does not exist in this repo; the function that records the acceptance is signupClient() in lib/client-auth.ts, and it does stamp termsAcceptedAt for an existing passwordless Client row, so the passwordHash-null audience and the /account/signup CTA are correct as built -- only the name was wrong.',
     ],
   },
   {
     title: 'Client profile showed the full package price on individual linked appointments (BLD-1453)',
-    type: 'ERROR', urgency: 'P1', status: 'IN_REVIEW', assignee: 'claude',
+    type: 'ERROR', urgency: 'P1', status: 'SHIPPED', assignee: 'claude',
     value: 6, effort: 2,
     detail: 'app/admin/clients/[id]/page.tsx rendered every booking\'s raw b.pricePence on its appointment-list row, with no distinction between the purchase booking of a multi-session package (whose pricePence is genuinely the whole course\'s price) and a follow-up session linked to it via Booking.packageBookingId -- so a client\'s individual visit could read as if it had been charged the full course price. lib/package-sessions.ts already exposes packageSessionNumber() (used on the booking-detail page) for exactly this "session X of N" labelling, but the client-profile appointment list never used it.',
     notes: ['Fix: derived the same session-position data locally in the page (avoiding an N+1 packageSessionNumber() call per row) from data already fetched there -- packages (clientPackages(c.id), already loaded for the Packages section) keyed by purchaseBookingId, and c.bookings grouped by their resolved purchase id (b.packageBookingId, or b.id itself when it IS a purchase booking) and sorted by startAt. Each appointment row now shows "Package purchase -- Course of N" (plus its price, unchanged) on the purchase booking, and "Package session X of N" (no price) on a linked follow-up session, instead of the old plain price line. An appointment unrelated to any package renders exactly as before.',
       'Verified: npx tsc --noEmit and npm run build (DB unreachable from this sandbox network; DB_SYNC_NONFATAL-equivalent skip via unset DATABASE_URL* env vars for prebuild) both pass clean.',
       'Review fix: the local grouping counted every linked booking, including cancelled/missed ones never marked package-consumed, so the number here could disagree with the "Session X of N" on the booking-detail page and could print a position above the course total. It now applies the same SESSION_INCLUDED rule as lib/package-sessions.ts (a cancelled or missed session occupies a slot only once packageSessionUsedAt is set); a session holding no slot shows "Package session" with no number. A linked session that carries money of its own -- add-ons booked in the same slot, or an uncharged appointment retro-linked to a course under BLD-1375 -- keeps showing its own price, which the first pass dropped.',
+      'Shipped: merged to main as 41eb444 via PR #1849 -- client-profile appointment rows now label a package purchase and number each linked session, instead of printing the course price on a single visit.',
     ],
   },
 ];
