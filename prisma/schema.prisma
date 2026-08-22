@@ -58,6 +58,7 @@ enum EmailKind {
   BOOKING_INTENT
   LIVE_CLASS // BLD-1034: academy live-class create/reschedule/cancel/reminder notices
   COURSE_CONTENT_READY // BLD-1231: one-time nudge once a zero-content course's first module publishes
+  TCS_REMINDER // BLD-1452: nudge a client with no recorded T&Cs acceptance to accept + add a card
 }
 
 enum EmailStatus {
@@ -341,6 +342,12 @@ model Client {
   termsAcceptedAt      DateTime?
   termsAcceptedSource  String?
   termsVersion         String?
+  // BLD-1452: when the "please accept T&Cs + add a card" reminder was last
+  // emailed (dedupe/cadence, mirrors EnrolmentPayment.lastRemindedAt). Only
+  // read/written while termsAcceptedAt is still null — once accepted, the
+  // audience query below excludes the client and this value is inert.
+  // Additive, nullable.
+  tcsReminderSentAt   DateTime?
 
   // ── Loyalty / referrals ──────────────────────────────────────────────────
   referralCode String? @unique // this client's own shareable code
