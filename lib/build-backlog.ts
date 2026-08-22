@@ -4434,6 +4434,16 @@ export const BUILD_BACKLOG: BacklogItem[] = [
       'Verified: npx tsc --noEmit and npm run build pass clean (npm run build with DB_SYNC_NONFATAL=true, since this build environment cannot reach the production Neon database over raw TCP -- confirmed via a direct TCP probe -- the same network-policy constraint noted elsewhere for this sandbox; prisma db push is untouched by this PR).',
     ],
   },
+  {
+    title: 'Client profile showed the full package price on individual linked appointments (BLD-1453)',
+    type: 'ERROR', urgency: 'P1', status: 'IN_REVIEW', assignee: 'claude',
+    value: 6, effort: 2,
+    detail: 'app/admin/clients/[id]/page.tsx rendered every booking\'s raw b.pricePence on its appointment-list row, with no distinction between the purchase booking of a multi-session package (whose pricePence is genuinely the whole course\'s price) and a follow-up session linked to it via Booking.packageBookingId -- so a client\'s individual visit could read as if it had been charged the full course price. lib/package-sessions.ts already exposes packageSessionNumber() (used on the booking-detail page) for exactly this "session X of N" labelling, but the client-profile appointment list never used it.',
+    notes: ['Fix: derived the same session-position data locally in the page (avoiding an N+1 packageSessionNumber() call per row) from data already fetched there -- packages (clientPackages(c.id), already loaded for the Packages section) keyed by purchaseBookingId, and c.bookings grouped by their resolved purchase id (b.packageBookingId, or b.id itself when it IS a purchase booking) and sorted by startAt. Each appointment row now shows "Package purchase -- Course of N" (plus its price, unchanged) on the purchase booking, and "Package session X of N" (no price) on a linked follow-up session, instead of the old plain price line. An appointment unrelated to any package renders exactly as before.',
+      'Verified: npx tsc --noEmit and npm run build (DB unreachable from this sandbox network; DB_SYNC_NONFATAL-equivalent skip via unset DATABASE_URL* env vars for prebuild) both pass clean.',
+      'Review fix: the local grouping counted every linked booking, including cancelled/missed ones never marked package-consumed, so the number here could disagree with the "Session X of N" on the booking-detail page and could print a position above the course total. It now applies the same SESSION_INCLUDED rule as lib/package-sessions.ts (a cancelled or missed session occupies a slot only once packageSessionUsedAt is set); a session holding no slot shows "Package session" with no number. A linked session that carries money of its own -- add-ons booked in the same slot, or an uncharged appointment retro-linked to a course under BLD-1375 -- keeps showing its own price, which the first pass dropped.',
+    ],
+  },
 ];
 
 // A content hash over every item's title + status + PR, so ANY change (a new
