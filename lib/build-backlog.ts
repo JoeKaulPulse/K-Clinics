@@ -4435,6 +4435,18 @@ export const BUILD_BACKLOG: BacklogItem[] = [
     ],
   },
   {
+    title: 'Homepage testimonials carousel had no keyboard pause control; GroupBookingForm and FranchiseEnquiryForm submit errors were not announced to screen readers (BLD-1457, BLD-1456)',
+    type: 'ERROR', urgency: 'P1', status: 'IN_REVIEW', assignee: 'claude',
+    value: 5, effort: 2,
+    detail: 'BLD-1457: components/home/Testimonials.tsx auto-advanced every 6s and only paused via onMouseEnter/onMouseLeave -- a keyboard user tabbing to the carousel\'s own Previous/Next/dot controls never paused it, and there was no visible pause control, failing WCAG 2.2.2 (Pause, Stop, Hide), a Level A criterion. BLD-1456: GroupBookingForm.tsx and FranchiseEnquiryForm.tsx rendered their submit-error message as a plain <p> with no role/aria-live, unlike every comparable lead form in the codebase (ConsultForm, ReviewForm, ApplyForm, SignupForm), so a failed submission was silent to screen-reader users.',
+    notes: [
+      'BLD-1457: added onFocus/onBlur handlers on the carousel container alongside the existing onMouseEnter/onMouseLeave, so focus-within pauses rotation the same way hover-within already does. Focus/hover alone does not fully satisfy 2.2.2 (focus moves away once a control is activated), so also added a visible pause/play toggle button matching the existing Previous/Next controls\' style (same h-11 w-11 rounded-full border), with aria-label reading "Pause testimonials rotation" / "Play testimonials rotation" and aria-pressed reflecting state -- an explicit, persistent way to stop auto-advance regardless of focus. The toggle is omitted when prefers-reduced-motion is already honoured (autoplay never runs).',
+      'BLD-1456: matched the exact pattern used by ConsultForm/ReviewForm/ApplyForm/SignupForm -- role="alert" aria-live="assertive" added to both forms\' existing error <p>, no visual change.',
+      'Verified: npx tsc --noEmit and npm run build pass clean (DB sync env vars unset so prebuild\'s db-sync step skips cleanly, no DATABASE_URL reachable from this sandbox).',
+      'Review fix (BLD-1457): the pause state was a boolean ORed with hover and focus, so Play could not win against them. Activating the control focuses it, which means pressing Play left the carousel paused by its own focus and showed a pause icon over a carousel that never moved -- the same dead end on touch, where mouseenter fires with no matching mouseleave. It is now a three-state override (null follows hover/focus, true pauses, false plays regardless), so the control always does what it says. Dropped aria-pressed: the accessible name already flips between Pause and Play, and both together announce as "Play ... pressed", which says the opposite of what the button does.',
+    ],
+  },
+  {
     title: 'Reminder email for clients with T&Cs not yet accepted, asking them to accept and add a card (BLD-1452)',
     type: 'TASK', urgency: 'P2', status: 'SHIPPED', assignee: 'claude',
     value: 6, effort: 3,
