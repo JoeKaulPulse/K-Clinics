@@ -4514,7 +4514,7 @@ export const BUILD_BACKLOG: BacklogItem[] = [
   },
   {
     title: 'Consultation bookings could never be assigned a clinician (BLD-1474)',
-    type: 'ERROR', urgency: 'P1', status: 'IN_REVIEW', assignee: 'claude',
+    type: 'ERROR', urgency: 'P1', status: 'IN_REVIEW', assignee: 'claude', pr: PR(1855),
     value: 6, effort: 1,
     detail: 'The "Assigned clinician" dropdown on the booking-detail page (app/admin/bookings/[id]/page.tsx) queries AdminUser rows where isClinician, active, and (competencies has the booking\'s treatmentSlug OR competencies is empty). \'consultation\' is a reserved pseudo-treatment slug (create-action.ts) deliberately excluded from the real treatment catalogue, so it can never appear in a staff member\'s competencies list -- the Schedules competency picker only offers checkboxes built from the bookable-treatments catalogue. In any clinic where staff have real specialisms set (i.e. nobody has an empty competencies list), the OR filter matched zero rows for every consultation booking, showing "No clinicians are set up to perform this treatment" with no way to assign one.',
     notes: [
