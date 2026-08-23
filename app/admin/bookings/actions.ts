@@ -447,7 +447,14 @@ export async function reassignPractitioner(bookingId: string, practitionerId: st
     if (!clin) return { ok: false, error: 'That person isn’t a bookable clinician.' };
     // A clinician with explicit competencies must list this treatment; an empty
     // list means a generalist (no restriction).
-    if (clin.competencies.length && !clin.competencies.includes(booking.treatmentSlug)) {
+    // BLD-1474: 'consultation' is a reserved pseudo-treatment slug (see
+    // create-action.ts) deliberately kept out of the real treatment catalogue,
+    // so it can never appear in anyone's competencies — the Schedules picker
+    // only offers checkboxes built from bookableTreatments. Applied here, the
+    // rule rejected EVERY clinician who has any specialism set, so the eligible
+    // list on the booking-detail page (fixed in the same ticket) could be saved
+    // by nobody. Any active clinician can run a consultation.
+    if (booking.treatmentSlug !== 'consultation' && clin.competencies.length && !clin.competencies.includes(booking.treatmentSlug)) {
       return { ok: false, error: 'That clinician isn’t set up to perform this treatment.' };
     }
     label = clin.name || clin.email;
