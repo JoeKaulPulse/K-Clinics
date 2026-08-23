@@ -4512,6 +4512,17 @@ export const BUILD_BACKLOG: BacklogItem[] = [
       'Shipped: merged to main as 41eb444 via PR #1849 -- client-profile appointment rows now label a package purchase and number each linked session, instead of printing the course price on a single visit.',
     ],
   },
+  {
+    title: 'Consultation bookings could never be assigned a clinician (BLD-1474)',
+    type: 'ERROR', urgency: 'P1', status: 'IN_REVIEW', assignee: 'claude',
+    value: 6, effort: 1,
+    detail: 'The "Assigned clinician" dropdown on the booking-detail page (app/admin/bookings/[id]/page.tsx) queries AdminUser rows where isClinician, active, and (competencies has the booking\'s treatmentSlug OR competencies is empty). \'consultation\' is a reserved pseudo-treatment slug (create-action.ts) deliberately excluded from the real treatment catalogue, so it can never appear in a staff member\'s competencies list -- the Schedules competency picker only offers checkboxes built from the bookable-treatments catalogue. In any clinic where staff have real specialisms set (i.e. nobody has an empty competencies list), the OR filter matched zero rows for every consultation booking, showing "No clinicians are set up to perform this treatment" with no way to assign one.',
+    notes: [
+      'Fix: when b.treatmentSlug === \'consultation\', the query drops the competencies OR filter entirely so any active clinician is eligible, matching the existing intent already documented elsewhere in the codebase (create-action.ts: a consultation can use "any free room/clinician", BLD-203/208). No schema or data change -- competencies is not a concept a consultation can meaningfully belong to.',
+      'Scope: only the admin booking-detail page had this filter live for consultations (confirmed via repo-wide search for competencies: { has: / { isEmpty:). lib/availability.ts has the same shape for the public booking widget\'s clinician picker, but \'consultation\' is never reachable there (it\'s excluded from the marketing bookableTreatments catalogue), so it was left unchanged to keep the fix minimal.',
+      'Verified: npx tsc --noEmit and npm run build (DB unreachable from this sandbox network; skip via unset DATABASE_URL* env vars for prebuild) both pass clean.',
+    ],
+  },
 ];
 
 // A content hash over every item's title + status + PR, so ANY change (a new
