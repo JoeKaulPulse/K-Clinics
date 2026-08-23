@@ -1,6 +1,6 @@
 import 'server-only';
 import { db } from './db';
-import { sendEmail, emailShell, tmplBirthday, tmplFollowUp, tmplWinBack, tmplReviewRequest, tmplAppointmentReminder, tmplFormReminder, tmplAbandonedBooking, tmplAbandonedOrder, tmplAftercare, tmplSatisfaction, tmplRebook, tmplCourseContentReady } from './email';
+import { sendEmail, emailShell, tmplBirthday, tmplFollowUp, tmplWinBack, tmplReviewRequest, tmplAppointmentReminder, tmplFormReminder, tmplAbandonedBooking, tmplAbandonedOrder, tmplAftercare, tmplSatisfaction, tmplRebook, tmplCourseContentReady, tmplTcsReminder } from './email';
 import { ensureReviewRequest, reviewLink, googleReviewLink } from './review-system';
 import { site } from './site';
 import { escapeHtml } from './sanitize';
@@ -31,13 +31,22 @@ const ANNIVERSARY_POINTS = 1000;  // bonus points on a membership anniversary
 const CONTENT_READY_WINDOW_DAYS = 30;
 const CONTENT_READY_MAX_PER_RUN = 500; // sends per daily run; the rest drain tomorrow
 
-type Tally = { birthdays: number; followUps: number; winBacks: number; reviews: number; reminders: number; formReminders: number; treatmentFollowUps: number; giftVouchers: number; tierNudges: number; anniversaries: number; abandonedBookings: number; abandonedOrders: number; bookingIntents: number; membershipRenewals: number; staffDigests: number; staffNudges: number; reencrypted: number; aftercare: number; satisfaction: number; rebookNudges: number; npsPromoters: number; npsDetractors: number; liveClassReminders: number; courseContentReady: number; errors: number };
+// BLD-1452: how often a client with no recorded T&Cs acceptance can be
+// re-reminded, and the most sent in one run (the rest drain on later runs).
+const TCS_REMINDER_CADENCE_DAYS = 14;
+const TCS_REMINDER_MAX_PER_RUN = 500;
+// Lifetime bound per client: after this many attempts (sent or failed) we stop
+// asking. Without it an unanswered nudge repeats for ever and a hard-bouncing
+// address is retried on every run.
+const TCS_REMINDER_MAX_PER_CLIENT = 3;
+
+type Tally = { birthdays: number; followUps: number; winBacks: number; reviews: number; reminders: number; formReminders: number; treatmentFollowUps: number; giftVouchers: number; tierNudges: number; anniversaries: number; abandonedBookings: number; abandonedOrders: number; bookingIntents: number; membershipRenewals: number; staffDigests: number; staffNudges: number; reencrypted: number; aftercare: number; satisfaction: number; rebookNudges: number; npsPromoters: number; npsDetractors: number; liveClassReminders: number; courseContentReady: number; tcsReminders: number; errors: number };
 
 export async function runDailyAutomations(): Promise<Tally> {
-  const t: Tally = { birthdays: 0, followUps: 0, winBacks: 0, reviews: 0, reminders: 0, formReminders: 0, treatmentFollowUps: 0, giftVouchers: 0, tierNudges: 0, anniversaries: 0, abandonedBookings: 0, abandonedOrders: 0, bookingIntents: 0, membershipRenewals: 0, staffDigests: 0, staffNudges: 0, reencrypted: 0, aftercare: 0, satisfaction: 0, rebookNudges: 0, npsPromoters: 0, npsDetractors: 0, liveClassReminders: 0, courseContentReady: 0, errors: 0 };
+  const t: Tally = { birthdays: 0, followUps: 0, winBacks: 0, reviews: 0, reminders: 0, formReminders: 0, treatmentFollowUps: 0, giftVouchers: 0, tierNudges: 0, anniversaries: 0, abandonedBookings: 0, abandonedOrders: 0, bookingIntents: 0, membershipRenewals: 0, staffDigests: 0, staffNudges: 0, reencrypted: 0, aftercare: 0, satisfaction: 0, rebookNudges: 0, npsPromoters: 0, npsDetractors: 0, liveClassReminders: 0, courseContentReady: 0, tcsReminders: 0, errors: 0 };
   const { staffWeeklyDigest, staffReengagement } = await import('@/lib/staff-emails');
   // BLD-120: allSettled so one failing automation can't abort the rest.
-  const results = await Promise.allSettled([birthdays(t), followUps(t), reviews(t), winBacks(t), reminders(t), formReminders(t), treatmentFollowUps(t), scheduledGiftVouchers(t), tierNudges(t), anniversaries(t), abandonedBookings(t), abandonedOrders(t), bookingIntentRecovery(t), membershipRenewal(t), staffWeeklyDigest(t), staffReengagement(t), keyReencryption(t), aftercare(t), satisfaction(t), rebookNudge(t), promoterFollowUp(t), detractorFollowUp(t), liveClassReminders(t), courseContentReady(t)]);
+  const results = await Promise.allSettled([birthdays(t), followUps(t), reviews(t), winBacks(t), reminders(t), formReminders(t), treatmentFollowUps(t), scheduledGiftVouchers(t), tierNudges(t), anniversaries(t), abandonedBookings(t), abandonedOrders(t), bookingIntentRecovery(t), membershipRenewal(t), staffWeeklyDigest(t), staffReengagement(t), keyReencryption(t), aftercare(t), satisfaction(t), rebookNudge(t), promoterFollowUp(t), detractorFollowUp(t), liveClassReminders(t), courseContentReady(t), tcsReminders(t)]);
   for (const r of results) {
     if (r.status === 'rejected') { t.errors++; console.error('[automations] unhandled automation failure:', r.reason); }
   }
@@ -235,6 +244,86 @@ async function abandonedOrders(t: Tally) {
       res.ok ? t.abandonedOrders++ : t.errors++;
     }
   } catch (e) { t.errors++; console.error('[automations] abandoned orders failed:', (e as Error)?.message); }
+}
+
+// ── T&Cs acceptance reminder (opt-in) ──
+// BLD-1452: a client whose profile still shows "T&Cs not yet accepted"
+// (Client.termsAcceptedAt null — BLD-1067) gets a care-class nudge to finish
+// setting up their account, which is what records the acceptance. This is NOT
+// limited to recently-lapsed acceptances: a staff-created or legacy client
+// shows not-yet-accepted until their first online signup, booking or enquiry,
+// so the audience can include long-standing clients too — gated behind
+// tcs_reminder_email (default off) precisely so the owner reviews that reach
+// before it ever sends. Re-sent at most once every TCS_REMINDER_CADENCE_DAYS
+// per client (Client.tcsReminderSentAt), capped at TCS_REMINDER_MAX_PER_RUN
+// sends per run; the rest drain on later runs.
+//
+// Review fix (BLD-1452), two bounds the first pass was missing:
+//
+//  1. Only clients who can actually act on it. Acceptance is recorded in
+//     exactly one place a client can reach on their own — the signup tick, via
+//     signupClient() (lib/client-auth.ts), which stamps termsAcceptedAt even
+//     when the Client row already exists. There is no "accept the T&Cs" screen
+//     and no "add a card" screen in /account: a card is saved by Stripe during
+//     a booking, and the portal booking route (/api/booking/start) does not
+//     record acceptance at all. So a client who already holds a portal password
+//     has no way to clear this flag, and mailing them a request they cannot
+//     complete would repeat forever. The audience is therefore passwordHash:
+//     null — the legacy/staff-created clients the signup link genuinely serves.
+//  2. A lifetime cap. Without one, a client who never responds is nudged every
+//     cadence window for ever, and an address that hard-bounces is retried on
+//     every run (the release-on-failure below makes it due again immediately),
+//     logging a FAILED EmailEvent and an errored cron each time. Attempts are
+//     counted from the EmailEvent history — sent or failed — and stop at
+//     TCS_REMINDER_MAX_PER_CLIENT. A capped client is still stamped, so it
+//     drops out of the audience for another cadence window rather than sitting
+//     at the head of every query and starving clients behind it.
+async function tcsReminders(t: Tally) {
+  try {
+    const { getSetting } = await import('@/lib/settings');
+    if (!(await getSetting('tcs_reminder_email'))) return;
+    const base = (SITE_URL || '').replace(/\/$/, '');
+    const signupUrl = `${base}/account/signup`;
+    const cutoff = new Date(Date.now() - TCS_REMINDER_CADENCE_DAYS * 864e5);
+    const dueFilter = { OR: [{ tcsReminderSentAt: null }, { tcsReminderSentAt: { lt: cutoff } }] };
+    const clients = await db.client.findMany({
+      where: { termsAcceptedAt: null, passwordHash: null, email: { not: '' }, unsubscribed: false, ...dueFilter },
+      select: { id: true, email: true, firstName: true, unsubscribed: true },
+      orderBy: { createdAt: 'asc' },
+      take: TCS_REMINDER_MAX_PER_RUN,
+    });
+    if (!clients.length) return;
+    // One query for the whole batch, not one per client.
+    const priorAttempts = await db.emailEvent.groupBy({
+      by: ['clientId'],
+      where: { kind: 'TCS_REMINDER', clientId: { in: clients.map((c) => c.id) } },
+      _count: { _all: true },
+    }).catch(() => [] as { clientId: string | null; _count: { _all: number } }[]);
+    const attemptsByClient = new Map(priorAttempts.map((a) => [a.clientId, a._count._all]));
+    for (const c of clients) {
+      if (!canEmailCare(c)) continue;
+      const capped = (attemptsByClient.get(c.id) ?? 0) >= TCS_REMINDER_MAX_PER_CLIENT;
+      // Claim first (conditional update matching the same due-filter) so two
+      // overlapping cron runs can't both send to the same client — mirrors
+      // courseContentReady's claim-before-send pattern.
+      const claim = await db.client.updateMany({ where: { id: c.id, ...dueFilter }, data: { tcsReminderSentAt: new Date() } });
+      if (claim.count !== 1) continue;
+      if (capped) continue; // asked enough times; the stamp above keeps them out of the next window
+      const subject = 'One quick thing to finish setting up your account';
+      const res = await sendEmail({ to: c.email, subject, html: tmplTcsReminder({ firstName: c.firstName || 'there', signupUrl }) });
+      await db.emailEvent.create({ data: { clientId: c.id, kind: 'TCS_REMINDER', to: c.email, subject: 'T&Cs acceptance reminder', status: res.ok ? 'SENT' : 'FAILED', providerId: res.id, error: res.error } }).catch(() => {});
+      if (res.ok) {
+        t.tcsReminders++;
+      } else {
+        t.errors++;
+        // Release the claim so a transient send failure retries next run, same
+        // fails-closed stance as courseContentReady. The attempt is already on
+        // the EmailEvent record, so the cap above stops a permanently-failing
+        // address retrying for ever.
+        await db.client.updateMany({ where: { id: c.id }, data: { tcsReminderSentAt: null } }).catch(() => {});
+      }
+    }
+  } catch (e) { t.errors++; console.error('[automations] T&Cs reminder failed:', (e as Error)?.message); }
 }
 
 // ── Course-content-ready notification (always on) ──

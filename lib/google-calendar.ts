@@ -2,6 +2,7 @@ import 'server-only';
 import { db } from '@/lib/db';
 import { encryptJson, decryptJson } from '@/lib/crypto';
 import { site } from '@/lib/site';
+import { fetchWithRetry } from '@/lib/fetch-retry';
 import type { Prisma } from '@prisma/client';
 
 // The staff Google refresh token is a long-lived credential, so it is encrypted
@@ -61,10 +62,9 @@ export function googleAuthUrl(state: string): string | null {
 /** Exchange an auth code for tokens and store the refresh token on the staff. */
 export async function exchangeCodeForStaff(code: string, staffId: string): Promise<boolean> {
   if (!googleConfigured()) return false;
-  const res = await fetch('https://oauth2.googleapis.com/token', {
+  const res = await fetchWithRetry('https://oauth2.googleapis.com/token', {
     method: 'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-    signal: AbortSignal.timeout(10_000),
     body: new URLSearchParams({
       code,
       client_id: process.env.GOOGLE_CLIENT_ID!,
@@ -72,7 +72,7 @@ export async function exchangeCodeForStaff(code: string, staffId: string): Promi
       redirect_uri: process.env.GOOGLE_REDIRECT_URI!,
       grant_type: 'authorization_code',
     }),
-  });
+  }, { label: 'gcal' });
   if (!res.ok) return false;
   const data = (await res.json()) as { refresh_token?: string };
   if (!data.refresh_token) return false; // already consented previously without prompt
@@ -81,17 +81,16 @@ export async function exchangeCodeForStaff(code: string, staffId: string): Promi
 }
 
 async function accessToken(refreshToken: string): Promise<string | null> {
-  const res = await fetch('https://oauth2.googleapis.com/token', {
+  const res = await fetchWithRetry('https://oauth2.googleapis.com/token', {
     method: 'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-    signal: AbortSignal.timeout(10_000),
     body: new URLSearchParams({
       refresh_token: refreshToken,
       client_id: process.env.GOOGLE_CLIENT_ID!,
       client_secret: process.env.GOOGLE_CLIENT_SECRET!,
       grant_type: 'refresh_token',
     }),
-  });
+  }, { label: 'gcal' });
   if (!res.ok) return null;
   const data = (await res.json()) as { access_token?: string };
   return data.access_token ?? null;
@@ -123,7 +122,7 @@ export async function syncStaffCalendar(staffId: string, days = 60): Promise<{ o
   let fetchedPages = 0;
   do {
     const url = `https://www.googleapis.com/calendar/v3/calendars/${calId}/events?timeMin=${timeMin}&timeMax=${timeMax}&singleEvents=true&orderBy=startTime&maxResults=250${pageToken ? `&pageToken=${encodeURIComponent(pageToken)}` : ''}`;
-    const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` }, signal: AbortSignal.timeout(10_000) });
+    const res = await fetchWithRetry(url, { headers: { Authorization: `Bearer ${token}` } }, { label: 'gcal' });
     if (!res.ok) return { ok: false, imported: 0, error: `Calendar fetch ${res.status}` };
     const data = (await res.json()) as { items?: GCalEvent[]; nextPageToken?: string };
     items.push(...(data.items ?? []));
@@ -230,12 +229,18 @@ export async function pushBookingToClinician(bookingId: string): Promise<{ ok: b
   const calId = encodeURIComponent(staff.googleCalendarId || 'primary');
   const base = `https://www.googleapis.com/calendar/v3/calendars/${calId}/events`;
   const existing = b.googleEventId;
-  const res = await fetch(existing ? `${base}/${encodeURIComponent(existing)}` : base, {
+  // PATCH (existing event) is idempotent. The POST (first push) is not: if a
+  // fetchWithRetry attempt times out after Google has already inserted the
+  // event, the retry inserts a second one and only the last id is stored. The
+  // duplicate is a stray "KClinics appointment" on the clinician's calendar,
+  // tagged with extendedProperties.private.kcBookingId so it can be found —
+  // the same class of accepted duplicate-send risk as the email/SMS retries
+  // (BLD-1038), and not worth the 409-handling a client-supplied event id needs.
+  const res = await fetchWithRetry(existing ? `${base}/${encodeURIComponent(existing)}` : base, {
     method: existing ? 'PATCH' : 'POST',
     headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
     body: JSON.stringify(event),
-    signal: AbortSignal.timeout(10_000),
-  });
+  }, { label: 'gcal' });
   if (!res.ok) {
     // The stored event was deleted on Google's side — drop the id and recreate.
     if (existing && res.status === 404) {
@@ -265,11 +270,10 @@ export async function removeBookingFromClinician(bookingId: string): Promise<{ o
   // it on a failed delete left a cancelled appointment live on the clinician's
   // calendar with no record that the sync failed.
   try {
-    const res = await fetch(`https://www.googleapis.com/calendar/v3/calendars/${calId}/events/${encodeURIComponent(b.googleEventId)}`, {
+    const res = await fetchWithRetry(`https://www.googleapis.com/calendar/v3/calendars/${calId}/events/${encodeURIComponent(b.googleEventId)}`, {
       method: 'DELETE',
       headers: { Authorization: `Bearer ${token}` },
-      signal: AbortSignal.timeout(10_000),
-    });
+    }, { label: 'gcal' });
     if (!res.ok && res.status !== 404 && res.status !== 410) {
       console.error('[google-calendar] event delete failed:', res.status, bookingId);
       const Sentry = await import('@sentry/nextjs');
