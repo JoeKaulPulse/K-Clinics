@@ -4526,6 +4526,18 @@ export const BUILD_BACKLOG: BacklogItem[] = [
       'Shipped: merged to main as 41eb444 via PR #1849 -- client-profile appointment rows now label a package purchase and number each linked session, instead of printing the course price on a single visit.',
     ],
   },
+  {
+    title: 'Consultation bookings could never be assigned a clinician (BLD-1474)',
+    type: 'ERROR', urgency: 'P1', status: 'IN_REVIEW', assignee: 'claude', pr: PR(1855),
+    value: 6, effort: 1,
+    detail: 'The "Assigned clinician" dropdown on the booking-detail page (app/admin/bookings/[id]/page.tsx) queries AdminUser rows where isClinician, active, and (competencies has the booking\'s treatmentSlug OR competencies is empty). \'consultation\' is a reserved pseudo-treatment slug (create-action.ts) deliberately excluded from the real treatment catalogue, so it can never appear in a staff member\'s competencies list -- the Schedules competency picker only offers checkboxes built from the bookable-treatments catalogue. In any clinic where staff have real specialisms set (i.e. nobody has an empty competencies list), the OR filter matched zero rows for every consultation booking, showing "No clinicians are set up to perform this treatment" with no way to assign one.',
+    notes: [
+      'Fix: when b.treatmentSlug === \'consultation\', the query drops the competencies OR filter entirely so any active clinician is eligible, matching the existing intent already documented elsewhere in the codebase (create-action.ts: a consultation can use "any free room/clinician", BLD-203/208). No schema or data change -- competencies is not a concept a consultation can meaningfully belong to.',
+      'Review fix (second pass): the page-level fix alone did NOT resolve the ticket. reassignPractitioner in app/admin/bookings/actions.ts re-validates the same rule server-side (clin.competencies.length && !clin.competencies.includes(booking.treatmentSlug)), so the newly-populated dropdown could be saved by nobody -- picking any clinician with a specialism set returned "That clinician isn\'t set up to perform this treatment." The same consultation exemption is now applied there, so the bug moved from an empty dropdown to a rejected save and is only actually fixed with both halves.',
+      'Open gap (separate ticket, deliberately NOT fixed here): the earlier claim that \'consultation\' is unreachable in lib/availability.ts is wrong. It holds for the public widget (getTreatment rejects the slug in /api/booking/create, and /api/booking/start reads treatmentSlug off the Service catalogue), but createManualBooking (app/admin/bookings/create-action.ts:156) calls pickPractitioner(startISO, durationMin, \'consultation\') directly, and cliniciansForDay applies the same competencies filter. So staff-created consultations auto-assign only a generalist and otherwise land unassigned -- the root cause of why they are Unassigned at all. Left alone because cliniciansForDay is shared with freeSlots/isSlotFree, so changing it moves slot-gating semantics for consultations; that needs its own change with its own testing rather than riding on a dropdown fix.',
+      'Verified: npx tsc --noEmit and next build (DB unreachable from this sandbox network; skip via unset DATABASE_URL* env vars for prebuild) both pass clean.',
+    ],
+  },
 ];
 
 // A content hash over every item's title + status + PR, so ANY change (a new
