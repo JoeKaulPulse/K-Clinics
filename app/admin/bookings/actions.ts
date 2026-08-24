@@ -293,6 +293,13 @@ export async function setBookingStatus(
       // returned `charged` amount, not the pre-fee b.chargedPence read at the
       // top of this function -- otherwise the email always reported the fee as
       // unpaid, even when applyNoShowFee had just charged it moments earlier.
+      // `charged` is 0 on every branch that took no card fee (waived, package
+      // session consumed, alreadyPaid, 3DS requiresAction, declined), so the
+      // template's fee paragraph is correctly omitted for all of them. If
+      // applyNoShowFee itself threw, `fee` is null and we send no fee amount at
+      // all: b.chargedPence is the booking's total settled charge, NOT a no-show
+      // fee, so falling back to it would tell an already-paid client that "a fee
+      // of £X was applied to your card" when nothing was taken.
       try {
         const { getSetting } = await import('@/lib/settings');
         if (await getSetting('no_show_notice')) {
@@ -301,7 +308,7 @@ export async function setBookingStatus(
           if (client?.email && !client.unsubscribed && !already) {
             const base = (process.env.NEXT_PUBLIC_SITE_URL || site.url).replace(/\/$/, '');
             const { sendEmail, tmplNoShow } = await import('@/lib/email');
-            const res = await sendEmail({ to: client.email, subject: `Sorry we missed you — rebook your ${b.treatmentTitle}`, html: tmplNoShow({ firstName: client.firstName, treatment: b.treatmentTitle, start: b.startAt, rebookUrl: `${base}/book?treatment=${encodeURIComponent(b.treatmentSlug)}`, feePence: fee?.charged ?? b.chargedPence }) });
+            const res = await sendEmail({ to: client.email, subject: `Sorry we missed you — rebook your ${b.treatmentTitle}`, html: tmplNoShow({ firstName: client.firstName, treatment: b.treatmentTitle, start: b.startAt, rebookUrl: `${base}/book?treatment=${encodeURIComponent(b.treatmentSlug)}`, feePence: fee?.charged ?? null }) });
             await db.emailEvent.create({ data: { clientId: b.clientId, kind: 'NO_SHOW', to: client.email, subject: `No-show rebooking — ${b.treatmentTitle}`, status: res.ok ? 'SENT' : 'FAILED', providerId: res.id, error: res.error, meta: { bookingId: b.id } } }).catch(() => {});
           }
         }

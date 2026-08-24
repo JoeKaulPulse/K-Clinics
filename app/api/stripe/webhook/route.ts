@@ -7,8 +7,10 @@ export const runtime = 'nodejs';
 // which each await sendEmail() -- lib/email.ts's acquireSendSlot() can poll up to
 // 30s under Resend's 5/sec cap, plus retries. Without an explicit maxDuration this
 // could exceed the platform default timeout mid-transaction on the most
-// financially-critical endpoint, forcing a Stripe redelivery. Matches the
-// convention already used on booking/confirm and cron/health.
+// financially-critical endpoint. Matches the 60s convention already used on the
+// kiosk analyze/photo routes, cron/dispatch and admin/api-health. Work that still
+// runs past Stripe's own ~30s response timeout is safe: the idempotency ledger
+// below plus the CAS-idempotent handlers make a redelivery a no-op.
 export const maxDuration = 60;
 
 // Keeps booking/payment state in sync with Stripe. Verifies the signature with
