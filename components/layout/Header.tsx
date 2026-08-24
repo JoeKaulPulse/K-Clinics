@@ -118,6 +118,12 @@ export function Header({ config }: { config: SiteConfig }) {
       onMouseLeave={() => setOpen(null)}
       onBlur={(e) => { if (!e.currentTarget.contains(e.relatedTarget as Node | null)) setOpen(null); }}
     >
+      {/* BLD-1481: deliberately NO skip link here. app/(marketing)/layout.tsx
+          already renders one, above AnnouncementBar + Header, so it is the first
+          focusable element in the document — a second copy inside the header
+          would only add a duplicate tab stop with identical text and target, and
+          would point at a #main that does not exist on app/not-found.tsx (which
+          renders this Header outside the marketing layout). */}
       <div className="container-lux flex h-[var(--header-h,5.25rem)] items-center justify-between">
         <Link href="/" className="relative z-10 shrink-0" aria-label={`${name} home`}>
           <Logo mono={light} className={light ? 'text-[var(--color-porcelain)]' : ''} />

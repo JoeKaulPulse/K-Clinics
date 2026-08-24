@@ -244,22 +244,6 @@ export async function setBookingStatus(
   if (b) {
     await db.interaction.create({ data: { clientId: b.clientId, type: 'APPOINTMENT', summary: `Booking marked ${status.toLowerCase().replace('_', ' ')}`, author: session.email } });
     if (status === 'NO_SHOW') {
-      // Warm rebooking note (opt-in). Care-class, deduped once per booking.
-      try {
-        const { getSetting } = await import('@/lib/settings');
-        if (await getSetting('no_show_notice')) {
-          const client = await db.client.findUnique({ where: { id: b.clientId }, select: { email: true, firstName: true, unsubscribed: true } });
-          const already = await db.emailEvent.findFirst({ where: { kind: 'NO_SHOW', status: 'SENT', meta: { path: ['bookingId'], equals: b.id } } });
-          if (client?.email && !client.unsubscribed && !already) {
-            const base = (process.env.NEXT_PUBLIC_SITE_URL || site.url).replace(/\/$/, '');
-            const { sendEmail, tmplNoShow } = await import('@/lib/email');
-            const res = await sendEmail({ to: client.email, subject: `Sorry we missed you — rebook your ${b.treatmentTitle}`, html: tmplNoShow({ firstName: client.firstName, treatment: b.treatmentTitle, start: b.startAt, rebookUrl: `${base}/book?treatment=${encodeURIComponent(b.treatmentSlug)}`, feePence: b.chargedPence }) });
-            await db.emailEvent.create({ data: { clientId: b.clientId, kind: 'NO_SHOW', to: client.email, subject: `No-show rebooking — ${b.treatmentTitle}`, status: res.ok ? 'SENT' : 'FAILED', providerId: res.id, error: res.error, meta: { bookingId: b.id } } }).catch(() => {});
-          }
-        }
-      } catch (e) {
-        console.error('[bookings] no-show notice failed:', (e as Error)?.message);
-      }
       // Let the diary know a client didn't show (the staff member who marked it is skipped).
       try {
         const { notifyStaffByPermission } = await import('@/lib/notifications');
@@ -302,6 +286,34 @@ export async function setBookingStatus(
         fee = await applyNoShowFee(bookingId, { by: session.email, waiveFee: opts.waiveFee });
       } catch (e) {
         console.error('[setBookingStatus] no-show fee failed (continuing):', (e as Error)?.message);
+      }
+
+      // Warm rebooking note (opt-in). Care-class, deduped once per booking.
+      // BLD-1482: sent AFTER applyNoShowFee above (not before) and using its
+      // returned `charged` amount, not the pre-fee b.chargedPence read at the
+      // top of this function -- otherwise the email always reported the fee as
+      // unpaid, even when applyNoShowFee had just charged it moments earlier.
+      // `charged` is 0 on every branch that took no card fee (waived, package
+      // session consumed, alreadyPaid, 3DS requiresAction, declined), so the
+      // template's fee paragraph is correctly omitted for all of them. If
+      // applyNoShowFee itself threw, `fee` is null and we send no fee amount at
+      // all: b.chargedPence is the booking's total settled charge, NOT a no-show
+      // fee, so falling back to it would tell an already-paid client that "a fee
+      // of £X was applied to your card" when nothing was taken.
+      try {
+        const { getSetting } = await import('@/lib/settings');
+        if (await getSetting('no_show_notice')) {
+          const client = await db.client.findUnique({ where: { id: b.clientId }, select: { email: true, firstName: true, unsubscribed: true } });
+          const already = await db.emailEvent.findFirst({ where: { kind: 'NO_SHOW', status: 'SENT', meta: { path: ['bookingId'], equals: b.id } } });
+          if (client?.email && !client.unsubscribed && !already) {
+            const base = (process.env.NEXT_PUBLIC_SITE_URL || site.url).replace(/\/$/, '');
+            const { sendEmail, tmplNoShow } = await import('@/lib/email');
+            const res = await sendEmail({ to: client.email, subject: `Sorry we missed you — rebook your ${b.treatmentTitle}`, html: tmplNoShow({ firstName: client.firstName, treatment: b.treatmentTitle, start: b.startAt, rebookUrl: `${base}/book?treatment=${encodeURIComponent(b.treatmentSlug)}`, feePence: fee?.charged ?? null }) });
+            await db.emailEvent.create({ data: { clientId: b.clientId, kind: 'NO_SHOW', to: client.email, subject: `No-show rebooking — ${b.treatmentTitle}`, status: res.ok ? 'SENT' : 'FAILED', providerId: res.id, error: res.error, meta: { bookingId: b.id } } }).catch(() => {});
+          }
+        }
+      } catch (e) {
+        console.error('[bookings] no-show notice failed:', (e as Error)?.message);
       }
     }
     if (status === 'COMPLETED') {
