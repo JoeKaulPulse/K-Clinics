@@ -68,6 +68,10 @@ export default async function HomePage() {
   const featured = featuredSlugs
     .map(getTreatment)
     .filter((t): t is Treatment => !!t && (t.category !== 'dentistry' || dentistryLive));
+  // BLD-1442: sliced once and reused below for both the FAQPage JSON-LD and the
+  // visible accordion, so the structured data can never drift from what's on
+  // the page (Google can disable the rich result if they diverge).
+  const homeFaqs = allGeneralFaqs.slice(0, 6);
   return (
     <>
       <JsonLd data={breadcrumbLd([{ name: 'Home', path: '/' }])} />
@@ -283,7 +287,7 @@ export default async function HomePage() {
 
       {/* FAQ — answers the top search questions (rich-result eligible) */}
       <section className="section container-lux">
-        {allGeneralFaqs.length > 0 && <JsonLdHome data={faqLd(allGeneralFaqs.map((f) => ({ q: f.q, a: f.a })))} />}
+        {homeFaqs.length > 0 && <JsonLdHome data={faqLd(homeFaqs.map((f) => ({ q: f.q, a: f.a })))} />}
         <div className="grid gap-x-16 gap-y-10 lg:grid-cols-[0.8fr_1.2fr]">
           <SectionHeading
             eyebrow="Good to know"
@@ -291,7 +295,7 @@ export default async function HomePage() {
             lede="Everything you might want to know before your first visit. Still curious? Our team is a call away."
           />
           <Reveal delay={0.1}>
-            <FaqAccordion faqs={allGeneralFaqs.slice(0, 6)} />
+            <FaqAccordion faqs={homeFaqs} />
             <Link href="/faq" className="mt-7 inline-flex items-center gap-2 font-medium text-[var(--color-gold-deep)]">
               All questions <ArrowIcon />
             </Link>

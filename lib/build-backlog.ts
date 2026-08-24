@@ -4384,6 +4384,20 @@ export const BUILD_BACKLOG: BacklogItem[] = [
     ],
   },
   {
+    title: 'Homepage FAQ structured data matched to visible accordion; journal byline uses the real K mark; long-lived cache headers on public assets (BLD-1442, BLD-1445, BLD-1444)',
+    type: 'TASK', urgency: 'P2', status: 'SHIPPED', assignee: 'claude',
+    value: 7, effort: 2,
+    detail: 'Three small audit fixes batched. BLD-1442: the homepage emitted faqLd(allGeneralFaqs) (the full flattened FAQ list) as FAQPage JSON-LD, but the visible accordion two lines below only rendered the first 6 — Google can disable the FAQPage rich result when structured data doesn\'t match visible content. BLD-1445: the journal article byline rendered a typed "K" in the display font inside a circular avatar next to "The KClinics team" — the exact "typed name dressed up to look like the logo" pattern docs/BRAND_GUIDELINES.md forbids. BLD-1444: next.config.mjs\'s headers() only set security headers on the /(.*) catch-all — treatment photos, brand marks and other public/ assets got no explicit long-lived Cache-Control, unlike hashed _next/static output which Next already caches aggressively.',
+    notes: [
+      'BLD-1442: app/(marketing)/page.tsx now slices allGeneralFaqs.slice(0, 6) once into a local homeFaqs and passes that same array to both faqLd() (JSON-LD) and FaqAccordion (visible render), so the two can\'t drift apart again.',
+      'BLD-1445: app/(marketing)/journal/[slug]/page.tsx now imports KMark from components/brand/marks.tsx and renders it inside the existing h-10 w-10 circular avatar span, in place of a typed "K" <span> in the display font.',
+      'BLD-1444: next.config.mjs\'s headers() gained additional entries (alongside the untouched /(.*) security-headers rule) for the image files under public/treatments, public/brand and public/hero plus the four root icon files, each set to Cache-Control: public, max-age=31536000, immutable.',
+      'Review fix (pre-merge, BLD-1444): the first cut used bare prefix rules (/treatments/:path*, /brand/:path*, /hero/:path*). headers() matches the request PATH and cannot tell a file in public/ from a page route, and path-to-regexp compiles /treatments/:path* to also match /treatments itself — the live marketing treatments hub (app/(marketing)/treatments/page.tsx). That would have served that page\'s HTML with max-age=31536000, immutable, pinning it in every returning visitor\'s browser for a year so no pricing, offer or copy change ever reached them. Each rule now requires an image extension (/treatments/:path*.:ext(png|jpg|jpeg|webp|avif|svg|gif|ico) and the same for brand/hero), which no page route can match; verified against the compiled regexes that /treatments and /treatments/<slug> no longer match while /treatments/1-1.jpg still does.',
+      'Review fix (pre-merge, BLD-1445): the mark was sized with KMark className="h-6 w-auto", deriving its width from the viewBox. Every other KMark call site instead wraps it in an explicitly-dimensioned span because the SVG renders at width/height 100%; auto-width from a viewBox is the one sizing route with known browser inconsistencies. Changed to the wrapper pattern (span.block.h-6.w-[0.85rem]), which keeps the same rendered size.',
+      'Verified: npx tsc --noEmit and npm run build pass clean.',
+    ],
+  },
+  {
     title: 'Admin team chat message stream announced to screen readers (BLD-1439)',
     type: 'ERROR', urgency: 'P2', status: 'SHIPPED', assignee: 'claude',
     value: 4, effort: 1,
