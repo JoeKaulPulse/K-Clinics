@@ -4384,6 +4384,17 @@ export const BUILD_BACKLOG: BacklogItem[] = [
     ],
   },
   {
+    title: 'Admin team chat message stream announced to screen readers (BLD-1439)',
+    type: 'ERROR', urgency: 'P2', status: 'SHIPPED', assignee: 'claude',
+    value: 4, effort: 1,
+    detail: 'ChatWindow.tsx appended new polled messages into a plain <div> with no aria-live, so incoming chat messages from the poll loop were never announced to screen reader users.',
+    notes: [
+      'BLD-1439: the messages list <div> in components/admin/teamchat/ChatWindow.tsx (the one mapped over by the poll loop\'s messages state and scrolled via scrollRef) now carries role="log" aria-live="polite" aria-relevant="additions", so a screen reader announces each new message as it arrives instead of staying silent. No layout, styling or other behaviour changed.',
+      'Review fix (pre-merge): a live region on the scroll container alone made the change net-negative. ChatWindow renders that container as soon as the channel resolves and only then fetches history, so up to 40 existing messages were inserted into an already-mounted live region — opening any conversation would have read the whole recent backlog aloud, and "Load earlier" another 40 on top. aria-live is now bound to an `announce` flag: off during the initial load and around a pagination fetch (both state updates commit together with the prepended messages, so the region is already muted when they reach the DOM), switched on in the requestAnimationFrame after the opening batch paints. role="log" and aria-relevant="additions" are unchanged, so poll-loop arrivals and sent messages still announce.',
+      'Verified: npx tsc --noEmit and npm run build pass clean.',
+    ],
+  },
+  {
     title: 'Booking signup validation errors now shown inline per field; no-show fee waiver refunds redeemed loyalty points (BLD-1436, BLD-1443)',
     type: 'TASK', urgency: 'P1', status: 'SHIPPED', assignee: 'claude',
     value: 8, effort: 3,
