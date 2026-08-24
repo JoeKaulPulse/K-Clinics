@@ -4539,7 +4539,7 @@ export const BUILD_BACKLOG: BacklogItem[] = [
   },
   {
     title: 'Consultation bookings could never be assigned a clinician (BLD-1474)',
-    type: 'ERROR', urgency: 'P1', status: 'IN_REVIEW', assignee: 'claude', pr: PR(1855),
+    type: 'ERROR', urgency: 'P1', status: 'SHIPPED', assignee: 'claude', pr: PR(1855),
     value: 6, effort: 1,
     detail: 'The "Assigned clinician" dropdown on the booking-detail page (app/admin/bookings/[id]/page.tsx) queries AdminUser rows where isClinician, active, and (competencies has the booking\'s treatmentSlug OR competencies is empty). \'consultation\' is a reserved pseudo-treatment slug (create-action.ts) deliberately excluded from the real treatment catalogue, so it can never appear in a staff member\'s competencies list -- the Schedules competency picker only offers checkboxes built from the bookable-treatments catalogue. In any clinic where staff have real specialisms set (i.e. nobody has an empty competencies list), the OR filter matched zero rows for every consultation booking, showing "No clinicians are set up to perform this treatment" with no way to assign one.',
     notes: [
@@ -4547,6 +4547,20 @@ export const BUILD_BACKLOG: BacklogItem[] = [
       'Review fix (second pass): the page-level fix alone did NOT resolve the ticket. reassignPractitioner in app/admin/bookings/actions.ts re-validates the same rule server-side (clin.competencies.length && !clin.competencies.includes(booking.treatmentSlug)), so the newly-populated dropdown could be saved by nobody -- picking any clinician with a specialism set returned "That clinician isn\'t set up to perform this treatment." The same consultation exemption is now applied there, so the bug moved from an empty dropdown to a rejected save and is only actually fixed with both halves.',
       'Open gap (separate ticket, deliberately NOT fixed here): the earlier claim that \'consultation\' is unreachable in lib/availability.ts is wrong. It holds for the public widget (getTreatment rejects the slug in /api/booking/create, and /api/booking/start reads treatmentSlug off the Service catalogue), but createManualBooking (app/admin/bookings/create-action.ts:156) calls pickPractitioner(startISO, durationMin, \'consultation\') directly, and cliniciansForDay applies the same competencies filter. So staff-created consultations auto-assign only a generalist and otherwise land unassigned -- the root cause of why they are Unassigned at all. Left alone because cliniciansForDay is shared with freeSlots/isSlotFree, so changing it moves slot-gating semantics for consultations; that needs its own change with its own testing rather than riding on a dropdown fix.',
       'Verified: npx tsc --noEmit and next build (DB unreachable from this sandbox network; skip via unset DATABASE_URL* env vars for prebuild) both pass clean.',
+      'Shipped: merged to main as 0f9f3413 via PR #1855.',
+    ],
+  },
+  {
+    title: 'Stripe webhook timeout risk, missing skip-to-content link, stale no-show fee email, and dentistry structured data overclaiming availability (BLD-1479, BLD-1481, BLD-1482, BLD-1483)',
+    type: 'ERROR', urgency: 'P1', status: 'IN_REVIEW', assignee: 'claude',
+    value: 6, effort: 2,
+    detail: 'End-of-Day Audit findings, 24 Aug: BLD-1479: app/api/stripe/webhook/route.ts had no maxDuration despite awaiting finalizeBookingCharge/finalizeOrder/confirmVoucher, each of which awaits sendEmail() -- lib/email.ts\'s acquireSendSlot() can poll up to 30s under Resend\'s 5/sec cap, risking a platform-default timeout mid-transaction on the most financially-critical endpoint. BLD-1481: components/layout/Header.tsx had no "Skip to main content" link even though app/(marketing)/layout.tsx already exposes <main id="main">, forcing keyboard users to tab through the full nav on every page. BLD-1482: app/admin/bookings/actions.ts sent the "Sorry we missed you" no-show email using booking.chargedPence read BEFORE applyNoShowFee() ran, so the email always reported the fee as unpaid even when one had just been charged. BLD-1483: app/(marketing)/[slug]/page.tsx called serviceLd() with a live price for dentistry treatments even when dentistryLive is false, so the JSON-LD claimed InStock availability and a bookable price for a service the clinic cannot yet deliver, while the on-page meta already switched to Coming Soon framing.',
+    notes: [
+      'BLD-1479: added export const maxDuration = 60 to the webhook route, matching the convention already used on booking/confirm, kiosk analyze/photo routes and the marketing/ad-spend routes.',
+      'BLD-1481: added a visually-hidden-until-focused <a href="#main">Skip to content</a> as the first element in the header, using the existing sr-only utility (already used elsewhere in the codebase) plus focus:not-sr-only styling matching the site\'s pill-button look.',
+      'BLD-1482: moved the rebooking-note email send in setBookingStatus (NO_SHOW branch) to after applyNoShowFee() runs, and pass its returned `charged` amount (falling back to the pre-existing b.chargedPence if the fee call itself failed) as feePence instead of the stale pre-fee read. The setting check, dedupe check and staff notification are unchanged.',
+      'BLD-1483: TreatmentPage now reads dentistryLive from getSiteConfig() (same call already made in generateMetadata for the Coming Soon title/description swap) and withholds pricePence from serviceLd() when category is dentistry and dentistryLive is false, so the JSON-LD Offer/InStock node is omitted the same way the visible page already omits a bookable price.',
+      'Verified: npx tsc --noEmit and npm run build (DB unreachable from this sandbox network; prebuild db-sync skipped via unsetting DATABASE_URL*/POSTGRES_* env vars) both pass clean.',
     ],
   },
 ];

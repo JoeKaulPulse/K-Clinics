@@ -3,6 +3,13 @@ import { stripeEnabled, stripe } from '@/lib/stripe';
 import * as Sentry from '@sentry/nextjs';
 
 export const runtime = 'nodejs';
+// BLD-1479: this route awaits finalizeBookingCharge/finalizeOrder/confirmVoucher,
+// which each await sendEmail() -- lib/email.ts's acquireSendSlot() can poll up to
+// 30s under Resend's 5/sec cap, plus retries. Without an explicit maxDuration this
+// could exceed the platform default timeout mid-transaction on the most
+// financially-critical endpoint, forcing a Stripe redelivery. Matches the
+// convention already used on booking/confirm and cron/health.
+export const maxDuration = 60;
 
 // Keeps booking/payment state in sync with Stripe. Verifies the signature with
 // STRIPE_WEBHOOK_SECRET. Configure this endpoint in the Stripe dashboard.

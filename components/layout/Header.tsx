@@ -118,6 +118,16 @@ export function Header({ config }: { config: SiteConfig }) {
       onMouseLeave={() => setOpen(null)}
       onBlur={(e) => { if (!e.currentTarget.contains(e.relatedTarget as Node | null)) setOpen(null); }}
     >
+      {/* BLD-1481: first focusable element in the header, visually hidden until
+          focused, so a keyboard user can jump past the nav straight to
+          <main id="main"> (app/(marketing)/layout.tsx) instead of tabbing
+          through every nav item on every page load. */}
+      <a
+        href="#main"
+        className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-[60] focus:rounded-full focus:bg-[var(--color-ink)] focus:px-5 focus:py-2.5 focus:text-sm focus:font-medium focus:text-[var(--color-porcelain)]"
+      >
+        Skip to content
+      </a>
       <div className="container-lux flex h-[var(--header-h,5.25rem)] items-center justify-between">
         <Link href="/" className="relative z-10 shrink-0" aria-label={`${name} home`}>
           <Logo mono={light} className={light ? 'text-[var(--color-porcelain)]' : ''} />

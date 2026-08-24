@@ -63,10 +63,22 @@ export default async function TreatmentPage({ params }: { params: Promise<{ slug
     const categoryHref = t.category === 'aesthetics' ? '/treatments' : '/dentistry';
     const categoryLabel = t.category === 'aesthetics' ? 'Aesthetics' : 'Dentistry';
     const fromPence = await lowestPenceForTreatment(t.slug);
+    // BLD-1483: dentistry pages stay indexed pre-launch (BLD-1250) with
+    // "Coming Soon" framing in the on-page meta above, but serviceLd() was
+    // still fed a live price -- so the Offer node claimed InStock availability
+    // and a bookable /book URL even when dentistryLive is false. Withhold the
+    // price here the same way generateMetadata already withholds the title, so
+    // the JSON-LD never advertises a service the clinic can't yet deliver.
+    let dentistryLive = true;
+    if (t.category === 'dentistry') {
+      const { getSiteConfig } = await import('@/lib/site-config');
+      ({ dentistryLive } = await getSiteConfig());
+    }
+    const ldPricePence = t.category === 'dentistry' && !dentistryLive ? null : fromPence;
     // serviceLd() returns an array (Procedure + Offer/Service) when pricePence is
     // set, a single object otherwise — always spread so it never nests as one
     // element (PRJ-1060.1).
-    const sld = serviceLd({ name: t.title, description: t.metaDescription, path: `/${t.slug}`, category: t.category, pricePence: fromPence });
+    const sld = serviceLd({ name: t.title, description: t.metaDescription, path: `/${t.slug}`, category: t.category, pricePence: ldPricePence });
     return (
       <>
         <JsonLd
