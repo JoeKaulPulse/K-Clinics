@@ -35,6 +35,13 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
   };
   void passwordHash; void resetTokenHash; void resetTokenExp;
 
+  // BLD-1499 review: same escaping eraseStudentData applies, and for the same
+  // reason. Prisma compiles `equals` + mode:'insensitive' to a bare Postgres
+  // `ILIKE $1` with the address as the PATTERN, so an unescaped `_` or `%` in
+  // it is a wildcard — here that would put SOMEONE ELSE's enquiry into this
+  // subject's SAR export, which is a disclosure, not just a wrong row.
+  const emailPattern = student.email.replace(/[\\%_]/g, (c) => `\\${c}`);
+
   const [
     enrolments, fundingApplications, lessonProgress, lessonPlaybacks, lessonNotes,
     lessonComments, courseReviews, flashcardReviews, forumThreads, forumPosts,
@@ -47,7 +54,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
     // studentId) — otherwise the export omits records the erasure treats as
     // this subject's own.
     db.enrolment.findMany({
-      where: { OR: [{ studentId: id }, { studentId: null, applicantEmail: { equals: student.email, mode: 'insensitive' } }] },
+      where: { OR: [{ studentId: id }, { studentId: null, applicantEmail: { equals: emailPattern, mode: 'insensitive' } }] },
       orderBy: { createdAt: 'desc' },
     }),
     // Matched by the FK (post-account enquiries) and, exactly as eraseStudentData
@@ -55,7 +62,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
     // existed, which still have no studentId) — otherwise the export omits
     // records the erasure treats as this subject's own.
     db.fundingApplication.findMany({
-      where: { OR: [{ studentId: id }, { studentId: null, email: { equals: student.email, mode: 'insensitive' } }] },
+      where: { OR: [{ studentId: id }, { studentId: null, email: { equals: emailPattern, mode: 'insensitive' } }] },
       orderBy: { createdAt: 'desc' },
     }),
     db.lessonProgress.findMany({ where: { studentId: id }, orderBy: { completedAt: 'desc' } }),
