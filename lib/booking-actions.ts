@@ -799,10 +799,21 @@ export async function applyNoShowFee(
 
   // BLD-733 parity: bill the price net of points already redeemed as money off,
   // so the fee doesn't re-charge a discount the client paid for with points.
-  const chargeablePence = Math.max(0, booking.pricePence - (booking.pointsRedeemedPence ?? 0));
+  // BLD-1494: net an applied gift voucher the same way, matching cancelBooking's
+  // late fee and the staff till (chargeBookingAction) — otherwise a booking part-
+  // paid with a voucher is billed the FULL pre-voucher price as its no-show fee,
+  // on top of the voucher value already spent, double-billing that amount.
+  const chargeablePence = Math.max(0, booking.pricePence - (booking.pointsRedeemedPence ?? 0) - (booking.giftVoucherPence ?? 0));
   if (chargeablePence <= 0) return nil;
 
   const res = await chargeBooking(booking, chargeablePence, { late: true, reason: 'no-show' }).catch(() => ({ ok: false, error: 'charge failed' }));
+  // BLD-1494: `alreadyPaid` means chargeBooking took NO money because the booking
+  // was already settled BEFORE this attempt (an earlier charge, or a BNPL course
+  // pre-payment — see chargeBooking's own chargedAt/prepaidAt short-circuit). Any
+  // voucher applied to this booking was netted into (and consumed by) THAT earlier
+  // settled sale, exactly like cancelBooking's `!booking.chargedAt` guard treats a
+  // pre-cancel charge — so it must NOT be returned here. Only a charge attempted
+  // and NOT landing (declined, or still pending 3DS) below leaves it un-consumed.
   if (res.ok && 'alreadyPaid' in res && res.alreadyPaid) return { ...nil, alreadyPaid: true };
   if (res.ok) {
     await logAudit({
@@ -821,6 +832,8 @@ export async function applyNoShowFee(
     } catch (e) {
       console.error('[applyNoShowFee] points refund failed (continuing):', (e as Error)?.message);
     }
+    // BLD-1494: the netted voucher wasn't consumed either — return the reservation.
+    await returnNoShowVoucherReservation(booking, opts.by, 'pending confirmation');
     return { ...nil, requiresAction: true };
   }
   try {
@@ -829,11 +842,44 @@ export async function applyNoShowFee(
   } catch (e) {
     console.error('[applyNoShowFee] points refund failed (continuing):', (e as Error)?.message);
   }
+  // BLD-1494: the charge was declined, so the netted voucher wasn't consumed
+  // either — return the reservation (same parity as the points refund above).
+  await returnNoShowVoucherReservation(booking, opts.by, 'declined');
   await logAudit({
     action: 'PAYMENT_FAILED', actor: opts.by, bookingId, clientId: booking.clientId,
     summary: `No-show fee (£${(chargeablePence / 100).toFixed(2)}) failed — follow up. It stays on the client's outstanding balance.`,
   }).catch(() => {});
   return { ...nil, feeFailed: true };
+}
+
+// BLD-1494: mirrors cancelBooking's BLD-882 block — return a reserved-but-
+// unconsumed gift-voucher application when the no-show fee it was netted into
+// did NOT actually land (declined, or still pending 3DS confirmation). Guarded
+// clear keyed on the CURRENT giftVoucherCode/giftVoucherPence so a concurrent
+// change (e.g. staff editing the booking) can't double-credit the voucher.
+// Never throws — a re-credit problem must not surface as a no-show failure.
+async function returnNoShowVoucherReservation(
+  booking: BookingWithClient,
+  by: string,
+  outcome: 'pending confirmation' | 'declined',
+): Promise<void> {
+  if (!((booking.giftVoucherPence ?? 0) > 0 && booking.giftVoucherCode)) return;
+  try {
+    const cleared = await db.booking.updateMany({
+      where: { id: booking.id, giftVoucherCode: booking.giftVoucherCode, giftVoucherPence: booking.giftVoucherPence },
+      data: { giftVoucherCode: null, giftVoucherPence: 0 },
+    });
+    if (cleared.count > 0) {
+      const { creditVoucher } = await import('@/lib/gift-vouchers');
+      await creditVoucher(booking.giftVoucherCode, booking.giftVoucherPence);
+      await logAudit({
+        action: 'REWARD_REDEEMED', actor: by, bookingId: booking.id, clientId: booking.clientId,
+        summary: `Gift voucher ${booking.giftVoucherCode} returned — the no-show fee it was netted into was ${outcome} — £${(booking.giftVoucherPence / 100).toFixed(2)} back on the voucher`,
+      }).catch(() => {});
+    }
+  } catch (e) {
+    console.error('[applyNoShowFee] voucher re-credit failed (continuing):', (e as Error)?.message);
+  }
 }
 
 export function isWithin48h(b: Pick<Booking, 'startAt'>): boolean {
