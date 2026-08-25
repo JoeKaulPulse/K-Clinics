@@ -93,6 +93,7 @@ export const navGroups: NavGroup[] = [
     { href: '/admin/marketing', key: 'nav.marketing', exact: true, perm: 'campaigns.view', keywords: 'hub overview' },
     { href: '/admin/marketing/performance', key: 'nav.performance', perm: 'campaigns.view', keywords: 'forecast results roi analytics' },
     { href: '/admin/marketing/campaigns', key: 'nav.campaigns', perm: 'campaigns.view', keywords: 'broadcasts sends sms email' },
+    { href: '/admin/campaigns', key: 'nav.campaignsLegacy', perm: 'campaigns.view', keywords: 'personal code discount unique legacy broadcast' },
     { href: '/admin/marketing/audiences', key: 'nav.audiences', perm: 'campaigns.view', keywords: 'segments lists contacts targeting' },
     { href: '/admin/marketing/subscribers', key: 'nav.subscribers', perm: 'campaigns.view', keywords: 'newsletter subscribers signups sign-ups email list audience mailing list opted in footer waitlist who subscribed unsubscribe' },
     { href: '/admin/marketing/email', key: 'nav.email', perm: 'campaigns.view', keywords: 'newsletter broadcast' },
