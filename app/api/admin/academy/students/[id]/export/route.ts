@@ -41,7 +41,15 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
     portfolioEntries, exerciseAttempts, demoAttempts, quizAttempts, quizAttemptGrants,
     practiceAttempts, pointEvents, badges, dailyActivity, homeworkSubmissions,
   ] = await Promise.all([
-    db.enrolment.findMany({ where: { studentId: id }, orderBy: { createdAt: 'desc' } }),
+    // BLD-1499: matched by the FK (post-account enquiries) and, exactly as
+    // eraseStudentData redacts them, by the original applicant email
+    // (enquiries made before the account existed, which still have no
+    // studentId) — otherwise the export omits records the erasure treats as
+    // this subject's own.
+    db.enrolment.findMany({
+      where: { OR: [{ studentId: id }, { studentId: null, applicantEmail: { equals: student.email, mode: 'insensitive' } }] },
+      orderBy: { createdAt: 'desc' },
+    }),
     // Matched by the FK (post-account enquiries) and, exactly as eraseStudentData
     // redacts them, by the original email (enquiries made before the account
     // existed, which still have no studentId) — otherwise the export omits
