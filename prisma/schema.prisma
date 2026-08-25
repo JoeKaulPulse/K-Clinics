@@ -3938,7 +3938,12 @@ model Order {
   // leave the order CANCELLED. Only app/api/stripe/webhook/route.ts ever
   // writes this field (stamped atomically with the transition it wins,
   // cleared once creditVoucher succeeds), so its presence unambiguously means
-  // that handler — and no other cancel path — still owes the credit.
+  // that handler — and no other cancel path — still owes the credit. It is
+  // also a LEASE, not just a flag: the timestamp is how a redelivery tells a
+  // dead attempt's claim (older than the route's RECREDIT_LEASE_MS, safe to
+  // take over and retry) from one a concurrently-running delivery of the same
+  // event is still working through (must not be taken over — that would credit
+  // the voucher twice).
   giftCardRecreditClaimedAt DateTime?
   // PRJ-1032.7: the settlement timestamp — set once when the order flips to PAID.
   // Day-close brackets card takings by the day money was actually taken; matching

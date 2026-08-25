@@ -13,6 +13,13 @@ export const runtime = 'nodejs';
 // below plus the CAS-idempotent handlers make a redelivery a no-op.
 export const maxDuration = 60;
 
+// BLD-1498: how long a gift-card re-credit claim (Order.giftCardRecreditClaimedAt)
+// belongs to the attempt that stamped it. Past this, that attempt cannot still be
+// running — maxDuration above is 60s — so a redelivery may take the claim over and
+// retry the credit. Kept well clear of 60s so a slow-but-live attempt is never
+// overtaken (which would credit the same voucher twice).
+const RECREDIT_LEASE_MS = 5 * 60 * 1000;
+
 // Keeps booking/payment state in sync with Stripe. Verifies the signature with
 // STRIPE_WEBHOOK_SECRET. Configure this endpoint in the Stripe dashboard.
 export async function POST(req: Request) {
@@ -230,6 +237,20 @@ export async function POST(req: Request) {
         // wins, and cleared only once creditVoucher actually succeeds — so it
         // reads non-null on redelivery if and only if this handler is the one
         // still owing the credit.
+        //
+        // BLD-1498 review: the marker is held as a LEASE, not consumed on read.
+        // The idempotency ledger above deliberately falls through while a prior
+        // attempt is still 'PROCESSING', so two deliveries of this same event
+        // CAN run concurrently: one wins the PENDING claim and is mid-
+        // creditVoucher while the other reaches the branch below. Clearing the
+        // marker there would let the loser credit alongside the winner — a
+        // double credit (creditVoucher's LEAST() cap only stops the balance
+        // exceeding face value; on a card with other unrelated spends the
+        // second credit is real money). So the marker is only taken over once
+        // it is older than RECREDIT_LEASE_MS, which is comfortably past this
+        // route's maxDuration — i.e. only when the attempt holding it is
+        // certainly dead. A marker too fresh to take over throws, so Stripe
+        // redelivers after the lease instead of the credit being acked and lost.
         const pi = event.data.object;
         if (pi.metadata?.kind === 'shop_order' && pi.metadata?.orderId) {
           const orderId = pi.metadata.orderId;
@@ -239,24 +260,36 @@ export async function POST(req: Request) {
               const claimed = await db.order.updateMany({ where: { id: orderId, status: 'PENDING' }, data: { status: 'CANCELLED', giftCardRecreditClaimedAt: new Date() } });
               let mustCredit = claimed.count > 0;
               if (!mustCredit) {
-                // Lost the PENDING claim this time — check whether WE won it on
-                // an earlier attempt and are being redelivered because
-                // creditVoucher threw. This reclaim consumes the marker
-                // atomically, so two overlapping redeliveries of the same event
-                // can't both proceed and double-credit.
-                const reclaimed = await db.order.updateMany({ where: { id: orderId, status: 'CANCELLED', giftCardRecreditClaimedAt: { not: null } }, data: { giftCardRecreditClaimedAt: null } });
+                // Lost the PENDING claim. Either another cancel path won it and
+                // credited the voucher itself (no marker — nothing is owed
+                // here), or an EARLIER attempt of THIS handler won it and the
+                // credit never landed (marker set). Take the marker over only
+                // if it has outlived the lease; the `lt` → `now` write is a
+                // single atomic statement, so of two simultaneous retries only
+                // one can win it. Not scoped to status CANCELLED: the marker
+                // alone is the ownership token, and staff marking the order
+                // REFUNDED in between must not strand the owed credit.
+                const leaseCutoff = new Date(Date.now() - RECREDIT_LEASE_MS);
+                const reclaimed = await db.order.updateMany({ where: { id: orderId, giftCardRecreditClaimedAt: { lt: leaseCutoff } }, data: { giftCardRecreditClaimedAt: new Date() } });
                 mustCredit = reclaimed.count > 0;
+                if (!mustCredit && (await db.order.count({ where: { id: orderId, giftCardRecreditClaimedAt: { not: null } } })) > 0) {
+                  // Held by an attempt that may still be running. Ack nothing:
+                  // throw so Stripe redelivers once the lease has expired.
+                  throw new Error(`gift-card re-credit for order ${orderId} is held by an in-flight attempt — retrying later`);
+                }
               }
               if (mustCredit) {
-                try {
-                  const { creditVoucher } = await import('@/lib/gift-vouchers');
-                  await creditVoucher(order.giftCardCode, order.giftCardPence);
-                  await db.order.updateMany({ where: { id: orderId }, data: { giftCardRecreditClaimedAt: null } });
-                } catch (creditErr) {
-                  // Re-open the claim so the next redelivery can retry the credit.
-                  await db.order.updateMany({ where: { id: orderId }, data: { giftCardRecreditClaimedAt: new Date() } }).catch(() => {});
-                  throw creditErr;
-                }
+                const { creditVoucher } = await import('@/lib/gift-vouchers');
+                // A throw here leaves the marker in place (already stamped by
+                // the claim/take-over above) and falls to the outer catch → 500
+                // → Stripe redelivers, and by then the marker has aged past the
+                // lease and is retryable.
+                await creditVoucher(order.giftCardCode, order.giftCardPence);
+                // The credit landed. Release the claim — best-effort on purpose:
+                // failing here must not make Stripe retry a credit that already
+                // succeeded, which is the one way this could over-credit.
+                await db.order.updateMany({ where: { id: orderId }, data: { giftCardRecreditClaimedAt: null } })
+                  .catch((clearErr) => { console.error('[webhook] releasing gift-card re-credit claim failed:', (clearErr as Error)?.message); });
               }
             }
           } catch (e) {
