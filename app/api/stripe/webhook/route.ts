@@ -217,18 +217,56 @@ export async function POST(req: Request) {
         // transition credits, so a redelivered event or a prior admin cancel can't
         // double-credit, and an order that already went PAID (a retry succeeded
         // first) is never touched.
+        //
+        // BLD-1498: this event is in the critical list below, so a thrown error
+        // here gets Stripe to redeliver it — but by redelivery time the order is
+        // already CANCELLED (this same handler flipped it on the failed attempt),
+        // so the PENDING→CANCELLED claim alone can no longer tell "I already own
+        // this and still owe the credit" apart from "a different path (admin
+        // cancel / POS cancel / the BLD-1253 abandoned-order sweep) won that same
+        // transition and already credited it itself" — both leave status
+        // CANCELLED. giftCardRecreditClaimedAt (schema.prisma) disambiguates: it
+        // is stamped ONLY by this handler, atomically with the transition it
+        // wins, and cleared only once creditVoucher actually succeeds — so it
+        // reads non-null on redelivery if and only if this handler is the one
+        // still owing the credit.
         const pi = event.data.object;
         if (pi.metadata?.kind === 'shop_order' && pi.metadata?.orderId) {
+          const orderId = pi.metadata.orderId;
           try {
-            const order = await db.order.findUnique({ where: { id: pi.metadata.orderId }, select: { giftCardCode: true, giftCardPence: true } });
+            const order = await db.order.findUnique({ where: { id: orderId }, select: { giftCardCode: true, giftCardPence: true } });
             if (order?.giftCardCode && order.giftCardPence && order.giftCardPence > 0) {
-              const claimed = await db.order.updateMany({ where: { id: pi.metadata.orderId, status: 'PENDING' }, data: { status: 'CANCELLED' } });
-              if (claimed.count > 0) {
-                const { creditVoucher } = await import('@/lib/gift-vouchers');
-                await creditVoucher(order.giftCardCode, order.giftCardPence);
+              const claimed = await db.order.updateMany({ where: { id: orderId, status: 'PENDING' }, data: { status: 'CANCELLED', giftCardRecreditClaimedAt: new Date() } });
+              let mustCredit = claimed.count > 0;
+              if (!mustCredit) {
+                // Lost the PENDING claim this time — check whether WE won it on
+                // an earlier attempt and are being redelivered because
+                // creditVoucher threw. This reclaim consumes the marker
+                // atomically, so two overlapping redeliveries of the same event
+                // can't both proceed and double-credit.
+                const reclaimed = await db.order.updateMany({ where: { id: orderId, status: 'CANCELLED', giftCardRecreditClaimedAt: { not: null } }, data: { giftCardRecreditClaimedAt: null } });
+                mustCredit = reclaimed.count > 0;
+              }
+              if (mustCredit) {
+                try {
+                  const { creditVoucher } = await import('@/lib/gift-vouchers');
+                  await creditVoucher(order.giftCardCode, order.giftCardPence);
+                  await db.order.updateMany({ where: { id: orderId }, data: { giftCardRecreditClaimedAt: null } });
+                } catch (creditErr) {
+                  // Re-open the claim so the next redelivery can retry the credit.
+                  await db.order.updateMany({ where: { id: orderId }, data: { giftCardRecreditClaimedAt: new Date() } }).catch(() => {});
+                  throw creditErr;
+                }
               }
             }
-          } catch (e) { console.error('[webhook] gift card re-credit failed:', (e as Error)?.message); Sentry.captureException(e, { tags: { area: 'stripe-webhook', sub: 'giftcard-recredit-failed-payment' } }); } // BLD-868
+          } catch (e) {
+            console.error('[webhook] gift card re-credit failed:', (e as Error)?.message);
+            Sentry.captureException(e, { tags: { area: 'stripe-webhook', sub: 'giftcard-recredit-failed-payment' } }); // BLD-868
+            // BLD-1498: rethrow so this reaches the outer catch/critical check
+            // below and Stripe redelivers — swallowing here silently stranded
+            // the customer's gift-card balance with no way to ever retry.
+            throw e;
+          }
         }
         break;
       }
@@ -619,6 +657,12 @@ export async function POST(req: Request) {
       // BLD-882: the expired-session claim releases a stranded voucher
       // reservation — a DB failure before the claim commits must retry.
       event.type === 'checkout.session.expired' ||
+      // BLD-1498: a failed gift-card re-credit on a canceled PaymentIntent
+      // (the payment_intent.canceled case above) is otherwise unrecoverable —
+      // no later Stripe retry or dashboard "resend" ever re-runs it — so a DB
+      // failure here must also retry rather than silently stranding the
+      // customer's balance.
+      event.type === 'payment_intent.canceled' ||
       pmtKind === 'course_prepaid';
     if (critical) return NextResponse.json({ received: false, error: 'Handler failed' }, { status: 500 });
   }
