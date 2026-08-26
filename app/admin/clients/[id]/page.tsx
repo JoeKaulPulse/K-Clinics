@@ -87,6 +87,14 @@ export default async function ClientDetail({ params }: { params: Promise<{ id: s
   // permission (not role), so a permission revoke actually withholds it here too,
   // matching the SAR export. Decrypt the latest version of each assessment type.
   const clinical = sessionCan(session, 'clients.clinical.view');
+  // BLD-1511: getClient() decrypts medicalFlag/allergies/consultation notes/
+  // allergyNote/interaction detail for display — audit the view (throttled
+  // per viewer/client/hour), matching the booking-detail/consultation-detail
+  // convention (BLD-1240/1392).
+  if (clinical && session?.email) {
+    const { auditClinicalView } = await import('@/lib/clinical-view-audit');
+    auditClinicalView({ actor: session.email, actorRole: session.role, clientId: c.id, surface: 'client-detail' });
+  }
   const clinicalAssessments: { id: string; title: string; version: number; submittedAt: Date; tampered: boolean; current: boolean; sourceLocale?: string; translatedNote?: string | null; items: { id: string; prompt: string; value: string; original?: string }[] }[] = [];
   if (clinical && c.assessments.length) {
     const { formatAssessment } = await import('@/lib/health-assessments');
