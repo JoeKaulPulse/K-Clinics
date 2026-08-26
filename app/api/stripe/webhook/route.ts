@@ -379,6 +379,17 @@ export async function POST(req: Request) {
               // populated here in practice. Cap at chargedPence regardless (0 if
               // somehow unset) — refundedPence can never legitimately exceed it.
               const newTotal = Math.min((full.refundedPence ?? 0) + amount, full.chargedPence ?? 0);
+              // BLD-1510: this CAS matches on the value it READ, so it also
+              // succeeds (count 1) on a no-op write — when refundedPence is
+              // already at chargedPence, newTotal equals it and the row still
+              // matches. That happens whenever the booking was already fully
+              // refunded before the dispute closed (in-app refundBooking, or a
+              // dashboard refund) and on a redelivery of this event after a
+              // failed attempt left the idempotency ledger at PROCESSING. So
+              // claimed.count alone does NOT prove this call advanced anything;
+              // `advanced` does, and it gates the one side-effect below that
+              // hands back spendable money.
+              const advanced = newTotal > (full.refundedPence ?? 0);
               const claimed = await db.booking.updateMany({ where: { id: full.id, refundedPence: full.refundedPence }, data: { refundedPence: newTotal, refundedAt: new Date() } });
               if (claimed.count > 0) {
                 const fully = newTotal >= (full.chargedPence ?? 0);
@@ -387,10 +398,17 @@ export async function POST(req: Request) {
                 // a partial-voucher booking's voucher-covered slice was never part of
                 // the disputed charge, so it must go back on the voucher, mirroring
                 // refundBooking() (BLD-882) and the charge.refunded handler (BLD-1138)
-                // below. Gated on `fully` (the card portion is entirely gone) and on
-                // the same claimed.count CAS above, so a redelivered dispute event
-                // can't double-credit; creditVoucher itself also caps at face value.
-                if (fully && full.chargePaymentIntentId !== 'ext_gift-voucher' && (full.giftVoucherPence ?? 0) > 0 && full.giftVoucherCode) {
+                // below. Gated on `fully` (the card portion is entirely gone) AND on
+                // `advanced` — creditVoucher is capped at face value but is not
+                // per-call idempotent, so it must only run for the call that
+                // actually moved refundedPence. Without `advanced`, a dispute
+                // closing lost on an already-fully-refunded booking (whose voucher
+                // refundBooking had restored), or a redelivery after a failed
+                // attempt, would credit the voucher a second time. Cancellation is
+                // not a route in: cancelBooking clears giftVoucherCode/Pence in the
+                // same guarded write that returns the reservation, so the fields
+                // read here are 0/null once that has happened.
+                if (fully && advanced && full.chargePaymentIntentId !== 'ext_gift-voucher' && (full.giftVoucherPence ?? 0) > 0 && full.giftVoucherCode) {
                   try {
                     const { creditVoucher } = await import('@/lib/gift-vouchers');
                     await creditVoucher(full.giftVoucherCode, full.giftVoucherPence ?? 0);
