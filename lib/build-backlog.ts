@@ -4566,7 +4566,7 @@ export const BUILD_BACKLOG: BacklogItem[] = [
   },
   {
     title: 'Guest checkout ignored live treatment offers, charging full price for a discounted treatment (BLD-1495)',
-    type: 'ERROR', urgency: 'P1', status: 'IN_REVIEW', assignee: 'claude',
+    type: 'ERROR', urgency: 'P1', status: 'SHIPPED', assignee: 'claude', pr: PR(1862),
     value: 8, effort: 3,
     detail: 'app/api/booking/create/route.ts (the guest/no-account booking path) priced from pricing.fromPence and only ever applied a promo code or the one-time welcome discount -- it never resolved the treatment\'s live ServiceOffer via bestOffer/liveOffers the way /api/booking/start (the signed-in path) does. Treatment pages advertise a strikethrough "Offer" price from the same pricingForTreatment() catalogue call (fromOfferPence), so a guest who booked without creating an account was silently charged the undiscounted price for a treatment marketed at a discount.',
     notes: [
@@ -4575,6 +4575,22 @@ export const BUILD_BACKLOG: BacklogItem[] = [
       'The one-time welcome-claim record is now only marked REDEEMED when it actually won the no-stacking comparison (previously it was burned whenever present and no promo was used, even if its discount was smaller than the offer already applied and therefore had no effect on the charged price) -- so a claim that never actually discounted anything is not consumed.',
       'Pre-merge review fix: the first cut computed offerDiscountPence unconditionally, but basePrice is forced to 0 for an "on consultation" treatment while pricingForTreatment still reports fromPence/fromOfferPence for any sibling variant that overrides the service status back to NORMAL (effectiveStatus is variantStatus ?? serviceStatus). That subtracted a live offer from a GBP 0 card-on-file hold and wrote a negative pricePence onto the booking. offerDiscountPence is now guarded on basePrice > 0 and clamped to basePrice, and every price assignment (offer, welcome, promo race fallback) is clamped at 0 the way booking/start clamps its line totals.',
       'Known, unchanged divergence from booking/start: when a promo code is accepted here it suppresses the welcome claim outright, whereas booking/start compares the promo against the larger of the offer and the welcome discount. That predates BLD-1495 and is documented in a code comment rather than altered, to keep this change scoped to the offer discount.',
+      'Verified: npx tsc --noEmit and npm run build (DB unreachable from this sandbox network; prebuild db-sync skipped via unsetting DATABASE_URL*/POSTGRES_* env vars) both pass clean.',
+    ],
+  },
+  {
+    title: 'Full-screen academy/day-close overlays had no dialog semantics or keyboard focus trap (BLD-1501)',
+    type: 'TASK', urgency: 'P1', status: 'IN_REVIEW', assignee: 'claude',
+    value: 8, effort: 3,
+    detail: 'components/academy/ImmersiveCourse.tsx, ExplainerPlayer.tsx and components/admin/DayCloseRunner.tsx are fixed inset-0 full-screen panels that never called the existing useDialogBehaviours hook (used by every other modal in components/ui/Dialog.tsx) -- no role=dialog/aria-modal, no initial focus, Tab could reach nav/footer links behind the overlay, and Escape did not close any of the three (only their explicit close/exit buttons did).',
+    notes: [
+      'All three now route through useDialogBehaviours, which already provides role=dialog/aria-modal (applied to the panel), initial focus into the panel\'s first focusable element, a Tab trap, Escape-to-close, and the shared ref-counted body-scroll lock (BLD-1194) -- so the ad-hoc useBodyScrollLock() calls in ImmersiveCourse and ExplainerPlayer were replaced rather than kept alongside it.',
+      'ImmersiveCourse: Escape now calls the same onExit the header\'s exit button already used (falls back to a no-op when onExit is not supplied, since it is an optional prop); aria-label is the course title.',
+      'ExplainerPlayer: the outer panel previously doubled as a role="button" with its own Enter/Space handler (click-anywhere-to-advance) -- that role is incompatible with role="dialog" on the same element, so it was dropped in favour of the dialog role; click-to-advance (mouse) is unchanged. aria-label is "{title} -- 60-second explainer".',
+      'DayCloseRunner: Escape now calls the existing onClose prop, same as its close button; aria-label is "End-of-day close-down -- {locationName}".',
+      'Pre-merge review fix 1 (components/ui/Dialog.tsx): these overlays nest -- ExplainerPlayer and SecurePdfViewer render inside ImmersiveCourse\'s panel, so their keydowns bubble up the React tree into its handler as well. One Escape therefore closed the inner overlay AND exited the whole course, and one Tab ran both traps against different focusable lists. useDialogBehaviours now calls stopPropagation once it has handled a key (Tab only when the panel actually has focusable children, so an empty inner panel still defers to the outer trap). Fixed in the shared hook, so every current and future nested consumer gets it.',
+      'Pre-merge review fix 2 (ExplainerPlayer): dropping role="button" also dropped the only keyboard route to click-to-advance, leaving that function mouse-only (WCAG 2.1.1). Enter/Space cannot be restored -- the trap puts initial focus on the Close button, where they would activate it -- so ArrowRight/ArrowDown advance and ArrowLeft/ArrowUp step back; buttons ignore arrow keys, so this never fights the close/start controls or the Tab trap. Advertised via aria-keyshortcuts, and the scene container is now aria-live="polite" so the timer-driven narration is announced instead of the explainer going silent after the title.',
+      'Residual risk accepted, not changed: Escape now discards unsaved in-progress input in DayCloseRunner (cash counts, stock take, manager notes -- all submitted in one go at the end) and in the academy homework note, with no confirmation. That matches what the existing close/exit buttons already do, so it is a wider reach for an existing hazard rather than a new one; a dirty-state guard on close would be a separate change.',
       'Verified: npx tsc --noEmit and npm run build (DB unreachable from this sandbox network; prebuild db-sync skipped via unsetting DATABASE_URL*/POSTGRES_* env vars) both pass clean.',
     ],
   },
