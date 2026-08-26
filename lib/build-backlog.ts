@@ -4564,6 +4564,18 @@ export const BUILD_BACKLOG: BacklogItem[] = [
       'Verified: npx tsc --noEmit and npm run build (DB unreachable from this sandbox network; prebuild db-sync skipped via unsetting DATABASE_URL*/POSTGRES_* env vars) both pass clean.',
     ],
   },
+  {
+    title: 'Guest checkout ignored live treatment offers, charging full price for a discounted treatment (BLD-1495)',
+    type: 'ERROR', urgency: 'P1', status: 'IN_REVIEW', assignee: 'claude',
+    value: 8, effort: 3,
+    detail: 'app/api/booking/create/route.ts (the guest/no-account booking path) priced from pricing.fromPence and only ever applied a promo code or the one-time welcome discount -- it never resolved the treatment\'s live ServiceOffer via bestOffer/liveOffers the way /api/booking/start (the signed-in path) does. Treatment pages advertise a strikethrough "Offer" price from the same pricingForTreatment() catalogue call (fromOfferPence), so a guest who booked without creating an account was silently charged the undiscounted price for a treatment marketed at a discount.',
+    notes: [
+      'Fix: pricingForTreatment() already computes fromOfferPence (the lowest payable price after live offers, via the same bestOffer() used by booking/start) as part of its normal per-treatment pricing -- booking/create was just discarding it. The route now derives an offerDiscountPence from fromPence - fromOfferPence and uses it as the starting discount, matching booking/start\'s no-stacking precedence: a promo code only replaces it if the promo discount is >= the offer discount, and the one-time welcome claim only replaces it if strictly greater -- never stacked on top of the offer.',
+      'The promo-redemption race-recovery path (BLD-1035, when redeemPromo loses a concurrency race after the booking is already held) previously re-priced to the full undiscounted amount. That is now wrong given the offer is a guaranteed discount, not a promo the race can invalidate -- it re-prices to basePrice minus the offer discount instead, so a losing race no longer strips a legitimate live-offer discount the guest was always entitled to.',
+      'The one-time welcome-claim record is now only marked REDEEMED when it actually won the no-stacking comparison (previously it was burned whenever present and no promo was used, even if its discount was smaller than the offer already applied and therefore had no effect on the charged price) -- so a claim that never actually discounted anything is not consumed.',
+      'Verified: npx tsc --noEmit and npm run build (DB unreachable from this sandbox network; prebuild db-sync skipped via unsetting DATABASE_URL*/POSTGRES_* env vars) both pass clean.',
+    ],
+  },
 ];
 
 // A content hash over every item's title + status + PR, so ANY change (a new
