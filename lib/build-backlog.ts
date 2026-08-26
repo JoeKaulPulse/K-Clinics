@@ -4564,6 +4564,18 @@ export const BUILD_BACKLOG: BacklogItem[] = [
       'Verified: npx tsc --noEmit and npm run build (DB unreachable from this sandbox network; prebuild db-sync skipped via unsetting DATABASE_URL*/POSTGRES_* env vars) both pass clean.',
     ],
   },
+  {
+    title: 'Inbound webhook timeout risk, package-page booking CTA missing treatment context, stale retention-schedule doc (BLD-1503, BLD-1505, BLD-1504)',
+    type: 'TASK', urgency: 'P2', status: 'IN_REVIEW', assignee: 'claude',
+    value: 5, effort: 1,
+    detail: 'Three small P2 fixes batched. BLD-1503: app/api/webhooks/resend and app/api/webhooks/chat-inbound set no maxDuration, unlike the Stripe webhook (explicit 60s) and every cron route -- chat-inbound in particular runs a Serializable DB transaction plus a staff notification per inbound reply, which can silently drop under Vercel\'s shorter platform default under load. BLD-1505: app/(marketing)/packages/[slug]/page.tsx called BookingButtons with no treatmentSlug even though BookingButtons supports it and p.related[0] is already available -- every other treatment/service CTA on the site preselects context, but the highest-ticket offering (packages) sent the shopper back to a blank treatment search. BLD-1504: docs/data-protection/retention-schedule.md (last reviewed 2026-06-18) said "no automated retention/purge job is documented for most categories yet" and marked most windows [OWNER TO CONFIRM], but app/api/cron/daily/route.ts already enforces purges/minimisation for most of those categories -- a DPO or regulator reading the doc got a materially wrong, more-permissive picture than what the system actually enforces.',
+    notes: [
+      'BLD-1503: added export const maxDuration = 60 to both routes, matching the convention already used by the Stripe webhook, kiosk analyze/photo routes, cron/dispatch and admin/api-health.',
+      'BLD-1505: both BookingButtons call sites on the package detail page now pass treatmentSlug={p.related[0]} (the package\'s primary related treatment, already resolved on the page for the "within this programme" section).',
+      'BLD-1504: resynced the whole doc against the nightly cron\'s actual constants (app/api/cron/daily/route.ts) -- corrected/added: 8-year auto-purge for before-photos and signed consents (previously marked [OWNER TO CONFIRM] despite already running), 13-month identifier-minimisation on health-assessment/consent IPs, 13-month call-recording content scrub (BLD-127, previously not mentioned at all), 12-month anonymous-chat purge (BLD-837), 18-month EmailEvent purge, 90-day BookingIntent purge (a category the doc omitted entirely), and 6/12-month job-application purge with CV blob cleanup (BLD-314). The 90-day replay / 180-day heatmap row was upgraded from "recommend adding this" to "already enforced" since the cron already does both. Left every period the cron does NOT enforce as [OWNER TO CONFIRM] rather than inventing one, and rewrote the closing "Implementing retention" section to state what is/isn\'t automated instead of the now-false blanket "no automated job" claim.',
+      'Verified: npx tsc --noEmit and npm run build (DB unreachable from this sandbox network; prebuild db-sync skipped via unsetting DATABASE_URL*/POSTGRES_* env vars) both pass clean.',
+    ],
+  },
 ];
 
 // A content hash over every item's title + status + PR, so ANY change (a new
