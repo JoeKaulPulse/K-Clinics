@@ -3,6 +3,9 @@ import { crmEnabled } from '@/lib/crm';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
+// BLD-1503: a Serializable DB transaction plus a staff notification per inbound
+// reply can run long under load — matches the Stripe webhook's explicit 60s.
+export const maxDuration = 60;
 
 // Resend Inbound webhook → threads a visitor's email reply back into the SAME
 // live-chat conversation. Replies are sent to chat-<token>@<inbound domain>

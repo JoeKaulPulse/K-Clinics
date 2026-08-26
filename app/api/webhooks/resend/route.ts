@@ -4,6 +4,9 @@ import { crmEnabled } from '@/lib/crm';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
+// BLD-1503: matches the Stripe webhook's explicit 60s (email sending can take
+// up to 30s under Resend's rate cap) — this route can hit the same slowdown.
+export const maxDuration = 60;
 
 // Resend delivery webhook → records open / click / bounce / complaint against the
 // EmailEvent (matched by provider id) so the email dashboard can show real rates.
