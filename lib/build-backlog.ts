@@ -4564,6 +4564,19 @@ export const BUILD_BACKLOG: BacklogItem[] = [
       'Verified: npx tsc --noEmit and npm run build (DB unreachable from this sandbox network; prebuild db-sync skipped via unsetting DATABASE_URL*/POSTGRES_* env vars) both pass clean.',
     ],
   },
+  {
+    title: 'Full-screen academy/day-close overlays had no dialog semantics or keyboard focus trap (BLD-1501)',
+    type: 'TASK', urgency: 'P1', status: 'IN_REVIEW', assignee: 'claude',
+    value: 8, effort: 3,
+    detail: 'components/academy/ImmersiveCourse.tsx, ExplainerPlayer.tsx and components/admin/DayCloseRunner.tsx are fixed inset-0 full-screen panels that never called the existing useDialogBehaviours hook (used by every other modal in components/ui/Dialog.tsx) -- no role=dialog/aria-modal, no initial focus, Tab could reach nav/footer links behind the overlay, and Escape did not close any of the three (only their explicit close/exit buttons did).',
+    notes: [
+      'All three now route through useDialogBehaviours, which already provides role=dialog/aria-modal (applied to the panel), initial focus into the panel\'s first focusable element, a Tab trap, Escape-to-close, and the shared ref-counted body-scroll lock (BLD-1194) -- so the ad-hoc useBodyScrollLock() calls in ImmersiveCourse and ExplainerPlayer were replaced rather than kept alongside it.',
+      'ImmersiveCourse: Escape now calls the same onExit the header\'s exit button already used (falls back to a no-op when onExit is not supplied, since it is an optional prop); aria-label is the course title.',
+      'ExplainerPlayer: the outer panel previously doubled as a role="button" with its own Enter/Space handler (click-anywhere-to-advance) -- that role is incompatible with role="dialog" on the same element, so it was dropped in favour of the dialog role; click-to-advance (mouse) is unchanged, and keyboard users still reach every action via the real close/start buttons plus the scene auto-advance timer. aria-label is "{title} — 60-second explainer".',
+      'DayCloseRunner: Escape now calls the existing onClose prop, same as its ✕ button; aria-label is "End-of-day close-down — {locationName}".',
+      'Verified: npx tsc --noEmit and npm run build (DB unreachable from this sandbox network; prebuild db-sync skipped via unsetting DATABASE_URL*/POSTGRES_* env vars) both pass clean.',
+    ],
+  },
 ];
 
 // A content hash over every item's title + status + PR, so ANY change (a new

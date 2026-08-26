@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { KSpeech } from '@/components/academy/KMascot';
 import { Illustration, matchIllustration } from '@/components/academy/Illustrations';
 import { AmbientBackdrop } from '@/components/academy/AmbientBackdrop';
-import { useBodyScrollLock } from '@/components/ui/Dialog';
+import { useDialogBehaviours } from '@/components/ui/Dialog';
 
 // A short animated "video" explainer generated on the fly from a lesson's own
 // points — the K narrates each beat (typed speech) over a matched illustration,
@@ -25,14 +25,16 @@ export function ExplainerPlayer({ title, level, points, onClose, onStart }: { ti
     const t = setTimeout(() => setI((x) => x + 1), cur.kind === 'title' ? 4200 : 5400);
     return () => clearTimeout(t);
   }, [i, last, cur.kind]);
-  // Shared ref-counted lock: this player opens on top of ImmersiveCourse, which
-  // also locks — unmounting both at once must not leave the page stuck. (BLD-1194)
-  useBodyScrollLock();
+  // BLD-1501: dialog semantics (role, focus trap, Escape-to-close) — also
+  // covers the body-scroll lock this player needs while it's open on top of
+  // ImmersiveCourse, which locks too; the shared ref-count (BLD-1194) means
+  // unmounting both at once still leaves the page scrollable.
+  const { panelRef, onKeyDown } = useDialogBehaviours<HTMLDivElement>(onClose);
 
   const art = cur.kind === 'point' ? matchIllustration(cur.text) : null;
 
   return (
-    <div className="fixed inset-0 z-[320] flex flex-col bg-[var(--color-ink)] text-[var(--color-porcelain)]" style={{ paddingTop: 'env(safe-area-inset-top)', paddingBottom: 'env(safe-area-inset-bottom)' }} role="button" tabIndex={0} aria-label={last ? 'Explainer complete' : 'Tap to advance'} onClick={() => !last && setI((x) => x + 1)} onKeyDown={(e) => { if (e.target === e.currentTarget && (e.key === 'Enter' || e.key === ' ') && !last) { e.preventDefault(); setI((x) => x + 1); } }}>
+    <div ref={panelRef} className="fixed inset-0 z-[320] flex flex-col bg-[var(--color-ink)] text-[var(--color-porcelain)]" style={{ paddingTop: 'env(safe-area-inset-top)', paddingBottom: 'env(safe-area-inset-bottom)' }} role="dialog" aria-modal="true" aria-label={`${title} — 60-second explainer`} tabIndex={-1} onClick={() => !last && setI((x) => x + 1)} onKeyDown={onKeyDown}>
       <AmbientBackdrop tone="dark" />
       <header className="relative z-10 flex items-center justify-between px-5 py-3">
         <span className="text-xs uppercase tracking-[0.18em] text-white/45">60-second explainer</span>

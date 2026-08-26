@@ -3,6 +3,7 @@
 import { useMemo, useState } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
 import type { DayCloseConfig, ChecklistSection, ExpectedTakings, StockTakeItem } from '@/lib/day-close';
+import { useDialogBehaviours } from '@/components/ui/Dialog';
 
 // End-of-day clinic shutdown — a whole-screen, stepped flow in the same style as
 // the client questionnaire. Walks one location through cash-up, stock take and
@@ -146,8 +147,12 @@ export function DayCloseRunner({
 
   const dateLabel = new Date(businessDate).toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' });
 
+  // BLD-1501: dialog semantics — role, initial focus, Tab trap and
+  // Escape-to-close (previously only the ✕ button could exit this overlay).
+  const { panelRef, onKeyDown } = useDialogBehaviours<HTMLDivElement>(onClose);
+
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto bg-[var(--color-porcelain)]">
+    <div ref={panelRef} className="fixed inset-0 z-50 overflow-y-auto bg-[var(--color-porcelain)]" role="dialog" aria-modal="true" aria-label={`End-of-day close-down — ${locationName}`} tabIndex={-1} onKeyDown={onKeyDown}>
       <div className="flex min-h-screen flex-col">
         {/* Top bar */}
         <div className="sticky top-0 z-10 bg-[var(--color-porcelain)]/90 backdrop-blur-sm">
