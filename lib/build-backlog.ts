@@ -4579,6 +4579,22 @@ export const BUILD_BACKLOG: BacklogItem[] = [
     ],
   },
   {
+    title: 'Full-screen academy/day-close overlays had no dialog semantics or keyboard focus trap (BLD-1501)',
+    type: 'TASK', urgency: 'P1', status: 'SHIPPED', assignee: 'claude', pr: PR(1863),
+    value: 8, effort: 3,
+    detail: 'components/academy/ImmersiveCourse.tsx, ExplainerPlayer.tsx and components/admin/DayCloseRunner.tsx are fixed inset-0 full-screen panels that never called the existing useDialogBehaviours hook (used by every other modal in components/ui/Dialog.tsx) -- no role=dialog/aria-modal, no initial focus, Tab could reach nav/footer links behind the overlay, and Escape did not close any of the three (only their explicit close/exit buttons did).',
+    notes: [
+      'All three now route through useDialogBehaviours, which already provides role=dialog/aria-modal (applied to the panel), initial focus into the panel\'s first focusable element, a Tab trap, Escape-to-close, and the shared ref-counted body-scroll lock (BLD-1194) -- so the ad-hoc useBodyScrollLock() calls in ImmersiveCourse and ExplainerPlayer were replaced rather than kept alongside it.',
+      'ImmersiveCourse: Escape now calls the same onExit the header\'s exit button already used (falls back to a no-op when onExit is not supplied, since it is an optional prop); aria-label is the course title.',
+      'ExplainerPlayer: the outer panel previously doubled as a role="button" with its own Enter/Space handler (click-anywhere-to-advance) -- that role is incompatible with role="dialog" on the same element, so it was dropped in favour of the dialog role; click-to-advance (mouse) is unchanged. aria-label is "{title} -- 60-second explainer".',
+      'DayCloseRunner: Escape now calls the existing onClose prop, same as its close button; aria-label is "End-of-day close-down -- {locationName}".',
+      'Pre-merge review fix 1 (components/ui/Dialog.tsx): these overlays nest -- ExplainerPlayer and SecurePdfViewer render inside ImmersiveCourse\'s panel, so their keydowns bubble up the React tree into its handler as well. One Escape therefore closed the inner overlay AND exited the whole course, and one Tab ran both traps against different focusable lists. useDialogBehaviours now calls stopPropagation once it has handled a key (Tab only when the panel actually has focusable children, so an empty inner panel still defers to the outer trap). Fixed in the shared hook, so every current and future nested consumer gets it.',
+      'Pre-merge review fix 2 (ExplainerPlayer): dropping role="button" also dropped the only keyboard route to click-to-advance, leaving that function mouse-only (WCAG 2.1.1). Enter/Space cannot be restored -- the trap puts initial focus on the Close button, where they would activate it -- so ArrowRight/ArrowDown advance and ArrowLeft/ArrowUp step back; buttons ignore arrow keys, so this never fights the close/start controls or the Tab trap. Advertised via aria-keyshortcuts, and the scene container is now aria-live="polite" so the timer-driven narration is announced instead of the explainer going silent after the title.',
+      'Residual risk accepted, not changed: Escape now discards unsaved in-progress input in DayCloseRunner (cash counts, stock take, manager notes -- all submitted in one go at the end) and in the academy homework note, with no confirmation. That matches what the existing close/exit buttons already do, so it is a wider reach for an existing hazard rather than a new one; a dirty-state guard on close would be a separate change.',
+      'Verified: npx tsc --noEmit and npm run build (DB unreachable from this sandbox network; prebuild db-sync skipped via unsetting DATABASE_URL*/POSTGRES_* env vars) both pass clean.',
+    ],
+  },
+  {
     title: 'Inbound webhook timeout risk, package-page booking CTA missing treatment context, stale retention-schedule doc (BLD-1503, BLD-1505, BLD-1504)',
     type: 'TASK', urgency: 'P2', status: 'IN_REVIEW', assignee: 'claude',
     value: 5, effort: 1,

@@ -11,7 +11,7 @@ import { HomeworkPanel } from '@/components/academy/HomeworkPanel';
 import { SecurePdfViewer } from '@/components/academy/SecurePdfViewer';
 import { kindLabel } from '@/components/academy/attachment-kinds';
 import { academyLevel } from '@/lib/academy-levels';
-import { useBodyScrollLock } from '@/components/ui/Dialog';
+import { useDialogBehaviours } from '@/components/ui/Dialog';
 import { isMascotMuted, setMascotMuted } from '@/components/academy/mascotVoice';
 import type { CourseLearning, LessonView, QuizView } from '@/lib/lms';
 
@@ -102,12 +102,13 @@ export function ImmersiveCourse({ learning, slug, mode = 'learn', xp = 0, regist
   const [maxReached, setMaxReached] = useState(mode === 'preview' ? steps.length - 1 : firstIncomplete);
   const step = steps[idx];
 
-  // Lock background scroll while the full-screen overlay is open. Uses the
-  // shared ref-counted lock so the overlays that open *inside* the course
-  // (ExplainerPlayer, SecurePdfViewer) cooperate with it instead of fighting
-  // over document.body.style.overflow — unmounting together left the page
-  // permanently unscrollable otherwise. (BLD-1194)
-  useBodyScrollLock();
+  // BLD-1501: dialog semantics (role, focus trap, Escape-to-exit). Also covers
+  // the body-scroll lock the full-screen overlay needs — the shared ref-count
+  // (BLD-1194) means the overlays that open *inside* the course (ExplainerPlayer,
+  // SecurePdfViewer) cooperate with it rather than fighting over
+  // document.body.style.overflow, so unmounting together doesn't leave the page
+  // permanently unscrollable.
+  const { panelRef, onKeyDown } = useDialogBehaviours<HTMLDivElement>(onExit ?? (() => {}));
 
   const ceiling = mode === 'preview' ? steps.length - 1 : maxReached;
   const go = (to: number) => { if (to >= 0 && to < steps.length && to <= ceiling) setIdx(to); };
@@ -152,7 +153,7 @@ export function ImmersiveCourse({ learning, slug, mode = 'learn', xp = 0, regist
 
   return (
     <ArtCtx.Provider value={{ levelFor, seeArt }}>
-    <div className="fixed inset-0 z-[200] flex flex-col bg-[var(--color-ink)] text-[var(--color-porcelain)]" style={{ paddingTop: 'env(safe-area-inset-top)', paddingBottom: 'env(safe-area-inset-bottom)' }}>
+    <div ref={panelRef} className="fixed inset-0 z-[200] flex flex-col bg-[var(--color-ink)] text-[var(--color-porcelain)]" style={{ paddingTop: 'env(safe-area-inset-top)', paddingBottom: 'env(safe-area-inset-bottom)' }} role="dialog" aria-modal="true" aria-label={learning.course.title} tabIndex={-1} onKeyDown={onKeyDown}>
       <AmbientBackdrop tone="dark" />
       {/* Top bar: exit · progress · counter */}
       <header className="relative z-10 flex items-center gap-4 border-b border-white/10 px-4 py-3 sm:px-6">
