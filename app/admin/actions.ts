@@ -287,6 +287,16 @@ export async function eraseStudentData(studentId: string) {
   const student = await db.academyStudent.findUnique({ where: { id: studentId }, select: { email: true } });
   if (!student) return { ok: false, error: 'Student not found.' };
   const erasedEmail = `erased-${studentId}@redacted.invalid`;
+  // BLD-1499 review: the email-matched redactions below must hit THIS subject's
+  // rows and nobody else's. Prisma compiles `equals` + mode:'insensitive' to a
+  // bare Postgres `ILIKE $1` with the address used verbatim as the PATTERN
+  // (verified against the generated SQL), so `_` and `%` inside an address act
+  // as wildcards: erasing jane_smith@x.com would also redact janeXsmith@x.com,
+  // and an address containing `%` would match half a domain. Both characters
+  // are legal in a local part, and `_` is common. Escaping them (backslash is
+  // Postgres's default LIKE escape) makes it the exact, case-insensitive match
+  // this is meant to be; an address with neither character is unaffected.
+  const emailPattern = student.email.replace(/[\\%_]/g, (c) => `\\${c}`);
   // BLD-1309: capture the Blob URLs before files is cleared below, so they can
   // be deleted from storage too (mirroring lib/kiosk.ts's deleteKioskBlobs) —
   // clearing the column alone left the uploaded homework files themselves
@@ -313,16 +323,37 @@ export async function eraseStudentData(studentId: string) {
     db.forumThread.updateMany({ where: { authorStudentId: studentId }, data: { authorName: 'Erased' } }),
     db.forumPost.updateMany({ where: { authorStudentId: studentId }, data: { authorName: 'Erased' } }),
     db.lessonComment.updateMany({ where: { authorStudentId: studentId }, data: { authorName: 'Erased' } }),
-    // BLD-1124: the applicant snapshot captured at enquiry (before the account
-    // existed) — the enrolment row is retained pseudonymously (certification
-    // verification basis) but the identifying applicant fields are not.
-    db.enrolment.updateMany({ where: { studentId }, data: { applicantName: 'Erased', applicantEmail: erasedEmail, applicantPhone: null } }),
+    // BLD-1124/BLD-1499: the applicant snapshot captured at enquiry (before the
+    // account existed) — the enrolment row is retained pseudonymously
+    // (certification verification basis) but the identifying applicant fields
+    // and free-text detail are not. Matched by the FK (post-account enquiries)
+    // and, mirroring eraseClientData's email-matched guest records, by the
+    // original email (pre-account enquiries with no studentId set yet — an
+    // Enrolment can be keyed only by applicantEmail/applicantName until the
+    // trainee creates an account).
+    db.enrolment.updateMany({
+      where: { studentId },
+      data: {
+        applicantName: 'Erased', applicantEmail: erasedEmail, applicantPhone: null,
+        // BLD-1499: free-text fields that can carry personal/health detail
+        // (background/qualifications, staff notes, the typed signature name
+        // on the Learner Agreement) — no retention basis once erased.
+        experience: null, notes: null, agreementSignedName: null,
+      },
+    }),
+    db.enrolment.updateMany({
+      where: { studentId: null, applicantEmail: { equals: emailPattern, mode: 'insensitive' } },
+      data: {
+        applicantName: 'Erased', applicantEmail: erasedEmail, applicantPhone: null,
+        experience: null, notes: null, agreementSignedName: null,
+      },
+    }),
     // BLD-1124: funding enquiries linked to this trainee — strip the applicant
     // identity. Matched by the FK (post-account enquiries) and, mirroring
     // eraseClientData's email-matched guest records, by the original email
     // (pre-account enquiries with no studentId set yet).
     db.fundingApplication.updateMany({ where: { studentId }, data: { name: 'Erased', email: erasedEmail, phone: null } }),
-    db.fundingApplication.updateMany({ where: { studentId: null, email: { equals: student.email, mode: 'insensitive' } }, data: { name: 'Erased', email: erasedEmail, phone: null } }),
+    db.fundingApplication.updateMany({ where: { studentId: null, email: { equals: emailPattern, mode: 'insensitive' } }, data: { name: 'Erased', email: erasedEmail, phone: null } }),
     // BLD-1124: homework submissions carry the learner's own free-text note,
     // tutor feedback naming them, and uploaded files (photos/documents) — strip
     // the content but keep the row (status/dates) for course records.
