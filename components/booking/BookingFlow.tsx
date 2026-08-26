@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useRef, useState, type RefObject } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type Ref } from 'react';
 import Link from 'next/link';
 import { AnimatePresence, motion } from 'motion/react';
 import { Elements, PaymentElement, useElements, useStripe } from '@stripe/react-stripe-js';
@@ -234,12 +234,23 @@ export function BookingFlow({ catalogue, client, preselect = null, preselectDate
   // announcement is added on top. Skipped on the very first render — the
   // visitor just landed on the page, so nothing should steal focus from
   // wherever the browser already put it.
-  const stepHeadingRef = useRef<HTMLHeadingElement>(null);
+  // The panels run through <AnimatePresence mode="wait">, so on a stage change
+  // the OUTGOING panel is the only one mounted until its 0.35s exit finishes —
+  // the new step's heading does not exist yet. An effect keyed on `stage` would
+  // therefore focus the heading that is on its way out, and focus would drop to
+  // <body> when that node is removed. So the effect only arms a flag, and the
+  // heading's callback ref moves focus at the moment the new heading mounts.
+  const pendingHeadingFocus = useRef(false);
   const isFirstStage = useRef(true);
   useEffect(() => {
     if (isFirstStage.current) { isFirstStage.current = false; return; }
-    stepHeadingRef.current?.focus();
+    pendingHeadingFocus.current = true;
   }, [stage]);
+  const stepHeadingRef = useCallback((node: HTMLHeadingElement | null) => {
+    if (!node || !pendingHeadingFocus.current) return;
+    pendingHeadingFocus.current = false;
+    node.focus();
+  }, []);
 
   // Today is selectable: same-day appointments go through as a request that staff
   // confirm. Future dates book as normal. Clinic-local (UK) date.
@@ -679,7 +690,7 @@ function dobError(dob: string): string | null {
 }
 
 // ── Account step (signup / login) ───────────────────────────────────────────
-function AccountStep({ onAuthed, setError, headingRef }: { onAuthed: (i: { firstName: string; gender: string | null; welcome: boolean; sms: boolean }) => void; setError: (e: string) => void; headingRef?: RefObject<HTMLHeadingElement | null> }) {
+function AccountStep({ onAuthed, setError, headingRef }: { onAuthed: (i: { firstName: string; gender: string | null; welcome: boolean; sms: boolean }) => void; setError: (e: string) => void; headingRef?: Ref<HTMLHeadingElement> }) {
   const [mode, setMode] = useState<'signup' | 'login'>('signup');
   const [f, setF] = useState({ firstName: '', lastName: '', email: '', phone: '', dob: '', password: '', gender: '', marketingOptIn: false, sms: false, consent: false, company: '' });
   const [busy, setBusy] = useState(false);
