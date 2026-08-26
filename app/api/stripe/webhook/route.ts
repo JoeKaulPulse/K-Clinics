@@ -366,7 +366,7 @@ export async function POST(req: Request) {
         // outcomes change nothing.
         if (!created && dispute.status === 'lost' && amount > 0) {
           if (booking) {
-            const full = await db.booking.findFirst({ where: { id: booking.id }, select: { id: true, clientId: true, refundedPence: true, chargedPence: true } });
+            const full = await db.booking.findFirst({ where: { id: booking.id }, select: { id: true, clientId: true, refundedPence: true, chargedPence: true, chargePaymentIntentId: true, giftVoucherCode: true, giftVoucherPence: true } });
             if (full) {
               // BLD-1190: the old formula — Math.min(X, Math.max(c, X)) — is a
               // no-op (Math.max(c, X) >= X always, so the min always resolves to
@@ -383,6 +383,21 @@ export async function POST(req: Request) {
               if (claimed.count > 0) {
                 const fully = newTotal >= (full.chargedPence ?? 0);
                 if (fully) { try { const { refundBookingPoints } = await import('@/lib/client-loyalty'); await refundBookingPoints(full.id); } catch (e) { Sentry.captureException(e, { tags: { area: 'stripe-webhook', sub: 'dispute-points' } }); } }
+                // BLD-1510: a lost dispute is a full clawback of the CARD charge only —
+                // a partial-voucher booking's voucher-covered slice was never part of
+                // the disputed charge, so it must go back on the voucher, mirroring
+                // refundBooking() (BLD-882) and the charge.refunded handler (BLD-1138)
+                // below. Gated on `fully` (the card portion is entirely gone) and on
+                // the same claimed.count CAS above, so a redelivered dispute event
+                // can't double-credit; creditVoucher itself also caps at face value.
+                if (fully && full.chargePaymentIntentId !== 'ext_gift-voucher' && (full.giftVoucherPence ?? 0) > 0 && full.giftVoucherCode) {
+                  try {
+                    const { creditVoucher } = await import('@/lib/gift-vouchers');
+                    await creditVoucher(full.giftVoucherCode, full.giftVoucherPence ?? 0);
+                    const { logAudit } = await import('@/lib/audit');
+                    await logAudit({ action: 'REWARD_REDEEMED', actor: 'stripe-webhook', bookingId: full.id, clientId: full.clientId, summary: `Gift voucher ${full.giftVoucherCode} restored on lost chargeback — £${((full.giftVoucherPence ?? 0) / 100).toFixed(2)} back on the voucher` }).catch(() => {});
+                  } catch (e) { Sentry.captureException(e, { tags: { area: 'stripe-webhook', sub: 'dispute-voucher-restore' } }); }
+                }
                 try { const { reverseSpendPoints } = await import('@/lib/client-loyalty'); await reverseSpendPoints(full.id, newTotal, full.chargedPence ?? 0); } catch (e) { Sentry.captureException(e, { tags: { area: 'stripe-webhook', sub: 'dispute-spend-points' } }); }
                 try { const { pushBookingRefundToXero } = await import('@/lib/xero'); await pushBookingRefundToXero(full.id, amount, 'Chargeback lost'); } catch (e) { Sentry.captureException(e, { tags: { area: 'stripe-webhook', sub: 'dispute-xero' } }); }
                 try { const { logAudit } = await import('@/lib/audit'); await logAudit({ action: 'PAYMENT_REFUNDED', actor: 'stripe-webhook', bookingId: full.id, clientId: full.clientId, summary: `Chargeback lost — £${(amount / 100).toFixed(2)} reconciled as refunded (auto, owner policy)`, meta: { disputeId: dispute.id } }); } catch { /* non-fatal */ }

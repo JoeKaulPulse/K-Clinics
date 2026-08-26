@@ -4606,6 +4606,17 @@ export const BUILD_BACKLOG: BacklogItem[] = [
       'Verified: npx tsc --noEmit and npm run build (DB unreachable from this sandbox network; prebuild db-sync skipped via unsetting DATABASE_URL*/POSTGRES_* env vars) both pass clean.',
     ],
   },
+  {
+    title: 'Lost Stripe dispute never restored the gift-voucher portion of a partially-voucher-paid booking (BLD-1510)',
+    type: 'ERROR', urgency: 'P1', status: 'SHIPPED', assignee: 'claude',
+    value: 7, effort: 2,
+    detail: 'app/api/stripe/webhook/route.ts, the charge.dispute.closed handler (status \'lost\', booking branch, fully-clawed-back case) reversed loyalty points, posted an Xero credit note and emailed the client, but never called creditVoucher() to restore the voucher-covered slice of the booking -- unlike refundBooking() (lib/booking-actions.ts) and the charge.refunded webhook handler (fixed under BLD-1183), which both restore the voucher on a full refund/refunded charge. Net effect: on a chargeback for a partial-voucher booking, the clinic ate the card loss via the dispute AND the client\'s voucher balance was never restored.',
+    notes: [
+      'Fix: widened the `full` select on the dispute-lost path to also pull chargePaymentIntentId, giftVoucherCode and giftVoucherPence, then -- gated on `fully` (the card portion is entirely clawed back) and excluding chargePaymentIntentId === \'ext_gift-voucher\' bookings paid entirely by voucher, which never had a card portion to dispute -- calls creditVoucher(giftVoucherCode, giftVoucherPence) and logs a REWARD_REDEEMED audit row, mirroring the exact same condition and call already used by refundBooking() (BLD-882) and the charge.refunded handler (BLD-1138) a few hundred lines below in the same file.',
+      'Idempotency: the new block sits inside the same claimed.count > 0 CAS block as the existing loyalty-points/Xero side effects on this path, so a redelivered dispute.closed webhook event finds refundedPence already advanced, the CAS fails, and the whole block (including the voucher credit) is skipped -- no double-credit on redelivery. creditVoucher() itself also caps at face value as a second safety net.',
+      'Verified: npx tsc --noEmit and npm run build (DB unreachable from this sandbox network; prebuild db-sync skipped via unsetting DATABASE_URL*/POSTGRES_* env vars) both pass clean.',
+    ],
+  },
 ];
 
 // A content hash over every item's title + status + PR, so ANY change (a new
