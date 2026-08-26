@@ -7,6 +7,7 @@ import type { ClientLiveView } from '@/lib/appointment-session-server';
 import { CheckIcon } from '@/components/ui/session-icons';
 import { KMark, ClinicsWordmark } from '@/components/brand/marks';
 import { ConsentSigner } from '@/components/consent/ConsentSigner';
+import { useDialogBehaviours } from '@/components/ui/Dialog';
 
 // BLD-138 v2 — the client's phone companion. A dark, jewel-box page that
 // mirrors the in-clinic session in real time: the current stage breathes at
@@ -272,8 +273,15 @@ function ConsentSheet({ token, onClose }: { token: string; onClose: () => void }
     return () => { alive = false; };
   }, [token]);
 
+  // BLD-1512: dialog semantics — role, initial focus, Tab trap, Escape-to-close
+  // and focus return to the trigger. "Back to your visit" above is already a
+  // legitimate cancel (it doesn't submit or discard the consent — the form
+  // stays open for the client to come back to), so Escape maps to the same
+  // onClose.
+  const { panelRef, onKeyDown } = useDialogBehaviours<HTMLDivElement>(onClose);
+
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto bg-[var(--color-bone)] text-[var(--color-ink)]">
+    <div ref={panelRef} className="fixed inset-0 z-50 overflow-y-auto bg-[var(--color-bone)] text-[var(--color-ink)]" role="dialog" aria-modal="true" aria-label="Sign consent form" tabIndex={-1} onKeyDown={onKeyDown}>
       <div className="mx-auto max-w-2xl px-4 pb-16 pt-4">
         <button type="button" onClick={onClose}
           className="mb-4 inline-flex min-h-11 items-center gap-1.5 text-sm font-medium text-[var(--color-stone)] hover:text-[var(--color-ink)]">

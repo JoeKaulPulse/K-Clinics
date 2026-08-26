@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState, type RefObject } from 'react';
 import Link from 'next/link';
 import { AnimatePresence, motion } from 'motion/react';
 import { Elements, PaymentElement, useElements, useStripe } from '@stripe/react-stripe-js';
@@ -225,6 +225,22 @@ export function BookingFlow({ catalogue, client, preselect = null, preselectDate
     try { (window as Window & { gtag?: (...a: unknown[]) => void }).gtag?.('event', 'booking_stage', { stage }); } catch { /* analytics best-effort */ }
   }, [stage]);
 
+  // BLD-1515: each stage swaps the whole panel via AnimatePresence, but nothing
+  // ever moved keyboard/screen-reader focus — it stayed parked on "Continue"
+  // while the content silently replaced itself (WCAG 2.4.3 / 4.1.3). Every
+  // stage's panel opens with an <h3> (or, for the sign-up/login stage,
+  // AccountStep's own <h3>); focusing it announces the new heading the same
+  // way a page-title focus does on route change, so no separate aria-live
+  // announcement is added on top. Skipped on the very first render — the
+  // visitor just landed on the page, so nothing should steal focus from
+  // wherever the browser already put it.
+  const stepHeadingRef = useRef<HTMLHeadingElement>(null);
+  const isFirstStage = useRef(true);
+  useEffect(() => {
+    if (isFirstStage.current) { isFirstStage.current = false; return; }
+    stepHeadingRef.current?.focus();
+  }, [stage]);
+
   // Today is selectable: same-day appointments go through as a request that staff
   // confirm. Future dates book as normal. Clinic-local (UK) date.
   const minDate = useMemo(() => new Date().toLocaleDateString('en-CA'), []);
@@ -311,7 +327,7 @@ export function BookingFlow({ catalogue, client, preselect = null, preselectDate
             // Identity captured — the booking is being created (submitBooking moves
             // us to the card step). Stays here on a transient error so they can retry.
             <div className="py-8 text-center">
-              <h3 className="font-[family-name:var(--font-display)] text-2xl">{error ? 'That didn’t go through' : 'Securing your booking…'}</h3>
+              <h3 ref={stepHeadingRef} tabIndex={-1} className="font-[family-name:var(--font-display)] text-2xl outline-none">{error ? 'That didn’t go through' : 'Securing your booking…'}</h3>
               {error && (
                 <div className="mt-5 flex items-center justify-center gap-4">
                   <button type="button" onClick={() => { setError(''); setStage('upsell'); }} className="text-sm font-medium text-[var(--color-stone)] hover:text-[var(--color-ink)]">← Change time or details</button>
@@ -323,12 +339,13 @@ export function BookingFlow({ catalogue, client, preselect = null, preselectDate
             <AccountStep
               onAuthed={(info) => { setAuthed(true); setFirstName(info.firstName); setGender(info.gender); setWelcome(info.welcome); setSmsPref(info.sms); setError(''); submitBooking(); }}
               setError={setError}
+              headingRef={stepHeadingRef}
             />
           ))}
 
           {stage === 'service' && (
             <div>
-              <h3 className="font-[family-name:var(--font-display)] text-2xl">Choose your treatment</h3>
+              <h3 ref={stepHeadingRef} tabIndex={-1} className="font-[family-name:var(--font-display)] text-2xl outline-none">Choose your treatment</h3>
               {welcome && <p className="mt-2 text-sm text-[var(--color-gold-deep)]">✦ Your 15% welcome offer will be applied automatically.</p>}
               <div className="mt-6 grid max-h-[26rem] gap-2 overflow-y-auto pr-1 sm:grid-cols-2">
                 {catalogue.map((s) => (
@@ -347,7 +364,7 @@ export function BookingFlow({ catalogue, client, preselect = null, preselectDate
 
           {stage === 'variant' && service && (
             <div>
-              <h3 className="font-[family-name:var(--font-display)] text-2xl">{service.name}</h3>
+              <h3 ref={stepHeadingRef} tabIndex={-1} className="font-[family-name:var(--font-display)] text-2xl outline-none">{service.name}</h3>
               <p className="mt-1 text-sm text-[var(--color-stone)]">Choose your option.</p>
               {/laser|tattoo|ipl/i.test(service.treatmentSlug) && (
                 <p className="mt-3 flex gap-2 rounded-[var(--radius-sm)] bg-[var(--color-gold)]/10 px-3 py-2 text-xs text-[var(--color-ink)]">
@@ -421,7 +438,7 @@ export function BookingFlow({ catalogue, client, preselect = null, preselectDate
 
           {stage === 'time' && service && variant && (
             <div>
-              <h3 className="font-[family-name:var(--font-display)] text-2xl">{service.name} — {variant.name}</h3>
+              <h3 ref={stepHeadingRef} tabIndex={-1} className="font-[family-name:var(--font-display)] text-2xl outline-none">{service.name} — {variant.name}</h3>
               <p className="mt-1 text-sm text-[var(--color-stone)]">{totalDuration} min · {totalLabel}{sessions > 1 ? ` · course of ${sessions}` : ''}</p>
               <div className="mt-6">
                 <label className={label} htmlFor="bdate">Select a date</label>
@@ -491,7 +508,7 @@ export function BookingFlow({ catalogue, client, preselect = null, preselectDate
 
           {stage === 'upsell' && service && variant && (
             <div>
-              <h3 className="font-[family-name:var(--font-display)] text-2xl">Enhance your visit</h3>
+              <h3 ref={stepHeadingRef} tabIndex={-1} className="font-[family-name:var(--font-display)] text-2xl outline-none">Enhance your visit</h3>
               <p className="mt-1 text-sm text-[var(--color-stone)]">Add a treatment to the same appointment and save {UPSELL_PCT}%{gender ? ' — picked for you' : ''}.</p>
               {recommendations.length === 0 ? (
                 <p className="mt-6 text-sm text-[var(--color-stone)]">No add-ons available — continue to confirm.</p>
@@ -583,7 +600,7 @@ export function BookingFlow({ catalogue, client, preselect = null, preselectDate
 
           {stage === 'card' && !isDemo && !clientSecret && (
             <div>
-              <h3 className="font-[family-name:var(--font-display)] text-2xl">Something went wrong</h3>
+              <h3 ref={stepHeadingRef} tabIndex={-1} className="font-[family-name:var(--font-display)] text-2xl outline-none">Something went wrong</h3>
               <p className="mt-3 text-sm text-[var(--color-stone)]">We couldn&apos;t load the payment form. Please go back and try again.</p>
               <button
                 onClick={() => { setStage('upsell'); setError(''); }}
@@ -596,7 +613,7 @@ export function BookingFlow({ catalogue, client, preselect = null, preselectDate
 
           {stage === 'card' && (isDemo || clientSecret) && (
             <div>
-              <h3 className="font-[family-name:var(--font-display)] text-2xl">Secure your booking</h3>
+              <h3 ref={stepHeadingRef} tabIndex={-1} className="font-[family-name:var(--font-display)] text-2xl outline-none">Secure your booking</h3>
               <div className="mt-2 rounded-[var(--radius-sm)] bg-[var(--color-porcelain)] p-4 text-sm text-[var(--color-stone)]">
                 <p><strong className="text-[var(--color-ink)]">{service?.name}</strong> · {slot && new Date(slot).toLocaleString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', timeZone: 'Europe/London' })}</p>
                 <p className="mt-1">We securely save your card now — <strong>no payment is taken</strong> until your treatment is delivered. Free cancellation up to 24 hours before; within 24 hours the full fee applies.</p>
@@ -662,7 +679,7 @@ function dobError(dob: string): string | null {
 }
 
 // ── Account step (signup / login) ───────────────────────────────────────────
-function AccountStep({ onAuthed, setError }: { onAuthed: (i: { firstName: string; gender: string | null; welcome: boolean; sms: boolean }) => void; setError: (e: string) => void }) {
+function AccountStep({ onAuthed, setError, headingRef }: { onAuthed: (i: { firstName: string; gender: string | null; welcome: boolean; sms: boolean }) => void; setError: (e: string) => void; headingRef?: RefObject<HTMLHeadingElement | null> }) {
   const [mode, setMode] = useState<'signup' | 'login'>('signup');
   const [f, setF] = useState({ firstName: '', lastName: '', email: '', phone: '', dob: '', password: '', gender: '', marketingOptIn: false, sms: false, consent: false, company: '' });
   const [busy, setBusy] = useState(false);
@@ -747,7 +764,7 @@ function AccountStep({ onAuthed, setError }: { onAuthed: (i: { firstName: string
 
   return (
     <div>
-      <h3 className="font-[family-name:var(--font-display)] text-2xl">{mode === 'signup' ? 'Create your account to book' : 'Welcome back'}</h3>
+      <h3 ref={headingRef} tabIndex={-1} className="font-[family-name:var(--font-display)] text-2xl outline-none">{mode === 'signup' ? 'Create your account to book' : 'Welcome back'}</h3>
       {mode === 'signup' && (
         <div className="mt-3 rounded-[var(--radius-md)] border border-[var(--color-gold)]/30 bg-[var(--color-gold)]/8 p-4 text-sm text-[var(--color-ink-soft)]">
           ✦ <strong>Enjoy 15% off your first visit</strong> when you create your free account — and keep all your appointments, forms and rewards in one place.
