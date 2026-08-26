@@ -120,7 +120,12 @@ export type KioskSessionLite = {
  *  stream route). Callers without a validated secret — e.g. the token-only
  *  status poll — get relay URLs omitted rather than dead links. */
 export function buildKioskStreamPayload(s: KioskSessionLite, secret?: string): KioskStreamPayload {
-  const showFrame = (FRAME_STAGES as readonly string[]).includes(s.stage);
+  // BLD-1496: the live mirror frame is as sensitive as the stored selfie
+  // photos, so gate it on the session secret the same way photoUrls/
+  // bestPhotoUrl are below — otherwise anyone holding just the (short,
+  // guessable) token can read the visitor's live face frame via the
+  // token-only poll route.
+  const showFrame = (FRAME_STAGES as readonly string[]).includes(s.stage) && !!secret;
   const revealed =
     !!s.result &&
     (s.stage === 'reveal' || s.stage === 'shared' || s.stage === 'done' ||
