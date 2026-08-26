@@ -4607,6 +4607,17 @@ export const BUILD_BACKLOG: BacklogItem[] = [
     ],
   },
   {
+    title: 'Admin client-detail page had no clinical-access audit trail; GDPR erasure left signupIp and patch-test fields un-scrubbed (BLD-1511, BLD-1518)',
+    type: 'ERROR', urgency: 'P1', status: 'SHIPPED',
+    value: 7, effort: 2,
+    detail: 'BLD-1511: getClient() in lib/crm-data.ts (used by app/admin/clients/[id]/page.tsx) decrypts Client.medicalFlag/allergies, Consultation.concerns/message/medicalNotes, Booking.allergyNote and Interaction.detail for display, but unlike every sibling clinical surface (booking detail, the AI analysis section on the same client page, health assessments, admin calls) it never logged a clinical-access audit event -- an admin could open a client\'s full medical history with no "who viewed whose medical record" trail. BLD-1518: eraseClientData in app/admin/actions.ts (GDPR Art. 17 erasure) nulled most Client fields but left Client.signupIp (an IP address -- personal data) and Client.patchTestResult/patchTestDate/patchTestSetBy (allergy patch-test outcome -- special-category health data) untouched, and left DiscountClaim.ip in place while clearing emailNorm/phoneNorm/nameDobKey right next to it -- so an erased client stayed re-identifiable and their patch-test/IP data survived erasure.',
+    notes: [
+      'BLD-1511: app/admin/clients/[id]/page.tsx now calls the existing auditClinicalView() helper (lib/clinical-view-audit.ts) right after the clinical permission check, gated on `clinical && session?.email`, with surface: \'client-detail\' -- matching the exact call convention already used by booking-detail (surface: \'booking-detail\') and consultation-detail (surface: \'consultation-detail\'). Same throttle (one audit row per actor/client/surface per hour) and fire-and-forget error handling as those sibling sites; no change to getClient() itself, which stays a pure decrypt.',
+      'BLD-1518: added signupIp: null, patchTestResult: null, patchTestDate: null, patchTestSetBy: null to the db.client.update data block in eraseClientData, alongside the existing medicalFlag/allergies null-outs. patchTestResult is a nullable String? in prisma/schema.prisma (not an enum), so no schema change was needed. Also added ip: null to the existing db.discountClaim.updateMany call in the same function, next to the emailNorm/phoneNorm/nameDobKey clears it already performed.',
+      'Verified: npx tsc --noEmit and npm run build (DB unreachable from this sandbox network; prebuild db-sync skipped via unsetting DATABASE_URL*/POSTGRES_* env vars) both pass clean.',
+    ],
+  },
+  {
     title: 'Consent-signing overlay missing dialog semantics, booking wizard never moves focus on step change (BLD-1512, BLD-1515)',
     type: 'ERROR', urgency: 'P1', status: 'SHIPPED', assignee: 'claude',
     value: 7, effort: 2,

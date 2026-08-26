@@ -56,6 +56,9 @@ export async function eraseClientData(clientId: string) {
         phone: null, dob: null, notes: null, allergies: null, medicalFlag: null, medicalFlagSetBy: null, medicalFlagAt: null,
         marketingOptIn: false, unsubscribed: true, portalActive: false, passwordHash: null,
         resetTokenHash: null, resetTokenExp: null,
+        // BLD-1518: signupIp (personal data) and the patch-test outcome
+        // (special-category health data) were left untouched by erasure.
+        signupIp: null, patchTestResult: null, patchTestDate: null, patchTestSetBy: null,
         // BLD-912: leaderboardOptIn:true clients are queried onto the public
         // /membership leaderboard by photo+name, and concerns/genderSelfDescribe
         // are free-text special-category-adjacent fields — none had a retention
@@ -124,7 +127,8 @@ export async function eraseClientData(clientId: string) {
     // no financial retention basis, safe to hard-delete.
     db.appointment.deleteMany({ where: { clientId } }),
     // Null fingerprint fields in DiscountClaim — re-identifiable without retention basis.
-    db.discountClaim.updateMany({ where: { clientId }, data: { emailNorm: 'erased', phoneNorm: null, nameDobKey: null } }),
+    // BLD-1518: ip (the claimant's IP address) was left in place alongside these.
+    db.discountClaim.updateMany({ where: { clientId }, data: { emailNorm: 'erased', phoneNorm: null, nameDobKey: null, ip: null } }),
     // Strip PII from retail Orders (email/name/phone/address) — keep order number
     // and amounts for Xero/HMRC basis. Order.clientId is a nullable String set at
     // checkout (no formal FK relation), so we match on it directly.
