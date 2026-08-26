@@ -117,13 +117,20 @@ export async function POST(req: Request) {
 
   // BLD-1495: guests get the same live-offer price already advertised as a
   // strikethrough "Offer" on the treatment page (pricingForTreatment's
-  // fromOfferPence) as their starting discount — matching /api/booking/start's
-  // precedence, where the offer is the default and promo/welcome only replace
-  // it if worth more (no stacking on top of it).
-  const offerDiscountPence = pricing?.fromOfferPence != null && pricing.fromPence != null
-    ? Math.max(0, pricing.fromPence - pricing.fromOfferPence) : 0;
+  // fromOfferPence) as their starting discount — mirroring /api/booking/start,
+  // where the live offer is the default discount and a promo code replaces it
+  // only if worth at least as much (never stacked on top of it).
+  //
+  // Guarded on basePrice > 0. An "on consultation" treatment books as a £0
+  // card-on-file hold (basePrice is forced to 0 above), but fromPence /
+  // fromOfferPence still describe any sibling variant that overrides the
+  // service status back to NORMAL — subtracting that variant's offer from a £0
+  // hold would write a NEGATIVE pricePence onto the booking. Clamped to
+  // basePrice for the same reason /api/booking/start clamps its line totals.
+  const offerDiscountPence = basePrice > 0 && pricing?.fromOfferPence != null && pricing.fromPence != null
+    ? Math.min(basePrice, Math.max(0, pricing.fromPence - pricing.fromOfferPence)) : 0;
   let discountPence = offerDiscountPence;
-  let finalPrice = basePrice - discountPence;
+  let finalPrice = Math.max(0, basePrice - discountPence);
 
   // A valid promo code takes precedence over the offer/welcome discount if
   // it's worth at least as much (no stacking). Validated server-side here;
@@ -136,13 +143,16 @@ export async function POST(req: Request) {
   }
 
   // One-time welcome discount: apply only if no promo code was used, and only
-  // if it beats whatever offer discount is already in play.
+  // if it beats whatever offer discount is already in play. (Unlike
+  // /api/booking/start, a promo code that is accepted here suppresses the
+  // welcome claim outright rather than being compared against it — long-
+  // standing behaviour of this route, left unchanged by BLD-1495.)
   const claim =
     !promo && basePrice > 0 ? await db.discountClaim.findFirst({ where: { clientId: client.id, status: 'ACTIVE' } }) : null;
   let usedWelcome = false;
   if (claim) {
     const w = Math.round((basePrice * claim.percent) / 100);
-    if (w > discountPence) { finalPrice = basePrice - w; usedWelcome = true; }
+    if (w > discountPence) { finalPrice = Math.max(0, basePrice - w); usedWelcome = true; }
   }
 
   // Hold the slot — ATOMICALLY. Re-check for overlapping holds inside a
@@ -221,7 +231,7 @@ export async function POST(req: Request) {
       // redemption ran. Without this the booking kept the discount anyway.
       // Re-price to the offer discount the promo had beaten (never to a promo
       // discount that was never actually redeemed) before any charge is taken.
-      const fallbackPrice = basePrice - offerDiscountPence;
+      const fallbackPrice = Math.max(0, basePrice - offerDiscountPence);
       await db.booking.update({ where: { id: booking.id }, data: { pricePence: fallbackPrice } }).catch(() => {});
       await logAudit({
         action: 'SESSION_EDITED', actor: 'system', clientId: client.id, bookingId: booking.id,
