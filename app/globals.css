@@ -296,6 +296,30 @@ html[data-theme='dark'] .text-black { color: var(--color-ink); }
   /* Hairline divider */
   .hairline { height: 1px; background: var(--color-line); }
 
+  /* BLD-1537: pdf.js text layer, overlaid on the Academy lesson canvas so
+     screen readers can announce page content (WCAG 1.1.1). It stays
+     invisible and non-interactive to sighted/mouse users — color is
+     inherited transparent and pointer-events/user-select are inherited
+     none — so it never becomes a visible or mouse-selectable/copyable
+     overlay, only an accessibility-tree one. Each item is absolutely
+     positioned by pdf.js so invisible text never adds stray flow height. */
+  .kc-pdf-text-layer {
+    position: absolute;
+    inset: 0;
+    overflow: clip;
+    line-height: 1;
+    color: transparent;
+    pointer-events: none;
+    user-select: none;
+    -webkit-user-select: none;
+  }
+  .kc-pdf-text-layer span,
+  .kc-pdf-text-layer br {
+    position: absolute;
+    white-space: pre;
+    transform-origin: 0 0;
+  }
+
   /* Shell micro-motion (BLD-226) — fast (150-280ms), transform/opacity only so
      nothing reflows, and fully disabled under prefers-reduced-motion. */
   .kc-pop {

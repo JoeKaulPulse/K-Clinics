@@ -12,6 +12,14 @@ import { useDialogBehaviours } from '@/components/ui/Dialog';
 // actually act on, instead of one unexplained "couldn't be opened" that looked
 // identical whether the file was missing, the session had expired, or their
 // enrolment/cohort access hadn't started yet.
+// BLD-1537: canvas-only rendering gave screen-reader users zero content from
+// any lesson PDF. Each page now also gets pdf.js's real text layer (the
+// documented getTextContent()+TextLayer API), overlaid on the canvas so it
+// sits in the accessibility tree in reading order — but it's invisible and
+// non-interactive (see .kc-pdf-text-layer, globals.css: transparent,
+// pointer-events:none, user-select:none), so it adds nothing a sighted mouse
+// user can see or copy. The canvas rendering, no-toolbar, and no-right-click
+// protections above are unchanged.
 const REASON_MESSAGES: Record<string, string> = {
   unauthenticated: 'Your session has expired — please sign in again.',
   'not-enrolled': 'Your course access isn’t active yet — contact us if you believe this is wrong.',
@@ -55,14 +63,44 @@ export function SecurePdfViewer({ lessonId, index, title, onClose }: { lessonId:
           if (cancelled) return;
           const base = page.getViewport({ scale: 1 });
           const viewport = page.getViewport({ scale: (targetWidth / base.width) * ratio });
+
+          // Wrapper gives the (invisible) text layer below a same-sized,
+          // positioned ancestor to overlay via inset:0 — width is explicit so
+          // it shrinks to the canvas's rendered size (not the full scroll
+          // width) and centers via mx-auto same as the canvas did before;
+          // height is left auto so it sizes to the canvas alone and the
+          // canvas's own mb-4 still collapses through for page spacing,
+          // reproducing the original layout exactly.
+          const pageWrap = document.createElement('div');
+          pageWrap.className = 'relative mx-auto';
+          pageWrap.style.width = `${viewport.width / ratio}px`;
+          host.appendChild(pageWrap);
+
           const canvas = document.createElement('canvas');
           canvas.width = viewport.width;
           canvas.height = viewport.height;
           canvas.style.width = `${viewport.width / ratio}px`;
           canvas.style.height = `${viewport.height / ratio}px`;
-          host.appendChild(canvas);
+          canvas.setAttribute('aria-hidden', 'true'); // real content is the sibling text layer below
+          pageWrap.appendChild(canvas);
           // pdf.js v6: render takes the canvas element directly (canvasContext is legacy).
           await page.render({ canvas, viewport }).promise;
+          if (cancelled) return;
+
+          // BLD-1537: accessible text layer. Non-fatal on failure — the
+          // visual canvas rendering above already succeeded, so one page's
+          // text layer erroring (e.g. an unusual embedded font) shouldn't
+          // take down the whole viewer.
+          try {
+            const textContent = await page.getTextContent();
+            if (cancelled) return;
+            const textLayerDiv = document.createElement('div');
+            textLayerDiv.className = 'kc-pdf-text-layer';
+            pageWrap.appendChild(textLayerDiv);
+            await new pdfjs.TextLayer({ textContentSource: textContent, container: textLayerDiv, viewport }).render();
+          } catch {
+            // swallow — see comment above
+          }
         }
         if (!cancelled) setStatus('ready');
       } catch {
