@@ -4660,6 +4660,20 @@ export const BUILD_BACKLOG: BacklogItem[] = [
       'Verified: npx tsc --noEmit and npm run build (DB unreachable from this sandbox network; prebuild db-sync skipped via unsetting DATABASE_URL*/POSTGRES_* env vars) both pass clean.',
     ],
   },
+  {
+    title: 'Stripe dispute-alert fetch timeout, Order/OrderItem admin-hot-path indexes, Postgres rate-limit fallback backoff (BLD-1519, BLD-1520, BLD-1480)',
+    type: 'TASK', urgency: 'P2', status: 'SHIPPED', assignee: 'claude', pr: PR(1870),
+    value: 7, effort: 2,
+    detail: 'Three small reliability/performance fixes batched. BLD-1519: app/api/stripe/webhook/route.ts\'s dispute-alert fetch(webhookUrl, ...) lacked an AbortSignal timeout, unlike every other ops-alert fetch in the codebase (cron/daily, cron/dispatch, cron/kiosk-cleanup) -- a hung CRON_ALERT_WEBHOOK_URL endpoint could stall the best-effort send inside the highest-priority payment webhook route. BLD-1520: Order had separate @@index([status]) and @@index([createdAt]) but no composite, while listOrders() (lib/crm-data.ts) filters by status AND orders by createdAt desc with pagination on every /admin/orders load; OrderItem had no index at all, not even on its orderId FK, despite listOrders() including items on every page. BLD-1480: lib/email.ts\'s acquireSendSlot() polls the Postgres rate-limit fallback (used when Upstash isn\'t configured) every fixed 250ms for up to 30s -- each poll writes a securityEvent row, so a burst send (nightly digest fan-out) could pile dozens of extra writes onto the connection pool during the exact spike it exists to smooth.',
+    notes: [
+      'BLD-1519: added `signal: AbortSignal.timeout(8_000)` to the dispute-alert fetch, matching the existing pattern used by every other ops-alert fetch.',
+      'BLD-1520: added `@@index([status, createdAt])` on Order and `@@index([orderId])` on OrderItem -- both additive, safe under the no-accept-data-loss deploy gate.',
+      'Pre-merge review fix: the schema edit initially shipped with no matching file in prisma/migrations, which prisma/migrations/README.md requires for every schema change. Under USE_MIGRATIONS=true the deploy runs `prisma migrate deploy` (never `db push`), so the two indexes would silently never have been created and the migration history would have drifted from schema.prisma. Added prisma/migrations/20260827060000_order_admin_list_indexes/migration.sql creating Order_status_createdAt_idx and OrderItem_orderId_idx under Prisma\'s default names, with IF NOT EXISTS so it is a no-op if the `db push` path already made them.',
+      'BLD-1480: acquireSendSlot() now backs off its poll interval (doubling from 250ms up to a 2s cap) specifically when redisConfigured is false, cutting the write count during a Postgres-fallback burst by roughly 4x over the 30s deadline; Redis-backed limiting is unaffected and keeps the tight 250ms cadence. Provisioning Upstash itself (the item\'s alternate fix) is an infra/ops decision outside this PR\'s scope -- flagged separately, not actioned here.',
+      'BLD-1444 (Cache-Control on public assets), also on this queue item, was found already shipped in PR #1846 -- no code change needed; the board entry was stale.',
+      'Verified: npx tsc --noEmit and npm run build (DB unreachable from this sandbox network; prebuild db-sync skipped via unsetting DATABASE_URL*/POSTGRES_* env vars) both pass clean.',
+    ],
+  },
 ];
 
 // A content hash over every item's title + status + PR, so ANY change (a new

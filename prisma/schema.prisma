@@ -3966,6 +3966,7 @@ model Order {
   @@index([status])
   @@index([createdAt])
   @@index([paidAt])
+  @@index([status, createdAt])
 }
 
 model OrderItem {
@@ -3978,6 +3979,8 @@ model OrderItem {
   unitPence     Int
   qty           Int
   ageRestricted Boolean @default(false)
+
+  @@index([orderId])
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
