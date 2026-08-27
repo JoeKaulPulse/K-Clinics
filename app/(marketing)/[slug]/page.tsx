@@ -74,7 +74,13 @@ export default async function TreatmentPage({ params }: { params: Promise<{ slug
       const { getSiteConfig } = await import('@/lib/site-config');
       ({ dentistryLive } = await getSiteConfig());
     }
-    const ldPricePence = t.category === 'dentistry' && !dentistryLive ? null : fromPence;
+    // BLD-1513: t.onRequest forces TreatmentTemplate to a "Coming Soon"/
+    // enquiry-only UI (components/treatment/TreatmentTemplate.tsx) for
+    // treatments not yet bookable online, but serviceLd() was still fed a
+    // live price -- so the Offer node claimed InStock availability and a
+    // bookable /book URL even though the page itself says "enquire". Withhold
+    // the price here too, the same way dentistryLive already does above.
+    const ldPricePence = (t.category === 'dentistry' && !dentistryLive) || t.onRequest ? null : fromPence;
     // serviceLd() returns an array (Procedure + Offer/Service) when pricePence is
     // set, a single object otherwise — always spread so it never nests as one
     // element (PRJ-1060.1).
