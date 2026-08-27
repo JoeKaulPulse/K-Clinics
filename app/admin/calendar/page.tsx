@@ -177,9 +177,17 @@ export default async function CalendarPage({ searchParams }: { searchParams: Pro
                         {b.startAt.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/London' })} {b.treatmentTitle}
                       </span>
                       {cancelledUsed && <span className="block truncate text-[var(--color-gold-deep)]">Cancelled — package session used</span>}
-                      <span className="flex items-center gap-1 truncate text-[var(--color-stone)]">
+                      {/* truncate must sit on the text child, not the flex row:
+                          text-overflow never applies to flex items, so a
+                          `flex truncate` row hard-clips a long name mid-letter
+                          instead of ellipsising it. On the inner span,
+                          overflow:hidden also drops its automatic min-width to
+                          0 so it actually shrinks inside the narrow block. */}
+                      <span className="flex items-center gap-1 text-[var(--color-stone)]">
                         <ClientStatusDot status={b.client.clientStatus} />
-                        {b.client.firstName} {b.client.lastName ?? ''} {b.client.medicalFlag ? '⚠' : ''}
+                        <span className="min-w-0 truncate">
+                          {b.client.firstName} {b.client.lastName ?? ''} {b.client.medicalFlag ? '⚠' : ''}
+                        </span>
                       </span>
                     </Link>
                     );
