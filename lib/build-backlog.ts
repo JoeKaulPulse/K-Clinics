@@ -4420,6 +4420,18 @@ export const BUILD_BACKLOG: BacklogItem[] = [
       'Verified: npx tsc --noEmit and npm run build pass clean.',
     ],
   },
+  {
+    title: 'Kiosk storefront display silently swallows session-create failures (BLD-1535)',
+    type: 'ERROR', urgency: 'P1', status: 'SHIPPED', assignee: 'claude',
+    value: 7, effort: 2,
+    detail: "app/kiosk/display/page.tsx wrote the fresh session with `await db.kioskSession.create({...}).catch(() => {})` then unconditionally rendered the QR regardless of whether the write succeeded. A transient DB blip (Neon resume, pool exhaustion) made the unattended in-store screen show a QR every visitor scan fails against, with no Sentry capture, no retry, and no staff-visible signal -- and the page's own 20-minute self-reload just ran the same unguarded write again.",
+    notes: [
+      "Fix: replaced the swallowed .catch() with a checked, retried write. The create is attempted up to twice (a short 300ms wait between attempts), and its result is checked instead of ignored. If both attempts fail, the error is reported via Sentry.captureException with tags { area: 'kiosk-display-session-create' } (matching the existing Sentry.captureException convention already used elsewhere in lib/kiosk.ts), and the page renders a new KioskUnavailable component instead of a dead QR.",
+      "New components/kiosk/KioskUnavailable.tsx reuses the existing kiosk visual language rather than inventing new styling: the same kd-stage/kd-shimmer/kd-vignette chrome, GoldParticles and BrandCorner from KioskDisplay.tsx, and the existing PairedScene component for the calm on-brand copy ('One moment / We're just recalibrating'). It deliberately skips CornerBadge (its 'one at a time' copy implies a live session in progress) and useKioskChannel (there is no session token to poll when the create failed).",
+      "The unavailable state can't get stuck: app/kiosk/display/page.tsx is export const dynamic = 'force-dynamic', so every reload is a fresh server request that re-runs the session-create attempt from scratch. KioskUnavailable also runs its own much shorter retry (60s, vs. KioskDisplay's healthy 20-minute regen cycle) so an outage doesn't leave the storefront dark for anywhere near that long.",
+      'Verified: npx tsc --noEmit and npm run build pass clean.',
+    ],
+  },
 ];
 
 // A content hash over every item's title + status + PR, so ANY change (a new
