@@ -4662,7 +4662,7 @@ export const BUILD_BACKLOG: BacklogItem[] = [
   },
   {
     title: 'Stripe dispute-alert fetch timeout, Order/OrderItem admin-hot-path indexes, Postgres rate-limit fallback backoff (BLD-1519, BLD-1520, BLD-1480)',
-    type: 'TASK', urgency: 'P2', status: 'IN_REVIEW', assignee: 'claude',
+    type: 'TASK', urgency: 'P2', status: 'SHIPPED', assignee: 'claude', pr: PR(1870),
     value: 7, effort: 2,
     detail: 'Three small reliability/performance fixes batched. BLD-1519: app/api/stripe/webhook/route.ts\'s dispute-alert fetch(webhookUrl, ...) lacked an AbortSignal timeout, unlike every other ops-alert fetch in the codebase (cron/daily, cron/dispatch, cron/kiosk-cleanup) -- a hung CRON_ALERT_WEBHOOK_URL endpoint could stall the best-effort send inside the highest-priority payment webhook route. BLD-1520: Order had separate @@index([status]) and @@index([createdAt]) but no composite, while listOrders() (lib/crm-data.ts) filters by status AND orders by createdAt desc with pagination on every /admin/orders load; OrderItem had no index at all, not even on its orderId FK, despite listOrders() including items on every page. BLD-1480: lib/email.ts\'s acquireSendSlot() polls the Postgres rate-limit fallback (used when Upstash isn\'t configured) every fixed 250ms for up to 30s -- each poll writes a securityEvent row, so a burst send (nightly digest fan-out) could pile dozens of extra writes onto the connection pool during the exact spike it exists to smooth.',
     notes: [
