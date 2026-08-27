@@ -4629,6 +4629,17 @@ export const BUILD_BACKLOG: BacklogItem[] = [
     ],
   },
   {
+    title: 'Lost Stripe dispute never restored the gift-voucher portion of a partially-voucher-paid booking (BLD-1510)',
+    type: 'ERROR', urgency: 'P1', status: 'SHIPPED', assignee: 'claude',
+    value: 7, effort: 2,
+    detail: 'app/api/stripe/webhook/route.ts, the charge.dispute.closed handler (status \'lost\', booking branch, fully-clawed-back case) reversed loyalty points, posted an Xero credit note and emailed the client, but never called creditVoucher() to restore the voucher-covered slice of the booking -- unlike refundBooking() (lib/booking-actions.ts) and the charge.refunded webhook handler (fixed under BLD-1183), which both restore the voucher on a full refund/refunded charge. Net effect: on a chargeback for a partial-voucher booking, the clinic ate the card loss via the dispute AND the client\'s voucher balance was never restored.',
+    notes: [
+      'Fix: widened the `full` select on the dispute-lost path to also pull chargePaymentIntentId, giftVoucherCode and giftVoucherPence, then -- gated on `fully` (the card portion is entirely clawed back) and excluding chargePaymentIntentId === \'ext_gift-voucher\' bookings paid entirely by voucher, which never had a card portion to dispute -- calls creditVoucher(giftVoucherCode, giftVoucherPence) and logs a REWARD_REDEEMED audit row, mirroring the exact same condition and call already used by refundBooking() (BLD-882) and the charge.refunded handler (BLD-1138) a few hundred lines below in the same file.',
+      'Idempotency: claimed.count > 0 is NOT on its own proof that this call advanced anything. That CAS matches on the value it read, so it also succeeds on a no-op write -- once refundedPence sits at chargedPence, newTotal equals it and the row still matches. Two real sequences hit that: a booking already fully refunded in-app (refundBooking, which has already restored the voucher) before the dispute closes lost, and a redelivery of the event after a failed attempt left the idempotency ledger at PROCESSING. So the voucher credit is additionally gated on `advanced` (newTotal > the refundedPence that was read), matching the delta guard the charge.refunded booking branch and the voucher-purchase dispute branch in the same file already use. creditVoucher() caps at face value as a second net, but that cap only limits the damage -- it does not prevent a double credit on a voucher that was partly spent elsewhere. cancelBooking is not a route in: it clears giftVoucherCode/giftVoucherPence in the same guarded write that returns the reservation.',
+      'Verified: npx tsc --noEmit and npm run build (DB unreachable from this sandbox network; prebuild db-sync skipped via unsetting DATABASE_URL*/POSTGRES_* env vars) both pass clean.',
+    ],
+  },
+  {
     title: 'Treatment JSON-LD overclaimed availability for on-request treatments; broken "with intervals ." FAQ sentence live in structured data (BLD-1513, BLD-1514)',
     type: 'ERROR', urgency: 'P1', status: 'SHIPPED', assignee: 'claude',
     value: 7, effort: 2,
