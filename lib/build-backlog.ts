@@ -4617,6 +4617,17 @@ export const BUILD_BACKLOG: BacklogItem[] = [
       'Verified: npx tsc --noEmit and npm run build (DB unreachable from this sandbox network; prebuild db-sync skipped via unsetting DATABASE_URL*/POSTGRES_* env vars) both pass clean.',
     ],
   },
+  {
+    title: 'Consent-signing overlay missing dialog semantics, booking wizard never moves focus on step change (BLD-1512, BLD-1515)',
+    type: 'ERROR', urgency: 'P1', status: 'SHIPPED', assignee: 'claude',
+    value: 7, effort: 2,
+    detail: 'BLD-1512: components/live/LiveCompanion.tsx\'s ConsentSheet -- the full-screen overlay opened from the client live-visit companion page to sign a legally-binding consent form -- was a hand-built fixed inset-0 panel that never called the shared useDialogBehaviours hook (components/ui/Dialog.tsx) every other modal in the codebase uses: no role=dialog/aria-modal, no focus moved in on open, no Tab trap, no Escape-to-close, no focus return to the trigger on close. BLD-1515: components/booking/BookingFlow.tsx swaps the whole booking-wizard panel via AnimatePresence on every stage change (service -> variant -> time -> upsell -> account -> card) but never moved keyboard/screen-reader focus into the new step -- a keyboard/screen-reader user stayed parked on the "Continue" button while the content silently replaced itself underneath them (WCAG 2.4.3 / 4.1.3).',
+    notes: [
+      'BLD-1512: ConsentSheet now routes through useDialogBehaviours (the same pattern BLD-1501 applied to ImmersiveCourse/ExplainerPlayer/DayCloseRunner), giving it role="dialog", aria-modal="true", aria-label="Sign consent form", initial focus into the panel, a Tab trap, focus return to the trigger on close, and the shared body-scroll lock. Escape-to-close is wired in (not omitted): the sheet\'s existing "Back to your visit" button is already a legitimate cancel action that does not submit or discard anything -- the consent form stays open server-side for the client to come back to -- so Escape maps to that same onClose.',
+      'BLD-1515: every stage panel opens with an <h3> heading (service, variant, time, upsell, the two card sub-states, and the account step\'s own transient "Securing your booking..." heading) or, for the sign-up/login stage, AccountStep\'s own <h3> (passed down via a new optional headingRef prop). All eight now share one callback ref + tabIndex={-1}. Focus is moved from the callback ref, not from an effect keyed on `stage`: AnimatePresence runs in mode="wait", so when the stage changes the outgoing panel is the only one mounted until its 0.35s exit animation finishes -- an effect firing on the stage change would focus the heading that is on its way out and then drop focus to <body> when that node is removed. The effect only arms a flag; the callback ref focuses the new heading at the moment it mounts. Skipped on the very first render so mounting the page does not steal focus from wherever the browser already placed it. No separate aria-live announcement was added: focusing a heading is itself announced by screen readers (heading level + text), which is the standard route-change-focus pattern, and BookingFlow had no existing scroll-into-view behaviour to coordinate with, so the default (non-preventScroll) focus() is used.',
+      'Verified: npx tsc --noEmit and npm run build (DB unreachable from this sandbox network; prebuild db-sync skipped via unsetting DATABASE_URL*/POSTGRES_* env vars) both pass clean.',
+    ],
+  },
 ];
 
 // A content hash over every item's title + status + PR, so ANY change (a new
