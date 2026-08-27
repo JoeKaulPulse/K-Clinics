@@ -302,13 +302,20 @@ html[data-theme='dark'] .text-black { color: var(--color-ink); }
      inherited transparent and pointer-events/user-select are inherited
      none — so it never becomes a visible or mouse-selectable/copyable
      overlay, only an accessibility-tree one. Each item is absolutely
-     positioned by pdf.js so invisible text never adds stray flow height. */
+     positioned by pdf.js so invisible text never adds stray flow height.
+     forced-color-adjust: none is load-bearing, not cosmetic — Windows High
+     Contrast (forced-colors) otherwise overrides `color` with the system text
+     colour, which would paint this whole layer as visible garbled text on top
+     of the rendered page for the exact users this text layer exists to serve
+     (and expose it as a selectable-looking overlay). Opting out keeps it
+     transparent there too. */
   .kc-pdf-text-layer {
     position: absolute;
     inset: 0;
     overflow: clip;
     line-height: 1;
     color: transparent;
+    forced-color-adjust: none;
     pointer-events: none;
     user-select: none;
     -webkit-user-select: none;
