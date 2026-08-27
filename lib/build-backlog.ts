@@ -4650,6 +4650,16 @@ export const BUILD_BACKLOG: BacklogItem[] = [
       'Verified: npx tsc --noEmit and npm run build (DB unreachable from this sandbox network; prebuild db-sync skipped via unsetting DATABASE_URL*/POSTGRES_* env vars) both pass clean.',
     ],
   },
+  {
+    title: 'Admin bookings list over-fetched the full Client row per booking (BLD-1517)',
+    type: 'ERROR', urgency: 'P2', status: 'SHIPPED', assignee: 'claude',
+    value: 6, effort: 1,
+    detail: 'lib/crm-data.ts listBookings() (used by app/admin/bookings/page.tsx, its only caller) used include: { client: true }, pulling every Client column -- tags, notes, concerns, marketing/portal/loyalty fields -- for up to 300 booking rows, when the list row only renders client.firstName/lastName. listClients() in the same file already uses a narrow select for the same reason -- this was the outlier.',
+    notes: [
+      'Fix: narrowed the nested client shape from `client: true` to `client: { select: { firstName: true, lastName: true } }`. Confirmed app/admin/bookings/page.tsx renders only firstName/lastName from the booking row\'s client object (no phone/email/tooltip use elsewhere in that file), and that listBookings() has exactly one caller.',
+      'Verified: npx tsc --noEmit and npm run build (DB unreachable from this sandbox network; prebuild db-sync skipped via unsetting DATABASE_URL*/POSTGRES_* env vars) both pass clean.',
+    ],
+  },
 ];
 
 // A content hash over every item's title + status + PR, so ANY change (a new
