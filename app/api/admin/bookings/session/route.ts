@@ -228,7 +228,7 @@ export async function POST(req: Request) {
       return ok();
     }
 
-    // Record a sale settled OUTSIDE our card rails — today, Treatwell (BLD-200).
+    // Record a sale settled OUTSIDE our card rails — Treatwell (BLD-200), ClassPass (BLD-1531).
     // No card is charged; we mark the booking paid (so the session/finance see it
     // as settled), tag the channel for reconciliation, award loyalty and audit it.
     // Stripe receipt + Xero are intentionally skipped — the external platform
@@ -250,7 +250,7 @@ export async function POST(req: Request) {
       try { const { awardClientSpend } = await import('@/lib/client-loyalty'); await awardClientSpend(bookingId); } catch { /* non-fatal */ }
       try {
         const { logAudit } = await import('@/lib/audit');
-        const label = channel === 'treatwell' ? 'Treatwell' : channel === 'cash' ? 'cash' : channel === 'card-terminal' ? 'card terminal' : channel;
+        const label = channel === 'treatwell' ? 'Treatwell' : channel === 'classpass' ? 'ClassPass' : channel === 'cash' ? 'cash' : channel === 'card-terminal' ? 'card terminal' : channel;
         // BLD-207: record any ad-hoc price adjustment + reason.
         const dr = body.discountReason ? String(body.discountReason).slice(0, 120) : '';
         const op = body.originalPence ? Math.round(Number(body.originalPence)) : 0;
