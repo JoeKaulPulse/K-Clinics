@@ -18,9 +18,9 @@ export async function searchClientsForBooking(q: string) {
   const rows = await db.client.findMany({
     where: { OR: [{ firstName: ci }, { lastName: ci }, { email: ci }, { phone: { contains: term } }] },
     orderBy: { updatedAt: 'desc' }, take: 6,
-    select: { id: true, firstName: true, lastName: true, email: true, phone: true, dob: true, bookings: { where: { stripePaymentMethodId: { not: null } }, select: { id: true }, take: 1 } },
+    select: { id: true, firstName: true, lastName: true, email: true, phone: true, dob: true, clientStatus: true, clientStatusReason: true, bookings: { where: { stripePaymentMethodId: { not: null } }, select: { id: true }, take: 1 } },
   });
-  return { ok: true as const, clients: rows.map((c) => ({ id: c.id, firstName: c.firstName, lastName: c.lastName, email: c.email, phone: c.phone, hasDob: !!c.dob, hasCard: c.bookings.length > 0 })) };
+  return { ok: true as const, clients: rows.map((c) => ({ id: c.id, firstName: c.firstName, lastName: c.lastName, email: c.email, phone: c.phone, hasDob: !!c.dob, hasCard: c.bookings.length > 0, clientStatus: c.clientStatus, clientStatusReason: c.clientStatusReason })) };
 }
 
 // Staff: create a booking manually (phone / walk-in). No card is taken here —

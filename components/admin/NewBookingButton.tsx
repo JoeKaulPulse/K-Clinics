@@ -6,11 +6,12 @@ import { AnimatePresence, motion } from 'motion/react';
 import { createManualBooking, searchClientsForBooking, logCallNote, resendBookingConfirmation } from '@/app/admin/bookings/create-action';
 import { clinicLocalToUTC, CLINIC_TZ } from '@/lib/clinic-time';
 import { useDialogBehaviours } from '@/components/ui/Dialog';
+import { ClientStatusBadge } from '@/components/admin/ClientStatusBadge';
 
 type Course = { sessions: number; totalPence: number };
 type Variant = { id: string; name: string; durationMin: number; pricePence: number; courses: Course[] };
 type Treatment = { slug: string; title: string; group: string; variants?: Variant[] };
-type Found = { id: string; firstName: string; lastName: string | null; email: string; phone: string | null; hasDob: boolean; hasCard: boolean };
+type Found = { id: string; firstName: string; lastName: string | null; email: string; phone: string | null; hasDob: boolean; hasCard: boolean; clientStatus?: 'GREEN' | 'YELLOW' | 'RED' | null; clientStatusReason?: string | null };
 type Result = { bookingId: string; manageToken?: string; hasCard?: boolean; clientFirstName?: string; clientEmail?: string; clientHasEmail?: boolean };
 
 const f = 'w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-3 py-2.5 text-sm outline-none focus:border-[var(--color-gold)] focus-visible:ring-2 focus-visible:ring-[var(--color-gold)]';
@@ -159,9 +160,22 @@ function Modal({ treatments, isAdmin, onClose }: { treatments: Treatment[]; isAd
 
             {tab === 'existing' ? (
               selected ? (
-                <div className="flex items-center justify-between rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-3 py-2.5 text-sm">
-                  <span><strong>{selected.firstName} {selected.lastName ?? ''}</strong> · {selected.email}{selected.phone ? ` · ${selected.phone}` : ''} {selected.hasCard && <span className="ml-1 rounded-full bg-[var(--color-jade)]/15 px-2 py-0.5 text-[0.6rem] text-[var(--color-jade)]">card on file</span>}</span>
-                  <button onClick={() => setSelected(null)} className="text-xs text-[var(--color-stone)] hover:underline">Change</button>
+                <div>
+                  <div className="flex items-center justify-between rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-3 py-2.5 text-sm">
+                    <span className="flex flex-wrap items-center gap-1.5">
+                      <strong>{selected.firstName} {selected.lastName ?? ''}</strong> · {selected.email}{selected.phone ? ` · ${selected.phone}` : ''}
+                      {selected.hasCard && <span className="ml-1 rounded-full bg-[var(--color-jade)]/15 px-2 py-0.5 text-[0.6rem] text-[var(--color-jade)]">card on file</span>}
+                      <ClientStatusBadge status={selected.clientStatus} />
+                    </span>
+                    <button onClick={() => setSelected(null)} className="text-xs text-[var(--color-stone)] hover:underline">Change</button>
+                  </div>
+                  {/* BLD-1532: RED is warning-only for a staff-initiated booking —
+                      only the PUBLIC online flow hard-blocks it. */}
+                  {selected.clientStatus === 'RED' && (
+                    <p role="alert" className="mt-1.5 rounded-[var(--radius-sm)] border border-[var(--color-blush-deep)] bg-[var(--color-blush)]/15 px-3 py-2 text-xs font-medium text-[var(--color-blush-deep)]">
+                      ⚠ Blocked client — this client cannot book online. {selected.clientStatusReason || 'Check the client profile before proceeding.'}
+                    </p>
+                  )}
                 </div>
               ) : (
                 <div>
@@ -170,7 +184,7 @@ function Modal({ treatments, isAdmin, onClose }: { treatments: Treatment[]; isAd
                     <div className="mt-1 overflow-hidden rounded-[var(--radius-sm)] border border-[var(--color-line)]">
                       {matches.map((c) => (
                         <button key={c.id} onClick={() => { setSelected(c); setQ(''); }} className="flex w-full items-center justify-between px-3 py-2 text-left text-sm hover:bg-[var(--color-bone)]">
-                          <span>{c.firstName} {c.lastName ?? ''} <span className="text-[var(--color-stone)]">· {c.email}{c.phone ? ` · ${c.phone}` : ''}</span></span>
+                          <span className="flex flex-wrap items-center gap-1.5">{c.firstName} {c.lastName ?? ''} <span className="text-[var(--color-stone)]">· {c.email}{c.phone ? ` · ${c.phone}` : ''}</span> <ClientStatusBadge status={c.clientStatus} /></span>
                           {c.hasCard && <span className="rounded-full bg-[var(--color-jade)]/15 px-2 py-0.5 text-[0.6rem] text-[var(--color-jade)]">card</span>}
                         </button>
                       ))}

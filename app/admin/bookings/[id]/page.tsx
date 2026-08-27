@@ -23,6 +23,8 @@ import { BnplPaymentButton } from '@/components/admin/BnplPaymentButton';
 import { SameDayRequestActions } from '@/components/admin/SameDayRequestActions';
 import { PackageSessionToggle } from '@/components/admin/PackageSessionToggle';
 import { PackageLinkControl, type LinkablePackage } from '@/components/admin/PackageLinkControl';
+import { ClientStatusEditor } from '@/components/admin/ClientStatusEditor';
+import { ClientStatusBadge } from '@/components/admin/ClientStatusBadge';
 import { sessionCan, sessionIsAdmin } from '@/lib/auth';
 import { site } from '@/lib/site';
 
@@ -240,6 +242,16 @@ export default async function BookingDetail({ params }: { params: Promise<{ id: 
     <AdminShell user={session?.email} can={can}>
       <Link href="/admin/bookings" className="text-sm text-[var(--color-gold-deep)] hover:underline">← Bookings</Link>
 
+      {/* BLD-1532: RED clients are blocked from booking online — staff still need
+          a clear warning when managing/closing an existing (staff-created or
+          legacy) booking for one. */}
+      {b.client.clientStatus === 'RED' && (
+        <div role="alert" className="mt-4 rounded-[var(--radius-md)] border border-[var(--color-blush-deep)] bg-[var(--color-blush)]/15 px-4 py-3 text-sm">
+          <span className="font-medium text-[var(--color-blush-deep)]">⚠ Blocked client.</span>{' '}
+          {name} is marked red and cannot book appointments online. {b.client.clientStatusReason ? b.client.clientStatusReason : 'See the client profile for details.'}
+        </div>
+      )}
+
       {/* BLD-1066: unpaid late-cancel/no-show balance on this client. */}
       {owedHere.totalPence > 0 && (
         <div role="alert" className="mt-4 rounded-[var(--radius-md)] border border-[var(--color-blush-deep)] bg-[var(--color-blush)]/15 px-4 py-3 text-sm">
@@ -256,7 +268,10 @@ export default async function BookingDetail({ params }: { params: Promise<{ id: 
           {['CANCELLED', 'NO_SHOW'].includes(b.status) && b.packageSessionUsedAt && (
             <span className="ml-2 inline-block rounded-full bg-[color-mix(in_oklab,var(--color-gold)_18%,transparent)] px-3 py-1 text-xs font-medium uppercase tracking-[0.16em] text-[var(--color-gold-deep)]">Package session used</span>
           )}
-          <h1 className="mt-3 font-[family-name:var(--font-display)] text-3xl">{b.treatmentTitle}</h1>
+          <h1 className="mt-3 flex flex-wrap items-center gap-2 font-[family-name:var(--font-display)] text-3xl">
+            {b.treatmentTitle}
+            <ClientStatusBadge status={b.client.clientStatus} />
+          </h1>
           <p className="mt-1 text-[var(--color-stone)]">
             {new Date(b.startAt).toLocaleString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit', timeZone: 'Europe/London' })}
             {' · '}{b.durationMin} min
@@ -306,6 +321,20 @@ export default async function BookingDetail({ params }: { params: Promise<{ id: 
               <RequestCardButton bookingId={b.id} hasEmail={Boolean(b.client.email)} hasPhone={Boolean(b.client.phone)} />
             )}
           </div>
+
+          {/* BLD-1532: traffic-light client status, set from Close Booking. Not
+              clinical data — gated on clients.edit, matching the API route. */}
+          {sessionCan(session, 'clients.edit') && (
+            <div className="mt-4">
+              <ClientStatusEditor
+                clientId={b.client.id}
+                status={b.client.clientStatus}
+                setBy={b.client.clientStatusSetBy}
+                setAt={b.client.clientStatusAt ? b.client.clientStatusAt.toISOString() : null}
+                reason={b.client.clientStatusReason}
+              />
+            </div>
+          )}
 
           {/* Health & consent — clinical safety at a glance */}
           <div className="mt-4 rounded-[var(--radius-md)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-5">

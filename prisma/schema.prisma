@@ -130,6 +130,16 @@ enum Gender {
   PREFER_NOT_TO_SAY
 }
 
+// BLD-1532: traffic-light client status set from "Close Booking" (or the client
+// profile) and shown wherever staff view/create a booking. GREEN = good client
+// (default when unset); YELLOW = caution, still bookable; RED = blocked from
+// booking online.
+enum ClientStatus {
+  GREEN
+  YELLOW
+  RED
+}
+
 enum BookingStatus {
   REQUESTED // same-day request awaiting staff approval (no card, slot not held)
   PENDING // created, awaiting card setup confirmation
@@ -190,6 +200,7 @@ enum AuditAction {
   TASK_COMPLETED // an assigned task was marked done (PRJ-63.11)
   ROOM_TURNOVER // a room was handed over for cleaning after a session (PRJ-63.11)
   INCIDENT_LOGGED // a staff-only internal incident (accident) report was logged (BLD-760)
+  CLIENT_STATUS_CHANGED // a client's GREEN/YELLOW/RED status was set or cleared (BLD-1532)
 }
 
 enum ReviewStatus {
@@ -353,6 +364,17 @@ model Client {
   medicalFlag      String?
   medicalFlagSetBy String?
   medicalFlagAt    DateTime?
+
+  // ── Client status — traffic light (BLD-1532) ─────────────────────────────
+  // Staff-set from "Close Booking" (or the client profile): GREEN (good
+  // client), YELLOW (caution — previous issues, still bookable), RED (blocked
+  // from booking online). Null is treated as GREEN everywhere it's read — no
+  // visual noise for the default, unmarked case. Persists on the client
+  // profile until a staff member changes it.
+  clientStatus       ClientStatus?
+  clientStatusSetBy  String?
+  clientStatusAt     DateTime?
+  clientStatusReason String? // optional free-text note staff can attach (yellow/red context)
 
   // ── Patch test status (BLD-844) ──────────────────────────────────────────
   // Staff-recorded PASSED/FAILED result so front desk can see at a glance

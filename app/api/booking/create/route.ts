@@ -102,6 +102,11 @@ export async function POST(req: Request) {
     await db.client.updateMany({ where: { id: client.id, termsAcceptedAt: null }, data: termsAcceptanceFields('website-booking') }).catch(() => {});
   }
 
+  // BLD-1532: a client marked RED (blocked) by staff cannot book online at all.
+  if (client.clientStatus === 'RED') {
+    return NextResponse.json({ ok: false, error: 'We’re unable to take this booking online. Please call the clinic to arrange your appointment.' }, { status: 403 });
+  }
+
   // BLD-1066: an unpaid late-cancellation/no-show fee blocks new bookings
   // until settled or waived — the balance is derived, so paying it (or staff
   // waiving it) reopens booking automatically.
