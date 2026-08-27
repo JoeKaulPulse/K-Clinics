@@ -4639,6 +4639,17 @@ export const BUILD_BACKLOG: BacklogItem[] = [
       'Verified: npx tsc --noEmit and npm run build (DB unreachable from this sandbox network; prebuild db-sync skipped via unsetting DATABASE_URL*/POSTGRES_* env vars) both pass clean.',
     ],
   },
+  {
+    title: 'Treatment JSON-LD overclaimed availability for on-request treatments; broken "with intervals ." FAQ sentence live in structured data (BLD-1513, BLD-1514)',
+    type: 'ERROR', urgency: 'P1', status: 'SHIPPED', assignee: 'claude',
+    value: 7, effort: 2,
+    detail: 'BLD-1513: app/(marketing)/[slug]/page.tsx withheld price from serviceLd() only when category===\'dentistry\' && !dentistryLive; it never checked t.onRequest, even though components/treatment/TreatmentTemplate.tsx already forces the on-page UI to Coming Soon/enquiry-only whenever onRequest is true -- so the JSON-LD Offer still claimed availability:InStock, a real price and a /book URL for 9+ treatments the page itself says to enquire about. BLD-1514: lib/treatments-imported.ts had 9 occurrences of \'Typically N-M sessions with intervals . We confirm your exact plan...\' -- the interval was never interpolated, leaving a dangling \'with intervals .\' live on-page and in indexed FAQPage structured data, despite each object\'s own facts array already holding the real cadence.',
+    notes: [
+      'BLD-1513: extended the existing price-withholding condition to `(t.category === \'dentistry\' && !dentistryLive) || t.onRequest`, so on-request treatments now omit the JSON-LD price/InStock claim the same way dentistry-not-yet-live already does.',
+      'BLD-1514: fixed all 9 occurrences by interpolating each treatment\'s own facts-array interval into its FAQ sentence (all 9 resolved to "2-4 weeks", verified per-object rather than hardcoded blindly): laser-skin-rejuvenation, pigmentation-correction, vascular-lesions-treatment, scar-stretch-mark-reduction, laser-skin-resurfacing, microneedling, prp-therapy, chemical-peels, microdermabrasion. Confirmed zero remaining matches for the literal "with intervals ." string in the file.',
+      'Verified: npx tsc --noEmit and npm run build (DB unreachable from this sandbox network; prebuild db-sync skipped via unsetting DATABASE_URL*/POSTGRES_* env vars) both pass clean.',
+    ],
+  },
 ];
 
 // A content hash over every item's title + status + PR, so ANY change (a new
