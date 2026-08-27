@@ -509,7 +509,7 @@ export async function POST(req: Request) {
         const webhookUrl = process.env.CRON_ALERT_WEBHOOK_URL;
         if (webhookUrl) {
           const body = JSON.stringify({ text: `[kclinics] ${summary}` });
-          try { await fetch(webhookUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body }); } catch { /* non-fatal */ }
+          try { await fetch(webhookUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body, signal: AbortSignal.timeout(8_000) }); } catch { /* non-fatal */ }
         }
         break;
       }

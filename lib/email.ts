@@ -40,12 +40,20 @@ const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 async function acquireSendSlot(): Promise<void> {
   await rateGate(); // smooth within this instance
   try {
-    const { rateLimit } = await import('@/lib/security/rate-limit');
+    const { rateLimit, redisConfigured } = await import('@/lib/security/rate-limit');
     const deadline = Date.now() + 30_000;
     // ≤4 per rolling second globally (headroom under the cap). Poll for a slot, don't fail.
+    // BLD-1480: the Postgres fallback (no Upstash configured) writes a row on every
+    // poll — a fixed 250ms cadence across a burst fan-out (e.g. the nightly digest)
+    // can pile dozens of extra writes onto the same connection pool during the exact
+    // spike it exists to smooth. Back off the poll interval when on that fallback so
+    // a burst produces materially fewer writes; Redis has no such cost, so it keeps
+    // the tight 250ms cadence.
+    let pollMs = 250;
     while (Date.now() < deadline) {
       if ((await rateLimit('resend-send', 4, 1)).allowed) return;
-      await sleep(250);
+      await sleep(pollMs);
+      if (!redisConfigured) pollMs = Math.min(pollMs * 2, 2_000);
     }
   } catch { /* limiter unavailable — the in-process gate + retry still protect us */ }
 }
