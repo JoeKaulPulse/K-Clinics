@@ -85,12 +85,19 @@ export function useDialogBehaviours<T extends HTMLElement = HTMLDivElement>(onCl
 
   const onKeyDown = useCallback(
     (e: KeyboardEvent<HTMLDivElement>) => {
-      if (e.key === 'Escape') { e.preventDefault(); onClose(); return; }
+      // Stop the key here once this dialog has handled it. These overlays nest:
+      // ExplainerPlayer and SecurePdfViewer render *inside* ImmersiveCourse's
+      // panel, so their keydowns bubble up the React tree to its handler too.
+      // Without this, one Escape closed the inner overlay AND exited the whole
+      // course, and one Tab ran both traps against different focusable lists.
+      if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); onClose(); return; }
       if (e.key !== 'Tab') return;
       const panel = panelRef.current;
       if (!panel) return;
       const nodes = Array.from(panel.querySelectorAll<HTMLElement>(FOCUSABLE));
+      // Nothing focusable in here — let an outer dialog's trap have the key.
       if (!nodes.length) return;
+      e.stopPropagation();
       const first = nodes[0];
       const last = nodes[nodes.length - 1];
       if (e.shiftKey) {

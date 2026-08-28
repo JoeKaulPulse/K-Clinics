@@ -64,7 +64,7 @@ export async function sendCampaign(formData: FormData) {
     }
     const res = await sendEmail({ to: c.email, subject, html: tmplManual(greeting.replace(/\n/g, '<br>'), unsubUrl) });
     await db.emailEvent.create({
-      data: { clientId: c.id, kind: 'CAMPAIGN', to: c.email, subject, status: res.ok ? 'SENT' : 'FAILED', providerId: res.id, error: res.error, meta: { campaignId: campaign.id } },
+      data: { clientId: c.id, kind: 'CAMPAIGN', to: c.email, subject, status: res.ok ? 'SENT' : 'FAILED', providerId: res.id, error: res.error, campaignId: campaign.id },
     });
     if (res.ok) sent++;
   }

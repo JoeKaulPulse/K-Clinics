@@ -1,11 +1,11 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, type KeyboardEvent } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { KSpeech } from '@/components/academy/KMascot';
 import { Illustration, matchIllustration } from '@/components/academy/Illustrations';
 import { AmbientBackdrop } from '@/components/academy/AmbientBackdrop';
-import { useBodyScrollLock } from '@/components/ui/Dialog';
+import { useDialogBehaviours } from '@/components/ui/Dialog';
 
 // A short animated "video" explainer generated on the fly from a lesson's own
 // points — the K narrates each beat (typed speech) over a matched illustration,
@@ -25,14 +25,32 @@ export function ExplainerPlayer({ title, level, points, onClose, onStart }: { ti
     const t = setTimeout(() => setI((x) => x + 1), cur.kind === 'title' ? 4200 : 5400);
     return () => clearTimeout(t);
   }, [i, last, cur.kind]);
-  // Shared ref-counted lock: this player opens on top of ImmersiveCourse, which
-  // also locks — unmounting both at once must not leave the page stuck. (BLD-1194)
-  useBodyScrollLock();
+  // BLD-1501: dialog semantics (role, focus trap, Escape-to-close) — also
+  // covers the body-scroll lock this player needs while it's open on top of
+  // ImmersiveCourse, which locks too; the shared ref-count (BLD-1194) means
+  // unmounting both at once still leaves the page scrollable.
+  const { panelRef, onKeyDown: dialogKeys } = useDialogBehaviours<HTMLDivElement>(onClose);
+
+  // Dropping role="button" also dropped the Enter/Space handler that let a
+  // keyboard user step the reel on, leaving click-to-advance mouse-only (WCAG
+  // 2.1.1). Enter/Space can't come back — the trap puts initial focus on the
+  // Close button, where they'd activate it instead — so the arrow keys carry
+  // that function. Buttons ignore arrows, so this never fights the close /
+  // "Start the lesson" controls or the Tab trap.
+  const onKeyDown = (e: KeyboardEvent<HTMLDivElement>) => {
+    if (!last && (e.key === 'ArrowRight' || e.key === 'ArrowDown')) {
+      e.preventDefault(); e.stopPropagation(); setI((x) => x + 1); return;
+    }
+    if (i > 0 && (e.key === 'ArrowLeft' || e.key === 'ArrowUp')) {
+      e.preventDefault(); e.stopPropagation(); setI((x) => x - 1); return;
+    }
+    dialogKeys(e);
+  };
 
   const art = cur.kind === 'point' ? matchIllustration(cur.text) : null;
 
   return (
-    <div className="fixed inset-0 z-[320] flex flex-col bg-[var(--color-ink)] text-[var(--color-porcelain)]" style={{ paddingTop: 'env(safe-area-inset-top)', paddingBottom: 'env(safe-area-inset-bottom)' }} role="button" tabIndex={0} aria-label={last ? 'Explainer complete' : 'Tap to advance'} onClick={() => !last && setI((x) => x + 1)} onKeyDown={(e) => { if (e.target === e.currentTarget && (e.key === 'Enter' || e.key === ' ') && !last) { e.preventDefault(); setI((x) => x + 1); } }}>
+    <div ref={panelRef} className="fixed inset-0 z-[320] flex flex-col bg-[var(--color-ink)] text-[var(--color-porcelain)]" style={{ paddingTop: 'env(safe-area-inset-top)', paddingBottom: 'env(safe-area-inset-bottom)' }} role="dialog" aria-modal="true" aria-label={`${title} — 60-second explainer`} aria-keyshortcuts="ArrowRight ArrowLeft Escape" tabIndex={-1} onClick={() => !last && setI((x) => x + 1)} onKeyDown={onKeyDown}>
       <AmbientBackdrop tone="dark" />
       <header className="relative z-10 flex items-center justify-between px-5 py-3">
         <span className="text-xs uppercase tracking-[0.18em] text-white/45">60-second explainer</span>
@@ -41,7 +59,9 @@ export function ExplainerPlayer({ title, level, points, onClose, onStart }: { ti
         </button>
       </header>
 
-      <div className="relative z-10 mx-auto flex w-full max-w-xl flex-1 flex-col items-center justify-center px-6 text-center">
+      {/* The reel advances on a timer, so a screen reader has to be told each
+          new beat — otherwise the whole explainer is silent after the title. */}
+      <div aria-live="polite" className="relative z-10 mx-auto flex w-full max-w-xl flex-1 flex-col items-center justify-center px-6 text-center">
         <AnimatePresence mode="wait">
           <motion.div key={i} initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -14 }} transition={{ duration: 0.4, ease: 'easeOut' }} className="w-full">
             {cur.kind === 'title' && (

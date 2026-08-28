@@ -22,16 +22,28 @@ export function ChatWindow({ channelId, variant = 'docked', onRequestClose }: { 
   const [hasMore, setHasMore] = useState(true);
   const scrollRef = useRef<HTMLDivElement>(null);
   const cursor = useRef<string | null>(null);
+  // BLD-1439: the message list is a live region so incoming messages are spoken.
+  // It has to stay switched OFF for the two bulk inserts that aren't new traffic
+  // — the initial history load and "Load earlier" — or opening a conversation
+  // would read out its last 40 messages end to end. Announcements are enabled
+  // only once the opening batch has painted, and suppressed again around a
+  // pagination fetch (both state updates land in the same commit as the
+  // prepended messages, so the region is already off when they hit the DOM).
+  const [announce, setAnnounce] = useState(false);
 
   // Initial load.
   useEffect(() => {
     let on = true;
+    setAnnounce(false);
     fetch(`/api/admin/team-chat?op=messages&channelId=${channelId}`).then((r) => r.json()).then((j) => {
       if (!on || !j?.ok) return;
       setMessages(j.messages);
       cursor.current = j.messages.length ? j.messages[j.messages.length - 1].createdAt : null;
       setHasMore(j.messages.length >= 40);
-      requestAnimationFrame(() => scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight }));
+      requestAnimationFrame(() => {
+        scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight });
+        if (on) setAnnounce(true);
+      });
     });
     return () => { on = false; };
   }, [channelId]);
@@ -64,9 +76,11 @@ export function ChatWindow({ channelId, variant = 'docked', onRequestClose }: { 
     const j = await fetch(`/api/admin/team-chat?op=messages&channelId=${channelId}&before=${encodeURIComponent(first.createdAt)}`).then((r) => r.json());
     if (j?.ok) {
       const el = scrollRef.current; const prevH = el?.scrollHeight || 0;
+      // Older history is not new traffic — mute the live region for this insert.
+      setAnnounce(false);
       setMessages((prev) => [...j.messages.filter((m: ChatMessage) => !prev.some((p) => p.id === m.id)), ...prev]);
       setHasMore(j.messages.length >= 40);
-      requestAnimationFrame(() => { if (el) el.scrollTop = el.scrollHeight - prevH; });
+      requestAnimationFrame(() => { if (el) el.scrollTop = el.scrollHeight - prevH; setAnnounce(true); });
     }
   }
 
@@ -129,7 +143,7 @@ export function ChatWindow({ channelId, variant = 'docked', onRequestClose }: { 
       {manage && <ManagePanel mode={manage} channelId={channelId} onDone={() => { setManage(null); void refreshChannels(); }} roster={roster} memberIds={channel.members.map((m) => m.id)} currentName={channel.title} />}
 
       {/* Messages */}
-      <div ref={scrollRef} className="flex-1 space-y-1 overflow-y-auto overflow-x-hidden px-3 py-3">
+      <div ref={scrollRef} role="log" aria-live={announce ? 'polite' : 'off'} aria-relevant="additions" className="flex-1 space-y-1 overflow-y-auto overflow-x-hidden px-3 py-3">
         {messages.length === 0 && (
           <div className="grid h-full place-items-center px-6 text-center">
             <div>
