@@ -19,6 +19,7 @@ export function AccountMenu({ light }: { light: boolean }) {
   const [state, setState] = useState<{ signedIn: boolean; firstName?: string } | null>(null);
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
+  const btnRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
     let on = true;
@@ -31,11 +32,20 @@ export function AccountMenu({ light }: { light: boolean }) {
 
   useEffect(() => {
     const onClick = (e: MouseEvent) => { if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false); };
-    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setOpen(false); };
+    // BLD-1555: Escape closes the menu AND returns focus to the trigger. The
+    // focus move is part of the fix, not an extra: the menu items live inside the
+    // block this unmounts, so dismissing while focus sits on one would drop focus
+    // to <body> and restart the tab order at the top of the page. Only acts while
+    // the menu is open, so Escape elsewhere on the page is left alone.
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape' || !open) return;
+      setOpen(false);
+      btnRef.current?.focus();
+    };
     document.addEventListener('mousedown', onClick);
     document.addEventListener('keydown', onKey);
     return () => { document.removeEventListener('mousedown', onClick); document.removeEventListener('keydown', onKey); };
-  }, []);
+  }, [open]);
 
   const linkCls = `inline-flex items-center gap-1.5 text-sm font-medium transition-colors ${
     light ? 'text-[color-mix(in_oklab,var(--color-porcelain)_88%,transparent)] hover:text-[var(--color-porcelain)]' : 'text-[var(--color-ink-soft)] hover:text-[var(--color-ink)]'
@@ -67,7 +77,7 @@ export function AccountMenu({ light }: { light: boolean }) {
 
   return (
     <div ref={ref} className="relative">
-      <button onClick={() => setOpen((o) => !o)} aria-expanded={open} aria-haspopup="menu" className={linkCls}>
+      <button ref={btnRef} onClick={() => setOpen((o) => !o)} aria-expanded={open} aria-haspopup="menu" className={linkCls}>
         <PersonIcon />
         {state.firstName || 'Account'}
         <svg viewBox="0 0 24 24" className={`h-3.5 w-3.5 transition-transform ${open ? 'rotate-180' : ''}`} fill="none" aria-hidden>
