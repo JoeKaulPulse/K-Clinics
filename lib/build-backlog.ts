@@ -4738,6 +4738,16 @@ export const BUILD_BACKLOG: BacklogItem[] = [
       'Verified: npx tsc --noEmit and npm run build pass clean.',
     ],
   },
+  {
+    title: 'Staff.manage delegate could revoke any permission from any colleague, unclamped (BLD-1539)',
+    type: 'ERROR', urgency: 'P2', status: 'IN_REVIEW', assignee: 'claude',
+    value: 5, effort: 2,
+    detail: "app/api/admin/staff/route.ts's revoke array only ran clean() (permission-key format check) before writing permRevoke, unlike grant, which is passed through clampGrant (restricts a non-OWNER actor to permissions they hold themselves and excludes OWNER_ONLY keys). Any non-OWNER staff member holding the delegable staff.manage permission -- no role has it by default, an owner grants it -- could strip any permission, including ones they never held themselves (e.g. clients.clinical.view), from any non-owner colleague, on both the update-existing and create-new-account paths (lines 112 and 220).",
+    notes: [
+      'Fix: renamed clampGrant to clampPerms (identical actor-authority filter -- OWNER can grant/revoke anything, a non-OWNER delegate only permissions they hold and never OWNER_ONLY) and applied it to both permGrant and permRevoke on both the update-existing branch and the create-new-account branch, so revoke now has the same escalation clamp grant already had.',
+      'Verified: npx tsc --noEmit and npm run build pass clean.',
+    ],
+  },
 ];
 
 // A content hash over every item's title + status + PR, so ANY change (a new

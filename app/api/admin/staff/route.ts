@@ -28,11 +28,17 @@ export async function POST(req: Request) {
   const validRole = ['OWNER', 'ADMIN', 'PRACTITIONER', 'FRONT_DESK', 'STAFF'];
   const clean = (arr?: string[]) => (arr ?? []).filter((k) => PERMISSION_KEYS.includes(k));
   // Privilege-escalation clamp: a non-OWNER (e.g. a delegate granted
-  // staff.manage) may only grant permissions they themselves hold, and never
-  // the owner-only ones. OWNERs can grant anything.
+  // staff.manage) may only grant OR revoke permissions they themselves hold,
+  // and never the owner-only ones. OWNERs can grant/revoke anything.
+  //
+  // BLD-1539: revoke used to skip this clamp entirely (only clean() ran on
+  // it), so any staff.manage delegate could strip a permission -- including
+  // ones they never held themselves, e.g. clients.clinical.view -- from any
+  // non-owner colleague. clampPerms() (formerly clampGrant, same authority
+  // check) now gates both arrays identically.
   const OWNER_ONLY = ['staff.manage', 'security.manage', 'settings.manage'];
   const actorPerms = effectivePermissions({ role: actor.role, permGrant: actor.grant, permRevoke: actor.revoke });
-  const clampGrant = (arr?: string[]) => clean(arr).filter((k) => actor.role === 'OWNER' || (actorPerms.has(k) && !OWNER_ONLY.includes(k)));
+  const clampPerms = (arr?: string[]) => clean(arr).filter((k) => actor.role === 'OWNER' || (actorPerms.has(k) && !OWNER_ONLY.includes(k)));
 
   const { db } = await import('@/lib/db');
 
@@ -108,8 +114,8 @@ export async function POST(req: Request) {
     if (role && validRole.includes(role) && actor.role === 'OWNER') {
       data.role = role as 'OWNER' | 'ADMIN' | 'PRACTITIONER' | 'FRONT_DESK' | 'STAFF';
     }
-    if (grant) data.permGrant = clampGrant(grant);
-    if (revoke) data.permRevoke = clean(revoke);
+    if (grant) data.permGrant = clampPerms(grant);
+    if (revoke) data.permRevoke = clampPerms(revoke);
     if (typeof active === 'boolean') data.active = active;
     if (password) {
       if (password.length < 8) return NextResponse.json({ ok: false, error: 'Password must be at least 8 characters.' }, { status: 422 });
@@ -179,10 +185,10 @@ export async function POST(req: Request) {
   // BLD-1303: a non-OWNER holding `staff.manage` (a delegate an owner granted
   // it to — no role has it by default) could previously POST `{role: 'ADMIN'}`
   // and mint an account with far more privilege than they themselves held. The
-  // clampGrant escalation clamp above only covers permGrant/permRevoke, never
+  // clampPerms escalation clamp above only covers permGrant/permRevoke, never
   // `role`, and the old gate only special-cased `role === 'OWNER'`.
   //
-  // The rule is the same one clampGrant already applies, just at role level:
+  // The rule is the same one clampPerms already applies, just at role level:
   // you may not create an account that can do something you cannot. So a
   // non-OWNER may only create a role whose default permission set is a subset
   // of their own effective permissions — which keeps the legitimate delegation
@@ -216,8 +222,8 @@ export async function POST(req: Request) {
       name: name || null,
       role: role as 'OWNER' | 'ADMIN' | 'PRACTITIONER' | 'FRONT_DESK' | 'STAFF',
       passwordHash: await hashPassword(password),
-      permGrant: clampGrant(grant),
-      permRevoke: clean(revoke),
+      permGrant: clampPerms(grant),
+      permRevoke: clampPerms(revoke),
       createdBy: actor.email,
     },
   });
