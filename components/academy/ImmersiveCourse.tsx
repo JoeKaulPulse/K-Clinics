@@ -209,7 +209,7 @@ export function ImmersiveCourse({ learning, slug, mode = 'learn', xp = 0, regist
 
       {/* Back link (review only) */}
       {idx > 0 && step.kind !== 'done' && (
-        <button onClick={() => go(idx - 1)} className="absolute bottom-4 left-4 min-h-11 rounded-full px-4 py-2 text-xs text-white/40 transition-colors hover:text-white/80 sm:bottom-6 sm:left-6">← Back</button>
+        <button onClick={() => go(idx - 1)} className="absolute bottom-4 left-4 min-h-11 rounded-full px-4 py-2 text-xs text-white/60 transition-colors hover:text-white/80 sm:bottom-6 sm:left-6">← Back</button>
       )}
 
       {/* Mascot celebrations */}
@@ -303,9 +303,9 @@ function LessonStep({ lesson, reviewing, preview, formative, register, onContinu
   return (
     <div>
       <div className="mb-4 flex items-center gap-3">
-        <span className="truncate text-xs uppercase tracking-[0.16em] text-white/40">{lesson.title}</span>
+        <span className="truncate text-xs uppercase tracking-[0.16em] text-white/60">{lesson.title}</span>
         {explainerPoints.length >= 2 && <button onClick={() => setShowExplainer(true)} className="ml-auto shrink-0 rounded-full border border-white/20 px-2.5 py-1 text-[0.65rem] font-medium text-white/70 transition-colors hover:border-[var(--color-gold)] hover:text-[var(--color-gold)]">▶ Explainer</button>}
-        <span className={`shrink-0 text-xs tabular-nums text-white/30 ${explainerPoints.length >= 2 ? '' : 'ml-auto'}`}>{Math.min(mi + 1, flow.length)} / {flow.length}</span>
+        <span className={`shrink-0 text-xs tabular-nums text-white/60 ${explainerPoints.length >= 2 ? '' : 'ml-auto'}`}>{Math.min(mi + 1, flow.length)} / {flow.length}</span>
       </div>
       {hasResources && (
         <div className="mb-6 flex flex-wrap items-center gap-2">
@@ -328,7 +328,7 @@ function LessonStep({ lesson, reviewing, preview, formative, register, onContinu
       <div ref={resourcesRef} className="scroll-mt-4">
       {lesson.pdfUrls.length > 0 && (
         <div className="mt-6 rounded-[var(--radius-lg)] border border-white/10 bg-white/5 p-4">
-          <p className="mb-3 text-[0.65rem] font-semibold uppercase tracking-[0.16em] text-white/40">Lesson resources</p>
+          <p className="mb-3 text-[0.65rem] font-semibold uppercase tracking-[0.16em] text-white/60">Lesson resources</p>
           <ul className="space-y-2">
             {lesson.pdfUrls.map((url, idx) => {
               const raw = url.split('/').pop() ?? 'Document';
@@ -342,13 +342,13 @@ function LessonStep({ lesson, reviewing, preview, formative, register, onContinu
                     <button onClick={() => setPdfView({ index: idx, name })} className="flex w-full items-center gap-2.5 text-left text-sm text-white/80 transition-colors hover:text-[var(--color-gold)]">
                       {icon}
                       <span className="truncate">{name}</span>
-                      <span className="ml-auto shrink-0 text-[0.65rem] text-white/30">View only</span>
+                      <span className="ml-auto shrink-0 text-[0.65rem] text-white/60">View only</span>
                     </button>
                   ) : (
                     <a href={url} target="_blank" rel="noreferrer" download={name} className="flex items-center gap-2.5 text-sm text-white/80 transition-colors hover:text-[var(--color-gold)]">
                       {icon}
                       <span className="truncate">{name}</span>
-                      <span className="ml-auto shrink-0 text-[0.65rem] text-white/30">Download</span>
+                      <span className="ml-auto shrink-0 text-[0.65rem] text-white/60">Download</span>
                     </a>
                   )}
                 </li>
@@ -361,7 +361,7 @@ function LessonStep({ lesson, reviewing, preview, formative, register, onContinu
 
       {lesson.attachments.length > 0 && (
         <div className="mt-6 rounded-[var(--radius-lg)] border border-white/10 bg-white/5 p-4">
-          <p className="mb-3 text-[0.65rem] font-semibold uppercase tracking-[0.16em] text-white/40">Downloads</p>
+          <p className="mb-3 text-[0.65rem] font-semibold uppercase tracking-[0.16em] text-white/60">Downloads</p>
           <ul className="space-y-2">
             {lesson.attachments.map((a, i) => (
               <li key={`${a.url}-${i}`}>
@@ -474,11 +474,11 @@ function AskMicro({ step, onContinue }: { step: AskStep; onContinue: () => void 
 
   return (
     <div className="py-2">
-      <p className="text-xs uppercase tracking-[0.16em] text-white/40">{word ? 'Select the right word' : 'Quick check'}</p>
+      <p className="text-xs uppercase tracking-[0.16em] text-white/60">{word ? 'Select the right word' : 'Quick check'}</p>
       {word ? (
         <p className="mt-3 font-[family-name:var(--font-display)] text-2xl leading-relaxed">
           {step.prompt.split('___')[0]}
-          <span className={`mx-1 inline-block min-w-[5ch] rounded-md border-b-2 px-2 text-center ${selected[0] != null ? 'border-[var(--color-gold)] text-[var(--color-gold)]' : 'border-white/40 text-white/30'}`}>{selected[0] != null ? step.options[selected[0]] : '  '}</span>
+          <span className={`mx-1 inline-block min-w-[5ch] rounded-md border-b-2 px-2 text-center ${selected[0] != null ? 'border-[var(--color-gold)] text-[var(--color-gold)]' : 'border-white/40 text-white/60'}`}>{selected[0] != null ? step.options[selected[0]] : '  '}</span>
           {step.prompt.split('___')[1] ?? ''}
         </p>
       ) : (
