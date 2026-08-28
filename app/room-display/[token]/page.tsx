@@ -1,7 +1,16 @@
+import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { crmEnabled } from '@/lib/crm';
 
 export const dynamic = 'force-dynamic';
+
+// BLD-1533: shows live patient first names + appointment times — never indexable.
+// Annotated as Metadata (like /live/[token] and /nps/[token]) so a typo in a key
+// is a type error rather than a silently ignored property on a privacy control.
+export const metadata: Metadata = {
+  title: 'Room display · KClinics',
+  robots: { index: false, follow: false },
+};
 
 // BLD-225 — the screen mounted outside a treatment room (e.g. iiyama TW1023ASC).
 // Token-secured + public (no login); shows that room's current + next
