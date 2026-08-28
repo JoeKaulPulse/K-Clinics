@@ -7,6 +7,7 @@ import { getLocale } from '@/lib/locale';
 import { CrmDisabled } from '@/components/admin/CrmDisabled';
 import { DayCloseSettings } from '@/components/admin/DayCloseSettings';
 import { getDayCloseConfig, listCloses, money } from '@/lib/day-close';
+import { fmtClinicDate } from '@/lib/clinic-time';
 
 export const dynamic = 'force-dynamic';
 
@@ -56,7 +57,11 @@ export default async function DayCloseReportsPage() {
                   const v = c.variancePence ?? 0;
                   return (
                     <tr key={c.id} className="align-top">
-                      <td className="px-4 py-3 whitespace-nowrap">{new Date(c.businessDate).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: '2-digit' })}</td>
+                      {/* BLD-1538: format in Europe/London. businessDate is now clinic
+                          midnight, which during BST is 23:00Z on the previous date — this
+                          page is a server component on a UTC host, so an un-zoned
+                          toLocaleDateString would file every summer close under yesterday. */}
+                      <td className="px-4 py-3 whitespace-nowrap">{fmtClinicDate(c.businessDate, { day: '2-digit', month: 'short', year: '2-digit' })}</td>
                       <td className="px-4 py-3">{c.location?.name || '—'}</td>
                       <td className="px-4 py-3 tabular-nums">{money(c.expectedCardPence)}</td>
                       <td className="px-4 py-3 tabular-nums">{money(c.cashTakingsPence ?? 0)}</td>

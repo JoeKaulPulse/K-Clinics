@@ -1,5 +1,6 @@
 import 'server-only';
 import { db } from '@/lib/db';
+import { clinicDayBounds, clinicDateISO } from '@/lib/clinic-time';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Day-close — end-of-day clinic shutdown.
@@ -131,17 +132,15 @@ export async function saveDayCloseConfig(config: DayCloseConfig, updatedBy?: str
 }
 
 // ── Dates ───────────────────────────────────────────────────────────────────
-// Day boundaries use the server timezone, matching the rest of the CRM
-// (lib/crm-data.ts). The clinic runs in Europe/London.
+// Day boundaries in clinic-local (Europe/London) wall-clock time, via
+// lib/clinic-time.ts's clinicDayBounds() — NOT the server's timezone (UTC on
+// Vercel), which during BST placed the computed "day" at 01:00-00:59 London
+// instead of clinic midnight-to-midnight (BLD-1538).
 export function localDayStart(d = new Date()): Date {
-  const x = new Date(d);
-  x.setHours(0, 0, 0, 0);
-  return x;
+  return clinicDayBounds(clinicDateISO(d)).dayStart;
 }
 export function localDayEnd(d = new Date()): Date {
-  const x = new Date(d);
-  x.setHours(23, 59, 59, 999);
-  return x;
+  return clinicDayBounds(clinicDateISO(d)).dayEnd;
 }
 
 export type ExpectedTakings = {
@@ -249,10 +248,24 @@ export async function stockTakeItems(): Promise<StockTakeItem[]> {
   return rows.map((r) => ({ id: r.id, name: r.name, unit: r.unit, category: r.category, expectedQty: r.currentQty }));
 }
 
-/** The existing day-close record for a location/day, if one was started/finished. */
+/** The existing day-close record for a location/day, if one was started/finished.
+ *
+ *  Matched over the whole clinic-day WINDOW rather than by exact businessDate
+ *  equality. Rows written before BLD-1538 stored server-UTC midnight (00:00Z);
+ *  localDayStart() now returns clinic midnight, which during BST is 23:00Z on
+ *  the previous date. Both instants fall inside the same clinic day, so the
+ *  range keeps legacy records findable — on an exact match the deploy would
+ *  orphan every close recorded during BST, tell staff the day was never closed
+ *  and write a second row for a day that already has one. A POST rewrites
+ *  businessDate to the new instant, so records self-heal as they are touched.
+ *  The window cannot straddle two clinic days: consecutive windows are
+ *  contiguous and 24h wide, so each stored instant lands in exactly one. */
 export async function getDayClose(locationId: string | null, day: Date) {
   return db.dayClose.findFirst({
-    where: { businessDate: localDayStart(day), ...(locationId ? { locationId } : { locationId: null }) },
+    where: {
+      businessDate: { gte: localDayStart(day), lte: localDayEnd(day) },
+      ...(locationId ? { locationId } : { locationId: null }),
+    },
     orderBy: { startedAt: 'desc' },
   });
 }
