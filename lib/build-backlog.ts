@@ -4738,6 +4738,16 @@ export const BUILD_BACKLOG: BacklogItem[] = [
       'Verified: npx tsc --noEmit and npm run build pass clean.',
     ],
   },
+  {
+    title: 'Day-close reconciliation used server UTC day boundaries instead of clinic-local time (BLD-1538)',
+    type: 'ERROR', urgency: 'P2', status: 'IN_REVIEW', assignee: 'claude',
+    value: 6, effort: 2,
+    detail: "lib/day-close.ts's localDayStart()/localDayEnd() computed the business-day window with new Date(); x.setHours(0,0,0,0), which runs in the server's local timezone (UTC on Vercel) instead of the existing clinicDayBounds() helper in lib/clinic-time.ts built specifically to avoid this. During BST (~late Mar-late Oct) the computed 'day' was 01:00-00:59 London, not clinic midnight-to-midnight, so retail orders and gift-voucher sales near midnight landed in the wrong business day's expected-takings figure staff reconcile the till against, for roughly seven months of the year. The same functions also set DayClose.businessDate, so the close record itself carried the wrong day boundary.",
+    notes: [
+      "Fix: localDayStart()/localDayEnd() now delegate to clinicDayBounds(clinicDateISO(d)) from lib/clinic-time.ts, keeping the same call signature so every call site (computeExpected, getDayClose, and app/api/admin/day-close/route.ts's status check, GET response and POST businessDate) is corrected without touching each site individually.",
+      'Verified: npx tsc --noEmit and npm run build pass clean.',
+    ],
+  },
 ];
 
 // A content hash over every item's title + status + PR, so ANY change (a new

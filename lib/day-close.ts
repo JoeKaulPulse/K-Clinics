@@ -1,5 +1,6 @@
 import 'server-only';
 import { db } from '@/lib/db';
+import { clinicDayBounds, clinicDateISO } from '@/lib/clinic-time';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Day-close — end-of-day clinic shutdown.
@@ -131,17 +132,15 @@ export async function saveDayCloseConfig(config: DayCloseConfig, updatedBy?: str
 }
 
 // ── Dates ───────────────────────────────────────────────────────────────────
-// Day boundaries use the server timezone, matching the rest of the CRM
-// (lib/crm-data.ts). The clinic runs in Europe/London.
+// Day boundaries in clinic-local (Europe/London) wall-clock time, via
+// lib/clinic-time.ts's clinicDayBounds() — NOT the server's timezone (UTC on
+// Vercel), which during BST placed the computed "day" at 01:00-00:59 London
+// instead of clinic midnight-to-midnight (BLD-1538).
 export function localDayStart(d = new Date()): Date {
-  const x = new Date(d);
-  x.setHours(0, 0, 0, 0);
-  return x;
+  return clinicDayBounds(clinicDateISO(d)).dayStart;
 }
 export function localDayEnd(d = new Date()): Date {
-  const x = new Date(d);
-  x.setHours(23, 59, 59, 999);
-  return x;
+  return clinicDayBounds(clinicDateISO(d)).dayEnd;
 }
 
 export type ExpectedTakings = {
