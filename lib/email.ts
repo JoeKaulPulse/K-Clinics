@@ -73,7 +73,11 @@ export async function sendEmail(opts: {
   attachments?: { filename: string; content: Buffer | string; contentType?: string }[];
 }): Promise<SendResult> {
   const apiKey = await getSecret('RESEND_API_KEY');
-  if (!apiKey) return { ok: false, error: 'RESEND_API_KEY not configured' };
+  if (!apiKey) {
+    console.error('[email] RESEND_API_KEY not configured');
+    try { const Sentry = await import('@sentry/nextjs'); Sentry.captureMessage('[email] RESEND_API_KEY not configured', { level: 'error', tags: { area: 'email' }, extra: { to: opts.to, subject: opts.subject } }); } catch { /* Sentry unavailable */ }
+    return { ok: false, error: 'RESEND_API_KEY not configured' };
+  }
   const resend = new Resend(apiKey);
   const FROM = (await getSecret('EMAIL_FROM')) || `KClinics <hello@mail.${MAIL_HOST}>`;
   const REPLY_TO = (await getSecret('EMAIL_REPLY_TO')) || `KClinics <replies@reply.mail.${MAIL_HOST}>`;
@@ -100,20 +104,30 @@ export async function sendEmail(opts: {
         resend.emails.send(payload),
         new Promise<typeof TIMEOUT>((resolve) => { timer = setTimeout(() => resolve(TIMEOUT), 10_000); }),
       ]).finally(() => { if (timer) clearTimeout(timer); });
-      if (result === TIMEOUT) return { ok: false, error: 'Email send timed out after 10s' };
+      if (result === TIMEOUT) {
+        console.error('[email] send timed out after 10s:', opts.to, opts.subject);
+        try { const Sentry = await import('@sentry/nextjs'); Sentry.captureMessage('[email] send timed out after 10s', { level: 'error', tags: { area: 'email' }, extra: { to: opts.to, subject: opts.subject, attempt } }); } catch { /* Sentry unavailable */ }
+        return { ok: false, error: 'Email send timed out after 10s' };
+      }
       const { data, error } = result;
       if (error) {
         const msg = String(error.message || error);
         if (isRateLimited(msg) && attempt < 2) { await sleep(1100 * (attempt + 1)); continue; }
+        console.error('[email] Resend API error:', msg);
+        try { const Sentry = await import('@sentry/nextjs'); Sentry.captureMessage('[email] Resend API error', { level: 'error', tags: { area: 'email' }, extra: { to: opts.to, subject: opts.subject, attempt, error: msg } }); } catch { /* Sentry unavailable */ }
         return { ok: false, error: msg };
       }
       return { ok: true, id: data?.id };
     } catch (e) {
       const msg = e instanceof Error ? e.message : 'send failed';
       if (isRateLimited(msg) && attempt < 2) { await sleep(1100 * (attempt + 1)); continue; }
+      console.error('[email] send threw:', msg);
+      try { const Sentry = await import('@sentry/nextjs'); Sentry.captureMessage('[email] send threw', { level: 'error', tags: { area: 'email' }, extra: { to: opts.to, subject: opts.subject, attempt, error: msg } }); } catch { /* Sentry unavailable */ }
       return { ok: false, error: msg };
     }
   }
+  console.error('[email] rate-limited — retried and gave up:', opts.to, opts.subject);
+  try { const Sentry = await import('@sentry/nextjs'); Sentry.captureMessage('[email] rate-limited — retried and gave up', { level: 'error', tags: { area: 'email' }, extra: { to: opts.to, subject: opts.subject } }); } catch { /* Sentry unavailable */ }
   return { ok: false, error: 'Email rate-limited — retried and gave up' };
 }
 
