@@ -86,7 +86,7 @@ export function BehaviorRecorder() {
     };
 
     start();
-    const onConsent = () => { if (getConsent()?.analytics) start(); };
+    const onConsent = () => { if (getConsent()?.analytics) start(); else stop?.(); };
     window.addEventListener('kc-consent', onConsent);
     return () => { window.removeEventListener('kc-consent', onConsent); stop?.(); };
   }, []);
