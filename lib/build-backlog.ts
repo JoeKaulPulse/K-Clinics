@@ -4738,6 +4738,17 @@ export const BUILD_BACKLOG: BacklogItem[] = [
       'Verified: npx tsc --noEmit and npm run build pass clean.',
     ],
   },
+  {
+    title: 'Plain --color-gold text fails WCAG AA contrast on marketing and admin pages (BLD-1488, BLD-1462)',
+    type: 'TASK', urgency: 'P2', status: 'IN_REVIEW', assignee: 'claude',
+    value: 6, effort: 2,
+    detail: "BLD-1488: the .text-gold-gradient utility (used for emphasis words on home, treatment pages, about, membership, reviews, academy) rendered --color-gold (#a98a6d) on --color-porcelain (#f6ece3), roughly 2.8:1 -- below WCAG AA's 3:1 floor even for large text -- for two of its three gradient stops. BLD-1462: the same plain --color-gold text (~2.5-2.8:1) was used for real content -- star ratings and points balances -- on light admin surfaces in admin/reviews, admin/rewards, admin/profile and admin/clients/[id], despite globals.css already documenting gold as decorative/large-text-only and shipping --color-gold-deep (4.5:1) for exactly this case.",
+    notes: [
+      'Fix (BLD-1488): .text-gold-gradient\'s two full-opacity stops swapped from --color-gold to --color-gold-deep (kept --color-gold-bright as the lighter mid-stop highlight). app/globals.css.',
+      "Fix (BLD-1462): swapped every real-text use of --color-gold to --color-gold-deep -- the star-rating glyphs and the 'Average rating' stat in app/admin/reviews/page.tsx, the leaderboard points total in app/admin/rewards/page.tsx, the 'Points' stat in app/admin/profile/page.tsx, and the loyalty-points balance in app/admin/clients/[id]/page.tsx. Left every decorative/non-text --color-gold use in these files untouched (avatar/dot backgrounds, progress-bar fill, badge backgrounds, borders, dividers) -- WCAG 1.4.3 contrast applies to text, not decoration.",
+      'Verified: npx tsc --noEmit and npm run build pass clean.',
+    ],
+  },
 ];
 
 // A content hash over every item's title + status + PR, so ANY change (a new

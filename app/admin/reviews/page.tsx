@@ -20,7 +20,7 @@ const STATUS_STYLE: Record<string, string> = {
 // BLD-1262 (WCAG): the glyph run is decorative — the aria-label carries the
 // rating for screen readers, instead of five raw star characters.
 const Stars = ({ n }: { n: number | null }) => (
-  <span className="text-[var(--color-gold)]" aria-label={n ? `${n} out of 5 stars` : 'No rating'}>
+  <span className="text-[var(--color-gold-deep)]" aria-label={n ? `${n} out of 5 stars` : 'No rating'}>
     <span aria-hidden>{n ? '★'.repeat(n) + '☆'.repeat(5 - n) : '—'}</span>
   </span>
 );
@@ -73,7 +73,7 @@ export default async function ReviewsPage({ searchParams }: { searchParams: Prom
 
       <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
         {[
-          { label: L('Average rating', 'Середній бал'), value: agg._avg.rating ? `${agg._avg.rating.toFixed(1)}★` : '—', tone: 'text-[var(--color-gold)]' },
+          { label: L('Average rating', 'Середній бал'), value: agg._avg.rating ? `${agg._avg.rating.toFixed(1)}★` : '—', tone: 'text-[var(--color-gold-deep)]' },
           { label: L('Total reviews', 'Усього відгуків'), value: String(agg._count.rating) },
           { label: L('Awaiting moderation', 'Очікують модерації'), value: countOf('SUBMITTED'), tone: countOf('SUBMITTED') ? 'text-amber-700' : '' },
           { label: L('Published', 'Опубліковано'), value: countOf('PUBLISHED') },

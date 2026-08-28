@@ -95,7 +95,7 @@ export default async function ProfilePage() {
 
           <div className="grid gap-3 sm:grid-cols-4">
             {[
-              { label: uk ? 'Бали' : 'Points', value: standing.total, tone: 'text-[var(--color-gold)]' },
+              { label: uk ? 'Бали' : 'Points', value: standing.total, tone: 'text-[var(--color-gold-deep)]' },
               { label: uk ? 'Місце' : 'Rank', value: standing.rank ? `#${standing.rank}` : '—', sub: standing.rank ? `/ ${standing.totalStaff}` : '' },
               { label: uk ? 'Сер. оцінка' : 'Avg rating', value: standing.avgRating ? `${standing.avgRating.toFixed(1)}★` : '—' },
               { label: uk ? 'Відгуки' : 'Reviews', value: standing.reviewCount },
