@@ -798,7 +798,7 @@ function CheckoutStep({ p, live, sessData, pending, presenting, api, run, onCont
   // (a real Stripe Terminal charge, only offered once a device is registered),
   // this never touches a payment rail; it just logs the sale as settled, the
   // same way 'cash' and 'treatwell' do.
-  const [method, setMethod] = useState<'card' | 'link' | 'terminal' | 'cardTerminal' | 'treatwell' | 'cash'>(p.hasCardOnFile ? 'card' : 'link');
+  const [method, setMethod] = useState<'card' | 'link' | 'terminal' | 'cardTerminal' | 'treatwell' | 'classpass' | 'cash'>(p.hasCardOnFile ? 'card' : 'link');
   const [deviceId, setDeviceId] = useState(p.terminals[0]?.id ?? '');
   const [linkQr, setLinkQr] = useState<{ url: string; qr: string } | null>(null);
   const [payErr, setPayErr] = useState('');
@@ -876,6 +876,12 @@ function CheckoutStep({ p, live, sessData, pending, presenting, api, run, onCont
     setPayBusy(false);
     if (!res.ok) setPayErr(res.error || 'Could not record the payment.');
   }
+  async function takeClasspass() {
+    setPayErr(''); setPayBusy(true);
+    const res = await api({ op: 'external', channel: 'classpass', amountPence, ...discParams });
+    setPayBusy(false);
+    if (!res.ok) setPayErr(res.error || 'Could not record the payment.');
+  }
   async function takeCash() {
     setPayErr(''); setPayBusy(true);
     const res = await api({ op: 'external', channel: 'cash', amountPence, ...discParams });
@@ -920,6 +926,7 @@ function CheckoutStep({ p, live, sessData, pending, presenting, api, run, onCont
                 {/* BLD-1249: manual record for a standalone card machine — no Stripe Terminal integration required */}
                 <button type="button" onClick={() => { setMethod('cardTerminal'); setLinkQr(null); setPayErr(''); }} aria-pressed={method === 'cardTerminal'} className={`rounded-full px-3 py-1.5 transition-colors ${method === 'cardTerminal' ? 'bg-[var(--color-ink)] text-[var(--color-porcelain)]' : 'text-[var(--color-stone)] hover:text-[var(--color-ink)]'}`}>Card Terminal</button>
                 <button type="button" onClick={() => { setMethod('treatwell'); setLinkQr(null); setPayErr(''); }} aria-pressed={method === 'treatwell'} className={`rounded-full px-3 py-1.5 transition-colors ${method === 'treatwell' ? 'bg-[var(--color-ink)] text-[var(--color-porcelain)]' : 'text-[var(--color-stone)] hover:text-[var(--color-ink)]'}`}>Treatwell</button>
+                <button type="button" onClick={() => { setMethod('classpass'); setLinkQr(null); setPayErr(''); }} aria-pressed={method === 'classpass'} className={`rounded-full px-3 py-1.5 transition-colors ${method === 'classpass' ? 'bg-[var(--color-ink)] text-[var(--color-porcelain)]' : 'text-[var(--color-stone)] hover:text-[var(--color-ink)]'}`}>ClassPass</button>
               </div>
             </div>
 
@@ -1024,6 +1031,15 @@ function CheckoutStep({ p, live, sessData, pending, presenting, api, run, onCont
                     {payBusy ? 'Recording…' : 'Record as paid via Treatwell'}
                   </button>
                   <p className="mt-2 max-w-md text-xs text-[var(--color-stone)]">Records the sale as settled on Treatwell — no card is charged here. Tip: invite {p.client.firstName} to book their next visit directly with us to skip the Treatwell commission.</p>
+                </div>
+              )}
+              {method === 'classpass' && (
+                <div>
+                  <button type="button" disabled={payBusy || !live.finishedAt} onClick={takeClasspass}
+                    className="min-h-12 rounded-full bg-[var(--color-gold-deep)] px-7 py-3 font-medium text-white transition-colors hover:bg-[var(--color-ink)] disabled:opacity-40">
+                    {payBusy ? 'Recording…' : 'Record as paid via ClassPass'}
+                  </button>
+                  <p className="mt-2 max-w-md text-xs text-[var(--color-stone)]">Records the sale as settled on ClassPass — no card is charged here. The credits are redeemed and paid out through ClassPass, not on our card rails.</p>
                 </div>
               )}
             </div>
