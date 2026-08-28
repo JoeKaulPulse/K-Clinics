@@ -31,6 +31,8 @@ const genderLabel = (g: string, selfDescribe?: string | null) =>
   g === 'OTHER' && selfDescribe ? selfDescribe : (GENDER_LABEL[g] ?? g);
 import { MedicalFlagEditor } from '@/components/admin/MedicalFlagEditor';
 import { PatchTestEditor } from '@/components/admin/PatchTestEditor';
+import { ClientStatusEditor } from '@/components/admin/ClientStatusEditor';
+import { ClientStatusBadge } from '@/components/admin/ClientStatusBadge';
 import { ClientTasks } from '@/components/admin/ClientTasks';
 import { LogIncident } from '@/components/admin/LogIncident';
 import { DataPrivacy } from '@/components/admin/DataPrivacy';
@@ -189,7 +191,15 @@ export default async function ClientDetail({ params }: { params: Promise<{ id: s
 
       <div className="mt-4 flex flex-wrap items-start justify-between gap-4">
         <div>
-          <h1 className="font-[family-name:var(--font-display)] text-3xl">{fullName}</h1>
+          <h1 className="flex flex-wrap items-center gap-2 font-[family-name:var(--font-display)] text-3xl">
+            {fullName}
+            <ClientStatusBadge status={c.clientStatus} />
+          </h1>
+          {c.clientStatus === 'RED' && (
+            <p role="alert" className="mt-2 inline-flex max-w-md items-center gap-1.5 rounded-[var(--radius-sm)] border border-[var(--color-blush-deep)] bg-[var(--color-blush)]/15 px-3 py-1.5 text-sm font-medium text-[var(--color-blush-deep)]">
+              ⚠ Blocked — this client cannot book appointments online.
+            </p>
+          )}
           <p className="mt-1 text-sm text-[var(--color-stone)]">
             {c.email}{c.phone ? ` · ${c.phone}` : ''}
             {c.dob ? ` · DOB ${new Date(c.dob).toLocaleDateString('en-GB')}` : ''}
@@ -510,6 +520,18 @@ export default async function ClientDetail({ params }: { params: Promise<{ id: s
         </div>
 
         <aside className="space-y-8">
+          {/* Client status — traffic light (BLD-1532). Not clinical data, so
+              gated on the general edit permission (matches the API route). */}
+          {sessionCan(session, 'clients.edit') && (
+            <ClientStatusEditor
+              clientId={c.id}
+              status={c.clientStatus}
+              setBy={c.clientStatusSetBy}
+              setAt={c.clientStatusAt ? c.clientStatusAt.toISOString() : null}
+              reason={c.clientStatusReason}
+            />
+          )}
+
           {/* Medical flag (clinical staff only) */}
           {clinical && (
             <MedicalFlagEditor

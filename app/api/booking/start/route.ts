@@ -33,6 +33,13 @@ export async function POST(req: Request) {
   const client = await getCurrentClient();
   if (!client) return NextResponse.json({ ok: false, error: 'Please create an account or sign in to book.' }, { status: 401 });
 
+  // BLD-1532: a client marked RED (blocked) by staff cannot book online at
+  // all — distinct from the staff-side flow, which only warns. Checked before
+  // any slot is held or a Stripe customer/SetupIntent is touched.
+  if (client.clientStatus === 'RED') {
+    return NextResponse.json({ ok: false, error: 'We’re unable to take this booking online. Please call the clinic to arrange your appointment.' }, { status: 403 });
+  }
+
   // BLD-1066: an unpaid late-cancellation/no-show fee blocks new bookings
   // until settled or waived (balance is derived — paying/waiving reopens
   // booking with nothing to reset).

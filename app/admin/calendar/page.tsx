@@ -10,6 +10,7 @@ import type { BookingStatus } from '@prisma/client';
 import { CalendarBlockButton } from '@/components/admin/CalendarBlockButton';
 import { CalendarClosureButton } from '@/components/admin/CalendarClosureButton';
 import { MonthCalendar } from '@/components/admin/MonthCalendar';
+import { ClientStatusDot } from '@/components/admin/ClientStatusBadge';
 import { clinicMinutesOfDay, clinicDateISO, clinicDayBounds } from '@/lib/clinic-time';
 
 export const dynamic = 'force-dynamic';
@@ -63,7 +64,7 @@ export default async function CalendarPage({ searchParams }: { searchParams: Pro
       // the slot is empty (client didn't attend) but the session was spent.
       where: { startAt: { gte: dayStart, lte: dayEnd }, OR: [{ status: { in: LIVE_STATUSES } }, { status: 'CANCELLED', packageSessionUsedAt: { not: null } }] },
       orderBy: { startAt: 'asc' },
-      include: { client: { select: { firstName: true, lastName: true, medicalFlag: true } } },
+      include: { client: { select: { firstName: true, lastName: true, medicalFlag: true, clientStatus: true } } },
     }),
     // Match the booking engine (lib/availability.ts): only time-off that
     // actually blocks bookings — exclude declined/cancelled requests, and
@@ -176,8 +177,17 @@ export default async function CalendarPage({ searchParams }: { searchParams: Pro
                         {b.startAt.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/London' })} {b.treatmentTitle}
                       </span>
                       {cancelledUsed && <span className="block truncate text-[var(--color-gold-deep)]">Cancelled — package session used</span>}
-                      <span className="block truncate text-[var(--color-stone)]">
-                        {b.client.firstName} {b.client.lastName ?? ''} {b.client.medicalFlag ? '⚠' : ''}
+                      {/* truncate must sit on the text child, not the flex row:
+                          text-overflow never applies to flex items, so a
+                          `flex truncate` row hard-clips a long name mid-letter
+                          instead of ellipsising it. On the inner span,
+                          overflow:hidden also drops its automatic min-width to
+                          0 so it actually shrinks inside the narrow block. */}
+                      <span className="flex items-center gap-1 text-[var(--color-stone)]">
+                        <ClientStatusDot status={b.client.clientStatus} />
+                        <span className="min-w-0 truncate">
+                          {b.client.firstName} {b.client.lastName ?? ''} {b.client.medicalFlag ? '⚠' : ''}
+                        </span>
                       </span>
                     </Link>
                     );
@@ -189,7 +199,7 @@ export default async function CalendarPage({ searchParams }: { searchParams: Pro
         </div>
         </div>
       </div>
-      <p className="mt-3 text-xs text-[var(--color-stone)]">Times in clinic local time. ⚠ indicates a client medical flag. Hatched blocks are staff time-off. Faded, struck-through blocks are cancelled appointments whose package session was still marked used.</p>
+      <p className="mt-3 text-xs text-[var(--color-stone)]">Times in clinic local time. ⚠ indicates a client medical flag. A coloured dot before the client's name is their status — amber for caution, red for blocked (green is unmarked and shown without a dot). Hatched blocks are staff time-off. Faded, struck-through blocks are cancelled appointments whose package session was still marked used.</p>
     </AdminShell>
   );
 }
