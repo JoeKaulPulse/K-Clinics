@@ -1,0 +1,548 @@
+BLOCK	A1:A2
+Raw catalogue extract — audit trail for the Pricing tab
+Source: live production database via authenticated admin scrape, 2026-08-28. Prices in pence as stored. costPence is NULL on every variant (no recorded COGS).
+BLOCK	A4:L4
+Service slug	Service	Category	vatClass (stored)	Service status	Variant	durationMin	displayDurationMin	pricePence	costPence	courses (JSON)	Variant status
+BLOCK	A5:I41
+lhr-women	Laser Hair Removal — Women	aesthetics	EXEMPT	CONSULTATION	Bikini Line	20	15	3500
+lhr-women	Laser Hair Removal — Women	aesthetics	EXEMPT	CONSULTATION	Brazilian	20	15	4300
+lhr-women	Laser Hair Removal — Women	aesthetics	EXEMPT	CONSULTATION	Hollywood Brazilian (incl. Peri-Anal)	30	20	5400
+lhr-women	Laser Hair Removal — Women	aesthetics	EXEMPT	CONSULTATION	Behind (Peri-Anal)	20	10	2600
+lhr-women	Laser Hair Removal — Women	aesthetics	EXEMPT	CONSULTATION	Brazilian/Bikini & Underarms	30	20	6000
+lhr-women	Laser Hair Removal — Women	aesthetics	EXEMPT	CONSULTATION	Hollywood Brazilian (incl. Peri-Anal) & Underarms	30	30	6400
+lhr-women	Laser Hair Removal — Women	aesthetics	EXEMPT	CONSULTATION	Hollywood Brazilian (incl. Peri-Anal) & Full Legs	40	30	11900
+lhr-women	Laser Hair Removal — Women	aesthetics	EXEMPT	CONSULTATION	Full Leg & Underarms	30	30	11500
+lhr-women	Laser Hair Removal — Women	aesthetics	EXEMPT	CONSULTATION	Lower Leg, Brazilian/Bikini & Underarms	40	40	9500
+lhr-women	Laser Hair Removal — Women	aesthetics	EXEMPT	CONSULTATION	Full Legs, Brazilian/Bikini & Underarms	50	40	12100
+lhr-women	Laser Hair Removal — Women	aesthetics	EXEMPT	CONSULTATION	Full Legs, Hollywood Brazilian (incl. Peri-Anal) & Underarms	50	50	14900
+lhr-women	Laser Hair Removal — Women	aesthetics	EXEMPT	CONSULTATION	Eyebrows (middle, above bridge of nose)	15	15	1100
+lhr-women	Laser Hair Removal — Women	aesthetics	EXEMPT	CONSULTATION	Lip	15	15	1500
+lhr-women	Laser Hair Removal — Women	aesthetics	EXEMPT	CONSULTATION	Chin	15	15	2300
+lhr-women	Laser Hair Removal — Women	aesthetics	EXEMPT	CONSULTATION	Sides of Face	20	20	2900
+lhr-women	Laser Hair Removal — Women	aesthetics	EXEMPT	CONSULTATION	Lip & Chin	20	20	3200
+lhr-women	Laser Hair Removal — Women	aesthetics	EXEMPT	CONSULTATION	Jawline & Chin	20	20	4000
+lhr-women	Laser Hair Removal — Women	aesthetics	EXEMPT	CONSULTATION	½ Face (forehead–nose or upper lip–chin)	20	20	4600
+lhr-women	Laser Hair Removal — Women	aesthetics	EXEMPT	CONSULTATION	Front of Neck	20	20	3400
+lhr-women	Laser Hair Removal — Women	aesthetics	EXEMPT	CONSULTATION	Back of Neck	20	20	3400
+lhr-women	Laser Hair Removal — Women	aesthetics	EXEMPT	CONSULTATION	Full Face	30	30	5400
+lhr-women	Laser Hair Removal — Women	aesthetics	EXEMPT	CONSULTATION	Full Face & Neck	30	30	6600
+lhr-women	Laser Hair Removal — Women	aesthetics	EXEMPT	CONSULTATION	Underarms	20	15	1700
+lhr-women	Laser Hair Removal — Women	aesthetics	EXEMPT	CONSULTATION	Snail Trail / Naval	20	20	2800
+lhr-women	Laser Hair Removal — Women	aesthetics	EXEMPT	CONSULTATION	Stomach	25	25	4300
+lhr-women	Laser Hair Removal — Women	aesthetics	EXEMPT	CONSULTATION	Shoulders	25	25	4300
+lhr-women	Laser Hair Removal — Women	aesthetics	EXEMPT	CONSULTATION	½ Arms	30	30	5800
+lhr-women	Laser Hair Removal — Women	aesthetics	EXEMPT	CONSULTATION	Chest	30	30	6900
+lhr-women	Laser Hair Removal — Women	aesthetics	EXEMPT	CONSULTATION	Chest & Stomach	35	30	8700
+lhr-women	Laser Hair Removal — Women	aesthetics	EXEMPT	CONSULTATION	Full Arms	35	30	10400
+lhr-women	Laser Hair Removal — Women	aesthetics	EXEMPT	CONSULTATION	Fingers & Toes	20	15	2300
+lhr-women	Laser Hair Removal — Women	aesthetics	EXEMPT	CONSULTATION	Feet & Toes	20	15	1500
+lhr-women	Laser Hair Removal — Women	aesthetics	EXEMPT	CONSULTATION	Buttocks	20	20	4500
+lhr-women	Laser Hair Removal — Women	aesthetics	EXEMPT	CONSULTATION	Half Body	50	50	14000
+lhr-women	Laser Hair Removal — Women	aesthetics	EXEMPT	CONSULTATION	Lower Leg	30	30	8400
+lhr-women	Laser Hair Removal — Women	aesthetics	EXEMPT	CONSULTATION	Full Legs	40	40	10100
+lhr-women	Laser Hair Removal — Women	aesthetics	EXEMPT	CONSULTATION	Full Body	60	60	21800
+BLOCK	K5:K104
+[{"sessions": 3, "totalPence": 9600}, {"sessions": 6, "totalPence": 18000}, {"sessions": 10, "totalPence": 28000}]
+[{"sessions": 3, "totalPence": 12300}, {"sessions": 6, "totalPence": 23400}, {"sessions": 10, "totalPence": 36000}]
+[{"sessions": 3, "totalPence": 14000}, {"sessions": 6, "totalPence": 23400}, {"sessions": 10, "totalPence": 37000}]
+[{"sessions": 3, "totalPence": 7100}, {"sessions": 6, "totalPence": 12700}, {"sessions": 10, "totalPence": 18000}]
+[{"sessions": 3, "totalPence": 17400}, {"sessions": 6, "totalPence": 33600}, {"sessions": 10, "totalPence": 53000}]
+[{"sessions": 3, "totalPence": 18000}, {"sessions": 6, "totalPence": 34200}, {"sessions": 10, "totalPence": 54000}]
+[{"sessions": 3, "totalPence": 34500}, {"sessions": 6, "totalPence": 66000}, {"sessions": 10, "totalPence": 108000}]
+[{"sessions": 3, "totalPence": 33300}, {"sessions": 6, "totalPence": 59400}, {"sessions": 10, "totalPence": 93000}]
+[{"sessions": 3, "totalPence": 25600}, {"sessions": 6, "totalPence": 45600}, {"sessions": 10, "totalPence": 67900}]
+[{"sessions": 3, "totalPence": 32800}, {"sessions": 6, "totalPence": 51800}, {"sessions": 10, "totalPence": 79400}]
+[{"sessions": 3, "totalPence": 39700}, {"sessions": 6, "totalPence": 65600}, {"sessions": 10, "totalPence": 102400}]
+[{"sessions": 3, "totalPence": 3000}, {"sessions": 6, "totalPence": 5400}, {"sessions": 10, "totalPence": 7000}]
+[{"sessions": 3, "totalPence": 4200}, {"sessions": 6, "totalPence": 7800}, {"sessions": 10, "totalPence": 12000}]
+[{"sessions": 3, "totalPence": 6600}, {"sessions": 6, "totalPence": 12600}, {"sessions": 10, "totalPence": 20000}]
+[{"sessions": 3, "totalPence": 7600}, {"sessions": 6, "totalPence": 13800}, {"sessions": 10, "totalPence": 20700}]
+[{"sessions": 3, "totalPence": 8000}, {"sessions": 6, "totalPence": 14500}, {"sessions": 10, "totalPence": 22500}]
+[{"sessions": 3, "totalPence": 11400}, {"sessions": 6, "totalPence": 21600}, {"sessions": 10, "totalPence": 34000}]
+[{"sessions": 3, "totalPence": 13000}, {"sessions": 6, "totalPence": 22800}, {"sessions": 10, "totalPence": 35100}]
+[{"sessions": 3, "totalPence": 9400}, {"sessions": 6, "totalPence": 17300}, {"sessions": 10, "totalPence": 25300}]
+[{"sessions": 3, "totalPence": 9400}, {"sessions": 6, "totalPence": 17300}, {"sessions": 10, "totalPence": 25300}]
+[{"sessions": 3, "totalPence": 15600}, {"sessions": 6, "totalPence": 30000}, {"sessions": 10, "totalPence": 44900}]
+[{"sessions": 3, "totalPence": 19000}, {"sessions": 6, "totalPence": 34500}, {"sessions": 10, "totalPence": 51800}]
+[{"sessions": 3, "totalPence": 4400}, {"sessions": 6, "totalPence": 7600}, {"sessions": 10, "totalPence": 11500}]
+[{"sessions": 3, "totalPence": 8000}, {"sessions": 6, "totalPence": 13800}, {"sessions": 10, "totalPence": 20000}]
+[{"sessions": 3, "totalPence": 11400}, {"sessions": 6, "totalPence": 20100}, {"sessions": 10, "totalPence": 28800}]
+[{"sessions": 3, "totalPence": 11400}, {"sessions": 6, "totalPence": 20100}, {"sessions": 10, "totalPence": 28800}]
+[{"sessions": 3, "totalPence": 16600}, {"sessions": 6, "totalPence": 30400}, {"sessions": 10, "totalPence": 44900}]
+[{"sessions": 3, "totalPence": 19000}, {"sessions": 6, "totalPence": 32500}, {"sessions": 10, "totalPence": 48300}]
+[{"sessions": 3, "totalPence": 23900}, {"sessions": 6, "totalPence": 44900}, {"sessions": 10, "totalPence": 65600}]
+[{"sessions": 3, "totalPence": 29400}, {"sessions": 6, "totalPence": 54600}, {"sessions": 10, "totalPence": 80400}]
+[{"sessions": 3, "totalPence": 5900}, {"sessions": 6, "totalPence": 10400}, {"sessions": 10, "totalPence": 15000}]
+[{"sessions": 3, "totalPence": 4200}, {"sessions": 6, "totalPence": 7800}, {"sessions": 10, "totalPence": 12000}]
+[{"sessions": 3, "totalPence": 12900}, {"sessions": 6, "totalPence": 24600}, {"sessions": 10, "totalPence": 39000}]
+[{"sessions": 3, "totalPence": 37500}, {"sessions": 6, "totalPence": 69000}, {"sessions": 10, "totalPence": 95000}]
+[{"sessions": 3, "totalPence": 24200}, {"sessions": 6, "totalPence": 44900}, {"sessions": 10, "totalPence": 67900}]
+[{"sessions": 3, "totalPence": 29000}, {"sessions": 6, "totalPence": 55200}, {"sessions": 10, "totalPence": 86300}]
+[{"sessions": 3, "totalPence": 57000}, {"sessions": 6, "totalPence": 82800}, {"sessions": 10, "totalPence": 113900}]
+[{"sessions": 3, "totalPence": 4500}, {"sessions": 6, "totalPence": 7200}, {"sessions": 10, "totalPence": 10000}]
+[{"sessions": 3, "totalPence": 15900}, {"sessions": 6, "totalPence": 29700}, {"sessions": 10, "totalPence": 44900}]
+[{"sessions": 3, "totalPence": 15900}, {"sessions": 6, "totalPence": 29700}, {"sessions": 10, "totalPence": 44900}]
+[{"sessions": 3, "totalPence": 20700}, {"sessions": 6, "totalPence": 37300}, {"sessions": 10, "totalPence": 58800}]
+[{"sessions": 3, "totalPence": 25600}, {"sessions": 6, "totalPence": 44900}, {"sessions": 10, "totalPence": 67900}]
+[{"sessions": 3, "totalPence": 9000}, {"sessions": 6, "totalPence": 15900}, {"sessions": 10, "totalPence": 22900}]
+[{"sessions": 3, "totalPence": 24200}, {"sessions": 6, "totalPence": 44200}, {"sessions": 10, "totalPence": 67900}]
+[{"sessions": 3, "totalPence": 24200}, {"sessions": 6, "totalPence": 44200}, {"sessions": 10, "totalPence": 67900}]
+[{"sessions": 3, "totalPence": 24200}, {"sessions": 6, "totalPence": 44200}, {"sessions": 10, "totalPence": 67900}]
+[{"sessions": 3, "totalPence": 29700}, {"sessions": 6, "totalPence": 53900}, {"sessions": 10, "totalPence": 81700}]
+[{"sessions": 3, "totalPence": 29700}, {"sessions": 6, "totalPence": 53900}, {"sessions": 10, "totalPence": 81700}]
+[{"sessions": 3, "totalPence": 29700}, {"sessions": 6, "totalPence": 53900}, {"sessions": 10, "totalPence": 81700}]
+[{"sessions": 3, "totalPence": 32100}, {"sessions": 6, "totalPence": 60100}, {"sessions": 10, "totalPence": 90900}]
+[{"sessions": 3, "totalPence": 32500}, {"sessions": 6, "totalPence": 59000}, {"sessions": 10, "totalPence": 82500}]
+[{"sessions": 3, "totalPence": 44900}, {"sessions": 6, "totalPence": 86300}, {"sessions": 10, "totalPence": 125400}]
+[{"sessions": 3, "totalPence": 61800}, {"sessions": 6, "totalPence": 113200}, {"sessions": 10, "totalPence": 171400}]
+[{"sessions": 3, "totalPence": 89400}, {"sessions": 6, "totalPence": 165000}, {"sessions": 10, "totalPence": 251900}]
+[{"sessions": 3, "totalPence": 17000}, {"sessions": 6, "totalPence": 30400}, {"sessions": 10, "totalPence": 47200}]
+[{"sessions": 3, "totalPence": 17000}, {"sessions": 6, "totalPence": 31100}, {"sessions": 10, "totalPence": 47200}]
+[{"sessions": 3, "totalPence": 27300}, {"sessions": 6, "totalPence": 49700}, {"sessions": 10, "totalPence": 77100}]
+[{"sessions": 3, "totalPence": 30800}, {"sessions": 6, "totalPence": 59400}, {"sessions": 10, "totalPence": 90900}]
+[{"sessions": 3, "totalPence": 31400}, {"sessions": 6, "totalPence": 58000}, {"sessions": 10, "totalPence": 89700}]
+[{"sessions": 3, "totalPence": 41800}, {"sessions": 6, "totalPence": 77300}, {"sessions": 10, "totalPence": 113900}]
+[{"sessions": 3, "totalPence": 189000}, {"sessions": 6, "totalPence": 342000}]
+[{"sessions": 3, "totalPence": 189000}]
+[{"sessions": 3, "totalPence": 40500}, {"sessions": 5, "totalPence": 60000}]
+[{"sessions": 3, "totalPence": 40500}, {"sessions": 5, "totalPence": 60000}]
+[{"sessions": 2, "totalPence": 41600}]
+[{"sessions": 2, "totalPence": 53700}]
+[{"sessions": 2, "totalPence": 80100}, {"sessions": 3, "totalPence": 114900}]
+[{"sessions": 3, "totalPence": 25600}, {"sessions": 6, "totalPence": 47900}]
+[{"sessions": 3, "totalPence": 33100}, {"sessions": 6, "totalPence": 59900}]
+[{"sessions": 3, "totalPence": 55200}, {"sessions": 6, "totalPence": 97700}]
+[{"sessions": 3, "totalPence": 62400}, {"sessions": 6, "totalPence": 112200}]
+[{"sessions": 6, "totalPence": 37200}, {"sessions": 10, "totalPence": 51500}]
+[{"sessions": 6, "totalPence": 49800}, {"sessions": 10, "totalPence": 62000}]
+[{"sessions": 6, "totalPence": 24500}, {"sessions": 10, "totalPence": 38500}]
+[{"sessions": 6, "totalPence": 24500}, {"sessions": 10, "totalPence": 38500}]
+[{"sessions": 6, "totalPence": 62700}, {"sessions": 10, "totalPence": 93500}]
+[{"sessions": 6, "totalPence": 95700}, {"sessions": 10, "totalPence": 148500}]
+[{"sessions": 6, "totalPence": 131400}, {"sessions": 10, "totalPence": 203500}]
+[{"sessions": 4, "totalPence": 106000}, {"sessions": 6, "totalPence": 153000}]
+[{"sessions": 3, "totalPence": 26700}, {"sessions": 6, "totalPence": 47400}]
+[{"sessions": 3, "totalPence": 39900}, {"sessions": 6, "totalPence": 70800}]
+[{"sessions": 3, "totalPence": 51900}, {"sessions": 6, "totalPence": 94800}]
+[{"sessions": 3, "totalPence": 51900}, {"sessions": 6, "totalPence": 94800}]
+[{"sessions": 3, "totalPence": 51900}, {"sessions": 6, "totalPence": 94800}]
+[{"sessions": 3, "totalPence": 51900}, {"sessions": 6, "totalPence": 94800}]
+[{"sessions": 3, "totalPence": 51900}, {"sessions": 6, "totalPence": 94800}]
+[{"sessions": 3, "totalPence": 97500}]
+[{"sessions": 3, "totalPence": 97500}]
+[{"sessions": 3, "totalPence": 97500}]
+[{"sessions": 3, "totalPence": 112500}]
+[{"sessions": 3, "totalPence": 130500}]
+[{"sessions": 3, "totalPence": 148500}]
+[{"sessions": 3, "totalPence": 112500}]
+[{"sessions": 3, "totalPence": 91500}]
+[{"sessions": 3, "totalPence": 97500}]
+[{"sessions": 3, "totalPence": 91500}]
+[{"sessions": 3, "totalPence": 97500}]
+[{"sessions": 3, "totalPence": 88500}]
+[{"sessions": 3, "totalPence": 97500}]
+[{"sessions": 3, "totalPence": 32000}]
+BLOCK	A42:C176
+lhr-men	Laser Hair Removal — Men	aesthetics
+lhr-men	Laser Hair Removal — Men	aesthetics
+lhr-men	Laser Hair Removal — Men	aesthetics
+lhr-men	Laser Hair Removal — Men	aesthetics
+lhr-men	Laser Hair Removal — Men	aesthetics
+lhr-men	Laser Hair Removal — Men	aesthetics
+lhr-men	Laser Hair Removal — Men	aesthetics
+lhr-men	Laser Hair Removal — Men	aesthetics
+lhr-men	Laser Hair Removal — Men	aesthetics
+lhr-men	Laser Hair Removal — Men	aesthetics
+lhr-men	Laser Hair Removal — Men	aesthetics
+lhr-men	Laser Hair Removal — Men	aesthetics
+lhr-men	Laser Hair Removal — Men	aesthetics
+lhr-men	Laser Hair Removal — Men	aesthetics
+lhr-men	Laser Hair Removal — Men	aesthetics
+lhr-men	Laser Hair Removal — Men	aesthetics
+lhr-men	Laser Hair Removal — Men	aesthetics
+lhr-men	Laser Hair Removal — Men	aesthetics
+lhr-men	Laser Hair Removal — Men	aesthetics
+lhr-men	Laser Hair Removal — Men	aesthetics
+lhr-men	Laser Hair Removal — Men	aesthetics
+lhr-men	Laser Hair Removal — Men	aesthetics
+lhr-men	Laser Hair Removal — Men	aesthetics
+intimate-rejuvenation	Intimate Rejuvenation	aesthetics
+intimate-rejuvenation	Intimate Rejuvenation	aesthetics
+laser-pigmentation	Laser Pigmentation Removal	aesthetics
+vascular-lesions	Vascular Lesions Treatment	aesthetics
+spider-veins	Spider Veins Removal	aesthetics
+spider-veins	Spider Veins Removal	aesthetics
+spider-veins	Spider Veins Removal	aesthetics
+carbon-laser-peel	Carbon Laser Facial (Hollywood Peel)	aesthetics
+carbon-laser-peel	Carbon Laser Facial (Hollywood Peel)	aesthetics
+carbon-laser-peel	Carbon Laser Facial (Hollywood Peel)	aesthetics
+carbon-laser-peel	Carbon Laser Facial (Hollywood Peel)	aesthetics
+fungal-nail	Laser Fungal Nail Treatment	aesthetics
+fungal-nail	Laser Fungal Nail Treatment	aesthetics
+laser-tattoo-removal	Laser Tattoo Removal	aesthetics
+laser-tattoo-removal	Laser Tattoo Removal	aesthetics
+laser-tattoo-removal	Laser Tattoo Removal	aesthetics
+laser-tattoo-removal	Laser Tattoo Removal	aesthetics
+laser-tattoo-removal	Laser Tattoo Removal	aesthetics
+pmu-removal	Permanent Make-Up Removal	aesthetics
+hydrafacial	HydraFacial	aesthetics
+hydrafacial	HydraFacial	aesthetics
+hydrafacial	HydraFacial	aesthetics
+hydrafacial	HydraFacial	aesthetics
+hydrafacial	HydraFacial	aesthetics
+hydrafacial	HydraFacial	aesthetics
+hydrafacial	HydraFacial	aesthetics
+smas-hifu	SMAS HIFU Lifting	aesthetics
+smas-hifu	SMAS HIFU Lifting	aesthetics
+smas-hifu	SMAS HIFU Lifting	aesthetics
+smas-hifu	SMAS HIFU Lifting	aesthetics
+smas-hifu	SMAS HIFU Lifting	aesthetics
+smas-hifu	SMAS HIFU Lifting	aesthetics
+smas-hifu	SMAS HIFU Lifting	aesthetics
+smas-hifu	SMAS HIFU Lifting	aesthetics
+smas-hifu	SMAS HIFU Lifting	aesthetics
+smas-hifu	SMAS HIFU Lifting	aesthetics
+smas-hifu	SMAS HIFU Lifting	aesthetics
+smas-hifu	SMAS HIFU Lifting	aesthetics
+smas-hifu	SMAS HIFU Lifting	aesthetics
+cosmetic-peels	Cosmetic Peels	aesthetics
+fat-dissolving	Fat-Dissolving Injections	aesthetics
+fat-dissolving	Fat-Dissolving Injections	aesthetics
+fat-dissolving	Fat-Dissolving Injections	aesthetics
+rf-lifting	RF Lifting	aesthetics
+ipl-phototherapy	IPL Phototherapy	aesthetics
+ipl-phototherapy	IPL Phototherapy	aesthetics
+laser-skin-rejuvenation	Laser Skin Rejuvenation	aesthetics
+laser-skin-rejuvenation	Laser Skin Rejuvenation	aesthetics
+laser-skin-resurfacing	Laser Skin Resurfacing	aesthetics
+endosphere	Endosphere Body Contouring	aesthetics
+endosphere	Endosphere Body Contouring	aesthetics
+endosphere	Endosphere Body Contouring	aesthetics
+endosphere	Endosphere Body Contouring	aesthetics
+caci	CACI Treatment	aesthetics
+caci	CACI Treatment	aesthetics
+caci	CACI Treatment	aesthetics
+caci	CACI Treatment	aesthetics
+red-carpet-lift	Red Carpet Lift	aesthetics
+bb-glow-r3q4	BB Glow	aesthetics
+massage-yuli	Massage	aesthetics
+massage-yuli	Massage	aesthetics
+massage-yuli	Massage	aesthetics
+massage-yuli	Massage	aesthetics
+massage-yuli	Massage	aesthetics
+massage-yuli	Massage	aesthetics
+massage-yuli	Massage	aesthetics
+microneedling-oosw	Microneedling	aesthetics
+microneedling-oosw	Microneedling	aesthetics
+microneedling-oosw	Microneedling	aesthetics
+vacuum-massage-68b9	Vacuum massage	aesthetics
+vacuum-massage-68b9	Vacuum massage	aesthetics
+vacuum-massage-68b9	Vacuum massage	aesthetics
+deep-cleansing-8y6d	Deep Cleansing	aesthetics
+deep-cleansing-8y6d	Deep Cleansing	aesthetics
+deep-cleansing-8y6d	Deep Cleansing	aesthetics
+deep-cleansing-8y6d	Deep Cleansing	aesthetics
+led-light-therapy-9h76	LED Light Therapy	aesthetics
+face-head-massage-ax9e	Face&Head Massage	aesthetics
+face-head-massage-ax9e	Face&Head Massage	aesthetics
+face-head-massage-ax9e	Face&Head Massage	aesthetics
+face-head-massage-ax9e	Face&Head Massage	aesthetics
+microdermabrasion-epd8	Microdermabrasion	aesthetics
+microcurrent-lifting-fm2d	Microcurrent lifting	aesthetics
+microcurrent-lifting-fm2d	Microcurrent lifting	aesthetics
+microcurrent-lifting-fm2d	Microcurrent lifting	aesthetics
+botox-j2j7	Botox	aesthetics
+botox-j2j7	Botox	aesthetics
+botox-j2j7	Botox	aesthetics
+botox-j2j7	Botox	aesthetics
+botox-j2j7	Botox	aesthetics
+botox-j2j7	Botox	aesthetics
+lip-filler-k4wd	Lip Filler	aesthetics
+lip-filler-k4wd	Lip Filler	aesthetics
+lip-filler-k4wd	Lip Filler	aesthetics
+lip-filler-k4wd	Lip Filler	aesthetics
+mesotherapy-mfc8	Mesotherapy	aesthetics
+mesotherapy-mfc8	Mesotherapy	aesthetics
+mesotherapy-mfc8	Mesotherapy	aesthetics
+mesotherapy-mfc8	Mesotherapy	aesthetics
+mesotherapy-mfc8	Mesotherapy	aesthetics
+polynucleotides-n29n	Polynucleotides	aesthetics
+polynucleotides-n29n	Polynucleotides	aesthetics
+polynucleotides-n29n	Polynucleotides	aesthetics
+polynucleotides-n29n	Polynucleotides	aesthetics
+rosacea-treatment-ojdv	Rosacea Treatment	aesthetics
+laser-wrinkles-removal-oyti	Laser Wrinkles Removal	aesthetics
+botox-r9w5	Botox	aesthetics
+botox-r9w5	Botox	aesthetics
+botox-r9w5	Botox	aesthetics
+botox-r9w5	Botox	aesthetics
+botox-r9w5	Botox	aesthetics
+botox-r9w5	Botox	aesthetics
+BLOCK	E42:I64
+NORMAL	Centre Brow	20	20	1700
+NORMAL	Front of Neck	20	20	5700
+NORMAL	Back of Neck	20	20	5700
+NORMAL	Full Beard	30	30	7500
+NORMAL	Full Beard & Neck	40	40	9000
+NORMAL	Underarms	20	20	3300
+NORMAL	½ Arms	30	30	9000
+NORMAL	Shoulders	20	20	9000
+NORMAL	Lower Back	30	30	9000
+NORMAL	Full Arms	40	40	10500
+NORMAL	Chest	25	25	10500
+NORMAL	Stomach	25	25	10500
+NORMAL	Chest & Stomach	30	30	11500
+NORMAL	Full Back	40	40	14700
+NORMAL	Full Back & Shoulders	50	50	15800
+NORMAL	Full Back, Shoulders, Chest & Stomach	60	60	21900
+NORMAL	Full Body (excl. face)	70	70	32100
+NORMAL	Feet & Toes	20	20	6100
+NORMAL	Buttocks	20	20	6300
+NORMAL	Male Brazilian	30	30	9500
+NORMAL	Lower Legs	40	40	11000
+NORMAL	Any Male Bikini (incl. Peri-Anal)	30	30	11800
+NORMAL	Full Legs	60	60	14700
+BLOCK	E65:G66
+COMING_SOON	CO2 Laser Rejuvenation	40
+COMING_SOON	Intimate Area Whitening	40
+BLOCK	I65:I66
+69000
+69000
+BLOCK	E67:I71
+NORMAL	laser pigmentation Face	30	30	15000
+NORMAL	Face	30	30	15000
+CONSULTATION	Nose Thread Vein	25	30	23000
+CONSULTATION	Cheek Thread Vein	30	30	29600
+CONSULTATION	Leg Thread Vein	40	40	41700
+BLOCK	E72:G83
+INACTIVE (service.active=false, stored status NORMAL)	Neck	30
+INACTIVE (service.active=false, stored status NORMAL)	Full Face	50
+INACTIVE (service.active=false, stored status NORMAL)	Face & Neck	60
+INACTIVE (service.active=false, stored status NORMAL)	Face, Neck & Décolleté	70
+COMING_SOON	1 Foot	30
+COMING_SOON	2 Feet	40
+COMING_SOON	Very Small (1–3 cm)	20
+COMING_SOON	Small (4–6 cm)	20
+COMING_SOON	Medium (7–15 cm)	25
+COMING_SOON	Large (16–20 cm)	35
+COMING_SOON	X-Large (21 cm+)	45
+COMING_SOON	Eyebrows	30
+BLOCK	I72:I83
+9000
+12100
+20500
+23700
+7900
+10000
+4400
+6600
+11600
+16500
+23700
+27500
+BLOCK	E84:I117
+NORMAL	Signature Express (30 min)	45	30	9500
+NORMAL	Full Face Deluxe (50 min)	60	50	14500
+NORMAL	Platinum — Anti-Acne (60 min)	70	60	18500
+NORMAL	Platinum — Collagen (60 min)	70	60	18500
+NORMAL	Platinum — Pigmentation & Sun Damage (60 min)	70	60	18500
+NORMAL	Platinum — Anti-Ageing (60 min)	70	60	18500
+NORMAL	Platinum — Brightening (60 min)	70	60	18500
+NORMAL	Eyebrow Lift	30	30	34900
+NORMAL	Forehead Lift	30	30	34900
+NORMAL	Neck Lift	40	40	34900
+NORMAL	Jawline Lift	40	40	39900
+NORMAL	Full Face	60	60	47900
+NORMAL	Full Face & Neck	60	60	55900
+NORMAL	Stomach	60	60	39900
+NORMAL	Outer Thighs	60	60	32900
+NORMAL	Inner Thighs	60	60	34900
+NORMAL	Back & Flanks	60	60	32900
+NORMAL	Buttock	60	60	34900
+NORMAL	Skin Above the Knee Caps	40	40	30900
+NORMAL	Arms (bingo wings)	50	50	34900
+NORMAL	Full Face	60	60	12500
+NORMAL	Small Area (under chin)	30	30	14500
+NORMAL	Medium Area (Stomach, Bingo Wings, Knees)	30	30	22500
+NORMAL	Large Area (Things, Waist, Stomach)	30	30	29000
+NORMAL	RF Lifting	60	60	26000
+NORMAL	Face	30	30	15000
+NORMAL	Face & Neck	30	30	21000
+NORMAL	Face & Neck	45	45	21000
+NORMAL	Face	40	40	15000
+NORMAL	Laser Skin Resurfacing	60	60	18000
+NORMAL	BodyShpere 30 min	35	30	7500
+NORMAL	BodyShpere 45 min	45	45	10500
+NORMAL	BodyShpere 60 min	60	60	12000
+NORMAL	BodyShpere & Facial Massage 60 min	60	60	12500
+BLOCK	K108:K110
+[{"sessions": 3, "totalPence": 69000}, {"sessions": 5, "totalPence": 107500}]
+[{"sessions": 3, "totalPence": 40500}, {"sessions": 5, "totalPence": 60000}]
+[{"sessions": 3, "totalPence": 57000}, {"sessions": 5, "totalPence": 85000}]
+BLOCK	K111:L112
+[{"sessions": 3, "totalPence": 57000}, {"sessions": 5, "totalPence": 85000}]	NORMAL
+[{"sessions": 3, "totalPence": 40500}, {"sessions": 5, "totalPence": 60000}]	NORMAL
+BLOCK	K113:K120
+[{"sessions": 3, "totalPence": 48000}, {"sessions": 5, "totalPence": 45000}]
+[{"sessions": 3, "totalPence": 21000}, {"sessions": 6, "totalPence": 40200}, {"sessions": 10, "totalPence": 65000}]
+[{"sessions": 3, "totalPence": 30000}, {"sessions": 6, "totalPence": 58200}, {"sessions": 10, "totalPence": 95000}]
+[{"sessions": 3, "totalPence": 34500}, {"sessions": 6, "totalPence": 67200}, {"sessions": 10, "totalPence": 110000}]
+[{"sessions": 3, "totalPence": 36000}, {"sessions": 6, "totalPence": 69000}, {"sessions": 10, "totalPence": 112000}]
+[{"sessions": 3, "totalPence": 40500}, {"sessions": 6, "totalPence": 78000}, {"sessions": 10, "totalPence": 126000}, {"sessions": 12, "totalPence": 144000}]
+[{"sessions": 3, "totalPence": 43800}, {"sessions": 6, "totalPence": 85200}, {"sessions": 10, "totalPence": 138000}, {"sessions": 12, "totalPence": 159600}]
+[{"sessions": 3, "totalPence": 19800}, {"sessions": 6, "totalPence": 37800}, {"sessions": 10, "totalPence": 59000}, {"sessions": 12, "totalPence": 68400}]
+BLOCK	E118:G122
+INACTIVE (service.active=false, stored status NORMAL)	CACI Face & Neck Lift	70
+INACTIVE (service.active=false, stored status NORMAL)	CACI with Hydra Mask	70
+INACTIVE (service.active=false, stored status NORMAL)	CACI Jaw Line Lift	40
+INACTIVE (service.active=false, stored status NORMAL)	Microcurrent	30
+INACTIVE (service.active=false, stored status NORMAL)	BB Glow	50
+BLOCK	I118:I122
+14000
+15000
+7000
+8500
+14500
+BLOCK	K122:K123
+[{"sessions": 3, "totalPence": 39500}, {"sessions": 6, "totalPence": 76000}]
+[{"sessions": 3, "totalPence": 39500}, {"sessions": 6, "totalPence": 76000}]
+BLOCK	E123:I123
+NORMAL	BB Glow	60	60	14500
+BLOCK	E124:G130
+NORMAL	Deep Tissue Massage	60
+NORMAL	Swedish Massage	60
+NORMAL	Back, Neck & Shoulders Massage	30
+NORMAL	Relaxing Massage	60
+NORMAL	Hot Stone Massage	60
+NORMAL	Full Body Massage	60
+NORMAL	Lymphatic Drainage Massage	60
+BLOCK	I124:I130
+9500
+9500
+6000
+9500
+10500
+9500
+9500
+BLOCK	E131:I141
+NORMAL	Microneedling for face	60	60	9500
+NORMAL	Microneedling for face and neck	60	60	11500
+NORMAL	Microneedling with hyaluronic acid serum or exosome serum	60	60	14500
+NORMAL	Vacuum massage (30 min)	40	30	7500
+NORMAL	Vacuum massage (45 min)	50	35	10500
+NORMAL	Vacuum massage (60 min)	70	60	12000
+NORMAL	Deep Cleansing Classic	60	60	9500
+NORMAL	Deep Cleansing with LED Therapy	70	70	14500
+NORMAL	Deep Cleansing with Alginate Mask	70	70	15500
+NORMAL	Deep Cleansing with Peel	70	70	17500
+NORMAL	Facial LED Light Therapy	30	30	4500
+BLOCK	K131:K136
+[{"sessions": 3, "totalPence": 27000}]
+[{"sessions": 3, "totalPence": 31500}]
+[{"sessions": 3, "totalPence": 40500}]
+[{"sessions": 3, "totalPence": 21000}, {"sessions": 6, "totalPence": 40200}, {"sessions": 10, "totalPence": 65000}]
+[{"sessions": 3, "totalPence": 30000}, {"sessions": 6, "totalPence": 58200}, {"sessions": 10, "totalPence": 95000}]
+[{"sessions": 3, "totalPence": 34500}, {"sessions": 6, "totalPence": 67200}, {"sessions": 10, "totalPence": 110000}]
+BLOCK	E142:G145
+NORMAL	Head Massage	30
+NORMAL	Face Massage 15 min	15
+NORMAL	Face Massage 30 min	30
+NORMAL	Indian Head Massage	30
+BLOCK	I142:I145
+4500
+3500
+5500
+4500
+BLOCK	E146:I149
+NORMAL	Microdermabrasion	30	30	8000
+NORMAL	Microcurrent lifting	45	45	8500
+NORMAL	Microcurrent lifting face & neck lift	60	60	14000
+NORMAL	Microcurrent lifting with hydra mask	60	60	15000
+BLOCK	K146:K149
+[{"sessions": 3, "totalPence": 21500}]
+[{"sessions": 5, "totalPence": 40000}, {"sessions": 10, "totalPence": 75000}]
+[{"sessions": 5, "totalPence": 67500}, {"sessions": 10, "totalPence": 126000}]
+[{"sessions": 5, "totalPence": 71000}, {"sessions": 10, "totalPence": 138000}]
+BLOCK	E150:G168
+NORMAL	Ladie's Anti-Wrinkle 1 area	40
+NORMAL	Ladie's Anti-Wrinkle 2 area	40
+NORMAL	Ladie's Anti-Wrinkle 3 area	40
+NORMAL	Ladie's Men's-Wrinkle 1 area	40
+NORMAL	Ladie's Men's-Wrinkle 2 area	40
+NORMAL	Ladie's Men's-Wrinkle 3 area	40
+NORMAL	Lip Filler 0.5 ml	40
+NORMAL	Lip Filler 0.7 ml	40
+NORMAL	Lip Filler 1 ml	40
+NORMAL	Lip Filler 1.5 ml	40
+NORMAL	Mesotherapy Under Eyes	45
+NORMAL	Mesotherapy Full Face	45
+NORMAL	Mesotherapy Decolletage	45
+NORMAL	Mesotherapy Hair Growth	45
+NORMAL	Mesotherapy Neck	45
+NORMAL	Polynucleotides Face	40
+NORMAL	Polynucleotides Eyes	40
+NORMAL	Polynucleotides Hair Rejuvenation	40
+NORMAL	Rejuran Healer - Advanced Polynucleotides	50
+BLOCK	I150:I168
+17500
+20000
+25000
+19500
+22000
+27000
+18000
+20000
+23000
+28000
+17500
+18500
+19000
+19000
+19000
+17000
+17000
+17000
+20000
+BLOCK	K165:K170
+[{"sessions": 2, "totalPence": 32000}, {"sessions": 3, "totalPence": 49000}]
+[{"sessions": 2, "totalPence": 32000}, {"sessions": 3, "totalPence": 49000}]
+[{"sessions": 2, "totalPence": 32000}, {"sessions": 3, "totalPence": 49000}]
+[{"sessions": 3, "totalPence": 45000}]
+[{"sessions": 3, "totalPence": 40500}, {"sessions": 5, "totalPence": 60000}]
+[{"sessions": 3, "totalPence": 40500}, {"sessions": 5, "totalPence": 60000}]
+BLOCK	E169:I170
+NORMAL	Rosacea Treatment Face	30	30	15000
+NORMAL	Laser Wrinkles Removal Face	30	30	15000
+BLOCK	E171:G176
+NORMAL	Ladie's Anti-Wrinkle 1 area	40
+NORMAL	Ladie's Anti-Wrinkle 2 area	40
+NORMAL	Ladie's Anti-Wrinkle 3 area	40
+NORMAL	Ladie's Men's-Wrinkle 1 area	40
+NORMAL	Ladie's Men's-Wrinkle 2 area	40
+NORMAL	Ladie's Men's-Wrinkle 3 area	40
+BLOCK	I171:I176
+17500
+20000
+25000
+19500
+22000
+27000
+VAL	A179	Booking mix — last 90 days (post-reopening)
+BLOCK	A180:B196
+treatmentSlug	bookings90d
+laser-hair-removal	131
+consultation	38
+hydraglow-facial	14
+laser-hair-removal-for-men	10
+body-contouring	9
+microcurrent-facial	6
+microneedling	4
+rf-skin-tightening	3
+spider-veins-removal	2
+pigmentation-correction	2
+vascular-lesions-treatment	1
+vacuum-massage	1
+microdermabrasion	1
+cosmetic-injectables	1
+smas-hifu-lifting	1
+cosmetic-injections	1

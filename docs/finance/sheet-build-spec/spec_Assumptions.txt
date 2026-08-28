@@ -1,0 +1,66 @@
+SET	B20	=Assumptions!$B$12*Assumptions!$B$15/(Assumptions!$B$19*Assumptions!$B$18)
+SET	B21	=Assumptions!$B$18*Assumptions!$B$19/12
+BLOCK	A1:A2
+Assumptions — every editable input in the model
+Blue on cream = edit me. Column D says where each number came from. Nothing else in the workbook is hardcoded.
+VAL	A4	CLINIC & CAPACITY
+BLOCK	A5:D10
+Model start month	2026-09-01	date	First forecast month. Clinic re-opened 30 May 2026; model starts Sep 2026.
+Usable treatment rooms	9	rooms	11 active rooms in DB (3 Aesthetics, 2 Dental, 6 Treatment); 2 dental rooms excluded until dentistry launches (separate company). ESTIMATE — confirm dental rooms are not used as overflow.
+Rooms heated/cooled (HVAC)	9	rooms	Rooms actively conditioned. Set to 11 if dental rooms are kept conditioned while mothballed.
+Open days per week	6	days	Live booking hours imply ~57 open hours/week.
+Open hours per day	9.5	hours	57 open hours/week ÷ 6 days.
+Assumed room size	15	m²	ASSUMPTION — no floor area in codebase or lease data. Drives the HVAC curve on the Energy tab.
+VAL	A11	STAFFING
+BLOCK	A12:D15
+Practitioner salary	41000	£/yr	Glassdoor London aesthetic practitioner avg £41,155; skin & laser therapist UK avg £38,637, London upper half; hourly £14–£25
+Receptionist salary	27000	£/yr	Indeed London £29,652 / PayScale £26,494; London private-clinic roles £24k–£30k
+Owner salary (market rate)	48000	£/yr	GAP — owner remuneration undefined. £48k market-rate placeholder so owner labour is not modelled as free. Set to your actual salary/dividend policy.
+Employer on-cost multiplier	1.16	×	2026/27 employer NI 15% above £5,000 secondary threshold + 3% auto-enrolment pension on qualifying earnings (£6,240–£50,270) = ~15–17% on-cost for £25k–£45k staff; Employment Allowance can offset first £10,500 of NI if eligible
+BLOCK	A16:E17
+Practitioners — headcount Y1 / Y2 / Y3	2	3	Y1 in column B, Y2 in column C, Y3 in column E. Defaults 2/3/5 track the default utilisation ramp.	5
+Receptionists — headcount Y1 / Y2 / Y3	1	1	Y1 in column B, Y2 in column C, Y3 in column E.	2
+BLOCK	A18:D19
+Practitioner productive treatment hours/week	30	hrs	Hours actually treating (vs admin/gaps) — drives labour cost per session in Pricing.
+Working weeks per year	46	wks	52 minus holiday/sickness/training.
+BLOCK	A20:A22
+Loaded practitioner cost per treatment hour
+Practitioner capacity per month
+ENERGY
+BLOCK	C20:D21
+£/hr	Calculated: salary × on-cost ÷ (working weeks × productive hours). Used in Pricing unit economics.
+hrs/mo	Per practitioner FTE — used by the P&L capacity check.
+BLOCK	A23:D25
+Electricity unit rate	27	p/kWh	Aug 2026 UK small-business market: AquaSwitch/BusinessEnergyDeals average ~29.6p, competitive fixed deals 20–23p; Ofgem Jul–Sep 2026 domestic cap 26.11p cross-check. 27p chosen as central figure for a micro-business on a 2026 fixed deal; small businesses pay 20% VAT on energy unless <33 kWh/day.
+Standing charge	55	p/day	BusinessEnergyDeals/AquaSwitch Aug 2026: average 55.3p/day small business, supplier range 34.7–105.9p.
+Base load (lighting, fridge, autoclave, PCs)	12	kWh/day	Bottom-up: LED lighting 5–8 kWh, autoclave cycles 2–4 kWh, medical/skincare fridge 1.5–3 kWh (24/7), PCs/screens/kiosk 1.5–3 kWh, misc 1–3 kWh. Consistent with Ofgem micro-business band (5,000–15,000 kWh/yr) minus HVAC.
+BLOCK	A26:B26
+Heating & cooling	see Energy tab
+VAL	D26	NO GAS MODELLED — 4 Charterhouse Buildings (converted Clerkenwell building) assumed all-electric per CIBSE TM46 'general retail' zero fossil-thermal convention; heating via reverse-cycle splits at COP 3 on the electricity tariff. Confirm no gas meter on the lease (gap). Seasonal per-room kWh curve is editable on the Energy tab.
+VAL	A27	PROPERTY
+BLOCK	A28:D30
+Rent	64000	£/yr	NO FLOOR AREA IN CODEBASE. Placeholder = 2,000 sqft x £32/sqft. Goswell Rd EC1M comparables Aug 2026: £27–£34/sqft (1,283 sqft at £35k pa; 972 sqft at £2,750/mo); Charterhouse Buildings is secondary frontage — use £30–£35/sqft, NOT prime Clerkenwell £50+. An 11-room clinic implies roughly 1,800–3,000 sqft; get the actual lease figure (gap).
+Business rates	11500	£/yr	RV unknown — check VOA. 2026/27 RHL small multiplier 38.2p/£ (RV<£51k) if retail/hospitality/leisure status granted; general small multiplier 48p otherwise; RV ≤ £12k = nil via Small Business Rate Relief. Placeholder assumes RV ~£30k x 38.2p.
+Service charge / building costs	0	£/yr	Unknown — set from the lease.
+VAL	A31	OTHER OVERHEADS
+BLOCK	A32:D37
+Insurance (treatment risk + PL + laser cover)	1500	£/yr	Hamilton Fraser/PolicyBee: PI+PL from £300–£600; £1m treatment liability incl. laser/IPL from £573; device-based laser cover adds £500–£2,000. Laser-led clinic with employed staff typically £1,000–£3,000. Laser claims are ~half of insurer claims (avg payout £4,307) — do not skimp.
+Platform hosting & infra	50	£/mo	OVERRIDES the £100/mo benchmark: K-Clinics runs its OWN booking/CRM/admin platform (this repo, Vercel + Postgres/Neon) — no third-party licence. Line = hosting/infra: Vercel Pro ~£16/mo + Neon + email/VoIP (yay.com) + AI API usage, ~£30–£100/mo. Flag: developer/maintenance time is an unmodelled cost (gap).
+Card processing fee	0.017	% of card takings	UK SMB blended 2026: SumUp 1.69%/Square 1.75% in-person, 2.5% online/payment links. Stripe card-on-file (SetupIntent) flow in use — online-rate share will pull the blend toward 2%+; apply to ~95% of turnover (assume near-cashless).
+Card share of turnover	0.95	%	Near-cashless assumption (Stripe card-on-file flow in use).
+Cleaning & sundries	400	£/mo	ESTIMATE — laundry, room consumables not tied to treatments, waste disposal (clinical waste contract).
+Other fixed costs	200	£/mo	ESTIMATE — accountancy, bank, phone/VoIP, misc subscriptions.
+VAL	A38	MARKETING
+BLOCK	A39:E39
+Marketing % of net revenue — Y1 / Y2 / Y3	0.12	0.1	UK aesthetic clinic benchmarks (Pulse Digital, Aesthetic Launch Lab): growing clinics 7–12%, new clinics 12–15%; single-site commit £1.5k–£5k/mo. Paid-ads CAC ~£45/booked consultation (£30–£60). Clinic reopened May 2026 — use 12–15% (or the £1,500 floor if higher) for year 1, taper to 8–10%. Y1 in B, Y2 in C, Y3 in E.	0.08
+BLOCK	A40:D40
+Marketing monthly floor	1500	£/mo	Spend floor while revenue is small — you cannot ramp without visibility. CAC benchmark ~£45/booked consultation.
+VAL	A41	VAT & TAX
+BLOCK	A42:D48
+VAT standard rate	0.2	%	STANDARD-RATED 20%. All 36 null-vatClass services derive as STANDARD in the app. The 'Laser Hair Removal — Women' EXEMPT flag is treated as a DATA-ENTRY ERROR, not a tax fact: UK medical exemption requires a genuine medical purpose by a regulated professional (Illuminate Skin Clinics v HMRC UT 2025; Advanced Hair Technology; HMRC actively scrutinising clinics 2026), and the men's counterpart is standard-rated. Model 20% on the whole aesthetics catalogue; log the flag for correction.
+VAT registration threshold	90000	£ rolling 12-mo	KCLINICS SKIN & LASER LIMITED (co. 17101088) is NOT VAT registered. Mandatory registration at £90,000 rolling 12-month taxable turnover — a hard modelling constraint: the model must track cumulative taxable turnover and switch on 20% output VAT (a ~16.7% net-revenue cut unless prices rise) at the crossing date, likely within year 1 at any plausible ramp.
+Taxable turnover in the 12 months before model start	25000	£	ESTIMATE from 225 bookings in the 90 days post-reopening — feeds the rolling-12-month VAT threshold tracker in P&L. Replace with the real figure from your accounts.
+VAT registration month override	0	month # (0 = auto)	0 = the model registers you automatically the month after rolling 12-mo turnover crosses the threshold. Set 1–36 to force a date; prices are held (VAT absorbed out of margin) — see README.
+Corporation tax — small profits rate / limit	0.19	50000	2026/27: 19% to £50,000; 26.5% effective £50k–£250k (marginal relief); 25% main rate. Annual columns in P&L apply the bands properly.
+Corporation tax — marginal band rate / upper limit	0.265	250000	Effective rate between the limits via marginal relief.
+Corporation tax — main rate	0.25	%	Annual Investment Allowance: 100% first-year TAX deduction on qualifying plant & machinery (all lasers/devices/fit-out; full expensing also available on new main-rate plant). TIMING benefit only — the accounting P&L still depreciates machinery straight-line over the life-years in the machinery table (4–9 yrs). MODEL TAX AND BOOK DEPRECIATION SEPARATELY: expect tax losses / minimal CT in the capex year, deferred-tax style divergence after.
