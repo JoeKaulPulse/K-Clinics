@@ -38,7 +38,27 @@ export async function POST(req: Request) {
   // check) now gates both arrays identically.
   const OWNER_ONLY = ['staff.manage', 'security.manage', 'settings.manage'];
   const actorPerms = effectivePermissions({ role: actor.role, permGrant: actor.grant, permRevoke: actor.revoke });
-  const clampPerms = (arr?: string[]) => clean(arr).filter((k) => actor.role === 'OWNER' || (actorPerms.has(k) && !OWNER_ONLY.includes(k)));
+  const mayTouch = (k: string) => actor.role === 'OWNER' || (actorPerms.has(k) && !OWNER_ONLY.includes(k));
+  const clampPerms = (arr?: string[]) => clean(arr).filter(mayTouch);
+  // Both columns are written as a whole-array REPLACE, so clamping the incoming
+  // array is only half the job on an update: a key the actor may not touch is
+  // dropped from the array rather than left alone, which silently rewrites
+  // state an owner set.
+  //
+  // On permRevoke that drop is itself an escalation — the mirror image of
+  // BLD-1539. Removing a key from permRevoke *restores* the permission, so a
+  // staff.manage delegate who lacks e.g. clients.clinical.view would hand it
+  // back to a colleague an owner had revoked it from, just by opening the
+  // staff editor and pressing Save (the editor posts the target's full current
+  // grant/revoke sets, so this needs no intent at all). On permGrant the drop
+  // runs the other way and silently strips an owner-set grant.
+  //
+  // So merge instead of replace: the actor may add or remove entries within
+  // their own authority, and every entry outside it is carried over untouched.
+  // For an OWNER mayTouch() is always true, so nothing is carried over and the
+  // posted arrays are authoritative exactly as before.
+  const mergePerms = (next: string[] | undefined, existing: string[]) =>
+    [...new Set([...clampPerms(next), ...existing.filter((k) => !mayTouch(k))])];
 
   const { db } = await import('@/lib/db');
 
@@ -114,8 +134,8 @@ export async function POST(req: Request) {
     if (role && validRole.includes(role) && actor.role === 'OWNER') {
       data.role = role as 'OWNER' | 'ADMIN' | 'PRACTITIONER' | 'FRONT_DESK' | 'STAFF';
     }
-    if (grant) data.permGrant = clampPerms(grant);
-    if (revoke) data.permRevoke = clampPerms(revoke);
+    if (grant) data.permGrant = mergePerms(grant, target.permGrant ?? []);
+    if (revoke) data.permRevoke = mergePerms(revoke, target.permRevoke ?? []);
     if (typeof active === 'boolean') data.active = active;
     if (password) {
       if (password.length < 8) return NextResponse.json({ ok: false, error: 'Password must be at least 8 characters.' }, { status: 422 });
