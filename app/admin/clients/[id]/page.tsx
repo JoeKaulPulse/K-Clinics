@@ -87,6 +87,14 @@ export default async function ClientDetail({ params }: { params: Promise<{ id: s
   // permission (not role), so a permission revoke actually withholds it here too,
   // matching the SAR export. Decrypt the latest version of each assessment type.
   const clinical = sessionCan(session, 'clients.clinical.view');
+  // BLD-1511: getClient() decrypts medicalFlag/allergies/consultation notes/
+  // allergyNote/interaction detail for display — audit the view (throttled
+  // per viewer/client/hour), matching the booking-detail/consultation-detail
+  // convention (BLD-1240/1392).
+  if (clinical && session?.email) {
+    const { auditClinicalView } = await import('@/lib/clinical-view-audit');
+    auditClinicalView({ actor: session.email, actorRole: session.role, clientId: c.id, surface: 'client-detail' });
+  }
   const clinicalAssessments: { id: string; title: string; version: number; submittedAt: Date; tampered: boolean; current: boolean; sourceLocale?: string; translatedNote?: string | null; items: { id: string; prompt: string; value: string; original?: string }[] }[] = [];
   if (clinical && c.assessments.length) {
     const { formatAssessment } = await import('@/lib/health-assessments');
@@ -265,9 +273,39 @@ export default async function ClientDetail({ params }: { params: Promise<{ id: s
           <h2 className="mb-3 font-[family-name:var(--font-display)] text-xl">Appointments</h2>
           {(() => {
             const fmtPence = (p: number) => formatPrice(p);
+            // BLD-1453: a booking linked to a package purchase (packageBookingId set)
+            // must never display the package's full price as if it were its own —
+            // that reads as an individual treatment charged at the whole course's
+            // price. Show its position in the course instead; the full price stays
+            // on the purchase booking itself, where it belongs.
+            const packageByPurchaseId = new Map(packages.map((p) => [p.purchaseBookingId, p]));
+            // Review fix (BLD-1453): the position must be counted with the SAME
+            // rule lib/package-sessions.ts uses (SESSION_INCLUDED) — a cancelled
+            // or missed session occupies a slot only once it has been marked
+            // package-consumed. Counting every row instead would shift the
+            // numbering here away from the "Session X of N" on the booking
+            // detail page, and could even print a number above the course total.
+            const occupiesSlot = (b: (typeof c.bookings)[number]) =>
+              (b.status !== 'CANCELLED' && b.status !== 'NO_SHOW') || b.packageSessionUsedAt != null;
+            const sessionsByPurchaseId = new Map<string, typeof c.bookings>();
+            for (const b of c.bookings) {
+              const purchaseId = b.packageBookingId ?? (packageByPurchaseId.has(b.id) ? b.id : null);
+              if (!purchaseId) continue;
+              // The purchase booking always holds its own first slot; a linked
+              // session only holds one while it counts.
+              if (purchaseId !== b.id && !occupiesSlot(b)) continue;
+              const arr = sessionsByPurchaseId.get(purchaseId) ?? [];
+              arr.push(b);
+              sessionsByPurchaseId.set(purchaseId, arr);
+            }
+            for (const arr of sessionsByPurchaseId.values()) arr.sort((a, b) => +new Date(a.startAt) - +new Date(b.startAt));
             const Row = ({ b }: { b: (typeof c.bookings)[number] }) => {
               const cancelled = b.status === 'CANCELLED' || b.status === 'NO_SHOW';
               const consentOk = consentSet.has(b.id);
+              const isPackagePurchase = packageByPurchaseId.has(b.id);
+              const pkg = isPackagePurchase ? packageByPurchaseId.get(b.id) : b.packageBookingId ? packageByPurchaseId.get(b.packageBookingId) : undefined;
+              const sessionNumber = pkg ? (sessionsByPurchaseId.get(pkg.purchaseBookingId)?.findIndex((x) => x.id === b.id) ?? -1) + 1 : 0;
+              const isLinkedSession = !isPackagePurchase && !!pkg;
               return (
                 <Link href={`/admin/bookings/${b.id}`} className="block rounded-[var(--radius-md)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-3.5 transition-colors hover:border-[var(--color-gold)]">
                   <div className="flex items-start justify-between gap-3">
@@ -275,7 +313,11 @@ export default async function ClientDetail({ params }: { params: Promise<{ id: s
                       <p className="text-sm font-medium">{b.treatmentTitle}</p>
                       <p className="mt-0.5 text-xs text-[var(--color-stone)]">
                         {fmtClinicDate(b.startAt, { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' })} · {fmtClinicTime(b.startAt)}
-                        {b.pricePence > 0 ? ` · ${fmtPence(b.pricePence)}` : ''}
+                        {isLinkedSession && pkg
+                          ? ` · Package session${sessionNumber > 0 ? ` ${sessionNumber} of ${pkg.sessionsTotal}` : ''}${b.pricePence > 0 ? ` · ${fmtPence(b.pricePence)}` : ''}`
+                          : isPackagePurchase && pkg
+                            ? ` · Package purchase — Course of ${pkg.sessionsTotal}${b.pricePence > 0 ? ` · ${fmtPence(b.pricePence)}` : ''}`
+                            : b.pricePence > 0 ? ` · ${fmtPence(b.pricePence)}` : ''}
                       </p>
                     </div>
                     <span className={`shrink-0 rounded-full px-2.5 py-0.5 text-[0.65rem] font-medium uppercase tracking-wide ${BK_BADGE[b.status] ?? 'bg-[var(--color-bone)]'}`}>{b.status.toLowerCase().replace('_', ' ')}</span>

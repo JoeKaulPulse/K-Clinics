@@ -2,6 +2,11 @@ import { NextResponse } from 'next/server';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
+// BLD-1455: ~10 sequential DB probes make this the heaviest per-request DB
+// load of any cron-hit route, yet it had no override -- a slow DB or cold
+// start risked a platform timeout on the exact endpoint meant to detect that.
+// Matches the 60s convention already used for the other cron routes below.
+export const maxDuration = 60;
 
 // Lightweight health probe for diagnosing the live deployment. Visit
 // /api/health to confirm the server can reach the database and the schema is

@@ -3,6 +3,22 @@ import { stripeEnabled, stripe } from '@/lib/stripe';
 import * as Sentry from '@sentry/nextjs';
 
 export const runtime = 'nodejs';
+// BLD-1479: this route awaits finalizeBookingCharge/finalizeOrder/confirmVoucher,
+// which each await sendEmail() -- lib/email.ts's acquireSendSlot() can poll up to
+// 30s under Resend's 5/sec cap, plus retries. Without an explicit maxDuration this
+// could exceed the platform default timeout mid-transaction on the most
+// financially-critical endpoint. Matches the 60s convention already used on the
+// kiosk analyze/photo routes, cron/dispatch and admin/api-health. Work that still
+// runs past Stripe's own ~30s response timeout is safe: the idempotency ledger
+// below plus the CAS-idempotent handlers make a redelivery a no-op.
+export const maxDuration = 60;
+
+// BLD-1498: how long a gift-card re-credit claim (Order.giftCardRecreditClaimedAt)
+// belongs to the attempt that stamped it. Past this, that attempt cannot still be
+// running — maxDuration above is 60s — so a redelivery may take the claim over and
+// retry the credit. Kept well clear of 60s so a slow-but-live attempt is never
+// overtaken (which would credit the same voucher twice).
+const RECREDIT_LEASE_MS = 5 * 60 * 1000;
 
 // Keeps booking/payment state in sync with Stripe. Verifies the signature with
 // STRIPE_WEBHOOK_SECRET. Configure this endpoint in the Stripe dashboard.
@@ -208,18 +224,82 @@ export async function POST(req: Request) {
         // transition credits, so a redelivered event or a prior admin cancel can't
         // double-credit, and an order that already went PAID (a retry succeeded
         // first) is never touched.
+        //
+        // BLD-1498: this event is in the critical list below, so a thrown error
+        // here gets Stripe to redeliver it — but by redelivery time the order is
+        // already CANCELLED (this same handler flipped it on the failed attempt),
+        // so the PENDING→CANCELLED claim alone can no longer tell "I already own
+        // this and still owe the credit" apart from "a different path (admin
+        // cancel / POS cancel / the BLD-1253 abandoned-order sweep) won that same
+        // transition and already credited it itself" — both leave status
+        // CANCELLED. giftCardRecreditClaimedAt (schema.prisma) disambiguates: it
+        // is stamped ONLY by this handler, atomically with the transition it
+        // wins, and cleared only once creditVoucher actually succeeds — so it
+        // reads non-null on redelivery if and only if this handler is the one
+        // still owing the credit.
+        //
+        // BLD-1498 review: the marker is held as a LEASE, not consumed on read.
+        // The idempotency ledger above deliberately falls through while a prior
+        // attempt is still 'PROCESSING', so two deliveries of this same event
+        // CAN run concurrently: one wins the PENDING claim and is mid-
+        // creditVoucher while the other reaches the branch below. Clearing the
+        // marker there would let the loser credit alongside the winner — a
+        // double credit (creditVoucher's LEAST() cap only stops the balance
+        // exceeding face value; on a card with other unrelated spends the
+        // second credit is real money). So the marker is only taken over once
+        // it is older than RECREDIT_LEASE_MS, which is comfortably past this
+        // route's maxDuration — i.e. only when the attempt holding it is
+        // certainly dead. A marker too fresh to take over throws, so Stripe
+        // redelivers after the lease instead of the credit being acked and lost.
         const pi = event.data.object;
         if (pi.metadata?.kind === 'shop_order' && pi.metadata?.orderId) {
+          const orderId = pi.metadata.orderId;
           try {
-            const order = await db.order.findUnique({ where: { id: pi.metadata.orderId }, select: { giftCardCode: true, giftCardPence: true } });
+            const order = await db.order.findUnique({ where: { id: orderId }, select: { giftCardCode: true, giftCardPence: true } });
             if (order?.giftCardCode && order.giftCardPence && order.giftCardPence > 0) {
-              const claimed = await db.order.updateMany({ where: { id: pi.metadata.orderId, status: 'PENDING' }, data: { status: 'CANCELLED' } });
-              if (claimed.count > 0) {
+              const claimed = await db.order.updateMany({ where: { id: orderId, status: 'PENDING' }, data: { status: 'CANCELLED', giftCardRecreditClaimedAt: new Date() } });
+              let mustCredit = claimed.count > 0;
+              if (!mustCredit) {
+                // Lost the PENDING claim. Either another cancel path won it and
+                // credited the voucher itself (no marker — nothing is owed
+                // here), or an EARLIER attempt of THIS handler won it and the
+                // credit never landed (marker set). Take the marker over only
+                // if it has outlived the lease; the `lt` → `now` write is a
+                // single atomic statement, so of two simultaneous retries only
+                // one can win it. Not scoped to status CANCELLED: the marker
+                // alone is the ownership token, and staff marking the order
+                // REFUNDED in between must not strand the owed credit.
+                const leaseCutoff = new Date(Date.now() - RECREDIT_LEASE_MS);
+                const reclaimed = await db.order.updateMany({ where: { id: orderId, giftCardRecreditClaimedAt: { lt: leaseCutoff } }, data: { giftCardRecreditClaimedAt: new Date() } });
+                mustCredit = reclaimed.count > 0;
+                if (!mustCredit && (await db.order.count({ where: { id: orderId, giftCardRecreditClaimedAt: { not: null } } })) > 0) {
+                  // Held by an attempt that may still be running. Ack nothing:
+                  // throw so Stripe redelivers once the lease has expired.
+                  throw new Error(`gift-card re-credit for order ${orderId} is held by an in-flight attempt — retrying later`);
+                }
+              }
+              if (mustCredit) {
                 const { creditVoucher } = await import('@/lib/gift-vouchers');
+                // A throw here leaves the marker in place (already stamped by
+                // the claim/take-over above) and falls to the outer catch → 500
+                // → Stripe redelivers, and by then the marker has aged past the
+                // lease and is retryable.
                 await creditVoucher(order.giftCardCode, order.giftCardPence);
+                // The credit landed. Release the claim — best-effort on purpose:
+                // failing here must not make Stripe retry a credit that already
+                // succeeded, which is the one way this could over-credit.
+                await db.order.updateMany({ where: { id: orderId }, data: { giftCardRecreditClaimedAt: null } })
+                  .catch((clearErr) => { console.error('[webhook] releasing gift-card re-credit claim failed:', (clearErr as Error)?.message); });
               }
             }
-          } catch (e) { console.error('[webhook] gift card re-credit failed:', (e as Error)?.message); Sentry.captureException(e, { tags: { area: 'stripe-webhook', sub: 'giftcard-recredit-failed-payment' } }); } // BLD-868
+          } catch (e) {
+            console.error('[webhook] gift card re-credit failed:', (e as Error)?.message);
+            Sentry.captureException(e, { tags: { area: 'stripe-webhook', sub: 'giftcard-recredit-failed-payment' } }); // BLD-868
+            // BLD-1498: rethrow so this reaches the outer catch/critical check
+            // below and Stripe redelivers — swallowing here silently stranded
+            // the customer's gift-card balance with no way to ever retry.
+            throw e;
+          }
         }
         break;
       }
@@ -286,7 +366,7 @@ export async function POST(req: Request) {
         // outcomes change nothing.
         if (!created && dispute.status === 'lost' && amount > 0) {
           if (booking) {
-            const full = await db.booking.findFirst({ where: { id: booking.id }, select: { id: true, clientId: true, refundedPence: true, chargedPence: true } });
+            const full = await db.booking.findFirst({ where: { id: booking.id }, select: { id: true, clientId: true, refundedPence: true, chargedPence: true, chargePaymentIntentId: true, giftVoucherCode: true, giftVoucherPence: true } });
             if (full) {
               // BLD-1190: the old formula — Math.min(X, Math.max(c, X)) — is a
               // no-op (Math.max(c, X) >= X always, so the min always resolves to
@@ -299,10 +379,43 @@ export async function POST(req: Request) {
               // populated here in practice. Cap at chargedPence regardless (0 if
               // somehow unset) — refundedPence can never legitimately exceed it.
               const newTotal = Math.min((full.refundedPence ?? 0) + amount, full.chargedPence ?? 0);
+              // BLD-1510: this CAS matches on the value it READ, so it also
+              // succeeds (count 1) on a no-op write — when refundedPence is
+              // already at chargedPence, newTotal equals it and the row still
+              // matches. That happens whenever the booking was already fully
+              // refunded before the dispute closed (in-app refundBooking, or a
+              // dashboard refund) and on a redelivery of this event after a
+              // failed attempt left the idempotency ledger at PROCESSING. So
+              // claimed.count alone does NOT prove this call advanced anything;
+              // `advanced` does, and it gates the one side-effect below that
+              // hands back spendable money.
+              const advanced = newTotal > (full.refundedPence ?? 0);
               const claimed = await db.booking.updateMany({ where: { id: full.id, refundedPence: full.refundedPence }, data: { refundedPence: newTotal, refundedAt: new Date() } });
               if (claimed.count > 0) {
                 const fully = newTotal >= (full.chargedPence ?? 0);
                 if (fully) { try { const { refundBookingPoints } = await import('@/lib/client-loyalty'); await refundBookingPoints(full.id); } catch (e) { Sentry.captureException(e, { tags: { area: 'stripe-webhook', sub: 'dispute-points' } }); } }
+                // BLD-1510: a lost dispute is a full clawback of the CARD charge only —
+                // a partial-voucher booking's voucher-covered slice was never part of
+                // the disputed charge, so it must go back on the voucher, mirroring
+                // refundBooking() (BLD-882) and the charge.refunded handler (BLD-1138)
+                // below. Gated on `fully` (the card portion is entirely gone) AND on
+                // `advanced` — creditVoucher is capped at face value but is not
+                // per-call idempotent, so it must only run for the call that
+                // actually moved refundedPence. Without `advanced`, a dispute
+                // closing lost on an already-fully-refunded booking (whose voucher
+                // refundBooking had restored), or a redelivery after a failed
+                // attempt, would credit the voucher a second time. Cancellation is
+                // not a route in: cancelBooking clears giftVoucherCode/Pence in the
+                // same guarded write that returns the reservation, so the fields
+                // read here are 0/null once that has happened.
+                if (fully && advanced && full.chargePaymentIntentId !== 'ext_gift-voucher' && (full.giftVoucherPence ?? 0) > 0 && full.giftVoucherCode) {
+                  try {
+                    const { creditVoucher } = await import('@/lib/gift-vouchers');
+                    await creditVoucher(full.giftVoucherCode, full.giftVoucherPence ?? 0);
+                    const { logAudit } = await import('@/lib/audit');
+                    await logAudit({ action: 'REWARD_REDEEMED', actor: 'stripe-webhook', bookingId: full.id, clientId: full.clientId, summary: `Gift voucher ${full.giftVoucherCode} restored on lost chargeback — £${((full.giftVoucherPence ?? 0) / 100).toFixed(2)} back on the voucher` }).catch(() => {});
+                  } catch (e) { Sentry.captureException(e, { tags: { area: 'stripe-webhook', sub: 'dispute-voucher-restore' } }); }
+                }
                 try { const { reverseSpendPoints } = await import('@/lib/client-loyalty'); await reverseSpendPoints(full.id, newTotal, full.chargedPence ?? 0); } catch (e) { Sentry.captureException(e, { tags: { area: 'stripe-webhook', sub: 'dispute-spend-points' } }); }
                 try { const { pushBookingRefundToXero } = await import('@/lib/xero'); await pushBookingRefundToXero(full.id, amount, 'Chargeback lost'); } catch (e) { Sentry.captureException(e, { tags: { area: 'stripe-webhook', sub: 'dispute-xero' } }); }
                 try { const { logAudit } = await import('@/lib/audit'); await logAudit({ action: 'PAYMENT_REFUNDED', actor: 'stripe-webhook', bookingId: full.id, clientId: full.clientId, summary: `Chargeback lost — £${(amount / 100).toFixed(2)} reconciled as refunded (auto, owner policy)`, meta: { disputeId: dispute.id } }); } catch { /* non-fatal */ }
@@ -396,7 +509,7 @@ export async function POST(req: Request) {
         const webhookUrl = process.env.CRON_ALERT_WEBHOOK_URL;
         if (webhookUrl) {
           const body = JSON.stringify({ text: `[kclinics] ${summary}` });
-          try { await fetch(webhookUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body }); } catch { /* non-fatal */ }
+          try { await fetch(webhookUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body, signal: AbortSignal.timeout(8_000) }); } catch { /* non-fatal */ }
         }
         break;
       }
@@ -610,6 +723,12 @@ export async function POST(req: Request) {
       // BLD-882: the expired-session claim releases a stranded voucher
       // reservation — a DB failure before the claim commits must retry.
       event.type === 'checkout.session.expired' ||
+      // BLD-1498: a failed gift-card re-credit on a canceled PaymentIntent
+      // (the payment_intent.canceled case above) is otherwise unrecoverable —
+      // no later Stripe retry or dashboard "resend" ever re-runs it — so a DB
+      // failure here must also retry rather than silently stranding the
+      // customer's balance.
+      event.type === 'payment_intent.canceled' ||
       pmtKind === 'course_prepaid';
     if (critical) return NextResponse.json({ received: false, error: 'Handler failed' }, { status: 500 });
   }
