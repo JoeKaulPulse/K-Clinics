@@ -248,10 +248,24 @@ export async function stockTakeItems(): Promise<StockTakeItem[]> {
   return rows.map((r) => ({ id: r.id, name: r.name, unit: r.unit, category: r.category, expectedQty: r.currentQty }));
 }
 
-/** The existing day-close record for a location/day, if one was started/finished. */
+/** The existing day-close record for a location/day, if one was started/finished.
+ *
+ *  Matched over the whole clinic-day WINDOW rather than by exact businessDate
+ *  equality. Rows written before BLD-1538 stored server-UTC midnight (00:00Z);
+ *  localDayStart() now returns clinic midnight, which during BST is 23:00Z on
+ *  the previous date. Both instants fall inside the same clinic day, so the
+ *  range keeps legacy records findable — on an exact match the deploy would
+ *  orphan every close recorded during BST, tell staff the day was never closed
+ *  and write a second row for a day that already has one. A POST rewrites
+ *  businessDate to the new instant, so records self-heal as they are touched.
+ *  The window cannot straddle two clinic days: consecutive windows are
+ *  contiguous and 24h wide, so each stored instant lands in exactly one. */
 export async function getDayClose(locationId: string | null, day: Date) {
   return db.dayClose.findFirst({
-    where: { businessDate: localDayStart(day), ...(locationId ? { locationId } : { locationId: null }) },
+    where: {
+      businessDate: { gte: localDayStart(day), lte: localDayEnd(day) },
+      ...(locationId ? { locationId } : { locationId: null }),
+    },
     orderBy: { startedAt: 'desc' },
   });
 }
