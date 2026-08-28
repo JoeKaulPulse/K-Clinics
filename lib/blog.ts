@@ -41,15 +41,20 @@ const MIGRATED_LINK_MAP: Record<string, string> = {
   '/book-a-consultation-dentist': '/book',
 };
 
+// Only our own host counts as internal. An absolute link on any other host that
+// happens to share a mapped path is somebody else's page and must be left alone.
+const OWN_HOST = /^(?:[a-z0-9-]+\.)*kclinics\.co\.uk$/i;
+
 /** Map a legacy WordPress internal link to its current route, or null if this
  *  href isn't one of the confirmed-dead legacy targets above. Handles a bare
- *  root-relative path, a same-origin absolute URL, and a trailing slash —
- *  the shapes actually seen in the imported article HTML — without touching
- *  external, mailto:, tel: or anchor links. */
+ *  root-relative path, an absolute or protocol-relative URL on our own host, and
+ *  a trailing slash — the shapes actually seen in the imported article HTML —
+ *  without touching external, mailto:, tel: or anchor links. */
 export function resolveMigratedLink(href: string): string | null {
-  const m = /^(?:https?:\/\/[^/]+)?(\/[^?#]*)/i.exec(href);
+  const m = /^(?:(?:https?:)?\/\/([^/?#]+))?(\/[^?#]*)/i.exec(href.trim());
   if (!m) return null;
-  const path = m[1].replace(/\/+$/, '') || '/';
+  if (m[1] && !OWN_HOST.test(m[1].replace(/:\d+$/, ''))) return null; // external host — not ours to rewrite
+  const path = m[2].replace(/\/+$/, '') || '/';
   return MIGRATED_LINK_MAP[path] ?? null;
 }
 
