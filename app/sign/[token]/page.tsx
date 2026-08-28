@@ -1,3 +1,4 @@
+import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { crmEnabled } from '@/lib/crm';
 import { consentMdToHtml } from '@/lib/consent-md';
@@ -6,6 +7,14 @@ import { KMark, ClinicsWordmark } from '@/components/brand/marks';
 import { site } from '@/lib/site';
 
 export const dynamic = 'force-dynamic';
+
+// BLD-1533: a medical consent form carrying the client's name — never indexable.
+// Annotated as Metadata (like /live/[token] and /nps/[token]) so a typo in a key
+// is a type error rather than a silently ignored property on a privacy control.
+export const metadata: Metadata = {
+  title: 'Consent form · KClinics',
+  robots: { index: false, follow: false },
+};
 
 // Trust signal — a consent form asks for a legally-binding medical signature, so
 // the page must visibly reassure: branded, secure, encrypted.
