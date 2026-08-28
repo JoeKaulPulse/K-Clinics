@@ -29,9 +29,16 @@ export async function GET(req: Request) {
     const cutoff = new Date(Date.now() - RETENTION_DAYS * 24 * 60 * 60 * 1000);
 
     // ── Pass 1: 30-day hard delete ───────────────────────────────────────────
+    // BLD-1497: cap the batch like pass 2/3 — an unbounded backlog (stalled
+    // cron, traffic spike) could otherwise grow this query plus its blob/row
+    // deletes past the 60s maxDuration, and since the heartbeat below only
+    // records after every pass finishes, an oversized pass 1 would retry the
+    // same batch forever without ever recording progress. The daily schedule
+    // (vercel.json) picks up any remainder on the next run.
     const stale = await db.kioskSession.findMany({
       where: { createdAt: { lt: cutoff } },
       select: { id: true, photoUrl: true, photoUrls: true },
+      take: MEDIA_SWEEP_BATCH,
     });
 
     let deleted = 0;

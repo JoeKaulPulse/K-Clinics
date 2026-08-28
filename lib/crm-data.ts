@@ -248,7 +248,10 @@ export async function listBookings(opts: { filter?: string; q?: string; from?: s
     where: and.length ? { AND: and } : undefined,
     orderBy: { startAt: filter === 'past' ? 'desc' : 'asc' },
     // Include the primary line item's booked session count so the list can flag courses.
-    include: { client: true, items: { where: { isAddon: false }, select: { sessions: true }, take: 1 } },
+    // BLD-1517: the list row only renders firstName/lastName -- select just those
+    // instead of pulling the full Client row (tags, notes, concerns, marketing/
+    // portal/loyalty fields, decrypted special-category health fields) per booking.
+    include: { client: { select: { firstName: true, lastName: true } }, items: { where: { isAddon: false }, select: { sessions: true }, take: 1 } },
     take: 300,
   });
 }

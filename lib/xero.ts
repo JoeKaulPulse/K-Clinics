@@ -1,8 +1,10 @@
 import 'server-only';
+import { randomUUID } from 'node:crypto';
 import { saveConnection, getConnection, validAccessToken, type Tokens } from '@/lib/oauth-connections';
 import { getSecret } from '@/lib/secrets';
 import { db } from '@/lib/db';
 import { logAudit } from '@/lib/audit';
+import { fetchWithRetry } from '@/lib/fetch-retry';
 
 // Xero OAuth 2.0: cash-position/supplier reads + sales push (invoices, credit
 // notes). Activates when credentials are present (owner-managed or env).
@@ -31,12 +33,11 @@ export async function xeroAuthUrl(state: string): Promise<string | null> {
 
 async function tokenRequest(body: Record<string, string>): Promise<Tokens | null> {
   const basic = Buffer.from(`${await getSecret('XERO_CLIENT_ID')}:${await getSecret('XERO_CLIENT_SECRET')}`).toString('base64');
-  const res = await fetch('https://identity.xero.com/connect/token', {
+  const res = await fetchWithRetry('https://identity.xero.com/connect/token', {
     method: 'POST',
     headers: { Authorization: `Basic ${basic}`, 'Content-Type': 'application/x-www-form-urlencoded' },
     body: new URLSearchParams(body),
-    signal: AbortSignal.timeout(10_000),
-  });
+  }, { label: 'xero' });
   if (!res.ok) return null;
   const d = (await res.json()) as { access_token?: string; refresh_token?: string; expires_in?: number };
   if (!d.access_token) return null;
@@ -50,7 +51,7 @@ export async function exchangeXeroCode(code: string): Promise<boolean> {
   // Resolve the tenant (org) this token can access.
   let tenantId: string | null = null, tenantName: string | null = null;
   try {
-    const res = await fetch('https://api.xero.com/connections', { headers: { Authorization: `Bearer ${tokens.access}`, 'Content-Type': 'application/json' }, signal: AbortSignal.timeout(10_000) });
+    const res = await fetchWithRetry('https://api.xero.com/connections', { headers: { Authorization: `Bearer ${tokens.access}`, 'Content-Type': 'application/json' } }, { label: 'xero' });
     if (res.ok) {
       const conns = (await res.json()) as { tenantId: string; tenantName: string }[];
       tenantId = conns[0]?.tenantId ?? null;
@@ -70,10 +71,9 @@ async function xeroGet(path: string): Promise<{ ok: boolean; status?: number; da
   const token = await validAccessToken(PROVIDER, refresh);
   if (!token || !conn.accountRef) return { ok: false, error: 'Xero is not connected.' };
   try {
-    const res = await fetch(`https://api.xero.com/api.xro/2.0/${path}`, {
+    const res = await fetchWithRetry(`https://api.xero.com/api.xro/2.0/${path}`, {
       headers: { Authorization: `Bearer ${token}`, 'Xero-tenant-id': conn.accountRef, Accept: 'application/json' },
-      signal: AbortSignal.timeout(10_000),
-    });
+    }, { label: 'xero' });
     if (res.status === 403) return { ok: false, status: 403, error: 'Reconnect Xero to grant contacts/bills access.' };
     if (!res.ok) return { ok: false, status: res.status, error: `Xero responded ${res.status}.` };
     return { ok: true, data: await res.json() };
@@ -155,13 +155,20 @@ async function xeroWrite(path: string, body: unknown): Promise<{ ok: boolean; st
   if (!conn) return { ok: false, error: 'Xero is not connected.' };
   const token = await validAccessToken(PROVIDER, refresh);
   if (!token || !conn.accountRef) return { ok: false, error: 'Xero is not connected.' };
+  // Every write here is a financial record (invoice, payment, credit note), and
+  // POST /Invoices etc. create a NEW record on each call — so a fetchWithRetry
+  // retry after an ambiguous failure (5xx or timeout on a request Xero had
+  // already committed) would double-invoice. Xero's Idempotency-Key header
+  // makes the retry return the original response instead of writing again; it
+  // is generated once per logical write, so all attempts of THIS call share it
+  // while a genuinely new write gets a new key.
+  const idempotencyKey = randomUUID();
   try {
-    const res = await fetch(`https://api.xero.com/api.xro/2.0/${path}`, {
+    const res = await fetchWithRetry(`https://api.xero.com/api.xro/2.0/${path}`, {
       method: 'POST',
-      headers: { Authorization: `Bearer ${token}`, 'Xero-tenant-id': conn.accountRef, Accept: 'application/json', 'Content-Type': 'application/json' },
+      headers: { Authorization: `Bearer ${token}`, 'Xero-tenant-id': conn.accountRef, Accept: 'application/json', 'Content-Type': 'application/json', 'Idempotency-Key': idempotencyKey },
       body: JSON.stringify(body),
-      signal: AbortSignal.timeout(10_000),
-    });
+    }, { label: 'xero' });
     const data: unknown = await res.json().catch(() => null);
     if (res.status === 403) return { ok: false, status: 403, error: 'Reconnect Xero to grant write (contacts/transactions) access.' };
     if (!res.ok) {
@@ -323,10 +330,9 @@ export async function getXeroCashPence(): Promise<{ ok: boolean; pence: number; 
   const token = await validAccessToken(PROVIDER, refresh);
   if (!token || !conn.accountRef) return { ok: false, pence: 0, label: conn.label };
   try {
-    const res = await fetch('https://api.xero.com/api.xro/2.0/Reports/BankSummary', {
+    const res = await fetchWithRetry('https://api.xero.com/api.xro/2.0/Reports/BankSummary', {
       headers: { Authorization: `Bearer ${token}`, 'Xero-tenant-id': conn.accountRef, Accept: 'application/json' },
-      signal: AbortSignal.timeout(10_000),
-    });
+    }, { label: 'xero' });
     if (!res.ok) return { ok: false, pence: 0, label: conn.label };
     const data = (await res.json()) as { Reports?: { Rows?: { RowType?: string; Rows?: { RowType?: string; Cells?: { Value?: string }[] }[] }[] }[] };
     // Sum the closing-balance cell (last cell) of each data Row, skipping
