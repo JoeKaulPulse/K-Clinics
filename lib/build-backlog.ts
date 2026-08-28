@@ -4686,6 +4686,17 @@ export const BUILD_BACKLOG: BacklogItem[] = [
       'Verified: npx tsc --noEmit and npm run build pass clean.',
     ],
   },
+  {
+    title: 'Token-gated PII pages missing noindex; first treatment card image not marked priority for LCP (BLD-1533, BLD-1534)',
+    type: 'ERROR', urgency: 'P2', status: 'SHIPPED', assignee: 'claude',
+    value: 6, effort: 1,
+    detail: 'BLD-1533: app/room-display/[token]/page.tsx (live patient first names + appointment times) and app/sign/[token]/page.tsx (a client name on a medical consent form) had no metadata export at all, so neither carried robots: { index: false }, unlike every comparable token-gated route (kiosk display, /live/[token], /nps/[token], /follow-up/[token]). BLD-1534: components/ui/TreatmentCard.tsx never passed priority to MediaArt, so the first card image right after PageHero on /treatments and /dentistry -- the actual LCP element on those pages -- always loaded lazily.',
+    notes: [
+      'BLD-1533: both page components are server components, so metadata could be exported directly (no layout wrapper needed). Added export const metadata = { title, robots: { index: false, follow: false } } to each, matching the pattern in app/kiosk/display/page.tsx and app/live/[token]/page.tsx.',
+      'BLD-1534: TreatmentCard now takes an optional priority prop (default false) and forwards it to MediaArt. Wired priority={i < 2} from the two grid callers that render TreatmentCard in the first viewport right after PageHero: app/(marketing)/treatments/page.tsx and app/(marketing)/dentistry/page.tsx. Left the below-the-fold TreatmentCard callers (packages/[slug] "related treatments", TreatmentTemplate related section, the account portal grid) and the homepage untouched -- the homepage featured grid renders through HorizontalGallery.tsx, a separate client component that does not use TreatmentCard, so it was out of scope for this fix.',
+      'Verified: npx tsc --noEmit and npm run build pass clean.',
+    ],
+  },
 ];
 
 // A content hash over every item's title + status + PR, so ANY change (a new
