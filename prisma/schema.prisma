@@ -58,6 +58,7 @@ enum EmailKind {
   BOOKING_INTENT
   LIVE_CLASS // BLD-1034: academy live-class create/reschedule/cancel/reminder notices
   COURSE_CONTENT_READY // BLD-1231: one-time nudge once a zero-content course's first module publishes
+  TCS_REMINDER // BLD-1452: nudge a client with no recorded T&Cs acceptance to accept + add a card
 }
 
 enum EmailStatus {
@@ -341,6 +342,12 @@ model Client {
   termsAcceptedAt      DateTime?
   termsAcceptedSource  String?
   termsVersion         String?
+  // BLD-1452: when the "please accept T&Cs + add a card" reminder was last
+  // emailed (dedupe/cadence, mirrors EnrolmentPayment.lastRemindedAt). Only
+  // read/written while termsAcceptedAt is still null — once accepted, the
+  // audience query below excludes the client and this value is inert.
+  // Additive, nullable.
+  tcsReminderSentAt   DateTime?
 
   // ── Loyalty / referrals ──────────────────────────────────────────────────
   referralCode String? @unique // this client's own shareable code
@@ -3922,6 +3929,22 @@ model Order {
   // restockOrder() so a redelivered webhook or a re-cancelled order can't
   // increment stockQty back more than once.
   restockedAt           DateTime?
+  // BLD-1498: non-null only while the payment_intent.canceled webhook handler
+  // has won this order's PENDING→CANCELLED transition but hasn't yet confirmed
+  // the corresponding gift-card re-credit succeeded. order.status alone can't
+  // tell "this handler owns an unfinished credit, retry it" apart from "a
+  // different cancel path (admin cancel / POS cancel / the abandoned-order
+  // sweep) already won the same transition and credited it itself" — both
+  // leave the order CANCELLED. Only app/api/stripe/webhook/route.ts ever
+  // writes this field (stamped atomically with the transition it wins,
+  // cleared once creditVoucher succeeds), so its presence unambiguously means
+  // that handler — and no other cancel path — still owes the credit. It is
+  // also a LEASE, not just a flag: the timestamp is how a redelivery tells a
+  // dead attempt's claim (older than the route's RECREDIT_LEASE_MS, safe to
+  // take over and retry) from one a concurrently-running delivery of the same
+  // event is still working through (must not be taken over — that would credit
+  // the voucher twice).
+  giftCardRecreditClaimedAt DateTime?
   // PRJ-1032.7: the settlement timestamp — set once when the order flips to PAID.
   // Day-close brackets card takings by the day money was actually taken; matching
   // on updatedAt drifted them across days (a later fulfilment/refund edit moved
@@ -3943,6 +3966,7 @@ model Order {
   @@index([status])
   @@index([createdAt])
   @@index([paidAt])
+  @@index([status, createdAt])
 }
 
 model OrderItem {
@@ -3955,6 +3979,8 @@ model OrderItem {
   unitPence     Int
   qty           Int
   ageRestricted Boolean @default(false)
+
+  @@index([orderId])
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

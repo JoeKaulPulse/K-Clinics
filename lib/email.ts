@@ -40,12 +40,20 @@ const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 async function acquireSendSlot(): Promise<void> {
   await rateGate(); // smooth within this instance
   try {
-    const { rateLimit } = await import('@/lib/security/rate-limit');
+    const { rateLimit, redisConfigured } = await import('@/lib/security/rate-limit');
     const deadline = Date.now() + 30_000;
     // ≤4 per rolling second globally (headroom under the cap). Poll for a slot, don't fail.
+    // BLD-1480: the Postgres fallback (no Upstash configured) writes a row on every
+    // poll — a fixed 250ms cadence across a burst fan-out (e.g. the nightly digest)
+    // can pile dozens of extra writes onto the same connection pool during the exact
+    // spike it exists to smooth. Back off the poll interval when on that fallback so
+    // a burst produces materially fewer writes; Redis has no such cost, so it keeps
+    // the tight 250ms cadence.
+    let pollMs = 250;
     while (Date.now() < deadline) {
       if ((await rateLimit('resend-send', 4, 1)).allowed) return;
-      await sleep(250);
+      await sleep(pollMs);
+      if (!redisConfigured) pollMs = Math.min(pollMs * 2, 2_000);
     }
   } catch { /* limiter unavailable — the in-process gate + retry still protect us */ }
 }
@@ -958,6 +966,31 @@ export function tmplAbandonedOrder(o: { firstName: string; resumeUrl: string }) 
     <p>You started an order with us but didn't quite finish checking out. Your bag is still waiting — it only takes a moment to complete it.</p>
     <p style="margin:26px 0;">${btn(o.resumeUrl, 'Finish my order')}</p>
     <p style="font-size:14px;color:#91766e;">If you'd rather talk it through first, just reply to this email or call us — we're happy to help.</p>
+    <p style="margin-top:20px;">With warmth,<br>The KClinics team</p>`,
+  });
+}
+
+// BLD-1452: nudge for a client whose profile still shows no recorded T&Cs
+// acceptance — points them at account setup, which is where the acceptance is
+// actually captured (the tick on the signup form; signupClient records it
+// even when the client already exists). Review fix: the first draft asked them
+// to "add a payment card to your account" from the same link, which no screen
+// in /account does — a card is saved by Stripe during a booking — so the copy
+// now says what genuinely happens instead of asking for something the link
+// can't deliver. Mirrors tmplAbandonedBooking's tone; care-class (sent
+// regardless of marketing opt-in, only suppressed by a hard unsubscribe).
+export function tmplTcsReminder(o: { firstName: string; signupUrl: string }) {
+  return emailShell({
+    preheader: 'One quick thing to finish setting up your account',
+    body: `${heroBand('reminder')}
+    <h1 style="font-size:25px;margin:0 0 14px;">One quick thing, ${escape(o.firstName)}.</h1>
+    <p>Your KClinics account is nearly ready — we just don't have your acceptance of our Terms &amp; Conditions on file yet. Finishing your account setup records it and takes about a minute.</p>
+    <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:16px 0 22px;font-family:Helvetica,Arial,sans-serif;">
+      ${checkItem('Accept our Terms &amp; Conditions')}
+      ${checkItem('Set up your online account, so your appointments and forms are in one place')}
+    </table>
+    <p style="margin:26px 0;">${btn(o.signupUrl, 'Finish setting up my account')}</p>
+    <p style="font-size:14px;color:#91766e;">Your card is saved securely at the time you book — nothing is taken then, and our cancellation policy is set out in the terms. If you have any questions, just reply to this email or call us — we're happy to help.</p>
     <p style="margin-top:20px;">With warmth,<br>The KClinics team</p>`,
   });
 }
