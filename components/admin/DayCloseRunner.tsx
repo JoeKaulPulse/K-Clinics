@@ -3,6 +3,7 @@
 import { useMemo, useState } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
 import type { DayCloseConfig, ChecklistSection, ExpectedTakings, StockTakeItem } from '@/lib/day-close';
+import { fmtClinicDate } from '@/lib/clinic-time';
 import { useDialogBehaviours } from '@/components/ui/Dialog';
 
 // End-of-day clinic shutdown — a whole-screen, stepped flow in the same style as
@@ -145,7 +146,10 @@ export function DayCloseRunner({
     }
   }
 
-  const dateLabel = new Date(businessDate).toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' });
+  // BLD-1538: format in Europe/London, not the device timezone. businessDate is
+  // now clinic midnight — 23:00Z on the previous date during BST — so a browser
+  // running on UTC (or anywhere else) would label the run with yesterday's date.
+  const dateLabel = fmtClinicDate(businessDate, { weekday: 'long', day: 'numeric', month: 'long' });
 
   // BLD-1501: dialog semantics — role, initial focus, Tab trap and
   // Escape-to-close (previously only the ✕ button could exit this overlay).
