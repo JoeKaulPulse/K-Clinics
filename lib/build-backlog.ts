@@ -4686,6 +4686,18 @@ export const BUILD_BACKLOG: BacklogItem[] = [
     ],
   },
   {
+    title: 'Academy PDF lesson viewer is fully inaccessible to screen readers (BLD-1537)',
+    type: 'ERROR', urgency: 'P1', status: 'SHIPPED', assignee: 'claude',
+    value: 6, effort: 2,
+    detail: 'components/academy/SecurePdfViewer.tsx rendered every lesson page to a bare canvas via pdf.js with no text layer and no per-page alt text -- a screen-reader user got zero content from any lesson PDF, blocking blind/low-vision Academy students from paid course material entirely (WCAG 1.1.1).',
+    notes: [
+      'Fix: each page now also gets pdf.js\'s real text layer (page.getTextContent() + the pdfjs-dist v6 TextLayer class -- the documented API for the installed version, replacing the older renderTextLayer() function), overlaid on the canvas so it sits in the accessibility tree in reading order. The layer is invisible and non-interactive -- new .kc-pdf-text-layer utility in app/globals.css inherits color:transparent and pointer-events/user-select:none down to every span -- so it adds nothing a sighted mouse user can see, select or copy. The existing no-toolbar (canvas-only rendering, authenticated proxy fetch) and no-right-click protections are untouched; a page whose text layer errors (e.g. an unusual embedded font) still renders its canvas normally, since the text-layer build is wrapped in its own non-fatal try/catch.',
+      'Review fix: color:transparent alone is overridden under Windows High Contrast (forced-colors) mode, which would have repainted the whole layer as visible, garbled text over the page -- for exactly the users this ticket serves. Added forced-color-adjust: none to .kc-pdf-text-layer.',
+      'Branch claude/academy-pdf-a11y-1537.',
+      'Verified: npx tsc --noEmit and npm run build pass clean.',
+    ],
+  },
+  {
     title: 'Kiosk storefront display silently swallows session-create failures (BLD-1535)',
     type: 'ERROR', urgency: 'P1', status: 'SHIPPED', assignee: 'claude',
     value: 7, effort: 2,
