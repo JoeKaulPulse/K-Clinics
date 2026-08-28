@@ -253,9 +253,11 @@ html[data-theme='dark'] .text-black { color: var(--color-ink); }
   .text-title { font-size: var(--text-title); }
   .text-lede { font-size: var(--text-lede); }
 
-  /* Champagne gold gradient text */
+  /* Champagne gold gradient text. Darkest stop is --color-gold-deep (not
+     --color-gold, ~2.8:1 on porcelain -- below the WCAG AA 3:1 floor even at
+     large sizes) so the gradient clears AA (BLD-1488). */
   .text-gold-gradient {
-    background: linear-gradient(105deg, var(--color-gold) 0%, var(--color-gold-bright) 45%, var(--color-gold) 100%);
+    background: linear-gradient(105deg, var(--color-gold-deep) 0%, var(--color-gold-bright) 45%, var(--color-gold-deep) 100%);
     -webkit-background-clip: text;
     background-clip: text;
     color: transparent;
