@@ -4675,6 +4675,17 @@ export const BUILD_BACKLOG: BacklogItem[] = [
     ],
   },
   {
+    title: 'Add ClassPass as a checkout payment method, alongside Treatwell (BLD-1531)',
+    type: 'TASK', urgency: 'P2', status: 'SHIPPED', assignee: 'claude',
+    value: 4, effort: 1,
+    detail: 'Owner request via info@kclinics.co.uk: the booking-session checkout screen (/admin/calendar) offered Payment link, Cash, Card Terminal and Treatwell, but no way to record a sale settled on ClassPass -- staff had no correct button to use for a ClassPass booking and had to record it under an unrelated method.',
+    notes: [
+      'Fix: components/admin/session/SessionRunner.tsx CheckoutStep now offers a ClassPass pill button in the payment-method group, placed after Treatwell, following the Treatwell pattern exactly end to end -- same op:\'external\' API call with channel:\'classpass\' (a new takeClasspass() handler mirroring takeTreatwell()), same disabled/busy wiring, and a "Record as paid via ClassPass" button with its own explanatory copy ("no card is charged here" -- the ClassPass-specific line does not reuse Treatwell\'s "book direct to skip commission" tip, which does not apply to ClassPass credits). No server changes were needed for the payment itself: app/api/admin/bookings/session/route.ts\'s external-channel handler already accepts any sanitised channel string generically. The channel tags chargePaymentIntentId as ext_classpass, so it is automatically excluded from the day-close card-takings figure (lib/day-close.ts already excludes every ext_* channel) and refunds it exactly like Treatwell/cash (lib/booking-actions.ts\'s refund path is already channel-agnostic on the ext_ prefix).',
+      'Also updated the audit-log channel label in app/api/admin/bookings/session/route.ts so a ClassPass payment logs "Paid via ClassPass" instead of the raw classpass slug, matching the existing Treatwell/cash/card-terminal labels. Grepped the repo for every other enumeration of these payment channels (booking detail page, reports, finance, day-close, reconciliation) -- none exists outside the checkout screen and this one audit-log label, so no other display map needed a ClassPass entry.',
+      'Verified: npx tsc --noEmit and npm run build pass clean.',
+    ],
+  },
+  {
     title: 'Academy PDF lesson viewer is fully inaccessible to screen readers (BLD-1537)',
     type: 'ERROR', urgency: 'P1', status: 'SHIPPED', assignee: 'claude',
     value: 6, effort: 2,
