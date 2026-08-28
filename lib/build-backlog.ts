@@ -4738,6 +4738,18 @@ export const BUILD_BACKLOG: BacklogItem[] = [
       'Verified: npx tsc --noEmit and npm run build pass clean.',
     ],
   },
+  {
+    title: 'Staff.manage delegate could revoke any permission from any colleague, unclamped (BLD-1539)',
+    type: 'ERROR', urgency: 'P2', status: 'IN_REVIEW', assignee: 'claude',
+    value: 5, effort: 2,
+    detail: "app/api/admin/staff/route.ts's revoke array only ran clean() (permission-key format check) before writing permRevoke, unlike grant, which is passed through clampGrant (restricts a non-OWNER actor to permissions they hold themselves and excludes OWNER_ONLY keys). Any non-OWNER staff member holding the delegable staff.manage permission -- no role has it by default, an owner grants it -- could strip any permission, including ones they never held themselves (e.g. clients.clinical.view), from any non-owner colleague, on both the update-existing and create-new-account paths (lines 112 and 220).",
+    notes: [
+      'Fix: renamed clampGrant to clampPerms (identical actor-authority filter -- OWNER can grant/revoke anything, a non-OWNER delegate only permissions they hold and never OWNER_ONLY) and applied it to both permGrant and permRevoke on both the update-existing branch and the create-new-account branch, so revoke now has the same escalation clamp grant already had.',
+      "Review correction (pre-merge): clamping the incoming array was only half the fix on the update path. permGrant/permRevoke are written as a whole-array replace and components/admin/StaffManager.tsx posts the target's full current grant/revoke sets, so filtering out a key the actor may not touch DELETED that key rather than leaving it alone. On permRevoke that is the same escalation mirrored -- removing a key from permRevoke restores the permission, so a staff.manage delegate who lacks clients.clinical.view would hand it back to a colleague an owner had revoked it from, silently, on any routine Save and with no intent required. On permGrant the same drop silently stripped an owner-set grant. The update branch now merges rather than replaces (mergePerms): entries inside the actor's authority come from the posted array, entries outside it are carried over from the stored record untouched. OWNER behaviour is unchanged (mayTouch is always true for an OWNER, so nothing is carried over). The create branch still uses clampPerms -- there is no prior record to preserve, and the BLD-1303 subset gate already guarantees every default permission of the created role is one the actor holds.",
+      'Checked for other writers: app/api/admin/staff/route.ts is the only place in the codebase that writes permGrant or permRevoke (every other reference reads them for effectivePermissions or session minting), so no second endpoint needs the same clamp.',
+      'Verified: npx tsc --noEmit and npm run build pass clean.',
+    ],
+  },
 ];
 
 // A content hash over every item's title + status + PR, so ANY change (a new
