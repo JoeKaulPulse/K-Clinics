@@ -119,21 +119,46 @@ export async function POST(req: Request) {
   const customerId = await ensureCustomer(client);
 
   const basePrice = pricePence ?? 0;
-  let finalPrice = basePrice;
 
-  // A valid promo code takes precedence over the one-time welcome claim (no
-  // stacking). Validated server-side here; redeemed after the booking is held.
+  // BLD-1495: guests get the same live-offer price already advertised as a
+  // strikethrough "Offer" on the treatment page (pricingForTreatment's
+  // fromOfferPence) as their starting discount — mirroring /api/booking/start,
+  // where the live offer is the default discount and a promo code replaces it
+  // only if worth at least as much (never stacked on top of it).
+  //
+  // Guarded on basePrice > 0. An "on consultation" treatment books as a £0
+  // card-on-file hold (basePrice is forced to 0 above), but fromPence /
+  // fromOfferPence still describe any sibling variant that overrides the
+  // service status back to NORMAL — subtracting that variant's offer from a £0
+  // hold would write a NEGATIVE pricePence onto the booking. Clamped to
+  // basePrice for the same reason /api/booking/start clamps its line totals.
+  const offerDiscountPence = basePrice > 0 && pricing?.fromOfferPence != null && pricing.fromPence != null
+    ? Math.min(basePrice, Math.max(0, pricing.fromPence - pricing.fromOfferPence)) : 0;
+  let discountPence = offerDiscountPence;
+  let finalPrice = Math.max(0, basePrice - discountPence);
+
+  // A valid promo code takes precedence over the offer/welcome discount if
+  // it's worth at least as much (no stacking). Validated server-side here;
+  // redeemed after the booking is held.
   let promo: { promoId: string; discountPence: number } | null = null;
   if (basePrice > 0 && d.promoCode) {
     const { priceWithPromo } = await import('@/lib/promo');
     const r = await priceWithPromo(d.promoCode, { clientId: client.id, email: client.email, treatmentSlug: d.slug, pricePence: basePrice });
-    if (r.ok) { finalPrice = r.finalPence; promo = { promoId: r.promoId, discountPence: r.discountPence }; }
+    if (r.ok && r.discountPence >= discountPence) { finalPrice = r.finalPence; promo = { promoId: r.promoId, discountPence: r.discountPence }; discountPence = r.discountPence; }
   }
 
-  // One-time welcome discount: apply only if no promo code was used.
+  // One-time welcome discount: apply only if no promo code was used, and only
+  // if it beats whatever offer discount is already in play. (Unlike
+  // /api/booking/start, a promo code that is accepted here suppresses the
+  // welcome claim outright rather than being compared against it — long-
+  // standing behaviour of this route, left unchanged by BLD-1495.)
   const claim =
-    !promo && finalPrice > 0 ? await db.discountClaim.findFirst({ where: { clientId: client.id, status: 'ACTIVE' } }) : null;
-  if (claim) finalPrice = Math.round((finalPrice * (100 - claim.percent)) / 100);
+    !promo && basePrice > 0 ? await db.discountClaim.findFirst({ where: { clientId: client.id, status: 'ACTIVE' } }) : null;
+  let usedWelcome = false;
+  if (claim) {
+    const w = Math.round((basePrice * claim.percent) / 100);
+    if (w > discountPence) { finalPrice = Math.max(0, basePrice - w); usedWelcome = true; }
+  }
 
   // Hold the slot — ATOMICALLY. Re-check for overlapping holds inside a
   // Serializable transaction (mirrors redeemPromo/awardClientPoints) so two
@@ -209,17 +234,20 @@ export async function POST(req: Request) {
       // BLD-1035: the read-only price check passed, but a concurrent request
       // consumed the code's cap / once-per-client allowance before this atomic
       // redemption ran. Without this the booking kept the discount anyway.
-      // Re-price at the undiscounted amount before any charge is taken.
-      await db.booking.update({ where: { id: booking.id }, data: { pricePence: basePrice } }).catch(() => {});
+      // Re-price to the offer discount the promo had beaten (never to a promo
+      // discount that was never actually redeemed) before any charge is taken.
+      const fallbackPrice = Math.max(0, basePrice - offerDiscountPence);
+      await db.booking.update({ where: { id: booking.id }, data: { pricePence: fallbackPrice } }).catch(() => {});
       await logAudit({
         action: 'SESSION_EDITED', actor: 'system', clientId: client.id, bookingId: booking.id,
-        summary: `Promo code could not be redeemed (limit reached by a concurrent booking) — price restored to £${(basePrice / 100).toFixed(2)}`,
+        summary: `Promo code could not be redeemed (limit reached by a concurrent booking) — price restored to £${(fallbackPrice / 100).toFixed(2)}`,
       }).catch(() => {});
     }
   }
 
-  // Burn the welcome discount so it can only ever be used once.
-  if (claim) {
+  // Burn the welcome discount so it can only ever be used once — only when it
+  // actually won (beat the offer discount and wasn't itself replaced by promo).
+  if (claim && usedWelcome) {
     await db.discountClaim.update({
       where: { id: claim.id },
       data: { status: 'REDEEMED', redeemedBookingId: booking.id },

@@ -108,7 +108,7 @@ export default async function RoadmapPage() {
   ];
 
   return (
-    <main className="mx-auto max-w-2xl px-5 py-16 sm:py-24">
+    <main className="mx-auto max-w-2xl px-5 pb-16 pt-[calc(var(--header-h,5.25rem)+2rem)] sm:pb-24">
       <div className="mb-12 text-center">
         <p className="mb-3 text-[0.7rem] uppercase tracking-[0.18em] text-[var(--color-stone)]">KClinics</p>
         <h1 className="font-[family-name:var(--font-display)] text-4xl sm:text-5xl">What we&rsquo;re building</h1>

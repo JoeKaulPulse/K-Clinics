@@ -115,8 +115,18 @@ export default async function BookingDetail({ params }: { params: Promise<{ id: 
   const canManageBooking = sessionCan(session, 'bookings.manage');
   const clinicians: { id: string; name: string }[] = [];
   if (canManageBooking) {
+    // BLD-1474: 'consultation' is a reserved pseudo-treatment slug (see
+    // create-action.ts) that's never in the real treatment catalogue, so it
+    // can never appear in a staff member's competencies list via the
+    // Schedules UI. Left in the OR filter below, that meant only a fully
+    // unrestricted generalist (empty competencies) could ever be assigned --
+    // zero clinicians at any clinic where staff have specialisms set. Any
+    // active clinician is eligible to run a consultation.
     const rows = await db.adminUser.findMany({
-      where: { isClinician: true, active: true, OR: [{ competencies: { has: b.treatmentSlug } }, { competencies: { isEmpty: true } }] },
+      where: {
+        isClinician: true, active: true,
+        ...(b.treatmentSlug === 'consultation' ? {} : { OR: [{ competencies: { has: b.treatmentSlug } }, { competencies: { isEmpty: true } }] }),
+      },
       orderBy: { name: 'asc' }, select: { id: true, name: true, email: true },
     });
     for (const r of rows) clinicians.push({ id: r.id, name: r.name || r.email });
