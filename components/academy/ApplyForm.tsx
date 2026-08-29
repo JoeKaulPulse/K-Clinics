@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { Button, ArrowIcon } from '@/components/ui/Button';
+import { trackLead } from '@/lib/analytics-events';
 
 type Cohort = { id: string; label: string };
 
@@ -28,7 +29,7 @@ export function ApplyForm({ courseId, courseTitle, cohorts }: { courseId: string
     try {
       const res = await fetch('/api/academy/apply', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...f, courseId, ...(bundleSlug ? { bundleSlug } : {}) }) });
       const j = await res.json();
-      if (j.ok) setDone(true); else setError(j.error || 'Could not submit your application.');
+      if (j.ok) { trackLead({ detail: { source: 'academy-apply' } }); setDone(true); } else setError(j.error || 'Could not submit your application.');
     } catch { setError('Network error. Please try again.'); }
     finally { setBusy(false); }
   }

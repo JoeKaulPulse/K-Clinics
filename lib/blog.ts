@@ -15,6 +15,56 @@ function rewriteMigratedImageSrcs(html: string): string {
   });
 }
 
+// BLD-1558: rewrite <a href="..."> links left over from the WordPress import
+// that point at the OLD site's URL structure and 404 on the current one.
+//
+// Verified directly against both the live Post table (via the rendered
+// /journal/[slug] pages) and the original export
+// (scripts/migrate-wp/kclinics.WordPress.2026-06-02.xml.zip), not guessed:
+// across all 72 live migrated articles the ONLY internal hrefs that appear in
+// the article body are the two "book a consultation" CTA links the WP theme
+// appended to every post — /book-a-consultation/ (aesthetics) and
+// /book-a-consultation-dentist/ (dentistry, ~32 articles) — plus the
+// /category/*-blog/ nav-chrome links stripDuplicateWpChrome above already
+// removes wholesale. /book-a-consultation/ already 301s to /book via an
+// admin-managed Redirect row, so only the dentistry CTA is dead and needs a
+// map entry here.
+//
+// The much larger set of legacy treatment-slug links (/microneedling,
+// /dermal-fillers, etc.) that an audit might expect to find here does NOT
+// occur in any migrated article body — those links live in the old
+// WordPress *page*/header/footer/nav-menu content, which migrate-blog.mjs
+// never imports (it only ingests post_type=post) and which plays no part in
+// what a visitor can click on the live site today. Do not add speculative
+// entries for slugs that don't actually appear in article content.
+const MIGRATED_LINK_MAP: Record<string, string> = {
+  '/book-a-consultation-dentist': '/book',
+};
+
+// Only our own host counts as internal. An absolute link on any other host that
+// happens to share a mapped path is somebody else's page and must be left alone.
+const OWN_HOST = /^(?:[a-z0-9-]+\.)*kclinics\.co\.uk$/i;
+
+/** Map a legacy WordPress internal link to its current route, or null if this
+ *  href isn't one of the confirmed-dead legacy targets above. Handles a bare
+ *  root-relative path, an absolute or protocol-relative URL on our own host, and
+ *  a trailing slash — the shapes actually seen in the imported article HTML —
+ *  without touching external, mailto:, tel: or anchor links. */
+export function resolveMigratedLink(href: string): string | null {
+  const m = /^(?:(?:https?:)?\/\/([^/?#]+))?(\/[^?#]*)/i.exec(href.trim());
+  if (!m) return null;
+  if (m[1] && !OWN_HOST.test(m[1].replace(/:\d+$/, ''))) return null; // external host — not ours to rewrite
+  const path = m[2].replace(/\/+$/, '') || '/';
+  return MIGRATED_LINK_MAP[path] ?? null;
+}
+
+function rewriteMigratedLinkHrefs(html: string): string {
+  return html.replace(/\bhref="([^"]+)"/gi, (full, url) => {
+    const resolved = resolveMigratedLink(url);
+    return resolved ? `href="${escapeHtml(resolved)}"` : full;
+  });
+}
+
 // DB-backed journal. Admin-managed Post rows are the source of truth; the native
 // curated articles (lib/articles.ts) still render for any slug NOT in the DB, so
 // nothing disappears before/after the import and the page never breaks if the
@@ -227,7 +277,7 @@ export async function getBlogPost(slug: string): Promise<BlogPost | null> {
       slug: r.slug, title: r.title, excerpt: r.excerpt ?? '',
       metaDescription: r.metaDescription ?? (r.excerpt ? stripNavChrome(r.excerpt, r.title) : ''),
       category: r.category ?? 'Wellbeing', readMinutes: r.readMinutes, published: (r.publishedAt ?? r.createdAt).toISOString(),
-      updated: r.updatedAt.toISOString(), html: stripDuplicateWpChrome(rewriteMigratedImageSrcs(sanitizeHtml(r.content)), r.title), keywords: r.keywords, related: r.related, image: resolveMigratedImage(r.coverImage),
+      updated: r.updatedAt.toISOString(), html: stripDuplicateWpChrome(rewriteMigratedLinkHrefs(rewriteMigratedImageSrcs(sanitizeHtml(r.content))), r.title), keywords: r.keywords, related: r.related, image: resolveMigratedImage(r.coverImage),
     };
   } catch { /* fall through to native */ }
   const a = getArticle(slug);
