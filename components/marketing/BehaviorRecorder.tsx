@@ -86,7 +86,12 @@ export function BehaviorRecorder() {
     };
 
     start();
-    const onConsent = () => { if (getConsent()?.analytics) start(); };
+    // BLD-1554: withdrawing analytics consent tears the recorder down. Clearing
+    // `stop` afterwards is part of the teardown, not tidiness: `start()` bails on
+    // a truthy `stop`, so leaving it set would (a) make a later re-grant a no-op
+    // — consent could never be turned back on within the session — and (b) leave
+    // the unmount cleanup below calling the same rrweb stop function a second time.
+    const onConsent = () => { if (getConsent()?.analytics) start(); else { stop?.(); stop = undefined; } };
     window.addEventListener('kc-consent', onConsent);
     return () => { window.removeEventListener('kc-consent', onConsent); stop?.(); };
   }, []);
