@@ -6,6 +6,7 @@ import { Reveal } from '@/components/motion/Reveal';
 import { Button, ArrowIcon } from '@/components/ui/Button';
 import { pageMeta, JsonLd, breadcrumbLd } from '@/lib/seo';
 import { formatFee } from '@/lib/academy';
+import { ViewItemTracker } from '@/components/marketing/ViewItemTracker';
 
 export const revalidate = 3600;
 
@@ -39,6 +40,7 @@ export default async function BundlePage({ params }: { params: Promise<{ slug: s
   return (
     <>
       <JsonLd data={breadcrumbLd([{ name: 'Home', path: '/' }, { name: 'Academy', path: '/academy' }, { name: bundle.title, path: `/academy/bundles/${slug}` }])} />
+      <ViewItemTracker id={`academy-bundle-${slug}`} name={bundle.title} category="academy-bundle" valuePence={effectivePence ?? undefined} />
       <PageHero
         eyebrow="K Academy · Learning pathway"
         title={bundle.title}
