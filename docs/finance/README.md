@@ -56,3 +56,22 @@ band maths on the annual columns, seasonal energy costs (Jul ≈ 2.5× Sep).
   BB Glow service; three inactive services still carry prices.
 - `costPence` is null on every variant — no recorded COGS anywhere; the
   model's consumables figures are researched estimates flagged for review.
+
+## Admin planner (`/admin/finance/planner`)
+
+The model also runs live inside the admin — Finance → Finance planner, behind
+the same PIN/passkey step-up as Cashflow (`finance.view` to see it,
+`finance.manage` + an active finance unlock to edit).
+
+- Pricing rows come from the **live** Service/ServiceVariant catalogue, so the
+  unit economics always reflect the current price list.
+- Every assumption is editable and stored as one JSON blob in the `Setting`
+  table (`finance_planner_model_v1`) — no schema changes, deploy-gate safe.
+  "Reset to defaults" returns to the researched seed values.
+- Compute lives in `lib/finance-planner-compute.ts` (pure); seeds are generated
+  into `lib/finance-planner-defaults.ts` by `gen_admin_defaults.py`.
+- `verify-admin-planner.ts` replays the workbook's frozen input set through the
+  TypeScript compute and asserts the workbook's recalc-verified checkpoints
+  (month-1 revenue, month-12 EBITDA, annual PBT/tax/net profit, VAT crossing
+  month, unit-economics row) — all pass to the penny. Run it with:
+  `npx esbuild docs/finance/verify-admin-planner.ts --bundle --platform=node --format=cjs --outfile=/tmp/verify.cjs --alias:@=. && node /tmp/verify.cjs`
