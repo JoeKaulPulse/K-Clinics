@@ -4774,6 +4774,18 @@ export const BUILD_BACKLOG: BacklogItem[] = [
       'Verified: npx tsc --noEmit and npm run build pass clean.',
     ],
   },
+  {
+    title: 'Academy SVG upload, uncached image optimiser, unrated consent-sign endpoint (BLD-1561, BLD-1562, BLD-1563)',
+    type: 'TASK', urgency: 'P2', status: 'IN_REVIEW', assignee: 'claude',
+    value: 6, effort: 1,
+    detail: "BLD-1561: app/api/admin/academy/blob-token/route.ts allowed 'image/*' for lesson media uploads, unlike every sibling blob-token route (admin/build, admin/blob-upload, team-chat), which already exclude image/svg+xml -- a stored-XSS vector -- via an explicit raster list. BLD-1562: next.config.mjs left images.minimumCacheTTL at the short Next.js default and listed formats AVIF-first, so every next/image instance sitewide re-hit the costly optimiser path more than necessary, unlike the explicit 1-year immutable cache policy already set for /public assets in the same file. BLD-1563: app/api/consent/sign/route.ts had no enforceRateLimit call, unlike every other public token-consuming mutation route, allowing unlimited attempts against a consentRequest.token (a cuid, not a CSPRNG secret) to write a legally significant signed/declined consent under an attacker-supplied signerName and signature image.",
+    notes: [
+      "Fix (BLD-1561): replaced the 'image/*' wildcard with the same explicit raster list (png, jpeg, webp, gif, avif, heic, heif) used by admin/build/blob-token and team-chat/blob-token. video/* and audio/* wildcards are unchanged -- SVG is only a risk for image rendering.",
+      'Fix (BLD-1562): swapped images.formats to webp-first (near-identical quality to avif at a cheaper encode) and set images.minimumCacheTTL to 31536000 (1 year), matching the immutable cache-control already set for /public assets.',
+      "Fix (BLD-1563): added enforceRateLimit(req, 'consent-sign', 10, 600) before the token lookup, mirroring the existing 'consent-read' limiter on the sibling GET route in app/api/consent/[token]/route.ts.",
+      'Verified: npx tsc --noEmit and npm run build pass clean (npm run build validated with the sandbox DB-connection vars unset, since raw Postgres TCP is not reachable from this network policy -- prebuild db-sync is a no-op without them, matching how it behaves with no DB URL configured at all).',
+    ],
+  },
 ];
 
 // A content hash over every item's title + status + PR, so ANY change (a new

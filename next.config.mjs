@@ -181,7 +181,14 @@ const nextConfig = {
   // created" without creating one — clients then couldn't log in).
   env: { NEXT_PUBLIC_BASE_PATH: repoBase, NEXT_PUBLIC_STATIC_DEMO: isPages ? 'true' : '' },
   images: {
-    formats: ['image/avif', 'image/webp'],
+    // webp first: near-identical quality to avif at a much cheaper encode,
+    // so a cold optimiser cache serves faster (avif still negotiated when a
+    // browser prefers it).
+    formats: ['image/webp', 'image/avif'],
+    // Match the long-lived, immutable cache policy already set for /public
+    // assets below — the default TTL is short, so every next/image instance
+    // sitewide was re-hitting the costly optimiser path far more than needed.
+    minimumCacheTTL: 31536000,
     // GitHub Pages has no image optimiser; serve images as-is.
     unoptimized: isPages,
     // Allow SVG to be served through next/image (brand logo, icons).
