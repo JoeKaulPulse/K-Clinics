@@ -146,7 +146,7 @@ export async function clientLedger(clientId: string, limit = 50) {
  *  chargedPence (chargePaymentIntentId 'ext_gift-voucher' — see the 'voucher'
  *  case in app/api/admin/bookings/session/route.ts), so that case is excluded
  *  here to avoid double-counting the same money twice. */
-function bookingSpendPence(b: { chargedPence: number | null; pricePence: number; giftVoucherPence?: number | null; chargePaymentIntentId?: string | null }): number {
+export function bookingSpendPence(b: { chargedPence: number | null; pricePence: number; giftVoucherPence?: number | null; chargePaymentIntentId?: string | null }): number {
   const charged = b.chargedPence ?? 0;
   // BLD-1202 (review): nothing charged yet — fall back to the list price, as
   // before. awardClientSpend fires on COMPLETION as well as on charge
@@ -369,14 +369,36 @@ export async function redeemPointsOnBooking(clientId: string, bookingId: string,
  *  refunded client kept the points they earned on money that went back.
  *  Pro-rata for partial refunds; idempotent by ledger arithmetic (negative
  *  SPEND rows on the booking record what has already been reversed, so a
- *  webhook redelivery or a second partial refund only reverses the delta). */
-export async function reverseSpendPoints(bookingId: string, totalRefundedPence: number, chargedPence: number): Promise<void> {
+ *  webhook redelivery or a second partial refund only reverses the delta).
+ *
+ *  BLD-1521: points are earned on bookingSpendPence() — chargedPence PLUS the
+ *  voucher-covered portion for a partial-voucher booking (BLD-1202) — but the
+ *  reversal ratio used to divide by chargedPence alone, over-clawing points on
+ *  any partial refund of a voucher-part-paid booking (e.g. a £100 booking, £30
+ *  by voucher / £70 by card, earns 100 pts; a £35 card-only partial refund
+ *  should return 35 pts, not the 50 the old chargedPence-only ratio gave).
+ *  The voucher-covered portion only itself comes back to the client when the
+ *  card portion is refunded IN FULL (booking-actions.ts / the webhook restore
+ *  the voucher only when `fully` is true) — so the voucher slice only counts
+ *  toward "money returned" once totalRefundedPence has reached chargedPence,
+ *  matching bookingSpendPence()'s earn-side accounting exactly. */
+export async function reverseSpendPoints(
+  bookingId: string,
+  totalRefundedPence: number,
+  b: { chargedPence: number | null; giftVoucherPence?: number | null; chargePaymentIntentId?: string | null },
+): Promise<void> {
+  const chargedPence = b.chargedPence ?? 0;
   if (chargedPence <= 0 || totalRefundedPence <= 0) return;
+  const spend = bookingSpendPence({ ...b, chargedPence, pricePence: 0 });
+  if (spend <= 0) return;
   const rows = await db.clientPoints.findMany({ where: { bookingId, category: 'SPEND' }, select: { points: true, clientId: true } });
   if (!rows.length) return;
   const earned = rows.filter((r) => r.points > 0).reduce((s, r) => s + r.points, 0);
   const reversed = -rows.filter((r) => r.points < 0).reduce((s, r) => s + r.points, 0);
-  const shouldReverse = Math.floor(earned * Math.min(1, totalRefundedPence / chargedPence));
+  const voucherPortion = b.chargePaymentIntentId === 'ext_gift-voucher' ? 0 : (b.giftVoucherPence ?? 0);
+  const fullyRefunded = totalRefundedPence >= chargedPence;
+  const effectiveReturnedPence = totalRefundedPence + (fullyRefunded ? voucherPortion : 0);
+  const shouldReverse = Math.floor(earned * Math.min(1, effectiveReturnedPence / spend));
   const delta = shouldReverse - reversed;
   if (delta <= 0 || !rows[0]) return;
   await awardClientPoints({ clientId: rows[0].clientId, points: -delta, category: 'SPEND', reason: 'Points reversed — payment refunded', bookingId, awardedBy: 'system' });
