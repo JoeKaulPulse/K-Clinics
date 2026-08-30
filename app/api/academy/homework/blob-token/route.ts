@@ -8,6 +8,9 @@ export const runtime = 'nodejs';
 // Auth is the signed-in academy student — done inside onBeforeGenerateToken (only
 // the token request carries the cookie; the blob.upload-completed callback is a
 // server-to-server call that handleUpload validates by its own signature).
+// BLD-1544: scope the token to academy/homework/ paths (matches the sibling
+// portfolio route's pathname check) — otherwise any signed-in student could
+// request a token for an arbitrary pathname in the shared Blob store.
 export async function POST(req: Request) {
   if (!crmEnabled) return NextResponse.json({ ok: false }, { status: 503 });
   if (!process.env.BLOB_READ_WRITE_TOKEN) return NextResponse.json({ ok: false, error: 'File storage isn’t connected.' }, { status: 400 });
@@ -16,10 +19,11 @@ export async function POST(req: Request) {
     const json = await handleUpload({
       body,
       request: req,
-      onBeforeGenerateToken: async () => {
+      onBeforeGenerateToken: async (pathname) => {
         const { getCurrentStudent } = await import('@/lib/academy-auth');
         const student = await getCurrentStudent().catch(() => null);
         if (!student) throw new Error('Please sign in again.');
+        if (!pathname.startsWith('academy/homework/')) throw new Error('Please refresh the page and try again.');
         return {
           allowedContentTypes: [
             'application/pdf',

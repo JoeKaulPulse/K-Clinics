@@ -18,8 +18,13 @@ export async function GET(req: Request) {
   const staffId = new URL(req.url).searchParams.get('staffId') || session!.sub;
 
   const { googleAuthUrl, googleEnabled } = await import('@/lib/google-calendar');
-  // Parked while the clinic is on Hostinger — kept intact for a future Workspace move.
-  if (!googleEnabled()) return NextResponse.json({ ok: false, error: 'Google Calendar is parked (the clinic is on Hostinger). Set GOOGLE_INTEGRATION_ENABLED=true to re-enable.' }, { status: 503 });
+  // Parked while the clinic is on Hostinger — kept intact for a future Workspace
+  // move. BLD-1460: the "Connect" button is gated on googleConfigured() (env vars
+  // present), a separate check from this parked flag — so credentials can exist
+  // while this route still 503s. Redirect back to the existing inline error
+  // banner (same as the OAuth callback's failure path) instead of a raw JSON
+  // error page.
+  if (!googleEnabled()) return NextResponse.redirect(new URL('/admin/schedule?gcal=error', req.url));
   // CSRF-protect the OAuth round-trip with a random, cookie-bound state nonce
   // (mirrors the Xero/TrueLayer/Google-Business callbacks). The target staffId
   // rides AFTER the nonce so the callback attaches the token only to the record

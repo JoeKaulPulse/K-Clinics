@@ -16,8 +16,13 @@ function verify(secret: string, headers: Headers, body: string): boolean {
     const id = headers.get('svix-id'); const ts = headers.get('svix-timestamp'); const sig = headers.get('svix-signature');
     if (!id || !ts || !sig) return false;
     const key = Buffer.from(secret.replace(/^whsec_/, ''), 'base64');
-    const expected = crypto.createHmac('sha256', key).update(`${id}.${ts}.${body}`).digest('base64');
-    return sig.split(' ').some((s) => s.split(',')[1] === expected);
+    const expected = Buffer.from(crypto.createHmac('sha256', key).update(`${id}.${ts}.${body}`).digest('base64'));
+    // Constant-time compare against every candidate signature (Svix sends one per
+    // active secret) — a plain `===` would leak a timing oracle on the signature.
+    return sig.split(' ').some((s) => {
+      const provided = Buffer.from(s.split(',')[1] || '');
+      return provided.length === expected.length && crypto.timingSafeEqual(provided, expected);
+    });
   } catch { return false; }
 }
 

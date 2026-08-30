@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import '../globals.css';
+import { GeistMono } from 'geist/font/mono';
 import { MotionProvider } from '@/components/motion/MotionProvider';
 
 export const metadata: Metadata = {
@@ -12,10 +13,14 @@ export const metadata: Metadata = {
 // (dashboard, appointments, assessments, invoices), not here — so the public
 // login & signup pages can also be statically exported for the demo preview.
 
+// BLD-1463: GeistMono (--font-mono) is used across the client portal (discount
+// codes, referral links, gift-card codes). Only the root layout can set classes
+// on <html>/<body>, so the variable is applied here instead, scoping its
+// preload to /account routes rather than every public route.
 export default function AccountLayout({ children }: { children: React.ReactNode }) {
   return (
     <MotionProvider>
-      <div className="min-h-screen bg-[var(--color-porcelain)] text-[var(--color-ink)]">
+      <div className={`${GeistMono.variable} min-h-screen bg-[var(--color-porcelain)] text-[var(--color-ink)]`}>
         {/* BLD-1297: skip link + main landmark, mirroring the marketing and
             admin layouts, so keyboard/screen-reader users can bypass any page
             chrome. First focusable element on every /account page. */}

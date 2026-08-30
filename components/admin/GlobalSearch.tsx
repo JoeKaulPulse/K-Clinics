@@ -6,8 +6,24 @@ import { useRouter } from 'next/navigation';
 type Hit = { id: string; title: string; sub?: string; href: string };
 type Group = { type: string; label: string; results: Hit[] };
 type NavPage = { href: string; label: string; group: string; keywords: string };
+// BLD-1541: what actually gets navigated to, not the raw typed query — patient
+// names/numbers typed by reception/clinical staff must never linger verbatim
+// in localStorage on a shared workstation.
+type Recent = { title: string; sub?: string; href: string };
 
 const RECENT_KEY = 'kc-admin-recent-search';
+const RECENT_MAX = 6;
+// BLD-1541: only these result groups may be persisted. Every other group labels
+// its hits with personal data — /api/admin/search sets a client's title to the
+// full name (plus a medical-flag marker) and its sub to the email address, a
+// booking's sub to the client name, a consultation's sub to a snippet of the
+// decrypted clinical concerns, and a voucher's/supplier's sub to a person's
+// name. Storing those would move patient data into localStorage rather than
+// keep it out, so hits from those groups are simply not remembered.
+const RECENT_SAFE_TYPES = new Set([
+  'nav', 'services', 'products', 'stock', 'courses',
+  'posts', 'pages', 'tasks', 'build', 'vacancies', 'discounts',
+]);
 const escapeRe = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
 // Wrap any matched query term in <mark> so the user sees why a result matched.
@@ -61,13 +77,29 @@ export function GlobalSearch({ placeholder, pages = [] }: { placeholder: string;
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [active, setActive] = useState(0);
-  const [recent, setRecent] = useState<string[]>([]);
+  const [recent, setRecent] = useState<Recent[]>([]);
   const [mac, setMac] = useState(false);
   const boxRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    try { setRecent(JSON.parse(localStorage.getItem(RECENT_KEY) || '[]')); } catch { /* ignore */ }
+    // BLD-1541: this key used to hold the raw typed queries as a string[]. Drop
+    // anything that isn't the new {title, href} shape, so a staff member who
+    // already has the old format gets it purged (rather than rendering blank
+    // rows that navigate nowhere) on their next admin load.
+    try {
+      const raw: unknown = JSON.parse(localStorage.getItem(RECENT_KEY) || '[]');
+      const clean = (Array.isArray(raw) ? raw : []).filter(
+        (r): r is Recent => !!r && typeof r === 'object'
+          && typeof (r as Recent).title === 'string'
+          && typeof (r as Recent).href === 'string',
+      ).slice(0, RECENT_MAX);
+      setRecent(clean);
+      if (clean.length !== (Array.isArray(raw) ? raw.length : 0)) {
+        if (clean.length) localStorage.setItem(RECENT_KEY, JSON.stringify(clean));
+        else localStorage.removeItem(RECENT_KEY);
+      }
+    } catch { /* ignore */ }
     if (typeof navigator !== 'undefined') setMac(/mac/i.test(navigator.platform));
   }, []);
 
@@ -80,7 +112,7 @@ export function GlobalSearch({ placeholder, pages = [] }: { placeholder: string;
   );
 
   // Flatten for keyboard navigation across all groups (nav first, then entities).
-  const flat = useMemo(() => allGroups.flatMap((g) => g.results.map((r) => r.href)), [allGroups]);
+  const flat = useMemo(() => allGroups.flatMap((g) => g.results.map((r) => ({ hit: r, type: g.type }))), [allGroups]);
   const showRecent = q.trim().length < 1 && recent.length > 0;
 
   useEffect(() => {
@@ -120,15 +152,18 @@ export function GlobalSearch({ placeholder, pages = [] }: { placeholder: string;
     return () => window.removeEventListener('keydown', onKey);
   }, []);
 
-  function remember(term: string) {
-    const t = term.trim();
-    if (t.length < 2) return;
-    const next = [t, ...recent.filter((r) => r.toLowerCase() !== t.toLowerCase())].slice(0, 6);
+  // BLD-1541: remember the destination the search actually landed on (its
+  // label/href), never the raw text staff typed to get there — and only when the
+  // destination is a non-personal record (see RECENT_SAFE_TYPES).
+  function remember(hit: Hit, type: string) {
+    if (!RECENT_SAFE_TYPES.has(type)) return;
+    const entry: Recent = { title: hit.title, sub: hit.sub, href: hit.href };
+    const next = [entry, ...recent.filter((r) => r.href !== hit.href)].slice(0, RECENT_MAX);
     setRecent(next);
     try { localStorage.setItem(RECENT_KEY, JSON.stringify(next)); } catch { /* ignore */ }
   }
   function clearRecent() { setRecent([]); try { localStorage.removeItem(RECENT_KEY); } catch { /* ignore */ } }
-  function go(href: string) { remember(q); setOpen(false); setQ(''); setGroups([]); router.push(href); }
+  function go(hit: Hit, type: string) { remember(hit, type); setOpen(false); setQ(''); setGroups([]); router.push(hit.href); }
 
   const hasResults = allGroups.length > 0;
   const showPanel = open && (showRecent || q.trim().length >= 1);
@@ -153,7 +188,7 @@ export function GlobalSearch({ placeholder, pages = [] }: { placeholder: string;
           onKeyDown={(e) => {
             if (e.key === 'ArrowDown') { e.preventDefault(); setOpen(true); setActive((a) => Math.min(a + 1, flat.length - 1)); }
             else if (e.key === 'ArrowUp') { e.preventDefault(); setActive((a) => Math.max(a - 1, 0)); }
-            else if (e.key === 'Enter' && flat[active]) { e.preventDefault(); go(flat[active]); }
+            else if (e.key === 'Enter' && flat[active]) { e.preventDefault(); go(flat[active].hit, flat[active].type); }
             else if (e.key === 'Escape') { setOpen(false); inputRef.current?.blur(); }
           }}
           placeholder={placeholder}
@@ -197,9 +232,12 @@ export function GlobalSearch({ placeholder, pages = [] }: { placeholder: string;
                 <button onMouseDown={(e) => { e.preventDefault(); clearRecent(); }} className="text-[0.62rem] text-[var(--color-stone)] transition-colors hover:text-[var(--color-ink)]">Clear</button>
               </div>
               {recent.map((r) => (
-                <button key={r} onMouseDown={(e) => { e.preventDefault(); setQ(r); }} className="flex w-full items-center gap-2.5 px-3 py-2.5 text-left text-sm transition-colors hover:bg-[var(--color-bone)]">
+                <button key={r.href} onMouseDown={(e) => { e.preventDefault(); setOpen(false); setQ(''); router.push(r.href); }} className="flex w-full items-center gap-2.5 px-3 py-2.5 text-left text-sm transition-colors hover:bg-[var(--color-bone)]">
                   <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" className="shrink-0 text-[var(--color-stone)]" aria-hidden><path d="M8 4v4l2.5 1.5" /><path d="M2.5 8a5.5 5.5 0 1 0 1.6-3.9M2.5 3v2h2" /></svg>
-                  <span className="truncate">{r}</span>
+                  <span className="min-w-0 flex-1 truncate">
+                    {r.title}
+                    {r.sub && <span className="ml-1.5 text-xs text-[var(--color-stone)]">{r.sub}</span>}
+                  </span>
                 </button>
               ))}
             </>
@@ -222,7 +260,7 @@ export function GlobalSearch({ placeholder, pages = [] }: { placeholder: string;
                       role="option"
                       aria-selected={i === active}
                       onMouseEnter={() => setActive(i)}
-                      onClick={() => go(r.href)}
+                      onClick={() => go(r, g.type)}
                       className={`flex w-full items-center gap-2.5 px-3 py-2.5 text-left transition-colors ${i === active ? 'bg-[var(--color-gold)]/12' : ''}`}
                     >
                       {isNav && <SearchIcon className="shrink-0 text-[var(--color-stone)]" />}
