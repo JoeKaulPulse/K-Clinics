@@ -4788,7 +4788,7 @@ export const BUILD_BACKLOG: BacklogItem[] = [
   },
   {
     title: 'reverseSpendPoints over-claws loyalty points on partial refunds of voucher-part-paid bookings (BLD-1521)',
-    type: 'ERROR', urgency: 'P2', status: 'IN_REVIEW', assignee: 'claude',
+    type: 'ERROR', urgency: 'P2', status: 'IN_REVIEW', assignee: 'claude', pr: PR(1887),
     value: 6, effort: 3,
     detail: "lib/client-loyalty.ts's reverseSpendPoints (called from lib/booking-actions.ts and app/api/stripe/webhook/route.ts, x2) computed its reversal ratio as totalRefundedPence / chargedPence, but points are earned on bookingSpendPence() -- chargedPence PLUS the voucher-covered portion for a partial-voucher booking (BLD-1202). A GBP100 booking (GBP30 by voucher / GBP70 by card) earns 100 pts; a GBP35 card-only partial refund should return 35 pts (35/100) but the old ratio (35/70) clawed back 50 -- a real over-deduction of a client's loyalty balance on any partial refund of a voucher-part-paid booking.",
     notes: [
