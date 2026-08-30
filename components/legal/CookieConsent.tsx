@@ -114,17 +114,22 @@ export function CookieConsent() {
           // needs its own internal scroll just to reveal the action buttons on
           // a short mobile viewport; the short default copy below keeps actual
           // content well under that anyway.
-          className="fixed bottom-3 left-3 right-20 z-[80] mx-auto flex max-h-[85vh] max-w-2xl flex-col overflow-y-auto rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-4 shadow-[var(--shadow-lift)] sm:p-5 md:bottom-6 md:left-6 md:right-auto md:max-h-none md:overflow-visible md:p-6"
+          // BLD-1543: below sm (< 640px) the whole banner runs at a tighter
+          // scale — smaller max-h, padding, type and button size — so on a
+          // 390x844 phone it no longer eats ~48% of the viewport and covers
+          // the hero CTAs beneath it; sm: and up keep the original spacious
+          // sizing untouched.
+          className="fixed bottom-3 left-3 right-20 z-[80] mx-auto flex max-h-[45vh] max-w-2xl flex-col overflow-y-auto rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-3 shadow-[var(--shadow-lift)] sm:max-h-[85vh] sm:p-5 md:bottom-6 md:left-6 md:right-auto md:max-h-none md:overflow-visible md:p-6"
         >
-          <p className="font-[family-name:var(--font-display)] text-lg">Your privacy, your choice</p>
+          <p className="font-[family-name:var(--font-display)] text-base sm:text-lg">Your privacy, your choice</p>
           {expanded ? (
-            <p className="mt-2 text-sm leading-relaxed text-[var(--color-stone)]">
+            <p className="mt-1.5 text-xs leading-relaxed text-[var(--color-stone)] sm:mt-2 sm:text-sm">
               We use essential cookies to make our site work. With your consent, we&apos;d also like to use analytics and
               marketing cookies to improve your experience. You can change your mind anytime. See our{' '}
               <Link href="/info/privacy-policy" className="underline">Privacy Policy</Link>.
             </p>
           ) : (
-            <p className="mt-2 text-sm leading-relaxed text-[var(--color-stone)]">
+            <p className="mt-1.5 text-xs leading-relaxed text-[var(--color-stone)] sm:mt-2 sm:text-sm">
               We use essential cookies, plus analytics and marketing cookies if you consent.{' '}
               {/* The Privacy Policy link stays visible in the collapsed state:
                   the banner must offer direct access to the full cookie
@@ -138,7 +143,7 @@ export function CookieConsent() {
           )}
 
           {customise && (
-            <div className="mt-4 space-y-2 rounded-[var(--radius-md)] border border-[var(--color-line)] bg-[var(--color-bone)] p-4 text-sm">
+            <div className="mt-3 space-y-1.5 rounded-[var(--radius-md)] border border-[var(--color-line)] bg-[var(--color-bone)] p-3 text-xs sm:mt-4 sm:space-y-2 sm:p-4 sm:text-sm">
               <Row label="Strictly necessary" desc="Required for the site to function. Always on." checked disabled />
               <Row label="Analytics" desc="Helps us understand how the site is used." checked={analytics} onChange={setAnalytics} />
               <Row label="Marketing" desc="Used to personalise offers and measure campaigns." checked={marketing} onChange={setMarketing} />
@@ -149,20 +154,24 @@ export function CookieConsent() {
               "Reject non-essential" is never squeezed onto a wrapped row below
               the fold and never looks like the lesser option — both are full
               tap targets at the same visual weight; side-by-side once there's
-              room from sm: up. */}
-          <div className="mt-4 flex flex-col gap-2.5 sm:flex-row sm:flex-wrap">
-            <button onClick={() => decide(true, true)} className="rounded-full bg-[var(--color-gold-deep)] px-5 py-2.5 text-center text-sm font-medium text-white hover:bg-[var(--color-ink)] sm:flex-none">
+              room from sm: up.
+              BLD-1543: py-2/text-xs below sm keeps each tap target compact
+              (still >=32px tall) so three stacked buttons plus the copy above
+              fit well inside the shrunk mobile banner; sm: and up restore the
+              original py-2.5/text-sm sizing. */}
+          <div className="mt-3 flex flex-col gap-1.5 sm:mt-4 sm:flex-row sm:flex-wrap sm:gap-2.5">
+            <button onClick={() => decide(true, true)} className="rounded-full bg-[var(--color-gold-deep)] px-4 py-2 text-center text-xs font-medium text-white hover:bg-[var(--color-ink)] sm:px-5 sm:py-2.5 sm:text-sm sm:flex-none">
               Accept all
             </button>
-            <button onClick={() => decide(false, false)} className="rounded-full border border-[var(--color-ink)] px-5 py-2.5 text-center text-sm font-medium hover:bg-[var(--color-bone)] sm:flex-none">
+            <button onClick={() => decide(false, false)} className="rounded-full border border-[var(--color-ink)] px-4 py-2 text-center text-xs font-medium hover:bg-[var(--color-bone)] sm:px-5 sm:py-2.5 sm:text-sm sm:flex-none">
               Reject non-essential
             </button>
             {customise ? (
-              <button onClick={() => decide(analytics, marketing)} className="rounded-full border border-[var(--color-line)] px-5 py-2.5 text-center text-sm font-medium hover:bg-[var(--color-bone)] sm:flex-none">
+              <button onClick={() => decide(analytics, marketing)} className="rounded-full border border-[var(--color-line)] px-4 py-2 text-center text-xs font-medium hover:bg-[var(--color-bone)] sm:px-5 sm:py-2.5 sm:text-sm sm:flex-none">
                 Save choices
               </button>
             ) : (
-              <button onClick={() => setCustomise(true)} className="rounded-full px-5 py-2.5 text-center text-sm font-medium text-[var(--color-stone)] hover:text-[var(--color-ink)] sm:flex-none">
+              <button onClick={() => setCustomise(true)} className="rounded-full px-4 py-2 text-center text-xs font-medium text-[var(--color-stone)] hover:text-[var(--color-ink)] sm:px-5 sm:py-2.5 sm:text-sm sm:flex-none">
                 Customise
               </button>
             )}

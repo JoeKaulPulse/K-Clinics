@@ -84,8 +84,34 @@ function Stat({ label, value }: { label: string; value: string }) {
 function Row({ v, canManage }: { v: Voucher; canManage: boolean }) {
   const router = useRouter();
   const [busy, setBusy] = useState(false);
+  const [redeeming, setRedeeming] = useState(false);
+  const [amount, setAmount] = useState('');
+  const [error, setError] = useState<string | null>(null);
   async function act(payload: object) { setBusy(true); const r = await post(payload); setBusy(false); if (r.ok) router.refresh(); else alert(r.error || 'Failed.'); }
   const redeemable = v.status === 'ACTIVE' && v.balancePence > 0;
+
+  function openRedeem() { setRedeeming(true); setAmount(''); setError(null); }
+  function cancelRedeem() { setRedeeming(false); setAmount(''); setError(null); }
+  // BLD-1523: was `prompt()` — cancelling or typing a non-numeric value did
+  // nothing, with no explanation, for a real money-handling action. This now
+  // validates inline (empty/non-numeric/zero/negative, and amount above the
+  // outstanding balance) with a visible message before ever calling act().
+  function confirmRedeem() {
+    const n = Number(amount);
+    if (!amount.trim() || !Number.isFinite(n) || n <= 0) {
+      setError('Enter a valid amount greater than £0.');
+      return;
+    }
+    const p = Math.round(n * 100);
+    if (p > v.balancePence) {
+      setError(`Amount exceeds the outstanding balance of ${money(v.balancePence)}.`);
+      return;
+    }
+    setError(null);
+    setRedeeming(false);
+    act({ op: 'redeem', id: v.id, amountPence: p });
+  }
+
   return (
     <tr className="border-t border-[var(--color-line)] align-top">
       <td className="px-3 py-2 font-[family-name:var(--font-mono,monospace)] text-xs">{v.code}</td>
@@ -99,11 +125,35 @@ function Row({ v, canManage }: { v: Voucher; canManage: boolean }) {
       <td className="px-3 py-2 text-xs text-[var(--color-stone)]">{fmt(v.expiresAt)}</td>
       <td className="px-3 py-2 text-right">
         {canManage ? (
-          <div className="flex flex-wrap justify-end gap-2 text-xs">
-            {redeemable && <button disabled={busy} onClick={() => { const a = prompt(`Redeem amount (£), balance ${money(v.balancePence)}:`); const p = Math.round(Number(a) * 100); if (p > 0) act({ op: 'redeem', id: v.id, amountPence: p }); }} className="text-[var(--color-gold-deep)] hover:underline disabled:opacity-50">Redeem</button>}
-            {(v.status === 'ACTIVE' || v.status === 'REDEEMED') && <button disabled={busy} onClick={() => act({ op: 'resend', id: v.id })} className="text-[var(--color-stone)] hover:underline disabled:opacity-50">Resend</button>}
-            {v.status !== 'CANCELLED' && <button disabled={busy} onClick={() => { if (confirm('Cancel this voucher? The balance will no longer be redeemable.')) act({ op: 'cancel', id: v.id }); }} className="text-[var(--color-blush-deep)] hover:underline disabled:opacity-50">Cancel</button>}
-          </div>
+          redeeming ? (
+            <div className="min-w-[180px] text-right">
+              <div className="flex flex-wrap items-center justify-end gap-1.5 text-xs">
+                <label htmlFor={`redeem-${v.id}`} className="sr-only">Redeem amount in pounds for {v.code}</label>
+                <input
+                  id={`redeem-${v.id}`}
+                  type="number"
+                  inputMode="decimal"
+                  step="0.01"
+                  min="0"
+                  autoFocus
+                  value={amount}
+                  onChange={(e) => { setAmount(e.target.value); setError(null); }}
+                  onKeyDown={(e) => { if (e.key === 'Enter') confirmRedeem(); if (e.key === 'Escape') cancelRedeem(); }}
+                  placeholder={`£ up to ${money(v.balancePence)}`}
+                  className="w-28 rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-2 py-1 text-xs outline-none focus:border-[var(--color-gold)] focus-visible:ring-2 focus-visible:ring-[var(--color-gold)]"
+                />
+                <button disabled={busy} onClick={confirmRedeem} className="text-[var(--color-gold-deep)] hover:underline disabled:opacity-50">Confirm</button>
+                <button disabled={busy} onClick={cancelRedeem} className="text-[var(--color-stone)] hover:underline disabled:opacity-50">Cancel</button>
+              </div>
+              {error && <p role="alert" className="mt-1 text-right text-xs text-[var(--color-blush-deep)]">{error}</p>}
+            </div>
+          ) : (
+            <div className="flex flex-wrap justify-end gap-2 text-xs">
+              {redeemable && <button disabled={busy} onClick={openRedeem} className="text-[var(--color-gold-deep)] hover:underline disabled:opacity-50">Redeem</button>}
+              {(v.status === 'ACTIVE' || v.status === 'REDEEMED') && <button disabled={busy} onClick={() => act({ op: 'resend', id: v.id })} className="text-[var(--color-stone)] hover:underline disabled:opacity-50">Resend</button>}
+              {v.status !== 'CANCELLED' && <button disabled={busy} onClick={() => { if (confirm('Cancel this voucher? The balance will no longer be redeemable.')) act({ op: 'cancel', id: v.id }); }} className="text-[var(--color-blush-deep)] hover:underline disabled:opacity-50">Cancel</button>}
+            </div>
+          )
         ) : <span className="text-xs text-[var(--color-stone)]">—</span>}
       </td>
     </tr>

@@ -4786,6 +4786,17 @@ export const BUILD_BACKLOG: BacklogItem[] = [
       'Verified: npx tsc --noEmit and npm run build pass clean (npm run build validated with the sandbox DB-connection vars unset, since raw Postgres TCP is not reachable from this network policy -- prebuild db-sync is a no-op without them, matching how it behaves with no DB URL configured at all).',
     ],
   },
+  {
+    title: 'Raw prompt() for voucher redemption, oversized mobile cookie banner (BLD-1523, BLD-1543)',
+    type: 'TASK', urgency: 'P2', status: 'IN_REVIEW', assignee: 'claude',
+    value: 5, effort: 3,
+    detail: "BLD-1523: components/admin/GiftVoucherManager.tsx's Redeem action used a raw browser prompt() to take the redemption amount -- cancelling or entering a non-numeric value silently did nothing (no error, no explanation) for a real money-handling action, and there was no client-side check that the amount did not exceed the voucher's outstanding balance. BLD-1543: at a 390x844 mobile viewport, components/legal/CookieConsent.tsx's cookie-consent banner ran at full desktop-scale padding/type/button sizing (max-h-[85vh], p-4, text-lg/text-sm, py-2.5 buttons), occupying roughly half the viewport on first load and covering the hero CTAs on /, /booking, /treatments, /team and /contact until a choice was made.",
+    notes: [
+      "Fix (BLD-1523): replaced prompt() with an inline numeric input + Confirm/Cancel that opens in place of the row's action buttons. Confirm validates empty/non-numeric/zero/negative input and an amount above the voucher's balancePence, showing an inline role=\"alert\" message instead of failing silently, and only then calls the existing act({ op: 'redeem', ... }). Resend/Cancel actions and their behaviour are unchanged.",
+      "Fix (BLD-1543): added a sm: (< 640px) mobile scale to the banner -- max-h-[45vh] (was 85vh), tighter padding/type, and py-2/text-xs buttons -- while sm: and up keep the original spacious sizing (max-h-[85vh], p-4/5/6, text-lg/sm, py-2.5) untouched. No consent behaviour, choice, or button was removed or weakened; only sizing changed. No quick-dismiss (X) control was added -- the semantics of a dismiss action (same as Reject, vs. a no-choice-recorded collapse) weren't unambiguous from the existing code, and the finding's core, unambiguous complaint (banner size/coverage) is fully addressed without it.",
+      'Verified: npx tsc --noEmit and npm run build pass clean.',
+    ],
+  },
 ];
 
 // A content hash over every item's title + status + PR, so ANY change (a new
