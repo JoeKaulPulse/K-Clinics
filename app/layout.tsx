@@ -1,6 +1,5 @@
 import type { Metadata, Viewport } from 'next';
 import { GeistSans } from 'geist/font/sans';
-import { GeistMono } from 'geist/font/mono';
 import { Fraunces } from 'next/font/google';
 import { ConsentedSpeedInsights } from '@/components/marketing/ConsentedSpeedInsights';
 
@@ -64,7 +63,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   // root layout can be static and ISR pages qualify for static optimisation.
   const theme = getTheme();
   return (
-    <html lang="en-GB" className={`${GeistSans.variable} ${GeistMono.variable} ${fraunces.variable}`}>
+    // BLD-1463: GeistMono is not applied here any more — it's only used inside
+    // /admin and /account (staff CRM + client portal), which each load it in
+    // their own layout, so Next stops preloading its ~71KB woff2 on every
+    // public route (marketing, kiosk, booking) that never renders it.
+    <html lang="en-GB" className={`${GeistSans.variable} ${fraunces.variable}`}>
       <head>
         {/* WordPress-editable brand palette → CSS variable overrides. */}
         <style id="brand-theme" dangerouslySetInnerHTML={{ __html: themeToCss(theme) }} />

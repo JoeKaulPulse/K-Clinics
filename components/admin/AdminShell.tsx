@@ -209,6 +209,9 @@ export function AdminShell({
 
   async function signOut() {
     await fetch('/api/admin/logout', { method: 'POST' });
+    // BLD-1541: don't leave the recent-search list (patient names/refs staff
+    // navigated to) behind in a shared workstation's browser profile.
+    try { localStorage.removeItem('kc-admin-recent-search'); } catch { /* ignore */ }
     router.push('/admin/login');
     router.refresh();
   }
