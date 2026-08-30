@@ -416,7 +416,7 @@ export async function POST(req: Request) {
                     await logAudit({ action: 'REWARD_REDEEMED', actor: 'stripe-webhook', bookingId: full.id, clientId: full.clientId, summary: `Gift voucher ${full.giftVoucherCode} restored on lost chargeback — £${((full.giftVoucherPence ?? 0) / 100).toFixed(2)} back on the voucher` }).catch(() => {});
                   } catch (e) { Sentry.captureException(e, { tags: { area: 'stripe-webhook', sub: 'dispute-voucher-restore' } }); }
                 }
-                try { const { reverseSpendPoints } = await import('@/lib/client-loyalty'); await reverseSpendPoints(full.id, newTotal, full.chargedPence ?? 0); } catch (e) { Sentry.captureException(e, { tags: { area: 'stripe-webhook', sub: 'dispute-spend-points' } }); }
+                try { const { reverseSpendPoints } = await import('@/lib/client-loyalty'); await reverseSpendPoints(full.id, newTotal, full); } catch (e) { Sentry.captureException(e, { tags: { area: 'stripe-webhook', sub: 'dispute-spend-points' } }); }
                 try { const { pushBookingRefundToXero } = await import('@/lib/xero'); await pushBookingRefundToXero(full.id, amount, 'Chargeback lost'); } catch (e) { Sentry.captureException(e, { tags: { area: 'stripe-webhook', sub: 'dispute-xero' } }); }
                 try { const { logAudit } = await import('@/lib/audit'); await logAudit({ action: 'PAYMENT_REFUNDED', actor: 'stripe-webhook', bookingId: full.id, clientId: full.clientId, summary: `Chargeback lost — £${(amount / 100).toFixed(2)} reconciled as refunded (auto, owner policy)`, meta: { disputeId: dispute.id } }); } catch { /* non-fatal */ }
               }
@@ -682,7 +682,7 @@ export async function POST(req: Request) {
           }
           // BLD-836: claw back the SPEND points earned on the refunded money too
           // (pro-rata, idempotent inside the helper) — parity with refundBooking().
-          try { const { reverseSpendPoints } = await import('@/lib/client-loyalty'); await reverseSpendPoints(bk.id, newTotal, bk.chargedPence ?? 0); } catch (e) { console.error('[webhook] spend-points clawback failed:', (e as Error)?.message); Sentry.captureException(e, { tags: { area: 'stripe-webhook', sub: 'spend-points-clawback' } }); } // BLD-921
+          try { const { reverseSpendPoints } = await import('@/lib/client-loyalty'); await reverseSpendPoints(bk.id, newTotal, bk); } catch (e) { console.error('[webhook] spend-points clawback failed:', (e as Error)?.message); Sentry.captureException(e, { tags: { area: 'stripe-webhook', sub: 'spend-points-clawback' } }); } // BLD-921
           try { const { pushBookingRefundToXero } = await import('@/lib/xero'); await pushBookingRefundToXero(bk.id, delta, 'Stripe refund'); } catch (e) { console.error('[webhook] Xero refund push failed:', (e as Error)?.message); Sentry.captureException(e, { tags: { area: 'stripe-webhook', sub: 'xero-refund-push' } }); } // BLD-921
           try { const { logAudit } = await import('@/lib/audit'); await logAudit({ action: 'PAYMENT_REFUNDED', actor: 'stripe-webhook', bookingId: bk.id, clientId: bk.clientId, summary: `Webhook refund £${(delta / 100).toFixed(2)}${fully ? ' (full)' : ' (partial)'}`, meta: { delta, fully } }); } catch { /* non-fatal */ }
           // BLD-569: email the client when a refund is issued directly in the Stripe
