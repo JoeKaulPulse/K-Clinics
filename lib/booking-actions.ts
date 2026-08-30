@@ -392,7 +392,7 @@ export async function refundBooking(
   // BLD-836: also claw back the SPEND points EARNED on the refunded money —
   // refundBookingPoints only returns redeemed points. Pro-rata on partials,
   // idempotent by ledger arithmetic inside the helper.
-  try { const { reverseSpendPoints } = await import('@/lib/client-loyalty'); await reverseSpendPoints(booking.id, totalRefunded, booking.chargedPence ?? 0); } catch { /* non-fatal */ }
+  try { const { reverseSpendPoints } = await import('@/lib/client-loyalty'); await reverseSpendPoints(booking.id, totalRefunded, booking); } catch { /* non-fatal */ }
 
   // BLD-882: a partial-voucher booking's chargedPence is the card remainder
   // only — when THAT is fully refunded, the voucher-covered portion goes back
