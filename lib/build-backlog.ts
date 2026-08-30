@@ -4776,7 +4776,7 @@ export const BUILD_BACKLOG: BacklogItem[] = [
   },
   {
     title: 'Academy SVG upload, uncached image optimiser, unrated consent-sign endpoint (BLD-1561, BLD-1562, BLD-1563)',
-    type: 'TASK', urgency: 'P2', status: 'IN_REVIEW', assignee: 'claude',
+    type: 'TASK', urgency: 'P2', status: 'IN_REVIEW', assignee: 'claude', pr: PR(1886),
     value: 6, effort: 1,
     detail: "BLD-1561: app/api/admin/academy/blob-token/route.ts allowed 'image/*' for lesson media uploads, unlike every sibling blob-token route (admin/build, admin/blob-upload, team-chat), which already exclude image/svg+xml -- a stored-XSS vector -- via an explicit raster list. BLD-1562: next.config.mjs left images.minimumCacheTTL at the short Next.js default and listed formats AVIF-first, so every next/image instance sitewide re-hit the costly optimiser path more than necessary, unlike the explicit 1-year immutable cache policy already set for /public assets in the same file. BLD-1563: app/api/consent/sign/route.ts had no enforceRateLimit call, unlike every other public token-consuming mutation route, allowing unlimited attempts against a consentRequest.token (a cuid, not a CSPRNG secret) to write a legally significant signed/declined consent under an attacker-supplied signerName and signature image.",
     notes: [
