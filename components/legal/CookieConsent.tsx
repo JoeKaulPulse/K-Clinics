@@ -119,7 +119,13 @@ export function CookieConsent() {
           // 390x844 phone it no longer eats ~48% of the viewport and covers
           // the hero CTAs beneath it; sm: and up keep the original spacious
           // sizing untouched.
-          className="fixed bottom-3 left-3 right-20 z-[80] mx-auto flex max-h-[45vh] max-w-2xl flex-col overflow-y-auto rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-3 shadow-[var(--shadow-lift)] sm:max-h-[85vh] sm:p-5 md:bottom-6 md:left-6 md:right-auto md:max-h-none md:overflow-visible md:p-6"
+          // The 45vh cap applies to the first-load banner only. Once the
+          // visitor opens "Customise" the three toggle rows are added, and
+          // capping at 45vh would push "Save choices" behind the banner's own
+          // scrollbar — the failure BLD-1355 fixed. The taller cap then is
+          // harmless: the visitor has already engaged, so covering the hero
+          // CTAs is no longer the problem BLD-1543 was about.
+          className={`fixed bottom-3 left-3 right-20 z-[80] mx-auto flex ${customise ? 'max-h-[80vh]' : 'max-h-[45vh]'} max-w-2xl flex-col overflow-y-auto rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-3 shadow-[var(--shadow-lift)] sm:max-h-[85vh] sm:p-5 md:bottom-6 md:left-6 md:right-auto md:max-h-none md:overflow-visible md:p-6`}
         >
           <p className="font-[family-name:var(--font-display)] text-base sm:text-lg">Your privacy, your choice</p>
           {expanded ? (

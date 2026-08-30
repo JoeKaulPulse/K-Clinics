@@ -98,11 +98,15 @@ function Row({ v, canManage }: { v: Voucher; canManage: boolean }) {
   // outstanding balance) with a visible message before ever calling act().
   function confirmRedeem() {
     const n = Number(amount);
-    if (!amount.trim() || !Number.isFinite(n) || n <= 0) {
-      setError('Enter a valid amount greater than £0.');
+    // Validate the ROUNDED PENCE value, not the pounds figure: a sub-half-penny
+    // amount (0.004) is > 0 yet rounds to 0p, which the API rejects with a bare
+    // "Bad request" alert — the same unexplained failure this replaced prompt()
+    // to remove. Anything under 1p is refused here, with a reason.
+    const p = Number.isFinite(n) ? Math.round(n * 100) : 0;
+    if (!amount.trim() || p < 1) {
+      setError('Enter a valid amount of at least £0.01.');
       return;
     }
-    const p = Math.round(n * 100);
     if (p > v.balancePence) {
       setError(`Amount exceeds the outstanding balance of ${money(v.balancePence)}.`);
       return;
@@ -134,8 +138,10 @@ function Row({ v, canManage }: { v: Voucher; canManage: boolean }) {
                   type="number"
                   inputMode="decimal"
                   step="0.01"
-                  min="0"
+                  min="0.01"
                   autoFocus
+                  aria-invalid={error ? true : undefined}
+                  aria-describedby={error ? `redeem-error-${v.id}` : undefined}
                   value={amount}
                   onChange={(e) => { setAmount(e.target.value); setError(null); }}
                   onKeyDown={(e) => { if (e.key === 'Enter') confirmRedeem(); if (e.key === 'Escape') cancelRedeem(); }}
@@ -145,7 +151,7 @@ function Row({ v, canManage }: { v: Voucher; canManage: boolean }) {
                 <button disabled={busy} onClick={confirmRedeem} className="text-[var(--color-gold-deep)] hover:underline disabled:opacity-50">Confirm</button>
                 <button disabled={busy} onClick={cancelRedeem} className="text-[var(--color-stone)] hover:underline disabled:opacity-50">Cancel</button>
               </div>
-              {error && <p role="alert" className="mt-1 text-right text-xs text-[var(--color-blush-deep)]">{error}</p>}
+              {error && <p id={`redeem-error-${v.id}`} role="alert" className="mt-1 text-right text-xs text-[var(--color-blush-deep)]">{error}</p>}
             </div>
           ) : (
             <div className="flex flex-wrap justify-end gap-2 text-xs">
