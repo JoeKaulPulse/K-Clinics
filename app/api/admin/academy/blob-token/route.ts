@@ -26,7 +26,11 @@ export async function POST(req: Request) {
         // handful of video MIME types were allowed and audio was omitted entirely,
         // so .mkv/.avi videos and all audio were silently rejected (BLD-588).
         allowedContentTypes: [
-          'video/*', 'audio/*', 'image/*',
+          'video/*', 'audio/*',
+          // Explicit raster list (not `image/*`) — the wildcard would admit
+          // image/svg+xml, a stored-XSS vector; sibling upload routes
+          // (admin/build, admin/blob-upload, team-chat) already exclude it.
+          'image/png', 'image/jpeg', 'image/webp', 'image/gif', 'image/avif', 'image/heic', 'image/heif',
           'application/pdf', // lesson PDF attachments (BLD-407)
           // Common document attachments, for parity with the small-file route.
           'application/zip', 'application/msword',
