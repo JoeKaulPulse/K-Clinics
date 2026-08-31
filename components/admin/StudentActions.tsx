@@ -18,13 +18,17 @@ export function StudentActions({ studentId, email, portalActive, hasClient }: { 
   async function act(op: string, payload: object, label: string, confirmMsg?: string) {
     if (confirmMsg && !confirm(confirmMsg)) return;
     setBusy(label); setDone(''); setFailed('');
+    let error = 'Couldn’t do that — try again.';
     let succeeded = false;
     try {
       const res = await post({ op, ...payload });
       const j = await res.json().catch(() => ({}));
       succeeded = res.ok && j?.ok !== false;
+      // The API answers with a reason ('Not permitted.', 'Bad request'); keep the
+      // generic line for a 500 or an HTML error page, which carry no JSON.
+      if (typeof j?.error === 'string' && j.error) error = j.error;
     } catch {
-      succeeded = false;
+      error = 'Network error — try again.';
     }
     setBusy('');
     if (succeeded) {
@@ -32,8 +36,8 @@ export function StudentActions({ studentId, email, portalActive, hasClient }: { 
       router.refresh();
       setTimeout(() => setDone(''), 4000);
     } else {
-      setFailed(`${label} failed — try again`);
-      setTimeout(() => setFailed(''), 5000);
+      setFailed(error);
+      setTimeout(() => setFailed(''), 8000);
     }
   }
   const btn = 'rounded-full border border-[var(--color-line)] px-4 py-1.5 text-sm hover:border-[var(--color-gold)] hover:text-[var(--color-gold-deep)] disabled:opacity-50';
@@ -49,7 +53,7 @@ export function StudentActions({ studentId, email, portalActive, hasClient }: { 
       {!hasClient && <button onClick={() => act('linkClient', { studentId }, 'Client linked')} disabled={!!busy} className={btn}>Link clinic client</button>}
       {busy && <span className="text-xs text-[var(--color-stone)]">Working…</span>}
       {done && <span className="text-xs text-[var(--color-gold-deep)]">{done} ✓</span>}
-      {failed && <span role="alert" className="text-xs text-[var(--color-blush-deep)]">{failed}</span>}
+      {failed && <span role="alert" aria-live="assertive" className="text-xs text-[var(--color-blush-deep)]">{failed}</span>}
     </div>
   );
 }
