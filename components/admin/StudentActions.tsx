@@ -14,13 +14,27 @@ export function StudentActions({ studentId, email, portalActive, hasClient }: { 
   const router = useRouter();
   const [busy, setBusy] = useState('');
   const [done, setDone] = useState('');
+  const [failed, setFailed] = useState('');
   async function act(op: string, payload: object, label: string, confirmMsg?: string) {
     if (confirmMsg && !confirm(confirmMsg)) return;
-    setBusy(label); setDone('');
-    await post({ op, ...payload });
-    setBusy(''); setDone(label);
-    router.refresh();
-    setTimeout(() => setDone(''), 4000);
+    setBusy(label); setDone(''); setFailed('');
+    let succeeded = false;
+    try {
+      const res = await post({ op, ...payload });
+      const j = await res.json().catch(() => ({}));
+      succeeded = res.ok && j?.ok !== false;
+    } catch {
+      succeeded = false;
+    }
+    setBusy('');
+    if (succeeded) {
+      setDone(label);
+      router.refresh();
+      setTimeout(() => setDone(''), 4000);
+    } else {
+      setFailed(`${label} failed — try again`);
+      setTimeout(() => setFailed(''), 5000);
+    }
   }
   const btn = 'rounded-full border border-[var(--color-line)] px-4 py-1.5 text-sm hover:border-[var(--color-gold)] hover:text-[var(--color-gold-deep)] disabled:opacity-50';
   return (
@@ -35,6 +49,7 @@ export function StudentActions({ studentId, email, portalActive, hasClient }: { 
       {!hasClient && <button onClick={() => act('linkClient', { studentId }, 'Client linked')} disabled={!!busy} className={btn}>Link clinic client</button>}
       {busy && <span className="text-xs text-[var(--color-stone)]">Working…</span>}
       {done && <span className="text-xs text-[var(--color-gold-deep)]">{done} ✓</span>}
+      {failed && <span role="alert" className="text-xs text-[var(--color-blush-deep)]">{failed}</span>}
     </div>
   );
 }
