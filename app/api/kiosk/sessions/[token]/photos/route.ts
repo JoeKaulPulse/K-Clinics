@@ -50,7 +50,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ token: 
   }
   if (!(file instanceof File)) return NextResponse.json({ ok: false, error: 'No photo.' }, { status: 400 });
   if (file.size > MAX) return NextResponse.json({ ok: false, error: 'Photo is over 10 MB.' }, { status: 413 });
-  if (file.type && !OK.test(file.type)) return NextResponse.json({ ok: false, error: 'Images only (PNG/JPG/WebP/HEIC).' }, { status: 415 });
+  if (!OK.test(file.type || '')) return NextResponse.json({ ok: false, error: 'Images only (PNG/JPG/WebP/HEIC).' }, { status: 415 });
 
   const rawPose = Number(form?.get('poseIdx'));
   const poseIdx = Number.isFinite(rawPose)

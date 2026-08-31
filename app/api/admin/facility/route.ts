@@ -39,7 +39,7 @@ export async function POST(req: Request) {
   const file = form?.get('file');
   if (!(file instanceof File)) return NextResponse.json({ ok: false, error: 'No file.' }, { status: 400 });
   if (file.size > MAX_BYTES) return NextResponse.json({ ok: false, error: 'File is over 20 MB.' }, { status: 413 });
-  if (file.type && !OK_MIME.test(file.type)) return NextResponse.json({ ok: false, error: 'Only images or PDFs are allowed.' }, { status: 415 });
+  if (!OK_MIME.test(file.type || '')) return NextResponse.json({ ok: false, error: 'Only images or PDFs are allowed.' }, { status: 415 });
 
   const title = String(form?.get('title') || '').trim().slice(0, 160) || (file.name || 'Document');
   const typeRaw = String(form?.get('type') || 'OTHER');
