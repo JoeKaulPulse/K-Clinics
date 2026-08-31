@@ -1153,8 +1153,8 @@ export function tmplLaserHairRemovalPrep(o: { firstName: string; treatment: stri
       ${checkItem('Wear comfortable, loose clothing where possible.')}
     </table>
     <p style="font-size:14px;color:#91766e;border-left:2px solid #c2a589;padding-left:14px;">If the area has not been adequately shaved and we are unable to safely carry out the treatment, the appointment may be treated as a late cancellation and the applicable cancellation fee will apply in accordance with our Cancellation Policy.</p>
-    <p style="margin-top:20px;">If you have any questions before your appointment, just reply to this message &mdash; we're happy to help.</p>
-    <p style="margin-top:20px;">With warmth,<br>KClinics Skin &amp; Laser</p>`,
+    <p style="margin-top:20px;">If you have any questions before your appointment, just reply to this email &mdash; we're happy to help.</p>
+    <p style="margin-top:20px;">With warmth,<br>The KClinics team</p>`,
   });
 }
 
