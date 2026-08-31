@@ -3,6 +3,7 @@ import { db } from '@/lib/db';
 import { logKioskEvent, runKioskAnalysis } from '@/lib/kiosk';
 import { putKioskBlob, KioskBlobStorePublicOnlyError } from '@/lib/kiosk-blob';
 import { rateLimit } from '@/lib/security/rate-limit';
+import { effectiveFileMime } from '@/lib/security/file-type';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -43,7 +44,11 @@ export async function POST(req: Request, { params }: { params: Promise<{ token: 
   if (consent !== 'true') return NextResponse.json({ ok: false, error: 'Consent is required.' }, { status: 400 });
   if (!(file instanceof File)) return NextResponse.json({ ok: false, error: 'No photo.' }, { status: 400 });
   if (file.size > MAX) return NextResponse.json({ ok: false, error: 'Photo is over 10 MB.' }, { status: 413 });
-  if (!OK.test(file.type || '')) return NextResponse.json({ ok: false, error: 'Images only (PNG/JPG/WebP/HEIC).' }, { status: 415 });
+  // A blank Content-Type used to skip this check entirely. Phones do send one
+  // for a genuine photo, so fall back to the file's magic bytes rather than
+  // trusting or rejecting a blank type outright (BLD-1576).
+  const mime = await effectiveFileMime(file);
+  if (!OK.test(mime)) return NextResponse.json({ ok: false, error: 'Images only (PNG/JPG/WebP/HEIC).' }, { status: 415 });
 
   if (!process.env.BLOB_READ_WRITE_TOKEN) {
     return NextResponse.json({ ok: false, error: 'Photo storage isn’t connected.' }, { status: 503 });
@@ -53,12 +58,12 @@ export async function POST(req: Request, { params }: { params: Promise<{ token: 
   try {
     // Store with the correct extension so the AI step derives the right media
     // type (an iPhone HEIC stored as .jpg was being mislabelled image/jpeg).
-    const ext = file.type === 'image/png' ? 'png'
-      : file.type === 'image/webp' ? 'webp'
-      : (file.type === 'image/heic' || file.type === 'image/heif') ? 'heic' : 'jpg';
+    const ext = mime === 'image/png' ? 'png'
+      : mime === 'image/webp' ? 'webp'
+      : (mime === 'image/heic' || mime === 'image/heif') ? 'heic' : 'jpg';
     const blob = await putKioskBlob(`kiosk/${token}-${Date.now()}.${ext}`, file, {
       addRandomSuffix: false,
-      contentType: file.type || 'image/jpeg',
+      contentType: mime,
     });
     blobUrl = blob.url;
   } catch (e) {
