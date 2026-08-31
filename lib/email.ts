@@ -1134,6 +1134,30 @@ export function tmplConsentRequest(o: { firstName: string; formTitle: string; ur
   });
 }
 
+// BLD-1573: pre-treatment prep instructions, sent 48h before every Laser Hair
+// Removal appointment (both the standard and men's variants share this copy).
+export function tmplLaserHairRemovalPrep(o: { firstName: string; treatment: string; start: Date }) {
+  return emailShell({
+    preheader: `How to prepare for your ${o.treatment}`,
+    body: `${heroBand('reminder')}
+    <h1 style="font-size:24px;margin:0 0 16px;">Before your appointment, ${escape(o.firstName)}.</h1>
+    <p>We're looking forward to seeing you soon. Here's how to prepare for your <strong>${escape(o.treatment)}</strong> on ${fmtWhen(o.start)}, to help your treatment go smoothly and achieve the best possible results.</p>
+    <h2 class="kc-display" style="font-size:18px;margin:26px 0 10px;">Before your appointment</h2>
+    <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:0 0 18px;font-family:Helvetica,Arial,sans-serif;">
+      ${checkItem('Please ensure the treatment area is fully shaved 12&ndash;24 hours before your appointment. We do not provide shaving at the clinic.')}
+      ${checkItem('Do not wax, tweeze or epilate the treatment area.')}
+      ${checkItem('Avoid sun exposure, sunbeds and fake tan.')}
+      ${checkItem('Arrive with clean skin &mdash; no creams, oils, deodorant, perfume or fake tan on the treatment area.')}
+      ${checkItem('Avoid retinol, strong acids and exfoliating products for several days beforehand.')}
+      ${checkItem('Let us know if you have started any new medication, your health has changed, or the skin is irritated, sunburnt or damaged.')}
+      ${checkItem('Wear comfortable, loose clothing where possible.')}
+    </table>
+    <p style="font-size:14px;color:#91766e;border-left:2px solid #c2a589;padding-left:14px;">If the area has not been adequately shaved and we are unable to safely carry out the treatment, the appointment may be treated as a late cancellation and the applicable cancellation fee will apply in accordance with our Cancellation Policy.</p>
+    <p style="margin-top:20px;">If you have any questions before your appointment, just reply to this message &mdash; we're happy to help.</p>
+    <p style="margin-top:20px;">With warmth,<br>KClinics Skin &amp; Laser</p>`,
+  });
+}
+
 export function tmplFormReminder(o: { firstName: string; treatment: string; start: Date; formsUrl: string }) {
   return emailShell({
     preheader: 'Please complete your pre-treatment forms',
