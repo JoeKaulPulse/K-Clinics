@@ -4,7 +4,7 @@ import { Reveal } from '@/components/motion/Reveal';
 import { CardOnFileForm } from '@/components/booking/CardOnFileForm';
 import { crmEnabled } from '@/lib/crm';
 import { stripeEnabled } from '@/lib/stripe';
-import { site } from '@/lib/site';
+import { PhoneLink } from '@/components/marketing/PhoneLink';
 
 export const dynamic = 'force-dynamic';
 export const metadata: Metadata = { title: 'Save a card | KClinics', robots: { index: false } };
@@ -65,7 +65,7 @@ export default async function CardOnFilePage({ searchParams }: { searchParams: P
               <p className="mx-auto mt-3 max-w-md text-[var(--color-stone)]">
                 {state === 'saved'
                   ? 'Thank you — your appointment is secured and no further action is needed.'
-                  : (<>This link may have expired or already been used. Please call <a href={site.phoneHref} className="link-underline font-medium text-[var(--color-ink)]">{site.phone}</a> and we’ll help.</>)}
+                  : (<>This link may have expired or already been used. Please call <PhoneLink className="link-underline font-medium text-[var(--color-ink)]" /> and we’ll help.</>)}
               </p>
             </div>
           )}

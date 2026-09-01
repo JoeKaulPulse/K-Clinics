@@ -3,7 +3,7 @@ import { PageHero } from '@/components/ui/PageHero';
 import { Reveal } from '@/components/motion/Reveal';
 import { ManageClient } from './ManageClient';
 import { crmEnabled } from '@/lib/crm';
-import { site } from '@/lib/site';
+import { PhoneLink } from '@/components/marketing/PhoneLink';
 
 export const dynamic = 'force-dynamic';
 export const metadata: Metadata = { title: 'Manage your booking | KClinics', robots: { index: false } };
@@ -51,7 +51,7 @@ export default async function ManageBookingPage({ searchParams }: { searchParams
             <div className="rounded-[var(--radius-2xl)] border border-[var(--color-line)] bg-[var(--color-bone)] p-10 text-center">
               <h2 className="text-title">Booking not found</h2>
               <p className="mx-auto mt-3 max-w-md text-[var(--color-stone)]">
-                This link may have expired or already been used. Please call <a href={site.phoneHref} className="link-underline font-medium text-[var(--color-ink)]">{site.phone}</a> and we’ll help.
+                This link may have expired or already been used. Please call <PhoneLink className="link-underline font-medium text-[var(--color-ink)]" /> and we’ll help.
               </p>
             </div>
           )}

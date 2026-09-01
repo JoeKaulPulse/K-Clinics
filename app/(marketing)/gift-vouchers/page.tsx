@@ -4,7 +4,7 @@ import { Reveal } from '@/components/motion/Reveal';
 import { GiftVoucherFlow } from '@/components/gift/GiftVoucherFlow';
 import { GiftPackages } from '@/components/gift/GiftPackages';
 import { listPublishedGiftPackages } from '@/lib/gift-packages';
-import { site } from '@/lib/site';
+import { PhoneLink } from '@/components/marketing/PhoneLink';
 import { pageMeta, JsonLd, breadcrumbLd } from '@/lib/seo';
 
 export const generateMetadata = (): Promise<Metadata> => pageMeta({
@@ -76,7 +76,7 @@ export default async function GiftVouchersPage() {
         <Reveal delay={0.1}>
           <GiftVoucherFlow physicalEnabled={physical.enabled} physicalFeePence={physical.feePence} />
         </Reveal>
-        <p className="mt-6 text-center text-sm text-[var(--color-stone)]">Buying for a corporate gift? Call us on <a href={site.phoneHref} className="link-underline font-medium text-[var(--color-ink)]">{site.phone}</a> and we’ll arrange it.</p>
+        <p className="mt-6 text-center text-sm text-[var(--color-stone)]">Buying for a corporate gift? Call us on <PhoneLink className="link-underline font-medium text-[var(--color-ink)]" /> and we’ll arrange it.</p>
       </section>
 
       {giftPackages.length > 0 && (

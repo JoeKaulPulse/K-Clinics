@@ -7,7 +7,7 @@ import { Button, ArrowIcon } from '@/components/ui/Button';
 import { pageMeta, JsonLd, breadcrumbLd } from '@/lib/seo';
 import { ACCREDITATION_LABELS, formatFee } from '@/lib/academy';
 import { getActivePromo } from '@/lib/academy-utils';
-import { site } from '@/lib/site';
+import { PhoneLink } from '@/components/marketing/PhoneLink';
 
 export const generateMetadata = (): Promise<Metadata> => pageMeta({
   title: 'K Academy — Aesthetics Training in London | KClinics',
@@ -202,7 +202,7 @@ export default async function AcademyPage() {
       <section className="container-lux section text-center">
         <Reveal>
           <h2 className="text-title">Ready to begin?</h2>
-          <p className="mx-auto mt-3 max-w-xl text-[var(--color-ink-soft)]">Choose a course to apply, or talk to our team. Call <a href={site.phoneHref} className="link-underline font-medium text-[var(--color-ink)]">{site.phone}</a>.</p>
+          <p className="mx-auto mt-3 max-w-xl text-[var(--color-ink-soft)]">Choose a course to apply, or talk to our team. Call <PhoneLink className="link-underline font-medium text-[var(--color-ink)]" />.</p>
           <div className="mt-6 flex justify-center"><Button href="#courses" variant="gold">Browse courses <ArrowIcon /></Button></div>
         </Reveal>
       </section>

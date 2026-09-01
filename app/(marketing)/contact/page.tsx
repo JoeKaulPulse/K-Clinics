@@ -4,6 +4,7 @@ import { Reveal } from '@/components/motion/Reveal';
 import { BookingButtons } from '@/components/booking/BookingButtons';
 import { EnquiryForm } from '@/components/contact/EnquiryForm';
 import { site } from '@/lib/site';
+import { PhoneLink } from '@/components/marketing/PhoneLink';
 import { pageMeta, JsonLd, breadcrumbLd } from '@/lib/seo';
 
 // BLD-517: hourly ISR so these mostly-static pages are cached, not full SSR per request.
@@ -56,7 +57,7 @@ export default async function ContactPage() {
             <div className="grid grid-cols-2 gap-8">
               <div>
                 <p className="eyebrow mb-3">Call</p>
-                <a href={site.phoneHref} className="link-underline text-lg">{site.phone}</a>
+                <PhoneLink className="link-underline text-lg" />
               </div>
               <div>
                 <p className="eyebrow mb-3">Email</p>

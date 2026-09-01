@@ -3,7 +3,7 @@ import Link from 'next/link';
 import { PageHero } from '@/components/ui/PageHero';
 import { Reveal } from '@/components/motion/Reveal';
 import { Button, ArrowIcon } from '@/components/ui/Button';
-import { site } from '@/lib/site';
+import { PhoneLink } from '@/components/marketing/PhoneLink';
 import { pageMeta, JsonLd, breadcrumbLd } from '@/lib/seo';
 
 export const generateMetadata = (): Promise<Metadata> => pageMeta({
@@ -57,7 +57,7 @@ export default async function ReferPage() {
               <li className="flex items-start gap-3"><span className="mt-1 text-[var(--color-gold-deep)]">✦</span> <span><strong className="text-[var(--color-ink)]">£25 for you</strong> — credited automatically once their first qualifying treatment (£100+) is complete.</span></li>
               <li className="flex items-start gap-3"><span className="mt-1 text-[var(--color-gold-deep)]">✦</span> <span><strong className="text-[var(--color-ink)]">No limit</strong> — refer as many friends as you like; the credit stacks for your next visits.</span></li>
             </ul>
-            <p className="mt-6 text-sm text-[var(--color-stone)]">Credit is held in your account as reward points (£1 = 100 points) and applied at checkout. Referral rewards apply when the referred friend’s first treatment is £100 or more. Questions? Call <a href={site.phoneHref} className="link-underline font-medium text-[var(--color-ink)]">{site.phone}</a>.</p>
+            <p className="mt-6 text-sm text-[var(--color-stone)]">Credit is held in your account as reward points (£1 = 100 points) and applied at checkout. Referral rewards apply when the referred friend’s first treatment is £100 or more. Questions? Call <PhoneLink className="link-underline font-medium text-[var(--color-ink)]" />.</p>
             <div className="mt-8">
               {client ? <Button href="/account/rewards" variant="gold">Share your link <ArrowIcon /></Button> : <Button href="/account/signup" variant="gold">Get started <ArrowIcon /></Button>}
             </div>

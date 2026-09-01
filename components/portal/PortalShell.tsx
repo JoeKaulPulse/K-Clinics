@@ -7,7 +7,7 @@ import { motion } from 'motion/react';
 import { KMark, ClinicsWordmark } from '@/components/brand/marks';
 import { GuideHost } from '@/components/guide/GuideHost';
 import { Aurora } from '@/components/ui/Aurora';
-import { site } from '@/lib/site';
+import { PhoneLink } from '@/components/marketing/PhoneLink';
 import { portalTranslator, PORTAL_LOCALE_COOKIE } from '@/lib/i18n-portal';
 import { LOCALES, LOCALE_LABELS, isLocale, DEFAULT_LOCALE, type Locale } from '@/lib/i18n';
 
@@ -126,7 +126,7 @@ export function PortalShell({ firstName, locale: localeProp, children }: { first
 
         <footer className="mt-8 flex flex-col gap-3 border-t border-[var(--color-line)] py-7 text-xs text-[var(--color-stone)] sm:flex-row sm:items-center sm:justify-between">
           <p>{t('portal.footer')}{' '}
-            <a href={site.phoneHref} className="font-medium text-[var(--color-ink-soft)] hover:text-[var(--color-gold-deep)]">{site.phone}</a>.
+            <PhoneLink className="font-medium text-[var(--color-ink-soft)] hover:text-[var(--color-gold-deep)]" />.
           </p>
           <nav className="flex flex-wrap gap-x-5 gap-y-1" aria-label="Portal footer">
             <Link href="/book" className="hover:text-[var(--color-gold-deep)]">{t('dash.book')}</Link>
