@@ -35,6 +35,10 @@ type Props = {
     id: string; treatmentSlug: string; treatmentTitle: string; startAt: string; durationMin: number; pricePence: number;
     chargedAt: string | null;
     giftVoucherCode: string | null; giftVoucherPence: number;
+    // BLD-1591: money off already redeemed against this booking via loyalty
+    // points — netted off the amount actually collected at checkout alongside
+    // the gift voucher, mirroring the pattern chargeBookingAction already uses.
+    pointsRedeemedPence: number;
     refreshments: string[]; addOns: { id: string; label: string; pricePence: number }[];
   };
   photos: {
@@ -824,8 +828,14 @@ function CheckoutStep({ p, live, sessData, pending, presenting, api, run, onCont
   );
   const [vBusy, setVBusy] = useState(false);
   const [vErr, setVErr] = useState('');
+  // BLD-1591: loyalty points already redeemed against this booking (before the
+  // visit) net off the collectable amount the same way the voucher does — the
+  // server applies the identical subtraction for paylink/terminal/external ops
+  // (and chargeBookingAction already did for the saved-card path), so this is
+  // purely for staff to see the true amount before they take payment.
+  const pointsOffPence = p.booking.pointsRedeemedPence ?? 0;
   // What the chosen method will actually collect (the server nets the same way).
-  const duePence = Math.max(0, amountPence - (vApplied?.pence ?? 0));
+  const duePence = Math.max(0, amountPence - (vApplied?.pence ?? 0) - pointsOffPence);
   const voucherExceedsAmount = !!vApplied && amountPence <= vApplied.pence;
   async function applyVoucher() {
     if (vBusy || !vCode.trim() || amountPence <= 0) return;
@@ -929,6 +939,14 @@ function CheckoutStep({ p, live, sessData, pending, presenting, api, run, onCont
                 <button type="button" onClick={() => { setMethod('classpass'); setLinkQr(null); setPayErr(''); }} aria-pressed={method === 'classpass'} className={`rounded-full px-3 py-1.5 transition-colors ${method === 'classpass' ? 'bg-[var(--color-ink)] text-[var(--color-porcelain)]' : 'text-[var(--color-stone)] hover:text-[var(--color-ink)]'}`}>ClassPass</button>
               </div>
             </div>
+
+            {/* BLD-1591: loyalty points redeemed online against this booking, before
+                the visit — netted off automatically by every payment method below
+                (mirrors the gift voucher note), so staff aren't shown a "left to
+                collect" figure that silently ignores money the client already spent. */}
+            {pointsOffPence > 0 && (
+              <p className="mt-2 text-xs text-[var(--color-stone)]">{money(pointsOffPence)} of redeemed loyalty points already applied — {money(duePence)} left to collect.</p>
+            )}
 
             {/* BLD-207: ad-hoc discount / price adjustment (applies to the amount taken by any method) */}
             <div className="mt-3">
