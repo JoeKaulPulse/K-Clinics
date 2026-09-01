@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { crmEnabled } from '@/lib/crm';
+import { effectiveFileMime } from '@/lib/security/file-type';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -39,7 +40,11 @@ export async function POST(req: Request) {
   const file = form?.get('file');
   if (!(file instanceof File)) return NextResponse.json({ ok: false, error: 'No file.' }, { status: 400 });
   if (file.size > MAX_BYTES) return NextResponse.json({ ok: false, error: 'File is over 20 MB.' }, { status: 413 });
-  if (file.type && !OK_MIME.test(file.type)) return NextResponse.json({ ok: false, error: 'Only images or PDFs are allowed.' }, { status: 415 });
+  // A blank Content-Type used to skip this check entirely; fall back to the
+  // file's magic bytes so a genuine upload with no declared type still works
+  // and the blob below is always stored with an explicit type (BLD-1576).
+  const mime = await effectiveFileMime(file);
+  if (!OK_MIME.test(mime)) return NextResponse.json({ ok: false, error: 'Only images or PDFs are allowed.' }, { status: 415 });
 
   const title = String(form?.get('title') || '').trim().slice(0, 160) || (file.name || 'Document');
   const typeRaw = String(form?.get('type') || 'OTHER');
@@ -47,13 +52,13 @@ export async function POST(req: Request) {
   const description = String(form?.get('description') || '').trim().slice(0, 1000) || null;
   const locationId = String(form?.get('locationId') || '').trim() || null;
   const tags = String(form?.get('tags') || '').split(',').map((t) => t.trim()).filter(Boolean).slice(0, 12);
-  const isPdf = /pdf/i.test(file.type) || /\.pdf$/i.test(file.name || '');
+  const isPdf = /pdf/i.test(mime) || /\.pdf$/i.test(file.name || '');
   const safe = (file.name || 'file').replace(/[^a-zA-Z0-9.\-_]/g, '-').slice(0, 80);
   const key = `facility/${type.toLowerCase()}/${Date.now().toString(36)}-${safe}`;
 
   try {
     const { put } = await import('@vercel/blob');
-    const blob = await put(key, file, { access: 'public', addRandomSuffix: false, contentType: file.type || undefined });
+    const blob = await put(key, file, { access: 'public', addRandomSuffix: false, contentType: mime });
     const { db } = await import('@/lib/db');
     const doc = await db.facilityDoc.create({
       data: { title, type: type as never, fileUrl: blob.url, isPdf, description, locationId, tags, createdBy: (g.session as { email?: string })?.email ?? null },
