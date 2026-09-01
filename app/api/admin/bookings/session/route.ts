@@ -279,8 +279,15 @@ export async function POST(req: Request) {
     case 'voucher': {
       const { sessionCan } = await import('@/lib/auth');
       if (!sessionCan(session, 'bookings.charge')) return bad('You don’t have permission to take payments.', 403);
-      const amountPence = Math.round(Number(body.amountPence) || 0);
-      if (amountPence <= 0) return bad('Enter the amount being collected first.');
+      const grossVoucherPence = Math.round(Number(body.amountPence) || 0);
+      if (grossVoucherPence <= 0) return bad('Enter the amount being collected first.');
+      // BLD-1591: reserve against what is actually still owed. Points already
+      // redeemed against this booking are money the client has spent, so a
+      // voucher must not be consumed to cover them — reserving the gross price
+      // burned voucher value on the points portion (and, on a partial cover,
+      // could leave a booking every other op then refuses to settle).
+      const amountPence = grossVoucherPence - pointsOffPence;
+      if (amountPence <= 0) return bad('Redeemed loyalty points already cover this amount — remove them first to adjust the price.');
       const code = String(body.code || '').trim().toUpperCase();
       if (!code) return bad('Enter the voucher code.');
       if (booking.chargedAt || booking.prepaidAt) return bad('This booking is already paid.');
