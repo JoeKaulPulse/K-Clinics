@@ -1,6 +1,6 @@
 import 'server-only';
 import { db } from './db';
-import { sendEmail, emailShell, tmplBirthday, tmplFollowUp, tmplWinBack, tmplReviewRequest, tmplAppointmentReminder, tmplFormReminder, tmplAbandonedBooking, tmplAbandonedOrder, tmplAftercare, tmplSatisfaction, tmplRebook, tmplCourseContentReady, tmplTcsReminder } from './email';
+import { sendEmail, emailShell, tmplBirthday, tmplFollowUp, tmplWinBack, tmplReviewRequest, tmplAppointmentReminder, tmplFormReminder, tmplAbandonedBooking, tmplAbandonedOrder, tmplAftercare, tmplSatisfaction, tmplRebook, tmplCourseContentReady, tmplTcsReminder, tmplLaserHairRemovalPrep } from './email';
 import { ensureReviewRequest, reviewLink, googleReviewLink } from './review-system';
 import { site } from './site';
 import { escapeHtml } from './sanitize';
@@ -40,13 +40,13 @@ const TCS_REMINDER_MAX_PER_RUN = 500;
 // address is retried on every run.
 const TCS_REMINDER_MAX_PER_CLIENT = 3;
 
-type Tally = { birthdays: number; followUps: number; winBacks: number; reviews: number; reminders: number; formReminders: number; treatmentFollowUps: number; giftVouchers: number; tierNudges: number; anniversaries: number; abandonedBookings: number; abandonedOrders: number; bookingIntents: number; membershipRenewals: number; staffDigests: number; staffNudges: number; reencrypted: number; aftercare: number; satisfaction: number; rebookNudges: number; npsPromoters: number; npsDetractors: number; liveClassReminders: number; courseContentReady: number; tcsReminders: number; errors: number };
+type Tally = { birthdays: number; followUps: number; winBacks: number; reviews: number; reminders: number; formReminders: number; treatmentFollowUps: number; giftVouchers: number; tierNudges: number; anniversaries: number; abandonedBookings: number; abandonedOrders: number; bookingIntents: number; membershipRenewals: number; staffDigests: number; staffNudges: number; reencrypted: number; aftercare: number; satisfaction: number; rebookNudges: number; npsPromoters: number; npsDetractors: number; liveClassReminders: number; courseContentReady: number; tcsReminders: number; treatmentPrep: number; errors: number };
 
 export async function runDailyAutomations(): Promise<Tally> {
-  const t: Tally = { birthdays: 0, followUps: 0, winBacks: 0, reviews: 0, reminders: 0, formReminders: 0, treatmentFollowUps: 0, giftVouchers: 0, tierNudges: 0, anniversaries: 0, abandonedBookings: 0, abandonedOrders: 0, bookingIntents: 0, membershipRenewals: 0, staffDigests: 0, staffNudges: 0, reencrypted: 0, aftercare: 0, satisfaction: 0, rebookNudges: 0, npsPromoters: 0, npsDetractors: 0, liveClassReminders: 0, courseContentReady: 0, tcsReminders: 0, errors: 0 };
+  const t: Tally = { birthdays: 0, followUps: 0, winBacks: 0, reviews: 0, reminders: 0, formReminders: 0, treatmentFollowUps: 0, giftVouchers: 0, tierNudges: 0, anniversaries: 0, abandonedBookings: 0, abandonedOrders: 0, bookingIntents: 0, membershipRenewals: 0, staffDigests: 0, staffNudges: 0, reencrypted: 0, aftercare: 0, satisfaction: 0, rebookNudges: 0, npsPromoters: 0, npsDetractors: 0, liveClassReminders: 0, courseContentReady: 0, tcsReminders: 0, treatmentPrep: 0, errors: 0 };
   const { staffWeeklyDigest, staffReengagement } = await import('@/lib/staff-emails');
   // BLD-120: allSettled so one failing automation can't abort the rest.
-  const results = await Promise.allSettled([birthdays(t), followUps(t), reviews(t), winBacks(t), reminders(t), formReminders(t), treatmentFollowUps(t), scheduledGiftVouchers(t), tierNudges(t), anniversaries(t), abandonedBookings(t), abandonedOrders(t), bookingIntentRecovery(t), membershipRenewal(t), staffWeeklyDigest(t), staffReengagement(t), keyReencryption(t), aftercare(t), satisfaction(t), rebookNudge(t), promoterFollowUp(t), detractorFollowUp(t), liveClassReminders(t), courseContentReady(t), tcsReminders(t)]);
+  const results = await Promise.allSettled([birthdays(t), followUps(t), reviews(t), winBacks(t), reminders(t), formReminders(t), treatmentFollowUps(t), scheduledGiftVouchers(t), tierNudges(t), anniversaries(t), abandonedBookings(t), abandonedOrders(t), bookingIntentRecovery(t), membershipRenewal(t), staffWeeklyDigest(t), staffReengagement(t), keyReencryption(t), aftercare(t), satisfaction(t), rebookNudge(t), promoterFollowUp(t), detractorFollowUp(t), liveClassReminders(t), courseContentReady(t), tcsReminders(t), laserHairRemovalPrep(t)]);
   for (const r of results) {
     if (r.status === 'rejected') { t.errors++; console.error('[automations] unhandled automation failure:', r.reason); }
   }
@@ -777,6 +777,34 @@ async function formReminders(t: Tally) {
     await logEvent(c.id, 'FORM_REMINDER', c.email, 'Pre-treatment form reminder', res);
     res.ok ? t.formReminders++ : t.errors++;
   }
+}
+
+// BLD-1573: Laser Hair Removal pre-treatment prep reminder, sent 48h before the
+// appointment (shave the area, avoid retinol/sun, etc.) — every booking of
+// either LHR treatment, however far in advance it was made. Dedup is per
+// booking (not per client/day), since a client can book this treatment again.
+const LASER_HAIR_REMOVAL_SLUGS = ['laser-hair-removal', 'laser-hair-removal-for-men'];
+async function laserHairRemovalPrep(t: Tally) {
+  try {
+    const { clinicDateISO, clinicDayBounds } = await import('@/lib/clinic-time');
+    const [yy, mm, dd] = clinicDateISO(new Date()).split('-').map(Number);
+    const targetISO = clinicDateISO(new Date(Date.UTC(yy, mm - 1, dd + 2, 12)));
+    const { dayStart: start, dayEnd: end } = clinicDayBounds(targetISO);
+    const bookings = await db.booking.findMany({
+      where: { status: 'CONFIRMED', treatmentSlug: { in: LASER_HAIR_REMOVAL_SLUGS }, startAt: { gte: start, lte: end } },
+      include: { client: true },
+    });
+    for (const b of bookings) {
+      const c = b.client;
+      if (!canEmailCare(c)) continue;
+      const dup = await db.emailEvent.findFirst({ where: { kind: 'TREATMENT_PREP', status: 'SENT', meta: { path: ['bookingId'], equals: b.id } } });
+      if (dup) continue;
+      const subject = `${b.treatmentTitle} — before your appointment`;
+      const res = await sendEmail({ to: c.email, subject, html: tmplLaserHairRemovalPrep({ firstName: c.firstName, treatment: b.treatmentTitle, start: b.startAt }) });
+      await db.emailEvent.create({ data: { clientId: c.id, kind: 'TREATMENT_PREP', to: c.email, subject, status: res.ok ? 'SENT' : 'FAILED', providerId: res.id, error: res.error, meta: { bookingId: b.id } } }).catch(() => {});
+      res.ok ? t.treatmentPrep++ : t.errors++;
+    }
+  } catch (e) { t.errors++; console.error('[automations] laser hair removal prep reminder failed:', (e as Error)?.message); }
 }
 
 // BLD-653: NPS promoters (score 9-10) get a thank-you email ~24h after responding,

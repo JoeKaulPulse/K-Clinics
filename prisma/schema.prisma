@@ -59,6 +59,7 @@ enum EmailKind {
   LIVE_CLASS // BLD-1034: academy live-class create/reschedule/cancel/reminder notices
   COURSE_CONTENT_READY // BLD-1231: one-time nudge once a zero-content course's first module publishes
   TCS_REMINDER // BLD-1452: nudge a client with no recorded T&Cs acceptance to accept + add a card
+  TREATMENT_PREP // BLD-1573: pre-treatment prep instructions (e.g. Laser Hair Removal, 48h before)
 }
 
 enum EmailStatus {
