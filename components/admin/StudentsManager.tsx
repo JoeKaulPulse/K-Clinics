@@ -41,7 +41,25 @@ export function StudentsManager({ students }: { students: StudentRow[] }) {
     return sort === 'xp' ? [...filtered].sort((a, b) => b.xp - a.xp) : filtered;
   }, [students, q, onlyActive, sort]);
 
-  async function act(payload: object) { await post(payload); router.refresh(); }
+  const [rowState, setRowState] = useState<Record<string, { busy?: boolean; error?: string }>>({});
+
+  // Mirrors StudentActions.tsx's res.ok && j.ok check (BLD-1578): a failed
+  // suspend/reactivate or note save must surface an error, not look identical
+  // to success.
+  async function act(payload: object): Promise<{ ok: boolean; error?: string }> {
+    let error = 'Couldn’t do that — try again.';
+    let succeeded = false;
+    try {
+      const res = await post(payload);
+      const j = await res.json().catch(() => ({}));
+      succeeded = res.ok && j?.ok !== false;
+      if (typeof j?.error === 'string' && j.error) error = j.error;
+    } catch {
+      error = 'Network error — try again.';
+    }
+    if (succeeded) { router.refresh(); return { ok: true }; }
+    return { ok: false, error };
+  }
 
   return (
     <section className="rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-5">
@@ -94,9 +112,16 @@ export function StudentsManager({ students }: { students: StudentRow[] }) {
                   <td className="px-2 text-xs text-[var(--color-stone)]">{fmtDate(s.lastLoginAt)}</td>
                   <td className="px-2">
                     <button
-                      onClick={() => { if (s.portalActive ? confirm(`Suspend ${s.firstName}’s portal access?`) : true) act({ op: 'setStudentActive', id: s.id, active: !s.portalActive }); }}
-                      className={`rounded-full border px-3 py-1 text-xs ${s.portalActive ? 'border-[var(--color-line)] text-[var(--color-stone)] hover:border-[var(--color-blush)] hover:text-[var(--color-blush-deep)]' : 'border-[var(--color-gold)] text-[var(--color-gold-deep)]'}`}
-                    >{s.portalActive ? 'Suspend' : 'Reactivate'}</button>
+                      onClick={async () => {
+                        if (s.portalActive && !confirm(`Suspend ${s.firstName}’s portal access?`)) return;
+                        setRowState((m) => ({ ...m, [s.id]: { busy: true } }));
+                        const r = await act({ op: 'setStudentActive', id: s.id, active: !s.portalActive });
+                        setRowState((m) => ({ ...m, [s.id]: r.ok ? {} : { error: r.error } }));
+                      }}
+                      disabled={!!rowState[s.id]?.busy}
+                      className={`rounded-full border px-3 py-1 text-xs disabled:opacity-50 ${s.portalActive ? 'border-[var(--color-line)] text-[var(--color-stone)] hover:border-[var(--color-blush)] hover:text-[var(--color-blush-deep)]' : 'border-[var(--color-gold)] text-[var(--color-gold-deep)]'}`}
+                    >{rowState[s.id]?.busy ? 'Working…' : (s.portalActive ? 'Suspend' : 'Reactivate')}</button>
+                    {rowState[s.id]?.error && <span role="alert" aria-live="assertive" className="mt-1 block text-xs text-[var(--color-blush-deep)]">{rowState[s.id]?.error}</span>}
                   </td>
                 </tr>
               ))}
@@ -108,9 +133,11 @@ export function StudentsManager({ students }: { students: StudentRow[] }) {
   );
 }
 
-function NoteEditor({ notes, onSave }: { notes: string | null; onSave: (notes: string) => void }) {
+function NoteEditor({ notes, onSave }: { notes: string | null; onSave: (notes: string) => Promise<{ ok: boolean; error?: string }> }) {
   const [open, setOpen] = useState(false);
   const [val, setVal] = useState(notes ?? '');
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
   if (!open) {
     return (
       <button onClick={() => setOpen(true)} className="mt-1 block text-left text-xs text-[var(--color-stone)] hover:text-[var(--color-gold-deep)]">
@@ -119,10 +146,22 @@ function NoteEditor({ notes, onSave }: { notes: string | null; onSave: (notes: s
     );
   }
   return (
-    <span className="mt-1 flex items-center gap-1.5">
-      <input autoFocus value={val} onChange={(e) => setVal(e.target.value)} placeholder="Internal note" aria-label="Internal note" className="w-52 rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-2 py-1 text-xs" />
-      <button onClick={() => { onSave(val); setOpen(false); }} className="text-xs text-[var(--color-gold-deep)] hover:underline">Save</button>
-      <button onClick={() => { setVal(notes ?? ''); setOpen(false); }} className="text-xs text-[var(--color-stone)] hover:underline">Cancel</button>
+    <span className="mt-1 flex flex-col gap-1">
+      <span className="flex items-center gap-1.5">
+        <input autoFocus value={val} onChange={(e) => setVal(e.target.value)} placeholder="Internal note" aria-label="Internal note" className="w-52 rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-2 py-1 text-xs" />
+        <button
+          disabled={busy}
+          onClick={async () => {
+            setBusy(true); setError('');
+            const r = await onSave(val);
+            setBusy(false);
+            if (r.ok) setOpen(false); else setError(r.error || 'Couldn’t save — try again.');
+          }}
+          className="text-xs text-[var(--color-gold-deep)] hover:underline disabled:opacity-50"
+        >{busy ? 'Saving…' : 'Save'}</button>
+        <button onClick={() => { setVal(notes ?? ''); setOpen(false); setError(''); }} className="text-xs text-[var(--color-stone)] hover:underline">Cancel</button>
+      </span>
+      {error && <span role="alert" aria-live="assertive" className="text-xs text-[var(--color-blush-deep)]">{error}</span>}
     </span>
   );
 }

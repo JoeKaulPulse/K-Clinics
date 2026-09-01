@@ -608,6 +608,7 @@ function TreatmentStep({ p, live, sessData, pending, presenting, canStart, gateH
   onStart: () => void; onFinish: () => void; onSaveNote: (note: string) => void; onRemoveAddon: (itemId: string) => void; onContinue: () => void;
 }) {
   const [note, setNote] = useState(p.clinicalNote);
+  const [noteSavedMsg, setNoteSavedMsg] = useState('');
   // Live-derived until this device edits — a note saved on another device (or
   // before a reload) shows everywhere instead of looking lost.
   const [localComfort, setLocalComfort] = useState<string | null>(null);
@@ -678,8 +679,10 @@ function TreatmentStep({ p, live, sessData, pending, presenting, canStart, gateH
                 <div>
                   <label htmlFor="session-clinical" className="mb-1.5 block text-xs uppercase tracking-[0.16em] text-[var(--color-stone)]">Clinical treatment note (encrypted)</label>
                   <textarea id="session-clinical" rows={4} value={note} onChange={(e) => setNote(e.target.value)}
+                    onBlur={() => { if (note.trim()) { saveClinicalNote(p.booking.id, note.trim()).then((r) => { setNoteSavedMsg(r.ok ? 'Saved' : (r.error || 'Autosave failed — click Save note.')); if (r.ok) setTimeout(() => setNoteSavedMsg(''), 1500); }).catch(() => setNoteSavedMsg('Autosave failed — click Save note.')); } }}
                     placeholder="Settings, areas treated, observations…"
                     className="w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-4 py-3 text-sm outline-none transition-colors focus:border-[var(--color-gold)] focus-visible:ring-2 focus-visible:ring-[var(--color-gold)]" />
+                  <p className="mt-1 text-xs text-[var(--color-stone)]" role="status" aria-live="polite">{noteSavedMsg || 'Autosaves when you click away; edits are audit-logged.'}</p>
                   <div className="mt-2 flex flex-wrap items-center gap-2">
                     <button type="button" disabled={pending} onClick={() => onSaveNote(note)} className="min-h-11 rounded-full bg-[var(--color-ink)] px-5 py-2.5 text-sm text-[var(--color-porcelain)] disabled:opacity-50">Save note</button>
                     <VoiceRecorder bookingId={p.booking.id} onTranscript={(t) => setNote((prev) => prev ? `${prev}\n${t}` : t)} />
