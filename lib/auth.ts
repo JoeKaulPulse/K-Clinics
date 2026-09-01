@@ -50,6 +50,12 @@ export async function requirePermission(key: string): Promise<Session | null> {
   return sessionCan(session, key) ? session : null;
 }
 
+/** Like requirePermission, but passes if the session holds ANY of the given keys. */
+export async function requirePermissionAny(keys: string[]): Promise<Session | null> {
+  const session = await getSession();
+  return keys.some((key) => sessionCan(session, key)) ? session : null;
+}
+
 export async function hashPassword(plain: string) {
   return bcrypt.hash(plain, 11);
 }

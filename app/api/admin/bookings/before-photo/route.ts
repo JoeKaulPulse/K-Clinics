@@ -5,12 +5,12 @@ import { crmEnabled } from '@/lib/crm';
 export const runtime = 'nodejs';
 
 // Capture a pre-treatment "before" photo (laser). Encrypted at rest; never
-// stored on the device. Requires bookings.manage + a clinician attestation that
-// the image is of a non-intimate treatment area.
+// stored on the device. Requires bookings.manage OR clients.photos (BLD-1587)
+// + a clinician attestation that the image is of a non-intimate treatment area.
 export async function POST(req: Request) {
   if (!crmEnabled) return NextResponse.json({ ok: false }, { status: 503 });
-  const { requirePermission } = await import('@/lib/auth');
-  const session = await requirePermission('bookings.manage');
+  const { requirePermissionAny } = await import('@/lib/auth');
+  const session = await requirePermissionAny(['bookings.manage', 'clients.photos']);
   if (!session) return NextResponse.json({ ok: false, error: 'Not permitted.' }, { status: 403 });
 
   const body = await req.json().catch(() => ({}));
@@ -36,11 +36,11 @@ export async function POST(req: Request) {
   return NextResponse.json({ ok: true, id: photo.id });
 }
 
-// DELETE ?id= — remove a photo (mistake/wrong area). Requires bookings.manage.
+// DELETE ?id= — remove a photo (mistake/wrong area). Requires bookings.manage OR clients.photos.
 export async function DELETE(req: Request) {
   if (!crmEnabled) return NextResponse.json({ ok: false }, { status: 503 });
-  const { requirePermission } = await import('@/lib/auth');
-  const session = await requirePermission('bookings.manage');
+  const { requirePermissionAny } = await import('@/lib/auth');
+  const session = await requirePermissionAny(['bookings.manage', 'clients.photos']);
   if (!session) return NextResponse.json({ ok: false, error: 'Not permitted.' }, { status: 403 });
   const id = new URL(req.url).searchParams.get('id');
   if (!id) return NextResponse.json({ ok: false }, { status: 400 });

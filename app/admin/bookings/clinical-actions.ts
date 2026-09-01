@@ -80,7 +80,7 @@ export async function addTreatmentToBooking(bookingId: string, variantId: string
 export async function removeAddonTreatment(bookingId: string, itemId: string) {
   if (!crmEnabled) return { ok: false, error: 'CRM disabled' };
   const session = await getSession();
-  if (!session || !sessionCan(session, 'bookings.manage')) return { ok: false, error: 'Not permitted' };
+  if (!session || !(sessionCan(session, 'bookings.manage') || sessionCan(session, 'liveAppointments.manage'))) return { ok: false, error: 'Not permitted' };
   if (!bookingId || !itemId) return { ok: false, error: 'Missing booking or item ID.' };
   const { db } = await import('@/lib/db');
   const { logAudit } = await import('@/lib/audit');
@@ -192,7 +192,7 @@ export async function saveSopChecklist(
 ) {
   if (!crmEnabled) return { ok: false };
   const session = await getSession();
-  if (!session || !sessionCan(session, 'bookings.manage')) return { ok: false, error: 'Not permitted' };
+  if (!session || !(sessionCan(session, 'bookings.manage') || sessionCan(session, 'liveAppointments.manage'))) return { ok: false, error: 'Not permitted' };
   const { db } = await import('@/lib/db');
   const { encryptJson } = await import('@/lib/crypto');
   const { logAudit } = await import('@/lib/audit');
@@ -216,7 +216,7 @@ export async function saveSopChecklist(
 export async function reviewMedicalFlag(bookingId: string) {
   if (!crmEnabled) return { ok: false };
   const session = await getSession();
-  if (!session || !sessionCan(session, 'bookings.manage')) return { ok: false, error: 'Not permitted' };
+  if (!session || !(sessionCan(session, 'bookings.manage') || sessionCan(session, 'liveAppointments.manage'))) return { ok: false, error: 'Not permitted' };
   const { db } = await import('@/lib/db');
   const { logAudit } = await import('@/lib/audit');
   const b = await db.booking.update({ where: { id: bookingId }, data: { medicalFlagReviewedAt: new Date(), medicalFlagReviewedBy: session.email } });
@@ -229,7 +229,7 @@ export async function reviewMedicalFlag(bookingId: string) {
 export async function startAppointment(bookingId: string) {
   if (!crmEnabled) return { ok: false };
   const session = await getSession();
-  if (!session || !sessionCan(session, 'bookings.manage')) return { ok: false, error: 'Not permitted' };
+  if (!session || !(sessionCan(session, 'bookings.manage') || sessionCan(session, 'liveAppointments.manage'))) return { ok: false, error: 'Not permitted' };
 
   const { db } = await import('@/lib/db');
   const { getSetting } = await import('@/lib/settings');
@@ -308,7 +308,7 @@ export async function removeConsumable(movementId: string, bookingId: string) {
 export async function finishAppointment(bookingId: string) {
   if (!crmEnabled) return { ok: false };
   const session = await getSession();
-  if (!session || !sessionCan(session, 'bookings.manage')) return { ok: false, error: 'Not permitted' };
+  if (!session || !(sessionCan(session, 'bookings.manage') || sessionCan(session, 'liveAppointments.manage'))) return { ok: false, error: 'Not permitted' };
   const { db } = await import('@/lib/db');
   const { logAudit } = await import('@/lib/audit');
   const b = await db.booking.findUnique({ where: { id: bookingId } });
