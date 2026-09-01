@@ -154,6 +154,8 @@ export const importedTreatments: Treatment[] = [
     category: "aesthetics",
     group: "Face & Lifting",
     title: "Microneedling",
+    // Sterile needles puncture the skin's surface (BLD-1588).
+    invasiveness: "percutaneous",
     tagline: "Ideal for treating acne, stretch marks, scars and skin rejuvenation.",
     metaTitle: "Microneedling in London (Islington) | KClinics",
     metaDescription: "Microneedling in Islington triggers the skin's natural regeneration, boosting collagen to soften scars, stretch marks and fine lines.",
@@ -172,6 +174,8 @@ export const importedTreatments: Treatment[] = [
     category: "aesthetics",
     group: "Face & Lifting",
     title: "PRP Therapy",
+    // Platelet-rich plasma is injected into the treatment area (BLD-1588).
+    invasiveness: "percutaneous",
     tagline: "Ideal for skin rejuvenation, acne treatment, stretch marks and scars.",
     metaTitle: "PRP Therapy in London (Islington) | KClinics",
     metaDescription: "PRP therapy in Islington uses platelet-rich plasma from your own blood to stimulate regeneration, firming skin and softening scars.",
@@ -226,6 +230,8 @@ export const importedTreatments: Treatment[] = [
     category: "aesthetics",
     group: "Body & Injectables",
     title: "Dermal Fillers",
+    // Hyaluronic acid filler injected beneath the skin (BLD-1588).
+    invasiveness: "percutaneous",
     tagline: "Ideal for restoring facial volume, contouring, reducing wrinkles and folds, adding volume and shape to lips.",
     metaTitle: "Dermal Fillers in London (Islington) | KClinics",
     metaDescription: "Dermal fillers in Islington smooth wrinkles, restore lost facial volume and enhance lip and cheek contours for a refreshed, natural look.",
@@ -280,6 +286,8 @@ export const importedTreatments: Treatment[] = [
     category: "aesthetics",
     group: "Body & Injectables",
     title: "Hip Dip Filler",
+    // Filler injected beneath the skin to add volume (BLD-1588).
+    invasiveness: "percutaneous",
     tagline: "Ideal for correcting hip contours and creating a harmonious silhouette.",
     metaTitle: "Hip Dip Filler in London (Islington) | KClinics",
     metaDescription: "Hip dip filler in Islington smooths the contour of the hips, adding volume where it is needed for a balanced, natural-looking silhouette.",
@@ -388,6 +396,8 @@ export const importedTreatments: Treatment[] = [
     category: "dentistry",
     group: "General Dentistry",
     title: "Tooth extraction",
+    // Surgical removal of a tooth (BLD-1588).
+    invasiveness: "surgical",
     tagline: "We remove problematic teeth with precision, helping you maintain overall oral health.",
     metaTitle: "Tooth extraction in London (Islington) | KClinics",
     metaDescription: "Tooth extraction in Islington, carried out with care under local anaesthetic when a tooth cannot be saved, protecting your long-term oral health.",
@@ -572,6 +582,8 @@ export const importedTreatments: Treatment[] = [
     category: "aesthetics",
     group: "Face, Skin & Lifting",
     title: "BB Glow",
+    // Micro-channelling needles infuse serum into the skin (BLD-1588).
+    invasiveness: "percutaneous",
     tagline: "A luminous, even-toned semi-permanent glow.",
     metaTitle: "BB Glow in London (Islington) | KClinics",
     metaDescription: "BB Glow treatment in Islington — micro-channelling infuses a tinted serum to even skin tone and add a luminous, semi-permanent glow.",
