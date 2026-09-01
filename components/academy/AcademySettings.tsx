@@ -67,9 +67,15 @@ export function AcademySettings({ passkeys: initial, hasPassword }: { passkeys: 
 
   async function remove(id: string) {
     if (!confirm('Remove this passkey?')) return;
-    await fetch('/api/academy/passkey/remove', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id }) }).catch(() => {});
-    setPasskeys((p) => p.filter((x) => x.id !== id));
-    router.refresh();
+    setMsg('');
+    try {
+      const res = await fetch('/api/academy/passkey/remove', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id }) });
+      if (!res.ok) { setMsg('Could not remove this passkey. Please try again.'); return; }
+      setPasskeys((p) => p.filter((x) => x.id !== id));
+      router.refresh();
+    } catch {
+      setMsg('Could not remove this passkey. Please try again.');
+    }
   }
 
   return (
