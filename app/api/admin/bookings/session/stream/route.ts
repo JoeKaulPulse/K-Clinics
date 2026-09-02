@@ -13,8 +13,8 @@ export const maxDuration = 60;
 
 export async function GET(req: Request) {
   if (!crmEnabled) return new Response('disabled', { status: 503 });
-  const { requirePermission } = await import('@/lib/auth');
-  const session = await requirePermission('bookings.manage');
+  const { requirePermissionAny } = await import('@/lib/auth');
+  const session = await requirePermissionAny(['bookings.manage', 'liveAppointments.manage']);
   if (!session) return new Response('forbidden', { status: 403 });
 
   const bookingId = new URL(req.url).searchParams.get('bookingId') || '';

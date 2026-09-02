@@ -7,7 +7,7 @@ export const runtime = 'nodejs';
 
 export async function POST(req: Request) {
   if (!crmEnabled) return NextResponse.json({ ok: false }, { status: 503 });
-  const { requirePermission } = await import('@/lib/auth');
+  const { requirePermission, requirePermissionAny } = await import('@/lib/auth');
   const body = await req.json().catch(() => ({}));
   const { db } = await import('@/lib/db');
   const { logAudit } = await import('@/lib/audit');
@@ -74,7 +74,7 @@ export async function POST(req: Request) {
       return ok({ key });
     }
     case 'createRequest': {
-      const session = await requirePermission('bookings.manage');
+      const session = await requirePermissionAny(['bookings.manage', 'consultations.consent']);
       if (!session) return bad('Not permitted.');
       if (!body.clientId || !body.templateKey) return bad();
       const template = await db.consentTemplate.findUnique({ where: { key: body.templateKey } });
@@ -102,7 +102,7 @@ export async function POST(req: Request) {
     case 'emailRequest': {
       // Email the private signing link for an existing pending request straight to
       // the client (BLD-505). The token identifies the form + client + appointment.
-      const session = await requirePermission('bookings.manage');
+      const session = await requirePermissionAny(['bookings.manage', 'consultations.consent']);
       if (!session) return bad('Not permitted.');
       if (!body.token) return bad();
       const reqRow = await db.consentRequest.findUnique({ where: { token: String(body.token) }, select: { token: true, title: true, clientId: true, bookingId: true, status: true } });

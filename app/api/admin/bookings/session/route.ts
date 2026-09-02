@@ -16,8 +16,8 @@ const bad = (error = 'Bad request', status = 400) => NextResponse.json({ ok: fal
 
 export async function POST(req: Request) {
   if (!crmEnabled) return NextResponse.json({ ok: false }, { status: 503 });
-  const { requirePermission } = await import('@/lib/auth');
-  const session = await requirePermission('bookings.manage');
+  const { requirePermissionAny } = await import('@/lib/auth');
+  const session = await requirePermissionAny(['bookings.manage', 'liveAppointments.manage']);
   if (!session) return bad('Not permitted.', 403);
 
   const body = await req.json().catch(() => ({}));

@@ -5,10 +5,14 @@ import { encClinical } from '@/lib/clinical-crypto';
 export const runtime = 'nodejs';
 
 // BLD-760 — Internal Incident (Accident) report. Staff-only: this route lives
-// under /api/admin and is NEVER reachable from the client portal. Both verbs
-// require an authenticated admin session AND the existing `clients.edit`
-// permission (front desk can log a slip/trip they witnessed; no new permission
-// key is introduced). The injury/description free-text is encrypted at rest with
+// under /api/admin and is NEVER reachable from the client portal.
+// GET returns decrypted injury/description free-text (health data), so it
+// requires `clients.clinical.view` — the same clinical gate the SAR export
+// route uses for this data class (BLD-1594) — and audits the view, matching
+// every other clinical-data-serving route. POST (logging a new incident) is
+// deliberately left on `clients.edit`: front desk may log a slip/trip they
+// witnessed, and creating a record doesn't read back anyone else's clinical
+// detail. The injury/description free-text is encrypted at rest with
 // encClinical (the same helper as clinical notes) and never appears in an audit
 // summary or on the client timeline — only the non-sensitive classification does.
 
@@ -21,7 +25,7 @@ export async function GET(req: Request) {
 
   const { getSession, sessionCan } = await import('@/lib/auth');
   const session = await getSession();
-  if (!sessionCan(session, 'clients.edit')) {
+  if (!sessionCan(session, 'clients.clinical.view')) {
     return NextResponse.json({ ok: false, error: 'Not permitted.' }, { status: 403 });
   }
 
@@ -49,6 +53,10 @@ export async function GET(req: Request) {
       witnesses: detail.witnesses || '',
     };
   });
+  if (session?.email) {
+    const { auditClinicalView } = await import('@/lib/clinical-view-audit');
+    auditClinicalView({ actor: session.email, actorRole: session.role, clientId, surface: 'incidents' });
+  }
   return NextResponse.json({ ok: true, incidents });
 }
 
