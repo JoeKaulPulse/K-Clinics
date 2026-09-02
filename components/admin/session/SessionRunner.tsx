@@ -35,6 +35,10 @@ type Props = {
     id: string; treatmentSlug: string; treatmentTitle: string; startAt: string; durationMin: number; pricePence: number;
     chargedAt: string | null;
     giftVoucherCode: string | null; giftVoucherPence: number;
+    // BLD-1591: money off already redeemed against this booking via loyalty
+    // points — netted off the amount actually collected at checkout alongside
+    // the gift voucher, mirroring the pattern chargeBookingAction already uses.
+    pointsRedeemedPence: number;
     refreshments: string[]; addOns: { id: string; label: string; pricePence: number }[];
   };
   photos: {
@@ -608,6 +612,15 @@ function TreatmentStep({ p, live, sessData, pending, presenting, canStart, gateH
   onStart: () => void; onFinish: () => void; onSaveNote: (note: string) => void; onRemoveAddon: (itemId: string) => void; onContinue: () => void;
 }) {
   const [note, setNote] = useState(p.clinicalNote);
+  const [noteSavedMsg, setNoteSavedMsg] = useState('');
+  // BLD-1589: the last value actually persisted. saveClinicalNote() is NOT
+  // idempotent — every call re-encrypts, rewrites clinicalNoteBy/At and writes
+  // an unconditional NOTE_ADDED audit row — so the autosave below must fire
+  // only on a real change. Without this, blurring the field without editing it
+  // rewrites "who last saved the clinical note" (a medico-legal field), and
+  // clicking "Save note" blurs the textarea first, saving the same text twice.
+  // null = "unknown" (a save failed), so the next blur/click always retries.
+  const savedNoteRef = useRef<string | null>(p.clinicalNote.trim());
   // Live-derived until this device edits — a note saved on another device (or
   // before a reload) shows everywhere instead of looking lost.
   const [localComfort, setLocalComfort] = useState<string | null>(null);
@@ -678,10 +691,29 @@ function TreatmentStep({ p, live, sessData, pending, presenting, canStart, gateH
                 <div>
                   <label htmlFor="session-clinical" className="mb-1.5 block text-xs uppercase tracking-[0.16em] text-[var(--color-stone)]">Clinical treatment note (encrypted)</label>
                   <textarea id="session-clinical" rows={4} value={note} onChange={(e) => setNote(e.target.value)}
+                    onBlur={() => {
+                      const next = note.trim();
+                      if (!next || next === savedNoteRef.current) return;
+                      savedNoteRef.current = next; // set synchronously: the "Save note" click that caused this blur checks it next
+                      saveClinicalNote(p.booking.id, next).then((r) => {
+                        if (!r.ok) savedNoteRef.current = null; // failed — let the next blur/click retry
+                        setNoteSavedMsg(r.ok ? 'Saved' : (r.error || 'Autosave failed — click Save note.'));
+                        if (r.ok) setTimeout(() => setNoteSavedMsg(''), 1500);
+                      }).catch(() => { savedNoteRef.current = null; setNoteSavedMsg('Autosave failed — click Save note.'); });
+                    }}
                     placeholder="Settings, areas treated, observations…"
                     className="w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-4 py-3 text-sm outline-none transition-colors focus:border-[var(--color-gold)] focus-visible:ring-2 focus-visible:ring-[var(--color-gold)]" />
+                  <p className="mt-1 text-xs text-[var(--color-stone)]" role="status" aria-live="polite">{noteSavedMsg || 'Autosaves when you click away; edits are audit-logged.'}</p>
                   <div className="mt-2 flex flex-wrap items-center gap-2">
-                    <button type="button" disabled={pending} onClick={() => onSaveNote(note)} className="min-h-11 rounded-full bg-[var(--color-ink)] px-5 py-2.5 text-sm text-[var(--color-porcelain)] disabled:opacity-50">Save note</button>
+                    <button type="button" disabled={pending} onClick={() => {
+                      const next = note.trim();
+                      // Clicking this button blurs the textarea first, so the autosave
+                      // above has already persisted this exact text — writing it again
+                      // would duplicate the encrypted write and its audit row.
+                      if (next && next === savedNoteRef.current) { setNoteSavedMsg('Saved'); setTimeout(() => setNoteSavedMsg(''), 1500); return; }
+                      savedNoteRef.current = next;
+                      onSaveNote(note);
+                    }} className="min-h-11 rounded-full bg-[var(--color-ink)] px-5 py-2.5 text-sm text-[var(--color-porcelain)] disabled:opacity-50">Save note</button>
                     <VoiceRecorder bookingId={p.booking.id} onTranscript={(t) => setNote((prev) => prev ? `${prev}\n${t}` : t)} />
                   </div>
                 </div>
@@ -824,8 +856,14 @@ function CheckoutStep({ p, live, sessData, pending, presenting, api, run, onCont
   );
   const [vBusy, setVBusy] = useState(false);
   const [vErr, setVErr] = useState('');
+  // BLD-1591: loyalty points already redeemed against this booking (before the
+  // visit) net off the collectable amount the same way the voucher does — the
+  // server applies the identical subtraction for paylink/terminal/external ops
+  // (and chargeBookingAction already did for the saved-card path), so this is
+  // purely for staff to see the true amount before they take payment.
+  const pointsOffPence = p.booking.pointsRedeemedPence ?? 0;
   // What the chosen method will actually collect (the server nets the same way).
-  const duePence = Math.max(0, amountPence - (vApplied?.pence ?? 0));
+  const duePence = Math.max(0, amountPence - (vApplied?.pence ?? 0) - pointsOffPence);
   const voucherExceedsAmount = !!vApplied && amountPence <= vApplied.pence;
   async function applyVoucher() {
     if (vBusy || !vCode.trim() || amountPence <= 0) return;
@@ -929,6 +967,14 @@ function CheckoutStep({ p, live, sessData, pending, presenting, api, run, onCont
                 <button type="button" onClick={() => { setMethod('classpass'); setLinkQr(null); setPayErr(''); }} aria-pressed={method === 'classpass'} className={`rounded-full px-3 py-1.5 transition-colors ${method === 'classpass' ? 'bg-[var(--color-ink)] text-[var(--color-porcelain)]' : 'text-[var(--color-stone)] hover:text-[var(--color-ink)]'}`}>ClassPass</button>
               </div>
             </div>
+
+            {/* BLD-1591: loyalty points redeemed online against this booking, before
+                the visit — netted off automatically by every payment method below
+                (mirrors the gift voucher note), so staff aren't shown a "left to
+                collect" figure that silently ignores money the client already spent. */}
+            {pointsOffPence > 0 && (
+              <p className="mt-2 text-xs text-[var(--color-stone)]">{money(pointsOffPence)} of redeemed loyalty points already applied — {money(duePence)} left to collect.</p>
+            )}
 
             {/* BLD-207: ad-hoc discount / price adjustment (applies to the amount taken by any method) */}
             <div className="mt-3">

@@ -385,7 +385,7 @@ export default async function BookingDetail({ params }: { params: Promise<{ id: 
 
         <section className="space-y-6">
           {/* BLD-138: the immersive in-clinic walkthrough (arrival → wrap-up). */}
-          {!['CANCELLED', 'NO_SHOW'].includes(b.status) && sessionCan(session, 'bookings.manage') && (
+          {!['CANCELLED', 'NO_SHOW'].includes(b.status) && (sessionCan(session, 'bookings.manage') || sessionCan(session, 'liveAppointments.manage')) && (
             <Link
               href={`/admin/bookings/${b.id}/session`}
               className="flex items-center justify-between gap-4 rounded-[var(--radius-lg)] border border-[var(--color-gold)]/50 bg-[var(--color-bone)] p-5 transition-all hover:border-[var(--color-gold)] hover:shadow-[var(--shadow-soft)]"
@@ -455,7 +455,7 @@ export default async function BookingDetail({ params }: { params: Promise<{ id: 
             pending={pendingConsents}
             baseUrl={site.url.replace(/\/$/, '')}
             canClinical={sessionCan(session, 'clients.clinical.view')}
-            canManage={sessionCan(session, 'bookings.manage')}
+            canManage={sessionCan(session, 'bookings.manage') || sessionCan(session, 'consultations.consent')}
           /></div>
           <div data-tour="clinical-photo"><BeforePhotoCapture
             bookingId={b.id}
@@ -463,7 +463,7 @@ export default async function BookingDetail({ params }: { params: Promise<{ id: 
             photos={beforePhotos.map((p) => ({ id: p.id, area: p.area, capturedBy: p.capturedBy, createdAt: p.createdAt.toISOString() }))}
             optOutSigned={optOutSigned}
             baseUrl={site.url.replace(/\/$/, '')}
-            canManage={sessionCan(session, 'bookings.manage')}
+            canManage={sessionCan(session, 'bookings.manage') || sessionCan(session, 'clients.photos')}
             required={isLaser}
           /></div>
           {canConsumables && <ConsumablesPanel bookingId={b.id} items={stockItems} used={used} />}

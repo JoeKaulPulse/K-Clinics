@@ -39,6 +39,12 @@ export const PERMISSIONS: Permission[] = [
   { key: 'bookings.view', group: 'Bookings', label: 'View bookings', description: 'See the appointment calendar and booking list.' },
   { key: 'bookings.manage', group: 'Bookings', label: 'Manage bookings', description: 'Reschedule, cancel and edit appointments.' },
   { key: 'bookings.charge', group: 'Bookings', label: 'Take payments', description: 'Charge cards for treatments and fees.', sensitive: true },
+  // BLD-1587: split out of bookings.manage so a practitioner can be granted
+  // these three during-treatment actions without also getting reschedule/
+  // cancel/edit rights over the whole appointment.
+  { key: 'consultations.consent', group: 'Bookings', label: 'Consent forms', description: 'Open, complete and send client consent forms for an appointment.' },
+  { key: 'clients.photos', group: 'Bookings', label: 'Before/after photos', description: 'Capture, view and delete client before/after treatment photos.', sensitive: true },
+  { key: 'liveAppointments.manage', group: 'Bookings', label: 'Live appointments', description: 'Open and run the live treatment-session screen during a visit.' },
 
   // Consultations
   { key: 'consultations.view', group: 'Consultations', label: 'View consultations', description: 'See incoming consultation enquiries.' },
