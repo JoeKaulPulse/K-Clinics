@@ -46,6 +46,15 @@ export type Treatment = {
    *  whose subject isn't centred and gets cropped onto plain background at the
    *  card's aspect ratio. Defaults to centred. */
   imagePosition?: string;
+  /** Clinical invasiveness, for accurate schema.org MedicalProcedureType structured
+   *  data (BLD-1588) — every ~40+ treatment page was previously hardcoded to
+   *  "Noninvasive procedure", which is factually wrong for injectables and surgery.
+   *  Optional: set explicitly on needle-based (percutaneous) and surgical/implant
+   *  treatments; leave unset for genuinely noninvasive ones. serviceLd() defaults
+   *  an unset field to 'noninvasive' unless the treatment's own metaDescription
+   *  mentions surgery/implants/injections/needles/fillers, so text overrides a
+   *  missing classification rather than the other way round. */
+  invasiveness?: 'noninvasive' | 'percutaneous' | 'surgical';
 };
 
 /** Audiences to hide from a client's *recommendations* given their gender.
@@ -342,6 +351,8 @@ export const treatments: Treatment[] = [
     group: 'Face & Lifting',
     title: 'Signature Facials & Skin',
     menuTitle: 'Signature Facials',
+    // Built around microneedling & PRP injection, alongside non-needle peels (BLD-1588).
+    invasiveness: 'percutaneous',
     tagline: 'A bespoke, results-driven facial — peels, microneedling & PRP, curated to your skin.',
     metaTitle: 'Signature Facials, Chemical Peels & Microneedling London | KClinics',
     metaDescription:
@@ -417,6 +428,8 @@ export const treatments: Treatment[] = [
     group: 'Body & Injectables',
     title: 'Cosmetic Injectables',
     menuTitle: 'Cosmetic Injections',
+    // Needle-based: anti-wrinkle injections, dermal filler and fat-dissolving (BLD-1588).
+    invasiveness: 'percutaneous',
     tagline: 'Refined, never reinvented. The art of looking like you.',
     metaTitle: 'Anti-Wrinkle & Dermal Filler Injections London | KClinics',
     metaDescription:
@@ -642,6 +655,8 @@ export const treatments: Treatment[] = [
     category: 'dentistry',
     group: 'Restorative & Specialist',
     title: 'Dental Implants',
+    // Titanium post surgically placed into the jawbone (BLD-1588).
+    invasiveness: 'surgical',
     menuTitle: 'Dental Implant Placement',
     tagline: 'A permanent foundation for a confident smile.',
     metaTitle: 'Dental Implants London (Islington) | KClinics',

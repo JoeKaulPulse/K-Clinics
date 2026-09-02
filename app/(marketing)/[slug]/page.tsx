@@ -84,7 +84,7 @@ export default async function TreatmentPage({ params }: { params: Promise<{ slug
     // serviceLd() returns an array (Procedure + Offer/Service) when pricePence is
     // set, a single object otherwise — always spread so it never nests as one
     // element (PRJ-1060.1).
-    const sld = serviceLd({ name: t.title, description: t.metaDescription, path: `/${t.slug}`, category: t.category, pricePence: ldPricePence });
+    const sld = serviceLd({ name: t.title, description: t.metaDescription, path: `/${t.slug}`, category: t.category, pricePence: ldPricePence, invasiveness: t.invasiveness });
     return (
       <>
         <JsonLd
