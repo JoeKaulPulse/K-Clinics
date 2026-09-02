@@ -4,6 +4,7 @@ import { PageHero } from '@/components/ui/PageHero';
 import { Reveal } from '@/components/motion/Reveal';
 import { BookingFlow } from '@/components/booking/BookingFlow';
 import { site } from '@/lib/site';
+import { PhoneLink } from '@/components/marketing/PhoneLink';
 import { getSiteConfig } from '@/lib/site-config';
 import { pageMeta, JsonLd, breadcrumbLd } from '@/lib/seo';
 import { getReviewAggregate } from '@/lib/reviews-aggregate';
@@ -169,7 +170,7 @@ export default async function BookPage({ searchParams }: { searchParams: Promise
               </div>
             )}
             <p className="mt-8 text-sm text-[var(--color-stone)]">
-              Prefer to talk? Call <a href={site.phoneHref} className="link-underline font-medium text-[var(--color-ink)]">{site.phone}</a>
+              Prefer to talk? Call <PhoneLink className="link-underline font-medium text-[var(--color-ink)]" />
             </p>
           </div>
         </Reveal>
@@ -178,7 +179,7 @@ export default async function BookPage({ searchParams }: { searchParams: Promise
             <div className="rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-bone)] p-8 text-center">
               <h2 className="text-title">Booking is briefly unavailable</h2>
               <p className="mt-3 text-[var(--color-ink-soft)]">We’re sorry — online booking is temporarily down. Please call us and we’ll book you straight in.</p>
-              <a href={site.phoneHref} className="mt-5 inline-block rounded-full bg-[var(--color-ink)] px-6 py-3 text-sm font-medium text-[var(--color-porcelain)]">Call {site.phone}</a>
+              <PhoneLink className="mt-5 inline-block rounded-full bg-[var(--color-ink)] px-6 py-3 text-sm font-medium text-[var(--color-porcelain)]">Call {site.phone}</PhoneLink>
             </div>
           ) : (
             <BookingFlow catalogue={catalogue} client={clientInfo} preselect={treatment ? (catalogue.find((s) => s.treatmentSlug === treatment)?.id ?? null) : null} preselectDate={preselectDate} waitlistToken={waitlistToken} />

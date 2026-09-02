@@ -16,8 +16,8 @@ const bad = (error = 'Bad request', status = 400) => NextResponse.json({ ok: fal
 
 export async function POST(req: Request) {
   if (!crmEnabled) return NextResponse.json({ ok: false }, { status: 503 });
-  const { requirePermission } = await import('@/lib/auth');
-  const session = await requirePermission('bookings.manage');
+  const { requirePermissionAny } = await import('@/lib/auth');
+  const session = await requirePermissionAny(['bookings.manage', 'liveAppointments.manage']);
   if (!session) return bad('Not permitted.', 403);
 
   const body = await req.json().catch(() => ({}));
@@ -32,7 +32,7 @@ export async function POST(req: Request) {
   type Data = import('@/lib/appointment-session').SessionData;
   type Touchpoints = import('@/lib/appointment-session').Touchpoint[];
 
-  const booking = await db.booking.findUnique({ where: { id: bookingId }, select: { id: true, clientId: true, status: true, finishedAt: true, chargedAt: true, prepaidAt: true, giftVoucherCode: true, giftVoucherPence: true } });
+  const booking = await db.booking.findUnique({ where: { id: bookingId }, select: { id: true, clientId: true, status: true, finishedAt: true, chargedAt: true, prepaidAt: true, giftVoucherCode: true, giftVoucherPence: true, pointsRedeemedPence: true } });
   if (!booking) return bad('Booking not found.', 404);
   // BLD-336: never run appointment-session actions against a cancelled booking.
   if (booking.status === 'CANCELLED') return bad('This booking was cancelled — no session actions are allowed.', 409);
@@ -42,8 +42,13 @@ export async function POST(req: Request) {
   // nets inside chargeBookingAction), so no surface — this checkout, the booking
   // detail page, a reloaded till — can collect the full price on top of the
   // reservation. The UI sends the agreed price; the server owns the arithmetic.
+  // BLD-1591: redeemed loyalty points are netted off the same way — points spent
+  // online against this booking stay spent, so the paylink/terminal/external ops
+  // must not also collect the pre-discount price (mirrors the pointsOffPence
+  // netting chargeBookingAction already does for the saved-card path).
   const voucherOffPence = booking.chargedAt ? 0 : (booking.giftVoucherPence ?? 0);
-  const VOUCHER_COVERS = 'The applied gift voucher already covers this amount — remove the voucher first to adjust the price.';
+  const pointsOffPence = booking.chargedAt ? 0 : (booking.pointsRedeemedPence ?? 0);
+  const VOUCHER_COVERS = 'The applied gift voucher and/or redeemed loyalty points already cover this amount — remove them first to adjust the price.';
 
   switch (op) {
     // Create (or resume) the session; the opener becomes the active staff.
@@ -179,8 +184,9 @@ export async function POST(req: Request) {
       if (!sessionCan(session, 'bookings.charge')) return bad('You don’t have permission to take payments.', 403);
       const grossPence = Math.round(Number(body.amountPence) || 0);
       if (grossPence <= 0) return bad('Enter an amount to take.');
-      // BLD-882: the link charges only the post-voucher remainder.
-      const amountPence = grossPence - voucherOffPence;
+      // BLD-882/BLD-1591: the link charges only the remainder after the voucher
+      // and any redeemed loyalty points.
+      const amountPence = grossPence - voucherOffPence - pointsOffPence;
       if (amountPence <= 0) return bad(VOUCHER_COVERS);
       const b = await db.booking.findUnique({ where: { id: bookingId }, select: { treatmentTitle: true, chargedAt: true, prepaidAt: true } });
       if (b?.chargedAt || b?.prepaidAt) return bad('This booking is already paid.');
@@ -212,8 +218,9 @@ export async function POST(req: Request) {
       if (!sessionCan(session, 'bookings.charge')) return bad('You don’t have permission to take payments.', 403);
       const grossPence = Math.round(Number(body.amountPence) || 0);
       if (grossPence <= 0) return bad('Enter an amount to take.');
-      // BLD-882: the terminal captures only the post-voucher remainder.
-      const amountPence = grossPence - voucherOffPence;
+      // BLD-882/BLD-1591: the terminal captures only the remainder after the
+      // voucher and any redeemed loyalty points.
+      const amountPence = grossPence - voucherOffPence - pointsOffPence;
       if (amountPence <= 0) return bad(VOUCHER_COVERS);
       const paid = await db.booking.findUnique({ where: { id: bookingId }, select: { chargedAt: true, prepaidAt: true } });
       if (paid?.chargedAt || paid?.prepaidAt) return bad('This booking is already paid.');
@@ -238,8 +245,9 @@ export async function POST(req: Request) {
       if (!sessionCan(session, 'bookings.charge')) return bad('You don’t have permission to take payments.', 403);
       const grossPence = Math.round(Number(body.amountPence) || 0);
       if (grossPence <= 0) return bad('Enter an amount.');
-      // BLD-882: record only the post-voucher remainder as externally collected.
-      const amountPence = grossPence - voucherOffPence;
+      // BLD-882/BLD-1591: record only the remainder after the voucher and any
+      // redeemed loyalty points as externally collected.
+      const amountPence = grossPence - voucherOffPence - pointsOffPence;
       if (amountPence <= 0) return bad(VOUCHER_COVERS);
       const channel = String(body.channel || 'external').toLowerCase().replace(/[^a-z0-9_-]/g, '').slice(0, 24) || 'external';
       const updated = await db.booking.updateMany({
@@ -256,7 +264,8 @@ export async function POST(req: Request) {
         const op = body.originalPence ? Math.round(Number(body.originalPence)) : 0;
         const disc = dr ? ` (price adjustment — ${dr}${op > amountPence ? `; was £${(op / 100).toFixed(2)}` : ''})` : '';
         const vnote = voucherOffPence > 0 ? ` + gift voucher £${(voucherOffPence / 100).toFixed(2)} already applied` : '';
-        await logAudit({ action: 'PAYMENT_CHARGED', actor: session.email, summary: `Paid via ${label} (£${(amountPence / 100).toFixed(2)})${disc}${vnote} — recorded externally, no card charged`, bookingId, clientId: booking.clientId, meta: { channel, external: true, discountReason: dr || undefined, voucherPence: voucherOffPence || undefined } });
+        const pnote = pointsOffPence > 0 ? ` + £${(pointsOffPence / 100).toFixed(2)} loyalty points already redeemed` : '';
+        await logAudit({ action: 'PAYMENT_CHARGED', actor: session.email, summary: `Paid via ${label} (£${(amountPence / 100).toFixed(2)})${disc}${vnote}${pnote} — recorded externally, no card charged`, bookingId, clientId: booking.clientId, meta: { channel, external: true, discountReason: dr || undefined, voucherPence: voucherOffPence || undefined, pointsRedeemedPence: pointsOffPence || undefined } });
       } catch { /* non-fatal */ }
       return ok();
     }
@@ -270,8 +279,15 @@ export async function POST(req: Request) {
     case 'voucher': {
       const { sessionCan } = await import('@/lib/auth');
       if (!sessionCan(session, 'bookings.charge')) return bad('You don’t have permission to take payments.', 403);
-      const amountPence = Math.round(Number(body.amountPence) || 0);
-      if (amountPence <= 0) return bad('Enter the amount being collected first.');
+      const grossVoucherPence = Math.round(Number(body.amountPence) || 0);
+      if (grossVoucherPence <= 0) return bad('Enter the amount being collected first.');
+      // BLD-1591: reserve against what is actually still owed. Points already
+      // redeemed against this booking are money the client has spent, so a
+      // voucher must not be consumed to cover them — reserving the gross price
+      // burned voucher value on the points portion (and, on a partial cover,
+      // could leave a booking every other op then refuses to settle).
+      const amountPence = grossVoucherPence - pointsOffPence;
+      if (amountPence <= 0) return bad('Redeemed loyalty points already cover this amount — remove them first to adjust the price.');
       const code = String(body.code || '').trim().toUpperCase();
       if (!code) return bad('Enter the voucher code.');
       if (booking.chargedAt || booking.prepaidAt) return bad('This booking is already paid.');

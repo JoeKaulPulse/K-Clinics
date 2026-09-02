@@ -5,6 +5,7 @@ import { consentMdToHtml } from '@/lib/consent-md';
 import { ConsentSigner } from '@/components/consent/ConsentSigner';
 import { KMark, ClinicsWordmark } from '@/components/brand/marks';
 import { site } from '@/lib/site';
+import { PhoneLink } from '@/components/marketing/PhoneLink';
 
 export const dynamic = 'force-dynamic';
 
@@ -93,7 +94,7 @@ export default async function SignPage({ params }: { params: Promise<{ token: st
 
         <footer className="mt-10 border-t border-[var(--color-line)] pt-6 text-center text-xs leading-relaxed text-[var(--color-stone)]">
           <p className="text-[var(--color-stone)]">{site.name} · {site.address.locality}, {site.address.region}</p>
-          <p className="mt-1">Your information is encrypted in transit and at rest. Questions? Call <a href={site.phoneHref} className="underline decoration-[var(--color-line)] underline-offset-2 hover:text-[var(--color-ink)]">{site.phone}</a>.</p>
+          <p className="mt-1">Your information is encrypted in transit and at rest. Questions? Call <PhoneLink className="underline decoration-[var(--color-line)] underline-offset-2 hover:text-[var(--color-ink)]" />.</p>
         </footer>
       </div>
     </main>

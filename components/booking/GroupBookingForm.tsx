@@ -4,6 +4,7 @@ import { useState, type FormEvent } from 'react';
 import { site } from '@/lib/site';
 import { Button, ArrowIcon } from '@/components/ui/Button';
 import { trackLead } from '@/lib/analytics-events';
+import { PhoneLink } from '@/components/marketing/PhoneLink';
 
 /** Group & event enquiry (birthdays, hen parties, corporate, bridal) — recorded
  *  via /api/consult so it lands in the CRM and notifies the front desk. */
@@ -74,7 +75,7 @@ export function GroupBookingForm() {
       <input type="text" name="company" tabIndex={-1} autoComplete="off" className="absolute -left-[9999px] h-0 w-0" aria-hidden />
       <div className="mt-6 flex flex-wrap items-center gap-4">
         <Button size="lg" type="submit" disabled={busy}>{busy ? 'Sending…' : <>Send group enquiry <ArrowIcon /></>}</Button>
-        <p className="text-sm text-[var(--color-stone)]">Or call <a href={site.phoneHref} className="link-underline font-medium text-[var(--color-ink)]">{site.phone}</a></p>
+        <p className="text-sm text-[var(--color-stone)]">Or call <PhoneLink className="link-underline font-medium text-[var(--color-ink)]" /></p>
       </div>
       {status === 'error' && <p role="alert" aria-live="assertive" className="mt-4 rounded-[var(--radius-sm)] bg-[var(--color-blush)]/25 px-4 py-3 text-sm text-[var(--color-ink)]">Something went wrong — please call us or email {site.email}.</p>}
     </form>

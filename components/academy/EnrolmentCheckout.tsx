@@ -137,12 +137,20 @@ function PayStep({ paymentId, onDone }: { paymentId: string; onDone: () => void 
   async function pay() {
     if (!stripe || !elements) return;
     setBusy(true); setErr('');
-    const { error } = await stripe.confirmPayment({ elements, redirect: 'if_required' });
-    if (error) { setErr(error.message || 'Payment failed.'); setBusy(false); return; }
-    const res = await fetch('/api/academy/pay/confirm', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ paymentId }) });
-    const j = await res.json().catch(() => ({}));
-    setBusy(false);
-    if (j.ok) onDone(); else setErr(j.error || 'Could not confirm your payment.');
+    // The button is disabled while busy, so a thrown confirm/fetch must still
+    // clear it — otherwise the learner is stuck on a dead "Processing…" button
+    // with no message after their card has been charged (PRJ-1060.4).
+    try {
+      const { error } = await stripe.confirmPayment({ elements, redirect: 'if_required' });
+      if (error) { setErr(error.message || 'Payment failed.'); setBusy(false); return; }
+      const res = await fetch('/api/academy/pay/confirm', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ paymentId }) });
+      const j = await res.json().catch(() => ({}));
+      setBusy(false);
+      if (j.ok) onDone(); else setErr(j.error || 'Could not confirm your payment.');
+    } catch {
+      setErr('We couldn’t confirm your payment. Check your email before paying again — if the payment went through, your enrolment is confirmed.');
+      setBusy(false);
+    }
   }
   return (
     <div>

@@ -7,7 +7,7 @@ import { BookingButtons } from '@/components/booking/BookingButtons';
 import { Button, ArrowIcon } from '@/components/ui/Button';
 import { Glyph } from '@/components/ui/Glyph';
 import { LOYALTY } from '@/lib/client-loyalty';
-import { site } from '@/lib/site';
+import { PhoneLink } from '@/components/marketing/PhoneLink';
 import { pageMeta, JsonLd, breadcrumbLd } from '@/lib/seo';
 
 // BLD-517: hourly ISR so these mostly-static pages are cached, not full SSR per request.
@@ -111,7 +111,7 @@ export default async function MembershipPage() {
           </Stagger>
           <Reveal>
             <p className="mx-auto mt-8 max-w-2xl text-center text-sm text-[var(--color-stone)]">
-              Manage your balance, see what’s expiring and grab your referral link any time from your <Link href="/account/rewards" className="link-underline font-medium text-[var(--color-ink)]">rewards page</Link>. Questions? Call <a href={site.phoneHref} className="link-underline font-medium text-[var(--color-ink)]">{site.phone}</a>.
+              Manage your balance, see what’s expiring and grab your referral link any time from your <Link href="/account/rewards" className="link-underline font-medium text-[var(--color-ink)]">rewards page</Link>. Questions? Call <PhoneLink className="link-underline font-medium text-[var(--color-ink)]" />.
             </p>
           </Reveal>
         </div>

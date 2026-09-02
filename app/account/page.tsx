@@ -18,6 +18,7 @@ import { portalAssessments } from '@/lib/questionnaires';
 import { localizeQuestionnaire } from '@/lib/questionnaires-uk';
 import { pt } from '@/lib/i18n-portal';
 import { site } from '@/lib/site';
+import { PhoneLink } from '@/components/marketing/PhoneLink';
 import type { Locale } from '@/lib/i18n';
 
 // Recommendation pool — includes gender-specific treatments which are filtered
@@ -80,7 +81,7 @@ export default async function DashboardPage() {
         <div role="alert" className="mt-8 rounded-[var(--radius-lg)] border border-[var(--color-blush-deep)] bg-[var(--color-blush)]/15 p-6">
           <p className="font-medium text-[var(--color-blush-deep)]">{t('dash.owedTitle', { amount: formatPrice(owed.totalPence) })}</p>
           <p className="mt-1 text-sm text-[var(--color-ink)]">{t('dash.owedBody')}</p>
-          <a href={site.phoneHref} className="mt-3 inline-block rounded-full bg-[var(--color-ink)] px-5 py-2.5 text-sm font-medium text-[var(--color-porcelain)]">{site.phone}</a>
+          <PhoneLink className="mt-3 inline-block rounded-full bg-[var(--color-ink)] px-5 py-2.5 text-sm font-medium text-[var(--color-porcelain)]" />
         </div>
       )}
 
@@ -260,10 +261,10 @@ export default async function DashboardPage() {
               </div>
               <div className="bg-[var(--color-bone)] p-6">
                 <RailHeading>{t('dash.needHelp')}</RailHeading>
-                <a href={site.phoneHref} className="mt-3 flex items-center gap-2.5 text-sm font-medium hover:text-[var(--color-gold-deep)]">
+                <PhoneLink className="mt-3 flex items-center gap-2.5 text-sm font-medium hover:text-[var(--color-gold-deep)]">
                   <svg viewBox="0 0 24 24" className="h-4 w-4 text-[var(--color-gold-deep)]" fill="none" stroke="currentColor" strokeWidth="1.6"><path d="M5 4h4l2 5-3 2a12 12 0 0 0 5 5l2-3 5 2v4a2 2 0 0 1-2 2A16 16 0 0 1 3 6a2 2 0 0 1 2-2z" strokeLinejoin="round" /></svg>
                   {site.phone}
-                </a>
+                </PhoneLink>
                 <a href={site.emailHref} className="mt-2.5 flex items-center gap-2.5 text-sm font-medium hover:text-[var(--color-gold-deep)]">
                   <svg viewBox="0 0 24 24" className="h-4 w-4 text-[var(--color-gold-deep)]" fill="none" stroke="currentColor" strokeWidth="1.6"><rect x="3" y="5" width="18" height="14" rx="2" /><path d="m3 7 9 6 9-6" /></svg>
                   {site.email}

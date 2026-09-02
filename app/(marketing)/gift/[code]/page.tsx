@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { GiftCardPreview } from '@/components/gift/GiftCardPreview';
 import { crmEnabled } from '@/lib/crm';
-import { site } from '@/lib/site';
+import { PhoneLink } from '@/components/marketing/PhoneLink';
 
 export const dynamic = 'force-dynamic';
 export const metadata: Metadata = { title: 'Your gift card | KClinics', robots: { index: false, follow: false } };
@@ -37,7 +37,7 @@ export default async function GiftCardViewPage({ params }: { params: Promise<{ c
             <p className="mx-auto mt-3 max-w-sm text-[var(--color-stone)]">
               {v && v.status === 'PENDING' ? 'This gift card isn’t active yet — payment is still completing.' : 'We couldn’t find a gift card for this link. Please check the code, or call us and we’ll help.'}
             </p>
-            <p className="mt-4"><a href={site.phoneHref} className="link-underline font-medium text-[var(--color-ink)]">{site.phone}</a></p>
+            <p className="mt-4"><PhoneLink className="link-underline font-medium text-[var(--color-ink)]" /></p>
           </div>
         ) : (
           <>

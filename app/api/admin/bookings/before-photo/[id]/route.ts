@@ -7,8 +7,8 @@ export const runtime = 'nodejs';
 // never has a public URL and is decrypted on demand behind this gate.
 export async function GET(req: Request, { params }: { params: Promise<{ id: string }> }) {
   if (!crmEnabled) return new NextResponse('Disabled', { status: 503 });
-  const { requirePermission } = await import('@/lib/auth');
-  const session = await requirePermission('clients.clinical.view');
+  const { requirePermissionAny } = await import('@/lib/auth');
+  const session = await requirePermissionAny(['clients.clinical.view', 'clients.photos']);
   if (!session) return new NextResponse('Forbidden', { status: 403 });
 
   const { id } = await params;

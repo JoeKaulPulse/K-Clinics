@@ -13,6 +13,7 @@ import { BookingButtons } from '@/components/booking/BookingButtons';
 import { EnquiryForm } from '@/components/contact/EnquiryForm';
 import { PersonalizedRail } from '@/components/marketing/PersonalizedRail';
 import { AbBlock } from '@/components/marketing/AbBlock';
+import { PhoneLink } from '@/components/marketing/PhoneLink';
 import { getSiteConfig } from '@/lib/site-config';
 import { ConsentGatedMap } from '@/components/cms/ConsentGatedMap';
 
@@ -416,7 +417,7 @@ async function ContactInfoSection({ data }: { data: Record<string, unknown> }) {
             wider than the container. On the inline <a> min-width does nothing
             at all, which is what the first pass set it on. */}
         <div className="grid grid-cols-1 gap-8 sm:grid-cols-2">
-          <div className="min-w-0"><p className="eyebrow mb-2">Call</p><a href={c.phoneHref} className="link-underline break-words text-lg">{c.phone}</a></div>
+          <div className="min-w-0"><p className="eyebrow mb-2">Call</p><PhoneLink href={c.phoneHref} className="link-underline break-words text-lg">{c.phone}</PhoneLink></div>
           <div className="min-w-0"><p className="eyebrow mb-2">Email</p><a href={c.emailHref} className="link-underline break-words text-lg">{c.email}</a></div>
         </div>
         {data.showHours !== false && (

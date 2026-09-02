@@ -24,6 +24,7 @@ import { faqLd, JsonLd as JsonLdHome, pageMeta } from '@/lib/seo';
 import { getTreatment, type Treatment } from '@/lib/treatments';
 import { packages } from '@/lib/packages';
 import { site } from '@/lib/site';
+import { PhoneLink } from '@/components/marketing/PhoneLink';
 import { JsonLd, breadcrumbLd, aggregateRatingLd } from '@/lib/seo';
 import { NewsletterCapture } from '@/components/layout/NewsletterCapture';
 import { OffersStrip } from '@/components/marketing/OffersStrip';
@@ -324,7 +325,7 @@ export default async function HomePage() {
               </div>
               <div>
                 <dt className="eyebrow mb-1.5">Call</dt>
-                <dd><a href={site.phoneHref} className="link-underline">{site.phone}</a></dd>
+                <dd><PhoneLink className="link-underline" /></dd>
               </div>
               <div>
                 <dt className="eyebrow mb-1.5">Email</dt>
