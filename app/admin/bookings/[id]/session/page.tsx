@@ -14,7 +14,7 @@ export default async function AppointmentSessionPage({ params }: { params: Promi
   if (!crmEnabled) return <CrmDisabled />;
   const { id } = await params;
   const session = await getSession();
-  if (!sessionCan(session, 'bookings.manage') || !session) redirect('/admin');
+  if (!session || !(sessionCan(session, 'bookings.manage') || sessionCan(session, 'liveAppointments.manage'))) redirect('/admin');
 
   const { db } = await import('@/lib/db');
   const b = await db.booking.findUnique({
@@ -157,7 +157,7 @@ export default async function AppointmentSessionPage({ params }: { params: Promi
           items: beforePhotos.map((p) => ({ id: p.id, area: p.area, capturedBy: p.capturedBy, createdAt: p.createdAt.toISOString() })),
           optOutSigned,
           baseUrl,
-          canManage: sessionCan(session, 'bookings.manage'),
+          canManage: sessionCan(session, 'bookings.manage') || sessionCan(session, 'clients.photos'),
           isLaser,
         }}
         client={{

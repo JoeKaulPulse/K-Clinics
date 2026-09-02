@@ -612,6 +612,15 @@ function TreatmentStep({ p, live, sessData, pending, presenting, canStart, gateH
   onStart: () => void; onFinish: () => void; onSaveNote: (note: string) => void; onRemoveAddon: (itemId: string) => void; onContinue: () => void;
 }) {
   const [note, setNote] = useState(p.clinicalNote);
+  const [noteSavedMsg, setNoteSavedMsg] = useState('');
+  // BLD-1589: the last value actually persisted. saveClinicalNote() is NOT
+  // idempotent — every call re-encrypts, rewrites clinicalNoteBy/At and writes
+  // an unconditional NOTE_ADDED audit row — so the autosave below must fire
+  // only on a real change. Without this, blurring the field without editing it
+  // rewrites "who last saved the clinical note" (a medico-legal field), and
+  // clicking "Save note" blurs the textarea first, saving the same text twice.
+  // null = "unknown" (a save failed), so the next blur/click always retries.
+  const savedNoteRef = useRef<string | null>(p.clinicalNote.trim());
   // Live-derived until this device edits — a note saved on another device (or
   // before a reload) shows everywhere instead of looking lost.
   const [localComfort, setLocalComfort] = useState<string | null>(null);
@@ -682,10 +691,29 @@ function TreatmentStep({ p, live, sessData, pending, presenting, canStart, gateH
                 <div>
                   <label htmlFor="session-clinical" className="mb-1.5 block text-xs uppercase tracking-[0.16em] text-[var(--color-stone)]">Clinical treatment note (encrypted)</label>
                   <textarea id="session-clinical" rows={4} value={note} onChange={(e) => setNote(e.target.value)}
+                    onBlur={() => {
+                      const next = note.trim();
+                      if (!next || next === savedNoteRef.current) return;
+                      savedNoteRef.current = next; // set synchronously: the "Save note" click that caused this blur checks it next
+                      saveClinicalNote(p.booking.id, next).then((r) => {
+                        if (!r.ok) savedNoteRef.current = null; // failed — let the next blur/click retry
+                        setNoteSavedMsg(r.ok ? 'Saved' : (r.error || 'Autosave failed — click Save note.'));
+                        if (r.ok) setTimeout(() => setNoteSavedMsg(''), 1500);
+                      }).catch(() => { savedNoteRef.current = null; setNoteSavedMsg('Autosave failed — click Save note.'); });
+                    }}
                     placeholder="Settings, areas treated, observations…"
                     className="w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-4 py-3 text-sm outline-none transition-colors focus:border-[var(--color-gold)] focus-visible:ring-2 focus-visible:ring-[var(--color-gold)]" />
+                  <p className="mt-1 text-xs text-[var(--color-stone)]" role="status" aria-live="polite">{noteSavedMsg || 'Autosaves when you click away; edits are audit-logged.'}</p>
                   <div className="mt-2 flex flex-wrap items-center gap-2">
-                    <button type="button" disabled={pending} onClick={() => onSaveNote(note)} className="min-h-11 rounded-full bg-[var(--color-ink)] px-5 py-2.5 text-sm text-[var(--color-porcelain)] disabled:opacity-50">Save note</button>
+                    <button type="button" disabled={pending} onClick={() => {
+                      const next = note.trim();
+                      // Clicking this button blurs the textarea first, so the autosave
+                      // above has already persisted this exact text — writing it again
+                      // would duplicate the encrypted write and its audit row.
+                      if (next && next === savedNoteRef.current) { setNoteSavedMsg('Saved'); setTimeout(() => setNoteSavedMsg(''), 1500); return; }
+                      savedNoteRef.current = next;
+                      onSaveNote(note);
+                    }} className="min-h-11 rounded-full bg-[var(--color-ink)] px-5 py-2.5 text-sm text-[var(--color-porcelain)] disabled:opacity-50">Save note</button>
                     <VoiceRecorder bookingId={p.booking.id} onTranscript={(t) => setNote((prev) => prev ? `${prev}\n${t}` : t)} />
                   </div>
                 </div>
