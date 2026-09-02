@@ -211,6 +211,30 @@ Use 1–4 phases and 1–2 treatments each — fewer when little is needed (a si
     },
   });
 
+  // BLD-1603: nothing in admin ever read `needsExpert` before this — flagged
+  // cases (unclear photos / genuinely complex) got zero follow-up. Alert staff
+  // who can see clinical detail via the existing in-app notification channel,
+  // same mechanism app/api/consult/route.ts uses for a new enquiry. Best-effort:
+  // a notification failure must never fail the analysis the client is waiting on.
+  if (analysis.needsExpert) {
+    try {
+      const { notifyStaffByPermission } = await import('@/lib/notifications');
+      const client = await db.client.findUnique({ where: { id: opts.clientId }, select: { firstName: true, lastName: true } }).catch(() => null);
+      const who = client ? [client.firstName, client.lastName].filter(Boolean).join(' ') : 'A client';
+      await notifyStaffByPermission('clients.clinical.view', {
+        kind: 'status',
+        category: 'clinical',
+        priority: 'high',
+        email: true,
+        title: 'AI consultation flagged for expert review',
+        body: `${who} · ${opts.areas.join(', ') || 'general'} — the AI plan needs a clinician's review.`,
+        href: '/admin/consultations?status=FLAGGED',
+      });
+    } catch (e) {
+      console.error('[get-my-plan] flag notification failed (non-fatal):', (e as Error)?.message);
+    }
+  }
+
   return { ok: true, analysisId: analysis.id, summary, findings, phases, planTotalPence: planTotal, aboveBudget, extras, confidence: parsed.confidence ?? 0.8, needsExpert: !!parsed.needsExpert };
 }
 
