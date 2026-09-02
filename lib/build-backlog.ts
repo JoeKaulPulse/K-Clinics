@@ -96,6 +96,48 @@ export const BUILD_BACKLOG: BacklogItem[] = [
   },
   // ── Shipped this session ──────────────────────────────────────────────────
   {
+    title: "Missing staff permissions for consent forms, photos & live appointments", type: 'ERROR', urgency: 'P0', status: 'SHIPPED', pr: PR(1898),
+    detail: 'Added three individually toggleable staff permissions (consultations.consent, clients.photos, liveAppointments.manage) so a practitioner can be granted consent-form, before/after photo, and Live Appointment access without full bookings.manage/clients.clinical.view or Administrator rights.',
+    notes: ['liveAppointments.manage also permits the in-session next-visit rebook and lowering a booking addon price, and opens the session screen without requiring bookings.view/clients.view -- grant it deliberately.'],
+  },
+  {
+    title: "Incident (accident/adverse-reaction) reports readable by front-desk staff without clinical permission, access unaudited", type: 'ERROR', urgency: 'P1', status: 'SHIPPED', pr: PR(1898),
+    value: 7, effort: 2,
+    detail: 'GET /api/admin/incidents now requires clients.clinical.view instead of clients.edit (previously held by FRONT_DESK), and logs auditClinicalView() on read, matching the SAR export route pattern for the same data class.',
+  },
+  {
+    title: "Clinical treatment note in session runner has no autosave — data-loss risk on interruption", type: 'ERROR', urgency: 'P1', status: 'SHIPPED', pr: PR(1899),
+    value: 8, effort: 3,
+    detail: 'The encrypted clinical treatment note now autosaves onBlur, mirroring the existing Comfort & preferences field, with a change-guard so it only writes (and only audits) when the note actually changed.',
+  },
+  {
+    title: "Academy checkout can strand buyer on a frozen 'Processing…' button after the card may already be charged", type: 'ERROR', urgency: 'P1', status: 'SHIPPED', pr: PR(1899),
+    value: 7, effort: 1,
+    detail: "PayStep.pay() now wraps stripe.confirmPayment in try/catch, always clearing the busy state and surfacing an error instead of leaving a dead button after the card may already have been charged, matching the shop CheckoutForm.tsx fix.",
+  },
+  {
+    title: "StudentsManager silently swallows failed portal-suspend/clinical-note actions", type: 'ERROR', urgency: 'P1', status: 'SHIPPED', pr: PR(1899),
+    value: 7, effort: 2,
+    detail: "StudentsManager's act() now checks res.ok and surfaces a real error instead of silently refreshing on a failed suspend/save, matching the sibling StudentActions.tsx fix (BLD-1578).",
+  },
+  {
+    title: "Redeemed loyalty points not netted off at in-person checkout (paylink/terminal/cash/external) — effective double-charge", type: 'ERROR', urgency: 'P1', status: 'SHIPPED', pr: PR(1900),
+    value: 8, effort: 3,
+    detail: 'Nets pointsRedeemedPence off the charge amount server-side in the paylink/terminal/external handlers, matching the existing gift-voucher netting, and fixes the same gap in the voucher reservation op so a booking with both a voucher and points nets correctly on every path.',
+    notes: ['Independent review traced the money math end-to-end and found the voucher-reservation op still reserved against the gross price when points were also redeemed -- fixed before merge.'],
+  },
+  {
+    title: "Click-to-call and WhatsApp CTAs fire zero conversion tracking signal", type: 'TASK', urgency: 'P1', status: 'SHIPPED', pr: PR(1901),
+    value: 8, effort: 2,
+    detail: 'Added components/marketing/PhoneLink.tsx (PhoneLink/PhoneButton) firing trackLead (GA4 generate_lead + Meta Lead, consent-gated) on click; swapped ~38 site.phoneHref call sites and the WhatsApp floating button to fire it.',
+    notes: ['Independent review found the shared Button component silently dropped onClick when href was set, so the two PhoneButton CTAs tracked nothing -- fixed by forwarding onClick on the link branches.'],
+  },
+  {
+    title: "Structured data claims every treatment is 'noninvasive' — including surgical implants and injections", type: 'ERROR', urgency: 'P1', status: 'SHIPPED', pr: PR(1902),
+    value: 7, effort: 3,
+    detail: 'Added an invasiveness field to the treatment type; serviceLd() now emits the correct schema.org MedicalProcedureType (Noninvasive/Percutaneous/Surgical) per treatment instead of hardcoding noninvasive for all ~40+ procedures, including implants and injectables.',
+  },
+  {
     title: 'Enhance search (admin + public) — powerful & access-gated', type: 'TASK', urgency: 'P1', status: 'SHIPPED', pr: PR(331),
     value: 8, effort: 5,
     detail: 'Make search powerful everywhere it appears — admin global search and the public website — gated by user type and access, except public marketing-page search which stays open to anyone (incl. non-users).',
