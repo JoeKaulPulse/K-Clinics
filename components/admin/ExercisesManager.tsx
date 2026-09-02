@@ -276,7 +276,7 @@ function MatchEditor({ pairs, setPairs }: { pairs: Pair[]; setPairs: (p: Pair[])
             <input className={field} value={p.left} onChange={(e) => setPair(i, { left: e.target.value })} placeholder="Left (e.g. term)" />
             <span className="text-[var(--color-stone)]">↔</span>
             <input className={field} value={p.right} onChange={(e) => setPair(i, { right: e.target.value })} placeholder="Right (e.g. definition)" />
-            <button onClick={() => setPairs(pairs.filter((_, j) => j !== i))} className="shrink-0 text-xs text-[var(--color-blush-deep)] hover:underline">×</button>
+            <button onClick={() => setPairs(pairs.filter((_, j) => j !== i))} aria-label="Remove pair" className="shrink-0 text-xs text-[var(--color-blush-deep)] hover:underline">×</button>
           </li>
         ))}
       </ul>
@@ -295,9 +295,9 @@ function OrderEditor({ items, setItems }: { items: string[]; setItems: (i: strin
           <li key={i} className="flex items-center gap-2">
             <span className="grid h-5 w-5 shrink-0 place-items-center rounded-full bg-[var(--color-ink)] text-[0.6rem] text-[var(--color-porcelain)]">{i + 1}</span>
             <input className={field} value={it} onChange={(e) => setItems(items.map((x, j) => (j === i ? e.target.value : x)))} placeholder={`Step ${i + 1}`} />
-            <button onClick={() => move(i, -1)} disabled={i === 0} className={btnGhost}>↑</button>
-            <button onClick={() => move(i, 1)} disabled={i === items.length - 1} className={btnGhost}>↓</button>
-            <button onClick={() => setItems(items.filter((_, j) => j !== i))} className="shrink-0 text-xs text-[var(--color-blush-deep)] hover:underline">×</button>
+            <button onClick={() => move(i, -1)} disabled={i === 0} aria-label="Move step up" className={btnGhost}>↑</button>
+            <button onClick={() => move(i, 1)} disabled={i === items.length - 1} aria-label="Move step down" className={btnGhost}>↓</button>
+            <button onClick={() => setItems(items.filter((_, j) => j !== i))} aria-label="Remove step" className="shrink-0 text-xs text-[var(--color-blush-deep)] hover:underline">×</button>
           </li>
         ))}
       </ul>
