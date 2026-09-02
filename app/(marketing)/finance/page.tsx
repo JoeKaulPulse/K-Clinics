@@ -3,6 +3,7 @@ import { PageHero } from '@/components/ui/PageHero';
 import { Reveal, Stagger, StaggerItem } from '@/components/motion/Reveal';
 import { Button, ArrowIcon } from '@/components/ui/Button';
 import { site } from '@/lib/site';
+import { PhoneLink } from '@/components/marketing/PhoneLink';
 import { pageMeta, JsonLd, breadcrumbLd } from '@/lib/seo';
 
 // BLD-517: hourly ISR so these mostly-static pages are cached, not full SSR per request.
@@ -62,7 +63,7 @@ export default async function FinancePage() {
           <div className="rounded-[var(--radius-2xl)] border border-[var(--color-line)] p-8 text-center md:p-12">
             <h2 className="text-title">Questions about paying?</h2>
             <p className="mx-auto mt-4 max-w-xl text-[var(--color-stone)]">
-              Our team will happily talk you through the options and what suits you best. Call <a href={site.phoneHref} className="link-underline font-medium text-[var(--color-ink)]">{site.phone}</a> or email <a href={site.emailHref} className="link-underline font-medium text-[var(--color-ink)]">{site.email}</a>.
+              Our team will happily talk you through the options and what suits you best. Call <PhoneLink className="link-underline font-medium text-[var(--color-ink)]" /> or email <a href={site.emailHref} className="link-underline font-medium text-[var(--color-ink)]">{site.email}</a>.
             </p>
             <div className="mt-7 flex flex-wrap justify-center gap-3">
               <Button href="/pricing" variant="gold">View pricing <ArrowIcon /></Button>

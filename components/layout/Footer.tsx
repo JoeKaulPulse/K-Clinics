@@ -7,6 +7,7 @@ import { NewsletterForm } from '@/components/layout/NewsletterForm';
 import { AccessBadges } from '@/components/ui/AccessBadges';
 import { PaymentMarks } from '@/components/ui/PaymentMarks';
 import { CookieSettingsLink } from '@/components/legal/CookieSettingsLink';
+import { PhoneLink } from '@/components/marketing/PhoneLink';
 
 // Brand glyphs for the footer social links (inherit currentColor).
 function SocialIcon({ name }: { name: string }) {
@@ -118,7 +119,7 @@ export function Footer({ config }: { config: SiteConfig }) {
             <a href={mapLink} target="_blank" rel="noopener noreferrer" className="block transition-colors hover:text-[var(--color-gold)]">
               {address.street}, {address.region} {address.postalCode}
             </a>
-            <a href={phoneHref} className="block transition-colors hover:text-[var(--color-gold)]">{phone}</a>
+            <PhoneLink href={phoneHref} className="block transition-colors hover:text-[var(--color-gold)]">{phone}</PhoneLink>
             <a href={emailHref} className="block transition-colors hover:text-[var(--color-gold)]">{email}</a>
           </address>
           <AccessBadges className="mt-6" />

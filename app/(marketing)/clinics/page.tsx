@@ -5,6 +5,7 @@ import { Reveal, Stagger, StaggerItem } from '@/components/motion/Reveal';
 import { BookingButtons } from '@/components/booking/BookingButtons';
 import { AccessBadges } from '@/components/ui/AccessBadges';
 import { site } from '@/lib/site';
+import { PhoneLink } from '@/components/marketing/PhoneLink';
 import { pageMeta, JsonLd, breadcrumbLd } from '@/lib/seo';
 
 // BLD-517: hourly ISR so these mostly-static pages are cached, not full SSR per request.
@@ -55,7 +56,7 @@ export default async function ClinicsPage() {
               <dd><a href={site.mapLink} target="_blank" rel="noopener noreferrer" className="link-underline">{site.address.street}, {site.address.region} {site.address.postalCode}</a></dd>
             </div>
             <div className="flex flex-wrap gap-x-12 gap-y-5">
-              <div><dt className="eyebrow mb-1.5">Call</dt><dd><a href={site.phoneHref} className="link-underline">{site.phone}</a></dd></div>
+              <div><dt className="eyebrow mb-1.5">Call</dt><dd><PhoneLink className="link-underline" /></dd></div>
               <div><dt className="eyebrow mb-1.5">Email</dt><dd><a href={site.emailHref} className="link-underline">{site.email}</a></dd></div>
             </div>
             <div>

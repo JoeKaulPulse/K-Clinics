@@ -5,7 +5,7 @@ import { usePathname, useRouter } from 'next/navigation';
 import { KMark, ClinicsWordmark } from '@/components/brand/marks';
 import { GuideHost } from '@/components/guide/GuideHost';
 import { Aurora } from '@/components/ui/Aurora';
-import { site } from '@/lib/site';
+import { PhoneLink } from '@/components/marketing/PhoneLink';
 
 // BLD-528: the trainee portal's own chrome — a dedicated shell mirroring the
 // client portal (components/portal/PortalShell), so the academy app reads as a
@@ -84,7 +84,7 @@ export function AcademyPortalShell({ firstName, children }: { firstName?: string
 
         <footer className="mt-8 flex flex-col gap-3 border-t border-[var(--color-line)] py-7 text-xs text-[var(--color-stone)] sm:flex-row sm:items-center sm:justify-between print:hidden">
           <p>K Academy — accredited aesthetics training. Questions? Call{' '}
-            <a href={site.phoneHref} className="font-medium text-[var(--color-ink-soft)] hover:text-[var(--color-gold-deep)]">{site.phone}</a>.
+            <PhoneLink className="font-medium text-[var(--color-ink-soft)] hover:text-[var(--color-gold-deep)]" />.
           </p>
           <nav className="flex flex-wrap gap-x-5 gap-y-1" aria-label="Portal footer">
             <Link href="/academy" className="hover:text-[var(--color-gold-deep)]">Browse courses</Link>

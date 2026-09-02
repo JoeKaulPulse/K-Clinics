@@ -3,7 +3,7 @@ import Link from 'next/link';
 import { PageHero } from '@/components/ui/PageHero';
 import { Reveal } from '@/components/motion/Reveal';
 import { ConsultForm } from '@/components/consult/ConsultForm';
-import { site } from '@/lib/site';
+import { PhoneLink } from '@/components/marketing/PhoneLink';
 import { getSiteConfig } from '@/lib/site-config';
 import { pageMeta, JsonLd, breadcrumbLd } from '@/lib/seo';
 
@@ -52,7 +52,7 @@ export default async function ConsultationPage() {
               ))}
             </ul>
             <p className="mt-8 text-sm text-[var(--color-stone)]">
-              Prefer to talk? Call <a href={site.phoneHref} className="link-underline font-medium text-[var(--color-ink)]">{site.phone}</a>
+              Prefer to talk? Call <PhoneLink className="link-underline font-medium text-[var(--color-ink)]" />
             </p>
           </div>
         </Reveal>

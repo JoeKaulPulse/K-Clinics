@@ -5,6 +5,7 @@ import { Reveal } from '@/components/motion/Reveal';
 import { ApplyForm } from '@/components/careers/ApplyForm';
 import { ApplyRoleLink } from '@/components/careers/ApplyRoleLink';
 import { site } from '@/lib/site';
+import { PhoneLink } from '@/components/marketing/PhoneLink';
 import { pageMeta, JsonLd, breadcrumbLd } from '@/lib/seo';
 
 export const generateMetadata = (): Promise<Metadata> => pageMeta({
@@ -73,7 +74,7 @@ export default async function CareersPage() {
         <Reveal>
           <div className="lg:sticky lg:top-28">
             <h2 className="text-title">Apply to KClinics.</h2>
-            <p className="mt-4 text-[var(--color-ink-soft)]">Pick a role or send a speculative application. Prefer to talk first? Call <a href={site.phoneHref} className="link-underline font-medium text-[var(--color-ink)]">{site.phone}</a>.</p>
+            <p className="mt-4 text-[var(--color-ink-soft)]">Pick a role or send a speculative application. Prefer to talk first? Call <PhoneLink className="link-underline font-medium text-[var(--color-ink)]" />.</p>
             <Link href="/" className="mt-6 inline-block text-sm text-[var(--color-stone)] hover:text-[var(--color-ink)]">← Back to the homepage</Link>
           </div>
         </Reveal>

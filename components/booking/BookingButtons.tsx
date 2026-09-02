@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { site } from '@/lib/site';
 import { Button, ArrowIcon } from '@/components/ui/Button';
+import { PhoneLink, PhoneButton } from '@/components/marketing/PhoneLink';
 
 /** First-party booking actions. Primary = book online; secondary = consultation. */
 export function BookingButtons({
@@ -26,9 +27,9 @@ export function BookingButtons({
           Free consultation <ArrowIcon />
         </Button>
       ) : (
-        <Button href={site.phoneHref} variant="outline" size="lg">
+        <PhoneButton variant="outline" size="lg">
           Call {site.phone}
-        </Button>
+        </PhoneButton>
       )}
     </div>
   );
@@ -41,7 +42,7 @@ export function BookingProviders({ className = '' }: { className?: string }) {
       <span className="text-xs uppercase tracking-[0.2em] text-[var(--color-stone)]">Reserve your visit</span>
       <a href={site.booking.path} className="link-underline text-sm font-medium">Book online</a>
       <Link href="/consultation" className="link-underline text-sm font-medium">Free consultation</Link>
-      <a href={site.phoneHref} className="link-underline text-sm font-medium">{site.phone}</a>
+      <PhoneLink className="link-underline text-sm font-medium" />
     </div>
   );
 }

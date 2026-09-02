@@ -5,7 +5,7 @@ import { MediaArt } from '@/components/ui/MediaArt';
 import { PublicGallery } from '@/components/gallery/PublicGallery';
 import { Button, ArrowIcon } from '@/components/ui/Button';
 import { treatmentImage } from '@/lib/treatment-images';
-import { site } from '@/lib/site';
+import { PhoneLink } from '@/components/marketing/PhoneLink';
 import { pageMeta, JsonLd, breadcrumbLd } from '@/lib/seo';
 
 export const generateMetadata = (): Promise<Metadata> => pageMeta({
@@ -105,7 +105,7 @@ export default async function GalleryPage() {
           <div className="rounded-[var(--radius-2xl)] border border-[var(--color-line)] p-8 text-center md:p-12">
             <h2 className="text-title mx-auto max-w-2xl">See results relevant to you.</h2>
             <p className="mx-auto mt-4 max-w-2xl text-[var(--color-stone)]">
-              Book a complimentary consultation and we’ll talk you through genuine, consented before-and-afters — and what’s realistically achievable for you. Prefer to talk first? Call <a href={site.phoneHref} className="link-underline font-medium text-[var(--color-ink)]">{site.phone}</a>.
+              Book a complimentary consultation and we’ll talk you through genuine, consented before-and-afters — and what’s realistically achievable for you. Prefer to talk first? Call <PhoneLink className="link-underline font-medium text-[var(--color-ink)]" />.
             </p>
             <div className="mt-7 flex flex-wrap justify-center gap-3">
               <Button href="/consultation" variant="gold">Book a free consultation <ArrowIcon /></Button>

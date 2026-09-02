@@ -2,6 +2,7 @@
 
 import type { SiteConfig } from '@/lib/site-config';
 import { useHideAtFooter } from '@/components/chat/useHideAtFooter';
+import { trackLead } from '@/lib/analytics-events';
 
 // Floating "Contact us on WhatsApp" button on public pages. Number comes from
 // NEXT_PUBLIC_WHATSAPP (digits, intl format) or the live site config.
@@ -18,6 +19,7 @@ export function WhatsAppButton({ config }: { config: SiteConfig }) {
       aria-label="Contact us on WhatsApp"
       aria-hidden={atFooter}
       tabIndex={atFooter ? -1 : undefined}
+      onClick={() => trackLead({ detail: { source: 'whatsapp' } })}
       className={`group fixed bottom-5 right-5 z-40 flex items-center gap-2 rounded-full bg-[#25D366] py-3 pl-3 pr-4 text-white shadow-[var(--shadow-soft)] transition-all duration-300 hover:scale-105 md:hidden print:hidden ${atFooter ? 'pointer-events-none translate-y-3 opacity-0' : 'opacity-100'}`}
     >
       <svg viewBox="0 0 24 24" className="h-6 w-6 shrink-0" fill="currentColor" aria-hidden>

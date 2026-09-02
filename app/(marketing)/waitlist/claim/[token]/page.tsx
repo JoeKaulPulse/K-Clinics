@@ -3,7 +3,7 @@ import Link from 'next/link';
 import { PageHero } from '@/components/ui/PageHero';
 import { Reveal } from '@/components/motion/Reveal';
 import { crmEnabled } from '@/lib/crm';
-import { site } from '@/lib/site';
+import { PhoneLink } from '@/components/marketing/PhoneLink';
 import { fmtClinicDate, fmtClinicTime } from '@/lib/clinic-time';
 
 export const dynamic = 'force-dynamic';
@@ -32,7 +32,7 @@ function Shell({ children }: { children: React.ReactNode }) {
 
 const callUs = (
   <p className="mt-5 text-sm text-[var(--color-stone)]">
-    Need a hand? Call <a href={site.phoneHref} className="link-underline font-medium text-[var(--color-ink)]">{site.phone}</a>.
+    Need a hand? Call <PhoneLink className="link-underline font-medium text-[var(--color-ink)]" />.
   </p>
 );
 

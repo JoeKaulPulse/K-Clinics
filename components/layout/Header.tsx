@@ -13,6 +13,7 @@ import { MediaArt } from '@/components/ui/MediaArt';
 import { treatmentImage } from '@/lib/treatment-images';
 import { AccountMenu } from '@/components/layout/AccountMenu';
 import { SiteSearch } from '@/components/layout/SiteSearch';
+import { PhoneLink } from '@/components/marketing/PhoneLink';
 
 export function Header({ config }: { config: SiteConfig }) {
   const { nav, booking, name, phone, phoneHref } = config;
@@ -394,9 +395,9 @@ export function Header({ config }: { config: SiteConfig }) {
               <Link href="/consultation" className="mt-1 text-center text-sm font-medium text-[var(--color-gold-deep)] underline-offset-4 hover:underline">
                 Or request a free consultation
               </Link>
-              <a href={phoneHref} className="mt-2 text-center text-sm font-medium">
+              <PhoneLink href={phoneHref} className="mt-2 text-center text-sm font-medium">
                 {phone}
-              </a>
+              </PhoneLink>
             </div>
           </motion.div>
         )}

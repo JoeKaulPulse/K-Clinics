@@ -5,7 +5,7 @@ import { Reveal, Stagger, StaggerItem } from '@/components/motion/Reveal';
 import { Button, ArrowIcon } from '@/components/ui/Button';
 import { FundingWizard } from '@/components/academy/FundingWizard';
 import { FUNDING_ROUTES } from '@/lib/funding';
-import { site } from '@/lib/site';
+import { PhoneLink } from '@/components/marketing/PhoneLink';
 import { pageMeta, JsonLd, breadcrumbLd } from '@/lib/seo';
 
 export const generateMetadata = (): Promise<Metadata> => pageMeta({
@@ -141,7 +141,7 @@ export default function AcademyFundingPage() {
         <Reveal>
           <div className="rounded-[var(--radius-2xl)] border border-[var(--color-line)] p-8 text-center md:p-12">
             <h2 className="text-title">Not sure where to start?</h2>
-            <p className="mx-auto mt-4 max-w-xl text-[var(--color-stone)]">Tell us your goal and we’ll find the most affordable way in. Call <a href={site.phoneHref} className="link-underline font-medium text-[var(--color-ink)]">{site.phone}</a> or <Link href="#check" className="link-underline font-medium text-[var(--color-ink)]">check your options online</Link>.</p>
+            <p className="mx-auto mt-4 max-w-xl text-[var(--color-stone)]">Tell us your goal and we’ll find the most affordable way in. Call <PhoneLink className="link-underline font-medium text-[var(--color-ink)]" /> or <Link href="#check" className="link-underline font-medium text-[var(--color-ink)]">check your options online</Link>.</p>
             <div className="mt-7 flex flex-wrap justify-center gap-3">
               <Button href="#check" variant="gold">Check your funding options <ArrowIcon /></Button>
               <Button href="/academy" variant="outline">Explore K Academy</Button>

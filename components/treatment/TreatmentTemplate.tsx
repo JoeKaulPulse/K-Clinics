@@ -10,6 +10,7 @@ import { TreatmentCard } from '@/components/ui/TreatmentCard';
 import { FaqAccordion } from '@/components/ui/FaqAccordion';
 import { Button, ArrowIcon } from '@/components/ui/Button';
 import { BookingButtons } from '@/components/booking/BookingButtons';
+import { PhoneButton } from '@/components/marketing/PhoneLink';
 import { site } from '@/lib/site';
 import { pricingForTreatment, formatPence, statusLabel, type ServiceStatus } from '@/lib/services';
 import { getVatNote } from '@/lib/vat';
@@ -166,7 +167,7 @@ export async function TreatmentTemplate({ t }: { t: Treatment }) {
                     </p>
                     <div className="flex flex-wrap gap-3">
                       <Button href="/contact" variant="gold" size="lg">Enquire / request <ArrowIcon /></Button>
-                      <Button href={site.phoneHref} variant="outline" size="lg">{site.phone}</Button>
+                      <PhoneButton variant="outline" size="lg">{site.phone}</PhoneButton>
                     </div>
                   </div>
                 ) : (

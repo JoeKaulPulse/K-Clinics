@@ -7,6 +7,7 @@ import { treatments } from '@/lib/treatments';
 import { site } from '@/lib/site';
 import { Button, ArrowIcon } from '@/components/ui/Button';
 import { trackLead } from '@/lib/analytics-events';
+import { PhoneLink } from '@/components/marketing/PhoneLink';
 
 /** Premium enquiry form. With no backend in a static export, it composes a
  *  pre-filled email to the clinic via mailto: — reliable, zero-infra, and easy
@@ -115,7 +116,7 @@ export function EnquiryForm() {
       <div className="mt-6 flex flex-wrap items-center gap-4">
         <Button size="lg" type="submit" disabled={busy}>{busy ? 'Sending…' : <>Send enquiry <ArrowIcon /></>}</Button>
         <p className="text-sm text-[var(--color-stone)]">
-          Or call <a href={site.phoneHref} className="link-underline font-medium text-[var(--color-ink)]">{site.phone}</a>
+          Or call <PhoneLink className="link-underline font-medium text-[var(--color-ink)]" />
         </p>
       </div>
 
