@@ -4891,6 +4891,56 @@ export const BUILD_BACKLOG: BacklogItem[] = [
       'Verified: npx tsc --noEmit and npm run build pass clean (npm run build validated with the sandbox DB-connection vars unset, since raw Postgres TCP is not reachable from this network policy -- prebuild db-sync is a no-op without them). node scripts/check-backlog-quotes.mjs passes. npm run lint reports only the pre-existing error in app/admin/calendar/page.tsx, untouched by this branch.',
     ],
   },
+  {
+    title: 'Booking cancel/reschedule outcome (including fee-charged notices) is never announced to screen readers',
+    type: 'ERROR', urgency: 'P1', status: 'SHIPPED', assignee: 'claude', pr: PR(1908),
+    value: 8, effort: 1,
+    detail: 'app/(marketing)/booking/manage/ManageClient.tsx:158 rendered the result message after Cancel/Reschedule -- including "a fee of £X was charged" notices -- as a plain <p>{msg}</p> with no role or aria-live, on a page anyone can reach without signing in.',
+    notes: [
+      'Fix: added role="status" aria-live="polite" to the message paragraph.',
+      'Verified: npx tsc --noEmit and npm run build pass clean (DB-connection vars unset in-sandbox, as above).',
+    ],
+  },
+  {
+    title: 'Clinical-view audit trail (who viewed whose medical record) can be silently lost on function freeze',
+    type: 'ERROR', urgency: 'P1', status: 'SHIPPED', assignee: 'claude', pr: PR(1908),
+    value: 8, effort: 2,
+    detail: "lib/clinical-view-audit.ts:31 auditClinicalView() fired a bare void import('@/lib/audit').then(logAudit).catch(()=>{}) with no await and no after() wrapper -- the exact anti-pattern already fixed elsewhere in the codebase, just never applied to this call, the GDPR audit trail for clinical record views (9 call sites).",
+    notes: [
+      'Fix: wrapped the logAudit call in after(), falling back to a fire-and-forget call when there is no request scope (after() throws), mirroring the proven pattern already used in lib/ai-consultation.ts.',
+      'Verified: npx tsc --noEmit and npm run build pass clean (DB-connection vars unset in-sandbox, as above).',
+    ],
+  },
+  {
+    title: 'Admin schedule editor silently drops an invalid day\'s hours but still reports "Schedule saved"',
+    type: 'ERROR', urgency: 'P1', status: 'SHIPPED', assignee: 'claude', pr: PR(1908),
+    value: 6, effort: 2,
+    detail: 'app/api/admin/schedule/route.ts:21 filtered out any day block where endMin<=startMin (native time inputs do not prevent a flipped start/end) -- the day was dropped from what is saved, but the handler still returned {ok:true} and the client showed "Schedule saved ✓". The same file already rejects (rather than silently discards) the analogous case for break times.',
+    notes: [
+      'Fix: reject with a 400 and a clear message for an invalid day block too, mirroring the existing break-time handling three lines below it.',
+      'Verified: npx tsc --noEmit and npm run build pass clean (DB-connection vars unset in-sandbox, as above).',
+    ],
+  },
+  {
+    title: 'POS till 18+ age-verification is self-satisfied by the client -- no staff confirmation step exists',
+    type: 'ERROR', urgency: 'P1', status: 'SHIPPED', assignee: 'claude', pr: PR(1908),
+    value: 8, effort: 3,
+    detail: 'components/admin/PosTerminal.tsx:178-181 called checkout(\'card\', needAge) where needAge is just "cart contains an 18+ item," so ageVerified was always true whenever it mattered -- the UI never presented an actual confirm control despite on-screen text telling staff to confirm the age first. The server\'s real gate at app/api/admin/pos/route.ts:94 is designed for a two-step confirm the UI never implemented.',
+    notes: [
+      'Fix: added an explicit staff-confirm checkbox that gates the checkout buttons when the cart needs it; only a ticked confirmation sets ageVerified:true, matching the server\'s existing intent.',
+      'Verified: npx tsc --noEmit and npm run build pass clean (DB-connection vars unset in-sandbox, as above).',
+    ],
+  },
+  {
+    title: 'Kiosk viral share page is noindex and carries zero analytics/retargeting pixels',
+    type: 'TASK', urgency: 'P1', status: 'SHIPPED', assignee: 'claude', pr: PR(1908),
+    value: 8, effort: 3,
+    detail: 'app/kiosk/result/[slug]/page.tsx (built for social sharing -- OG/Twitter card, ShareButtons) inherited robots:{index:false,follow:false} from app/kiosk/layout.tsx, and TrackingScripts was only rendered in the marketing layout, so this sibling route group never loaded it. Every visitor arriving from a friend\'s shared link was unindexed and untracked.',
+    notes: [
+      'Fix: gave the page its own metadata (robots:{index:true,follow:true}) and rendered the existing consent-gated TrackingScripts plus a new ShareLeadTracker (generate_lead/Lead pixel), leaving the in-store surfaces (/kiosk/display, /kiosk/[token]) untouched.',
+      'Verified: npx tsc --noEmit and npm run build pass clean (DB-connection vars unset in-sandbox, as above); the route still prerenders statically.',
+    ],
+  },
 ];
 
 // A content hash over every item's title + status + PR, so ANY change (a new
