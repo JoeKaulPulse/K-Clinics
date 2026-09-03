@@ -22,7 +22,13 @@ export async function POST(req: Request) {
     // start — the native time inputs don't prevent a flipped start/end, and
     // dropping the day here would leave a clinician silently unbookable on that
     // weekday while the client still sees "Schedule saved" (BLD-1626).
-    const badDay = blocks.find((b) => b.dayOfWeek >= 0 && b.dayOfWeek <= 6 && b.endMin <= b.startMin);
+    // The predicate is the negation of the old filter's `endMin > startMin` (not
+    // `endMin <= startMin`) so the set of blocks that reach `clean` is exactly
+    // the set the old filter accepted — with a cleared time input the client
+    // sends null (JSON has no NaN), and `null <= 540` is false while
+    // `540 > null` is true, so a bare `<=` test would let a null through to
+    // createMany and turn a saveable mistake into a Prisma 500.
+    const badDay = blocks.find((b) => b.dayOfWeek >= 0 && b.dayOfWeek <= 6 && !(Number.isFinite(b.startMin) && Number.isFinite(b.endMin) && b.endMin > b.startMin));
     if (badDay) return NextResponse.json({ ok: false, error: 'A day’s end time must be after its start time.' }, { status: 400 });
     const clean = blocks.filter((b) => b.dayOfWeek >= 0 && b.dayOfWeek <= 6);
     // A break is valid only when it's a window inside the working day.

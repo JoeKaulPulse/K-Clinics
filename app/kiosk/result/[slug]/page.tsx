@@ -3,7 +3,8 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { db } from '@/lib/db';
 import { ResultCard } from '@/components/kiosk/ResultCard';
-import { ShareLeadTracker } from '@/components/kiosk/ShareLeadTracker';
+import { ShareViewTracker } from '@/components/kiosk/ShareViewTracker';
+import { CookieConsent } from '@/components/legal/CookieConsent';
 import { TrackingScripts } from '@/components/marketing/TrackingScripts';
 import { getTrackingConfig, hasAnyTracking } from '@/lib/tracking';
 
@@ -51,8 +52,14 @@ export default async function KioskResultPage({ params }: { params: Promise<{ sl
       >
         Try the Skin &amp; Smile scanner →
       </Link>
+      {/* The cookie banner lives in the marketing layout, which this route group
+          does not use — without it a first-time visitor arriving from a shared
+          link has no way to opt in, so TrackingScripts and ShareViewTracker
+          (both consent-gated) would never fire for exactly the audience this
+          page exists to reach. */}
+      <CookieConsent />
       {hasAnyTracking(tracking) && <TrackingScripts {...tracking} />}
-      <ShareLeadTracker slug={result.shareSlug} />
+      <ShareViewTracker />
     </main>
   );
 }

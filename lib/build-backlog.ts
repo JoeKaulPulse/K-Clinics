@@ -4918,11 +4918,16 @@ export const BUILD_BACKLOG: BacklogItem[] = [
     detail: 'app/api/admin/schedule/route.ts:21 filtered out any day block where endMin<=startMin (native time inputs do not prevent a flipped start/end) -- the day was dropped from what is saved, but the handler still returned {ok:true} and the client showed "Schedule saved ✓". The same file already rejects (rather than silently discards) the analogous case for break times.',
     notes: [
       'Fix: reject with a 400 and a clear message for an invalid day block too, mirroring the existing break-time handling three lines below it.',
+      "Review fix (BLD-1626): the rejection predicate is the negation of the old filter (!(endMin > startMin)), not a bare endMin <= startMin. JSON has no NaN, so a cleared time input arrives as null; null <= 540 is false while 540 > null is true, so the bare form would have let a null startMin past the new check and into createMany, turning a saveable mistake into a Prisma 500. It also requires both values to be finite, so the set of blocks reaching the write is exactly the set the old filter accepted.",
       'Verified: npx tsc --noEmit and npm run build pass clean (DB-connection vars unset in-sandbox, as above).',
     ],
   },
   {
-    title: 'POS till 18+ age-verification is self-satisfied by the client -- no staff confirmation step exists',
+    // NOTE: the em dash here is deliberate and must not be "corrected" to `--`.
+    // Reconciliation matches the live board row by EXACT title string, and the
+    // live BLD-1625 row uses an em dash — a `--` here would silently never mark
+    // the item shipped.
+    title: 'POS till 18+ age-verification is self-satisfied by the client — no staff confirmation step exists',
     type: 'ERROR', urgency: 'P1', status: 'SHIPPED', assignee: 'claude', pr: PR(1908),
     value: 8, effort: 3,
     detail: 'components/admin/PosTerminal.tsx:178-181 called checkout(\'card\', needAge) where needAge is just "cart contains an 18+ item," so ageVerified was always true whenever it mattered -- the UI never presented an actual confirm control despite on-screen text telling staff to confirm the age first. The server\'s real gate at app/api/admin/pos/route.ts:94 is designed for a two-step confirm the UI never implemented.',
@@ -4937,7 +4942,10 @@ export const BUILD_BACKLOG: BacklogItem[] = [
     value: 8, effort: 3,
     detail: 'app/kiosk/result/[slug]/page.tsx (built for social sharing -- OG/Twitter card, ShareButtons) inherited robots:{index:false,follow:false} from app/kiosk/layout.tsx, and TrackingScripts was only rendered in the marketing layout, so this sibling route group never loaded it. Every visitor arriving from a friend\'s shared link was unindexed and untracked.',
     notes: [
-      'Fix: gave the page its own metadata (robots:{index:true,follow:true}) and rendered the existing consent-gated TrackingScripts plus a new ShareLeadTracker (generate_lead/Lead pixel), leaving the in-store surfaces (/kiosk/display, /kiosk/[token]) untouched.',
+      'Fix: gave the page its own metadata (robots:{index:true,follow:true}) and rendered the existing consent-gated TrackingScripts plus a share-view tracker, leaving the in-store surfaces (/kiosk/display, /kiosk/[token]) untouched.',
+      "Review fix (BLD-1624): app/robots.ts disallows /kiosk as a prefix, which covers /kiosk/result/[slug] -- a crawler that may not fetch the page never reads its meta robots tag, so robots:{index:true} on its own left the page exactly as unindexable as before. Added the longer, more specific Allow /kiosk/result/ alongside the existing Disallow (longest match wins for Google and Bing). The card carries no name, email or photo, only the headline, the two scores, insights and suggested treatments.",
+      "Review fix (BLD-1624): the tracker fired trackLead() (GA4 generate_lead + Meta Lead) on page view. Every other trackLead() call site is a real lead action -- form submitted, phone tapped, WhatsApp opened, account created -- and both events are conversions imported into Google Ads and used by Meta for lead-optimised delivery, so a passive view would have inflated the lead count and fed bidding a signal that is not a lead. Renamed to components/kiosk/ShareViewTracker.tsx firing trackViewItem() (GA4 view_item + Meta ViewContent), which is the retargeting event this page actually wants and what the component's own comment already claimed to mirror. The share slug is no longer sent as an event parameter: it is a share token, and a per-slug content_id would fragment the Meta audience into one id per card.",
+      "Review fix (BLD-1624): the cookie banner lives in the marketing layout, which this route group does not use, so a first-time visitor arriving from a shared link had no way to opt in and both TrackingScripts and the tracker (each consent-gated) could never fire for the exact audience the page exists to reach. The page now renders the same CookieConsent component the marketing layout does. The in-store kiosk surfaces are untouched.",
       'Verified: npx tsc --noEmit and npm run build pass clean (DB-connection vars unset in-sandbox, as above); the route still prerenders statically.',
     ],
   },
