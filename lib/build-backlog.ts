@@ -96,6 +96,27 @@ export const BUILD_BACKLOG: BacklogItem[] = [
   },
   // ── Shipped this session ──────────────────────────────────────────────────
   {
+    title: "Homepage awaits site-config and review data sequentially, delaying LCP", type: 'TASK', urgency: 'P1', status: 'SHIPPED', pr: PR(1904),
+    value: 6, effort: 1,
+    detail: 'app/(marketing)/page.tsx awaited getSiteConfig() and getReviewAggregate() one after another before the hero could render. Batched with Promise.all, matching the existing pattern in /book and /admin, to cut TTFB/LCP on the highest-traffic page.',
+  },
+  {
+    title: "CSV/formula injection in newsletter-subscriber export", type: 'TASK', urgency: 'P2', status: 'SHIPPED', pr: PR(1904),
+    value: 6, effort: 1,
+    detail: "The export's esc() helper only escaped quotes/commas/newlines, so a subscriber address with a leading =/+/-/@ (which passes the signup route's zod .email() validator) opened as a live formula in Excel/Sheets when staff exported the list. esc() now prefixes such values with a single quote before the existing escaping -- the standard CSV-injection mitigation.",
+  },
+  {
+    title: "Icon-only delete/reorder buttons missing accessible names in 4 admin/academy components", type: 'TASK', urgency: 'P2', status: 'SHIPPED', pr: PR(1904),
+    value: 5, effort: 1,
+    detail: 'Added aria-label to four bare x/up/down icon-only buttons in DemosManager, ExercisesManager and the public-facing academy ExercisePlayer that previously announced only "button" to screen readers.',
+  },
+  {
+    title: "AI consultation's needsExpert flag is computed but never surfaced to staff", type: 'TASK', urgency: 'P1', status: 'SHIPPED', pr: PR(1905),
+    value: 7, effort: 3,
+    detail: "AiAnalysis.needsExpert was set on unclear/complex 'Get My Plan' cases but nothing in admin ever read it. Added a 'Flagged for expert review' tab on /admin/consultations (with a count badge) and a matching badge on the client detail page's AI analysis cards, both gated on clients.clinical.view, plus a staff notification via the existing notifyStaffByPermission channel fired when a case is flagged.",
+    notes: ["Independent review found the notification was awaited inline before the AI response returned to the client, risking the response on a slow SMTP send under the route's maxDuration budget -- moved into after() before merge, and the flagged-analyses query trimmed to only the fields the list renders (was pulling encrypted clinical findings across the wire unused)."],
+  },
+  {
     title: "Missing staff permissions for consent forms, photos & live appointments", type: 'ERROR', urgency: 'P0', status: 'SHIPPED', pr: PR(1898),
     detail: 'Added three individually toggleable staff permissions (consultations.consent, clients.photos, liveAppointments.manage) so a practitioner can be granted consent-form, before/after photo, and Live Appointment access without full bookings.manage/clients.clinical.view or Administrator rights.',
     notes: ['liveAppointments.manage also permits the in-session next-visit rebook and lowering a booking addon price, and opens the session screen without requiring bookings.view/clients.view -- grant it deliberately.'],
