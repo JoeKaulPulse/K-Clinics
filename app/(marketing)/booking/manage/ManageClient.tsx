@@ -155,7 +155,7 @@ export function ManageClient({ token, booking }: { token: string; booking: B }) 
       <p className="mt-2 text-[var(--color-stone)]">{when}</p>
       <p className="mt-1 text-[var(--color-stone)]">{booking.pricePence > 0 ? money(booking.pricePence) : 'Assessed at your visit'}</p>
 
-      {msg && <p className="mt-6 rounded-[var(--radius-sm)] bg-[var(--color-porcelain)] px-4 py-3 text-sm">{msg}</p>}
+      {msg && <p role="status" aria-live="polite" className="mt-6 rounded-[var(--radius-sm)] bg-[var(--color-porcelain)] px-4 py-3 text-sm">{msg}</p>}
 
       {!done && (
         <div className="mt-8 space-y-6 border-t border-[var(--color-line)] pt-6">

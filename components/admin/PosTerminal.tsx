@@ -16,6 +16,10 @@ export function PosTerminal({ products }: { products: P[] }) {
   // (nothing reserved until checkout); the atomic reservation happens server-side.
   const [vcode, setVcode] = useState('');
   const [vBalance, setVBalance] = useState<number | null>(null);
+  // BLD-1625: needAge only says the cart contains an 18+ item — it is not a
+  // staff confirmation. Require an explicit tick before ageVerified can go
+  // true, matching the server's actual gate at app/api/admin/pos/route.ts.
+  const [ageConfirmed, setAgeConfirmed] = useState(false);
 
   const filtered = useMemo(() => {
     const s = q.trim().toLowerCase();
@@ -43,7 +47,7 @@ export function PosTerminal({ products }: { products: P[] }) {
     else setStatus('No product matched that scan.');
   }
   const sub = (id: string) => setCart((c) => { const n = (c[id] || 0) - 1; const next = { ...c }; if (n <= 0) delete next[id]; else next[id] = n; return next; });
-  const clear = () => { setCart({}); setStage('shop'); setPay(null); setStatus(''); setVcode(''); setVBalance(null); };
+  const clear = () => { setCart({}); setStage('shop'); setPay(null); setStatus(''); setVcode(''); setVBalance(null); setAgeConfirmed(false); };
 
   async function checkVoucher() {
     const code = vcode.trim();
@@ -173,12 +177,17 @@ export function PosTerminal({ products }: { products: P[] }) {
             </p>
           );
         })()}
-        {needAge && <p className="mt-2 rounded-[var(--radius-sm)] bg-[var(--color-blush)]/20 px-3 py-2 text-xs text-[var(--color-ink)]">Includes an 18+ product — confirm the customer’s age before completing.</p>}
+        {needAge && (
+          <label className="mt-2 flex items-start gap-2 rounded-[var(--radius-sm)] bg-[var(--color-blush)]/20 px-3 py-2 text-xs text-[var(--color-ink)]">
+            <input type="checkbox" checked={ageConfirmed} onChange={(e) => setAgeConfirmed(e.target.checked)} className="mt-0.5 h-4 w-4 accent-[var(--color-gold)]" />
+            <span>Includes an 18+ product — I have confirmed the customer’s age.</span>
+          </label>
+        )}
         <div className="mt-4 grid gap-2">
-          <button onClick={() => checkout('card', needAge)} disabled={busy || lines.length === 0} className="rounded-full bg-[var(--color-gold-deep)] px-5 py-3 text-sm font-medium text-white disabled:opacity-50">Card — scan to pay</button>
+          <button onClick={() => checkout('card', ageConfirmed)} disabled={busy || lines.length === 0 || (needAge && !ageConfirmed)} className="rounded-full bg-[var(--color-gold-deep)] px-5 py-3 text-sm font-medium text-white disabled:opacity-50">Card — scan to pay</button>
           <div className="grid grid-cols-2 gap-2">
-            <button onClick={() => checkout('terminal', needAge)} disabled={busy || lines.length === 0} className="rounded-full border border-[var(--color-line)] px-4 py-2.5 text-sm disabled:opacity-50">Card machine</button>
-            <button onClick={() => checkout('cash', needAge)} disabled={busy || lines.length === 0} className="rounded-full border border-[var(--color-line)] px-4 py-2.5 text-sm disabled:opacity-50">Cash</button>
+            <button onClick={() => checkout('terminal', ageConfirmed)} disabled={busy || lines.length === 0 || (needAge && !ageConfirmed)} className="rounded-full border border-[var(--color-line)] px-4 py-2.5 text-sm disabled:opacity-50">Card machine</button>
+            <button onClick={() => checkout('cash', ageConfirmed)} disabled={busy || lines.length === 0 || (needAge && !ageConfirmed)} className="rounded-full border border-[var(--color-line)] px-4 py-2.5 text-sm disabled:opacity-50">Cash</button>
           </div>
         </div>
         {status && <p className="mt-3 text-sm text-[var(--color-stone)]">{status}</p>}

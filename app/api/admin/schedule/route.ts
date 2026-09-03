@@ -18,7 +18,13 @@ export async function POST(req: Request) {
   if (body.op === 'setSchedule') {
     const { staffId, blocks } = body as { staffId: string; blocks: { dayOfWeek: number; startMin: number; endMin: number; breakStartMin?: number | null; breakEndMin?: number | null; locationId?: string | null }[] };
     if (!staffId || !Array.isArray(blocks)) return NextResponse.json({ ok: false, error: 'Bad request' }, { status: 400 });
-    const clean = blocks.filter((b) => b.dayOfWeek >= 0 && b.dayOfWeek <= 6 && b.endMin > b.startMin);
+    // Reject (rather than silently discard) a day block whose end isn't after its
+    // start — the native time inputs don't prevent a flipped start/end, and
+    // dropping the day here would leave a clinician silently unbookable on that
+    // weekday while the client still sees "Schedule saved" (BLD-1626).
+    const badDay = blocks.find((b) => b.dayOfWeek >= 0 && b.dayOfWeek <= 6 && b.endMin <= b.startMin);
+    if (badDay) return NextResponse.json({ ok: false, error: 'A day’s end time must be after its start time.' }, { status: 400 });
+    const clean = blocks.filter((b) => b.dayOfWeek >= 0 && b.dayOfWeek <= 6);
     // A break is valid only when it's a window inside the working day.
     const validBreak = (b: { startMin: number; endMin: number; breakStartMin?: number | null; breakEndMin?: number | null }) =>
       b.breakStartMin != null && b.breakEndMin != null && b.breakEndMin > b.breakStartMin && b.breakStartMin >= b.startMin && b.breakEndMin <= b.endMin;

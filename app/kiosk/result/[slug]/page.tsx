@@ -3,6 +3,9 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { db } from '@/lib/db';
 import { ResultCard } from '@/components/kiosk/ResultCard';
+import { ShareLeadTracker } from '@/components/kiosk/ShareLeadTracker';
+import { TrackingScripts } from '@/components/marketing/TrackingScripts';
+import { getTrackingConfig, hasAnyTracking } from '@/lib/tracking';
 
 // Public, cacheable shareable card. Never shows the photo (privacy).
 export const dynamic = 'force-static';
@@ -24,6 +27,11 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   return {
     title,
     description,
+    // BLD-1624: this route lives under app/kiosk (in-store surfaces, correctly
+    // noindex via app/kiosk/layout.tsx), but this specific page is the public
+    // shareable card — the whole point is a friend's link bringing in a new
+    // visitor, so it needs to be indexable, unlike its in-store siblings.
+    robots: { index: true, follow: true },
     openGraph: { title, description, type: 'website' },
     twitter: { card: 'summary_large_image', title, description },
   };
@@ -31,7 +39,7 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
 
 export default async function KioskResultPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
-  const result = await getResult(slug);
+  const [result, tracking] = await Promise.all([getResult(slug), getTrackingConfig()]);
   if (!result) notFound();
 
   return (
@@ -43,6 +51,8 @@ export default async function KioskResultPage({ params }: { params: Promise<{ sl
       >
         Try the Skin &amp; Smile scanner →
       </Link>
+      {hasAnyTracking(tracking) && <TrackingScripts {...tracking} />}
+      <ShareLeadTracker slug={result.shareSlug} />
     </main>
   );
 }
