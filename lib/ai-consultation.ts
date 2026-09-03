@@ -1,4 +1,5 @@
 import 'server-only';
+import { after } from 'next/server';
 import * as Sentry from '@sentry/nextjs';
 import { db } from '@/lib/db';
 import { encryptJson } from '@/lib/crypto';
@@ -210,6 +211,45 @@ Use 1–4 phases and 1–2 treatments each — fewer when little is needed (a si
       images: opts.storeImages ? { create: images.map((i) => ({ area: i.area || null, dataEnc: encryptJson(i.dataUrl) })) } : undefined,
     },
   });
+
+  // BLD-1603: nothing in admin ever read `needsExpert` before this — flagged
+  // cases (unclear photos / genuinely complex) got zero follow-up. Alert staff
+  // who can see clinical detail via the existing in-app notification channel,
+  // same mechanism app/api/consult/route.ts uses for a new enquiry. Best-effort:
+  // a notification failure must never fail the analysis the client is waiting on.
+  if (analysis.needsExpert) {
+    const notifyFlagged = async () => {
+      try {
+        const { notifyStaffByPermission } = await import('@/lib/notifications');
+        const client = await db.client.findUnique({ where: { id: opts.clientId }, select: { firstName: true, lastName: true } }).catch(() => null);
+        const who = client ? [client.firstName, client.lastName].filter(Boolean).join(' ') : 'A client';
+        await notifyStaffByPermission('clients.clinical.view', {
+          kind: 'status',
+          category: 'clinical',
+          priority: 'high',
+          email: true,
+          title: 'AI consultation flagged for expert review',
+          body: `${who} · ${opts.areas.join(', ') || 'general'} — the AI plan needs a clinician's review.`,
+          href: '/admin/consultations?status=FLAGGED',
+        });
+      } catch (e) {
+        console.error('[get-my-plan] flag notification failed (non-fatal):', (e as Error)?.message);
+      }
+    };
+    // Review fix (BLD-1603): run it AFTER the response, not before. analyze() is
+    // awaited by app/api/ai-consultation/analyze/route.ts under maxDuration = 60,
+    // and the model call above can already burn most of that (25s timeout plus one
+    // bounded retry). Because this notification is priority:'high' with email:true
+    // it fans out to an SMTP send per clinical recipient — awaited inline that both
+    // delays the plan the client is waiting on and risks the function being killed
+    // before the response is sent, losing an analysis already saved to the DB.
+    // after() keeps the function alive to finish the send, unlike a bare
+    // floating promise (same reason as app/api/admin/posts/route.ts, BLD-1424).
+    // The "Flagged for expert review" tab is the durable queue regardless, so a
+    // dropped notification never loses the case. Falls back to inline if there is
+    // no request scope (after() throws), e.g. a future script/cron caller.
+    try { after(notifyFlagged); } catch { await notifyFlagged(); }
+  }
 
   return { ok: true, analysisId: analysis.id, summary, findings, phases, planTotalPence: planTotal, aboveBudget, extras, confidence: parsed.confidence ?? 0.8, needsExpert: !!parsed.needsExpert };
 }

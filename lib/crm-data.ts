@@ -123,6 +123,31 @@ export async function listConsultations(status?: string) {
   });
 }
 
+// BLD-1603: AI "Get My Plan" analyses the model flagged for expert review
+// (unclear photos or a genuinely complex case — lib/ai-consultation.ts). Never
+// surfaced to staff before; this backs the "Flagged" tab on the consultations
+// list. Clinical data (client identity + AI findings) — callers must gate on
+// clients.clinical.view, same as the AI section on the client detail page.
+export async function listFlaggedAnalyses() {
+  return db.aiAnalysis.findMany({
+    where: { needsExpert: true, status: 'complete' },
+    orderBy: { createdAt: 'desc' },
+    // Review fix (BLD-1603): explicit select, not the whole row. The list renders
+    // six fields; the default row also drags findingsEnc (encrypted clinical
+    // findings) and planJson across the wire for up to 100 rows, neither of which
+    // is displayed. Nothing clinical is loaded for a view that cannot show it.
+    select: {
+      id: true, createdAt: true, summary: true, areas: true,
+      client: { select: { id: true, firstName: true, lastName: true, email: true } },
+    },
+    take: 100,
+  });
+}
+
+export async function countFlaggedAnalyses(): Promise<number> {
+  return db.aiAnalysis.count({ where: { needsExpert: true, status: 'complete' } });
+}
+
 export async function getConsultation(id: string) {
   const c = await db.consultation.findUnique({
     where: { id },
