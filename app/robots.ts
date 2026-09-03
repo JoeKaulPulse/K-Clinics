@@ -8,7 +8,13 @@ export default function robots(): MetadataRoute.Robots {
     rules: [
       {
         userAgent: '*',
-        allow: '/',
+        // /kiosk is disallowed below as a PREFIX, which also covered
+        // /kiosk/result/[slug] — the public, shareable Skin & Smile card that
+        // BLD-1624 made indexable. A page a crawler may not fetch cannot be
+        // indexed on the strength of its own meta robots tag (the tag is never
+        // read), so the longer, more specific Allow has to sit alongside the
+        // Disallow. Longest-match wins for Google and Bing.
+        allow: ['/', '/kiosk/result/'],
         // Private / transactional areas — keep out of the index & crawl budget.
         // Note: these are PREFIX matches. '/review/' keeps the trailing slash on
         // purpose — a bare '/review' would also block the public, sitemap-listed

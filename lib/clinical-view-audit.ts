@@ -1,4 +1,5 @@
 import 'server-only';
+import { after } from 'next/server';
 
 // BLD-1240 / BLD-1392: decClinical() decrypts Art. 9 health data (allergies,
 // medical flags, consultation concerns, chat bodies…) at 15+ display sites,
@@ -28,14 +29,24 @@ export function auditClinicalView(opts: { actor: string; actorRole?: string; cli
   if (seen.size > 5000) {
     for (const [k, t] of seen) if (now - t > WINDOW_MS) seen.delete(k);
   }
-  void import('@/lib/audit')
-    .then(({ logAudit }) => logAudit({
-      action: 'ASSESSMENT_VIEWED',
-      actor: opts.actor,
-      actorRole: opts.actorRole,
-      clientId: opts.clientId,
-      bookingId: opts.bookingId ?? undefined,
-      summary: `Clinical data viewed (${opts.surface})`,
-    }))
-    .catch(() => {});
+  // BLD-1622: a bare `import().then().catch()` with no await can be frozen
+  // mid-flight once the caller's response is sent — the serverless runtime
+  // suspends the function, so this GDPR audit row may silently never be
+  // written (same anti-pattern already fixed elsewhere, e.g.
+  // lib/booking-actions.ts's bestEffort, lib/ai-consultation.ts's after()
+  // use). after() keeps the function alive to finish the write; falls back
+  // to a fire-and-forget call if there is no request scope (after() throws),
+  // e.g. a future script/cron caller — better than crashing the caller.
+  const write = () =>
+    import('@/lib/audit')
+      .then(({ logAudit }) => logAudit({
+        action: 'ASSESSMENT_VIEWED',
+        actor: opts.actor,
+        actorRole: opts.actorRole,
+        clientId: opts.clientId,
+        bookingId: opts.bookingId ?? undefined,
+        summary: `Clinical data viewed (${opts.surface})`,
+      }))
+      .catch(() => {});
+  try { after(write); } catch { void write(); }
 }
