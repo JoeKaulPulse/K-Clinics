@@ -31,7 +31,17 @@ export async function GET(req: Request) {
     select: { email: true, source: true, active: true, consentedAt: true, createdAt: true },
   });
 
-  const esc = (v: string) => (/[",\n]/.test(v) ? `"${v.replace(/"/g, '""')}"` : v);
+  // BLD-1596: guard against CSV/formula injection. The public unauthenticated
+  // POST /api/newsletter accepts any zod-.email()-valid address, and a
+  // leading =, +, -, @ in the local-part passes that validator — Excel/Sheets
+  // then evaluate the cell as a formula when a staff member opens the export.
+  // Prefixing with a single leading apostrophe forces those clients to treat
+  // the value as text (standard CSV-injection mitigation), before the
+  // existing quote/comma/newline escaping runs.
+  const esc = (v: string) => {
+    const guarded = /^[=+\-@\t\r]/.test(v) ? `'${v}` : v;
+    return /[",\n]/.test(guarded) ? `"${guarded.replace(/"/g, '""')}"` : guarded;
+  };
   const iso = (d: Date) => new Date(d).toISOString();
   const header = ['email', 'source', 'status', 'consented_at', 'created_at'];
   const lines = [header.join(',')];

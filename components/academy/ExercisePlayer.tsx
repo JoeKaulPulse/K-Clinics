@@ -240,8 +240,8 @@ function Order({ exercise, result, busy, onGrade }: SubProps) {
             <span className="flex-1">{it}{result && !result.results?.[i] && <span className="ml-2 text-xs text-[var(--color-gold-deep)]">should be: {(result.reveal as string[])?.[i]}</span>}</span>
             {!result && (
               <span className="flex shrink-0 gap-1">
-                <button onClick={() => move(i, -1)} disabled={i === 0} className="rounded border border-[var(--color-line)] px-2 text-xs disabled:opacity-30">↑</button>
-                <button onClick={() => move(i, 1)} disabled={i === items.length - 1} className="rounded border border-[var(--color-line)] px-2 text-xs disabled:opacity-30">↓</button>
+                <button onClick={() => move(i, -1)} disabled={i === 0} aria-label="Move step up" className="rounded border border-[var(--color-line)] px-2 text-xs disabled:opacity-30">↑</button>
+                <button onClick={() => move(i, 1)} disabled={i === items.length - 1} aria-label="Move step down" className="rounded border border-[var(--color-line)] px-2 text-xs disabled:opacity-30">↓</button>
               </span>
             )}
           </li>

@@ -276,7 +276,7 @@ function MatchEditor({ pairs, setPairs }: { pairs: Pair[]; setPairs: (p: Pair[])
             <input className={field} value={p.left} onChange={(e) => setPair(i, { left: e.target.value })} placeholder="Left (e.g. term)" />
             <span className="text-[var(--color-stone)]">↔</span>
             <input className={field} value={p.right} onChange={(e) => setPair(i, { right: e.target.value })} placeholder="Right (e.g. definition)" />
-            <button onClick={() => setPairs(pairs.filter((_, j) => j !== i))} className="shrink-0 text-xs text-[var(--color-blush-deep)] hover:underline">×</button>
+            <button onClick={() => setPairs(pairs.filter((_, j) => j !== i))} aria-label="Remove pair" className="shrink-0 text-xs text-[var(--color-blush-deep)] hover:underline">×</button>
           </li>
         ))}
       </ul>
@@ -297,7 +297,7 @@ function OrderEditor({ items, setItems }: { items: string[]; setItems: (i: strin
             <input className={field} value={it} onChange={(e) => setItems(items.map((x, j) => (j === i ? e.target.value : x)))} placeholder={`Step ${i + 1}`} />
             <button onClick={() => move(i, -1)} disabled={i === 0} className={btnGhost}>↑</button>
             <button onClick={() => move(i, 1)} disabled={i === items.length - 1} className={btnGhost}>↓</button>
-            <button onClick={() => setItems(items.filter((_, j) => j !== i))} className="shrink-0 text-xs text-[var(--color-blush-deep)] hover:underline">×</button>
+            <button onClick={() => setItems(items.filter((_, j) => j !== i))} aria-label="Remove step" className="shrink-0 text-xs text-[var(--color-blush-deep)] hover:underline">×</button>
           </li>
         ))}
       </ul>

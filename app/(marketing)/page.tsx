@@ -58,9 +58,13 @@ const pillars = [
 
 export default async function HomePage() {
   const { getSiteConfig } = await import('@/lib/site-config');
-  const { dentistryLive, hero } = await getSiteConfig(); // BLD-515 dentistry flag; BLD-1348 hero video
   const { getReviewAggregate } = await import('@/lib/reviews-aggregate');
-  const aggregate = await getReviewAggregate();
+  // BLD-1602: run independently of each other so the hero isn't held up
+  // waiting on both sequentially.
+  const [{ dentistryLive, hero }, aggregate] = await Promise.all([
+    getSiteConfig(), // BLD-515 dentistry flag; BLD-1348 hero video
+    getReviewAggregate(),
+  ]);
   const rating = aggregate ? { average: aggregate.average, count: aggregate.count } : null;
   // PRJ-1069.11: exclude not-yet-live dentistry items (e.g. veneers while
   // dentistryLive is false) from the featured carousel — those pages are
