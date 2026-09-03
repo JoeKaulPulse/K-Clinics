@@ -10,14 +10,17 @@ import { CrmDisabled } from '@/components/admin/CrmDisabled';
 export const dynamic = 'force-dynamic';
 
 const STATUSES = ['ALL', 'NEW', 'CONTACTED', 'BOOKED', 'COMPLETED', 'CLOSED'];
+const AI_FILTERS = ['ALL', 'NEEDS_EXPERT'] as const;
+const AI_FILTER_LABEL: Record<(typeof AI_FILTERS)[number], string> = { ALL: 'All', NEEDS_EXPERT: 'Needs expert review' };
 
-export default async function ConsultationsPage({ searchParams }: { searchParams: Promise<{ status?: string }> }) {
+export default async function ConsultationsPage({ searchParams }: { searchParams: Promise<{ status?: string; ai?: string }> }) {
   if (!crmEnabled) return <CrmDisabled />;
-  const { status = 'ALL' } = await searchParams;
-  const { listConsultations } = await import('@/lib/crm-data');
+  const { status = 'ALL', ai = 'ALL' } = await searchParams;
+  const aiFilter = ai === 'NEEDS_EXPERT' ? 'NEEDS_EXPERT' : 'ALL';
+  const { listConsultations, listAiAnalyses } = await import('@/lib/crm-data');
   const session = await getSession();
   if (!sessionCan(session, 'consultations.view')) redirect('/admin');
-  const rows = await listConsultations(status);
+  const [rows, aiRows] = await Promise.all([listConsultations(status), listAiAnalyses(aiFilter)]);
 
   const can = await sessionPermissions();
 
@@ -30,7 +33,7 @@ export default async function ConsultationsPage({ searchParams }: { searchParams
         {STATUSES.map((s) => (
           <Link
             key={s}
-            href={`/admin/consultations?status=${s}`}
+            href={`/admin/consultations?status=${s}&ai=${aiFilter}`}
             className={`rounded-full px-4 py-1.5 text-sm transition-colors duration-150 ${status === s ? 'bg-[var(--color-ink)] text-[var(--color-porcelain)]' : 'border border-[var(--color-line)] hover:bg-[var(--color-bone)]'}`}
           >
             {s.charAt(0) + s.slice(1).toLowerCase()}
@@ -49,6 +52,54 @@ export default async function ConsultationsPage({ searchParams }: { searchParams
             <p className="hidden text-sm text-[var(--color-stone)] sm:block">{c.treatments.join(', ') || c.category}</p>
             <p className="hidden text-xs text-[var(--color-stone)] sm:block">{new Date(c.createdAt).toLocaleDateString('en-GB')}</p>
             <span className="justify-self-end rounded-full bg-[var(--color-bone)] px-3 py-1 text-xs">{c.status}</span>
+          </Link>
+        ))}
+      </div>
+
+      {/* K Vision "Get My Plan" AI consultations — BLD-1603: the AI's own
+          needsExpert flag (lib/ai-consultation.ts) surfaced as a queue, so a
+          case the AI itself flagged as unclear/complex doesn't sit
+          indistinguishable from a normal, fully-automated one. */}
+      <div className="mt-10 flex flex-wrap items-center justify-between gap-3">
+        <h2 className="font-[family-name:var(--font-display)] text-xl">AI consultations (Get My Plan)</h2>
+        <div className="flex flex-wrap gap-2">
+          {AI_FILTERS.map((f) => (
+            <Link
+              key={f}
+              href={`/admin/consultations?status=${status}&ai=${f}`}
+              className={`rounded-full px-4 py-1.5 text-sm transition-colors duration-150 ${aiFilter === f ? 'bg-[var(--color-ink)] text-[var(--color-porcelain)]' : 'border border-[var(--color-line)] hover:bg-[var(--color-bone)]'}`}
+            >
+              {AI_FILTER_LABEL[f]}
+            </Link>
+          ))}
+        </div>
+      </div>
+
+      <div className="mt-4 overflow-hidden rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-porcelain)]">
+        {aiRows.length === 0 && (
+          <p className="p-6 text-sm text-[var(--color-stone)]">
+            {aiFilter === 'NEEDS_EXPERT' ? 'No AI consultations currently need expert review.' : 'No AI consultations yet.'}
+          </p>
+        )}
+        {aiRows.map((a) => (
+          <Link
+            key={a.id}
+            href={`/admin/clients/${a.client.id}`}
+            className="grid grid-cols-[1fr_auto] gap-4 border-b border-[var(--color-line)] px-5 py-4 last:border-0 transition-colors duration-150 hover:bg-[var(--color-bone)] active:bg-[var(--color-sand)] sm:grid-cols-[1.2fr_1.6fr_0.8fr_auto] sm:items-center"
+          >
+            <div>
+              <p className="font-medium">{a.client.firstName} {a.client.lastName ?? ''}</p>
+              <p className="text-xs text-[var(--color-stone)]">{a.client.email}</p>
+            </div>
+            <p className="hidden text-sm text-[var(--color-stone)] sm:block">{a.summary || 'AI consultation'}</p>
+            <p className="hidden text-xs text-[var(--color-stone)] sm:block">{new Date(a.createdAt).toLocaleDateString('en-GB')}</p>
+            <span className="justify-self-end">
+              {a.needsExpert ? (
+                <span className="rounded-full bg-[var(--color-blush)]/15 px-3 py-1 text-xs font-medium text-[var(--color-blush-deep)]">Needs expert review</span>
+              ) : (
+                <span className="rounded-full bg-[var(--color-bone)] px-3 py-1 text-xs text-[var(--color-stone)]">Automated</span>
+              )}
+            </span>
           </Link>
         ))}
       </div>

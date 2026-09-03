@@ -146,7 +146,7 @@ export default async function ClientDetail({ params }: { params: Promise<{ id: s
     : [];
 
   // K Vision AI consultations (clinical — decrypt findings + photos for the clinician).
-  const aiAnalyses: { id: string; createdAt: Date; summary: string | null; treatments: string[]; findings: { label: string; note: string; severity: string }[]; images: string[] }[] = [];
+  const aiAnalyses: { id: string; createdAt: Date; summary: string | null; treatments: string[]; findings: { label: string; note: string; severity: string }[]; images: string[]; needsExpert: boolean }[] = [];
   if (clinical) {
     try {
       const { db } = await import('@/lib/db');
@@ -160,7 +160,7 @@ export default async function ClientDetail({ params }: { params: Promise<{ id: s
         // planJson shape: { phases: [{ treatments: [{ title }] }], extras, planTotalPence }
         const plan = (r.planJson as { phases?: { treatments?: { title?: string }[] }[] }) ?? {};
         const treatments = (plan.phases ?? []).flatMap((p) => (p.treatments ?? []).map((t) => t.title || '').filter(Boolean));
-        aiAnalyses.push({ id: r.id, createdAt: r.createdAt, summary: r.summary, treatments, findings, images });
+        aiAnalyses.push({ id: r.id, createdAt: r.createdAt, summary: r.summary, treatments, findings, images, needsExpert: r.needsExpert });
       }
     } catch { /* AI section is best-effort */ }
   }
@@ -427,7 +427,12 @@ export default async function ClientDetail({ params }: { params: Promise<{ id: s
               {aiAnalyses.map((a) => (
                 <div key={a.id} className="rounded-[var(--radius-md)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-4">
                   <div className="flex items-center justify-between gap-3">
-                    <p className="text-sm font-medium">{a.summary || 'Analysis'}</p>
+                    <p className="flex items-center gap-2 text-sm font-medium">
+                      {a.summary || 'Analysis'}
+                      {a.needsExpert && (
+                        <span className="rounded-full bg-[var(--color-blush)]/15 px-2.5 py-0.5 text-[0.65rem] font-medium text-[var(--color-blush-deep)]">Needs expert review</span>
+                      )}
+                    </p>
                     <p className="text-xs text-[var(--color-stone)]">{new Date(a.createdAt).toLocaleDateString('en-GB')}</p>
                   </div>
                   {a.images.length > 0 && (

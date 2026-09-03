@@ -135,6 +135,22 @@ export async function getConsultation(id: string) {
   return c;
 }
 
+// K Vision "Get My Plan" AI consultations — BLD-1603: `needsExpert` is set by
+// the AI (lib/ai-consultation.ts) when photos are unclear or the case is
+// genuinely complex, but nothing surfaced it to staff. `summary` is the only
+// text field read here and is explicitly the non-clinical headline (see the
+// AiAnalysis model comment) — findings/images stay encrypted and are only
+// decrypted on the client's own clinical-gated profile page, so this list
+// needs no clinical permission beyond the existing consultations.view gate.
+export async function listAiAnalyses(filter: 'ALL' | 'NEEDS_EXPERT' = 'ALL') {
+  return db.aiAnalysis.findMany({
+    where: { status: 'complete', ...(filter === 'NEEDS_EXPERT' ? { needsExpert: true } : {}) },
+    orderBy: { createdAt: 'desc' },
+    include: { client: { select: { id: true, firstName: true, lastName: true, email: true } } },
+    take: 100,
+  });
+}
+
 export const CLIENTS_PER_PAGE = 50;
 
 // Paginated client list. Returns the page of rows plus the total count and page

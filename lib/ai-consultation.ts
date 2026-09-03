@@ -209,7 +209,28 @@ Use 1–4 phases and 1–2 treatments each — fewer when little is needed (a si
       summary, tokensIn: parsed._in, tokensOut: parsed._out, ...aiConsultationConsentFields(opts.consentSource || 'kvision-account'), storeImages: opts.storeImages,
       images: opts.storeImages ? { create: images.map((i) => ({ area: i.area || null, dataEnc: encryptJson(i.dataUrl) })) } : undefined,
     },
+    include: { client: { select: { firstName: true, lastName: true } } },
   });
+
+  // BLD-1603: the AI flagged this case itself (unclear photos or a genuinely
+  // complex case) — that has to reach staff, not just sit in the queue for
+  // someone to stumble on. Same in-app/email mechanism every other
+  // "needs staff attention" event uses (lib/notifications.ts); best-effort so
+  // a notification failure never blocks the client's result.
+  if (analysis.needsExpert) {
+    try {
+      const { notifyStaffByPermission } = await import('@/lib/notifications');
+      const clientName = [analysis.client.firstName, analysis.client.lastName].filter(Boolean).join(' ') || 'A client';
+      await notifyStaffByPermission(['consultations.view', 'clients.clinical.view'], {
+        kind: 'status', category: 'clinical', priority: 'high',
+        title: `AI consultation needs expert review: ${clientName}`,
+        body: summary,
+        href: `/admin/clients/${opts.clientId}`,
+      });
+    } catch (e) {
+      console.error('[get-my-plan] needsExpert notify failed (non-fatal)', (e as Error)?.message);
+    }
+  }
 
   return { ok: true, analysisId: analysis.id, summary, findings, phases, planTotalPence: planTotal, aboveBudget, extras, confidence: parsed.confidence ?? 0.8, needsExpert: !!parsed.needsExpert };
 }
