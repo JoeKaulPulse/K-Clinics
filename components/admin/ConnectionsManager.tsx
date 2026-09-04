@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { postAction } from '@/lib/admin-actions-client';
 
 type Provider = { id: string; name: string; category: string; blurb: string; state: 'connected' | 'ready' | 'setup'; setupSteps: string[]; docsUrl: string; redirectUri: string };
 
@@ -22,17 +23,21 @@ const DASHBOARD: Record<string, string> = {
 export function ConnectionsManager({ providers, flash }: { providers: Provider[]; flash: { connected?: string; error?: string } }) {
   const router = useRouter();
   const [open, setOpen] = useState<string | null>(null);
+  const [error, setError] = useState('');
 
   async function disconnect(id: string) {
     if (!confirm('Disconnect this platform?')) return;
-    await fetch('/api/admin/marketing/connect', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ op: 'disconnect', provider: id }) });
-    router.refresh();
+    setError('');
+    const r = await postAction('/api/admin/marketing/connect', { op: 'disconnect', provider: id });
+    if (r.ok) router.refresh();
+    else setError(r.error || 'Couldn’t disconnect — try again.');
   }
 
   return (
     <div className="space-y-4">
       {flash.connected && <p className="rounded-[var(--radius-sm)] bg-[var(--color-jade)]/12 px-4 py-3 text-sm text-[var(--color-jade)]">Connected {flash.connected} ✓</p>}
       {flash.error && <p role="alert" aria-live="assertive" className="rounded-[var(--radius-sm)] bg-[var(--color-blush)]/20 px-4 py-3 text-sm text-[var(--color-ink)]">Couldn’t complete that connection ({flash.error.replace(/_/g, ' ')}). Check the setup steps and try again.</p>}
+      {error && <p role="alert" aria-live="assertive" className="rounded-[var(--radius-sm)] bg-[var(--color-blush)]/20 px-4 py-3 text-sm text-[var(--color-ink)]">{error}</p>}
 
       <div className="grid gap-4 md:grid-cols-2">
         {providers.map((p) => (
