@@ -15,12 +15,23 @@ export function Tour({ steps, open, onClose }: { steps: TourStep[]; open: boolea
   const [i, setI] = useState(0);
   const [rect, setRect] = useState<Rect | null>(null);
   const [mounted, setMounted] = useState(false);
-  const { panelRef, onKeyDown } = useDialogBehaviours<HTMLDivElement>(onClose, open);
 
   useEffect(() => setMounted(true), []);
   useEffect(() => { if (open) setI(0); }, [open]);
 
   const step = steps[i];
+  // The hook's `active` must track when the overlay is actually on screen, not
+  // merely `open`: the render below bails out on !mounted / !step, and
+  // useDialogBehaviours takes the background scroll lock as well as the focus
+  // trap. With bare `open`, any state where the tour rendered nothing while
+  // `open` stayed true left <body> with overflow:hidden and no way to clear it
+  // — e.g. moving from the 9-step admin tour at step 7+ to a booking page,
+  // whose 6-step tour has no steps[i], leaving the page unscrollable until a
+  // reload. Gating on the same condition as the early return also guarantees
+  // the panel exists when focus is moved into it, and that focus is restored
+  // when the overlay goes away. (BLD-1583)
+  const active = open && mounted && !!step;
+  const { panelRef, onKeyDown } = useDialogBehaviours<HTMLDivElement>(onClose, active);
 
   const measure = useCallback(() => {
     if (!step?.target) { setRect(null); return; }
@@ -55,11 +66,22 @@ export function Tour({ steps, open, onClose }: { steps: TourStep[]; open: boolea
     window.addEventListener('resize', on); window.addEventListener('scroll', on, true);
     return () => { window.removeEventListener('resize', on); window.removeEventListener('scroll', on, true); };
   }, [open, measure]);
-  // Escape + Tab-trapping are handled by useDialogBehaviours' onKeyDown, wired
-  // to the panel below; only the tour-specific Arrow navigation lives here.
+  // Tab-trapping and Escape-while-focused-inside are handled by
+  // useDialogBehaviours' onKeyDown, wired to the overlay below; the
+  // tour-specific Arrow navigation lives here.
   useEffect(() => {
     if (!open) return;
-    const onKey = (e: KeyboardEvent) => { if (e.key === 'ArrowRight') next(); if (e.key === 'ArrowLeft') setI((v) => Math.max(0, v - 1)); };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'ArrowRight') next();
+      if (e.key === 'ArrowLeft') setI((v) => Math.max(0, v - 1));
+      // Unlike a normal modal, the spotlight hole is deliberately click-through,
+      // so the user can move focus out of the overlay (clicking the highlighted
+      // global search box, say) with the tour still up. The panel's React
+      // onKeyDown never sees Escape then, so keep the window-level close that
+      // used to live here for exactly that case — guarded so it can't
+      // double-fire alongside the panel handler.
+      if (e.key === 'Escape' && !panelRef.current?.contains(e.target as Node)) onClose();
+    };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }); // eslint-disable-line react-hooks/exhaustive-deps
