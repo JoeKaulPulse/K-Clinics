@@ -4949,6 +4949,49 @@ export const BUILD_BACKLOG: BacklogItem[] = [
       'Verified: npx tsc --noEmit and npm run build pass clean (DB-connection vars unset in-sandbox, as above); the route still prerenders statically.',
     ],
   },
+  {
+    title: 'Resend delivery-status webhook DB write is silently swallowed — no logging, no retry, unlike its sibling in the same file',
+    type: 'ERROR', urgency: 'P2', status: 'SHIPPED', assignee: 'claude', pr: PR(1909),
+    value: 5, effort: 1,
+    detail: "app/api/webhooks/resend/route.ts:58 wrapped the emailEvent.updateMany() write (for every delivered/opened/clicked/bounced event) in .catch(()=>{}) with no logging, and still returned 200, so Resend never retries a failed write -- inconsistent with the unsubscribe-suppression write 20 lines below, which explicitly wraps the same class of write in Sentry.captureException and returns 500.",
+    notes: [
+      'Fix: applied the same capture+500-on-failure pattern already used for the unsubscribe write just below it.',
+      'Verified: npx tsc --noEmit and npm run build pass clean (DB-connection vars unset in-sandbox, as above). Independent max-effort review confirmed the early return does not let a failed status write fall through into the click/bounce-processing blocks below.',
+    ],
+  },
+  {
+    title: 'Review moderation and marketing-connection admin actions silently ignore failed API calls',
+    type: 'ERROR', urgency: 'P2', status: 'SHIPPED', assignee: 'claude', pr: PR(1909),
+    value: 5, effort: 2,
+    detail: 'components/admin/ReviewActions.tsx (approve/reject/delete review) and components/admin/ConnectionsManager.tsx (disconnect provider) both awaited fetch(...) with no .ok check or catch, then updated local UI state as if the action succeeded regardless of the actual response.',
+    notes: [
+      'Fix: a shared postAction() helper (lib/admin-actions-client.ts) checks res.ok and a {ok:false} body, used by both files; each now shows an inline role="alert" error instead of refreshing on a failed call.',
+      "Independent max-effort review verified this is not cosmetic: the reviews route's `resend` action returns {ok:false, error:'no-marketing-consent'} with HTTP 200, which the old code silently reported as success.",
+      'Verified: npx tsc --noEmit and npm run build pass clean (DB-connection vars unset in-sandbox, as above).',
+    ],
+  },
+  {
+    title: 'Two blob-upload token routes skip the pathname-scoping check their sibling routes already enforce',
+    type: 'TASK', urgency: 'P2', status: 'SHIPPED', assignee: 'claude', pr: PR(1909),
+    value: 5, effort: 2,
+    detail: "app/api/admin/build/blob-token/route.ts (gated only on build.view, held by default by every staff role) and app/api/admin/team-chat/blob-token/route.ts (gated on any signed-in session, no permission check at all) called handleUpload()'s onBeforeGenerateToken without validating the client-supplied pathname, letting any authenticated staff member request a signed Vercel Blob write token for an arbitrary pathname in the shared public store -- the exact issue already fixed for the academy homework/portfolio routes under BLD-1544.",
+    notes: [
+      "Fix: added the equivalent pathname.startsWith('build/') / 'team-chat/' guard to both routes' onBeforeGenerateToken. BuildBoard.tsx's client-direct upload path now requests a build/-prefixed, filename-sanitised pathname to match (team-chat's client already did, via uploadBlob's folder option -- confirmed by reading lib/upload-client.ts, not touched).",
+      'Independent max-effort review confirmed both guards match the reference implementation exactly, the filename sanitiser cannot be used to inject a path segment, and path-traversal hardening beyond the existing sibling pattern is deliberately out of scope (would need to change all four routes together to avoid a new inconsistency).',
+      'Verified: npx tsc --noEmit and npm run build pass clean (DB-connection vars unset in-sandbox, as above).',
+    ],
+  },
+  {
+    title: 'Two staff-permission toggles (timetracking.manage, automations.manage) grant no actual capability',
+    type: 'TASK', urgency: 'P2', status: 'SHIPPED', assignee: 'claude', pr: PR(1909),
+    value: 5, effort: 1,
+    detail: 'lib/permissions.ts defined timetracking.manage and automations.manage, and both rendered as real per-staff grant/revoke checkboxes in components/admin/StaffManager.tsx, but no page, route or component anywhere reads another user\'s TimeEntry rows or checks automations.manage -- a manager granting either permission got a UI promise with zero backing feature.',
+    notes: [
+      'Fix: removed both dead entries from the permission catalogue (and, by extension, from StaffManager\'s grant list, which renders directly off the catalogue array).',
+      "Independent max-effort review confirmed effectivePermissions() degrades gracefully for a stale grant already in the live database (added to a Set that is never read, never thrown), and a repo-wide grep found no other reference to either permission key.",
+      'Verified: npx tsc --noEmit and npm run build pass clean (DB-connection vars unset in-sandbox, as above).',
+    ],
+  },
 ];
 
 // A content hash over every item's title + status + PR, so ANY change (a new
