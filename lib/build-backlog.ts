@@ -4949,6 +4949,28 @@ export const BUILD_BACKLOG: BacklogItem[] = [
       'Verified: npx tsc --noEmit and npm run build pass clean (DB-connection vars unset in-sandbox, as above); the route still prerenders statically.',
     ],
   },
+  {
+    title: 'Admin notification bell dropdown has no Escape-to-close handler',
+    type: 'TASK', urgency: 'P2', status: 'SHIPPED', assignee: 'claude', pr: PR(1910),
+    value: 5, effort: 1,
+    detail: 'components/admin/NotificationBell.tsx -- the panel opened from the bell button closed on outside mousedown but had no keydown/Escape listener, unlike the identical popover pattern in components/admin/ViewSwitcher.tsx and components/admin/teamchat/ChatLauncher.tsx, which both already add a keydown Escape-close block.',
+    notes: [
+      'Fix: added the same document keydown Escape-close block used in those two files.',
+      'Verified: npx tsc --noEmit and npm run build pass clean (DB-connection vars unset in-sandbox, as above).',
+    ],
+  },
+  {
+    title: "Guided-tour popover isn't announced to assistive tech and has no focus trap",
+    type: 'TASK', urgency: 'P2', status: 'SHIPPED', assignee: 'claude', pr: PR(1910),
+    value: 5, effort: 2,
+    detail: "components/guide/Tour.tsx rendered the backdrop + popover as plain divs (no role=dialog, no aria-modal, no focus moved into the popover on open); Escape/Arrow keys worked via a raw window keydown listener but there was no focus trap, unlike every other overlay in the app, which uses the shared useDialogBehaviours hook.",
+    notes: [
+      'Fix: adopted useDialogBehaviours the same way CourseReviewPrompt.tsx does -- the popover is now the focus-trapped, aria-modal dialog panel; the tour-specific Arrow-key navigation is unchanged.',
+      "Review fix (BLD-1583): useDialogBehaviours also takes the shared background scroll lock, and the hook was gated on bare `open` rather than the same condition the component's own early return uses (!open || !mounted || !step) -- reachable stuck state: moving from the 9-step admin tour at step 7+ to a booking page, whose 6-step tour has no steps[i], leaves the overlay rendering nothing while `open` stays true and <body> stuck at overflow:hidden until a reload. Gated the hook on open && mounted && !!step instead, matching the render bail-out exactly.",
+      "Review fix (BLD-1583): the spotlight hole is deliberately click-through, so a user can move focus out of the overlay (e.g. onto the highlighted global search box) with the tour still open, and the panel's React onKeyDown never sees Escape in that state. Restored a window-level Escape listener for that case only, guarded on the panel not containing the event target so it cannot double-fire alongside the panel's own handler.",
+      'Verified: npx tsc --noEmit and npm run build pass clean (DB-connection vars unset in-sandbox, as above). Independent max-effort review also confirmed scrollIntoView still works correctly under the new scroll lock (checked with Playwright) and that focus-stealing on open matches every other dialog in the app.',
+    ],
+  },
 ];
 
 // A content hash over every item's title + status + PR, so ANY change (a new
