@@ -55,7 +55,18 @@ export async function POST(req: Request) {
     'email.complained': { complainedAt: now },
   };
   const data = map[evt.type];
-  if (data) await db.emailEvent.updateMany({ where: { providerId }, data }).catch(() => {});
+  if (data) {
+    try {
+      await db.emailEvent.updateMany({ where: { providerId }, data });
+    } catch (e) {
+      // Same reasoning as the unsubscribe write below (PRJ-918.7): a silent failure
+      // here leaves delivery/open/click/bounce status stale with no operator
+      // visibility. Surface it and return 500 so Resend retries.
+      console.error('[resend webhook] emailEvent update failed', e);
+      Sentry.captureException(e, { tags: { eventType: evt.type } });
+      return new Response('emailEvent update failed', { status: 500 });
+    }
+  }
 
   // Record which link was clicked (per-campaign), for the link breakdown.
   if (evt.type === 'email.clicked' && evt.data?.click?.link) {

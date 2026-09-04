@@ -71,7 +71,6 @@ export const PERMISSIONS: Permission[] = [
   { key: 'campaigns.view', group: 'Marketing', label: 'View campaigns', description: 'See email campaigns and history.' },
   { key: 'campaigns.send', group: 'Marketing', label: 'Send campaigns', description: 'Create and send marketing emails.' },
   { key: 'automations.view', group: 'Marketing', label: 'View automations', description: 'See automated email flows.' },
-  { key: 'automations.manage', group: 'Marketing', label: 'Manage automations', description: 'Configure birthday/follow-up automations.' },
 
   // Administration
   { key: 'staff.view', group: 'Administration', label: 'View staff', description: 'See the staff & access-control area.' },
@@ -128,7 +127,6 @@ export const PERMISSIONS: Permission[] = [
 
   // Time tracking (BLD-285 / PRJ-63.6)
   { key: 'timetracking.use', group: 'Facility', label: 'Clock in / out', description: 'Clock in and out of shifts and log breaks.' },
-  { key: 'timetracking.manage', group: 'Facility', label: 'Manage timesheets', description: 'View and edit all staff shift records and timesheets.' },
 
   // Compliance & renewals (BLD-587)
   { key: 'compliance.view', group: 'Facility', label: 'View compliance & renewals', description: 'See business renewal dates (insurance, licences, PAT/EICR, servicing) and what is due.' },
