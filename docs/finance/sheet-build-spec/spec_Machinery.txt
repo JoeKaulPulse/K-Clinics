@@ -1,0 +1,87 @@
+FILL	G5:G17	=IF(E5="",0,D5/(F5*12))
+FILL	K5:K17	=IF(J5=0,0,I5/12/J5)
+FILL	L5:L17	=IF(J5=0,0,G5/J5)
+FILL	G22:G26	=IF(OR(E22="",F22=0),0,D22/(F22*12))
+FILL	A31:A43	=A5
+FILL	B31:AK43	=IF($E5="",0,IF(AND(COLUMN()-1>=MAX($E5,1),COLUMN()-1<$E5+$F5*12),$G5,0))
+FILL	A44:A48	=A22
+FILL	B44:AK48	=IF(OR($E22="",$F22=0),0,IF(AND(COLUMN()-1>=MAX($E22,1),COLUMN()-1<$E22+$F22*12),$G22,0))
+FILL	B49:AK49	=SUM(B31:B43)
+FILL	B50:AK50	=SUM(B44:B48)
+BLOCK	A1:A2
+Machinery, enhancements, depreciation & amortisation
+Purchase prices are class-typical UK market figures (see basis column) — replace with your invoice amounts. In-service month: 0 = owned before the model starts; 1–36 = bought in that forecast month; blank = not owned (excluded). Planned hours/month is only the allocation base for service & depreciation per treatment hour in Pricing.
+BLOCK	A4:N4
+Machine	Class key	Ownership	Purchase £	In-service month	Life (yrs)	Monthly depreciation	kWh per treatment hr	Annual service £	Planned hours/mo	Service £/hr	Depreciation £/hr	Consumables model	Basis
+BLOCK	A5:F6
+Diode laser hair-removal platform	diode-laser	OWNED (serves 63% of recent non-consultation bookings)	18000	0	7
+Multi-application laser/IPL skin platform (shared 'laser' resource pool; may be same combi chassis as diode — Lynton Lumina class covers both for £30k–£50k)	laser-ipl-platform	OWNED (pigmentation/vascular/IPL/rejuvenation/resurfacing/rosacea/wrinkle/spider-vein/carbon-peel/fungal-nail all book against it)	45000	0	8
+BLOCK	H5:J17
+1	1800	250
+0.8	3000	30
+1	7500	25
+0.4	4000	8
+0.3	2250	25
+0.5	3000	12
+0.2	1500	60
+0.35	1750	45
+0.02	100	18
+0.25	300	8
+0.1	750	25
+0	150	25
+0.1	100	25
+BLOCK	M5:N17
+£1–£3.50/session gel + razors (scaled by area in treatments table); handpiece stack rated 1M+ shots, replacement is a maintenance event not a per-session cost	UK trade listings (thelasermachineco, britishlasers): clinic-grade £8k–£15k, premium £30k–£60k; typical premium-clinic buy £18k–£35k. Service ~10% of typical price per britishlasers contract range £1k–£3.5k. kWh: plate 2–3.5 kW at 25–40% duty (engineering estimate).
+£2/session gel; £5–£7 carbon lotion for Hollywood Peel; IPL flashlamp refurb £500–£1,500 per handpiece every ~50k–100k pulses (treat as maintenance)	Lumenis Stellar M22 £45k–£70k; Lynton Lumina £28k–£50k. Service £2k–£5k/yr (Lynton/Lumenis UK contracts, 6–8% of price). Duty 25–35% of plate 1.5–3 kW.
+~£1–£2.50/session (gel, wipes, aftercare dressings) — negligible; service contract is the real running cost (8–10% of purchase)	PicoSure Pro/PicoWay £90k–£175k; mid-tier Quanta/Lutronic £50k–£80k; Far-East pico £12.5k; Q-switched Nd:YAG alternative £15k–£40k. Model as a capex decision with three price scenarios — £110k premium figure only holds if buying PicoSure-class.
+£20–£80/session single-use gynae probe covers/hygiene sleeves + numbing cream (£50 midpoint used in treatments table)	Deka SmartXide/Alma FemiLift £40k–£90k with intimate handpiece; generic £5k–£15k; premium-clinic buy £45k–£65k. RF-excited tubes last 8–12 yrs. Service 6–8% of purchase.
+SHOT-LIMITED CARTRIDGES — the largest device consumable line: £30–£100/session Ultraformer-class (£40 small area / £65 full face / £80 body used in treatments table); would be £300–£900/session if Ultherapy transducers. Plus gel.	Classys Ultraformer III/MPT £25k–£40k UK; Ultherapy £30k–£60k; generic 7D £3k–£8k. Cartridges ~10k–20k shots at £300–£600 each. Service £1.5k–£3k/yr. Duty 30–40% of 0.5–1 kW plate.
+£2–£5/session conductive gel (plain RF — catalogue has no RF-microneedling, so no Morpheus8-style £100–£180 tips)	BTL Exilis Ultra £30k–£45k; mid-tier £5k–£15k; premium tier £30k–£50k. Service 5–8% of purchase. Near-continuous RF delivery, duty 40–60%.
+£15–£25/session tips + branded serums, scaling with tier (Signature £15 / Deluxe £20 / Platinum £25); genuine HydraFacial ties serum purchase to warranty. Deep Cleansing menu on same platform at £8–£15/session products.	Genuine HydraFacial Syndeo/Elite £20k–£32k UK; clones £3k–£8k. Consumables $20–$30/treatment (konmison/workee).
+£1–£3/session oil/cream/disposable bodysuits	Endospheres AK Body dealer pricing ~€25k–€35k (~£21k–£30k, baltic-lasers.eu) — DEALER-QUOTE ESTIMATE, not published list price. Service/roller refurb ~5% of price. Motor runs near-continuously at 0.3–0.5 kW.
+£5–£35/session sterile needle cartridge + serum (SkinPen cartridges £25–£35, generic £5–£20); BB Glow tinted ampoule £5–£15 extra	SkinPen Precision £2k–£3.5k, Dermapen 4 £3k–£5.5k. Negligible power. Battery/handpiece wear limits life to 3–5 yrs.
+£1–£3/session filters + disposable tips (crystals £3–£5 if crystal type)	UK professional diamond-tip units £1.2k–£6k, typical £2.5k–£3.5k. Vacuum pump 0.2–0.4 kW near-continuous.
+£2–£5/session conductive gel, cotton buds; hydra mask +£5; LED session ~£1	CACI Synergy £14k–£17k inc training, Ultimate £18k–£22k, Classic £9k–£12k (dealer channel, prices on application). If the on-site unit is a generic microcurrent+LED device the capex could be £2k–£5k — use the low end unless CACI-branded purchase is confirmed.
+DOMINANT COGS LINE: toxin vials £45–£85/tx by area count, HA filler £35–£85/tx by ml, fat-dissolving vials £35–£75/tx, polynucleotides £70–£100/tx, meso cocktails £25/tx, plus needles/cannulae/numbing (in per-row figures). Fridge runs 24/7: ~1.5–3 kWh/day counted in base load, not per-treatment.	Couch £700–£2,500, pharmacy fridge £400–£1,500, kit £200–£500. Injectable COGS from UK aesthetic wholesale norms (Church Pharmacy tier) — brand-dependent estimates, no recorded costs.
+£1.50–£15/session: peel solutions + neutralisers £10–£15, massage oils £2–£4, masks/towels/products £3–£8	UK salon equipment norms; steamer ~0.3 kW only while on.
+BLOCK	A7:D7
+Q-switched/picosecond tattoo & pigment laser	pico-laser-PLANNED	NOT YET PURCHASED — phase-2 capex; tattoo/PMU pages live with prices, bookings closed	110000
+VAL	F7	8
+BLOCK	A8:F17
+Fractional CO2 laser with intimate/gynae handpiece	co2-laser	VERIFY — intimate line is COMING_SOON; codebase confirms the treatment tech but not that the unit is on site	55000	0	9
+HIFU (SMAS ultrasound) with face + body cartridges	hifu	OWNED (live bookings)	30000	0	6
+Radiofrequency skin-tightening device	rf-tightening	OWNED (live bookings under rf-lifting/rf-skin-tightening)	40000	0	7
+HydraFacial-style vortex facial platform	hydrafacial-platform	OWNED (live bookings)	25000	0	6
+Endosphere compressive micro-vibration + anti-cellulite vacuum body platform	endosphere-vacuum	OWNED (body-contouring + vacuum-massage bookings)	27000	0	7
+Microneedling pen (+ BB Glow micro-channelling)	microneedling-pen	OWNED (live bookings)	3000	0	4
+Microdermabrasion device (diamond-tip/crystal)	microdermabrasion	OWNED (1 booking in 90d)	3000	0	6
+Microcurrent facial toning device + LED panel	microcurrent-led	AMBIGUOUS — codebase marks microcurrent/LED 'onRequest, machine not yet in', but the live catalogue lists Microcurrent lifting and LED as NORMAL and there are 6 microcurrent-facial bookings in 90d. Assume a non-CACI-branded unit is on site; confirm with owner.	15000	0	8
+Injectables room (no machine): electric couch + MHRA-compliant medical fridge + sharps/emergency kit	none-injectables	OWNED	2500	0	10
+Topical/manual treatment room kit (couch, trolley, steamer, hot cabinet)	none-manual	OWNED	1500	0	9
+BLOCK	A20:A26
+ENHANCEMENTS & FIT-OUT (amortised)
+Item
+Initial fit-out / leasehold improvements
+EXAMPLE — reception refresh (edit or zero out)
+Planned enhancement 2
+Planned enhancement 3
+Planned enhancement 4
+BLOCK	C21:G21
+Notes	Cost £	In-service month	Life (yrs)	Monthly amortisation
+BLOCK	C22:F23
+GAP — fit-out spend on 4 Charterhouse Buildings unknown. Enter the capitalised amount; it amortises over the life you set.	0	0	10
+Example row showing the expected format.	8000	6	5
+BLOCK	D24:D26
+0
+0
+0
+BLOCK	F24:F26
+5
+5
+5
+VAL	A29	MONTHLY D&A SCHEDULE (feeds P&L)
+BLOCK	A30:AK30
+Month #	1	2	3	4	5	6	7	8	9	10	11	12	13	14	15	16	17	18	19	20	21	22	23	24	25	26	27	28	29	30	31	32	33	34	35	36
+BLOCK	A49:A50
+Total depreciation (machines)
+Total amortisation (enhancements)

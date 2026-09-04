@@ -109,6 +109,7 @@ export const navGroups: NavGroup[] = [
     { href: '/admin/pos', key: 'nav.pos', perm: 'pos.use', keywords: 'till checkout point of sale payment card' },
     { href: '/admin/orders', key: 'nav.orders', perm: 'finance.view', keywords: 'sales transactions purchases receipts' },
     { href: '/admin/cashflow', key: 'nav.cashflow', perm: 'finance.view', keywords: 'money revenue income bank' },
+    { href: '/admin/finance/planner', key: 'nav.financePlanner', perm: 'finance.view', keywords: 'forecast ebitda profit pricing margins machinery depreciation energy model' },
     { href: '/admin/reports', key: 'nav.reports', perm: 'finance.view', keywords: 'analytics statements export accounting' },
     { href: '/admin/finance/controls', key: 'nav.financeControls', perm: 'finance.manage', keywords: 'vat tax xero refunds locks audit' },
   ] },
