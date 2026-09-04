@@ -46,7 +46,9 @@ async function serverUpload(file: File): Promise<string> {
 }
 async function clientUpload(file: File): Promise<string> {
   const { upload } = await import('@vercel/blob/client');
-  const blob = await upload(file.name || `file-${Date.now()}`, file, { access: 'public', handleUploadUrl: '/api/admin/build/blob-token', contentType: file.type || undefined });
+  // BLD-1628: the blob-token route now scopes tokens to build/ paths.
+  const safe = (file.name || 'file').replace(/[^A-Za-z0-9._-]+/g, '-').replace(/-+/g, '-').slice(-120) || 'file';
+  const blob = await upload(`build/${Date.now()}-${safe}`, file, { access: 'public', handleUploadUrl: '/api/admin/build/blob-token', contentType: file.type || undefined });
   return blob.url;
 }
 async function uploadOne(file: File): Promise<string> {
