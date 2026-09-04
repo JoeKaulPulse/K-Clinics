@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useLayoutEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
+import { useDialogBehaviours } from '@/components/ui/Dialog';
 
 export type TourStep = { target?: string; title: string; body: string };
 
@@ -14,6 +15,7 @@ export function Tour({ steps, open, onClose }: { steps: TourStep[]; open: boolea
   const [i, setI] = useState(0);
   const [rect, setRect] = useState<Rect | null>(null);
   const [mounted, setMounted] = useState(false);
+  const { panelRef, onKeyDown } = useDialogBehaviours<HTMLDivElement>(onClose, open);
 
   useEffect(() => setMounted(true), []);
   useEffect(() => { if (open) setI(0); }, [open]);
@@ -53,9 +55,11 @@ export function Tour({ steps, open, onClose }: { steps: TourStep[]; open: boolea
     window.addEventListener('resize', on); window.addEventListener('scroll', on, true);
     return () => { window.removeEventListener('resize', on); window.removeEventListener('scroll', on, true); };
   }, [open, measure]);
+  // Escape + Tab-trapping are handled by useDialogBehaviours' onKeyDown, wired
+  // to the panel below; only the tour-specific Arrow navigation lives here.
   useEffect(() => {
     if (!open) return;
-    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); if (e.key === 'ArrowRight') next(); if (e.key === 'ArrowLeft') setI((v) => Math.max(0, v - 1)); };
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'ArrowRight') next(); if (e.key === 'ArrowLeft') setI((v) => Math.max(0, v - 1)); };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }); // eslint-disable-line react-hooks/exhaustive-deps
@@ -73,7 +77,7 @@ export function Tour({ steps, open, onClose }: { steps: TourStep[]; open: boolea
     : { position: 'fixed', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', width: 360 };
 
   return createPortal(
-    <div className="fixed inset-0 z-[200]" aria-live="polite">
+    <div className="fixed inset-0 z-[200]" aria-live="polite" onKeyDown={onKeyDown}>
       {/* Dimmer with a spotlight hole (4 panels around the target) */}
       {box ? (
         <>
@@ -88,7 +92,15 @@ export function Tour({ steps, open, onClose }: { steps: TourStep[]; open: boolea
       )}
 
       {/* Tooltip */}
-      <div style={tipStyle} className="rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-5 shadow-[var(--shadow-lift)]">
+      <div
+        ref={panelRef}
+        role="dialog"
+        aria-modal="true"
+        aria-label={step.title}
+        tabIndex={-1}
+        style={tipStyle}
+        className="rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-5 shadow-[var(--shadow-lift)] outline-none"
+      >
         <p className="text-[0.65rem] uppercase tracking-[0.16em] text-[var(--color-stone)]">Step {i + 1} of {steps.length}</p>
         <h3 className="mt-1 font-[family-name:var(--font-display)] text-lg">{step.title}</h3>
         <p className="mt-1.5 text-sm leading-relaxed text-[var(--color-stone)]">{step.body}</p>
