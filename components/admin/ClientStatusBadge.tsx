@@ -22,14 +22,16 @@ export function ClientStatusBadge({ status, className = '' }: { status: Status; 
 }
 
 /** A minimal dot-only variant for tight spaces (calendar blocks). Green =
- *  nothing rendered, matching the badge above. */
+ *  nothing rendered, matching the badge above. The colour is decorative
+ *  (aria-hidden); the status itself is exposed as sr-only text so screen
+ *  reader and keyboard-only staff aren't relying on the hover-only title. */
 export function ClientStatusDot({ status, className = '' }: { status: Status; className?: string }) {
   if (status !== 'YELLOW' && status !== 'RED') return null;
+  const label = status === 'RED' ? 'Blocked' : 'Caution';
   return (
-    <span
-      aria-hidden
-      title={status === 'RED' ? 'Client status: Blocked' : 'Client status: Caution'}
-      className={`inline-block h-2 w-2 shrink-0 rounded-full ${status === 'RED' ? 'bg-[var(--color-blush-deep)]' : 'bg-amber-500'} ${className}`}
-    />
+    <span className={`inline-flex shrink-0 items-center ${className}`} title={`Client status: ${label}`}>
+      <span aria-hidden className={`h-2 w-2 rounded-full ${status === 'RED' ? 'bg-[var(--color-blush-deep)]' : 'bg-amber-500'}`} />
+      <span className="sr-only">Client status: {label}</span>
+    </span>
   );
 }
