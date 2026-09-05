@@ -5027,6 +5027,56 @@ export const BUILD_BACKLOG: BacklogItem[] = [
       'Verified: npx tsc --noEmit and npm run build pass clean (DB-connection vars unset in-sandbox -- confirmed a network-policy limitation via a raw TCP timeout to the Neon host, not a schema issue; built with DB_SYNC_NONFATAL=true, the project\'s documented escape hatch for exactly this case).',
     ],
   },
+  {
+    title: 'CMS HTML sanitizer strips hyphens/spaces from every URL, silently breaking links sitewide',
+    type: 'ERROR', urgency: 'P3', status: 'SHIPPED', assignee: 'claude', pr: PR(1913),
+    value: 5, effort: 1,
+    detail: 'lib/sanitize.ts decodeForScheme() stripped [ -] (space and literal hyphen) from the whole URL, and safeUrl() returned that mangled string as the actual href/src value rather than the original -- https://example.com/how-to-choose-a-clinic became .../howtochooseaclinic. Applied to admin-authored raw-HTML blocks and imported WordPress journal posts, so most hyphenated-slug links in that content 404 on the live public site.',
+    notes: [
+      'Fix: the entity-decoded/control-stripped form is now used only to detect an obfuscated scheme; a URL that passes returns the original trimmed string. The stripped-character set is now actual C0 controls (\\x00-\\x1f, \\x7f), not space/hyphen.',
+      'Verified: npx tsc --noEmit and npm run build pass clean (DB-connection vars unset in-sandbox, as above).',
+    ],
+  },
+  {
+    title: 'Login rate limiter has no fail-closed path',
+    type: 'TASK', urgency: 'P2', status: 'SHIPPED', assignee: 'claude', pr: PR(1913),
+    value: 5, effort: 1,
+    detail: 'lib/security/guard.ts calls rateLimit(`login:${ip}`, 30, 60) without failClosed: true, unlike the finance-sensitive checks in lib/security/rate-limit.ts -- a store outage silently disables per-IP login throttling exactly when it matters most.',
+    notes: [
+      'Fix: passed failClosed: true on the login burst check, matching the pattern already used for other sensitive checks in the same file.',
+      'Verified: npx tsc --noEmit and npm run build pass clean (DB-connection vars unset in-sandbox, as above).',
+    ],
+  },
+  {
+    title: 'Password-reset requests are rate-limited only by IP, not by target account',
+    type: 'TASK', urgency: 'P2', status: 'SHIPPED', assignee: 'claude', pr: PR(1913),
+    value: 6, effort: 2,
+    detail: 'enforceRateLimit keyed solely on scope:ip for app/api/account/forgot-password and app/api/academy/account/forgot-password, unlike login\'s loginGate, which also has a per-account lock. An attacker spreading requests across IPs could email-bomb one victim\'s inbox with unlimited reset links.',
+    notes: [
+      'Fix: added enforceAccountRateLimit (lib/security/guard.ts), a secondary per-target-account counter keyed on the identifier itself, called alongside the existing per-IP check in both forgot-password routes.',
+      'Verified: npx tsc --noEmit and npm run build pass clean (DB-connection vars unset in-sandbox, as above).',
+    ],
+  },
+  {
+    title: 'Kiosk share-to-claim discount code can be double-issued (race condition)',
+    type: 'ERROR', urgency: 'P2', status: 'SHIPPED', assignee: 'claude', pr: PR(1913),
+    value: 6, effort: 2,
+    detail: 'claimKioskDiscount in lib/kiosk.ts checked "if claimCode return existing" then minted and wrote claimCode afterwards -- not atomic. Two concurrent POSTs to /api/kiosk/results/[id]/claim could each mint a separate single-use 15%-off PromoCode from one kiosk visit.',
+    notes: [
+      'Fix: the row is now reserved atomically (updateMany where claimCode:null, set to a CLAIM_PENDING marker) before a code is minted -- only the request whose update actually flips the row proceeds. A losing request is told to retry; a mint failure after reserving releases the reservation (resets claimCode to null) so it is not stuck.',
+      'Verified: npx tsc --noEmit and npm run build pass clean (DB-connection vars unset in-sandbox, as above).',
+    ],
+  },
+  {
+    title: 'Caught exceptions still logged in full (potential PII) in two routes missed by the prior fix',
+    type: 'TASK', urgency: 'P3', status: 'SHIPPED', assignee: 'claude', pr: PR(1913),
+    value: 4, effort: 1,
+    detail: 'app/api/booking/intent/route.ts and lib/booking-notify.ts logged the full caught error object rather than .message -- Prisma/template error messages can embed the submitted email or name, landing in plaintext Vercel logs/Sentry. The same class of issue was already fixed elsewhere (account/assessment, dentistry-interest, newsletter routes) but missed in these two files.',
+    notes: [
+      'Fix: both spots now log (e as Error)?.message only, matching the sibling routes. Sentry.captureException calls (which have their own access control/scrubbing) are unchanged.',
+      'Verified: npx tsc --noEmit and npm run build pass clean (DB-connection vars unset in-sandbox, as above).',
+    ],
+  },
 ];
 
 // A content hash over every item's title + status + PR, so ANY change (a new
