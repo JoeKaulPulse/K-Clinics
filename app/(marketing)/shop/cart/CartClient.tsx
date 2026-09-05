@@ -19,7 +19,7 @@ export function CartClient({ vatNote }: { vatNote: string }) {
         <div className="mt-8 grid gap-8 lg:grid-cols-[1.5fr_1fr]">
           <ul className="divide-y divide-[var(--color-line)] overflow-hidden rounded-[var(--radius-lg)] border border-[var(--color-line)]">
             {items.map((i) => (
-              <li key={i.productId} className="flex items-center gap-4 bg-[var(--color-porcelain)] p-4">
+              <li key={i.productId} className="flex flex-wrap items-center gap-4 bg-[var(--color-porcelain)] p-4">
                 {i.image
                   ? <Image src={i.image} alt="" width={64} height={64} sizes="64px" className="h-16 w-16 rounded object-cover" />
                   : <span className="grid h-16 w-16 place-items-center rounded bg-[var(--color-bone)] text-[var(--color-stone)]">▦</span>}
@@ -27,12 +27,17 @@ export function CartClient({ vatNote }: { vatNote: string }) {
                   <Link href={`/shop/${i.slug}`} className="font-[family-name:var(--font-display)] hover:text-[var(--color-gold-deep)]">{i.name}{i.ageRestricted && <span className="ml-2 rounded-full bg-[var(--color-ink)] px-1.5 py-0.5 text-[0.6rem] text-[var(--color-porcelain)]">18+</span>}</Link>
                   <p className="text-sm text-[var(--color-stone)]">{money(i.pricePence)}</p>
                 </div>
-                <div className="flex items-center rounded-full border border-[var(--color-line)] text-sm">
-                  <button onClick={() => setQty(i.productId, i.qty - 1)} aria-label={`Decrease quantity of ${i.name}`} className="h-11 w-11">−</button>
-                  <span className="w-7 text-center" aria-live="polite" aria-label={`${i.name} quantity`}>{i.qty}</span>
-                  <button onClick={() => setQty(i.productId, i.qty + 1)} aria-label={`Increase quantity of ${i.name}`} className="h-11 w-11">+</button>
+                {/* BLD-1639: on its own full-width row below sm (forced by
+                    flex-wrap on the <li> above) instead of squeezing the name
+                    column to a sliver at narrow widths. */}
+                <div className="flex w-full items-center justify-between gap-4 sm:w-auto sm:justify-end">
+                  <div className="flex items-center rounded-full border border-[var(--color-line)] text-sm">
+                    <button onClick={() => setQty(i.productId, i.qty - 1)} aria-label={`Decrease quantity of ${i.name}`} className="h-11 w-11">−</button>
+                    <span className="w-7 text-center" aria-live="polite" aria-label={`${i.name} quantity`}>{i.qty}</span>
+                    <button onClick={() => setQty(i.productId, i.qty + 1)} aria-label={`Increase quantity of ${i.name}`} className="h-11 w-11">+</button>
+                  </div>
+                  <button onClick={() => remove(i.productId)} aria-label={`Remove ${i.name} from bag`} className="text-xs text-[var(--color-blush-deep)] hover:underline">Remove</button>
                 </div>
-                <button onClick={() => remove(i.productId)} aria-label={`Remove ${i.name} from bag`} className="text-xs text-[var(--color-blush-deep)] hover:underline">Remove</button>
               </li>
             ))}
           </ul>

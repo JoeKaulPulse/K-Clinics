@@ -15,6 +15,13 @@ export const revalidate = 3600;
 async function getResult(slug: string) {
   return db.kioskResult.findUnique({
     where: { shareSlug: slug },
+    // NB: the raw KioskResult.id is deliberately NOT selected here. This page is
+    // public, indexable and force-static, so anything selected is baked into
+    // cached HTML (and into ResultCard -> ShareButtons' client props). The id is
+    // the bearer key for /api/kiosk/results/[id]/claim and .../share — both
+    // unauthenticated — so publishing it would let any recipient of a shared
+    // link burn the visitor's single-use reward code. The share slug is the only
+    // identifier this page may expose; see generateMetadata's card URL.
     select: { headline: true, skinScore: true, smileScore: true, insights: true, treatments: true, shareSlug: true },
   });
 }
@@ -25,6 +32,14 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   if (!result) return { title: 'Skin & Smile Score — KClinics' };
   const title = `${result.headline} — KClinics Skin & Smile`;
   const description = `Skin ${result.skinScore}/10 · Smile ${result.smileScore}/10. Get your own AI skin & smile score at K Clinics.`;
+  // BLD-1636: the branded share card already exists at /api/kiosk/results/[id]/card
+  // (used by the native Web Share flow, components/kiosk/ShareButtons.tsx) but was
+  // never wired into generateMetadata, so WhatsApp/iMessage/Slack/Facebook shares
+  // of this page unfurled with no image. The card route resolves either the
+  // result id or its public share slug, so the unfurl URL uses the slug and this
+  // page never has to publish the id (see getResult).
+  const cardUrl = `/api/kiosk/results/${encodeURIComponent(slug)}/card`;
+  const canonical = `/kiosk/result/${slug}`;
   return {
     title,
     description,
@@ -33,8 +48,9 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
     // shareable card — the whole point is a friend's link bringing in a new
     // visitor, so it needs to be indexable, unlike its in-store siblings.
     robots: { index: true, follow: true },
-    openGraph: { title, description, type: 'website' },
-    twitter: { card: 'summary_large_image', title, description },
+    alternates: { canonical },
+    openGraph: { title, description, type: 'website', url: canonical, images: [{ url: cardUrl, width: 1080, height: 1350, alt: title }] },
+    twitter: { card: 'summary_large_image', title, description, images: [cardUrl] },
   };
 }
 

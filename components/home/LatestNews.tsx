@@ -13,6 +13,18 @@ import { Reveal, Stagger, StaggerItem } from '@/components/motion/Reveal';
 const fmtDate = (d: Date) => d.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
 const TOPIC_LABEL: Record<string, string> = { STANDARD: 'News', EVENT: 'Event', OFFER: 'Offer', ALERT: 'Notice' };
 
+// BLD-1643: alt text out of a Google Business Profile post body. GBP summaries
+// are free text with hard line breaks, so a raw .slice() would drop newlines
+// into the attribute and cut mid-word (or mid-emoji, splitting a surrogate
+// pair). Collapse whitespace, then cut back to the last word boundary.
+function altFromSummary(summary: string, max = 150): string {
+  const flat = summary.replace(/\s+/g, ' ').trim();
+  if (flat.length <= max) return flat;
+  const cut = flat.slice(0, max);
+  const lastSpace = cut.lastIndexOf(' ');
+  return (lastSpace > max * 0.5 ? cut.slice(0, lastSpace) : cut).trim();
+}
+
 export async function LatestNews() {
   const posts = await latestNews(3);
   if (!posts.length) return null;
@@ -26,8 +38,15 @@ export async function LatestNews() {
           const body = (
             <article className="flex h-full flex-col overflow-hidden rounded-[var(--radius-xl)] border border-[var(--color-line)] bg-[var(--color-porcelain)] transition-colors hover:border-[var(--color-gold)]">
               {p.mediaUrl && (
+                // BLD-1643: a real content image (not decorative) -- alt text
+                // from the post's own summary/topic, not empty.
                 // eslint-disable-next-line @next/next/no-img-element -- Google CDN host isn't in next/image remotePatterns
-                <img src={p.mediaUrl} alt="" loading="lazy" className="aspect-[16/9] w-full object-cover" />
+                <img
+                  src={p.mediaUrl}
+                  alt={altFromSummary(p.summary || '') || `${TOPIC_LABEL[p.topicType || 'STANDARD'] || 'News'} from K Clinics`}
+                  loading="lazy"
+                  className="aspect-[16/9] w-full object-cover"
+                />
               )}
               <div className="flex flex-1 flex-col p-6">
                 <p className="eyebrow mb-3 text-[var(--color-gold-deep)]">

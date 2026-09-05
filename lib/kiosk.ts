@@ -269,7 +269,17 @@ export async function getOohCampaignId(): Promise<string> {
   return c.id;
 }
 
-export type ClaimResult = { ok: true; code: string; pct: number; days: number } | { ok: false; error: string };
+// BLD-1637: `alreadyClaimed` marks the idempotent replay branch below, which
+// returns ok:true for a code that was minted by an EARLIER request. Callers that
+// fire one-per-conversion side effects (the ad-platform Lead event in
+// app/api/kiosk/results/[id]/claim/route.ts) must skip them on a replay, or
+// every re-POST of the same result inflates the lead count. `clientId` is the
+// upserted Client, passed through so the Lead event has a stable GA4 client id
+// (the /api/consult and /api/finder-lead convention) instead of falling back to
+// a fresh random one per event; null when the upsert failed (non-fatal there).
+export type ClaimResult =
+  | { ok: true; code: string; pct: number; days: number; alreadyClaimed?: boolean; clientId?: string | null }
+  | { ok: false; error: string };
 
 // BLD-1644: transient marker while a claim is between "reserved" and "code
 // minted" — never a real discount code (generatePromoCode strips to [A-Z0-9],
@@ -303,7 +313,7 @@ export async function claimKioskDiscount(resultId: string, emailRaw: string, fir
   const result = await db.kioskResult.findUnique({ where: { id: resultId }, include: { session: { select: { id: true, status: true, ipHash: true, ageDeclaredAt: true } } } });
   if (!result) return { ok: false, error: 'Result not found.' };
   // Idempotent: if already claimed, return the existing code.
-  if (result.claimCode && result.claimCode !== CLAIM_PENDING) return { ok: true, code: result.claimCode, pct: await getConfigNumber('kiosk_discount_pct'), days: await getConfigNumber('kiosk_discount_days') };
+  if (result.claimCode && result.claimCode !== CLAIM_PENDING) return { ok: true, code: result.claimCode, pct: await getConfigNumber('kiosk_discount_pct'), days: await getConfigNumber('kiosk_discount_days'), alreadyClaimed: true };
   // Share-gate.
   if (result.session.status !== 'SHARED') return { ok: false, error: 'Share your score first to unlock your reward 🎁' };
 
@@ -354,12 +364,15 @@ export async function claimKioskDiscount(resultId: string, emailRaw: string, fir
   const kioskUpdate: Record<string, unknown> = {};
   if (existingClient?.marketingOptIn) Object.assign(kioskUpdate, marketingConsentFields('kiosk'));
   if (ageDeclaredAt) kioskUpdate.ageDeclaredAt = ageDeclaredAt;
+  let clientId: string | null = null;
   try {
-    await db.client.upsert({
+    const client = await db.client.upsert({
       where: { email },
       update: kioskUpdate,
       create: { email, firstName, marketingOptIn, source: 'kiosk', ...(marketingOptIn ? marketingConsentFields('kiosk') : {}), ...(ageDeclaredAt ? { ageDeclaredAt } : {}) },
+      select: { id: true },
     });
+    clientId = client.id;
   } catch (e) { console.error('[kiosk] client upsert failed (continuing):', (e as Error)?.message); }
 
   let code: string;
@@ -390,5 +403,5 @@ export async function claimKioskDiscount(resultId: string, emailRaw: string, fir
     await sendEmail({ to: email, subject: `Your ${pct}% KClinics reward — code ${code}`, html: tmplKioskReward({ firstName, code, pct, days, bookUrl: `${base}/book` }) });
   } catch (e) { console.error('[kiosk] reward email failed (continuing):', (e as Error)?.message); }
 
-  return { ok: true, code, pct, days };
+  return { ok: true, code, pct, days, clientId };
 }
