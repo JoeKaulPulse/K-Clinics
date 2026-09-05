@@ -6,6 +6,7 @@ import { KMark, ClinicsWordmark } from '@/components/brand/marks';
 import { GuideHost } from '@/components/guide/GuideHost';
 import { Aurora } from '@/components/ui/Aurora';
 import { PhoneLink } from '@/components/marketing/PhoneLink';
+import { NotificationBell } from '@/components/academy/NotificationBell';
 
 // BLD-528: the trainee portal's own chrome — a dedicated shell mirroring the
 // client portal (components/portal/PortalShell), so the academy app reads as a
@@ -62,6 +63,7 @@ export function AcademyPortalShell({ firstName, children }: { firstName?: string
               ))}
             </nav>
             <div className="flex items-center gap-3">
+              <NotificationBell />
               {firstName && <span className="hidden text-sm text-[var(--color-stone)] sm:block">Hi, {firstName}</span>}
               <button onClick={signOut} className="rounded-full border border-[var(--color-line)] px-4 py-2 text-sm font-medium text-[var(--color-ink-soft)] transition-colors hover:border-[var(--color-gold)] hover:text-[var(--color-gold-deep)]">Sign out</button>
             </div>

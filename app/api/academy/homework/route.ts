@@ -25,9 +25,15 @@ export async function POST(req: Request) {
   const { studentCanAccess } = await import('@/lib/lms');
   if (!(await studentCanAccess(student.id, lesson.module.courseId))) return NextResponse.json({ ok: false, error: 'Not enrolled.' }, { status: 403 });
 
-  const existing = await db.homeworkSubmission.findFirst({ where: { studentId: student.id, lessonId }, select: { id: true } });
+  const existing = await db.homeworkSubmission.findFirst({ where: { studentId: student.id, lessonId } });
   if (existing) {
-    await db.homeworkSubmission.update({ where: { id: existing.id }, data: { files, note, status: 'SUBMITTED', feedback: null, reviewedBy: null, reviewedAt: null } });
+    // BLD-1620: snapshot the submission being overwritten — files, note, status
+    // and any tutor feedback — before resetting it, so resubmitting never loses
+    // the prior round's history.
+    await db.$transaction([
+      db.homeworkSubmissionHistory.create({ data: { submissionId: existing.id, files: existing.files, note: existing.note, status: existing.status, feedback: existing.feedback, reviewedBy: existing.reviewedBy, reviewedAt: existing.reviewedAt } }),
+      db.homeworkSubmission.update({ where: { id: existing.id }, data: { files, note, status: 'SUBMITTED', feedback: null, reviewedBy: null, reviewedAt: null } }),
+    ]);
   } else {
     await db.homeworkSubmission.create({ data: { tenantId: student.tenantId, studentId: student.id, lessonId, files, note } });
   }
