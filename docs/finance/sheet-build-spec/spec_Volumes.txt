@@ -1,0 +1,240 @@
+FILL	C5:C17	=IFERROR(AVERAGEIFS(Pricing!$F$29:$F$194,Pricing!$E$29:$E$194,B5,Pricing!$AC$29:$AC$194,1),0)
+FILL	F5:F17	=IFERROR(AVERAGEIFS(Pricing!$I$29:$I$194,Pricing!$E$29:$E$194,B5,Pricing!$AC$29:$AC$194,1),0)
+FILL	I5:I17	=IFERROR(AVERAGEIFS(Pricing!$K$29:$K$194,Pricing!$E$29:$E$194,B5,Pricing!$AC$29:$AC$194,1)+AVERAGEIFS(Pricing!$L$29:$L$194,Pricing!$E$29:$E$194,B5,Pricing!$AC$29:$AC$194,1)+AVERAGEIFS(Pricing!$M$29:$M$194,Pricing!$E$29:$E$194,B5,Pricing!$AC$29:$AC$194,1),0)
+FILL	L5:L17	=IFERROR(AVERAGEIFS(Pricing!$G$29:$G$194,Pricing!$E$29:$E$194,B5,Pricing!$AC$29:$AC$194,1),0)
+FILL	E5:E18	=IF(D5<>"",D5,C5)
+FILL	H5:H18	=IF(G5<>"",G5,F5)
+FILL	K5:K18	=IF(J5<>"",J5,I5)
+FILL	C23:AL23	=EDATE(Assumptions!$B$5,COLUMN()-3)
+FILL	C24:AL24	=ROUND(DAY(EOMONTH(C$23,0))*Assumptions!$B$8/7,0)
+FILL	C25:AL25	=Assumptions!$B$6*Assumptions!$B$9*C$24
+FILL	C27:AL27	=C$25*C$26
+FILL	C30:AL30	=C$27*$N$5
+FILL	C31:AL31	=IF($E$5=0,0,C30*60/$E$5)
+FILL	C32:AL32	=C31*$H$5
+FILL	C33:AL33	=C31*$K$5
+FILL	C34:AL34	=C31*$L$5/60*$M$5
+FILL	C36:AL36	=C$27*$N$6
+FILL	C37:AL37	=IF($E$6=0,0,C36*60/$E$6)
+FILL	C38:AL38	=C37*$H$6
+FILL	C39:AL39	=C37*$K$6
+FILL	C40:AL40	=C37*$L$6/60*$M$6
+FILL	C42:AL42	=C$27*$N$7
+FILL	C43:AL43	=IF($E$7=0,0,C42*60/$E$7)
+FILL	C44:AL44	=C43*$H$7
+FILL	C45:AL45	=C43*$K$7
+FILL	C46:AL46	=C43*$L$7/60*$M$7
+FILL	C48:AL48	=C$27*$N$8
+FILL	C49:AL49	=IF($E$8=0,0,C48*60/$E$8)
+FILL	C50:AL50	=C49*$H$8
+FILL	C51:AL51	=C49*$K$8
+FILL	C52:AL52	=C49*$L$8/60*$M$8
+FILL	C54:AL54	=C$27*$N$9
+FILL	C55:AL55	=IF($E$9=0,0,C54*60/$E$9)
+FILL	C56:AL56	=C55*$H$9
+FILL	C57:AL57	=C55*$K$9
+FILL	C58:AL58	=C55*$L$9/60*$M$9
+FILL	C60:AL60	=C$27*$N$10
+FILL	C61:AL61	=IF($E$10=0,0,C60*60/$E$10)
+FILL	C62:AL62	=C61*$H$10
+FILL	C63:AL63	=C61*$K$10
+FILL	C64:AL64	=C61*$L$10/60*$M$10
+FILL	C66:AL66	=C$27*$N$11
+FILL	C67:AL67	=IF($E$11=0,0,C66*60/$E$11)
+FILL	C68:AL68	=C67*$H$11
+FILL	C69:AL69	=C67*$K$11
+FILL	C70:AL70	=C67*$L$11/60*$M$11
+FILL	C72:AL72	=C$27*$N$12
+FILL	C73:AL73	=IF($E$12=0,0,C72*60/$E$12)
+FILL	C74:AL74	=C73*$H$12
+FILL	C75:AL75	=C73*$K$12
+FILL	C76:AL76	=C73*$L$12/60*$M$12
+FILL	C78:AL78	=C$27*$N$13
+FILL	C79:AL79	=IF($E$13=0,0,C78*60/$E$13)
+FILL	C80:AL80	=C79*$H$13
+FILL	C81:AL81	=C79*$K$13
+FILL	C82:AL82	=C79*$L$13/60*$M$13
+FILL	C84:AL84	=C$27*$N$14
+FILL	C85:AL85	=IF($E$14=0,0,C84*60/$E$14)
+FILL	C86:AL86	=C85*$H$14
+FILL	C87:AL87	=C85*$K$14
+FILL	C88:AL88	=C85*$L$14/60*$M$14
+FILL	C90:AL90	=C$27*$N$15
+FILL	C91:AL91	=IF($E$15=0,0,C90*60/$E$15)
+FILL	C92:AL92	=C91*$H$15
+FILL	C93:AL93	=C91*$K$15
+FILL	C94:AL94	=C91*$L$15/60*$M$15
+FILL	C96:AL96	=C$27*$N$16
+FILL	C97:AL97	=IF($E$16=0,0,C96*60/$E$16)
+FILL	C98:AL98	=C97*$H$16
+FILL	C99:AL99	=C97*$K$16
+FILL	C100:AL100	=C97*$L$16/60*$M$16
+FILL	C102:AL102	=C$27*$N$17
+FILL	C103:AL103	=IF($E$17=0,0,C102*60/$E$17)
+FILL	C104:AL104	=C103*$H$17
+FILL	C105:AL105	=C103*$K$17
+FILL	C106:AL106	=C103*$L$17/60*$M$17
+FILL	C108:AL108	=C$27*$N$18
+FILL	C109:AL109	=IF($E$18=0,0,C108*60/$E$18)
+FILL	C110:AL110	=C109*$H$18
+FILL	C111:AL111	=C109*$K$18
+FILL	C112:AL112	=C109*$L$18/60*$M$18
+FILL	C114:AL116	=C32+C38+C44+C50+C56+C62+C68+C74+C80+C86+C92+C98+C104+C110
+FILL	C117:AL117	=C31+C37+C43+C49+C55+C61+C67+C73+C79+C85+C91+C97+C103+C109
+FILL	C118:AL118	=C30+C36+C42+C48+C54+C60+C66+C72+C78+C84+C90+C96+C102
+SET	M5	=Machinery!$H$5
+SET	M6	=Machinery!$H$6
+SET	M7	=Machinery!$H$9
+SET	M8	=Machinery!$H$10
+SET	M9	=Machinery!$H$11
+SET	M10	=Machinery!$H$12
+SET	M11	=Machinery!$H$13
+SET	M12	=Machinery!$H$14
+SET	M13	=Machinery!$H$15
+SET	M14	=Machinery!$H$16
+SET	M15	=Machinery!$H$17
+SET	M16	=Machinery!$H$8
+SET	M17	=Machinery!$H$7
+SET	N19	=SUM(N5:N18)
+BLOCK	A1:A2
+Volume & revenue forecast — capacity × utilisation × mix
+Room capacity comes from Assumptions. The utilisation ramp (blue row) is THE dominant free assumption — current run-rate is ~3% (225 bookings in the 90 days after the May 2026 reopening). Mix % splits treated hours across machine classes; seeded from live booking mix. Per-class average price/cost auto-computed from the Pricing tab (sellable variants); use the blue override column to demand-weight.
+BLOCK	A4:N4
+Family	Class key	Avg session min (auto)	Min override	Min used	Avg price £ (auto)	Price override	Price used £	Avg direct cost £ (auto)	Cost override	Cost used £	Machine min/session	kWh/treatment hr	Hours mix %
+BLOCK	A5:B17
+Laser hair removal (diode)	diode-laser
+IPL / laser skin	laser-ipl-platform
+HIFU lifting	hifu
+RF tightening	rf-tightening
+HydraFacial & facials	hydrafacial-platform
+Body contouring (Endosphere/vacuum)	endosphere-vacuum
+Microneedling & BB Glow	microneedling-pen
+Microdermabrasion	microdermabrasion
+Microcurrent & LED	microcurrent-led
+Injectables	none-injectables
+Peels, massage & manual	none-manual
+CO2 laser (intimate) — coming soon	co2-laser
+Tattoo/pigment removal (pico) — not yet purchased	pico-laser-PLANNED
+BLOCK	N5:N17
+0.495
+0.03
+0.02
+0.02
+0.11
+0.08
+0.03
+0.005
+0.04
+0.03
+0.02
+0
+0
+BLOCK	A18:D18
+Consultations (no revenue)	consultation	0	20
+BLOCK	F18:G18
+0	0
+BLOCK	I18:J18
+0	1
+BLOCK	L18:N18
+0	0	0.12
+VAL	A19	Mix check (must be 100%)
+BLOCK	A22:A27
+MONTHLY FORECAST
+Month
+Days open
+Room-hours available
+Utilisation % (EDIT — the model's biggest lever)
+Treated hours
+BLOCK	C26:AL26
+0.04	0.046	0.052	0.058	0.064	0.07	0.076	0.082	0.088	0.094	0.1	0.106	0.112	0.118	0.124	0.13	0.136	0.142	0.148	0.154	0.16	0.166	0.172	0.178	0.184	0.19	0.196	0.202	0.208	0.214	0.22	0.226	0.232	0.238	0.244	0.25
+BLOCK	A29:A112
+Laser hair removal (diode)
+  hours
+  sessions
+  gross revenue
+  direct costs
+  machine kWh
+IPL / laser skin
+  hours
+  sessions
+  gross revenue
+  direct costs
+  machine kWh
+HIFU lifting
+  hours
+  sessions
+  gross revenue
+  direct costs
+  machine kWh
+RF tightening
+  hours
+  sessions
+  gross revenue
+  direct costs
+  machine kWh
+HydraFacial & facials
+  hours
+  sessions
+  gross revenue
+  direct costs
+  machine kWh
+Body contouring (Endosphere/vacuum)
+  hours
+  sessions
+  gross revenue
+  direct costs
+  machine kWh
+Microneedling & BB Glow
+  hours
+  sessions
+  gross revenue
+  direct costs
+  machine kWh
+Microdermabrasion
+  hours
+  sessions
+  gross revenue
+  direct costs
+  machine kWh
+Microcurrent & LED
+  hours
+  sessions
+  gross revenue
+  direct costs
+  machine kWh
+Injectables
+  hours
+  sessions
+  gross revenue
+  direct costs
+  machine kWh
+Peels, massage & manual
+  hours
+  sessions
+  gross revenue
+  direct costs
+  machine kWh
+CO2 laser (intimate) — coming soon
+  hours
+  sessions
+  gross revenue
+  direct costs
+  machine kWh
+Tattoo/pigment removal (pico) — not yet purchased
+  hours
+  sessions
+  gross revenue
+  direct costs
+  machine kWh
+Consultations (no revenue)
+  hours
+  sessions
+  gross revenue
+  direct costs
+  machine kWh
+BLOCK	A114:A118
+TOTAL gross booking revenue
+TOTAL direct costs (consumables+machine energy+service)
+TOTAL machine kWh
+TOTAL sessions
+Revenue-generating treated hours

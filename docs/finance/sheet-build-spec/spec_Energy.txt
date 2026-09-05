@@ -1,0 +1,27 @@
+FILL	C10:AL10	=EDATE(Assumptions!$B$5,COLUMN()-3)
+FILL	C11:AL11	=DAY(EOMONTH(C$10,0))
+FILL	C12:AL12	=INDEX(Energy!$B$7:$M$7,MONTH(C$10))*Assumptions!$B$7
+FILL	C13:AL13	=Assumptions!$B$25*C$11
+FILL	C14:AL14	=Volumes!C$116
+FILL	C15:AL15	=C12+C13+C14
+FILL	C16:AL16	=C14*Assumptions!$B$23/100
+FILL	C17:AL17	=(C12+C13)*Assumptions!$B$23/100+C11*Assumptions!$B$24/100
+BLOCK	A1:A3
+Energy — heating & cooling by season, base load, machine consumption
+Assumes 15 m2/room (ASSUMPTION — no floor area in codebase). Cooling: CIBSE ~40 kWh/m2/yr = 600 kWh/room/yr, weighted Jun 20% / Jul 30% / Aug 30% / May+Sep 15% / rest 5%. Heating: 85 kWh/m2/yr delivered (mid of 50–120) / COP 3 = 425 kWh electricity/room/yr, weighted Dec–Feb 55% / Nov+Mar 30% / Oct+Apr 15%. Annual total ~1,025 kWh/room. Split A/C sizing cross-check: 2.5–3.5 kW cooling unit at 0.5–1.4 kW input, 3–8 kWh/room/day in Jul–Aug — consistent.
+Sanity check from research: 9 rooms x ~1,025 kWh HVAC + 12 kWh/day x 365 base + ~1,500–2,500 kWh machines = ~15,000–16,500 kWh/yr = ~£4,100–£4,700/yr at 27p + £200 standing. Within CIBSE TM46 general-retail 165 kWh/m2/yr for a ~100–140 m2 unit.
+VAL	A5	HVAC kWh per room per month (EDIT — winter = heating via A/C heat pump, summer = cooling)
+BLOCK	B6:M6
+Jan	Feb	Mar	Apr	May	Jun	Jul	Aug	Sep	Oct	Nov	Dec
+BLOCK	A7:M7
+kWh/room	82	80	68	36	45	120	180	180	45	36	68	82
+BLOCK	A9:A17
+MONTHLY ENERGY MODEL
+Month
+Days in month
+HVAC kWh (rooms × seasonal curve)
+Base load kWh
+Machine kWh (from Volumes)
+Total kWh
+Machine energy cost £ (direct — already inside Pricing/Volumes direct costs)
+Facility energy cost £ (HVAC + base + standing — to P&L overheads)

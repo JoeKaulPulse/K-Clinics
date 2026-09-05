@@ -89,6 +89,7 @@ export const DICT: Record<string, Entry> = {
   'nav.orders': { en: 'Orders', uk: 'Замовлення' },
   'nav.pos': { en: 'Till (POS)', uk: 'Каса (POS)' },
   'nav.cashflow': { en: 'Cashflow', uk: 'Грошовий потік' },
+  'nav.financePlanner': { en: 'Finance planner', uk: 'Фінансовий план' },
   'nav.reports': { en: 'Reports', uk: 'Звіти' },
   'nav.sessionInsights': { en: 'Session insights', uk: 'Аналітика сесій' },
   'nav.site': { en: 'Site & globals', uk: 'Сайт і глобальні' },
