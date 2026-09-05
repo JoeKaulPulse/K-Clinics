@@ -46,7 +46,10 @@ const URL_ATTRS = new Set(['href', 'src', 'cite']);
 const VOID_TAGS = new Set(['br', 'hr', 'img', 'col']);
 
 /** Decode the numeric/named entity forms an attacker could use to hide a scheme
- *  like "javascript:" inside a URL attribute, plus control chars browsers strip. */
+ *  like "javascript:" inside a URL attribute, plus control chars browsers strip.
+ *  Keep the control-character class written as ESCAPES (\x00-\x1f\x7f): it used
+ *  to be those raw bytes inline, which is the same regex but made git treat this
+ *  source file as binary, so its diffs could not be reviewed. */
 function decodeForScheme(s: string): string {
   return String(s || '')
     .replace(/&#x([0-9a-f]+);?/gi, (_m, h) => { const n = parseInt(h, 16); return Number.isFinite(n) ? String.fromCharCode(n) : ''; })
@@ -56,11 +59,21 @@ function decodeForScheme(s: string): string {
 
 /** Allow only http(s), root-relative, anchor, mailto and tel URLs. Everything
  *  else (javascript:, data:, vbscript:, ...) becomes empty -> the attribute drops.
- *  The entity-decoded/control-stripped form is used ONLY to detect an obfuscated
- *  scheme; a URL that passes returns the ORIGINAL trimmed string -- the decoded
- *  form is never itself written back into the page (BLD-1597: it previously
- *  was, and decodeForScheme also stripped space/hyphen, which mangled every
- *  hyphenated-slug URL, e.g. .../how-to-choose-a-clinic -> .../howtochooseaclinic). */
+ *
+ *  BLD-1597: the entity-decoded/control-stripped form is used ONLY to decide
+ *  whether the scheme is safe; a URL that passes returns the ORIGINAL trimmed
+ *  string, so the decoded form is never written back into the page. It used to
+ *  be, and the two can differ in a way that matters: `&#47;&#47;evil.com`
+ *  decodes to `//evil.com`, and emitting THAT as the href turned an inert
+ *  literal into a live protocol-relative link to someone else's origin.
+ *  Returning the original leaves the `&` for escapeHtml to escape, so the
+ *  browser sees the literal text and resolves it same-origin.
+ *
+ *  Checking the decoded form while returning the raw one is only safe because
+ *  decodeForScheme strips a SUPERSET of what a browser strips from a URL (every
+ *  C0 control + DEL, vs the browser's tab/CR/LF): anything a browser would still
+ *  read as `javascript:` we have already collapsed to `javascript:` as well, so
+ *  this check can over-block but never under-block. */
 function safeUrl(raw: string): string {
   const original = String(raw || '').trim();
   const decoded = decodeForScheme(original);
