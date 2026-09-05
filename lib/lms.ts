@@ -449,7 +449,9 @@ export async function notifyHomeworkGraded(submissionId: string): Promise<void> 
       lesson: { select: { title: true, module: { select: { course: { select: { slug: true, title: true } } } } } },
     },
   });
-  if (!sub?.student?.email || !sub.lesson || sub.status === 'SUBMITTED') return;
+  // The email address gates only the email below — the in-app notification must
+  // still fire for a trainee whose record has no deliverable address.
+  if (!sub || !sub.lesson || sub.status === 'SUBMITTED') return;
 
   const outcome = sub.status === 'APPROVED'
     ? {
@@ -470,18 +472,23 @@ export async function notifyHomeworkGraded(submissionId: string): Promise<void> 
         };
 
   const base = process.env.NEXT_PUBLIC_SITE_URL || process.env.NEXT_PUBLIC_BASE_URL || 'https://kclinics.co.uk';
-  const url = `${base}/academy/learn/${sub.lesson.module.course.slug}`;
+  const path = `/academy/learn/${sub.lesson.module.course.slug}`;
+  const url = `${base}${path}`;
+  // In-app notifications store a same-origin PATH (as the staff ones do): the
+  // bell hands it to router.push, so an absolute URL built from the deploy's
+  // env would bounce a preview/staging trainee onto production.
   try {
     const { notifyStudent } = await import('@/lib/academy-notifications');
-    await notifyStudent(sub.studentId, { kind: outcome.kind, title: outcome.notifTitle, body: outcome.notifBody, href: url });
+    await notifyStudent(sub.studentId, { kind: outcome.kind, title: outcome.notifTitle, body: outcome.notifBody, href: path });
   } catch { /* best-effort */ }
+  if (!sub.student?.email) return;
   try {
     const { sendEmail, emailShell } = await import('@/lib/email');
     await sendEmail({
       to: sub.student.email,
       subject: `Homework ${outcome.verb} — ${sub.lesson.module.course.title}`,
       html: emailShell({
-        preheader: `Your homework for ${sub.lesson.title} was ${outcome.verb}.`,
+        preheader: `Your homework for ${escapeHtml(sub.lesson.title)} was ${outcome.verb}.`,
         body: `<h1 style="font-size:24px;margin:0 0 14px;">Your homework was ${outcome.verb}</h1>
           <p style="margin:0 0 12px;">Hi ${escapeHtml(sub.student.firstName || 'there')},</p>
           <p style="margin:0 0 12px;">${outcome.line} This was for <strong>${escapeHtml(sub.lesson.title)}</strong> in <strong>${escapeHtml(sub.lesson.module.course.title)}</strong>.</p>
