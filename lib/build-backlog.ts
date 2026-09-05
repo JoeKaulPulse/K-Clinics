@@ -5088,7 +5088,7 @@ export const BUILD_BACKLOG: BacklogItem[] = [
     value: 6, effort: 1,
     detail: 'app/kiosk/result/[slug]/page.tsx generateMetadata set no openGraph.images/twitter.images despite a branded share card already existing at /api/kiosk/results/[id]/card (only wired into the native Web Share flow). WhatsApp/iMessage/Slack/Facebook shares of the viral kiosk result unfurled with no image.',
     notes: [
-      'Fix: openGraph/twitter images now point at the existing card route (keyed by the result id, fetched alongside the slug); added alternates.canonical.',
+      'Fix: openGraph/twitter images now point at the existing card route, addressed by the public share SLUG; added alternates.canonical. Review follow-up: the first cut selected KioskResult.id and put it in the card URL, which published the id in the public, indexable, force-static page (and into ShareButtons client props). That id is the bearer key for the unauthenticated /api/kiosk/results/[id]/claim and .../share endpoints, so any recipient of a shared link could have flipped the session to SHARED and burned the visitor single-use reward code into their own inbox. The id is no longer selected on that page; app/api/kiosk/results/[id]/card/route.tsx now resolves either the id (in-session native share) or the share slug (unfurl).',
       'Verified: npx tsc --noEmit and npm run build pass clean (DB-connection vars unset in-sandbox, as above).',
     ],
   },
@@ -5099,6 +5099,7 @@ export const BUILD_BACKLOG: BacklogItem[] = [
     detail: 'claimKioskDiscount in lib/kiosk.ts creates the Client and issues a discount code but never calls sendLead()/trackLead(), unlike every other lead action in the app (consult, finder-lead, signup) — the OOH kiosk campaign had no attributable conversion signal reaching Meta/Google.',
     notes: [
       'Fix: app/api/kiosk/results/[id]/claim/route.ts now calls sendLead() and components/kiosk/ClaimReward.tsx calls trackLead(), sharing one client-generated eventId for CAPI/GA4 dedup -- same pattern as /api/consult and /api/finder-lead. No email forwarded to Meta unless the visitor\'s own marketing tick was on.',
+      'Review follow-up (three defects in the first cut): (1) claimKioskDiscount is idempotent and returns ok:true for an already-claimed result, so every re-POST fired a second Lead with a fresh event id -- nothing for CAPI or GA4 to dedupe against, so refreshes and retries inflated the lead count. ClaimResult now carries alreadyClaimed and the route skips sendLead on the replay branch, echoing eventId back only when a Lead actually went out (which is also what tells the browser pixel whether to fire). (2) ClaimReward.tsx called globalThis.crypto.randomUUID() outside its try block: undefined in a non-secure context and on Safari < 15.4, so it threw past the finally and stranded the button on "Claiming..." with no error -- now the guarded form every other form in the app uses. (3) sendLead was called without clientId, unlike /api/consult and /api/finder-lead, so GA4 fell back to the random event id as the client id and booked every kiosk lead as a brand-new user; claimKioskDiscount now returns the upserted client id. The claim response is also built explicitly instead of spreading the internal result, so clientId and alreadyClaimed stay server-side, and a body-supplied eventId is length-bounded like finder-lead\'s zod schema.',
       'Verified: npx tsc --noEmit and npm run build pass clean (DB-connection vars unset in-sandbox, as above).',
     ],
   },
@@ -5108,7 +5109,8 @@ export const BUILD_BACKLOG: BacklogItem[] = [
     value: 7, effort: 2,
     detail: 'components/kiosk/KioskSessionFlow.tsx and ResultCard.tsx showed the AI skin-analysis result with treatment names rendered as inert <span> badges and no path to /book. A visitor who just saw their result had no way to book unless they shared their score and claimed a reward first.',
     notes: [
-      'Fix: ResultCard.tsx now always shows a "Book your treatment" CTA to /book, independent of the share gate. Treatment badges link to /book?treatment=slug for the 10 of 11 AI-whitelisted treatment names (lib/kiosk-ai.ts ALLOWED_TREATMENTS) with a clear catalogue match; "LED Light Therapy" has no standalone page today and is left unlinked rather than pointed at an unrelated one.',
+      'Fix: ResultCard.tsx now always shows a "Book your treatment" CTA to /book, independent of the share gate. Treatment badges link to /book?treatment=slug for the 10 of 11 AI-whitelisted treatment names (lib/kiosk-ai.ts ALLOWED_TREATMENTS) with a clear catalogue match; "LED Light Therapy" has no standalone page today and is left unlinked rather than pointed at an unrelated one. All 10 slugs verified present in lib/treatments.ts, and an unknown ?treatment= value degrades to no preselection rather than a 404 (app/(marketing)/book/page.tsx).',
+      'Review follow-up: the CTA was placed above the share block and the "Claim your reward" CTA, demoting the share-to-claim funnel the card exists to drive (and on the public share page it pushed both primary actions down). Moved to the end of the card, kept outlined rather than filled so it reads as secondary.',
       'Verified: npx tsc --noEmit and npm run build pass clean (DB-connection vars unset in-sandbox, as above).',
     ],
   },

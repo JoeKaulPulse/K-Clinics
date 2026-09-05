@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import Link from 'next/link';
 import { Logo } from '@/components/brand/Logo';
 import { ScoreRing } from './ScoreRing';
 import { ShareButtons } from './ShareButtons';
@@ -115,9 +116,9 @@ export function ResultCard({
               const slug = KIOSK_TREATMENT_SLUG[t];
               const className = 'rounded-full bg-[var(--color-bone)] px-3 py-1 text-sm text-[var(--color-ink)]';
               return slug ? (
-                <a key={t} href={`/book?treatment=${slug}`} className={`${className} transition hover:bg-[var(--color-gold)]/20`}>
+                <Link key={t} href={`/book?treatment=${slug}`} className={`${className} transition hover:bg-[var(--color-gold)]/20`}>
                   {t}
-                </a>
+                </Link>
               ) : (
                 <span key={t} className={className}>{t}</span>
               );
@@ -125,16 +126,6 @@ export function ResultCard({
           </div>
         </div>
       )}
-
-      {/* BLD-1638: a persistent path to booking, independent of the share
-          gate -- previously a visitor who saw their result but didn't share
-          + claim a reward had no way to book at all. */}
-      <a
-        href="/book"
-        className="mt-6 block rounded-[var(--radius-md)] border-2 border-[var(--color-ink)] px-4 py-4 text-center text-base font-medium text-[var(--color-ink)] transition hover:bg-[var(--color-ink)] hover:text-[var(--color-porcelain)]"
-      >
-        Book your treatment →
-      </a>
 
       {showShare && (
         <div className="mt-7">
@@ -158,6 +149,19 @@ export function ResultCard({
           Claim your reward →
         </a>
       )}
+
+      {/* BLD-1638: a persistent path to booking, independent of the share
+          gate -- previously a visitor who saw their result but didn't share
+          + claim a reward had no way to book at all. Kept last, and visually
+          secondary (outlined, not filled), so it sits behind the share block
+          and the "Claim your reward" CTA rather than demoting the share-to-claim
+          funnel this card exists to drive. */}
+      <Link
+        href="/book"
+        className="mt-6 block rounded-[var(--radius-md)] border-2 border-[var(--color-ink)] px-4 py-4 text-center text-base font-medium text-[var(--color-ink)] transition hover:bg-[var(--color-ink)] hover:text-[var(--color-porcelain)]"
+      >
+        Book your treatment →
+      </Link>
     </div>
   );
 }

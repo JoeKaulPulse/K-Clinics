@@ -23,8 +23,11 @@ export function ClaimReward({ resultId, hasShared = false }: { resultId: string;
     setBusy(true); setError('');
     // BLD-1637: shared with the server-side Lead event (sendLead) so Meta
     // CAPI/GA4 can dedupe against this browser pixel — same pattern as
-    // ConsultForm/GroupBookingForm/TreatmentFinder.
-    const eventId = globalThis.crypto.randomUUID();
+    // ConsultForm/GroupBookingForm/TreatmentFinder, including their guard:
+    // crypto.randomUUID is undefined in a non-secure context and on Safari
+    // < 15.4, and this runs before the try block, so an unguarded call would
+    // throw straight past the finally and strand the button on "Claiming…".
+    const eventId = (typeof crypto !== 'undefined' && crypto.randomUUID) ? crypto.randomUUID() : String(Date.now());
     try {
       const r = await fetch(`/api/kiosk/results/${resultId}/claim`, {
         method: 'POST', headers: { 'content-type': 'application/json' },
@@ -32,7 +35,11 @@ export function ClaimReward({ resultId, hasShared = false }: { resultId: string;
       }).then((x) => x.json());
       if (r.ok) {
         setDone({ code: r.code, pct: r.pct, days: r.days });
-        try { trackLead({ eventId: r.eventId || eventId, detail: { source: 'kiosk' } }); } catch { /* analytics best-effort */ }
+        // The server echoes eventId back only when it actually sent the
+        // server-side Lead — i.e. on a real first claim, never on an idempotent
+        // replay. Firing only then keeps the browser pixel one-for-one with the
+        // CAPI event, on the very same id, so the two dedupe.
+        if (r.eventId) { try { trackLead({ eventId: r.eventId, detail: { source: 'kiosk' } }); } catch { /* analytics best-effort */ } }
       } else setError(r.error || 'Could not claim — please try again.');
     } catch { setError('Network error — please try again.'); }
     finally { setBusy(false); }

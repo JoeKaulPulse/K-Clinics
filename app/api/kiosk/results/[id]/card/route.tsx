@@ -64,12 +64,21 @@ function ScoreRing({ label, score }: { label: string; score: number }) {
   );
 }
 
+// BLD-1636: the path segment is either the raw KioskResult id (the in-session
+// native-share flow, components/kiosk/ShareButtons.tsx) or the public share slug
+// (the OG/Twitter unfurl URL on /kiosk/result/[slug]). Both columns are unique
+// and the card exposes nothing the public share page doesn't already show, so
+// resolving either is safe — and it means the public, indexable share page never
+// has to publish the id, which is the bearer key for the unauthenticated
+// claim/share endpoints. Tried as an id first; the two never collide in practice
+// (cuid vs. an 8-char slug) and each lookup is against a unique column.
+const CARD_SELECT = { headline: true, skinScore: true, smileScore: true, shareSlug: true } as const;
+
 export async function GET(_req: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const result = await db.kioskResult.findUnique({
-    where: { id },
-    select: { headline: true, skinScore: true, smileScore: true, shareSlug: true },
-  });
+  const result =
+    (await db.kioskResult.findUnique({ where: { id }, select: CARD_SELECT })) ??
+    (await db.kioskResult.findUnique({ where: { shareSlug: id }, select: CARD_SELECT }));
   if (!result) return NextResponse.json({ ok: false, error: 'not_found' }, { status: 404 });
 
   const shareUrl = `${site.url.replace(/\/$/, '')}/kiosk/result/${result.shareSlug}`;

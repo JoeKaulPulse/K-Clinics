@@ -23,13 +23,30 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   // server-side Lead event — same pattern as /api/consult and /api/finder-lead.
   // No email forwarded to Meta's advanced matching unless the visitor's own
   // marketing tick was on (ConsultForm convention).
-  const eventId = typeof body?.eventId === 'string' && body.eventId ? body.eventId : globalThis.crypto.randomUUID();
-  try {
-    const { sendLead } = await import('@/lib/conversions');
-    const { consentFromCookieHeader } = await import('@/lib/attribution');
-    const { analyticsConsent, marketingConsent } = consentFromCookieHeader(req.headers.get('cookie'));
-    await sendLead({ eventId, email: marketingOptIn ? email : null, sourceUrl: req.headers.get('referer'), analyticsConsent, marketingConsent });
-  } catch { /* best-effort */ }
+  //
+  // claimKioskDiscount is idempotent: re-POSTing an already-claimed result
+  // returns ok:true with the code minted by the FIRST request. That is a replay,
+  // not a conversion, so it must not fire a second Lead — a refresh, a
+  // double-tap or a retry would otherwise book one lead each (with a fresh
+  // event id every time, so neither CAPI nor GA4 would dedupe them away).
+  // `eventId` is only echoed back when a Lead actually went out, which is also
+  // what tells the browser pixel in ClaimReward.tsx whether to fire.
+  let eventId: string | null = null;
+  if (!r.alreadyClaimed) {
+    // Bounded like /api/finder-lead's schema (z.string().max(100)) — this is
+    // unvalidated request-body input that ends up in an outbound CAPI payload.
+    const supplied = typeof body?.eventId === 'string' ? body.eventId.trim() : '';
+    const leadEventId = supplied && supplied.length <= 100 ? supplied : globalThis.crypto.randomUUID();
+    eventId = leadEventId;
+    try {
+      const { sendLead } = await import('@/lib/conversions');
+      const { consentFromCookieHeader } = await import('@/lib/attribution');
+      const { analyticsConsent, marketingConsent } = consentFromCookieHeader(req.headers.get('cookie'));
+      await sendLead({ eventId: leadEventId, clientId: r.clientId ?? null, email: marketingOptIn ? email : null, sourceUrl: req.headers.get('referer'), analyticsConsent, marketingConsent });
+    } catch { /* best-effort */ }
+  }
 
-  return NextResponse.json({ ...r, eventId });
+  // Explicit response shape: `clientId` and `alreadyClaimed` are internal
+  // bookkeeping and must not be spread out to the browser.
+  return NextResponse.json({ ok: true, code: r.code, pct: r.pct, days: r.days, ...(eventId ? { eventId } : {}) });
 }
