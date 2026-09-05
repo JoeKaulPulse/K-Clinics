@@ -5082,6 +5082,56 @@ export const BUILD_BACKLOG: BacklogItem[] = [
       'Verified: npx tsc --noEmit and npm run build pass clean (DB-connection vars unset in-sandbox, as above).',
     ],
   },
+  {
+    title: 'Kiosk result share page has no OG/Twitter image — links unfurl blank everywhere except native share',
+    type: 'TASK', urgency: 'P2', status: 'SHIPPED', assignee: 'claude', pr: PR(1914),
+    value: 6, effort: 1,
+    detail: 'app/kiosk/result/[slug]/page.tsx generateMetadata set no openGraph.images/twitter.images despite a branded share card already existing at /api/kiosk/results/[id]/card (only wired into the native Web Share flow). WhatsApp/iMessage/Slack/Facebook shares of the viral kiosk result unfurled with no image.',
+    notes: [
+      'Fix: openGraph/twitter images now point at the existing card route (keyed by the result id, fetched alongside the slug); added alternates.canonical.',
+      'Verified: npx tsc --noEmit and npm run build pass clean (DB-connection vars unset in-sandbox, as above).',
+    ],
+  },
+  {
+    title: "Kiosk's actual conversion (discount claim) never fires an ad-platform lead event",
+    type: 'TASK', urgency: 'P2', status: 'SHIPPED', assignee: 'claude', pr: PR(1914),
+    value: 7, effort: 2,
+    detail: 'claimKioskDiscount in lib/kiosk.ts creates the Client and issues a discount code but never calls sendLead()/trackLead(), unlike every other lead action in the app (consult, finder-lead, signup) — the OOH kiosk campaign had no attributable conversion signal reaching Meta/Google.',
+    notes: [
+      'Fix: app/api/kiosk/results/[id]/claim/route.ts now calls sendLead() and components/kiosk/ClaimReward.tsx calls trackLead(), sharing one client-generated eventId for CAPI/GA4 dedup -- same pattern as /api/consult and /api/finder-lead. No email forwarded to Meta unless the visitor\'s own marketing tick was on.',
+      'Verified: npx tsc --noEmit and npm run build pass clean (DB-connection vars unset in-sandbox, as above).',
+    ],
+  },
+  {
+    title: 'No "Book now" CTA on the kiosk AI result screen',
+    type: 'TASK', urgency: 'P2', status: 'SHIPPED', assignee: 'claude', pr: PR(1914),
+    value: 7, effort: 2,
+    detail: 'components/kiosk/KioskSessionFlow.tsx and ResultCard.tsx showed the AI skin-analysis result with treatment names rendered as inert <span> badges and no path to /book. A visitor who just saw their result had no way to book unless they shared their score and claimed a reward first.',
+    notes: [
+      'Fix: ResultCard.tsx now always shows a "Book your treatment" CTA to /book, independent of the share gate. Treatment badges link to /book?treatment=slug for the 10 of 11 AI-whitelisted treatment names (lib/kiosk-ai.ts ALLOWED_TREATMENTS) with a clear catalogue match; "LED Light Therapy" has no standalone page today and is left unlinked rather than pointed at an unrelated one.',
+      'Verified: npx tsc --noEmit and npm run build pass clean (DB-connection vars unset in-sandbox, as above).',
+    ],
+  },
+  {
+    title: 'Homepage "Latest news" images have empty alt text',
+    type: 'TASK', urgency: 'P2', status: 'SHIPPED', assignee: 'claude', pr: PR(1914),
+    value: 4, effort: 1,
+    detail: 'components/home/LatestNews.tsx renders Google Business Profile post thumbnails on the homepage with alt="" -- real content images, not decorative, losing image-search value and failing basic accessibility on the site\'s highest-traffic page.',
+    notes: [
+      'Fix: alt text now uses the post\'s own summary (truncated), falling back to its topic label when there is no summary.',
+      'Verified: npx tsc --noEmit and npm run build pass clean (DB-connection vars unset in-sandbox, as above).',
+    ],
+  },
+  {
+    title: 'Shop cart line items overflow/crush on mobile (no flex-wrap)',
+    type: 'TASK', urgency: 'P2', status: 'SHIPPED', assignee: 'claude', pr: PR(1914),
+    value: 5, effort: 1,
+    detail: 'app/(marketing)/shop/cart/CartClient.tsx rendered each cart row as a non-wrapping flex row (image + name/price + qty stepper + remove); at ~390px viewport the fixed-width children alone consumed nearly the full row width, squeezing the product name to a sliver.',
+    notes: [
+      'Fix: the quantity stepper + remove button now group into their own row (w-full sm:w-auto), which wraps below the name/price row on narrow viewports via flex-wrap on the row, matching components/shop/AddToCart.tsx\'s existing pattern.',
+      'Verified: npx tsc --noEmit and npm run build pass clean (DB-connection vars unset in-sandbox, as above).',
+    ],
+  },
 ];
 
 // A content hash over every item's title + status + PR, so ANY change (a new
