@@ -57,7 +57,7 @@ export async function notifyBookingConfirmed(bookingId: string): Promise<void> {
   try {
     await sendBookingConfirmation(bookingId);
   } catch (e) {
-    console.error('[booking-notify] notifyBookingConfirmed failed for', bookingId, e);
+    console.error('[booking-notify] notifyBookingConfirmed failed for', bookingId, (e as Error)?.message);
     try {
       const Sentry = await import('@sentry/nextjs');
       Sentry.captureException(e, { tags: { area: 'booking-notify', bookingId } });

@@ -271,6 +271,10 @@ export async function getOohCampaignId(): Promise<string> {
 
 export type ClaimResult = { ok: true; code: string; pct: number; days: number } | { ok: false; error: string };
 
+// BLD-1644: transient marker while a claim is between "reserved" and "code
+// minted" — never a real discount code, never returned to a caller.
+const CLAIM_PENDING = '__PENDING__';
+
 /** Issue the share-to-claim discount: requires the session to have been SHARED,
  *  creates/links a client (marketing opt-in per the visitor's explicit tick —
  *  BLD-1420), mints a single-use campaign code, emails it, and records it on
@@ -287,9 +291,18 @@ export async function claimKioskDiscount(resultId: string, emailRaw: string, fir
   const result = await db.kioskResult.findUnique({ where: { id: resultId }, include: { session: { select: { id: true, status: true, ipHash: true, ageDeclaredAt: true } } } });
   if (!result) return { ok: false, error: 'Result not found.' };
   // Idempotent: if already claimed, return the existing code.
-  if (result.claimCode) return { ok: true, code: result.claimCode, pct: await getConfigNumber('kiosk_discount_pct'), days: await getConfigNumber('kiosk_discount_days') };
+  if (result.claimCode && result.claimCode !== CLAIM_PENDING) return { ok: true, code: result.claimCode, pct: await getConfigNumber('kiosk_discount_pct'), days: await getConfigNumber('kiosk_discount_days') };
   // Share-gate.
   if (result.session.status !== 'SHARED') return { ok: false, error: 'Share your score first to unlock your reward 🎁' };
+
+  // BLD-1644: reserve the claim atomically before minting a code. The read
+  // above and the write below used to be two separate steps, so two
+  // concurrent POSTs for the same result could both pass the "not claimed
+  // yet" check and each mint a single-use code. Only the request whose
+  // updateMany actually flips claimCode from null to CLAIM_PENDING proceeds;
+  // the loser is told to retry (by then the winner's real code has landed).
+  const reserved = await db.kioskResult.updateMany({ where: { id: resultId, claimCode: null }, data: { claimCode: CLAIM_PENDING, claimEmail: email, claimedAt: new Date() } });
+  if (reserved.count !== 1) return { ok: false, error: 'Claiming your reward — please try again in a moment.' };
 
   const pct = Math.max(1, Math.min(100, await getConfigNumber('kiosk_discount_pct')));
   const days = Math.max(1, await getConfigNumber('kiosk_discount_days'));
@@ -325,10 +338,13 @@ export async function claimKioskDiscount(resultId: string, emailRaw: string, fir
   try {
     code = await createPersonalCode({ campaignId: await getOohCampaignId(), email, discountType: 'PERCENT', percent: pct, expiresAt, label: 'Storefront Skin & Smile (OOH)' });
   } catch (e) {
+    // Release the reservation so a retry can mint a fresh code instead of
+    // being stuck behind a permanent CLAIM_PENDING with nothing to show for it.
+    await db.kioskResult.update({ where: { id: resultId }, data: { claimCode: null, claimEmail: null, claimedAt: null } }).catch(() => {});
     return { ok: false, error: (e as Error)?.message || 'Could not issue your code — please try again.' };
   }
 
-  await db.kioskResult.update({ where: { id: resultId }, data: { claimCode: code, claimEmail: email, claimedAt: new Date() } }).catch(() => {});
+  await db.kioskResult.update({ where: { id: resultId }, data: { claimCode: code } }).catch(() => {});
   await logKioskEvent('claimed', result.session.id, result.session.ipHash);
 
   // Email the code (best-effort).
