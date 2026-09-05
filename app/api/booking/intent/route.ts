@@ -50,7 +50,7 @@ export async function POST(req: Request) {
     }
     return NextResponse.json({ ok: true });
   } catch (e) {
-    console.error('[booking/intent] failed', e);
+    console.error('[booking/intent] failed', (e as Error)?.message);
     return NextResponse.json({ ok: false, error: 'Could not save.' }, { status: 500 });
   }
 }

@@ -271,6 +271,22 @@ export async function getOohCampaignId(): Promise<string> {
 
 export type ClaimResult = { ok: true; code: string; pct: number; days: number } | { ok: false; error: string };
 
+// BLD-1644: transient marker while a claim is between "reserved" and "code
+// minted" — never a real discount code (generatePromoCode strips to [A-Z0-9],
+// so it can never emit this), never returned to a caller.
+const CLAIM_PENDING = '__PENDING__';
+// How long a CLAIM_PENDING reservation is honoured before another attempt may
+// take it over. Reserving is what closes the double-mint race, but on its own
+// it turns any request that DIES mid-claim (function timeout, crash, or a
+// release that itself failed because the database was the thing that broke)
+// into a row stuck at CLAIM_PENDING forever, with the visitor permanently
+// unable to claim — a dead end the pre-BLD-1644 code never had. This bound has
+// to stay safely above the longest one claim request can live (Vercel kills the
+// function at maxDuration; the kiosk routes cap at 60s) so two in-flight
+// requests still can't both mint, and low enough that a stranded visitor
+// recovers. Raise it if this route ever gets a maxDuration above ~60s.
+const CLAIM_PENDING_TTL_MS = 2 * 60 * 1000;
+
 /** Issue the share-to-claim discount: requires the session to have been SHARED,
  *  creates/links a client (marketing opt-in per the visitor's explicit tick —
  *  BLD-1420), mints a single-use campaign code, emails it, and records it on
@@ -287,9 +303,34 @@ export async function claimKioskDiscount(resultId: string, emailRaw: string, fir
   const result = await db.kioskResult.findUnique({ where: { id: resultId }, include: { session: { select: { id: true, status: true, ipHash: true, ageDeclaredAt: true } } } });
   if (!result) return { ok: false, error: 'Result not found.' };
   // Idempotent: if already claimed, return the existing code.
-  if (result.claimCode) return { ok: true, code: result.claimCode, pct: await getConfigNumber('kiosk_discount_pct'), days: await getConfigNumber('kiosk_discount_days') };
+  if (result.claimCode && result.claimCode !== CLAIM_PENDING) return { ok: true, code: result.claimCode, pct: await getConfigNumber('kiosk_discount_pct'), days: await getConfigNumber('kiosk_discount_days') };
   // Share-gate.
   if (result.session.status !== 'SHARED') return { ok: false, error: 'Share your score first to unlock your reward 🎁' };
+
+  // BLD-1644: reserve the claim atomically before minting a code. The read
+  // above and the write below used to be two separate steps, so two
+  // concurrent POSTs for the same result could both pass the "not claimed
+  // yet" check and each mint a single-use code. Only the request whose
+  // updateMany actually flips claimCode from null to CLAIM_PENDING proceeds;
+  // the loser is told to retry (by then the winner's real code has landed).
+  // A reservation older than CLAIM_PENDING_TTL_MS belongs to a request that can
+  // no longer be running, so it is taken over rather than stranding the visitor
+  // (see CLAIM_PENDING_TTL_MS). Postgres serialises concurrent UPDATEs on the
+  // row and re-evaluates this WHERE against the committed version, so a second
+  // caller still sees the fresh claimedAt and loses.
+  const staleBefore = new Date(Date.now() - CLAIM_PENDING_TTL_MS);
+  const reserved = await db.kioskResult.updateMany({
+    where: {
+      id: resultId,
+      OR: [
+        { claimCode: null },
+        { claimCode: CLAIM_PENDING, claimedAt: null },
+        { claimCode: CLAIM_PENDING, claimedAt: { lt: staleBefore } },
+      ],
+    },
+    data: { claimCode: CLAIM_PENDING, claimEmail: email, claimedAt: new Date() },
+  });
+  if (reserved.count !== 1) return { ok: false, error: 'Claiming your reward — please try again in a moment.' };
 
   const pct = Math.max(1, Math.min(100, await getConfigNumber('kiosk_discount_pct')));
   const days = Math.max(1, await getConfigNumber('kiosk_discount_days'));
@@ -325,10 +366,21 @@ export async function claimKioskDiscount(resultId: string, emailRaw: string, fir
   try {
     code = await createPersonalCode({ campaignId: await getOohCampaignId(), email, discountType: 'PERCENT', percent: pct, expiresAt, label: 'Storefront Skin & Smile (OOH)' });
   } catch (e) {
+    // Release the reservation so a retry can mint a fresh code instead of
+    // being stuck behind a permanent CLAIM_PENDING with nothing to show for it.
+    // This release is best-effort and often fails for the same reason the mint
+    // did (the database being unreachable), which is exactly why the reservation
+    // also expires on its own after CLAIM_PENDING_TTL_MS.
+    await db.kioskResult.update({ where: { id: resultId }, data: { claimCode: null, claimEmail: null, claimedAt: null } })
+      .catch((releaseErr) => console.error('[kiosk] could not release claim reservation for result', resultId, (releaseErr as Error)?.message));
     return { ok: false, error: (e as Error)?.message || 'Could not issue your code — please try again.' };
   }
 
-  await db.kioskResult.update({ where: { id: resultId }, data: { claimCode: code, claimEmail: email, claimedAt: new Date() } }).catch(() => {});
+  // If this write is lost the visitor still gets the code below, but the row
+  // stays at CLAIM_PENDING and a later retry will mint a second one — worth a
+  // log line rather than swallowing it silently.
+  await db.kioskResult.update({ where: { id: resultId }, data: { claimCode: code } })
+    .catch((writeErr) => console.error('[kiosk] minted claim code but could not record it on result', resultId, (writeErr as Error)?.message));
   await logKioskEvent('claimed', result.session.id, result.session.ipHash);
 
   // Email the code (best-effort).
