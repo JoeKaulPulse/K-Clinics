@@ -12,7 +12,8 @@ import { escapeHtml } from '@/lib/sanitize';
 export type LinkRef = { label: string; url: string };
 export type AttachmentRef = { label: string; url: string; sizeBytes?: number; kind?: string };
 export type LessonType = 'TEXT' | 'VIDEO' | 'AUDIO' | 'PDF' | 'DOWNLOAD' | 'EMBED';
-export type HomeworkSubmissionView = { files: string[]; note: string | null; status: string; feedback: string | null };
+export type HomeworkHistoryEntry = { files: string[]; note: string | null; status: string; feedback: string | null; reviewedAt: string | null; createdAt: string };
+export type HomeworkSubmissionView = { files: string[]; note: string | null; status: string; feedback: string | null; history: HomeworkHistoryEntry[] };
 export type LessonView = {
   id: string; title: string; order: number; durationMin: number | null; minSeconds: number | null;
   type: LessonType; videoUrl: string | null; captionsUrl: string | null; audioUrl: string | null; embedUrl: string | null; attachments: AttachmentRef[]; videoPositionSec: number;
@@ -130,7 +131,7 @@ export async function getCourseLearning(slug: string, studentId: string): Promis
     }),
     db.lessonProgress.findMany({ where: { studentId, lesson: { module: { courseId: course.id } } }, select: { lessonId: true } }),
     db.quizAttempt.findMany({ where: { studentId, quiz: { module: { courseId: course.id } } }, select: { quizId: true, scorePct: true, passed: true } }),
-    db.homeworkSubmission.findMany({ where: { studentId, lesson: { module: { courseId: course.id } } }, select: { lessonId: true, files: true, note: true, status: true, feedback: true } }),
+    db.homeworkSubmission.findMany({ where: { studentId, lesson: { module: { courseId: course.id } } }, select: { id: true, lessonId: true, files: true, note: true, status: true, feedback: true } }),
     // BLD-1139: staff-granted extras raise the visible attempt allowance.
     db.quizAttemptGrant.findMany({ where: { studentId, quiz: { module: { courseId: course.id } } }, select: { quizId: true, extra: true } }),
   ]);
@@ -139,7 +140,18 @@ export async function getCourseLearning(slug: string, studentId: string): Promis
 
   const doneSet = new Set(doneRows.map((d) => d.lessonId));
   const posByLesson = new Map(playbackRows.map((p) => [p.lessonId, p.positionSec]));
-  const subByLesson = new Map(homeworkRows.map((h) => [h.lessonId, { files: h.files, note: h.note, status: h.status as string, feedback: h.feedback }]));
+  // BLD-1620: prior submissions/feedback a resubmit would otherwise overwrite —
+  // kept visible as history rather than deleted.
+  const historyRows = homeworkRows.length
+    ? await db.homeworkSubmissionHistory.findMany({ where: { submissionId: { in: homeworkRows.map((h) => h.id) } }, orderBy: { createdAt: 'desc' } })
+    : [];
+  const historyBySubmission = new Map<string, HomeworkHistoryEntry[]>();
+  for (const h of historyRows) {
+    const list = historyBySubmission.get(h.submissionId) ?? [];
+    list.push({ files: h.files, note: h.note, status: h.status as string, feedback: h.feedback, reviewedAt: h.reviewedAt?.toISOString() ?? null, createdAt: h.createdAt.toISOString() });
+    historyBySubmission.set(h.submissionId, list);
+  }
+  const subByLesson = new Map(homeworkRows.map((h) => [h.lessonId, { files: h.files, note: h.note, status: h.status as string, feedback: h.feedback, history: historyBySubmission.get(h.id) ?? [] }]));
   const bestByQuiz = new Map<string, { best: number; passed: boolean }>();
   const attemptsByQuiz = new Map<string, number>();
   for (const a of attempts) {
@@ -419,38 +431,64 @@ export async function notifyStudentReply(studentId: string, lessonId: string): P
   } catch { /* best-effort */ }
 }
 
-/** Best-effort email to a learner that their homework submission was graded
- *  (BLD-1296). Mirrors notifyStudentReply above: same emailShell template,
- *  same fire-and-forget call convention from the admin route. Skips SUBMITTED
- *  (that's the pre-grade state, not a grading outcome) so re-saving without
- *  changing status never re-notifies. */
+/** Best-effort email + in-app notification to a learner that their homework
+ *  submission was graded (BLD-1296, extended by BLD-1620 with the in-app side
+ *  and clearer per-outcome copy). Mirrors notifyStudentReply above: same
+ *  emailShell template, same fire-and-forget call convention from the admin
+ *  route. Skips SUBMITTED (that's the pre-grade state — the outcome of a
+ *  resubmission, not a grading outcome) so re-saving without changing status
+ *  never re-notifies. */
 export async function notifyHomeworkGraded(submissionId: string): Promise<void> {
   const sub = await db.homeworkSubmission.findUnique({
     where: { id: submissionId },
     select: {
+      studentId: true,
       status: true,
       feedback: true,
       student: { select: { email: true, firstName: true } },
       lesson: { select: { title: true, module: { select: { course: { select: { slug: true, title: true } } } } } },
     },
   });
-  if (!sub?.student?.email || !sub.lesson || sub.status === 'SUBMITTED') return;
+  // The email address gates only the email below — the in-app notification must
+  // still fire for a trainee whose record has no deliverable address.
+  if (!sub || !sub.lesson || sub.status === 'SUBMITTED') return;
 
   const outcome = sub.status === 'APPROVED'
-    ? { verb: 'approved', line: 'Your submission has been <strong>approved</strong> — nice work.' }
+    ? {
+        verb: 'approved', kind: 'homework_approved' as const,
+        line: 'Your submission has been <strong>approved</strong> — nice work. No further action is needed.',
+        notifTitle: 'Homework approved', notifBody: `Your homework for "${sub.lesson.title}" was approved — no further action is required.`,
+      }
     : sub.status === 'NEEDS_REVISION'
-      ? { verb: 'sent back for revision', line: 'Your trainer has asked you to <strong>revise and resubmit</strong> this homework.' }
-      : { verb: 'reviewed', line: 'Your trainer has reviewed your submission.' };
+      ? {
+          verb: 'sent back for revision', kind: 'homework_needs_revision' as const,
+          line: 'Your trainer has asked you to <strong>revise and resubmit</strong> this homework — changes are required.',
+          notifTitle: 'Changes required: homework needs revision', notifBody: `Your trainer asked for changes to your homework for "${sub.lesson.title}". Please revise and resubmit it.`,
+        }
+      : {
+          verb: 'reviewed', kind: 'homework_reviewed' as const,
+          line: 'Your trainer has reviewed your submission.',
+          notifTitle: 'Homework reviewed', notifBody: `Your trainer reviewed your homework for "${sub.lesson.title}" and left feedback.`,
+        };
 
   const base = process.env.NEXT_PUBLIC_SITE_URL || process.env.NEXT_PUBLIC_BASE_URL || 'https://kclinics.co.uk';
-  const url = `${base}/academy/learn/${sub.lesson.module.course.slug}`;
+  const path = `/academy/learn/${sub.lesson.module.course.slug}`;
+  const url = `${base}${path}`;
+  // In-app notifications store a same-origin PATH (as the staff ones do): the
+  // bell hands it to router.push, so an absolute URL built from the deploy's
+  // env would bounce a preview/staging trainee onto production.
+  try {
+    const { notifyStudent } = await import('@/lib/academy-notifications');
+    await notifyStudent(sub.studentId, { kind: outcome.kind, title: outcome.notifTitle, body: outcome.notifBody, href: path });
+  } catch { /* best-effort */ }
+  if (!sub.student?.email) return;
   try {
     const { sendEmail, emailShell } = await import('@/lib/email');
     await sendEmail({
       to: sub.student.email,
       subject: `Homework ${outcome.verb} — ${sub.lesson.module.course.title}`,
       html: emailShell({
-        preheader: `Your homework for ${sub.lesson.title} was ${outcome.verb}.`,
+        preheader: `Your homework for ${escapeHtml(sub.lesson.title)} was ${outcome.verb}.`,
         body: `<h1 style="font-size:24px;margin:0 0 14px;">Your homework was ${outcome.verb}</h1>
           <p style="margin:0 0 12px;">Hi ${escapeHtml(sub.student.firstName || 'there')},</p>
           <p style="margin:0 0 12px;">${outcome.line} This was for <strong>${escapeHtml(sub.lesson.title)}</strong> in <strong>${escapeHtml(sub.lesson.module.course.title)}</strong>.</p>

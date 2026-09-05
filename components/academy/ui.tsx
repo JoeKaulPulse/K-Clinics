@@ -49,12 +49,13 @@ export function Stat({ label, value, className }: { label: ReactNode; value: Rea
 }
 
 /** Small status pill. Tones are semantic, not ad-hoc colours. */
-export function Pill({ children, tone = 'neutral', className }: { children: ReactNode; tone?: 'neutral' | 'gold' | 'good' | 'info'; className?: string }) {
+export function Pill({ children, tone = 'neutral', className }: { children: ReactNode; tone?: 'neutral' | 'gold' | 'good' | 'info' | 'warn'; className?: string }) {
   const tones = {
     neutral: 'bg-[var(--color-line)] text-[var(--color-stone)]',
     gold: 'bg-[var(--color-gold)]/15 text-[var(--color-gold-deep)]',
     good: 'bg-green-100 text-green-800',
     info: 'bg-sky-100 text-sky-800',
+    warn: 'bg-[var(--color-blush-deep)]/15 text-[var(--color-blush-deep)]',
   } as const;
   return <span className={cx('inline-block rounded-full px-2 py-0.5 text-[0.65rem] font-medium uppercase tracking-wide', tones[tone], className)}>{children}</span>;
 }

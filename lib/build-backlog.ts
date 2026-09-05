@@ -5014,6 +5014,19 @@ export const BUILD_BACKLOG: BacklogItem[] = [
       'Verified: npx tsc --noEmit and npm run build pass clean (DB-connection vars unset in-sandbox, as above). Independent max-effort review also confirmed scrollIntoView still works correctly under the new scroll lock (checked with Playwright) and that focus-stealing on open matches every other dialog in the app.',
     ],
   },
+  {
+    title: 'Student notifications & resubmission after homework review',
+    type: 'TASK', urgency: 'P1', status: 'IN_REVIEW', assignee: 'claude', pr: PR(1912),
+    value: 8, effort: 4,
+    detail: 'A tutor changing a homework submission\'s status or leaving feedback never told the student in-app (only email, BLD-1296), and resubmitting after Needs revision silently nulled the prior tutor feedback/files instead of keeping it visible. Also no dashboard-level signal that a submission needed changes -- only visible inside the lesson itself.',
+    notes: [
+      'Fix: new AcademyNotification model + lib/academy-notifications.ts + a portal bell (mirrors the staff notification system, scoped to students). notifyHomeworkGraded (lib/lms.ts) now fires the in-app notification alongside the existing email, with explicit "changes required" / "no further action needed" copy per outcome.',
+      'Fix: new HomeworkSubmissionHistory model -- resubmitting now snapshots the prior files/note/status/feedback (in a $transaction) before resetting to SUBMITTED, instead of nulling feedback in place. HomeworkPanel.tsx renders that history under a "Previous submissions" disclosure so it stays visible rather than being deleted.',
+      'Fix: the trainee portal\'s "Needs your attention" section now lists any homework marked Needs revision, linking to the lesson. Resubmission upload + the tutor-facing "homework submitted" in-app notification already existed and were not changed.',
+      'Both new tables are additive only (no @unique, no destructive changes) -- safe under the non-destructive prisma db push deploy gate.',
+      'Verified: npx tsc --noEmit and npm run build pass clean (DB-connection vars unset in-sandbox -- confirmed a network-policy limitation via a raw TCP timeout to the Neon host, not a schema issue; built with DB_SYNC_NONFATAL=true, the project\'s documented escape hatch for exactly this case).',
+    ],
+  },
 ];
 
 // A content hash over every item's title + status + PR, so ANY change (a new

@@ -68,6 +68,22 @@ export function HomeworkPanel({ lessonId, submission, tone = 'dark' }: { lessonI
           {submission.feedback && <p className={`mt-2 ${c.soft}`}><span className={c.faint}>Tutor feedback:</span> {submission.feedback}</p>}
         </div>
       )}
+      {submission && submission.history.length > 0 && (
+        <details className="mb-3">
+          <summary className={`cursor-pointer text-sm ${c.faint}`}>Previous submissions ({submission.history.length})</summary>
+          <ul className="mt-2 space-y-2">
+            {submission.history.map((h, i) => (
+              <li key={i} className={`rounded-[var(--radius-md)] border p-3 text-sm ${c.sub}`}>
+                <p className={`font-medium ${c.strong}`}>{STATUS_LABEL[h.status] ?? h.status}</p>
+                {h.files.length > 0 && (
+                  <ul className="mt-2 space-y-1">{h.files.map((u) => <li key={u}><a href={u} target="_blank" rel="noreferrer" className={`underline ${c.fileLink}`}>{fileName(u)}</a></li>)}</ul>
+                )}
+                {h.feedback && <p className={`mt-2 ${c.soft}`}><span className={c.faint}>Tutor feedback:</span> {h.feedback}</p>}
+              </li>
+            ))}
+          </ul>
+        </details>
+      )}
       {!locked && (
         <div className="space-y-2">
           {submission?.status === 'NEEDS_REVISION' && <p className={`text-sm ${c.notice}`}>Please revise your work and resubmit.</p>}

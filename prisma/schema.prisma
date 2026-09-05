@@ -2049,6 +2049,7 @@ model AcademyStudent {
   dailyActivity       DailyActivity[]
   passkeys            StudentPasskey[]
   homeworkSubmissions HomeworkSubmission[]
+  notifications       AcademyNotification[]
   fundingApplications FundingApplication[]
 
   @@unique([tenantId, email]) // ClinicOS Ring 1 (BLD-301): per-tenant email — replaces the global @unique
@@ -2271,9 +2272,48 @@ model HomeworkSubmission {
   createdAt  DateTime       @default(now())
   updatedAt  DateTime       @updatedAt
 
+  history HomeworkSubmissionHistory[]
+
   @@index([lessonId, status])
   @@index([studentId])
   @@index([tenantId])
+}
+
+// BLD-1620: a snapshot of a HomeworkSubmission taken right before the student
+// resubmits over it, so the prior tutor feedback and file set stay visible in
+// the UI instead of being overwritten by the reset-to-SUBMITTED update in
+// app/api/academy/homework/route.ts.
+model HomeworkSubmissionHistory {
+  id           String             @id @default(cuid())
+  submission   HomeworkSubmission @relation(fields: [submissionId], references: [id], onDelete: Cascade)
+  submissionId String
+  files        String[]           @default([])
+  note         String?
+  status       HomeworkStatus
+  feedback     String?
+  reviewedBy   String?
+  reviewedAt   DateTime?
+  createdAt    DateTime           @default(now())
+
+  @@index([submissionId, createdAt])
+}
+
+// BLD-1620: in-app notifications for academy students (homework reviewed /
+// needs revision / approved). Mirrors StaffNotification but scoped to
+// AcademyStudent; shown in the trainee portal bell. See lib/academy-notifications.ts.
+model AcademyNotification {
+  id        String         @id @default(cuid())
+  student   AcademyStudent @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  studentId String
+  kind      String // homework_reviewed | homework_needs_revision | homework_approved
+  title     String
+  body      String?        @db.Text
+  href      String?
+  readAt    DateTime?
+  createdAt DateTime       @default(now())
+
+  @@index([studentId, readAt])
+  @@index([studentId, createdAt])
 }
 
 model Quiz {

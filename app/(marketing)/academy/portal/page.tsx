@@ -112,6 +112,13 @@ export default async function AcademyPortalPage() {
     orderBy: { updatedAt: 'desc' },
     include: { course: { select: { title: true } } },
   });
+  // BLD-1620: homework a tutor sent back — highlighted on the dashboard so a
+  // trainee can't miss that changes are required.
+  const needsRevision = await db.homeworkSubmission.findMany({
+    where: { studentId: student.id, status: 'NEEDS_REVISION' },
+    orderBy: { updatedAt: 'desc' },
+    include: { lesson: { select: { title: true, module: { select: { course: { select: { slug: true, title: true } } } } } } },
+  });
   // Don't greet a brand-new trainee with a wall of zeroes — only show the
   // gamification snapshot once they're actually studying or have earned XP.
   const showGamification = activeWithContent.length > 0 || standing.xp > 0;
@@ -137,11 +144,23 @@ export default async function AcademyPortalPage() {
         );
       })()}
 
-      {/* Needs your attention: offers to accept + balances to pay */}
-      {(offers.length > 0 || balances.length > 0) && (
+      {/* Needs your attention: homework sent back + offers to accept + balances to pay */}
+      {(needsRevision.length > 0 || offers.length > 0 || balances.length > 0) && (
         <section className="mb-8">
           <SectionTitle>Needs your attention</SectionTitle>
           <div className="space-y-3">
+            {needsRevision.map((h) => (
+              <Card key={h.id} accent className="flex flex-wrap items-center justify-between gap-3 p-4">
+                <div>
+                  <p className="flex items-center gap-2 font-medium text-[var(--color-ink)]">
+                    {h.lesson.title}
+                    <Pill tone="warn">Needs revision</Pill>
+                  </p>
+                  <p className="text-sm text-[var(--color-stone)]">{h.lesson.module.course.title} · your tutor asked for changes — resubmit to continue</p>
+                </div>
+                <AButton href={`/academy/learn/${h.lesson.module.course.slug}`} className="shrink-0">Review &amp; resubmit →</AButton>
+              </Card>
+            ))}
             {offers.map((e) => { const m = money.get(e.id)!; return (
               <Card key={e.id} accent className="flex flex-wrap items-center justify-between gap-3 p-4">
                 <div>
