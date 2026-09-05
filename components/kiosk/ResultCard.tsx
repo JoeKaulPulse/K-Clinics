@@ -5,6 +5,24 @@ import { Logo } from '@/components/brand/Logo';
 import { ScoreRing } from './ScoreRing';
 import { ShareButtons } from './ShareButtons';
 
+// BLD-1638: lib/kiosk-ai.ts's ALLOWED_TREATMENTS is a fixed, whitelisted list
+// of 11 generic AI-suggestion names -- most map to an exact or clearly
+// corresponding catalogue page (lib/treatments.ts). "LED Light Therapy" has no
+// standalone K Clinics treatment page today, so it is left unlinked rather
+// than pointed at an unrelated one.
+const KIOSK_TREATMENT_SLUG: Record<string, string> = {
+  'HydraFacial': 'hydraglow-facial',
+  'Chemical Peel': 'face-treatments',
+  'Microneedling': 'face-treatments',
+  'Anti-Wrinkle Injections': 'cosmetic-injections',
+  'Dermal Fillers': 'cosmetic-injections',
+  'Lip Fillers': 'cosmetic-injections',
+  'Teeth Whitening': 'teeth-whitening',
+  'Composite Bonding': 'composite-bonding',
+  'Laser Hair Removal': 'laser-hair-removal',
+  'IPL Photorejuvenation': 'ipl-photorejuvenation',
+};
+
 export type KioskAnnotation = {
   area?: 'skin' | 'smile' | string;
   photoIndex?: number;
@@ -93,14 +111,30 @@ export function ResultCard({
         <div className="mt-6">
           <p className="text-xs uppercase tracking-wide text-[var(--color-stone)]">Personalised for you</p>
           <div className="mt-2 flex flex-wrap gap-2">
-            {result.treatments.map((t) => (
-              <span key={t} className="rounded-full bg-[var(--color-bone)] px-3 py-1 text-sm text-[var(--color-ink)]">
-                {t}
-              </span>
-            ))}
+            {result.treatments.map((t) => {
+              const slug = KIOSK_TREATMENT_SLUG[t];
+              const className = 'rounded-full bg-[var(--color-bone)] px-3 py-1 text-sm text-[var(--color-ink)]';
+              return slug ? (
+                <a key={t} href={`/book?treatment=${slug}`} className={`${className} transition hover:bg-[var(--color-gold)]/20`}>
+                  {t}
+                </a>
+              ) : (
+                <span key={t} className={className}>{t}</span>
+              );
+            })}
           </div>
         </div>
       )}
+
+      {/* BLD-1638: a persistent path to booking, independent of the share
+          gate -- previously a visitor who saw their result but didn't share
+          + claim a reward had no way to book at all. */}
+      <a
+        href="/book"
+        className="mt-6 block rounded-[var(--radius-md)] border-2 border-[var(--color-ink)] px-4 py-4 text-center text-base font-medium text-[var(--color-ink)] transition hover:bg-[var(--color-ink)] hover:text-[var(--color-porcelain)]"
+      >
+        Book your treatment →
+      </a>
 
       {showShare && (
         <div className="mt-7">

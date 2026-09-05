@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
+import { trackLead } from '@/lib/analytics-events';
 
 // Share-to-claim reward: after sharing, the visitor enters their name + email to
 // create an account and receive a single-use discount code (issued + emailed by
@@ -20,13 +21,19 @@ export function ClaimReward({ resultId, hasShared = false }: { resultId: string;
   async function claim() {
     if (busy) return;
     setBusy(true); setError('');
+    // BLD-1637: shared with the server-side Lead event (sendLead) so Meta
+    // CAPI/GA4 can dedupe against this browser pixel — same pattern as
+    // ConsultForm/GroupBookingForm/TreatmentFinder.
+    const eventId = globalThis.crypto.randomUUID();
     try {
       const r = await fetch(`/api/kiosk/results/${resultId}/claim`, {
         method: 'POST', headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ email, firstName, marketingOptIn }),
+        body: JSON.stringify({ email, firstName, marketingOptIn, eventId }),
       }).then((x) => x.json());
-      if (r.ok) setDone({ code: r.code, pct: r.pct, days: r.days });
-      else setError(r.error || 'Could not claim — please try again.');
+      if (r.ok) {
+        setDone({ code: r.code, pct: r.pct, days: r.days });
+        try { trackLead({ eventId: r.eventId || eventId, detail: { source: 'kiosk' } }); } catch { /* analytics best-effort */ }
+      } else setError(r.error || 'Could not claim — please try again.');
     } catch { setError('Network error — please try again.'); }
     finally { setBusy(false); }
   }

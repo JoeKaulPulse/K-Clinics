@@ -14,6 +14,22 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   }
   const { id } = await params;
   const body = await req.json().catch(() => ({}));
-  const r = await claimKioskDiscount(id, String(body?.email || ''), String(body?.firstName || ''), Boolean(body?.marketingOptIn));
-  return NextResponse.json(r, { status: r.ok ? 200 : 400 });
+  const email = String(body?.email || '');
+  const marketingOptIn = Boolean(body?.marketingOptIn);
+  const r = await claimKioskDiscount(id, email, String(body?.firstName || ''), marketingOptIn);
+  if (!r.ok) return NextResponse.json(r, { status: 400 });
+
+  // BLD-1637: the kiosk's actual conversion (discount claim) never produced a
+  // server-side Lead event — same pattern as /api/consult and /api/finder-lead.
+  // No email forwarded to Meta's advanced matching unless the visitor's own
+  // marketing tick was on (ConsultForm convention).
+  const eventId = typeof body?.eventId === 'string' && body.eventId ? body.eventId : globalThis.crypto.randomUUID();
+  try {
+    const { sendLead } = await import('@/lib/conversions');
+    const { consentFromCookieHeader } = await import('@/lib/attribution');
+    const { analyticsConsent, marketingConsent } = consentFromCookieHeader(req.headers.get('cookie'));
+    await sendLead({ eventId, email: marketingOptIn ? email : null, sourceUrl: req.headers.get('referer'), analyticsConsent, marketingConsent });
+  } catch { /* best-effort */ }
+
+  return NextResponse.json({ ...r, eventId });
 }

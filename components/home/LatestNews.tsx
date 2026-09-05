@@ -26,8 +26,15 @@ export async function LatestNews() {
           const body = (
             <article className="flex h-full flex-col overflow-hidden rounded-[var(--radius-xl)] border border-[var(--color-line)] bg-[var(--color-porcelain)] transition-colors hover:border-[var(--color-gold)]">
               {p.mediaUrl && (
+                // BLD-1643: a real content image (not decorative) -- alt text
+                // from the post's own summary/topic, not empty.
                 // eslint-disable-next-line @next/next/no-img-element -- Google CDN host isn't in next/image remotePatterns
-                <img src={p.mediaUrl} alt="" loading="lazy" className="aspect-[16/9] w-full object-cover" />
+                <img
+                  src={p.mediaUrl}
+                  alt={p.summary ? p.summary.slice(0, 150) : `${TOPIC_LABEL[p.topicType || 'STANDARD'] || 'News'} from K Clinics`}
+                  loading="lazy"
+                  className="aspect-[16/9] w-full object-cover"
+                />
               )}
               <div className="flex flex-1 flex-col p-6">
                 <p className="eyebrow mb-3 text-[var(--color-gold-deep)]">
