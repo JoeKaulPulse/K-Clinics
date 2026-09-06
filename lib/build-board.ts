@@ -923,6 +923,41 @@ export async function pushToGithub(id: string, actor: string) {
 
 const veRank = (i: { value: number | null; effort: number | null }) => (i.value && i.effort ? i.value / i.effort : 0);
 
+// BLD-1582: stale-claim recovery, mirroring the kiosk session's
+// analyzingSince + 90s-stale reclaim (app/api/kiosk/sessions/[token]/analyze/route.ts)
+// -- if a routine session dies mid-flight with an item claimed IN_PROGRESS, the
+// row otherwise wedges there forever with no recovery. Reuses `updatedAt`
+// rather than adding a schema field: it is a Prisma `@updatedAt` column, so it
+// is stamped fresh the moment updateBuildItem() flips status to IN_PROGRESS,
+// and every subsequent board write (a comment, a patch) bumps it again while
+// the session is genuinely still active. A session that dies simply stops
+// writing, so updatedAt freezes and ages past the threshold: dead, not slow.
+// A build task runs far longer than a kiosk photo analysis, so the threshold
+// is hours, not seconds.
+const STALE_IN_PROGRESS_MS = 4 * 3600_000; // 4 hours
+
+/** Requeue any `claude`-owned item stuck IN_PROGRESS past STALE_IN_PROGRESS_MS
+ *  back to TRIAGE, so a dead routine session's claim doesn't wedge the item off
+ *  the actionable queue indefinitely. Best-effort and additive: called before
+ *  the queue is read, never blocks it. */
+async function reclaimStaleBuildClaims(): Promise<void> {
+  const staleAt = new Date(Date.now() - STALE_IN_PROGRESS_MS);
+  const stale = await db.buildItem.findMany({
+    where: { assignee: 'claude', status: 'IN_PROGRESS', updatedAt: { lt: staleAt } },
+    select: { id: true, title: true, updatedAt: true },
+  }).catch(() => []);
+  for (const item of stale) {
+    const hours = Math.round((Date.now() - +item.updatedAt) / 3600_000);
+    await db.buildItem.update({
+      where: { id: item.id },
+      data: {
+        status: 'TRIAGE',
+        events: { create: { kind: 'status', actor: 'system', body: `IN_PROGRESS → TRIAGE — no activity for ~${hours}h; reclaiming a stale claim (BLD-1582).` } },
+      },
+    }).catch(() => {});
+  }
+}
+
 /** What Claude should pick up next, straight from the board. Pure DB read. */
 export async function pendingWork() {
   const open = await db.buildItem.findMany({
@@ -957,6 +992,10 @@ export async function routineQueue(limit = 15, offset = 0) {
   // BLD-929: optional window offset so a long session can read past the top
   // `cap` items (the counts below still report the true totals for both lanes).
   const off = Math.max(0, Math.round(offset) || 0);
+  // BLD-1582: recover any claim a dead routine session left wedged IN_PROGRESS
+  // before reading the queue below, so a reclaimed item shows back up in
+  // `actionable` on this very call.
+  await reclaimStaleBuildClaims();
   const include = {
     subtasks: { orderBy: { order: 'asc' as const } },
     dependencies: { include: { dependsOn: { select: { title: true, status: true } } } },
