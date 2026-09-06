@@ -24,8 +24,17 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   const reason = typeof body.reason === 'string' ? body.reason.trim().slice(0, 2000) : '';
   const bookingIdIn = typeof body.bookingId === 'string' ? body.bookingId.trim() : '';
 
+  // Upper bound as well as lower: amountPence lands in a Postgres int4 column,
+  // so an unbounded value (a mistyped amount, or a deliberately huge one) blows
+  // past 2147483647 and Prisma throws where the caller expects a validation
+  // message. £1,000,000 is far beyond any real clinic balance and safely inside
+  // the column.
+  const MAX_DEBT_PENCE = 100_000_000;
   if (!Number.isFinite(amountPence) || amountPence <= 0) {
     return NextResponse.json({ ok: false, error: 'Enter an amount owed greater than £0.' }, { status: 422 });
+  }
+  if (amountPence > MAX_DEBT_PENCE) {
+    return NextResponse.json({ ok: false, error: 'That amount looks wrong — check the figure and try again.' }, { status: 422 });
   }
   if (!reason) {
     return NextResponse.json({ ok: false, error: 'Add a reason explaining why the payment is outstanding.' }, { status: 422 });
