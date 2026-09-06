@@ -221,7 +221,14 @@ export async function listClients(opts: { q?: string; sort?: string; dir?: 'asc'
   return { rows: finalRows, total, page, perPage, pages, hiddenTest };
 }
 
-export async function getClient(id: string) {
+export async function getClient(id: string, opts: { clinical?: boolean } = {}) {
+  // BLD-1464: the caller hides CLINICAL interactions from staff without
+  // `clients.clinical.view` AFTER this query returns. With the row cap below
+  // that filter would silently empty the timeline: on a clinical-heavy client
+  // the 30 most recent interactions can be all-CLINICAL, so front-desk staff
+  // would see nothing where they used to see every non-clinical note. Apply the
+  // same restriction here instead, so the cap counts only rows the viewer can
+  // actually be shown. Defaults to the restricted view — a caller must opt in.
   const c = await db.client.findUnique({
     where: { id },
     include: {
@@ -229,7 +236,11 @@ export async function getClient(id: string) {
       // consultation/interaction/appointment/booking on every open — capped
       // most-recent-first, mirroring the `emails: { take: 20 }` pattern below.
       consultations: { orderBy: { createdAt: 'desc' }, take: 30 },
-      interactions: { orderBy: { createdAt: 'desc' }, take: 30 },
+      interactions: {
+        where: opts.clinical ? undefined : { type: { not: 'CLINICAL' as const } },
+        orderBy: { createdAt: 'desc' },
+        take: 30,
+      },
       appointments: { orderBy: { scheduledAt: 'desc' }, take: 30 },
       bookings: { orderBy: { startAt: 'desc' }, take: 50 },
       emails: { orderBy: { createdAt: 'desc' }, take: 20 },

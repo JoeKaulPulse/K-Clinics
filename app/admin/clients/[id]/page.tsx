@@ -67,7 +67,12 @@ export default async function ClientDetail({ params }: { params: Promise<{ id: s
   const { id } = await params;
   const { getClient } = await import('@/lib/crm-data');
   const session = await getSession();
-  const c = await getClient(id);
+  // Clinical (health) data — gated on the revocable `clients.clinical.view`
+  // permission (not role), so a permission revoke actually withholds it here too,
+  // matching the SAR export. Resolved before getClient() so the interaction cap
+  // (BLD-1464) is applied to rows this viewer can actually see.
+  const clinical = sessionCan(session, 'clients.clinical.view');
+  const c = await getClient(id, { clinical });
   if (!c) notFound();
 
   const fullName = [c.firstName, c.lastName].filter(Boolean).join(' ');
@@ -85,10 +90,8 @@ export default async function ClientDetail({ params }: { params: Promise<{ id: s
   const { outstandingBalance } = await import('@/lib/outstanding');
   const owed = await outstandingBalance(c.id);
 
-  // Clinical (health) data — gated on the revocable `clients.clinical.view`
-  // permission (not role), so a permission revoke actually withholds it here too,
-  // matching the SAR export. Decrypt the latest version of each assessment type.
-  const clinical = sessionCan(session, 'clients.clinical.view');
+  // Decrypt the latest version of each assessment type (gated on `clinical`,
+  // resolved above alongside the getClient() call).
   // BLD-1511: getClient() decrypts medicalFlag/allergies/consultation notes/
   // allergyNote/interaction detail for display — audit the view (throttled
   // per viewer/client/hour), matching the booking-detail/consultation-detail
