@@ -239,13 +239,23 @@ The order inside Phase 2 matters and is fixed:
       1. Neon: create a branch named `pre-handover-YYYY-MM-DD` from the
          production branch (Neon console → Branches → Create branch). A branch is
          a full point-in-time copy that can be restored or promoted.
-      2. App export: sign in as OWNER at `/admin`, run Settings → Data export
-         (`/api/admin/export`, passkey step-up required). Store the JSON file in
-         the clinic's encrypted storage, not on a laptop desktop. This file
-         restores with `scripts/restore.mjs` and needs the same encryption keys.
+      2. App export: sign in as OWNER at `/admin` **on kclinics.co.uk** (not a
+         `*.vercel.app` URL — passkeys are bound to the domain), run Settings →
+         Data export (`/api/admin/export`, passkey step-up required, so the
+         OWNER running it must already have a registered passkey; Inna should
+         register hers now, Admin → Security → Passkeys). Store the JSON file
+         in the clinic's encrypted storage, not on a laptop desktop. This file
+         restores with `scripts/restore.mjs` and needs the same encryption
+         keys — but note the script currently fails under Prisma 7 (it builds
+         `new PrismaClient()` without the pg adapter) and does not advance the
+         four `seq` sequences; Appendix F §6 has the fix. Treat this export as
+         the human-readable backup, and the `pg_dump` below as the restorable
+         one.
       3. `pg_dump` of the production branch (`pg_dump "$DATABASE_URL_UNPOOLED"
          --no-owner --no-privileges -Fc -f kclinics-YYYY-MM-DD.dump`) — the
-         format Neon's own import path expects if path C is ever needed.
+         format Neon's own import path expects if path C is ever needed. It
+         preserves ids, sequences, the `_prisma_migrations` history and the
+         `pg_trgm` extension.
 - [ ] **4.4 File-store inventory.** List every blob (`vercel blob list` or the SDK
       `list()` loop) into a CSV with pathname, size, uploadedAt. Keep it with the
       backups; it is the checklist for Appendix B if the store has to be copied.
@@ -302,7 +312,21 @@ The order inside Phase 2 matters and is fixed:
       matters.
 - [ ] **4.10 Confirm the restore works.** Restore the `pg_dump` into a scratch
       Neon branch (or a local Postgres) and run `npx prisma migrate status`
-      against it. A backup that has never been restored is not a backup.
+      and `npx prisma migrate diff --from-config-datasource --to-schema
+      prisma/schema.prisma --exit-code` against it (exit 0). Point a local
+      `next dev` at it with the production `HEALTH_*` values and open one
+      health assessment, one consent certificate and one gallery image. A
+      backup that has never been restored is not a backup.
+- [ ] **4.11 Escrow the unrecoverable values.** Copy `HEALTH_ENCRYPTION_KEY`,
+      `HEALTH_ENCRYPTION_KEYS_OLD`, `HEALTH_HMAC_KEY`, `HEALTH_HMAC_KEYS_OLD`,
+      `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT` and
+      `KIOSK_IP_SALT` (or the legacy `ENCRYPTION_KEY`, if present) into their
+      own vault item labelled "never rotate without the runbook", and note
+      the active key id shown at Admin → Integrations → "Clinical data
+      encryption". If `KIOSK_IP_SALT` is not set today, set it now to the
+      value the app derives (or any fresh `openssl rand -hex 32`, accepting a
+      one-off reset of the kiosk anti-abuse counters) so that the later
+      keyring rotation does not silently change the salt.
 
 Done when: Appendix A has no blank "Today's owner" cells, three backups exist
 and one has been test-restored, the env export sits in the vault, the code PR
@@ -651,7 +675,9 @@ vault (4.5).
    - **Settings → Environment Variables**: the same names exist for Production
      and Preview as in the 4.5 screenshot. Any variable that came from a
      Marketplace integration (`POSTGRES_*`, `DATABASE_URL*`, `UPSTASH_*`,
-     `BLOB_READ_WRITE_TOKEN`) is still present.
+     `BLOB_READ_WRITE_TOKEN`) is still present; `USE_MIGRATIONS=true`,
+     `NEXT_PUBLIC_SITE_URL=https://kclinics.co.uk` and the `HEALTH_*` /
+     `VAPID_*` values are unchanged.
    - **Storage**: which resources came across (Neon, Upstash, Blob). Anything
      missing is handled in 7.4/7.5 and section 8. (Through the API the accept
      response lists `transferredStoreIds` and `resourceTransferErrors`; the
@@ -678,10 +704,13 @@ vault (4.5).
    build, new team) and watch it finish. `scripts/db-sync.mjs` will report
    "schema already in sync".
 
-Verify: https://kclinics.co.uk loads (check the footer commit hash via
-`/api/health` → `commit`); `/admin` login works; a PR opened on the new repo
-gets a Preview deployment comment; **Deployments** shows the redeploy as
-Current.
+Verify: https://kclinics.co.uk loads (check the commit hash via
+`/api/health` → `commit`); with `CRON_SECRET`, `/api/health` reports
+`database: connected` and `encryptionSelfTest: ok`; Admin → Integrations →
+"Clinical data encryption" shows the same active key id as noted in 4.11;
+`/admin` login works with password and with a passkey; a PR opened on the
+new repo gets a Preview deployment comment; **Deployments** shows the
+redeploy as Current.
 
 Rollback: transfer the project back to KAUL (same menu). Domains and env vars
 travel back. If the Git link is the only problem, the previous deployment keeps
@@ -1131,15 +1160,33 @@ current value is hex). Change the value in Vercel, redeploy, then tick.
    (comma-append if a value exists) and, where it exists,
    `HEALTH_HMAC_KEYS_OLD` = current `HEALTH_HMAC_KEY`; then set the new active
    key(s). Redeploy.
-3. Confirm health records, Admin → Credentials & keys and staff two-factor
-   still work (old data decrypts through the ring).
-4. Set `HEALTH_KEY_REENCRYPT=true` temporarily, or wait for the nightly cron;
-   watch Admin → Integrations → **Clinical data encryption** until **0
-   remaining** (a few nights for a large database).
-5. Remove the old values from both `*_KEYS_OLD` variables, redeploy, and set
-   `HEALTH_KEY_REENCRYPT` back to `false`.
-6. **Back the new keys up outside Vercel** (the vault, plus an offline copy
-   Inna keeps): a lost key is unrecoverable; `docs/KEY_ROTATION.md`.
+3. Confirm `/api/health` (with `CRON_SECRET`) reports `encryptionSelfTest:
+   ok`, that Admin → Integrations → **Clinical data encryption** shows the
+   new active key id with "re-encryption in progress, N remaining", and that
+   a health record, a consent certificate, a gallery image, Admin →
+   Credentials & keys and staff two-factor still work (old data decrypts
+   through the ring).
+4. The daily 08:00 cron re-encrypts 500 records per run; to go faster press
+   **Key re-encryption** in Admin → Security (500 per click, behind the
+   passkey step-up). Watch until **0 remaining** — several days for a large
+   database, gallery photos being the slow part. (`HEALTH_KEY_REENCRYPT` is
+   not needed: the sweep runs whenever a retired key is loaded.)
+5. Before removing the old key, check that no pre-keyring blobs remain — the
+   sweep does not count them. For each strict column (`HealthAssessment.cipher`,
+   `SignedConsent.cipher`, `ManagedSecret.valueEnc`,
+   `ExternalConnection.tokensEnc`, `AiAnalysis.findingsEnc`,
+   `AiAnalysisImage.dataEnc`, `BeforePhoto.dataEnc`, `Booking.clinicalNoteEnc`,
+   `Booking.sopChecklistEnc`, `AdminUser.totpSecret`,
+   `AdminUser.googleRefreshToken`) run
+   `SELECT count(*) FROM "<Table>" WHERE "<column>" !~ '^[0-9a-f]{8}\.'` and
+   expect 0. Then re-open a random old assessment, consent certificate and
+   gallery image.
+6. Remove the old values from both `*_KEYS_OLD` variables and redeploy.
+7. **Back the new keys up outside Vercel** (the vault, plus an offline copy
+   Inna keeps): a lost key is unrecoverable; `docs/KEY_ROTATION.md`. Any
+   backup taken before the rotation is encrypted with the old key: keep the
+   old key with that backup, labelled with its key id, or take a fresh
+   backup afterwards.
 
 ### 10.4 Accounts inside the app
 
@@ -1773,7 +1820,133 @@ Other apex records to preserve verbatim if the zone is ever exported: `google-si
 
 ## Appendix F — Secrets, encryption and what must never be lost
 
-APPENDIX-F-PLACEHOLDER
+#### The short version
+
+Two values have no recovery path if lost: `HEALTH_ENCRYPTION_KEY` (with anything in `HEALTH_ENCRYPTION_KEYS_OLD`) and, if it is set, `HEALTH_HMAC_KEY` (with `HEALTH_HMAC_KEYS_OLD`). Everything else is regenerable (signing secrets), re-issuable by a provider, or stored in the database. The VAPID key pair is the one other thing to carry across unchanged. Before any account moves, copy these into the clinic's password manager; Vercel env vars are configuration, not a backup (`docs/KEY_ROTATION.md:25`).
+
+#### Secret map
+
+| Env var | What it protects or derives | Read at | If lost / changed | Handover action |
+| --- | --- | --- | --- | --- |
+| `HEALTH_ENCRYPTION_KEY` | Active AES-256-GCM key; 32 bytes hex or base64; required in production. Encrypts every column in the next table. Also the kiosk IP salt source. | `lib/crypto.ts:34-53, 72-74`; `lib/kiosk.ts:86-87` | Lost: 30 columns unreadable, no recovery. Changed without `*_KEYS_OLD`: same. | Copy unchanged into the new project. Rotate last, via the keyring runbook below. |
+| `HEALTH_ENCRYPTION_KEYS_OLD` | Retired AES keys (comma-separated); populating it is what switches the sweep on. | `lib/crypto.ts:55-59, 73`; `lib/key-rotation.ts:239-241` | Removing a key that still owns rows makes those rows unreadable. | Carry across if populated; only ever remove at "0 remaining". |
+| `HEALTH_HMAC_KEY` / `HEALTH_HMAC_KEYS_OLD` | HMAC-SHA256 integrity over `HealthAssessment.cipher` and `SignedConsent.cipher`. When unset the AES ring doubles as the HMAC ring. | `lib/crypto.ts:78-82, 195-207`; `lib/health-assessments.ts:59-64, 161`; `lib/consent.ts:237`; `app/admin/consent/cert/[id]/page.tsx:24` | Rows still decrypt but show `tampered: true` / a tamper banner. | Confirm whether it is set in Vercel (`lib/integrations.ts:290` calls it optional; `docs/SECURITY.md:30-31` calls it required). Carry unchanged. Rotate only together with the AES key. |
+| `ADMIN_JWT_SECRET` | Staff session JWT (`kc_admin`, 12h absolute, 2h idle) and the passkey step-up unlock JWTs (`kc_su_export`, `kc_su_rotate-keys`, `kc_su_finance`). 4th-choice kiosk salt (never reached in production). JWT self-test only in `/api/health`. | `lib/auth.ts:72-86`; `lib/auth-edge.ts:48-55, 66-74`; `middleware.ts:228, 256-257`; `lib/webauthn.ts:46-50, 61-78`; `lib/kiosk.ts:86`; `app/api/health/route.ts:75` | Rotate: every staff member signed out, in-flight step-ups void. Nothing persistent breaks. | Regenerate (Admin -> Security -> "Generate secret", `app/api/admin/security/route.ts:36-38`, or `openssl rand -base64 32`). |
+| `CLIENT_JWT_SECRET` | Client portal JWT (`kc_client`, 7d). | `lib/auth.ts:129-143`; `lib/auth-edge.ts:57-64` | Clients signed out. | Regenerate. |
+| `ACADEMY_JWT_SECRET` | Academy JWT (`kc_academy`, 7d). Required in production; `.env.example:19` wrongly says it falls back. | `lib/auth-edge.ts:87-94`; `lib/auth.ts:173-183` | Trainees signed out. Missing: production build throws. | Regenerate; must exist before first deploy. |
+| `CRON_SECRET` | Bearer that Vercel Cron sends to `/api/cron/daily`, `/api/cron/dispatch`, `/api/cron/kiosk-cleanup`, `/api/health`, `/api/admin/api-health`; also the ops password-reset route and the default for `MW_BLOCK_SECRET`. | `lib/cron-auth.ts:21-29`; `app/api/cron/daily/route.ts:14-19`; `vercel.json`; `middleware.ts:141` | Missing or wrong: all crons 401 (no reminders, no re-encryption sweep, no backfills). | Regenerate in the new project; confirm the first 08:00 UTC run returns 200. |
+| `MW_BLOCK_SECRET` | Optional shared secret for the edge IP deny-list feed. If neither it nor `CRON_SECRET` is set the feed returns `[]` and blocking silently stops. Needs `NEXT_PUBLIC_SITE_URL` as the trusted self-fetch base. | `middleware.ts:133, 135-145`; `app/api/blocked-ips/route.ts:16-20` | Fail-open. | Regenerate or leave to the `CRON_SECRET` default. |
+| `KIOSK_IP_SALT` (legacy name `ENCRYPTION_KEY`) | Salt for kiosk IP pseudonymisation. Preference: `KIOSK_IP_SALT`, `ENCRYPTION_KEY`, sha256 of `HEALTH_ENCRYPTION_KEY`, sha256 of `ADMIN_JWT_SECRET`, throw. | `lib/kiosk.ts:54-67, 83-93`; `prisma/schema.prisma:4346, 4410` | Changing the salt resets per-IP kiosk limits and orphans stored `ipHash` values. Because it is derived from the health key today, rotating that key changes the salt. | Set `KIOSK_IP_SALT` explicitly before the keyring rotation. If an `ENCRYPTION_KEY` var exists in the current env, move its value into `KIOSK_IP_SALT` to keep counters. |
+| `VAPID_PUBLIC_KEY` / `VAPID_PRIVATE_KEY` / `VAPID_SUBJECT` | Web-push. Browsers subscribe with the public key; sends are signed with the private key. | `lib/push.ts:10-21`; `components/admin/NotificationPreferences.tsx:90`; `app/api/admin/notifications/push/route.ts:10-11` | Any change kills every `PushSubscription` (schema `4312-4323`); push services return 401/403, which `sendPush` does not prune (`lib/push.ts:53`), and the UI still reports "on" (`NotificationPreferences.tsx:77`). | Copy unchanged. Never rotate as part of the handover. Not tied to any provider account. |
+| `BOARD_QUEUE_TOKEN` (= `QA_TOKEN` in the Claude env), `GOOGLE_REVIEW_IMPORT_TOKEN` | Bearer tokens for `/api/build/queue`, `/api/kiosk/test-cleanup`, the review importer and the QA harness. Held in Joe's Claude Code environment. | `app/api/build/queue/route.ts:20`; `app/api/kiosk/test-cleanup/route.ts:17`; `app/api/admin/reviews/google/import/route.ts:19`; `scripts/visual-qa.mjs` | Rotating only affects unattended tooling. | Rotate at handover. |
+| `CLAUDE_ROUTINE_FIRE_URL` / `CLAUDE_ROUTINE_FIRE_TOKEN` | Fires Joe's Claude Code routine from the build board. | `lib/build-board.ts` | None on the clinic. | Remove unless the clinic sets up its own Anthropic account. |
+| `STRIPE_SECRET_KEY`, `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY`, `STRIPE_WEBHOOK_SECRET` | Payments. Env-only by design; the publishable key is baked into the browser bundle at build time. | `lib/secrets.ts:53-57` | Wrong webhook secret: payments do not complete (`docs/DEPLOY.md:180`). | Re-issue when the Stripe account settles; set in env and redeploy; update the webhook endpoint in Stripe. |
+| `RESEND_WEBHOOK_SECRET`, `RESEND_INBOUND_SECRET` | HMAC verification of the delivery and inbound webhooks (fail closed in production). | `app/api/webhooks/resend/route.ts:19-24`; `app/api/webhooks/chat-inbound/route.ts:23-28` | Delivery events and inbound chat replies rejected. | Re-issued per webhook endpoint when Resend moves. |
+| `TURNSTILE_SECRET_KEY` / `NEXT_PUBLIC_TURNSTILE_SITE_KEY` | Cloudflare Turnstile; widgets are per Cloudflare account; site key is baked at build. | `lib/security/guard.ts:116-125` (`.env.example:39-42` still says "fails open" — stale since BLD-344) | Unset or wrong in production: **fails closed** — every CAPTCHA-gated login attempt is rejected until the key is set. | New widget in the clinic's Cloudflare account, both keys in env, redeploy in the same change. |
+| `BLOB_READ_WRITE_TOKEN`, `UPSTASH_REDIS_REST_*`, `SENTRY_DSN`, `GITHUB_APP_*`, `GITHUB_TOKEN`, `YAY_WEBHOOK_SECRET`, `YAY_AUTH_PASSWORD`, Hostinger CalDAV vars, `INDEXNOW_KEY`, `DATABASE_URL` family | Provider-issued. | various | Follow the provider account. | Re-issue as each provider moves. Blob and Upstash are re-injected by Vercel Storage when the resource transfers with the project. |
+| `SEED_ADMIN_PASSWORD` | Seed script only. | `prisma/seed.mjs` | None. | Ignore. |
+
+Stored in the database and encrypted under the keyring (so they travel with the DB and need no redeploy to change): `ManagedSecret` rows for `RESEND_API_KEY`, `EMAIL_FROM`, `EMAIL_REPLY_TO`, `TWILIO_*`, `ANTHROPIC_API_KEY`, `DEEPGRAM_API_KEY`, `DEEPL_API_KEY`, `GOOGLE_ADS_*`, `GA4_PROPERTY_ID`, `SEARCH_CONSOLE_SITE`, `GOOGLE_PLACE_ID`, `GOOGLE_PLACES_API_KEY`, `GOOGLE_CLIENT_ID/SECRET`, `XERO_*`, `TRUELAYER_*`, `GOOGLE_WORKSPACE_*` (`lib/secrets.ts:15-58`; 30-second cache at `:76`; managed value beats env at `:94-102`). Re-enter these at Admin -> Settings -> Credentials as each provider is re-issued.
+
+Not dependent on any server secret: bcrypt password hashes, recovery codes and finance PINs (`prisma/schema.prisma:1093, 1139, 1141`); password-reset and activation tokens, which are sha256 of random bytes stored in the DB (`lib/client-auth.ts:331-334, 407-410`; `lib/academy-auth.ts:128-131, 238-239`); OAuth state cookies (`lib/oauth-state.ts:19-21`); WebAuthn challenge cookies (`app/api/admin/security/passkey/register-options/route.ts:42`; `app/api/admin/passkey-login/options/route.ts:21`).
+
+#### 1. What is unreadable if the keyring is lost, and whether the sweep covers it
+
+Every column below is written by the keyring and re-keyed by the BLD-1180 sweep (`lib/key-rotation.ts`). "Registry" means the `SWEEP` list at `key-rotation.ts:52-79`; "bespoke" means one of the four hand-written passes.
+
+| Model.field (schema line) | Kind | Written at | Sweep | Behaviour if the key is gone |
+| --- | --- | --- | --- | --- |
+| `HealthAssessment.cipher` + `integrityHash` (1764, 1766) | encryptJson + HMAC | `lib/health-assessments.ts:53-64` | bespoke `:153-163` (recomputes hash) | `readAssessment` returns null (`health-assessments.ts:169-173`); assessments vanish from clinical views and SAR exports |
+| `SignedConsent.cipher` + `integrityHash` (3892, 3893) | encryptJson + HMAC | `lib/consent.ts:232-237` | bespoke `:166-176` | certificate page shows tamper, body blank (`app/admin/consent/cert/[id]/page.tsx:22-26`) |
+| `ManagedSecret.valueEnc` (1689) | encryptJson | `lib/secrets.ts:137, 155` | registry `:60` | rows silently skipped (`secrets.ts:84`); every in-app credential falls back to env or "unset" |
+| `AdminUser.totpSecret` (1137) | encryptJson | `lib/security/twofa.ts:30` | registry `:61` | decrypt throws; only recovery codes work (`twofa.ts:59-71`); role-enforced 2FA users lock out once codes are spent |
+| `AdminUser.googleRefreshToken` (1120) | encryptJson | `lib/google-calendar.ts:11` | registry `:62` | refresh fails; clinicians reconnect Google Calendar |
+| `ExternalConnection.tokensEnc` (1659) | encryptJson | `lib/oauth-connections.ts:28` via `lib/xero.ts:61`, `lib/truelayer.ts:49`, `lib/google-business.ts:157, 186`, `app/api/admin/marketing/oauth/callback/route.ts:55-56` (Google Ads, Meta, TikTok), `lib/build-board.ts:855` (github) | registry `:56` | `getConnection` returns null (`oauth-connections.ts:42-44`); every integration shows disconnected |
+| `AiAnalysis.findingsEnc` (3203) | encryptJson | `lib/ai-consultation.ts:207` | registry `:57` | decrypt throws on read |
+| `AiAnalysisImage.dataEnc` (3225) | encryptJson | `lib/ai-consultation.ts:211` | registry `:58` | decrypt throws on read |
+| `BeforePhoto.dataEnc` (3912) | encryptJson | `app/api/admin/bookings/before-photo/route.ts:30` | registry `:59` | decrypt throws on read |
+| `Booking.clinicalNoteEnc` (672) | encryptJson | `app/admin/bookings/clinical-actions.ts:21` | registry `:54` | decrypt throws on read |
+| `Booking.sopChecklistEnc` (681) | encryptJson | `app/admin/bookings/clinical-actions.ts:202` | registry `:55` | decrypt throws on read |
+| `GalleryItem.beforeImage` / `afterImage` (3387, 3389) | encryptBytes (`KCB1` header) | `app/api/admin/gallery/route.ts:52-53, 83-84`; `lib/gallery-encrypt-backfill.ts:29-30` | bespoke `:198-219` | `decryptBytes` throws (`lib/crypto.ts:186`); public gallery images 500 |
+| `Client.medicalFlag` (372) | encClinical | `app/api/admin/medical-flag/route.ts:28` | registry `:64` | ciphertext shown as text (`lib/clinical-crypto.ts:27-34`) |
+| `Client.allergies` (315) | encClinical | `app/admin/clients/actions.ts:48`; `app/api/booking/start/route.ts:200` | registry `:65` | ciphertext shown as text |
+| `Consultation.concerns` / `message` / `medicalNotes` (523, 524, 527) | encClinical | `app/api/consult/route.ts:94-95`; `medicalNotes` only via the backfill today | registry `:66-68` | ciphertext shown as text |
+| `Booking.allergyNote` (638) | encClinical | `app/api/booking/start/route.ts:263` | registry `:69` | ciphertext shown as text |
+| `ConsultationNote.body` (542) | encClinical | `app/api/admin/consultations/[id]/notes/route.ts:63` | registry `:70` | ciphertext shown as text |
+| `ChatMessage.body` (3528) | encClinical | `app/api/chat/route.ts:38, 56`; `app/api/admin/chat/route.ts:97`; `app/api/webhooks/chat-inbound/route.ts:112`; `lib/chat-ai.ts:173, 235`; `lib/chat-email.ts:140` | registry `:71` | ciphertext shown as text |
+| `Interaction.detail` (555) | encClinical | `app/admin/actions.ts:21`; `app/api/consult/route.ts:107`; `lib/followup.ts:58` | registry `:72` | ciphertext shown as text |
+| `Task.detail` (1582) | encClinical | `lib/followup.ts:49` | registry `:73` | ciphertext shown as text |
+| `FollowUp.comment` (3181) | encClinical | `lib/followup.ts:61` | registry `:74` | ciphertext shown as text |
+| `Incident.descriptionEnc` (591) | encClinical | `app/api/admin/incidents/route.ts:104`; `app/admin/actions.ts:156, 258` | registry `:75` | ciphertext shown as text |
+| `CallRecord.notes` / `transcript` / `recordingUrl` (508, 500, 498) | encClinical | `app/api/admin/calls/route.ts:67`; `lib/yay.ts:157-158, 182, 184` | registry `:76-78` | ciphertext shown as text |
+| `CallRecord.raw` (509, Json) | encClinical string in Json | `lib/yay.ts:194` | bespoke `:223-231` | ciphertext |
+
+Verdict on coverage: complete. Every `encryptJson`, `encClinical` and `encryptBytes` call outside the crypto libraries maps to a registry entry or a bespoke pass; the migrate-wp scripts write only `HealthAssessment` and `SignedConsent`. Four caveats that are not column omissions:
+
+1. HMAC-only rotation is never swept. `integrityHash` is recomputed only for rows whose cipher sits on a retired AES key id (`key-rotation.ts:30-34, 158, 171`). Rotate `HEALTH_HMAC_KEY` in the same change as the AES key, or leave it alone; an HMAC key rotated on its own must stay in `HEALTH_HMAC_KEYS_OLD` indefinitely.
+2. Pre-keyring 3-part blobs (`iv.tag.ct`, accepted by `decryptJson` at `lib/crypto.ts:119`) never match `staleWhere` and are never counted. Before removing a retired key, run on each strict column: `SELECT count(*) FROM "HealthAssessment" WHERE cipher !~ '^[0-9a-f]{8}\.'` (also `SignedConsent.cipher`, `ManagedSecret."valueEnc"`, `ExternalConnection."tokensEnc"`, `AiAnalysis."findingsEnc"`, `AiAnalysisImage."dataEnc"`, `BeforePhoto."dataEnc"`, `Booking."clinicalNoteEnc"`, `Booking."sopChecklistEnc"`, `AdminUser."totpSecret"`, `AdminUser."googleRefreshToken"`). Expect 0.
+3. `HEALTH_KEY_REENCRYPT=true` alone does nothing: `reencryptBatch` returns at `key-rotation.ts:150` when no retired key is loaded. `docs/KEY_ROTATION.md:21` and `.env.example:27` are stale.
+4. Legacy plaintext in the encClinical columns is out of the sweep's scope by design; the self-healing backfill covers seven columns only and has latched off (`lib/clinical-crypto-backfill.ts:29-46, 56`). Not a key-loss issue.
+
+#### 2. What `ADMIN_JWT_SECRET` derives beyond session signing
+
+- Staff session JWT, verified in middleware and `getSession` (`lib/auth.ts:72-86, 109-126`; `lib/auth-edge.ts:66-74`; `middleware.ts:228`).
+- Passkey step-up unlock tokens for the full export, manual key re-encryption and finance unlock (`lib/webauthn.ts:9, 46-50, 61-78`; consumers `app/api/admin/export/route.ts:19-24`, `app/api/admin/security/route.ts:43-48`, `lib/finance-lock.ts`).
+- Kiosk IP salt only as the 4th fallback (`lib/kiosk.ts:86`). Because `HEALTH_ENCRYPTION_KEY` is mandatory in production, that branch is never reached; the salt comes from the health key. Rotating `ADMIN_JWT_SECRET` does not touch kiosk hashes.
+- A JWT sign/verify self-test in `/api/health` and platform status (`app/api/health/route.ts:75`; `lib/platform-status.ts:69`).
+
+Effect of rotating: every staff member is signed out (sessions are 12h maximum anyway) and any step-up unlock in flight is void (3 min, finance 30 min). No stored data depends on it. `toKey` pads short values (`lib/auth-edge.ts:40-46`), but use 32+ bytes. `AdminUser.sessionEpoch` (`schema.prisma:1140`) gives "sign out everywhere" without a rotation.
+
+#### 3. Do passkeys survive the move?
+
+Yes, provided three things hold. The rpID is pinned to the registrable domain of `NEXT_PUBLIC_SITE_URL` (default `https://kclinics.co.uk`), with the apex and `www` as accepted origins (`lib/webauthn.ts:20-44`). Credentials live in `WebAuthnCredential` (`schema.prisma:1302-1315`) and `StudentPasskey` (`2065-2080`): `credentialId`, COSE `publicKey` bytes, `counter`, `transports`. Nothing in them depends on a server secret; the challenge cookies are unsigned random values.
+
+Conditions: (a) `NEXT_PUBLIC_SITE_URL` stays `https://kclinics.co.uk` in the new project; (b) the credential rows are carried across (the export encodes Bytes as base64; restore converts them back); (c) users sign in on `kclinics.co.uk`. Passkey login and step-up will not work on a `*.vercel.app` URL (origin mismatch), so verify the new deployment with password + TOTP there. A restored `counter` lower than the authenticator's is accepted; passkeys registered after the snapshot are gone and must be re-registered. Inna needs her own registered passkey before she can run the full export or the manual re-encrypt.
+
+#### 4. What breaks if VAPID keys change
+
+Every existing `PushSubscription` (`schema.prisma:4312-4323`) stops receiving: push services reject sends signed with a different private key (401/403), `sendPush` prunes only 404/410 (`lib/push.ts:53`), and the preferences UI still shows "on" because `getSubscription()` finds the stale browser subscription (`NotificationPreferences.tsx:73-77`). Staff would have to switch push off and on again on each device. The keys are not tied to any provider account, so copy `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY` and `VAPID_SUBJECT` unchanged if they are set (the feature ships dark; check the env).
+
+#### 5. Post-handover rotation order and the keyring runbook
+
+Order:
+
+1. Escrow. Put `HEALTH_ENCRYPTION_KEY`, `HEALTH_ENCRYPTION_KEYS_OLD`, `HEALTH_HMAC_KEY`, `HEALTH_HMAC_KEYS_OLD`, the VAPID pair and `KIOSK_IP_SALT`/`ENCRYPTION_KEY` (if present) into the clinic's password manager. Note the active key id from Admin -> Integrations -> "Clinical data encryption" (`app/admin/integrations/page.tsx:126-131`).
+2. Move the database and the Vercel project with identical `HEALTH_*` and `VAPID_*` values, `NEXT_PUBLIC_SITE_URL=https://kclinics.co.uk`, `USE_MIGRATIONS=true`, and an explicit `KIOSK_IP_SALT`. Verify: `/api/health` reports `encryptionSelfTest: ok` (`app/api/health/route.ts:89-94`), the same active key id, one assessment, one consent certificate (no tamper), one gallery image, and Admin -> Settings -> Credentials shows source "app".
+3. Regenerate in one redeploy: `ADMIN_JWT_SECRET`, `CLIENT_JWT_SECRET`, `ACADEMY_JWT_SECRET`, `CRON_SECRET`, `MW_BLOCK_SECRET`, `BOARD_QUEUE_TOKEN` (and `QA_TOKEN` wherever the harness runs), `GOOGLE_REVIEW_IMPORT_TOKEN`. Remove `CLAUDE_ROUTINE_FIRE_URL/TOKEN`. Deactivate Joe's `AdminUser` (do not delete; audit trail).
+4. Re-issue provider credentials as each account moves: Stripe (env + redeploy + webhook endpoint), Resend API key (Credentials page) and webhook secrets (env), Turnstile (env + redeploy), everything else via the Credentials page. Reconnect any OAuth integration whose client id changed.
+5. Last: rotate the health keyring. Joe's copy of the old key only matters with database access, which step 2 removed (`docs/KEY_ROTATION.md:24`), so this can be slow and careful.
+
+Keyring runbook (`docs/KEY_ROTATION.md:14-19`; `docs/SECURITY.md:73-77`):
+
+1. Generate: `openssl rand -hex 32` (64 hex chars; 44-char base64 also accepted, `lib/crypto.ts:34-39`). Generate a second value if `HEALTH_HMAC_KEY` is set and being rotated.
+2. Vercel -> Project -> Settings -> Environment Variables (Production): set `HEALTH_ENCRYPTION_KEYS_OLD` to the current `HEALTH_ENCRYPTION_KEY` value (comma-append if it already holds keys); then set `HEALTH_ENCRYPTION_KEY` to the new value. If rotating HMAC: `HEALTH_HMAC_KEYS_OLD` <- current `HEALTH_HMAC_KEY`, then `HEALTH_HMAC_KEY` <- new, in the same change. If `HEALTH_HMAC_KEY` is unset, leave it unset.
+3. Redeploy (env changes need a new deployment). Check `/api/health` self-test, and Admin -> Integrations -> "Clinical data encryption" now shows the new active key id and "Re-encryption in progress, N remaining" with a per-column breakdown (`app/admin/integrations/page.tsx:136-141`). Admin -> Security shows "Encryption key rotation: in progress" (`lib/security/dashboard.ts:30-38`).
+4. Let the daily cron migrate 500 records per run at 08:00 UTC (`lib/automations.ts:680-693`; `vercel.json`), or press "Key re-encryption" in Admin -> Security, which does 500 per click behind the `rotate-keys` passkey step-up (`app/api/admin/security/route.ts:40-56`). Gallery photos count per row and are large; expect several days on a big dataset.
+5. At "0 remaining": run the 3-part-blob check from section 1, re-open a random old assessment, consent certificate, gallery image and the Credentials page. Then clear the old value from `HEALTH_ENCRYPTION_KEYS_OLD` (and `HEALTH_HMAC_KEYS_OLD`), redeploy, and update the vault.
+6. Any export taken before the rotation is encrypted with the old key. Keep the old key with that backup, labelled with its key id, or take a fresh export afterwards.
+
+#### 6. Full export, `restore.mjs` and a database move
+
+Export: `GET /api/admin/export` (`app/api/admin/export/route.ts:9-44`) requires an OWNER session plus a fresh `kc_su_export` passkey unlock, is limited to 6 per hour, logs `DATA_EXPORTED`, and streams every Prisma model as one JSON document (`lib/data-export.ts:41-106`; format `kclinics-full-export@1`). Bytes are base64, BigInt strings, dates ISO. Encrypted fields are exported as ciphertext, so the restore ring must contain every key id present in the file. Not included: `_prisma_migrations`, sequence positions, the `pg_trgm` extension, and Blob binaries. `maxDuration` is 300s (`vercel.json`); `GalleryItem` bytes and `KioskSession.liveFrame` data URLs make the file large, so run it off-peak and fall back to `pg_dump` if it times out.
+
+Restore: `scripts/restore.mjs` inserts in FK order with `createMany({ skipDuplicates })` (`restore.mjs:45-70, 150`), converts Bytes/Date/BigInt back (`:97-112`), expects an empty database (`:12-14`), and needs the same keyring env (`:20-21`). Three problems to fix before relying on it:
+
+- It is broken under Prisma 7. `new PrismaClient()` at `restore.mjs:132` has no driver adapter; running it in this checkout throws "PrismaClient was instantiated without any options. A driver adapter is required to connect to your database." Patch: `import { PrismaPg } from '@prisma/adapter-pg'; const prisma = new PrismaClient({ adapter: new PrismaPg({ connectionString: process.env.DATABASE_URL }) });` then test with `--dry-run` on a Neon branch.
+- Ids: cuid string ids are preserved verbatim. The four `autoincrement()` columns (`Task.seq` 1579, `BuildItem.seq` 4132, `BuildProject.seq` 4188, `TaskAutomation.seq` 4665) are inserted with their exported values but the Postgres sequences are not advanced, so the next new row gets `seq` 1 and a duplicate `TSK-1`/`BLD-1`/`PRJ-1`/`AUT-1` ref (`lib/task-refs.ts:20-26`; the dedupe at `:113-121` re-derives from the same `seq`). After restore run, for each of the four tables: `SELECT setval(pg_get_serial_sequence('"Task"','seq'), COALESCE((SELECT MAX(seq) FROM "Task"),0)+1, false);`
+- Blob: media URLs stored in `MediaAsset.url/pathname` (`schema.prisma:3655-3656`), `KioskSession.photoUrl/photoUrls` (4347, 4363), portfolio, facility documents, build uploads, team chat and academy attachments (2222) point at the specific store hostname. A fresh store has a different hostname and there is no copy script. Transfer the store with the Vercel project (the accept-transfer response lists `transferredStoreIds`) rather than re-creating it.
+
+Preferred paths for the data itself, in order: (1) Vercel project transfer carrying the Marketplace Neon resource, so connection strings and data do not move at all; (2) `pg_dump`/`pg_restore` into a clinic-owned Neon project in AWS eu-west-2, which preserves `_prisma_migrations`, sequences, ids and the extension; (3) export + `restore.mjs` as the last resort. Neon's own project transfer is unavailable if the Neon organisation is Vercel-managed, which the `POSTGRES_PRISMA_URL`/`POSTGRES_URL_NON_POOLING` naming suggests it is.
+
+#### 7. Prisma migration state on a fresh Neon project
+
+`scripts/db-sync.mjs` runs only on production deploys (`:114-118`), picks a direct `postgres://` URL (`:73-83`), and with `USE_MIGRATIONS=true` first calls `probeBaselineState` (`:52-71`), which checks for `public."Tenant"` and a finished `0_init` row in `_prisma_migrations`. Three cases:
+
+- Empty database: `migrate deploy` runs all 72 migration folders (`0_init` plus 71 dated ones, `prisma/migrations/`), including `CREATE EXTENSION IF NOT EXISTS "pg_trgm"` (`20260727120000_client_search_trigram_indexes/migration.sql:4`; the Neon owner role can create it). This is the correct path for a new database: run `npx prisma migrate deploy` against the direct URL on the empty DB, then restore data.
+- Schema present but `0_init` not recorded (a database built with `prisma db push`): the guard runs `migrate resolve --applied 0_init` and then `migrate deploy` replays the other 71 migrations against objects that already exist; the build fails (`:160`) or, with `DB_SYNC_NONFATAL=true`, ships without a confirmed sync (`:97-101`). The README's "flip" narrative (`prisma/migrations/README.md`) predates those 71 migrations. Never build the new database with `db push` if `USE_MIGRATIONS=true` will be set.
+- History present (`pg_dump` or a project transfer copies `_prisma_migrations`): nothing to adopt; `migrate deploy` is a no-op.
+
+Also: `USE_MIGRATIONS` is an env var, not in `vercel.json`, so confirm it is `true` in the current project and set it in the new one; without it the fallback is `prisma db push` (`:163-239`), which is harmless on a migrate-built DB but drops history discipline. Verify the new DB with `npx prisma migrate status` and `npx prisma migrate diff --from-config-datasource --to-schema prisma/schema.prisma --exit-code` (exit 0; the same check db-sync uses at `:181`). The Ring 1d RLS SQL (`prisma/platform-migrations/ring1/0002_academy_rls.sql`) is deferred and not applied, so there is no out-of-band DDL to reproduce. The nightly residency check expects the DB host in `eu-west-2` unless `DB_APPROVED_REGIONS` is changed (`app/api/cron/daily/route.ts:336-348`).
 
 ## Appendix G — Official references
 
