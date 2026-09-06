@@ -286,9 +286,13 @@ The order inside Phase 2 matters and is fixed:
          format Neon's own import path expects if path C is ever needed. It
          preserves ids, sequences, the `_prisma_migrations` history and the
          `pg_trgm` extension.
-- [ ] **4.4 File-store inventory.** List every blob (`vercel blob list` or the SDK
-      `list()` loop) into a CSV with pathname, size, uploadedAt. Keep it with the
-      backups; it is the checklist for Appendix B if the store has to be copied.
+- [ ] **4.4 File-store inventory and backup.** List every blob (`vercel blob
+      list` or the SDK `list()` loop) into a CSV with pathname, size,
+      uploadedAt. Keep it with the backups; it is the checklist for Appendix B
+      if the store has to be copied. If the total size is practical (check the
+      CSV), also take a full copy with Vercel's documented backup loop
+      (`list` with cursor → `get` → write to encrypted storage) so the files
+      are never held in one place only during the move.
 - [ ] **4.5 Environment export.** From a linked checkout (`vercel link --scope
       kaul-joe --project k-clinics`): `vercel env pull .env.handover.production
       --environment=production` and the same for `preview`. Also screenshot
@@ -302,7 +306,11 @@ The order inside Phase 2 matters and is fixed:
       new-project fallback. Put the pulled files straight into the shared
       password manager vault (section 5.2) as a secure note, then delete the
       local copies. **These files are the crown jewels: they contain the
-      health-data encryption keys.**
+      health-data encryption keys.** While on the variables page, note any
+      row marked **Shared** (a team-level variable linked to the project):
+      shared variables belong to the KAUL team and are not expected to follow
+      the transfer, so they must be recreated as project variables in the new
+      team.
 - [ ] **4.6 Record the fixed identifiers** that must be reproduced or verified
       afterwards: Vercel project id `prj_KXAOC4uXaRNsYIiA8IwYGfiMYZUE`; the
       Neon project id, branch id and endpoint host; the Blob store id (the
@@ -482,8 +490,10 @@ Member invitation.
    → **Confirm**. (Pro is required: the site's every-5-minutes cron jobs and
    300-second functions are not allowed on Hobby, and a project can only be
    transferred into a team with a payment method on file. If Vercel offers a
-   free Pro *trial*, still add the card now: without it the team drops back
-   to Hobby after 14 days and the transfer can be refused.)
+   free Pro *trial*, decline it and choose paid Pro straight away — or at
+   least add the card now: without it the team drops back to Hobby after 14
+   days, owners cannot be changed during a trial, and the transfer can be
+   refused.)
 4. Billing details: team → **Settings** → **Billing** → **Payment Method →
    Add new card** if not already saved; add the company name `KCLINICS SKIN
    & LASER LIMITED`, address and company number on the same page.
@@ -829,9 +839,13 @@ vault (4.5).
      `VAPID_*` values are unchanged.
    - **Storage**: which resources came across. Expected: the **Neon**
      database (moves automatically with a Vercel-managed project, connection
-     strings unchanged); the **Blob store** does *not* move with the project
-     and has its own transfer (7.4); **Upstash** is not on Vercel's
-     resource-transfer list and is simply recreated (section 8). Anything
+     strings unchanged); the **Blob store** *may* move with the project
+     (the accept response lists moved stores in `transferredStoreIds`; `vercel
+     blob list-stores --all` on the new team shows it) and otherwise has its
+     own transfer (7.4); **Upstash** is not on Vercel's resource-transfer list
+     and is simply recreated (section 8). Also confirm no `prisma+postgres://`
+     URL (`PRISMA_DATABASE_URL`, `ACCELERATE_URL`) exists in any environment —
+     the runtime would prefer it over the Neon pooler. Anything
      missing is handled in 7.4/7.5 and section 8. (Through the API the accept
      response lists `transferredStoreIds`, `resourceTransferErrors` and
      `partnerCalls`; the dashboard shows the same as connected/absent.)
@@ -866,7 +880,16 @@ Verify: https://kclinics.co.uk loads (check the commit hash via
 "Clinical data encryption" shows the same active key id as noted in 4.11;
 `/admin` login works with password and with a passkey; a PR opened on the
 new repo gets a Preview deployment comment; **Deployments** shows the
-redeploy as Current.
+redeploy as Current. From a checkout linked to the new team: `vercel blob
+list-stores --all`, `vercel integration list k-clinics`, `vercel crons ls`
+(five jobs; `vercel crons run /api/health` fires one on demand) and
+`vercel project protection k-clinics` all report the expected state. Paid
+extras are chosen afresh by the accepting team — extra concurrent builds,
+password protection or a custom preview suffix on KAUL must be re-enabled
+(and paid for) on the K-Clinics team if they were in use; and any
+**Shared** (team-level) environment variable linked to the project on KAUL
+does not follow — check for "Shared" rows in KAUL's variable list before
+the transfer and recreate them as project variables.
 
 Rollback: transfer the project back to KAUL (same menu; Joe must still be a
 Member of the new team and an Owner of KAUL). Domains and env vars travel
@@ -879,15 +902,17 @@ docs; do not attempt it without Joe.
 
 ### 7.4 File store (Vercel Blob)
 
-The Blob store is **not** part of a project transfer; Vercel moves stores
-separately. Immediately after 7.3, with the **KAUL** team selected: Vercel
-dashboard → **Storage** (sidebar) → open the `k-clinics` Blob store → use the
-transfer option to choose the destination **K-Clinics** team → you land on
-the new team's Storage page. The store id (and so every file URL held in the
-database) is unchanged, and `BLOB_READ_WRITE_TOKEN` already came across with
-the environment variables. Then: store → **Projects** tab → confirm
-`k-clinics` is connected for Production and Preview (else **Connect to
-Project**).
+Vercel *may* move the Blob store together with the project (the accept
+response's `transferredStoreIds` lists any store it moved; on the new team
+`vercel blob list-stores --all` or the Storage tab shows it). If it did not
+move, Vercel moves stores separately: immediately after 7.3, with the
+**KAUL** team selected, Vercel dashboard → **Storage** (sidebar) → open the
+`k-clinics` Blob store → use the transfer option to choose the destination
+**K-Clinics** team → you land on the new team's Storage page. Either way the
+store id (and so every file URL held in the database) is unchanged, and
+`BLOB_READ_WRITE_TOKEN` already came across with the environment variables.
+Then: store → **Projects** tab → confirm `k-clinics` is connected for
+Production and Preview (else **Connect to Project**).
 
 - **If the store moved** (either automatically — check `transferredStoreIds`
   — or via the step above): nothing else to do now. Schedule BLD-1304 (a
@@ -947,7 +972,9 @@ first add plain copies of the four `DATABASE_URL*`/`POSTGRES_*` values as
 ordinary env vars (the running deployment keeps its baked-in values either
 way), disconnect, transfer, reconnect (`vercel integration resource connect
 <name> k-clinics -e production -e preview`), redeploy, then delete the plain
-copies. It is not reversible. If that is refused too, go to path C.
+copies. If the reconnect dialog offers to make the injected variables
+**Sensitive**, decline (or copy them to the vault first): Sensitive values
+can never be read back. It is not reversible. If that is refused too, go to path C.
 Note for decision D4: moving a Vercel-managed database into a Neon-native
 organisation is not self-serve — it is a Neon support ticket or a copy.
 
@@ -1570,7 +1597,7 @@ current value is hex). Change the value in Vercel, redeploy, then tick.
 | Secret | Where else it must be updated | Side effect | Done |
 | --- | --- | --- | --- |
 | `ADMIN_JWT_SECRET`, `CLIENT_JWT_SECRET`, `ACADEMY_JWT_SECRET` | nowhere | every staff member, client and student is signed out once; passkeys, passwords and two-factor keep working | [ ] |
-| `CRON_SECRET` | Claude/QA tooling if it uses it; any external uptime monitor calling `/api/health` with the bearer | none for users | [ ] |
+| `CRON_SECRET` | Claude/QA tooling if it uses it; any external uptime monitor calling `/api/health` with the bearer. The edge middleware's blocked-IP feed falls back to this value when `MW_BLOCK_SECRET` is unset, so rotate the two together (or set `MW_BLOCK_SECRET` explicitly) | none for users | [ ] |
 | `BOARD_QUEUE_TOKEN` (= `QA_TOKEN`) | the Claude Code environment, if retained (D6-a) | none | [ ] |
 | `GOOGLE_REVIEW_IMPORT_TOKEN`, `MIGRATE_TOKEN`, `MW_BLOCK_SECRET` | nowhere | none | [ ] |
 | `STRIPE_SECRET_KEY` | Stripe → Developers → API keys → **Roll key…** with an expiry of up to 12 hours, or replace with a **restricted key** (Balance read, Customers, SetupIntents/PaymentIntents, Charges/Refunds, Checkout) and delete the full key after the redeploy | none | [ ] |
@@ -1869,7 +1896,7 @@ Not Blob, no action: `GalleryItem.beforeImage/afterImage` (Bytes), `BeforePhoto.
 Vercel fixes a store's access tier when it is created. The code assumes one token, and asks for `private` in `lib/kiosk-blob.ts:100`, `lib/portfolio-blob.ts:91` and `PortfolioManager.tsx:106` while asking for `public` everywhere else.
 
 1. **One public store (status quo).** Media, academy, chat, board all work; kiosk photo analysis stays disabled (503 "temporarily unavailable") and portfolio photo uploads stay broken.
-2. **Two stores (recommended).** `kclinics-public` for everything currently public and `kclinics-private` for `kiosk/` and `portfolio/`. Code change (small): a second env var, e.g. `BLOB_PRIVATE_READ_WRITE_TOKEN`, passed as `token` in `lib/kiosk-blob.ts:14,100`, `lib/portfolio-blob.ts:33,69`, `lib/kiosk.ts:150`, `lib/portfolio.ts:261`, `app/api/academy/portfolio/blob-token/route.ts:18` (`handleUpload({ token })`), and a second light in `lib/api-health.ts`. This closes BLD-1304 and BLD-740.
+2. **Two stores (recommended).** `kclinics-public` for everything currently public and `kclinics-private` for `kiosk/` and `portfolio/`. Code change (small): a second env var, e.g. `BLOB_PRIVATE_READ_WRITE_TOKEN`, passed as `token` in `lib/kiosk-blob.ts:14,100`, `lib/portfolio-blob.ts:33,69`, `lib/kiosk.ts:150`, `lib/portfolio.ts:261`, `app/api/academy/portfolio/blob-token/route.ts:18` (`handleUpload({ token })`), and a second light in `lib/api-health.ts`. This closes BLD-1304 and BLD-740. One caveat for that change: the `remotePatterns` in `next.config.mjs:200-201` use a single `*`, which Next matches against one hostname label, so `<id>.private.blob.vercel-storage.com` would not pass `next/image` — harmless while private blobs are only served through the relay routes, but a constraint if that ever changes (the CSP wildcard at `:35` is fine).
 
 #### Option A: keep the store (Vercel transfers it with the project)
 
@@ -2181,7 +2208,7 @@ Column key. **Set today**: V-Prod = Vercel Production (required by code in produ
 
 #### How to export the current values safely
 
-1. Joe, on his own machine, links the project and pulls production values into a local file: `vercel link` then `vercel env pull .env.handover --environment=production` (Preview separately if anything differs). This is the only complete source; the dashboard hides sensitive values once saved.
+1. Joe, on his own machine, links the project and pulls production values into a local file: `vercel link` then `vercel env pull .env.handover --environment=production` (Preview separately if anything differs). This is the most complete source, but not a full one: variables saved as **Sensitive** are write-only and come back neither from the dashboard nor from `env pull` — for those the vault copy is the only record (see 4.5).
 2. Confirm the set of names against this catalogue with `vercel env ls production` and record any name that is present but not listed here, or listed here but absent.
 3. Hand the file over through a password-manager shared vault (1Password/Bitwarden) or a one-time, expiring secret link; never by email, WhatsApp, Google Doc or board comment. Split it: the DATA-BOUND block goes in its own item labelled "never rotate without the runbook".
 4. Inna (or whoever sets up the new Vercel project) enters DATA-BOUND and CONFIG values verbatim, ACCOUNT-BOUND values from the clinic's new provider accounts, and generates every ROTATE-AT-HANDOVER value fresh (`openssl rand -base64 32` for JWT/keys, `openssl rand -hex 24` for tokens). `NEXT_PUBLIC_*` and the Stripe pair must be present before the first build.
