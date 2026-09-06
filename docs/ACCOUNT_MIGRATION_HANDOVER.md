@@ -173,9 +173,10 @@ transferred between Neon organisations with its connection string unchanged.
 Only if a transfer is refused do we copy the data to a fresh Neon project
 (path C in 7.5). Moving a Vercel-managed database into a Neon-native account
 is not self-serve (a Neon support ticket, or a copy), so decide now whether
-"Neon billed through Vercel" is acceptable. Also choose the restore window:
-7 days (Launch) or 30 days (Scale, dearer) — the repo's disaster-recovery
-target says 30 days. *Recommended: keep the existing model, Neon billed via
+"Neon billed through Vercel" is acceptable. Also choose the restore-history window
+(Neon project Settings → Instant restore; it defaults to one day): up to 7
+days on Launch or 30 on Scale (dearer, and the retained history is billed
+per GB) — the repo's disaster-recovery target says 30 days. *Recommended: keep the existing model, Neon billed via
 Vercel; 7-day restore window plus weekly snapshots kept 90 days; never copy
 data unless forced.*
 
@@ -264,11 +265,12 @@ The order inside Phase 2 matters and is fixed:
       1. Neon: create a branch named `pre-handover-YYYY-MM-DD` from the
          production branch (Neon console → Branches → Create branch) **and** a
          manual snapshot with the same name (Backup & restore → Create
-         snapshot). Both are instant. Note the project's restore-window
-         setting (Settings → Restore window): Launch allows up to 7 days,
-         Scale up to 30; the repo's own target in
-         `prisma/migrations/README.md` is 30 days, which needs Scale or an
-         amended target (decision D4).
+         snapshot). Both are instant. Note the project's restore-history
+         window (project **Settings → Instant restore**; the default is one
+         day even on paid plans): Launch allows up to 7 days, Scale up to 30;
+         the repo's own target in `prisma/migrations/README.md` is 30 days,
+         which needs Scale *and* the slider moved deliberately — a transfer
+         keeps the setting, a rebuild does not (decision D4).
       2. App export: sign in as OWNER at `/admin` **on kclinics.co.uk** (not a
          `*.vercel.app` URL — passkeys are bound to the domain), run Settings →
          Data export (`/api/admin/export`, passkey step-up required, so the
@@ -506,6 +508,9 @@ Member invitation.
    **Install** (choose "no resource for now" if asked); then the same for
    **Upstash**. An integration belongs to the person who installed it and is
    switched off if that person leaves the team — so it must be you, not Joe.
+   If, during the transfer, Vercel asks you to **upgrade the Neon plan** so
+   the database fits (its restore-history window or autoscaling settings),
+   accept — it keeps the plan the database is on today.
 8. Note the team's slug (the word after `vercel.com/` when the team is
    selected) and send it to Joe.
 
@@ -946,8 +951,9 @@ First determine the path (Joe, five minutes):
   `Vercel: KAUL` and its plan settings are greyed out with "managed in
   Vercel".)
 - Otherwise open https://console.neon.tech, find the project holding the
-  `*.eu-west-2.aws.neon.tech` endpoint. If it is under Joe's personal account
-  or a normal organisation → **Neon-native** → path B.
+  `*.eu-west-2.aws.neon.tech` endpoint. If it sits in an ordinary Neon
+  organisation (Neon no longer has personal accounts; every project is in an
+  organisation) → **Neon-native** → path B.
 - Either way, record from Neon → project → **Settings → General**: project
   id, region (expect `aws-eu-west-2`), Postgres version, plan, restore window.
 
@@ -956,12 +962,24 @@ already installed on the new team by Inna (5.4 step 7), the resource travels
 with the project transfer in 7.3. Confirm in the new team: Storage shows the
 Neon resource, its **Settings** show billing on the K-Clinics team, and
 **Open in Neon** signs Inna into the Neon organisation `Vercel: K-Clinics`.
-Connection strings are unchanged; nothing to deploy. Inna: from Vercel →
-Storage → the Neon resource → **Open in Neon**, then in Neon set up a second
-admin (your backup admin) so the console is never single-person. Joe: create
-a new `NEON_API_KEY` in that organisation for `scripts/safe-migrate.mjs`
-(`NEON_PROJECT_ID` is unchanged), then on the old team uninstall Neon once
-nothing else uses it (`vercel integration remove neon`).
+Neon says the environment variables and settings transfer with it, and that
+Vercel prompts to **upgrade the Neon plan** if the destination cannot hold
+the project (autoscaling limits, restore-history window) — accept that
+prompt, it keeps today's plan. Nothing to deploy. Inna: from Vercel →
+Storage → the Neon resource → **Open in Neon** (members of a Vercel-managed
+Neon organisation are the Vercel team's members: Owner/Admin/Member become
+Neon Admins the first time they click Open in Neon, so add your backup admin
+to the Vercel team and have them click it once — that is how the console
+stops being single-person). Joe: create a new **personal** `NEON_API_KEY`
+with access to that organisation for `scripts/safe-migrate.mjs`
+(`NEON_PROJECT_ID` is unchanged). **Do not** delete the Neon resource or
+uninstall the Neon integration on the KAUL team yet: deleting a
+Vercel-managed Neon resource permanently deletes the Neon project and all
+its data, and uninstalling the integration deletes the `Vercel: KAUL`
+organisation. That happens only in section 12, after the store is confirmed
+transferred, Inna can open it, and the site is verified. (Also: Storage →
+Settings → Change Configuration on a Neon resource changes the plan for
+every database in that installation.)
 If the resource did **not** transfer (`resourceTransferErrors` names it),
 move it on its own: old team → Storage → the Neon resource → **Settings →
 Transfer a resource to another team** → destination `K-Clinics` (needs: the
@@ -987,13 +1005,18 @@ the destination organisation `K-Clinics` (Joe must be an Admin in the source
 and a member able to create projects in the destination, hence 5.5) →
 confirm. The destination plan must be the same tier or higher. Neon lists
 the project under the new organisation within a minute. Alternative when
-Joe is not a member of Inna's organisation: Joe creates a transfer request
-(Neon API `POST /projects/{id}/transfer_requests`) and sends Inna the claim
-link it returns (valid 24 hours); she accepts it signed in as herself.
+Joe cannot be a member of Inna's organisation: on the same Transfer page
+Joe clicks **Create claim link** and sends it to Inna; she opens it signed
+in as herself and chooses the destination organisation (the equivalent API
+route is a private preview and may be refused; the membership route above
+is the primary one, and Neon's transfer API in any case needs a *personal*
+key with access to both organisations, never an organisation key).
 Afterwards: Inna removes Joe (or downgrades him) under **People**; Joe
-creates a `NEON_API_KEY` in the new organisation for
+creates a personal `NEON_API_KEY` with access to the new organisation for
 `scripts/safe-migrate.mjs`; Inna re-adds the Vercel integration from the
-Neon side if it was used. Note: Neon does not allow Vercel-managed
+Neon side if it was used (a Neon project links to exactly one Vercel
+project, and the Neon-managed and Vercel-managed integrations cannot both
+be on the same Vercel project). Note: Neon does not allow Vercel-managed
 organisations as source or destination, which is why the two paths are
 separate.
 
@@ -1036,8 +1059,15 @@ is the one path with a write freeze. Do it in the evening:
    the `_prisma_migrations` history (72 rows), ids and sequences, so
    `prisma migrate status` shows every migration applied and
    `scripts/db-sync.mjs` will find nothing to do. It does **not** carry
-   roles: recreate any extra roles found in 4.6 (for example the read-only
-   role the Claude environment used) in Neon → Roles, and re-grant.
+   roles (`pg_dumpall` is unsupported on Neon): recreate any extra roles
+   found in 4.6 — the read-only role the Claude environment used, and the
+   `clinic_app` / `clinic_migrator` roles if the RLS roll-out in
+   `prisma/platform-migrations/ring1/RLS_ROLLOUT.md` was ever started — in
+   Neon → Roles with fresh passwords, and re-grant. Ownership errors during
+   the restore are expected and harmless (Neon's `neon_superuser` cannot
+   `ALTER OWNER`). Neon's Import Data Assistant (beta; up to 10 GB; Postgres
+   14–17; direct URL only) is an alternative to steps 4–5 for a small
+   database.
 5. Verify on the new database: the row counts from 4.6 match;
    `SELECT count(*) FROM _prisma_migrations` equals the old count;
    `SELECT extname FROM pg_extension` includes `pg_trgm`; from a laptop
@@ -1079,24 +1109,30 @@ step 3 freezes writes).
    Variables → search `PRISMA_DATABASE_URL`, `ACCELERATE_URL` and
    `prisma+postgres` in every environment — none should exist; delete any
    leftovers. `/admin` platform status should read "Direct postgres://".
-2. Sign in at https://console.prisma.io with every login Joe used
-   (GitHub, Google, email). From a terminal: `npx prisma platform auth
-   login`, `npx prisma platform workspace show`, then `npx prisma platform
-   project show --workspace <id>` for each workspace. List every project and
-   database.
+2. Sign in at https://console.prisma.io with every login Joe used (Prisma
+   Console signs in with GitHub). From a terminal: `npx prisma@latest auth
+   login`, `npx prisma@latest auth whoami`, `npx prisma@latest auth
+   workspace list`, then `npx prisma@latest project list` in each workspace
+   (`auth workspace use <id>`). List every project and database.
 3. For anything that held K-Clinics data (a Prisma Postgres database from
    the earlier set-up): it may contain an **old copy of clinic data**. Either
-   delete it (Console → project → Settings → Delete, or `npx prisma platform
-   project delete`) and record the deletion date in the data-protection
-   records, or, only if the clinic wants to keep it, transfer it — there is
-   no transfer button; the Management API `POST
-   https://api.prisma.io/v1/projects/{id}/transfer` (token scoped to Inna's
-   workspace) or the manual route (invite Inna as workspace Admin, she
-   removes Joe). Recommended: delete.
+   delete it (`npx prisma@latest project delete <id-or-name>`, or Console →
+   project → Settings → Delete) and record the deletion date in the
+   data-protection records, or, only if the clinic wants to keep it,
+   transfer it: `npx prisma@latest project transfer <id-or-name>
+   --to-workspace <inna-workspace>` (or `--recipient-token`), which is
+   self-serve. Recommended: delete.
 4. Cancel any paid Accelerate / Prisma Postgres plan on the workspace
-   (Workspace → Billing) so nothing bills Joe's card.
-5. Optional code clean-up later: drop `@prisma/extension-accelerate` and the
-   dormant Accelerate branch in `lib/db.ts`.
+   (Workspace → Billing) so nothing bills Joe's card; a Prisma account is
+   closed by email to support@prisma.io once Accelerate is disabled
+   everywhere.
+5. **Dated follow-up, not optional:** Prisma is retiring Accelerate on
+   1 December 2026. The dormant Accelerate branch (`lib/db.ts`,
+   `lib/platform-status.ts` — whose amber-light advice to set a
+   `prisma+postgres://` URL is now wrong — `scripts/db-sync.mjs`,
+   `scripts/migrate-wp/*`, `@prisma/extension-accelerate` in `package.json`,
+   `next.config.mjs` transpile list) should be removed before then. Log it on
+   the Build board so the inheritor sees it.
 
 Verify: `lib/platform-status.ts` shows the direct/pooled Neon path, no Prisma
 Accelerate; no billing line from Prisma remains on Joe's card.
@@ -1738,7 +1774,9 @@ known-good state from the backups in section 4.3 with Joe on a call.
       `docs/GOOGLE_WORKSPACE_MIGRATION.md` §1 (DNS is at Hostinger, not
       Cloudflare), `docs/data-protection/processors.md`
       (Vercel, Neon, Resend, Sentry, Anthropic rows: contracting party is the
-      clinic; date accepted; region), `docs/data-protection/breach-response.md`
+      clinic; date accepted; region; Neon's documentation now brands the
+      service "Lakebase Postgres" under Databricks, so re-check the legal
+      entity and the DPA link on that row), `docs/data-protection/breach-response.md`
       (Technical responder now named), `docs/data-protection/README.md`
       (hosting facts), the three PDF generators
       (`scripts/build-access-request-guide.mjs`,
@@ -1753,7 +1791,14 @@ known-good state from the backups in section 4.3 with Joe on a call.
       completed with dates; the env export (current values, post-rotation); the
       offline copy of the health keys; the backup files' locations; this
       document; the support arrangement (what Joe still does, until when, how
-      to reach him, and what happens if he is unavailable).
+      to reach him, and what happens if he is unavailable); and a short
+      **known technical debt** list for whoever maintains the platform next:
+      Prisma Accelerate code to remove before its retirement on 1 December
+      2026 (7.6); the `prisma-client-js` generator in `prisma/schema.prisma`
+      is deprecated in Prisma 7; `scripts/restore.mjs` needs the Prisma 7
+      adapter fix (Appendix F §6); the private Blob store for kiosk and
+      portfolio uploads (BLD-1304, Appendix B); the apex SPF/DKIM for
+      Workspace (7.15).
 - [ ] **12.9 Board item:** mark BLD-1650 shipped with a comment
       linking the sign-off.
 
