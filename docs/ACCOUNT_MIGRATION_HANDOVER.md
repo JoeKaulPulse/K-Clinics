@@ -2492,7 +2492,7 @@ snapshot named before crossing it.
 | Step | Becomes irreversible when | Snapshot taken just before | If it goes wrong |
 | --- | --- | --- | --- |
 | Vercel project transfer (7.3) | Joe leaves the K-Clinics team (10.5) or KAUL is dismantled (12.1): transferring back needs Joe as a member of the new team and an Owner of KAUL | 4.5 env export | Until then: **Settings → General → Transfer** back. After: restore into a new project from the 4.5 export and the Git repository |
-| Neon resource transfer or disconnect (7.5) | At the click; the integration-owned variables leave the project on disconnect, and deleting a Vercel-managed resource deletes the database | 4.3 branch, snapshot and `pg_dump`; plain copies of the four database variables | Restore into a new eu-west-2 project; four URL variables change |
+| Neon resource transfer or disconnect (7.5) | At the click; the integration-owned variables leave the project on disconnect, and deleting a Vercel-managed resource deletes the database | 4.3 branch, snapshot and `pg_dump`; plain copies of the five database variables | Restore into a new eu-west-2 project; four URL variables change |
 | Resend domain release (7.8 Route B step 1) | The old team releases the domain; its DKIM key is gone | 4.7 DNS export; standby domain verified (Route B step 0) | Send from the standby domain until `mail.` verifies on the new team |
 | Health key removal (10.3 step 6) | The redeploy without the old key | The step-5 counts; the old key stays in the vault with the pre-rotation backups | None: keep the old key for as long as any pre-rotation backup exists (12.2) |
 | Old Blob store deletion (12.1) | At the click | 4.4 CSV and copy; the zero-old-host query passed three times | Re-upload from the copy |
