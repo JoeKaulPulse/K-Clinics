@@ -337,7 +337,7 @@ export function CameraCapture({
             <button
               onClick={retake}
               disabled={uploading}
-              className="flex-1 rounded-[var(--radius-md)] border border-[var(--color-gold)] px-4 py-4 text-base font-medium text-[var(--color-gold-bright)] transition disabled:opacity-50"
+              className="flex-1 rounded-[var(--radius-md)] border border-[var(--color-gold)] px-4 py-4 text-base font-medium text-[var(--color-gold-deep)] transition disabled:opacity-50"
             >
               Retake
             </button>
