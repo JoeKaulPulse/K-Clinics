@@ -929,11 +929,14 @@ const veRank = (i: { value: number | null; effort: number | null }) => (i.value 
 // row otherwise wedges there forever with no recovery. Reuses `updatedAt`
 // rather than adding a schema field: it is a Prisma `@updatedAt` column, so it
 // is stamped fresh the moment updateBuildItem() flips status to IN_PROGRESS,
-// and every subsequent board write (a comment, a patch) bumps it again while
-// the session is genuinely still active. A session that dies simply stops
-// writing, so updatedAt freezes and ages past the threshold: dead, not slow.
-// A build task runs far longer than a kiosk photo analysis, so the threshold
-// is hours, not seconds.
+// and any later write to the ITEM row (a status/field patch) bumps it again.
+// Caveat: a bare comment does NOT bump it — addComment() writes the child via
+// db.buildEvent.create(), which leaves the parent's updatedAt alone — so a long
+// session that only comments can still age past the threshold. That is why the
+// threshold is hours, not seconds, and why the recovery is deliberately benign:
+// TRIAGE and IN_PROGRESS are both in routineQueue's actionable filter, so a
+// wrongly-reclaimed item is not taken away from the session still working it —
+// it is only relabelled, and the session's own next status write wins.
 const STALE_IN_PROGRESS_MS = 4 * 3600_000; // 4 hours
 
 /** Requeue any `claude`-owned item stuck IN_PROGRESS past STALE_IN_PROGRESS_MS
