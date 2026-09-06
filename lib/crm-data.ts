@@ -225,10 +225,13 @@ export async function getClient(id: string) {
   const c = await db.client.findUnique({
     where: { id },
     include: {
-      consultations: { orderBy: { createdAt: 'desc' } },
-      interactions: { orderBy: { createdAt: 'desc' } },
-      appointments: { orderBy: { scheduledAt: 'desc' } },
-      bookings: { orderBy: { startAt: 'desc' } },
+      // BLD-1464: a long-tenured client's profile used to decrypt every
+      // consultation/interaction/appointment/booking on every open — capped
+      // most-recent-first, mirroring the `emails: { take: 20 }` pattern below.
+      consultations: { orderBy: { createdAt: 'desc' }, take: 30 },
+      interactions: { orderBy: { createdAt: 'desc' }, take: 30 },
+      appointments: { orderBy: { scheduledAt: 'desc' }, take: 30 },
+      bookings: { orderBy: { startAt: 'desc' }, take: 50 },
       emails: { orderBy: { createdAt: 'desc' }, take: 20 },
       assessments: {
         orderBy: { submittedAt: 'desc' },
