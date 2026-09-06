@@ -87,7 +87,7 @@ work starts.
 | Prisma | Prisma 7 + `@prisma/adapter-pg` (direct to Neon). Prisma Accelerate/Prisma Postgres are **not** used in production. | A leftover Prisma Console (console.prisma.io) workspace or Prisma Postgres instance from an earlier set-up may still exist under Joe's account **[CONFIRM]**; it must be audited and closed (section 7.6). |
 | File storage | Vercel Blob store connected to the project (currently provisioned **public-only**, see BLD-1304) | Holds media library images, kiosk photos, academy homework and portfolio files, team-chat attachments, facility documents, CVs. Copied or transferred with the project (section 7.4 and Appendix B). |
 | Rate limiting | Upstash Redis via the Vercel Marketplace | Transient counters only; nothing to migrate. |
-| Source code | GitHub `JoeKaulPulse/K-Clinics` — Joe's **personal** account, Joe is the only collaborator. **The repository is public.** | 378 branches, 139 open issues (the Build board mirror), GitHub Pages demo enabled. CI: Typecheck, Security checks, CodeQL, Dependabot. |
+| Source code | GitHub `JoeKaulPulse/K-Clinics` — Joe's **personal** account, Joe is the only collaborator. **The repository is public.** | Nearly 380 branches and about 140 open issues (the Build board mirror), GitHub Pages demo enabled. CI: Typecheck, Security checks, CodeQL, Dependabot. |
 | Build-board GitHub identity | Private GitHub App `kclinics-board` owned by Joe (+ a PAT fallback) | Credentials are in Vercel (`GITHUB_APP_*`, `GITHUB_TOKEN`). |
 | Automation | Claude Code environment + Routine on **Joe's Anthropic account**; the board fires it via `CLAUDE_ROUTINE_FIRE_URL/TOKEN` stored in Vercel | See decision D6. |
 
@@ -148,7 +148,7 @@ choice gives you, on a GitHub organisation:
 | GitHub's own secret scanning | free | no | Secret Protection add-on |
 | `npm audit` + gitleaks checks | yes (gitleaks needs a free organisation licence key) | yes | yes |
 | Actions minutes | unlimited on standard runners | 2,000 a month | 3,000 a month |
-| Price | £0 | £0 | about $4 per user a month (Inna, plus Joe while a member; an outside collaborator on a private repo also takes a seat) |
+| Price | £0 | £0 | about $4 per user a month — an introductory rate, renewal price not published (Inna, plus Joe while a member; an outside collaborator on a private repo also takes a seat) |
 
 A private repo on the Free plan is the one combination to avoid: it looks
 protected but nothing is enforced. *Recommended for a platform holding health
@@ -188,9 +188,12 @@ member for an agreed support period, revocable at any moment: GitHub
 Owner, Member ($20 a month, can deploy and change settings on every project)
 and Viewer, so "developer on one project only" does not exist on Pro; while
 Joe still needs to deploy he must be a paid Member, and on a private
-repository only commits by team members deploy. No owner rights anywhere.
-*Recommended: (b) as Viewer for 90 days, then review.* Either way every
-credential Joe has seen is rotated (section 10).
+repository only commits by team members deploy. Note the order: Joe must
+still be a GitHub organisation *Member* when the Vercel Git link is redone
+(7.3), because an outside collaborator cannot connect an organisation
+repository to Vercel. No owner rights anywhere. *Recommended: (b) as Viewer
+for 90 days, then review.* Either way every credential Joe has seen is
+rotated (section 10).
 
 **D6 — The overnight build automation (Claude Code).**
 The Build board can wake an unattended Claude Code session that fixes queued
@@ -377,9 +380,10 @@ The order inside Phase 2 matters and is fixed:
       account that runs under Joe's address (see
       `audit/academy-portal-visual-audit.md`), and list every `AdminUser` row
       on `@kaulindustries.com` or `webmaster@` for 10.4.
-- [ ] **4.9 Turn off the GitHub Pages demo** (Settings → Pages → Build and
-      deployment → Source **Deploy from a branch** → branch **None** → Save)
-      and set the repository "Website" field to `https://kclinics.co.uk`. The
+- [ ] **4.9 Turn off the GitHub Pages demo** (Settings → Pages → next to
+      "Your site is live at…" click the **…** menu → **Unpublish site**; admin
+      or maintainer required) and set the repository "Website" field to
+      `https://kclinics.co.uk`. The
       demo URL will not redirect after transfer; nothing links to it that
       matters. Note that `.github/workflows/deploy.yml` re-enables Pages if
       anyone runs it later — delete it in the 4.8 PR unless the demo is
@@ -740,8 +744,13 @@ invite; no deploy in flight.
 
 Verify: `git ls-remote https://github.com/kclinics/k-clinics.git main` returns
 the same SHA as before; Issues tab shows the same count; Actions tab lists the
-workflows; https://github.com/JoeKaulPulse/K-Clinics redirects; a push to a
-feature branch by Joe works and a direct push to `main` is rejected.
+workflows and the first workflow run after the transfer actually starts
+(GitHub can block Actions on the receiving organisation if its billing or
+spending-limit state is unset — check organisation **Settings → Billing**);
+https://github.com/JoeKaulPulse/K-Clinics redirects; a push to a feature
+branch by Joe works and a direct push to `main` is rejected. Never create a
+repository or fork named `K-Clinics` under `JoeKaulPulse` afterwards: that
+permanently deletes the redirects.
 
 Rollback: **Settings → Danger Zone → Transfer** back to `JoeKaulPulse` (Inna,
 as org owner, or Joe as org member can do it); if GitHub refuses because the
@@ -869,11 +878,15 @@ vault (4.5).
 3. Re-link Git. Inna first installs the Vercel GitHub App on the organisation:
    https://github.com/apps/vercel/installations/new → choose `kclinics` →
    **Only select repositories** → `k-clinics` → **Install** (an organisation
-   owner must do or approve this). Then Joe: Vercel → **Settings → Git** →
-   **Connected Git Repository → Disconnect** → **Connect → GitHub** → if the
-   repository is missing, **Configure GitHub App** and add it → choose
+   owner must do or approve this). Then Joe — **while he is still an
+   organisation Member** (Vercel refuses to connect an organisation
+   repository for someone who is only an outside collaborator; otherwise
+   Inna does this step herself): Vercel → **Settings → Git** → **Connected
+   Git Repository → Disconnect** → **Connect → GitHub** → if the repository
+   is missing, **Configure GitHub App** and add it → choose
    `kclinics/k-clinics` → **Production Branch** `main`; leave "Ignored Build
-   Step" empty.
+   Step" empty. Do this straight after the transfer: pushes do not deploy
+   until it is done (the live site keeps serving meanwhile).
 4. Do **not** push an empty commit; instead open the last production
    deployment → **Redeploy** (same build, new team) and watch it finish.
    `scripts/db-sync.mjs` will report "baseline 0_init already recorded" and
@@ -1154,12 +1167,14 @@ Nothing to deploy.
 
 **Route B — transfer the project into Inna's organisation** (DSN unchanged;
 only possible between organisations in the **same** region, hence 5.7 step 1):
-Inna's organisation has Joe as **Manager**. Joe, in the old organisation:
-project → **Settings → General Settings** → scroll to **Transfer
-Administration** → **Transfer Project** → enter Inna's email (she must be an
-Owner of the receiving organisation) → Inna opens the emailed link → accepts
-→ assigns the project to a team so it is visible. Event history and project
-settings move; releases and session/crash data do not.
+Inna's organisation has Joe as **Manager**. Joe, as an **Owner** of the old
+organisation: project → **Settings → General Settings** → scroll to
+**Transfer Administration** → **Transfer Project** → enter Inna's email (she
+must be an Owner of the receiving organisation) → Inna opens the emailed
+link → accepts → **adds the project to a team** in her organisation (teams
+do not transfer; until it is on a team the project is invisible in the
+Projects tab). Event history and project settings move; releases and
+session/crash data do not.
 
 **Route C — new project** (only if the regions differ): Inna's organisation
 → new project → **Settings → Client Keys (DSN)** → copy → set `SENTRY_DSN`
@@ -1182,10 +1197,13 @@ https://resend.com/docs/dashboard/domains/manage-domains
 Choose the route from Appendix A:
 
 **Route A — hand over the existing team** (Resend team serves only K-Clinics).
-Resend → Settings → Team → invite `inna.k@kclinics.co.uk` as **Owner/Admin**;
-Inna accepts, changes Billing to the clinic card; Inna then removes Joe (or
-downgrades to Member per D5). Nothing changes for the app. Then rotate the
-API key and both webhook secrets in section 10.
+Resend teams have just two roles, **Admin** and **Member**, and a sole Admin
+is prompted to promote someone else before leaving — so this route is fully
+self-serve. Resend → Settings → Team → invite `inna.k@kclinics.co.uk` as
+**Admin**; Inna accepts, enables two-factor and changes Billing to the
+clinic card; Inna then removes Joe (or downgrades him to Member per D5).
+Nothing changes for the app; no DNS change, no gap. Then rotate the API key
+and both webhook secrets in section 10.
 
 **Route B — move the domains to Inna's new team** (team is shared or is Joe's
 personal identity). Two facts shape this: a claimed domain is a *new* domain
@@ -1251,20 +1269,24 @@ to KCLINICS SKIN & LASER LIMITED. The only question is which login is the
   raise it with Joe before anything else.
 - If Inna is Owner: nothing to transfer. Joe's team login is downgraded to
   **Developer** now and removed in section 10.
-- If Joe is Owner: Joe → **Settings → Team and security → Team members** →
-  if Inna is not yet a member, **+ New member** → `inna.k@kclinics.co.uk` →
-  role **Super Administrator** → Save; once she has accepted and turned on
-  two-step authentication (Settings → Personal), her row → overflow menu (⋯)
-  → **Transfer ownership to this user** → confirm. Inna gets a prompt to
-  accept.
+- If Joe is Owner: only the Owner can transfer. Joe → **Settings → Team and
+  security → Team members** → if Inna is not yet a member, **+ New member** →
+  `inna.k@kclinics.co.uk` → role **Super Administrator** → Save; once she has
+  accepted and turned on two-step authentication (Settings → Personal), Joe
+  uses the **transfer ownership** option on her row (Stripe asks him to pass
+  a two-step challenge; the exact button wording varies — Stripe's own guide
+  is https://support.stripe.com/questions/change-the-owner-of-a-stripe-account).
+  Inna gets a prompt to accept; Joe then becomes an ordinary team member and
+  is removed in 10.5.
 - Keys: because the *account* does not change, `STRIPE_SECRET_KEY`,
   `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` and `STRIPE_WEBHOOK_SECRET` keep
   working. They are rotated in section 10.2: Developers → API keys → secret
-  key → **Roll key…** (choose an expiry of up to 12 hours so the old key keeps
-  working until the redeploy) — better still, create a **restricted key**
-  with only the permissions the app uses (Balance read, Customers,
-  SetupIntents/PaymentIntents, Charges/Refunds, Checkout) and retire the
-  full secret key; Webhooks → endpoint → **Roll secret**.
+  key → **Roll key…** (choose an expiry of up to seven days so the old key
+  keeps working until the redeploy; "Now" kills it at once) — better still,
+  create a **restricted key** with only the permissions the app uses
+  (Balance read, Customers, SetupIntents/PaymentIntents, Charges/Refunds,
+  Checkout) and retire the full secret key; Webhooks → endpoint → **Roll
+  secret** (delayed expiry of up to 24 hours).
 - Replace any personal card of Joe's under Billing if one is the payment
   method for Stripe fees, and revoke any API keys created in his name
   (the API keys page shows the creator).
@@ -1281,10 +1303,12 @@ site is served directly by Vercel. The only Cloudflare dependency is the
 Turnstile bot-protection widget, whose two keys sit in Vercel.
 
 **Route (a) — hand over the Cloudflare account** (it serves only K-Clinics):
-Joe → dash.cloudflare.com → profile → **Change email** → enter
-`inna.k@kclinics.co.uk` → Inna confirms from her mailbox → Inna sets a new
-password and **enables 2FA** → Inna adds her backup admin under **Manage
-Account → Members** → Joe's own identity is now gone from the account. The
+Cloudflare's documented way to change the account owner is to make someone
+else Super Administrator and then remove yourself. Joe → dash.cloudflare.com
+→ **Manage Account → Members → Invite** → `inna.k@kclinics.co.uk` → role
+**Super Administrator - All Privileges** → send; Inna accepts from her
+mailbox and **enables 2FA** (profile → Authentication); Inna adds her backup
+admin the same way; then Inna removes Joe under Members (or Joe leaves). The
 widget and both keys are untouched. No redeploy, no downtime.
 
 **Route (b) — new widget in Inna's Cloudflare account (5.10):**
@@ -1317,19 +1341,22 @@ touched.
 ### 7.11 Google (Workspace, Cloud, Business Profile, Search Console, Ads, GA4)
 
 1. Google Cloud project `KClinics`: after 6.2 (an Owner grant only takes
-   effect once Inna accepts the emailed invitation), Joe signs in as
-   `webmaster@` and confirms Inna's Owner role works (she can open **APIs &
-   Services → Credentials** herself). Add a second clinic admin the same way.
+   effect once Inna accepts the emailed invitation and signs in once — and
+   the project's last accepted Owner cannot be removed, so this must happen
+   before `webmaster@` loses Owner), Joe signs in as `webmaster@` and
+   confirms Inna's Owner role works (she can open **APIs & Services →
+   Credentials** herself). Add a second clinic admin the same way.
    The OAuth client id/secret, Places key, Translate key and the Workspace
    service account are project resources and **do not change**. Add Inna as
    **Billing account administrator** if a billing account is attached
    (Billing → Account management).
 2. OAuth consent screen: **APIs & Services → OAuth consent screen** → change
    the support email and developer contact to a clinic address.
-3. Google Business Profile: business.google.com → **Business Profile settings →
-   People and access** → Inna is **Primary owner** (she must already be an
-   owner or manager; new owners get full features after seven days); any
-   developer login is **Manager** at most, removed later.
+3. Google Business Profile: in the profile → **More (⋮) → Business Profile
+   settings → People and access** → select the user → role **Primary owner**
+   → Inna is Primary owner (she must already be an owner or manager; new
+   owners get full features after seven days); any developer login is
+   **Manager** at most, removed later.
 4. Search Console: **Settings → Users and permissions** → Inna becomes a
    **verified owner by her own method** (the apex `google-site-verification`
    DNS TXT at Hostinger, or Google Analytics) before Joe's verification is
@@ -1343,14 +1370,18 @@ touched.
    clinic then needs its own manager account, links the client account,
    applies for Basic API access (days) and replaces
    `GOOGLE_ADS_DEVELOPER_TOKEN` and `GOOGLE_ADS_LOGIN_CUSTOMER_ID` in Admin →
-   Credentials & keys. Meta: Business settings → People → Inna with **Full
-   control**, two admins kept; if the Meta *app* behind `META_CLIENT_ID` is
-   in Joe's developer account, transfer it to the clinic's business portfolio
-   or create a new app with the same redirect URI and re-connect; regenerate
-   the Conversions API token from the clinic's Events Manager after Joe's
-   user is removed. TikTok: Business Center → Members → Inna **Admin**; the
-   account's own login/recovery email must be the clinic's; recreate the
-   developer app if it is Joe's. The app's stored OAuth tokens
+   Credentials & keys. Meta: Business settings → **People → Add** → Inna's
+   email → **Admin access** → assign the page, ad account and pixel →
+   Invite; keep two admins (our recommendation, not Meta's rule); if the Meta
+   *app* behind `META_CLIENT_ID` is in Joe's developer account, transfer it
+   to the clinic's business portfolio or create a new app with the same
+   redirect URI and re-connect; regenerate the Conversions API token from the
+   clinic's Events Manager after Joe's user is removed. TikTok: Business
+   Center → Members → Inna **Admin** (Business Center grants access, not
+   ownership; the organic account's own login/recovery email must be the
+   clinic's; moving an *ad account* between Business Centers is irreversible
+   and goes through a TikTok representative); recreate the developer app if
+   it is Joe's. The app's stored OAuth tokens
    (`ExternalConnection`) keep working wherever the OAuth client is
    unchanged. Nothing to redeploy.
 
@@ -1375,35 +1406,47 @@ Verify: `/admin/api-health` **Google rating**, **Google Business Profile**,
 - **Twilio**: first read Admin → Account management (owner email), whether
   the account sits under a Twilio *Organization*, who holds the sender number
   (default `+44 7828 877444`) and which legal entity the UK regulatory bundle
-  names. *Route A, in place* (account serves only K-Clinics): under an
-  Organization, Admin → Accounts → the account → **Change Ownership** → Inna
-  (invited first as a managed user); otherwise add Inna as an Administrator
-  user and open a support ticket to change the owner — allow days. Keys,
-  number and the UK bundle stay. *Route B, recreate* (account shared): Inna's
-  own Twilio account with business verification, a **UK Regulatory
+  names. *Route A, in place* (account serves only K-Clinics — strongly
+  preferred, because moving a number between unrelated Twilio accounts wipes
+  its configuration, opt-outs and regulatory registrations): if the account
+  sits under a Twilio *Organization*, Admin → Accounts → the account →
+  **Change Ownership** → Inna (invited first as a managed user). If it does
+  not, and the owner email is on a company domain, Joe can create an
+  Organization for that domain and bring the account under it, then use the
+  same self-serve path; if the owner email is a free-mail address, add Inna
+  as an Administrator user and request Twilio's support-assisted account
+  owner change — allow days. Joe stays an Admin until removed. Keys, number
+  and the UK bundle stay. *Route B, recreate* (account genuinely shared):
+  Inna's own Twilio account with business verification, a **UK Regulatory
   Compliance bundle** for KCLINICS SKIN & LASER LIMITED (required before any
-  UK number can send), then either a support request to move the existing
-  number across or a new number (update `TWILIO_FROM` and tell clients the
-  sender changed). Load `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`,
-  `TWILIO_FROM` in Admin → Credentials & keys.
+  UK number can send), then a new number (update `TWILIO_FROM` and tell
+  clients the sender changed) rather than a number move. Load
+  `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_FROM` in Admin →
+  Credentials & keys.
 - **Anthropic** (the app uses Claude for live chat, kiosk skin analysis and
-  marketing copy; organisation ownership is not transferable self-serve, and
-  the clinic must hold this contract for health-adjacent data): in Inna's
-  Console (5.8) create a workspace `kclinics-production`; a member who will
-  stay (Inna or the backup admin) creates the API key `vercel-production`
-  there; paste it into Admin → Settings → Credentials & keys → "Anthropic
-  (Claude) API key" (encrypted, no redeploy) or Vercel `ANTHROPIC_API_KEY`.
-  Ask Anthropic support for **zero data retention** on the organisation and
-  record the answer in the DPIA (some models are excluded; the app uses
-  Claude Haiku 4.5 and Sonnet). After verification Joe deletes the K-Clinics
-  key in his own organisation. Delete `CLAUDE_ROUTINE_FIRE_URL/TOKEN` from
-  Vercel unless D6 keeps the automation.
+  marketing copy). Whether a Console organisation's primary ownership can be
+  handed over self-serve is not documented, and Joe's organisation is his
+  own business identity, so the clinic holds its own contract for this
+  health-adjacent processing: in Inna's Console (5.8) create a workspace
+  `kclinics-production`; a member who will stay (Inna or the backup admin)
+  creates the API key `vercel-production` there; paste it into Admin →
+  Settings → Credentials & keys → "Anthropic (Claude) API key" (encrypted,
+  no redeploy) or Vercel `ANTHROPIC_API_KEY`. Ask Anthropic for **zero data
+  retention** on the organisation and record the answer in the DPIA — note
+  that even under it, content flagged by safety systems can be retained for
+  up to two years, and that the app's current models (Claude Haiku 4.5 and
+  Sonnet 4.6) are not "covered models" with a mandatory 30-day retention;
+  re-check if the models are ever upgraded. After verification Joe deletes
+  the K-Clinics key in his own organisation. Delete
+  `CLAUDE_ROUTINE_FIRE_URL/TOKEN` from Vercel unless D6 keeps the
+  automation.
 - **Deepgram** (optional voice transcription): removing a member from a
   Deepgram project **deletes the keys that member created**, so the new key
-  must be created by Inna (Route A: invite her as Owner of the existing
-  project; Route B: her own project). Load `DEEPGRAM_API_KEY` in Admin →
-  Credentials & keys; wait a week with no usage on Joe's key, then remove
-  him.
+  must be created by a login that will never leave — Inna, or better a
+  shared clinic service login added as a project member (Route A: invite it
+  as Owner of the existing project; Route B: its own project). Load
+  `DEEPGRAM_API_KEY` in Admin → Credentials & keys; wait a week with no usage
+  on Joe's key, then remove him.
 - **DeepL**: retired in the code. Clear `DEEPL_API_KEY` from Vercel and from
   Admin → Credentials & keys; Joe deactivates the key in his DeepL account.
 - **GIFs**: Google shut the **Tenor API on 30 June 2026**, and the code
@@ -1411,8 +1454,8 @@ Verify: `/admin/api-health` **Google rating**, **Google Business Profile**,
   `TENOR_API_KEY`** rather than recreating it. Inna (or a clinic staff login)
   creates a GIPHY developer account → dashboard → **Create an API Key** → app
   name "K-Clinics team chat" → Vercel `GIPHY_API_KEY` → redeploy (beta keys
-  allow 100 calls an hour; apply for a production key if the team chat
-  exceeds that). Delete Joe's key.
+  allow 100 calls an hour; applying for production upgrades the same key
+  if the team chat exceeds that). Delete Joe's key.
 
 Verify: `/admin/api-health` **SMS**, **AI (Anthropic)**, **Voice
 transcription**, **Telephony** green; a kiosk session analyses a test photo;
@@ -1464,8 +1507,11 @@ be transferred. Everything a routine does uses that person's GitHub identity.
    `CLAUDE_ROUTINE_FIRE_URL` and `CLAUDE_ROUTINE_FIRE_TOKEN` → redeploy. The
    board's "Continue working" button then saves to the work queue and shows
    "Saved to Claude's work queue"; nothing wakes an unattended session.
-2. Leave "mirror" off on `/admin/build` so the board never posts `@claude`
-   comments nobody acts on.
+2. Leave "mirror" off on `/admin/build`: with the mirror on, the board's only
+   fallback is an `@claude` comment on the GitHub issue, and nothing
+   consumes those comments (the repository has no Claude GitHub Action
+   workflow, and Claude Code routines cannot be triggered by issue comments
+   at all), so items would look "sent" while nobody acts on them.
 3. Joe: claude.ai/code → Routines → the K-Clinics routine → **Revoke** the API
    trigger token (or delete the routine) → archive the K-Clinics environment.
 4. Rotate `BOARD_QUEUE_TOKEN` in Vercel (it lived in Joe's environment and
@@ -1488,9 +1534,10 @@ be transferred. Everything a routine does uses that person's GitHub identity.
    format: `BASE_URL=https://kclinics.co.uk`, the new `BOARD_QUEUE_TOKEN` and
    `QA_TOKEN` (same value), fresh `QA_ADMIN_EMAIL`/`QA_ADMIN_PASSWORD` and
    `QA_ACADEMY_LOGIN`/`QA_ACADEMY_PASSWORD` for new QA accounts, and an
-   optional **read-only** `DATABASE_URL` (a new read-only role) → **Create
-   environment**. The repository's own session-start hook installs
-   dependencies.
+   optional **read-only** `DATABASE_URL` (a new read-only role) → leave the
+   setup script empty (the repository's own session-start hook installs
+   dependencies; a setup script that runs longer than about five minutes
+   defeats the environment's snapshot cache) → **Create environment**.
 4. Routine: claude.ai/code → Routines → **New routine** → name `K-Clinics
    build board` → repository `kclinics/k-clinics` → environment `K-Clinics` →
    trigger **API** → prompt that tells the session to act on the
@@ -1500,7 +1547,9 @@ be transferred. Everything a routine does uses that person's GitHub identity.
 5. Vercel → set `CLAUDE_ROUTINE_FIRE_URL` and `CLAUDE_ROUTINE_FIRE_TOKEN` →
    redeploy. Test: `/admin/build` → **Continue working** → "Claude session
    started" with a **Watch session** link (401 = token mismatch, 400 = routine
-   paused, 429 = the board's daily cap of 8 fires).
+   paused, 429 = the daily allowance — the board's own cap of 8 fires, or
+   the plan's routine allowance unless usage credits are switched on at
+   claude.ai/settings/usage).
 
 Verify: `/admin/build` shows the expected state (queue-only, or a session
 link); no session is started from Joe's account after the revoke.
@@ -1508,13 +1557,20 @@ link); no session is started from Joe's account after the revoke.
 ### 7.15 Noticed while checking the live DNS (out of scope, worth fixing)
 
 - The apex SPF record still says `v=spf1 include:_spf.mail.hostinger.com
-  ~all` and there is no `google._domainkey` DKIM record, although the apex MX
-  already points at `smtp.google.com`. Mail sent *from Gmail* as
-  `@kclinics.co.uk` is therefore not fully authenticated. Finish Phase 4 of
-  `docs/GOOGLE_WORKSPACE_MIGRATION.md` (replace the apex SPF with
-  `v=spf1 include:_spf.google.com ~all`, add Google's DKIM) — a five-minute
-  job in Hostinger DNS that Inna can do with Joe on a call. The Resend
-  records on `mail.` / `send.mail.` are separate and unaffected.
+  ~all`, there is no `google._domainkey` DKIM record, and `_dmarc` is
+  `p=none`, although the apex MX already points at `smtp.google.com`. Mail
+  sent *from Gmail* as `@kclinics.co.uk` therefore fails SPF and is not
+  DKIM-signed. Finish Phase 4 of `docs/GOOGLE_WORKSPACE_MIGRATION.md`
+  (replace the apex SPF with `v=spf1 include:_spf.google.com ~all`, add
+  Google's DKIM, tighten DMARC later) **before** any Hostinger mailbox plan
+  is cancelled — a five-minute job in Hostinger DNS that Inna can do with
+  Joe on a call. The Resend records on `mail.` / `send.mail.` are separate
+  and unaffected.
+- The apex TXT set also carries the `google-site-verification`,
+  `google-gws-recovery-domain-verification` and
+  `facebook-domain-verification` tokens — the ownership anchors for Search
+  Console, Workspace account recovery and Meta domain verification. They
+  live with whoever controls Hostinger DNS; never delete them.
 - `/indexnow-key.txt` returns 404: `INDEXNOW_KEY` is unset. Optional.
 - No search-engine verification meta tags are served; Search Console is
   verified by the apex `google-site-verification` TXT instead. Keep that
@@ -1636,8 +1692,8 @@ current value is hex). Change the value in Vercel, redeploy, then tick.
 | `CRON_SECRET` | Claude/QA tooling if it uses it; any external uptime monitor calling `/api/health` with the bearer. The edge middleware's blocked-IP feed falls back to this value when `MW_BLOCK_SECRET` is unset, so rotate the two together (or set `MW_BLOCK_SECRET` explicitly) | none for users | [ ] |
 | `BOARD_QUEUE_TOKEN` (= `QA_TOKEN`) | the Claude Code environment, if retained (D6-a) | none | [ ] |
 | `GOOGLE_REVIEW_IMPORT_TOKEN`, `MIGRATE_TOKEN`, `MW_BLOCK_SECRET` | nowhere | none | [ ] |
-| `STRIPE_SECRET_KEY` | Stripe → Developers → API keys → **Roll key…** with an expiry of up to 12 hours, or replace with a **restricted key** (Balance read, Customers, SetupIntents/PaymentIntents, Charges/Refunds, Checkout) and delete the full key after the redeploy | none | [ ] |
-| `STRIPE_WEBHOOK_SECRET` | Stripe → Webhooks → endpoint → **Roll secret** | none (Stripe overlaps old/new) | [ ] |
+| `STRIPE_SECRET_KEY` | Stripe → Developers → API keys → **Roll key…** with an expiry of up to seven days, or replace with a **restricted key** (Balance read, Customers, SetupIntents/PaymentIntents, Charges/Refunds, Checkout) and delete the full key after the redeploy | none | [ ] |
+| `STRIPE_WEBHOOK_SECRET` | Stripe → Webhooks → endpoint → **Roll secret** (old secret can stay valid for up to 24 hours) | none (Stripe overlaps old/new) | [ ] |
 | `RESEND_API_KEY`, `RESEND_WEBHOOK_SECRET`, `RESEND_INBOUND_SECRET` | Resend → API keys / Webhooks (new endpoint or rotate) | none | [ ] |
 | `YAY_WEBHOOK_SECRET` | yay.com → Web Hooks → both hooks' URL `?token=` and Auth Token field | calls logged during the seconds in between are missed | [ ] |
 | `ANTHROPIC_API_KEY`, `DEEPGRAM_API_KEY`, `GOOGLE_PLACES_API_KEY`, `GOOGLE_TRANSLATE_KEY`, `GIPHY_API_KEY` | regenerate in each provider console (Google: **Regenerate key**, keeping the API restriction); paste into Admin → Credentials & keys (GIPHY: Vercel + redeploy); delete the old key there | none | [ ] |
@@ -1651,7 +1707,7 @@ current value is hex). Change the value in Vercel, redeploy, then tick.
 | `INDEXNOW_KEY` | none (served automatically at `/indexnow-key.txt`) | none | [ ] |
 | Neon database password (path A/B kept the old strings) | Neon console → Roles → reset password → update the four `DATABASE_URL*`/`POSTGRES_*` vars → redeploy | a few seconds of failed queries during the redeploy; do it late evening | [ ] |
 | `BLOB_READ_WRITE_TOKEN` | Vercel → Storage → store → Settings → **Regenerate token** (or new store token) | none | [ ] |
-| `UPSTASH_REDIS_REST_TOKEN` | Upstash console → Reset token | none | [ ] |
+| `UPSTASH_REDIS_REST_TOKEN` | Upstash console → Reset token (rotate whichever route was taken — Upstash advised rotating all tokens after Vercel's April 2026 incident) | active login lockouts and throttles reset once | [ ] |
 | `SENTRY_DSN` | Sentry → project → Client Keys → create new, disable old | none | [ ] |
 
 ### 10.3 Health keyring rotation (last, and only via the runbook)
@@ -1713,7 +1769,7 @@ current value is hex). Change the value in Vercel, redeploy, then tick.
 | Vercel team | Settings → Members → Joe's row → **…** → change role to **Viewer** (free, read-only) **or Remove from Team**. First check Team → Integrations → Manage shows *Inna* as the installer of Neon and Upstash (an integration installed by someone who leaves is switched off). Afterwards regenerate the Protection Bypass for Automation secret (Settings → Deployment Protection) if one exists; Joe revokes any personal Vercel access tokens scoped to the team (Account Settings → Tokens) |
 | Neon org | People → Joe → Remove or Member |
 | Resend, Sentry, Anthropic, Twilio, Deepgram, Cloudflare | Team/Members → Joe → Remove or lowest role |
-| Stripe | Team → Joe → Remove (or Developer, view-only) |
+| Stripe | Settings → Team and security → overflow menu next to Joe's role → **Edit** → the "Manage roles" drawer → remove all roles (or leave Developer, view-only) |
 | Google Workspace | Only after 4.8a: Directory → Users → `webmaster@` → remove **Super Admin**; keep the mailbox only if D5-b, as a normal user; otherwise **Suspend** (keeps the mail) |
 | Google Cloud `KClinics` | IAM → `webmaster@` → remove **Owner** (after 7.11 confirms Inna's works) |
 | Xero / TrueLayer / GBP / Search Console / GA4 / Ads | remove Joe's logins or set to view-only |
@@ -1785,8 +1841,13 @@ known-good state from the backups in section 4.3 with Joe on a call.
       anything; `docs/WORKSPACE_ADMIN_SDK_SETUP.md` rewritten for the
       clinic-owned admin; the processors register and ROPA corrected where
       they say applicant CVs are uploaded to Blob (they are pasted links, see
-      Appendix B); `scripts/migrate-wp/README.md` `--scope`. Appendix C lists
-      every line.
+      Appendix B); `scripts/migrate-wp/README.md` `--scope`; the stale
+      comments found on the way — `lib/chat-email.ts` (says the default
+      inbound domain is `mail.` while the code default is `reply.mail.`),
+      `.env.example` (Turnstile "fails open"; Cloudflare DNS; yay `?token=`),
+      `app/api/integrations/yay/route.ts` (mentions `?token=`),
+      `docs/GOOGLE_WORKSPACE_MIGRATION.md` (chat inbound on `reply.mail.`).
+      Appendix C lists every line.
 - [ ] **12.8 Handover pack** stored in the vault and given to Inna: Appendix A
       completed with dates; the env export (current values, post-rotation); the
       offline copy of the health keys; the backup files' locations; this
@@ -1817,6 +1878,7 @@ known-good state from the backups in section 4.3 with Joe on a call.
 | Upstash | pay-as-you-go via Vercel | £0–8 | — |
 | Twilio | usage | ~£0.04 per SMS | twilio.com/pricing |
 | Cloudflare | Free | $0 | — |
+| Claude (only if D6-a) | Pro, or Team seats | $20 (Pro) or $20–25 per Team seat | claude.com/pricing |
 | Google Workspace / Cloud | already the clinic's | unchanged | — |
 | Password manager | Bitwarden Teams | ~$4 per user | bitwarden.com |
 
@@ -2160,7 +2222,7 @@ Column key. **Set today**: V-Prod = Vercel Production (required by code in produ
 | `HOSTINGER_CALDAV_URL` / `_USER` / `_PASS` | V-opt | Hostinger (clinic) | `lib/hostinger-calendar.ts:15-17`; `lib/api-health.ts:294-296` | no | Deprecated after the Workspace move; revoke the app password when removed. | no |
 | `GITHUB_APP_ID`, `GITHUB_APP_PRIVATE_KEY`, `GITHUB_APP_INSTALLATION_ID` | V-Prod | GitHub App "kclinics-board" (JoeKaulPulse) | `lib/github-app.ts:22,29,36,50` | no | Transfer the App to the clinic account (ID survives), generate a new private key, re-install on the transferred repo (new installation id). Cached token in `Setting` key `github_app_token`. | no |
 | `GITHUB_TOKEN` | V-opt (PAT fallback) | GitHub (Joe) | `lib/build-board.ts:767` | no | Remove; revoke; also clear the encrypted `github` `ExternalConnection` row (`lib/build-board.ts:750-754`). | no |
-| `CLAUDE_ROUTINE_FIRE_URL` / `_TOKEN` | V-Prod | Claude Code Routine (Joe's Anthropic account) | `lib/build-board.ts:1112,1139-1140` | no | Remove at handover (board falls back to GitHub-issue wake); Joe deletes the Routine. | no |
+| `CLAUDE_ROUTINE_FIRE_URL` / `_TOKEN` | V-Prod | Claude Code Routine (Joe's Anthropic account) | `lib/build-board.ts:1112,1139-1140` | no | Remove at handover (queued items then wait for a human — the GitHub-comment fallback only posts when the mirror is on and nothing consumes it); Joe deletes the Routine. | no |
 | `CRON_ALERT_WEBHOOK_URL` | V-opt | Slack/Discord/Make workspace (probably Joe's) | `app/api/cron/daily/route.ts:521`; `app/api/cron/dispatch/route.ts:58`; `app/api/cron/kiosk-cleanup/route.ts:152`; `app/api/health/route.ts:154`; `app/api/admin/api-health/route.ts:90`; `app/api/stripe/webhook/route.ts:509` | no | Replace with a clinic-owned webhook or unset. | no |
 | `TENOR_API_KEY` / `GIPHY_API_KEY` | V-opt | Google / GIPHY | `app/api/admin/team-chat/gifs/route.ts:53-54` | no | Re-issue or drop. | no |
 | `NEON_API_KEY` / `NEON_PROJECT_ID` | Local | Neon | `scripts/safe-migrate.mjs:61-62` | no | Tooling only; Joe revokes. | no |
