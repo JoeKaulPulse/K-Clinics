@@ -64,7 +64,7 @@ work, then a 30-day quiet period before the old accounts are closed.
 | Days 1–3 | Decisions (section 2) and the ownership check (Appendix A) | Inna + Joe |
 | Days 3–5 | Inna creates the new homes (section 5); Joe prepares and takes backups (section 4) | both |
 | Evening 1 (Day 6) | Code, website, database and monitoring transfers (sections 7.1–7.6) | Joe initiates, Inna accepts |
-| Days 7–8 | Email, payments, Turnstile, Google, telephony, AI and the smaller accounts (sections 7.7–7.12); new credentials loaded (section 8) | both |
+| Days 7–8 | Email, payments, Turnstile, Google, telephony, AI and the smaller accounts (sections 7.8–7.13); new credentials loaded (section 8) | both |
 | Evening 2 (Day 9) | Only if a transfer was refused: database copy (7.5 path C) or Blob copy (Appendix B) | Joe, Inna on call |
 | Days 10–12 | Verification (section 9), then revoke and rotate (section 10) | both |
 | Day 30+ | Decommission the old side, update the records (section 12), final sign-off (section 14) | both |
@@ -208,7 +208,7 @@ that widget is Joe's: (a) if it serves only K-Clinics, hand the *account* to
 Inna (change its email to hers, she sets password + two-step, Joe is removed)
 — nothing else changes; (b) if it is shared with Joe's other sites, Inna
 creates a free clinic Cloudflare account, Joe creates a new widget there and
-swaps the two Turnstile keys in Vercel with a redeploy (section 7.9). No
+swaps the two Turnstile keys in Vercel with a redeploy (section 7.10). No
 nameserver change, no downtime. *Recommended: (a) wherever possible.* If the
 account is already the clinic's, D8 is moot.
 
@@ -320,7 +320,7 @@ The order inside Phase 2 matters and is fixed:
       or export every record (there are Vercel, Resend, Workspace and
       verification records — Appendix E lists them), then set the TTL on the
       apex/`www` and the `mail.` / `send.mail.` / `reply.mail.` records to 300
-      seconds so any change during the Resend step (7.7) propagates fast.
+      seconds so any change during the Resend step (7.8) propagates fast.
       Confirm Joe's access to hPanel is via Hostinger "Account sharing" (so it
       can be removed in 10.5), not via Inna's own login.
 - [ ] **4.8 Code changes, as one PR** (merge before Evening 1): the items in
@@ -507,11 +507,14 @@ Done when: the team exists with billing, Joe is an Admin.
 
 ### 5.7 Sentry (error monitoring)
 
-1. Go to https://sentry.io/signup → sign up with `inna.k@kclinics.co.uk`.
-   When asked for a data storage location choose **EU** if offered *and* Joe
-   confirms the current Sentry organisation is EU; otherwise match whatever the
-   current one is (projects can only transfer between organisations in the
-   same region).
+1. Skip this block if Joe's check (7.7) says the existing Sentry
+   organisation serves only K-Clinics — he will simply invite you as Owner
+   there. Otherwise go to https://sentry.io/signup → sign up with
+   `inna.k@kclinics.co.uk`. When asked for a **data storage location** choose
+   the same region as the current organisation (Joe reads it from the DSN:
+   `ingest.de.sentry.io` is EU, otherwise US) — projects can only transfer
+   between organisations in the same region, and the choice cannot be
+   changed later.
 2. Organisation name `K-Clinics`. Enable two-factor under **User settings →
    Security**.
 3. Settings → **Members** → **Invite Member** → `joe@kaulindustries.com` → role
@@ -526,11 +529,14 @@ Claude. The clinic should hold this contract directly.
 
 1. Go to https://console.anthropic.com → **Sign up** with
    `inna.k@kclinics.co.uk`. Verify the email.
-2. Create an organisation named `K-Clinics`. Go to **Settings → Billing** →
-   add the clinic card → buy an initial credit (£50 is plenty to start; the app
-   caps monthly usage with `AI_MONTHLY_CAP`).
+2. Create an organisation named `KCLINICS SKIN & LASER LIMITED`. Go to
+   **Settings → Billing** → add the clinic card → buy an initial credit (£50
+   is plenty to start; the app caps monthly usage with `AI_MONTHLY_CAP`) and
+   set a monthly spend limit.
 3. **Settings → Members** → invite `joe@kaulindustries.com` as **Developer**
-   (can create API keys, cannot change billing).
+   (can create API keys, cannot change billing). Create a workspace named
+   `kclinics-production` (Settings → Workspaces) — the API key will live
+   there, and workspace keys survive their creator leaving.
 4. Read and accept the commercial terms shown at sign-up; the data-protection
    register (section 12) records that the clinic, not the developer, is the
    contracting party.
@@ -611,7 +617,7 @@ These accounts are already the clinic's; the change is only about roles.
       Owner role is removed in section 10.5, *after* yours is confirmed working.)
 - [ ] **6.3 Stripe.** dashboard.stripe.com → **Settings → Team and security →
       Team members**: confirm which login is marked **Owner**. If it is not
-      you, tell Joe (section 7.8 handles the transfer).
+      you, tell Joe (section 7.9 handles the transfer).
 - [ ] **6.4 yay.com, Xero, TrueLayer, Google Business Profile, Search Console,
       GA4, Google Ads, Meta Business, TikTok.** For each: confirm the primary
       owner/admin is a clinic identity, and that no developer login has *owner*
@@ -984,7 +990,44 @@ step 3 freezes writes).
 Verify: `lib/platform-status.ts` shows the direct/pooled Neon path, no Prisma
 Accelerate; no billing line from Prisma remains on Joe's card.
 
-### 7.7 Email: Resend
+### 7.7 Error monitoring: Sentry
+
+**Find the region first** (it decides the route): the DSN host in Vercel's
+`SENTRY_DSN` — `ingest.de.sentry.io` means the EU (Frankfurt) region,
+`ingest.us.sentry.io` or plain `sentry.io` means the US. Record it; it also
+closes the "[OWNER TO CONFIRM: EU data-region]" note in
+`docs/data-protection/processors.md`.
+
+**Route A — hand over the organisation** (it serves only K-Clinics; DSN
+unchanged): Joe → sentry.io → **Settings → Members → Invite Member** →
+`inna.k@kclinics.co.uk` → role **Owner** → Inna accepts, enables two-factor
+(User settings → Security) and adds the clinic card under **Settings →
+Subscription** → Joe changes his own role to Member and leaves at the end.
+Nothing to deploy.
+
+**Route B — transfer the project into Inna's organisation** (DSN unchanged;
+only possible between organisations in the **same** region, hence 5.7 step 1):
+Inna's organisation has Joe as **Manager**. Joe, in the old organisation:
+project → **Settings → General Settings** → scroll to **Transfer
+Administration** → **Transfer Project** → enter Inna's email (she must be an
+Owner of the receiving organisation) → Inna opens the emailed link → accepts
+→ assigns the project to a team so it is visible. Event history and project
+settings move; releases and session/crash data do not.
+
+**Route C — new project** (only if the regions differ): Inna's organisation
+→ new project → **Settings → Client Keys (DSN)** → copy → set `SENTRY_DSN`
+and `NEXT_PUBLIC_SENTRY_DSN` (same value) in Vercel → redeploy (the client
+DSN is baked into the build). Recreate the alert rules; check the masked
+session-replay settings still apply. Old project: disable its client key.
+
+Verify: Admin → Status → send a test error (or trigger a deliberate 500 on a
+preview) → the event appears in Inna's Sentry; `/admin/api-health`
+**Error monitoring** green; Settings → Integrations shows no integration
+installed under Joe's identity (reinstall any under the clinic's).
+
+Rollback: Route A/B need none; Route C — old DSN back, redeploy.
+
+### 7.8 Email: Resend
 
 Official: https://resend.com/changelog/domain-claim ·
 https://resend.com/docs/dashboard/domains/manage-domains
@@ -998,36 +1041,44 @@ downgrades to Member per D5). Nothing changes for the app. Then rotate the
 API key and both webhook secrets in section 10.
 
 **Route B — move the domains to Inna's new team** (team is shared or is Joe's
-personal identity).
+personal identity). Two facts shape this: a claimed domain is a *new* domain
+in the new team with **fresh DKIM keys**, and the app sends synchronously (three
+attempts, then a Sentry error — nothing is queued), so any gap between the old
+team releasing the domain and the new records verifying loses emails. Do
+steps 3–7 in one sitting, in a quiet hour (after a dispatch run, before the
+08:00 daily cron), with the DNS TTLs already lowered (4.7).
 
-1. New team (Inna's, Joe as Admin): **Domains → Add Domain** →
-   `mail.kclinics.co.uk`. Resend detects it is verified elsewhere and offers
-   **Domain Claim**: add the TXT record it shows in **Hostinger DNS** →
-   **Verify ownership**. Resend releases the domain from the old team and
-   shows the sending records (DKIM TXT on `resend._domainkey.mail`, SPF TXT
-   and return-path MX on `send.mail.`). If Resend asks you to contact support
-   because the old team sent recently, do that first — support releases it
-   within a working day; plan for it.
-2. Add the records exactly as shown. If the DKIM value differs from the old
-   one, replace it in the same record (only one `resend._domainkey.mail` TXT
-   can exist), verify, and re-send a test within minutes so the gap is short.
-3. Enable **Receiving** (inbound) on the same `mail.kclinics.co.uk` domain —
-   today's MX on `mail.` points at Resend Inbound, so keep that MX exactly as
-   it is — and point the inbound webhook at
-   `https://kclinics.co.uk/api/webhooks/chat-inbound`. Leave the
-   `reply.mail.` CNAME (Resend link tracking) in place; re-enable open/click
-   tracking on the domain so the same CNAME target stays valid, or update it
-   to the value the new team shows.
-4. **Webhooks → Add Endpoint** → `https://kclinics.co.uk/api/webhooks/resend`
+1. **A week before:** in the old team, open a support ticket asking Resend to
+   release `mail.kclinics.co.uk` to the new team on the chosen date — Resend
+   refuses self-serve claims on a domain with recent sending activity, and
+   this domain sends every day.
+2. New team (Inna's, Joe as Admin): **Domains → Add Domain** →
+   `mail.kclinics.co.uk`. Resend reports it is used by another team and offers
+   **Claim**: add the claim TXT record it shows in **Hostinger DNS** → verify.
+3. Once released, Resend shows the new sending records: DKIM TXT on
+   `resend._domainkey.mail`, SPF TXT and return-path MX on `send.mail.`.
+   **Replace** the existing values in Hostinger DNS (only one
+   `resend._domainkey.mail` TXT can exist) and click **Verify**.
+4. Turn on **Receiving** for the same domain; confirm the inbound MX Resend
+   shows for `mail.kclinics.co.uk` matches the one already in DNS (today it
+   points at Resend's inbound server); enable open/click tracking and keep the
+   `reply.mail.` CNAME unless Resend shows a new tracking target.
+5. **API Keys → Create** → name `vercel-production` → full access (the health
+   probe lists domains, which needs more than "sending only") → paste into
+   Admin → Settings → Credentials & keys → "Resend API key" (takes effect
+   within 30 seconds, no redeploy) or Vercel `RESEND_API_KEY`.
+6. **Webhooks → Add Endpoint** → `https://kclinics.co.uk/api/webhooks/resend`
    → events `email.delivered`, `email.opened`, `email.clicked`,
-   `email.bounced`, `email.complained` → copy the signing secret.
-5. **API Keys → Create** → name `vercel-production` → Sending access → copy.
-6. Load `RESEND_API_KEY`, `RESEND_WEBHOOK_SECRET`, `RESEND_INBOUND_SECRET` in
-   section 8. Until the redeploy the app keeps sending through the old key
-   (still valid while the old team holds the domain), so there is no gap if
-   steps 1–5 and the redeploy happen within the same hour.
-7. Old team: delete the API key after the redeploy; delete the domains only
-   after 30 days (section 12).
+   `email.bounced`, `email.complained` → copy the signing secret to
+   `RESEND_WEBHOOK_SECRET`. Add a second endpoint for the received-email
+   event → `https://kclinics.co.uk/api/webhooks/chat-inbound` → its secret to
+   `RESEND_INBOUND_SECRET`. Both routes accept more than one signature, so a
+   short overlap is safe. Redeploy (these two are env-only).
+7. Test immediately: book a test appointment (confirmation arrives, DKIM
+   passes in the headers); reply to a chat transcript email (threads into
+   Admin → Chat); mail-tester score unchanged.
+8. Old team: delete the API key and the two webhook endpoints now; delete
+   the domain entries after 30 days (section 12).
 
 Verify: `/admin/api-health` **Email (Resend)** green; book a test appointment
 and receive the confirmation; reply to it and see the reply thread in Admin →
@@ -1036,7 +1087,7 @@ Chat; https://www.mail-tester.com score unchanged (10/10 previously).
 Rollback: put the old `RESEND_API_KEY` back and redeploy; if a domain claim is
 half-done, re-add the old DKIM record.
 
-### 7.8 Payments: Stripe
+### 7.9 Payments: Stripe
 
 Official: https://support.stripe.com/questions/change-the-owner-of-a-stripe-account
 
@@ -1044,24 +1095,38 @@ The Stripe account holds the clinic's money and should already be registered
 to KCLINICS SKIN & LASER LIMITED. The only question is which login is the
 **Owner**.
 
+- First check **Settings → Business → Account details**: the legal entity
+  must read KCLINICS SKIN & LASER LIMITED (company 17101088) and **Bank
+  accounts** must be the clinic's. If the account is registered to any other
+  entity, stop: an ownership transfer does not re-parent a Stripe account,
+  the clinic would need its own account (verification, new keys, new
+  webhook, redeploy) and saved client cards do not move between accounts —
+  raise it with Joe before anything else.
 - If Inna is Owner: nothing to transfer. Joe's team login is downgraded to
   **Developer** now and removed in section 10.
 - If Joe is Owner: Joe → **Settings → Team and security → Team members** →
-  Inna's row → if she is not yet **Super Administrator** set that role and
-  Save → overflow menu (⋯) → **Transfer ownership to this user** → confirm.
-  Inna gets a prompt to accept.
+  if Inna is not yet a member, **+ New member** → `inna.k@kclinics.co.uk` →
+  role **Super Administrator** → Save; once she has accepted and turned on
+  two-step authentication (Settings → Personal), her row → overflow menu (⋯)
+  → **Transfer ownership to this user** → confirm. Inna gets a prompt to
+  accept.
 - Keys: because the *account* does not change, `STRIPE_SECRET_KEY`,
   `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` and `STRIPE_WEBHOOK_SECRET` keep
-  working. They are rotated in section 10.2 (Stripe → Developers → API keys →
-  **Roll key**, with a grace period; Webhooks → endpoint → **Roll secret**).
-- Check **Settings → Business details** shows the clinic's legal name and bank
-  account, and that no personal card of Joe's is the billing method.
+  working. They are rotated in section 10.2: Developers → API keys → secret
+  key → **Roll key…** (choose an expiry of up to 12 hours so the old key keeps
+  working until the redeploy) — better still, create a **restricted key**
+  with only the permissions the app uses (Balance read, Customers,
+  SetupIntents/PaymentIntents, Charges/Refunds, Checkout) and retire the
+  full secret key; Webhooks → endpoint → **Roll secret**.
+- Replace any personal card of Joe's under Billing if one is the payment
+  method for Stripe fees, and revoke any API keys created in his name
+  (the API keys page shows the creator).
 
 Verify: `/admin/api-health` **Payments (Stripe)** green; a £0 SetupIntent
 through the booking flow succeeds; Stripe → Developers → Webhooks shows recent
 2xx deliveries.
 
-### 7.9 Turnstile (Cloudflare) and the DNS zone (Hostinger) — decision D8
+### 7.10 Turnstile (Cloudflare) and the DNS zone (Hostinger) — decision D8
 
 DNS does not move. All records for `kclinics.co.uk` live in Hostinger DNS
 (nameservers `apollo.dns-parking.com` / `athena.dns-parking.com`), and the
@@ -1102,76 +1167,146 @@ group unchanged; `dig NS kclinics.co.uk +short` still returns the two
 Rollback: old Turnstile keys back in Vercel, redeploy. Nothing else was
 touched.
 
-### 7.10 Google (Workspace, Cloud, Business Profile, Search Console, Ads, GA4)
+### 7.11 Google (Workspace, Cloud, Business Profile, Search Console, Ads, GA4)
 
-1. Google Cloud project `KClinics`: after 6.2, Joe signs in as `webmaster@`
-   and confirms Inna's Owner role works (she can open **APIs & Services →
-   Credentials**). The OAuth client id/secret, Places key, Translate key and
-   the Workspace service account are project resources and **do not change**.
-   Add Inna as **Billing account administrator** if a billing account is
-   attached (Billing → Account management).
+1. Google Cloud project `KClinics`: after 6.2 (an Owner grant only takes
+   effect once Inna accepts the emailed invitation), Joe signs in as
+   `webmaster@` and confirms Inna's Owner role works (she can open **APIs &
+   Services → Credentials** herself). Add a second clinic admin the same way.
+   The OAuth client id/secret, Places key, Translate key and the Workspace
+   service account are project resources and **do not change**. Add Inna as
+   **Billing account administrator** if a billing account is attached
+   (Billing → Account management).
 2. OAuth consent screen: **APIs & Services → OAuth consent screen** → change
    the support email and developer contact to a clinic address.
 3. Google Business Profile: business.google.com → **Business Profile settings →
-   People and access** → Inna is **Primary owner**; any developer login is
-   **Manager** at most.
-4. Search Console: property owners → Inna is a verified owner; the HTML-tag
-   token (`GOOGLE_SITE_VERIFICATION`) stays valid whoever owns it.
-5. GA4 / Google Ads / Meta Business / TikTok: Inna is Administrator/Primary;
-   the app's stored OAuth tokens (`ExternalConnection`) keep working because
-   the OAuth client is unchanged. Nothing to redeploy.
+   People and access** → Inna is **Primary owner** (she must already be an
+   owner or manager; new owners get full features after seven days); any
+   developer login is **Manager** at most, removed later.
+4. Search Console: **Settings → Users and permissions** → Inna becomes a
+   **verified owner by her own method** (the apex `google-site-verification`
+   DNS TXT at Hostinger, or Google Analytics) before Joe's verification is
+   removed; delegated users are removed on the same page. Nothing to
+   redeploy (the site serves no verification meta tag).
+5. GA4: **Admin → Account access management** → Inna is **Administrator at
+   account level**, plus a backup (the last administrator cannot remove
+   themselves); then remove Joe. Google Ads: **Admin → Access and security**
+   → Inna is **Admin**; if the account is reached through a *manager (MCC)
+   account* that is Joe's, the API developer token belongs to that MCC — the
+   clinic then needs its own manager account, links the client account,
+   applies for Basic API access (days) and replaces
+   `GOOGLE_ADS_DEVELOPER_TOKEN` and `GOOGLE_ADS_LOGIN_CUSTOMER_ID` in Admin →
+   Credentials & keys. Meta: Business settings → People → Inna with **Full
+   control**, two admins kept; if the Meta *app* behind `META_CLIENT_ID` is
+   in Joe's developer account, transfer it to the clinic's business portfolio
+   or create a new app with the same redirect URI and re-connect; regenerate
+   the Conversions API token from the clinic's Events Manager after Joe's
+   user is removed. TikTok: Business Center → Members → Inna **Admin**; the
+   account's own login/recovery email must be the clinic's; recreate the
+   developer app if it is Joe's. The app's stored OAuth tokens
+   (`ExternalConnection`) keep working wherever the OAuth client is
+   unchanged. Nothing to redeploy.
 
 Verify: `/admin/api-health` **Google rating**, **Google Business Profile**,
 **Google Ads**, **GA4** stay green.
 
-### 7.11 Telephony, SMS, AI, transcription, GIFs
+### 7.12 Telephony, SMS, AI, transcription, GIFs
 
-- **yay.com** (clinic's): confirm the clinic login is the account owner; in
-  **Web Hooks** the Call Ended / Voicemail hooks point at
-  `https://kclinics.co.uk/api/integrations/yay` with the token in each hook's
-  **Auth Token** field (the route accepts it as a bearer/`X-Auth-Token`
-  header or in the body, and rejects `?token=` in the URL). The token is
-  rotated in section 10.2 (paste the new value in both hooks). Click-to-dial
-  depends on yay's "Allowed IP ranges" matching Vercel's egress addresses,
-  which are dynamic; test it after cutover and either widen the allow-list or
-  record that click-to-dial is off.
-- **Twilio**: if the account is Joe's and serves only K-Clinics, change the
-  account owner (Console → **Settings → Account settings → Account details &
-  security → Change account owner**; for accounts not under a Twilio
-  Organization this is a Support request — allow a few days). If shared,
-  create the clinic's own account (5.9), buy/port the sender number (porting a
-  UK number between Twilio accounts is a support ticket; alternatively buy a new
-  number and update `TWILIO_FROM`), and load `TWILIO_ACCOUNT_SID`,
-  `TWILIO_AUTH_TOKEN`, `TWILIO_FROM` in section 8.
-- **Anthropic**: in Inna's Console (5.8) Joe creates an API key named
-  `vercel-production`; load `ANTHROPIC_API_KEY` in section 8 (or in Admin →
-  Credentials & keys, which stores it encrypted in the database). After the
-  redeploy, delete the key in Joe's organisation.
-- **Deepgram**: same pattern (`DEEPGRAM_API_KEY`, stored in Admin →
-  Credentials & keys).
-- **Tenor/GIPHY**: same pattern (`TENOR_API_KEY` / `GIPHY_API_KEY`).
+- **yay.com** (clinic's line 020 8050 0750): the dashboard's account holder
+  and billing contact must be a clinic identity — if it is Joe's login, ask
+  yay.com support to change the account holder to Inna (no self-serve
+  route), give Inna an administrator role and add a backup admin. In
+  **Voice → Calls → Webhooks** the Call Ended / Voicemail Notify hooks point
+  at `https://kclinics.co.uk/api/integrations/yay` with the token in each
+  hook's **Auth Token** field (the route accepts it as a bearer/`X-Auth-Token`
+  header or in the body and rejects `?token=` in the URL; `.env.example` is
+  stale on this). The token is rotated in section 10.2: click the regenerate
+  control on each hook, paste the new value into `YAY_WEBHOOK_SECRET`,
+  redeploy. Click-to-dial depends on yay's "Allowed IP ranges" matching
+  Vercel's egress addresses, which are dynamic; test it after cutover and
+  either widen the allow-list or record that click-to-dial is off.
+- **Twilio**: first read Admin → Account management (owner email), whether
+  the account sits under a Twilio *Organization*, who holds the sender number
+  (default `+44 7828 877444`) and which legal entity the UK regulatory bundle
+  names. *Route A, in place* (account serves only K-Clinics): under an
+  Organization, Admin → Accounts → the account → **Change Ownership** → Inna
+  (invited first as a managed user); otherwise add Inna as an Administrator
+  user and open a support ticket to change the owner — allow days. Keys,
+  number and the UK bundle stay. *Route B, recreate* (account shared): Inna's
+  own Twilio account with business verification, a **UK Regulatory
+  Compliance bundle** for KCLINICS SKIN & LASER LIMITED (required before any
+  UK number can send), then either a support request to move the existing
+  number across or a new number (update `TWILIO_FROM` and tell clients the
+  sender changed). Load `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`,
+  `TWILIO_FROM` in Admin → Credentials & keys.
+- **Anthropic** (the app uses Claude for live chat, kiosk skin analysis and
+  marketing copy; organisation ownership is not transferable self-serve, and
+  the clinic must hold this contract for health-adjacent data): in Inna's
+  Console (5.8) create a workspace `kclinics-production`; a member who will
+  stay (Inna or the backup admin) creates the API key `vercel-production`
+  there; paste it into Admin → Settings → Credentials & keys → "Anthropic
+  (Claude) API key" (encrypted, no redeploy) or Vercel `ANTHROPIC_API_KEY`.
+  Ask Anthropic support for **zero data retention** on the organisation and
+  record the answer in the DPIA (some models are excluded; the app uses
+  Claude Haiku 4.5 and Sonnet). After verification Joe deletes the K-Clinics
+  key in his own organisation. Delete `CLAUDE_ROUTINE_FIRE_URL/TOKEN` from
+  Vercel unless D6 keeps the automation.
+- **Deepgram** (optional voice transcription): removing a member from a
+  Deepgram project **deletes the keys that member created**, so the new key
+  must be created by Inna (Route A: invite her as Owner of the existing
+  project; Route B: her own project). Load `DEEPGRAM_API_KEY` in Admin →
+  Credentials & keys; wait a week with no usage on Joe's key, then remove
+  him.
+- **DeepL**: retired in the code. Clear `DEEPL_API_KEY` from Vercel and from
+  Admin → Credentials & keys; Joe deactivates the key in his DeepL account.
+- **GIFs**: Google shut the **Tenor API on 30 June 2026**, and the code
+  prefers Tenor whenever `TENOR_API_KEY` is set — so **delete
+  `TENOR_API_KEY`** rather than recreating it. Inna (or a clinic staff login)
+  creates a GIPHY developer account → dashboard → **Create an API Key** → app
+  name "K-Clinics team chat" → Vercel `GIPHY_API_KEY` → redeploy (beta keys
+  allow 100 calls an hour; apply for a production key if the team chat
+  exceeds that). Delete Joe's key.
 
 Verify: `/admin/api-health` **SMS**, **AI (Anthropic)**, **Voice
 transcription**, **Telephony** green; a kiosk session analyses a test photo;
 the live-chat assistant answers.
 
-### 7.12 Xero, TrueLayer, IndexNow, web push, misc
+### 7.13 Xero, TrueLayer, IndexNow, web push, misc
 
-- **Xero / TrueLayer developer apps**: if the app registrations live under
-  Joe's developer login, invite Inna as a collaborator/owner on the app
-  (developer.xero.com → app → **Manage** → add user; console.truelayer.com →
-  team → invite) and remove Joe later. Client id/secret unchanged; the stored
-  OAuth connections keep working.
+- **Xero / TrueLayer developer apps** (the books and the bank account are
+  the clinic's; only the app registrations are in question): if they live
+  under Joe's developer login, invite Inna as a collaborator/owner on the app
+  (developer.xero.com → My Apps → the app → add collaborator with the
+  highest role; console.truelayer.com → organisation → People → invite as
+  Owner) and remove Joe later. Client id/secret unchanged; the stored OAuth
+  connections keep refreshing. If a provider will not let a collaborator
+  outlive the creator, Inna creates a new app with the same scopes and
+  redirect URI (`…/api/admin/integrations/xero/callback`,
+  `…/api/admin/integrations/truelayer/callback`), the new client id/secret
+  go into Admin → Credentials & keys, and she clicks **Connect** on the
+  integration page to re-authorise (TrueLayer bank consent is per
+  connection; expect a re-consent). Rotate the client secrets afterwards
+  (10.2).
 - **IndexNow**, **VAPID** (web push), **KIOSK_IP_SALT**, **INDEXNOW_KEY**: these
   are plain values, not accounts. They travel inside the Vercel env vars. Do
   not rotate VAPID (it would silently disconnect every staff device's push
   notifications) unless section 10 decides to.
-- **Hostinger**: if the registration or the mailbox plan is under Joe's login,
-  use Hostinger's "move a domain/service between Hostinger accounts" support
-  flow (https://www.hostinger.com/support/4068055-how-to-move-a-domain-between-hostinger-accounts/)
-  to Inna's account; otherwise just remove Joe's account-sharing access.
+- **Hostinger**: if the domain registration is under Joe's login, Joe →
+  hPanel → **Domains → kclinics.co.uk → Move to another Hostinger account →
+  Move** → destination email = the address of Inna's Hostinger account →
+  Continue; Inna → Domains → the move request → **Accept → Confirm** (both
+  get a verification email; Hostinger-to-Hostinger only, one move per ten
+  days; the DNS records travel with the domain). Hosting or email plans
+  move by the separate "move services" flow. Otherwise nothing moves: Inna
+  enables two-factor on the clinic's Hostinger login and removes Joe under
+  **Account sharing → Manage access** in 10.5. Turn on the domain lock and
+  check the registrant email is a clinic address. The CalDAV mailbox
+  password (`HOSTINGER_CALDAV_PASS`) is rotated in 10.2; if the Hostinger
+  email plan is being retired after the Workspace move, revive the Google
+  Calendar sync first (`GOOGLE_INTEGRATION_ENABLED=true`) and then clear the
+  three `HOSTINGER_CALDAV_*` variables.
 
-### 7.13 Noticed while checking the live DNS (out of scope, worth fixing)
+### 7.14 Noticed while checking the live DNS (out of scope, worth fixing)
 
 - The apex SPF record still says `v=spf1 include:_spf.mail.hostinger.com
   ~all` and there is no `google._domainkey` DKIM record, although the apex MX
@@ -1199,11 +1334,13 @@ was. The full catalogue with categories is Appendix D.
 
    | Variable | New value from | Only if |
    | --- | --- | --- |
-   | `RESEND_API_KEY`, `RESEND_WEBHOOK_SECRET`, `RESEND_INBOUND_SECRET` | 7.7 route B | Resend moved |
-   | `ANTHROPIC_API_KEY` | 7.11 | always (clinic contract) |
-   | `DEEPGRAM_API_KEY`, `TENOR_API_KEY` / `GIPHY_API_KEY` | 7.11 | if new accounts |
-   | `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_FROM` | 7.11 | if new account |
-   | `TURNSTILE_SECRET_KEY`, `NEXT_PUBLIC_TURNSTILE_SITE_KEY` | 7.9 route (b) | if new Cloudflare account |
+   | `RESEND_API_KEY`, `RESEND_WEBHOOK_SECRET`, `RESEND_INBOUND_SECRET` | 7.8 route B | Resend moved |
+   | `ANTHROPIC_API_KEY` | 7.12 | always (clinic contract) |
+   | `DEEPGRAM_API_KEY` (Admin → Credentials & keys) | 7.12 | always (key created by Inna) |
+   | `GIPHY_API_KEY` | 7.12 | if the team-chat GIF picker is wanted |
+   | `TENOR_API_KEY`, `DEEPL_API_KEY` | delete (Tenor API shut down June 2026; DeepL retired in code) | always |
+   | `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_FROM` | 7.12 | if new account |
+   | `TURNSTILE_SECRET_KEY`, `NEXT_PUBLIC_TURNSTILE_SITE_KEY` | 7.10 route (b) | if new Cloudflare account |
    | `BLOB_READ_WRITE_TOKEN` | 7.4 | if new store |
    | `UPSTASH_REDIS_REST_URL`, `UPSTASH_REDIS_REST_TOKEN` | new Marketplace resource: Storage → Create → Upstash Redis → connect to project | if Upstash did not transfer |
    | `SENTRY_DSN`, `NEXT_PUBLIC_SENTRY_DSN` | Sentry → project → Client Keys | only if a new Sentry project was created instead of transferred |
@@ -1300,11 +1437,14 @@ current value is hex). Change the value in Vercel, redeploy, then tick.
 | `CRON_SECRET` | Claude/QA tooling if it uses it; any external uptime monitor calling `/api/health` with the bearer | none for users | [ ] |
 | `BOARD_QUEUE_TOKEN` (= `QA_TOKEN`) | the Claude Code environment, if retained (D6-a) | none | [ ] |
 | `GOOGLE_REVIEW_IMPORT_TOKEN`, `MIGRATE_TOKEN`, `MW_BLOCK_SECRET` | nowhere | none | [ ] |
-| `STRIPE_SECRET_KEY` | Stripe → Developers → API keys → **Roll key** (keep the old valid for 1 hour) | none | [ ] |
+| `STRIPE_SECRET_KEY` | Stripe → Developers → API keys → **Roll key…** with an expiry of up to 12 hours, or replace with a **restricted key** (Balance read, Customers, SetupIntents/PaymentIntents, Charges/Refunds, Checkout) and delete the full key after the redeploy | none | [ ] |
 | `STRIPE_WEBHOOK_SECRET` | Stripe → Webhooks → endpoint → **Roll secret** | none (Stripe overlaps old/new) | [ ] |
 | `RESEND_API_KEY`, `RESEND_WEBHOOK_SECRET`, `RESEND_INBOUND_SECRET` | Resend → API keys / Webhooks (new endpoint or rotate) | none | [ ] |
 | `YAY_WEBHOOK_SECRET` | yay.com → Web Hooks → both hooks' URL `?token=` and Auth Token field | calls logged during the seconds in between are missed | [ ] |
-| `ANTHROPIC_API_KEY`, `DEEPGRAM_API_KEY`, `TWILIO_AUTH_TOKEN`, `GOOGLE_PLACES_API_KEY`, `GOOGLE_TRANSLATE_KEY`, `TENOR_API_KEY`/`GIPHY_API_KEY` | regenerate in each provider console; delete the old key there | none | [ ] |
+| `ANTHROPIC_API_KEY`, `DEEPGRAM_API_KEY`, `GOOGLE_PLACES_API_KEY`, `GOOGLE_TRANSLATE_KEY`, `GIPHY_API_KEY` | regenerate in each provider console (Google: **Regenerate key**, keeping the API restriction); paste into Admin → Credentials & keys (GIPHY: Vercel + redeploy); delete the old key there | none | [ ] |
+| `TWILIO_AUTH_TOKEN` | Twilio → Account → API keys & tokens → **create Secondary Auth Token** → paste into Admin → Credentials & keys → **Promote** it to primary (the old one dies instantly, so promote only after the app has the new value) | none | [ ] |
+| `TURNSTILE_SECRET_KEY` | Cloudflare → Turnstile → widget → Settings → **Rotate Secret Key** (two-hour overlap) → Vercel → redeploy | none if redeployed within two hours | [ ] |
+| Meta Conversions API token (Admin → Settings → Tracking) | Meta Events Manager → generate a new token after Joe's user is removed | none | [ ] |
 | `GOOGLE_CLIENT_SECRET`, `XERO_CLIENT_SECRET`, `TRUELAYER_CLIENT_SECRET` | regenerate in the provider's app settings (Google: add a new secret, then delete the old after the redeploy) | existing stored OAuth connections keep working; staff who *connect* again use the new secret | [ ] |
 | `GOOGLE_WORKSPACE_SA_KEY` (Admin → Credentials & keys) | Google Cloud → service account → Keys → add new JSON key, paste, delete old key; `GOOGLE_WORKSPACE_ADMIN_EMAIL` already repointed in 4.8a | none | [ ] |
 | `GITHUB_APP_PRIVATE_KEY` | done in 7.2 | none | [ ] |
@@ -1376,7 +1516,7 @@ current value is hex). Change the value in Vercel, redeploy, then tick.
 | Resend, Sentry, Anthropic, Twilio, Deepgram, Cloudflare | Team/Members → Joe → Remove or lowest role |
 | Stripe | Team → Joe → Remove (or Developer, view-only) |
 | Google Workspace | Only after 4.8a: Directory → Users → `webmaster@` → remove **Super Admin**; keep the mailbox only if D5-b, as a normal user; otherwise **Suspend** (keeps the mail) |
-| Google Cloud `KClinics` | IAM → `webmaster@` → remove **Owner** (after 7.10 confirms Inna's works) |
+| Google Cloud `KClinics` | IAM → `webmaster@` → remove **Owner** (after 7.11 confirms Inna's works) |
 | Xero / TrueLayer / GBP / Search Console / GA4 / Ads | remove Joe's logins or set to view-only |
 | Hostinger | Account sharing → remove; delete any app passwords issued to Joe |
 | Password manager | remove Joe from the "Platform — K-Clinics" collection; Joe confirms he has deleted the local `.env*` pulls |
@@ -1514,20 +1654,20 @@ Signed: Inna ____________ date ______ · Joe ____________ date ______
 | A5 | Upstash Redis | Vercel Marketplace | team KAUL | [CONFIRM] | with A3, else recreate (8) | team K-Clinics | — | [ ] |
 | A6 | Postgres database | Neon | [CONFIRM: Vercel-managed or Neon-native] | [CONFIRM] | path A/B/C (7.5) | Inna | none | [ ] |
 | A7 | Prisma Console leftovers | Prisma | Joe [CONFIRM exists] | [CONFIRM] | delete or transfer (7.6) | — | none | [ ] |
-| A8 | Domain registration + DNS zone | Hostinger (nameservers `dns-parking.com`) | [CONFIRM] | — | keep; remove Joe's account sharing (7.12, 10.5) | clinic | none | [ ] |
-| A9 | Turnstile widget | Cloudflare | [CONFIRM] | [CONFIRM] | D8 route a/b (7.9) | Inna | Administrator (temp) → none | [ ] |
-| A10 | Transactional email | Resend | [CONFIRM] | [CONFIRM] | route A/B (7.7) | Inna | Member or none | [ ] |
+| A8 | Domain registration + DNS zone | Hostinger (nameservers `dns-parking.com`) | [CONFIRM] | — | keep; remove Joe's account sharing (7.13, 10.5) | clinic | none | [ ] |
+| A9 | Turnstile widget | Cloudflare | [CONFIRM] | [CONFIRM] | D8 route a/b (7.10) | Inna | Administrator (temp) → none | [ ] |
+| A10 | Transactional email | Resend | [CONFIRM] | [CONFIRM] | route A/B (7.8) | Inna | Member or none | [ ] |
 | A11 | Company mailboxes | Google Workspace | clinic | — | roles only (6.1, 10.5) | Inna (Super Admin) | `webmaster@` demoted/suspended | [ ] |
 | A12 | Google Cloud project `KClinics` | Google | clinic org; `webmaster@` Owner | — | add Inna Owner (6.2), remove Joe (10.5) | Inna | none | [ ] |
-| A13 | Payments | Stripe | [CONFIRM owner] | — | owner transfer if needed (7.8) | Inna | none / Developer | [ ] |
+| A13 | Payments | Stripe | [CONFIRM owner] | — | owner transfer if needed (7.9) | Inna | none / Developer | [ ] |
 | A14 | Error monitoring | Sentry | [CONFIRM] | [CONFIRM] | transfer project or new (7.3/8) | Inna | Manager (temp) → none | [ ] |
-| A15 | AI | Anthropic | [CONFIRM] | [CONFIRM] | new org + key (5.8, 7.11) | Inna | Developer (temp) → none | [ ] |
-| A16 | Transcription | Deepgram | [CONFIRM] | [CONFIRM] | new key (7.11) | Inna | none | [ ] |
-| A17 | SMS | Twilio | [CONFIRM] | [CONFIRM] | owner change or new (7.11) | Inna | none | [ ] |
+| A15 | AI | Anthropic | [CONFIRM] | [CONFIRM] | new org + key (5.8, 7.12) | Inna | Developer (temp) → none | [ ] |
+| A16 | Transcription | Deepgram | [CONFIRM] | [CONFIRM] | new key (7.12) | Inna | none | [ ] |
+| A17 | SMS | Twilio | [CONFIRM] | [CONFIRM] | owner change or new (7.12) | Inna | none | [ ] |
 | A18 | Telephony | yay.com | clinic [CONFIRM] | — | token rotation only (10.2) | clinic | none | [ ] |
-| A19 | Accounting / bank apps | Xero, TrueLayer | [CONFIRM app owner] | — | add Inna, remove Joe (7.12) | Inna | none | [ ] |
-| A20 | Marketing accounts | GBP, Search Console, GA4, Ads, Meta, TikTok | [CONFIRM] | — | roles (7.10) | Inna | none | [ ] |
-| A21 | GIF keys | Tenor/GIPHY | [CONFIRM] | — | new key (7.11) | Inna | none | [ ] |
+| A19 | Accounting / bank apps | Xero, TrueLayer | [CONFIRM app owner] | — | add Inna, remove Joe (7.13) | Inna | none | [ ] |
+| A20 | Marketing accounts | GBP, Search Console, GA4, Ads, Meta, TikTok | [CONFIRM] | — | roles (7.11) | Inna | none | [ ] |
+| A21 | GIF key | GIPHY only (Tenor API closed June 2026) | [CONFIRM] | — | delete `TENOR_API_KEY`; new GIPHY key (7.12) | Inna | none | [ ] |
 | A22 | Alert webhook | Slack/Discord/Make | [CONFIRM] | — | clinic channel (8) | clinic | none | [ ] |
 | A23 | Build automation | Claude Code (Anthropic) | Joe | yes | D6 | Inna or off | none | [ ] |
 | A24 | Admin dashboard accounts | the app | Inna OWNER; Joe/webmaster | — | 10.4 | Inna | DEVELOPER or inactive | [ ] |
@@ -1922,7 +2062,7 @@ Every registered URL in the codebase is built from `lib/site.ts:14` (`https://kc
 
 | Fact as supplied | What DNS shows today | Consequence for the plan |
 | --- | --- | --- |
-| DNS zone on Cloudflare | NS = `apollo.dns-parking.com`, `athena.dns-parking.com` (Hostinger DNS); site served directly by Vercel (no `cf-ray`) | DNS edits happen in the clinic's Hostinger hPanel. Decision D8 / sections 5.10 and 7.9 of `docs/ACCOUNT_MIGRATION_HANDOVER.md` (lines 189-195, 468-476, 846) and `lib/go-live.ts:124` assume Cloudflare; confirm with Joe whether a nameserver move is planned or the text is wrong. Cloudflare then matters only for Turnstile. |
+| DNS zone on Cloudflare | NS = `apollo.dns-parking.com`, `athena.dns-parking.com` (Hostinger DNS); site served directly by Vercel (no `cf-ray`) | DNS edits happen in the clinic's Hostinger hPanel. Decision D8 / sections 5.10 and 7.10 of `docs/ACCOUNT_MIGRATION_HANDOVER.md` (lines 189-195, 468-476, 846) and `lib/go-live.ts:124` assume Cloudflare; confirm with Joe whether a nameserver move is planned or the text is wrong. Cloudflare then matters only for Turnstile. |
 | Resend Inbound on `reply.mail.kclinics.co.uk` | `mail.kclinics.co.uk` MX 10 `inbound-smtp.eu-west-1.amazonaws.com` (Resend Inbound) + `resend._domainkey.mail` DKIM; `send.mail` SPF `include:amazonses.com` + MX `feedback-smtp.eu-west-1.amazonses.com`; `reply.mail.kclinics.co.uk` is a CNAME to `links1.resend-dns.com` (Resend link tracking) and cannot carry MX | The code default `reply.mail.<host>` (`lib/chat-email.ts:33`) and `EMAIL_REPLY_TO` default `replies@reply.mail.<host>` (`lib/email.ts:99`) are only deliverable if `CHAT_INBOUND_DOMAIN` and `EMAIL_REPLY_TO` are set in Vercel to `mail.kclinics.co.uk` / a real mailbox (`.env.example:58-61` says exactly that). Confirm the values (names only) before cutover. |
 
 Other apex records to preserve verbatim if the zone is ever exported: `google-site-verification` TXT (Search Console domain property), `facebook-domain-verification` TXT (Meta Business), `google-gws-recovery-domain-verification` TXT, MX `smtp.google.com`, `_dmarc` (p=none). Aside: apex SPF still says `include:_spf.mail.hostinger.com` and `google._domainkey` is absent, so Workspace sending auth from `docs/GOOGLE_WORKSPACE_MIGRATION.md` §Phase 4 is not finished. `cms.kclinics.co.uk` does not resolve (`WORDPRESS_API_URL` unused).
