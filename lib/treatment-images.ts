@@ -65,11 +65,11 @@ export function pageImage(key: string): string | null {
 // Journal article → hero image (real photography from the media library).
 const articleMap: Record<string, string> = {
   'laser-hair-removal-what-to-expect': 'Laser-Hair-Removal-1-1.jpg',
-  'anti-wrinkle-injections-natural-results': 'HydraFacial-Anti-Ageing.png',
+  'anti-wrinkle-injections-natural-results': 'HydraFacial-Anti-Ageing-opt.jpg',
   'achieve-the-perfect-smile-veneers-whitening': 'baner-7.jpg',
-  'skincare-after-laser-treatments': 'Carbon-Laser-Peel.png',
-  'hifu-vs-rf-non-surgical-lifting': 'Body-SMAS-HIFU-Lifting-1.png',
-  'preparing-for-your-first-consultation': 'HydraFacial-Anti-Ageing.png',
+  'skincare-after-laser-treatments': 'Carbon-Laser-Peel-opt.jpg',
+  'hifu-vs-rf-non-surgical-lifting': 'Body-SMAS-HIFU-Lifting-1-opt.jpg',
+  'preparing-for-your-first-consultation': 'HydraFacial-Anti-Ageing-opt.jpg',
 };
 export function articleImage(slug: string): string | null {
   return resolve(articleMap[slug]);
