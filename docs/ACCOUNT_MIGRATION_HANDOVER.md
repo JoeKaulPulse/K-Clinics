@@ -116,7 +116,7 @@ work starts.
 | Accounting / bank feed | Xero and TrueLayer — the clinic's data; the *developer app registrations* (client id/secret) **[CONFIRM]** | |
 | Google Business Profile, Search Console, GA4, Google Ads, Meta, TikTok | Clinic's marketing accounts **[CONFIRM]** who is primary owner/admin | |
 | Translation | DeepL (retired) / Google Translate key (in the `KClinics` Cloud project) | |
-| GIFs in team chat | Tenor or GIPHY key **[CONFIRM]** | Trivial to recreate. |
+| GIFs in team chat | GIPHY key **[CONFIRM]** (Google closed the Tenor API in June 2026; any `TENOR_API_KEY` is dead weight) | Trivial to recreate. |
 | Alerting | `CRON_ALERT_WEBHOOK_URL` (Slack/Discord/Make) **[CONFIRM]** whose workspace | Must point at a clinic channel after handover. |
 | Admin dashboard accounts | `AdminUser` rows: Inna (OWNER), Joe / `webmaster@` (OWNER or DEVELOPER), any `qa-*@kaulindustries.com` demo users | Inside the app; handled in section 10.4. |
 | Documents | `docs/`, `audit/`, the branded PDFs in the repo root and `docs/*/` | Several name the developer or Joe's accounts; updated in section 12. |
@@ -576,16 +576,18 @@ Claude. The clinic should hold this contract directly.
 
 Done when: the organisation has credit and Joe is a Developer member.
 
-### 5.9 Twilio, Deepgram, Tenor/GIPHY, Upstash (only where Appendix A says "create new")
+### 5.9 Twilio, Deepgram, GIPHY, Upstash (only where Appendix A says "create new")
 
 For each of these the pattern is the same:
 
 1. Sign up with `inna.k@kclinics.co.uk`; enable two-factor where offered; add
    the clinic card.
 2. Invite `joe@kaulindustries.com` with the lowest role that can create an API
-   key (Twilio: **Developer**; Deepgram: **Member**; Tenor/GIPHY have no teams —
-   Joe will tell you the exact key name to create and you paste it into the
-   vault).
+   key (Twilio: **Developer**). Deepgram is the exception: a key dies with the
+   member who created it, so **you** create the Deepgram key (Joe tells you
+   the name) and paste it into the vault. GIPHY has no teams — you create the
+   key yourself the same way (Tenor is gone: Google closed its API in June
+   2026, so no Tenor key is needed).
 3. Upstash does not need an account of its own if the database is created from
    the Vercel Marketplace inside the new Vercel team — Joe does that in
    section 8.
