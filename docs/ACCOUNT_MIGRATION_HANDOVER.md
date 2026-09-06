@@ -13,7 +13,7 @@ developer's access.
 | Status | Draft for Inna and Joe to work through together |
 | Written | 6 September 2026 |
 | People | **Inna** — clinic owner, becomes the owner of every account. **Joe** — developer, initiates every transfer and does the technical steps. |
-| Source of truth | This file. Update it as steps complete (tick the boxes, add dates). |
+| Source of truth | This file. The committed copy holds the procedure only: the answers to section 2, the filled-in Appendix A (which accounts are Joe's) and the real dates live in the **vault copy** until the repository is private (D2). Tick boxes and dates there. |
 
 Read section 0 first. Sections 1 to 3 are decisions and preparation. Sections 4 to
 10 are the migration itself. Section 11 is what to do if something goes wrong.
@@ -59,10 +59,15 @@ is refused (section 7.5, path C).
 **Timeline:** about two weeks of calendar time, roughly three evenings of actual
 work, then a 30-day quiet period before the old accounts are closed.
 
+**A note on this document itself:** the repository is public today, so this
+plan is readable by anyone. It contains no secrets, but do not fill in
+Appendix A or the decision table in the committed copy while that is so — keep
+those in the vault copy — and treat nothing in the plan as confidential.
+
 | When | What | Who |
 | --- | --- | --- |
 | Days 1–3 | Decisions (section 2) and the ownership check (Appendix A) | Inna + Joe |
-| Days 3–5 | Inna creates the new homes (section 5); Joe prepares and takes backups (section 4) | both |
+| Days 3–5 | Inna creates the new homes (section 5) and sorts roles in the clinic's existing accounts (section 6); Joe prepares and takes backups (section 4) | both |
 | Evening 1 (Day 6) | Code, website, database and monitoring transfers (sections 7.1–7.6) | Joe initiates, Inna accepts |
 | Days 7–8 | Email, payments, Turnstile, Google, telephony, AI and the smaller accounts (sections 7.8–7.13); new credentials loaded (section 8) | both |
 | Evening 2 (Day 9) | Only if a transfer was refused: database copy (7.5 path C) or Blob copy (Appendix B) | Joe, Inna on call |
@@ -125,108 +130,138 @@ work starts.
 
 ## 2. Decisions Inna must make before we start
 
-Each decision has a recommendation. Inna records the answer in the table in
-Appendix A (column "Decision") so Joe can plan the exact route.
+Each decision has a recommendation. If you are unsure, take the
+recommendation. Write your answers in the table at the end of this section,
+add the date, and send Joe a copy (in the vault, not by email, while the
+repository is public). Joe cannot start section 4 until D1 to D5 are
+answered; D6 to D8 can wait until the end of Phase 1. Every answer except the
+rewind window in D4 can be changed later at little cost. Where a decision
+rests on a technical detail, the section in brackets has it for Joe.
 
-**D1 — GitHub: organisation or personal account?**
-Create a GitHub **organisation** named `kclinics` (or similar), owned by Inna.
-An organisation survives staff changes, lets Joe (or any future developer) be
-an *outside collaborator* who can be removed in one click, and lets Vercel and
-the build board be installed on the organisation rather than on a person.
-*Recommended: organisation.*
+**D1 — Should the code live in a GitHub "organisation" or in your personal
+GitHub account?**
+An organisation is a company account on GitHub. It outlives any one person,
+lets you add or remove a developer in one click, and lets the website and the
+Build board connect to the company rather than to a person. A personal
+account ties everything to one login. *Recommended: organisation, named
+`kclinics`.* Answer: organisation / personal. (Detail: 5.3 and 7.1.)
 
-**D2 — Keep the code public, or make it private?**
-The repository is public today: anyone can read the platform code, its open
-issues and the Build board's notes about fixed vulnerabilities. What each
-choice gives you, on a GitHub organisation:
+**D2 — Should the code stay public (anyone can read it) or become private?**
+Today anyone on the internet can read the website's code, the list of open
+issues, the notes about security problems that have been fixed, and the
+standing security audit reports in the `audit/` folder. No passwords, keys or
+client data are in the code, but a private repository gives an attacker less
+to study.
 
-| | Public repo, Free org | Private repo, Free org | Private repo, Team org |
+| | Stay public | Private (GitHub "Team" plan) |
+| --- | --- | --- |
+| Who can read the code | anyone | only people you invite |
+| Safety rails (nobody can change the live code without a second check and automatic tests) | included, free | included |
+| The two deepest automatic security scans | included, free | about £25 per developer a month extra, or Joe switches those two off and keeps the rest |
+| Cost | £0 | about £3 per person a month (an introductory rate; you, your backup admin, and Joe while he has access) |
+
+Do not choose "private on the free plan": it looks safer but the safety
+rails are switched off. *Recommended: private on the Team plan, without the
+two paid scans.* Staying public is a reasonable cheaper choice and changes
+nothing else in the plan. Answer: public / private. (Detail for Joe: the
+plan-and-feature matrix in 7.1.)
+
+**D3 — Vercel plan (Pro is the only workable option; you are confirming, not
+choosing).**
+The site needs features the free plan does not allow (background jobs every
+few minutes, long-running tasks), and Vercel only accepts a project into a
+team with a card on file. Cost: about £16 a month for your seat, plus £16 a
+month for Joe from the day you invite him (5.4 step 5) until you change him
+to the free Viewer role or remove him (10.5). *Answer: Pro.*
+
+**D4 — The database: who bills it, and how far back can we rewind?**
+The database (every client, booking and record) is run by a company called
+Neon. Nothing about the database itself changes. Two questions for you:
+
+1. *Billing.* Joe's checks say the database was set up through Vercel, so its
+   cost appears as a line on the Vercel invoice rather than as a separate Neon
+   bill. Keeping it that way is the no-risk route: the database is not copied.
+   Moving it to a separate Neon bill would need either a support ticket with
+   Neon or copying the whole database, which is the one step in this plan with
+   any risk to data. **Recommended: keep it on the Vercel invoice.** Answer:
+   yes / no.
+2. *Rewind window.* Neon can wind the database back to any moment in the last
+   N days if something is deleted or corrupted. Today that is one day.
+   Options: 1 day (no extra cost), 7 days (about £[Joe fills in] a month
+   extra), 30 days (needs Neon's dearer plan, about £[Joe fills in] a month
+   extra). The clinic's disaster-recovery document says 30 days.
+   **Recommended: 7 days, plus a weekly copy kept for 90 days, which Joe sets
+   up.** Answer: 1 / 7 / 30.
+
+If Neon or Vercel refuses the transfer, Joe copies the data to a fresh
+database (7.5, path C). He will tell you first; it happens in the evening
+with a rollback ready. (Detail for Joe: 7.5; the window is set under the
+Neon project's Settings → Instant restore and defaults to one day even after
+a transfer.)
+
+**D5 — What access should Joe keep after the handover?**
+(a) None: Joe is removed from everything on the day the checks pass. Any
+later fix means inviting a developer back in.
+(b) Read-only on GitHub for an agreed support period: Joe can read the code
+and propose changes that you (or a future developer) approve, but cannot
+change the live site, and you can remove him in one click at any time. He is
+removed from Vercel and from the database console entirely — a Vercel
+"Viewer" can still open the database console and read logs that contain
+client details, so it is not a safe long-term role. If he needs to *publish*
+a fix during the period, you re-invite him to Vercel as a paid Member (about
+£16 a month) for that job and remove him afterwards.
+Either way, every password and key Joe has ever seen is changed (section
+10) — by you, with Joe guiding by phone and never seeing a value.
+*Recommended: (b) for 90 days, then review.* Answer: (a) / (b), and the
+number of days. (Detail for Joe: an outside collaborator cannot connect an
+organisation repository to Vercel, so the Git link in 7.3 is redone while he
+is still an organisation Member.)
+
+**D6 — The overnight helper (Claude Code).**
+Today the Build board can wake an automated assistant overnight that works
+through queued fixes. It runs on Joe's personal subscription and cannot be
+moved to yours. Options: (a) you take out a Claude subscription in the
+clinic's name (from about £15–18 a month for one person; heavier-use plans
+cost more, see https://claude.com/pricing) and Joe sets the helper up again
+under your account; (b) switch it off — the board keeps working, queued items
+wait for a person. *Recommended: (b) now; consider (a) once everything has
+settled.* Answer: (a) / (b). (Detail: 7.14.)
+
+**D7 — Fix the broken photo uploads during the move?**
+Two features are broken today because the file store was created with the
+wrong setting: the kiosk's photo skin analysis and academy portfolio photo
+uploads (BLD-1304). The fix is a second, private file store plus a small code
+change. Whether it is done now depends on whether Vercel moves the existing
+store with the website, which Joe finds out on Evening 1: if it moves
+(likely), the fix is a separate job after the handover and there is nothing
+for you to do; if it does not move, Joe creates both stores in one go and
+tells you. Nothing to decide; Joe records the outcome in Appendix A row A4.
+(Detail: 7.4 and Appendix B.)
+
+**D8 — The login bot-check (Cloudflare Turnstile).**
+The "are you human" check on the login pages is provided by Cloudflare. Your
+domain and its DNS are *not* at Cloudflare and will not move there. The only
+question is whose Cloudflare login holds that check, and Joe answers it in
+Appendix A row A9: if it is already the clinic's, nothing to do; if it is
+Joe's and used only for K-Clinics, Joe invites you as the account's Super
+Administrator and removes himself (7.10, route a — no cost, nothing changes
+on the site); if it is Joe's and shared with his other sites, you create a
+free Cloudflare account (5.10) and Joe moves the check into it (route b — no
+cost, one republish of the site). Nothing to decide unless Joe reports route
+(b), in which case do 5.10.
+
+### Your answers (keep this table in the vault copy)
+
+| Decision | Your options | Your answer | Date |
 | --- | --- | --- | --- |
-| Rules that stop pushes straight to `main` | enforced | **not enforced** | enforced |
-| Required checks before merge (Typecheck etc.) | yes | no | yes |
-| CodeQL and dependency-review scans | free | fail | need the Code Security add-on (about $30 per active committer a month) or removing those two jobs |
-| GitHub's own secret scanning | free | no | Secret Protection add-on |
-| `npm audit` + gitleaks checks | yes (gitleaks needs a free organisation licence key) | yes | yes |
-| Actions minutes | unlimited on standard runners | 2,000 a month | 3,000 a month |
-| Price | £0 | £0 | about $4 per user a month — an introductory rate, renewal price not published (Inna, plus Joe while a member; an outside collaborator on a private repo also takes a seat) |
-
-A private repo on the Free plan is the one combination to avoid: it looks
-protected but nothing is enforced. *Recommended for a platform holding health
-data: private on the Team plan, keeping `npm audit` and gitleaks and removing
-the CodeQL and dependency-review jobs unless Inna wants to pay for Code
-Security.* Staying public (Free) is a legitimate cheaper choice that keeps
-every scan and rule for nothing — if Inna prefers it, nothing else in the
-plan changes.
-
-**D3 — Vercel plan.**
-The site runs on Pro today (cron jobs, London region, deployment protection,
-usage limits). A project can only be transferred into a team with a valid
-payment method. *Recommended: Vercel Pro, one seat for Inna, plus one for Joe
-while he is still working on it (about $20 per seat per month).*
-
-**D4 — Database home.**
-Keep whatever model exists today. If the Neon project is *Vercel-managed*
-(all the evidence says it is: it was created from Vercel's Storage tab and
-carries Vercel's `POSTGRES_*` variable set) it travels with the Vercel project
-and is billed on the clinic's Vercel invoice; if it is *Neon-native* it is
-transferred between Neon organisations with its connection string unchanged.
-Only if a transfer is refused do we copy the data to a fresh Neon project
-(path C in 7.5). Moving a Vercel-managed database into a Neon-native account
-is not self-serve (a Neon support ticket, or a copy), so decide now whether
-"Neon billed through Vercel" is acceptable. Also choose the restore-history window
-(Neon project Settings → Instant restore; it defaults to one day): up to 7
-days on Launch or 30 on Scale (dearer, and the retained history is billed
-per GB) — the repo's disaster-recovery target says 30 days. *Recommended: keep the existing model, Neon billed via
-Vercel; 7-day restore window plus weekly snapshots kept 90 days; never copy
-data unless forced.*
-
-**D5 — Joe's access after handover.**
-Either (a) remove Joe from everything, or (b) keep Joe as a least-privilege
-member for an agreed support period, revocable at any moment: GitHub
-*outside collaborator* with write access behind branch protection; Vercel
-**Viewer** (free, read-only: logs, previews, comments) — Vercel Pro has only
-Owner, Member ($20 a month, can deploy and change settings on every project)
-and Viewer, so "developer on one project only" does not exist on Pro; while
-Joe still needs to deploy he must be a paid Member, and on a private
-repository only commits by team members deploy. Note the order: Joe must
-still be a GitHub organisation *Member* when the Vercel Git link is redone
-(7.3), because an outside collaborator cannot connect an organisation
-repository to Vercel. No owner rights anywhere. *Recommended: (b) as Viewer
-for 90 days, then review.* Either way every credential Joe has seen is
-rotated (section 10).
-
-**D6 — The overnight build automation (Claude Code).**
-The Build board can wake an unattended Claude Code session that fixes queued
-items. That runs on Joe's Anthropic subscription. Options: (a) Inna takes a
-Claude subscription that includes Claude Code on the web, connects the new
-GitHub organisation and Joe recreates the environment and the Routine under
-her account; (b) switch it off (remove two environment variables; the board
-keeps working, items just wait for a human). Routines and environments
-belong to one claude.ai account and cannot be transferred. *Recommended: (b)
-at handover, revisit (a) once the dust settles.* Steps for both in 7.14.
-
-**D7 — File store: fix the private-storage issue during the move?**
-The Blob store is public-only, which is why kiosk photo upload and academy
-portfolio upload are broken (BLD-1304). Vercel fixes a store's access tier
-when it is created, and the app asks for *private* only for kiosk selfies and
-portfolio photos, so the lasting fix is **two stores** (one public, one
-private) plus a small code change — see Appendix B, "Decision: store
-topology". If Vercel transfers the existing store with the project, keep it
-and do the two-store change as a separate follow-up afterwards. If a new
-store has to be created anyway, create both stores then and run the copy in
-Appendix B. *Recommended: don't combine the two changes unless forced.*
-
-**D8 — Turnstile: where should the Cloudflare account live?**
-DNS itself does not move: every record already sits in the clinic's Hostinger
-account (nameservers `apollo/athena.dns-parking.com`). Cloudflare is used only
-for the Turnstile bot-protection widget. If the Cloudflare account holding
-that widget is Joe's: (a) if it serves only K-Clinics, hand the *account* to
-Inna (change its email to hers, she sets password + two-step, Joe is removed)
-— nothing else changes; (b) if it is shared with Joe's other sites, Inna
-creates a free clinic Cloudflare account, Joe creates a new widget there and
-swaps the two Turnstile keys in Vercel with a redeploy (section 7.10). No
-nameserver change, no downtime. *Recommended: (a) wherever possible.* If the
-account is already the clinic's, D8 is moot.
+| D1 Where the code lives | organisation / personal account | | |
+| D2 Who can read the code | public / private (Team plan) | | |
+| D3 Vercel plan | Pro (the only workable choice) | | |
+| D4 Database | billing: on the Vercel invoice / separate Neon bill; rewind window: 1 / 7 / 30 days | | |
+| D5 Joe's access afterwards | (a) none / (b) read-only on GitHub for ___ days | | |
+| D6 Overnight helper | (a) clinic subscription / (b) off | | |
+| D7 Photo-upload fix | nothing to decide; Joe records the outcome in Appendix A row A4 | n/a | |
+| D8 Login bot-check account | nothing to decide unless Joe reports route (b) in row A9 | n/a | |
 
 ---
 
@@ -238,7 +273,7 @@ Phase 1  Inna creates the new homes             → nothing changes for anyone
 Phase 2  Transfers, Joe initiates / Inna accepts→ site keeps running throughout
 Phase 3  Load re-issued credentials, redeploy   → one production deploy
 Phase 4  Verify everything (both)               → test booking, email, payments…
-Phase 5  Revoke Joe's access, rotate secrets    → staff sign in again once
+Phase 5  Revoke Joe's access, rotate secrets    → every staff member, client and student is signed out once and signs back in (Inna tells staff the day before; passwords and Face ID keep working)
 Phase 6  Day 30: decommission the old side, update the records, sign off
 ```
 
@@ -265,6 +300,9 @@ The order inside Phase 2 matters and is fixed:
       `routine_fire_daily_cap` setting to `0`, or temporarily remove
       `CLAUDE_ROUTINE_FIRE_URL` in Vercel).
 - [ ] **4.3 Full database backup, three ways.**
+      Every backup in this section is stored **only** in the clinic's own
+      encrypted storage (a Drive folder owned by Inna, or an encrypted disk
+      Inna holds); Joe works from that location and keeps no copy.
       1. Neon: create a branch named `pre-handover-YYYY-MM-DD` from the
          production branch (Neon console → Branches → Create branch) **and** a
          manual snapshot with the same name (Backup & restore → Create
@@ -274,11 +312,11 @@ The order inside Phase 2 matters and is fixed:
          the repo's own target in `prisma/migrations/README.md` is 30 days,
          which needs Scale *and* the slider moved deliberately — a transfer
          keeps the setting, a rebuild does not (decision D4).
-      2. App export: sign in as OWNER at `/admin` **on kclinics.co.uk** (not a
-         `*.vercel.app` URL — passkeys are bound to the domain), run Settings →
-         Data export (`/api/admin/export`, passkey step-up required, so the
-         OWNER running it must already have a registered passkey; Inna should
-         register hers now, Admin → Security → Passkeys). Store the JSON file
+      2. App export, run by **Inna** (she is OWNER with a passkey; Joe watches):
+         sign in at https://kclinics.co.uk/admin (not a `*.vercel.app` URL —
+         passkeys are bound to the domain), open **Settings** → the card
+         **Data export & backup** → **Download export** (the passkey step-up
+         requires the passkey registered in 5.1 step 4). Store the JSON file
          in the clinic's encrypted storage, not on a laptop desktop. This file
          restores with `scripts/restore.mjs` and needs the same encryption
          keys — but note the script currently fails under Prisma 7 (it builds
@@ -296,19 +334,35 @@ The order inside Phase 2 matters and is fixed:
       uploadedAt. Keep it with the backups; it is the checklist for Appendix B
       if the store has to be copied. If the total size is practical (check the
       CSV), also take a full copy with Vercel's documented backup loop
-      (`list` with cursor → `get` → write to encrypted storage) so the files
-      are never held in one place only during the move.
+      (`list` with cursor → `get` → write to the clinic's encrypted storage) so
+      the files are never held in one place only during the move. This copy
+      contains kiosk selfies and homework files: it lives only in the clinic's
+      storage and is deleted per 12.2.
 - [ ] **4.5 Environment export.** From a linked checkout (`vercel link --scope
-      kaul-joe --project k-clinics`): `vercel env pull .env.handover.production
-      --environment=production` and the same for `preview`. Also screenshot
+      kaul-joe --project k-clinics`), pull to a path **outside every git
+      checkout**: `vercel env pull ~/handover/.env.production.local
+      --environment=production` and the same for `preview` (`.gitignore`
+      ignores only `.env` and `.env*.local`; a file named `.env.handover` inside
+      the checkout would be committed by `git add -A` — to a public
+      repository). Run `git status` afterwards and expect nothing new. Also screenshot
       Vercel → Settings → Environment Variables (names + scopes only). **Any
       variable marked "Sensitive" is write-only: it is excluded from `env
       pull` and cannot be read back from the dashboard or API.** Check the
       list for Sensitive rows; for each, either the value is already in the
-      vault (it must be, for the data-bound keys) or it is a rotate-class
-      secret you will regenerate anyway. A project transfer copies Sensitive
-      values across; this export is only for rollback and for the
-      new-project fallback. Put the pulled files straight into the shared
+      vault or it is a rotate-class secret you will regenerate anyway. **If a
+      data-bound key (`HEALTH_*`, `VAPID_PRIVATE_KEY`) is Sensitive and no
+      readable copy exists anywhere (vault, Joe's local `.env`,
+      `scripts/migrate-wp/.env`): STOP. Do not use any path that recreates
+      the Vercel project or re-enters variables (the 7.3 fallback, the
+      "export" step 4 in Appendix D).** The project transfer itself carries
+      Sensitive values, so 7.3 is safe; only re-entry is not. Recover by
+      rotation, not by reading: run the 10.3 keyring procedure early with a
+      new known key as the active one, leave the unreadable variable in place
+      (it stays in the ring as a retired key), and delete it only when the
+      sweep reports 0 remaining. VAPID has no equivalent: an unreadable
+      private key means a new keypair and every device re-subscribing. A
+      project transfer copies Sensitive values across; this export is only for
+      rollback. Put the pulled files straight into the shared
       password manager vault (section 5.2) as a secure note, then delete the
       local copies. **These files are the crown jewels: they contain the
       health-data encryption keys.** While on the variables page, note any
@@ -347,7 +401,13 @@ The order inside Phase 2 matters and is fixed:
       apex/`www` and the `mail.` / `send.mail.` / `reply.mail.` records to 300
       seconds so any change during the Resend step (7.8) propagates fast.
       Confirm Joe's access to hPanel is via Hostinger "Account sharing" (so it
-      can be removed in 10.5), not via Inna's own login.
+      can be removed in 10.5), not via Inna's own login. If Joe has ever
+      signed in with Inna's own username and password, Inna changes that
+      password today (hPanel → profile → **Account → Security → Change
+      password**) and turns on two-factor; Joe then asks for Account sharing
+      instead. The same rule applies to any other account in Appendix A where
+      a password, rather than an invitation, was ever shared: change it, and
+      note "password changed" in the Done column.
 - [ ] **4.8 Code changes, as one PR** (merge before Evening 1): the items in
       Appendix C marked *before* and *at* — the hard-coded GitHub/Vercel links
       in `components/admin/dashboard/DeveloperView.tsx`, the repository
@@ -362,7 +422,10 @@ The order inside Phase 2 matters and is fixed:
       repositories need the key); if D2 = private without Code Security,
       remove the CodeQL workflow and the dependency-review job; and either
       delete `.github/workflows/deploy.yml` (it re-enables GitHub Pages if
-      anyone runs it) or accept the new Pages URL. Read the new links from
+      anyone runs it) or accept the new Pages URL. Add `.env.handover*` to
+      `.gitignore` as a belt-and-braces line, and fix the stale comment in
+      `lib/cron-auth.ts` that says `CRON_SECRET` unlocks the client
+      password-reset route (it does not; BLD-465). Read the new links from
       env where possible so the next move is a variable change, not a code
       change.
 - [ ] **4.8a Workspace admin repoint (before Joe's Super Admin is removed).**
@@ -394,17 +457,20 @@ The order inside Phase 2 matters and is fixed:
       prisma/schema.prisma --exit-code` against it (exit 0). Point a local
       `next dev` at it with the production `HEALTH_*` values and open one
       health assessment, one consent certificate and one gallery image. A
-      backup that has never been restored is not a backup.
+      backup that has never been restored is not a backup. Delete the scratch
+      branch or local database as soon as the checks pass (Neon → Branches →
+      delete, or `DROP DATABASE`) and record the date.
 - [ ] **4.11 Escrow the unrecoverable values.** Copy `HEALTH_ENCRYPTION_KEY`,
       `HEALTH_ENCRYPTION_KEYS_OLD`, `HEALTH_HMAC_KEY`, `HEALTH_HMAC_KEYS_OLD`,
       `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT` and
       `KIOSK_IP_SALT` (or the legacy `ENCRYPTION_KEY`, if present) into their
       own vault item labelled "never rotate without the runbook", and note
       the active key id shown at Admin → Integrations → "Clinical data
-      encryption". If `KIOSK_IP_SALT` is not set today, set it now to the
-      value the app derives (or any fresh `openssl rand -hex 32`, accepting a
-      one-off reset of the kiosk anti-abuse counters) so that the later
-      keyring rotation does not silently change the salt.
+      encryption". If `KIOSK_IP_SALT` is not set today, set it now to a fresh
+      `openssl rand -hex 32` (accepting a one-off reset of the kiosk
+      anti-abuse counters) so that the later keyring rotation does not
+      silently change the salt; it is rotated again by Inna in 10.2 because
+      today's derived value is known to Joe.
 
 Done when: Appendix A has no blank "Today's owner" cells, three backups exist
 and one has been test-restored, the env export sits in the vault, the code PR
@@ -418,20 +484,46 @@ Everything below is done by Inna, on her own computer, signed in as herself.
 Each block ends with "Done when". Joe is available by phone or screen-share
 throughout, and should be sent the invitations named in each block.
 
+**Your order of work:**
+
+1. Straight away, no waiting: 5.1, 5.2, 6.1 (Joe's preparation step 4.8a
+   waits for it), 5.3, 5.4, 5.8, 6.2, 6.3.
+2. Only after Joe has sent you the completed Appendix A (his step 4.1): 5.5
+   (if he says the database is "Neon-native"), 5.6 (if Resend is not already
+   the clinic's), 5.7 (if Sentry needs a new organisation), 5.9 and 5.10
+   (only the accounts he names), and 6.4 on a call with him.
+3. Then wait. Joe will phone you at each point in 5.11.
+
 ### 5.1 The identity everything hangs off
 
 1. Decide the email address that will own every new account. Use your own
-   Workspace mailbox (`inna.k@kclinics.co.uk`). Do **not** use a personal
-   Gmail, a shared inbox, or `webmaster@`.
+   Workspace mailbox: the @kclinics.co.uk address you sign in to Google with.
+   This plan assumes `inna.k@kclinics.co.uk` **[CONFIRM with Joe before
+   starting]**. If that mailbox does not exist yet (the Workspace guide lists
+   it as planned), either create it first (admin.google.com → **Directory →
+   Users → Add new user**) or use your existing @kclinics.co.uk Google login
+   and tell Joe the address so he can correct it throughout this plan. Do
+   **not** use a personal Gmail, a shared inbox, or `webmaster@`.
 2. Make sure two-step verification is on for that Google account
    (myaccount.google.com → Security → 2-Step Verification → On). Every service
    below will send its verification and billing email here.
-3. Nominate a **backup admin** — a second real person at the clinic (or a
-   second address you control). Most services let you add a second owner or
-   admin; add them wherever the block below says "add backup admin".
+3. Nominate a **backup admin**: a second real person at the clinic. (The
+   sign-off in section 14 needs a second person, so a second address of your
+   own does not count.) Some services charge for their seat: Vercel about £16
+   a month if they need more than read-only access, GitHub Team and Bitwarden
+   about £3 each; section 13 lists them. Add them wherever a block below
+   says "add your backup admin".
+4. Register your passkey on the admin dashboard now; Joe needs it in place
+   for the backup (4.3) and you need it for section 9. On your own laptop or
+   phone go to https://kclinics.co.uk/admin/login (not any other address) →
+   sign in with your password → click your name at the top right → **My
+   profile** → scroll to **Face ID / Touch ID sign-in** → **+ Add this
+   device** → follow your device's prompt (Face ID, Touch ID or Windows
+   Hello). Repeat on a second device.
 
-Done when: your mailbox has 2-Step Verification on and you have chosen a
-backup admin.
+Done when: your mailbox has 2-Step Verification on, you have chosen a backup
+admin, and after signing out of the admin the button **Sign in with Face ID /
+Touch ID** on the login page signs you in.
 
 ### 5.2 A password manager with a shared vault
 
@@ -439,8 +531,13 @@ backup admin.
    https://bitwarden.com (Teams) or https://1password.com (Business). Either is
    fine; Bitwarden is cheaper.
 2. Create a **collection/vault called "Platform — K-Clinics"**.
-3. Share it with your backup admin. Share it with Joe **read/write, temporarily**
-   (he removes himself at the end; you can also remove him).
+3. Share it. In Bitwarden: left menu **Admin Console** → **Members** →
+   **Invite member** → enter the email → under **Collections** tick
+   "Platform — K-Clinics" → permission **Can manage** for your backup admin,
+   **Can edit** for Joe → **Save**. They accept from their email; then
+   **Members** → their row → **Confirm**. (1Password: **People → Invite
+   people**, then add them to the vault.) Joe's access is temporary: you
+   remove him at the start of section 10.
 4. From now on every login, recovery code and API key created in this plan is
    saved here, never in a note on your phone.
 
@@ -455,7 +552,9 @@ Done when: the vault exists, Joe and the backup admin can see it.
    the authenticator app option; save the recovery codes to the vault).
 3. Create the organisation: profile photo → **Settings** → left sidebar
    **Organizations** → **New organization** → choose **Free** (or **Team** if
-   decision D2 says private) → Organization name `kclinics` (if taken,
+   decision D2 says private; for Team, GitHub asks for a card on the next
+   screen — use the clinic card and enter the company name as the billing
+   name) → Organization name `kclinics` (if taken,
    `k-clinics` or `kclinics-ltd`) → Contact email `inna.k@kclinics.co.uk` →
    "This organization belongs to: A business or institution" → name of the
    business → **Next** → skip adding members for now → **Complete setup**.
@@ -465,18 +564,23 @@ Done when: the vault exists, Joe and the backup admin can see it.
    two-factor is removed from the organisation — tell Joe first; his account
    already has it.)
 5. Organisation → **Settings → Member privileges** → **Base permissions** →
-   **No permission** → confirm. Leave **Repository creation** allowed for
-   members until the transfer is done (Joe needs it to transfer the
-   repository in). Under **Pages creation** untick **Public** unless the demo
-   site is wanted.
+   **No permission** → **Save**. (This means a member sees nothing unless you
+   invite them to a specific repository.) Leave **Repository creation**
+   allowed for now: Joe needs it for the transfer, and you switch it off
+   afterwards in 7.1 "Locking the organisation down". Under **Pages
+   creation** untick **Public** unless the demo site is wanted.
 6. Invite Joe temporarily: organisation page → **People** → **Invite member** →
    type `JoeKaulPulse` → role **Member** → **Send invitation**. Leave "Owner"
    unticked. Because members may create repositories, Joe can transfer the
    repository straight in with no acceptance step from you.
-7. Get the free gitleaks organisation licence key (the repository's
-   secret-scan check needs one on an organisation): https://gitleaks.io →
-   licence request form (name, email, company) → the key arrives by email →
-   save it in the vault and send it to Joe through the vault.
+7. Get the free gitleaks licence key. (A check that scans the code for
+   accidentally saved passwords needs a key when the code sits in an
+   organisation.) Go to https://gitleaks.io → follow the link for a free
+   organisation licence → enter your name, `inna.k@kclinics.co.uk` and the
+   company name → a long code arrives by email, sometimes a day later →
+   Bitwarden **+ New item → Secure note** → name `gitleaks licence key` →
+   paste the code → **Save** → delete the email. Joe reads it from the vault;
+   do not forward it.
 8. Send Joe the organisation name.
 
 Done when: the organisation exists, 2FA is required, base permissions are
@@ -493,33 +597,46 @@ Member invitation.
    codes to the vault.
 3. Create the team: top-left scope switcher (your name) → **Create Team** →
    Team name `K-Clinics` → plan **Pro** → **Continue** → enter the clinic card
-   → **Confirm**. (Pro is required: the site's every-5-minutes cron jobs and
-   300-second functions are not allowed on Hobby, and a project can only be
-   transferred into a team with a payment method on file. If Vercel offers a
-   free Pro *trial*, decline it and choose paid Pro straight away — or at
-   least add the card now: without it the team drops back to Hobby after 14
-   days, owners cannot be changed during a trial, and the transfer can be
-   refused.)
+   → **Confirm**. (Pro is required: the site runs scheduled background jobs
+   every few minutes and some long-running tasks that the free plan does not
+   allow, and Vercel only lets a project be moved into a team that has a card
+   on file. If Vercel offers a free Pro *trial*, decline it and choose paid
+   Pro, about £16 a month for your seat: on a trial the team falls back to
+   the free plan after 14 days, owners cannot be changed, and the transfer
+   can be refused.)
 4. Billing details: team → **Settings** → **Billing** → **Payment Method →
    Add new card** if not already saved; add the company name `KCLINICS SKIN
    & LASER LIMITED`, address and company number on the same page.
 5. Invite Joe temporarily: team → **Settings** → **Members** → **Invite** →
    `joe@kaulindustries.com` → role **Member** → **Send**. (Member, not Owner.)
-6. Same page, **Collaboration** setting → choose **Manual Approval**, so
-   unknown Git committers are never auto-added as paid seats.
-7. Install the two storage integrations the site uses **yourself**, before
-   the transfer: team → **Integrations → Browse Marketplace** → **Neon** →
-   **Install** (choose "no resource for now" if asked); then the same for
-   **Upstash**. An integration belongs to the person who installed it and is
-   switched off if that person leaves the team — so it must be you, not Joe.
-   If, during the transfer, Vercel asks you to **upgrade the Neon plan** so
-   the database fits (its restore-history window or autoscaling settings),
-   accept — it keeps the plan the database is on today.
-8. Note the team's slug (the word after `vercel.com/` when the team is
-   selected) and send it to Joe.
+   Joe's seat is charged from today at about £16 a month until you change him
+   to Viewer or remove him (10.5).
+6. Same page, **Collaboration** → **Manual Approval**. (This stops Vercel
+   automatically adding, and charging you for, anyone whose code changes
+   appear in the project.)
+7. Install the two add-ons the website uses, **yourself**, before the
+   transfer: team → **Integrations** → **Browse Marketplace** → **Neon** (the
+   database provider) → **Install** → if asked whether to create a database
+   now, choose the option that creates nothing ("No resource for now" or
+   **Skip**); then the same for **Upstash** (a small helper that limits abuse
+   of the site). Installing creates nothing and costs nothing; it tells
+   Vercel your team may use them. It must be you who installs them: an
+   add-on is switched off if the person who installed it leaves the team.
+   During the transfer Vercel may ask you to **upgrade the Neon plan** so the
+   database fits: Joe will have told you the plan name and its monthly price
+   beforehand (section 13); accept exactly that and nothing else.
+8. Add your backup admin: **Settings → Members → Invite** → their address →
+   role **Owner** (a second Owner is what stops a lost phone locking the
+   clinic out; it costs a second seat, about £16 a month).
+9. Accept Vercel's terms as the clinic when prompted at sign-up or first
+   invoice (they include the data-processing agreement); download
+   https://vercel.com/legal/dpa the same day into the vault, dated.
+10. Note the team's slug (the word after `vercel.com/` when the team is
+    selected) and send it to Joe.
 
 Done when: the Pro team exists with the clinic card, Neon and Upstash are
-installed under your name, and Joe has accepted the Member invitation.
+installed under your name, your backup admin has accepted, and Joe has
+accepted the Member invitation.
 
 ### 5.5 Neon (only if decision D4 says the database is Neon-native)
 
@@ -542,8 +659,10 @@ Done when: the organisation exists on the right plan and Joe has accepted.
 ### 5.6 Resend (transactional email)
 
 Do this block only if Joe's Appendix A check says the Resend team is not
-already the clinic's. If it is the clinic's, just confirm you are its Owner and
-Joe is at most a Member.
+already the clinic's. If it is the clinic's, open resend.com → **Settings →
+Team**: your row must say **Admin** and Joe's **Member** (Resend has only
+those two roles). If Joe's row says Admin, change it to Member with the
+dropdown on his row; if yours is not Admin, tell Joe.
 
 1. Go to https://resend.com → **Sign up** with `inna.k@kclinics.co.uk`.
 2. Settings → **Two-factor** → enable. Save recovery codes to the vault.
@@ -553,9 +672,13 @@ Joe is at most a Member.
    **Pro**).
 4. Invite Joe temporarily: Settings → **Team** → **Invite** →
    `joe@kaulindustries.com` → **Admin** (he needs to add domains and
-   webhooks). Downgrade later.
+   webhooks). Downgrade later. Invite your backup admin the same way, as
+   **Admin**.
+5. Download Resend's data-processing agreement (https://resend.com/legal/dpa)
+   into the vault, dated; ask Resend support for a countersigned copy.
 
-Done when: the team exists with billing, Joe is an Admin.
+Done when: the team exists with billing, Joe and your backup admin are
+Admins.
 
 ### 5.7 Sentry (error monitoring)
 
@@ -563,16 +686,19 @@ Done when: the team exists with billing, Joe is an Admin.
    organisation serves only K-Clinics — he will simply invite you as Owner
    there. Otherwise go to https://sentry.io/signup → sign up with
    `inna.k@kclinics.co.uk`. When asked for a **data storage location** choose
-   the same region as the current organisation (Joe reads it from the DSN:
-   `ingest.de.sentry.io` is EU, otherwise US) — projects can only transfer
-   between organisations in the same region, and the choice cannot be
-   changed later.
+   the one Joe tells you: **EU** or **US**. (He reads it from the current
+   set-up. The two must match or the error history cannot be moved, and the
+   choice cannot be changed later.) Pick exactly what he says, then continue.
 2. Organisation name `K-Clinics`. Enable two-factor under **User settings →
    Security**.
 3. Settings → **Members** → **Invite Member** → `joe@kaulindustries.com` → role
    **Manager** (needed to accept and configure the transferred project).
+   Invite your backup admin as **Owner**.
+4. Settings → **Legal & Compliance** → sign the data-processing agreement as
+   the clinic; save the PDF to the vault, dated.
 
-Done when: the organisation exists in the right region and Joe is a Manager.
+Done when: the organisation exists in the right region, Joe is a Manager and
+your backup admin is an Owner.
 
 ### 5.8 Anthropic Console (AI)
 
@@ -582,36 +708,51 @@ Claude. The clinic should hold this contract directly.
 1. Go to https://console.anthropic.com → **Sign up** with
    `inna.k@kclinics.co.uk`. Verify the email.
 2. Create an organisation named `KCLINICS SKIN & LASER LIMITED`. Go to
-   **Settings → Billing** → add the clinic card → buy an initial credit (£50
-   is plenty to start; the app caps monthly usage with `AI_MONTHLY_CAP`) and
-   set a monthly spend limit.
-3. **Settings → Members** → invite `joe@kaulindustries.com` as **Developer**
-   (can create API keys, cannot change billing). Create a workspace named
-   `kclinics-production` (Settings → Workspaces) — the API key will live
-   there, and workspace keys survive their creator leaving.
-4. Read and accept the commercial terms shown at sign-up; the data-protection
-   register (section 12) records that the clinic, not the developer, is the
-   contracting party.
+   **Settings → Billing** → add the clinic card → buy an initial credit ($50,
+   about £40, is plenty to start) → set a monthly spend limit (**Settings →
+   Limits**, for example $100). That limit, not anything in the app, is what
+   stops a runaway bill.
+3. Create a workspace named `kclinics-production` (**Settings → Workspaces →
+   Create workspace**). Invite `joe@kaulindustries.com` (**Settings → Members
+   → Invite**) as **Developer** so he can watch usage and help on calls, and
+   your backup admin as **Admin**. Joe does not create the key: you create it
+   yourself in 7.12 with Joe on the phone, so it does not disappear when he
+   leaves.
+4. Read and accept the commercial terms shown at sign-up (they incorporate
+   Anthropic's data-processing terms); save a PDF of the accepted version to
+   the vault with the date. The data-protection register (section 12)
+   records that the clinic, not the developer, is the contracting party.
 
-Done when: the organisation has credit and Joe is a Developer member.
+Done when: the organisation has credit and a spend limit, the workspace
+exists, and Joe and your backup admin are members.
 
-### 5.9 Twilio, Deepgram, GIPHY, Upstash (only where Appendix A says "create new")
+### 5.9 Twilio, Deepgram, GIPHY, Upstash (only for the rows A16, A17 or A21 where Joe's Appendix A answer says a new account is needed)
 
 For each of these the pattern is the same:
 
 1. Sign up with `inna.k@kclinics.co.uk`; enable two-factor where offered; add
-   the clinic card.
-2. Invite `joe@kaulindustries.com` with the lowest role that can create an API
-   key (Twilio: **Developer**). Deepgram is the exception: a key dies with the
-   member who created it, so **you** create the Deepgram key (Joe tells you
-   the name) and paste it into the vault. GIPHY has no teams — you create the
-   key yourself the same way (Tenor is gone: Google closed its API in June
-   2026, so no Tenor key is needed).
-3. Upstash does not need an account of its own if the database is created from
-   the Vercel Marketplace inside the new Vercel team — Joe does that in
+   the clinic card; download the provider's data-processing agreement into
+   the vault, dated.
+2. Invite `joe@kaulindustries.com` with the lowest role that can create an
+   *API key* (a long code the website uses to prove who it is): Twilio →
+   **Admin → Manage users → Invite** → role **Developer**; add your backup
+   admin as **Administrator**.
+   Deepgram is different: a key is deleted when the person who created it
+   leaves, so **you** create it. console.deepgram.com → your project → **API
+   Keys** → **Create a New API Key** → name `kclinics-production` (Joe
+   confirms) → permission **Member** → **Create Key**. The key is shown
+   **once**: click **Copy**, paste it into a new Bitwarden Secure note named
+   `Deepgram API key`, save, then close the window. Never paste it into an
+   email or message. (Tenor is gone: Google closed its API in June 2026, so
+   no Tenor key is needed.)
+   GIPHY has no team feature: follow the steps in 7.12 "GIFs" and put the key
+   in the vault the same way.
+3. Upstash does not need an account of its own if the database is created
+   from the Vercel Marketplace inside the new Vercel team — Joe does that in
    section 8.
 
-Done when: each account named in Appendix A exists and Joe is invited.
+Done when: each account named in Appendix A exists, Joe is invited, and any
+key you created is in the vault.
 
 ### 5.10 Cloudflare, for Turnstile only (only if decision D8 = route (b))
 
@@ -627,28 +768,69 @@ Done when: each account named in Appendix A exists and Joe is invited.
 
 Done when: the account exists, 2FA is on, Joe is invited.
 
-### 5.11 Accepting the transfers (what will happen next)
+### 5.11 What Joe will ask you to do during the transfers (Evening 1 and Days 7–8)
 
-During Evening 1 and Days 7–8 Joe will trigger transfers. For each one you will
-receive an email or an in-app prompt in the new account:
+Joe triggers each transfer and will phone or message you at each point
+below. Do nothing in these accounts until he asks; then follow the step
+named. Tick each one with the date. Keep every email; they are the audit
+trail.
 
-- **GitHub**: nothing to accept — as an organisation Member with repository
-  creation allowed, Joe transfers the repository straight in. (If that is
-  ever refused, the fallback is a transfer to *your personal* GitHub account,
-  which you accept from an email within one day, and then you transfer it
-  into the organisation yourself.)
-- **Vercel**: Joe transfers directly into your team because he is a Member;
-  you will see the project appear at vercel.com under the K-Clinics team.
-- **Neon** (native path): an email to the organisation admins with a link to
-  accept the project transfer. Accept it.
-- **Sentry**: an email "Transfer project k-clinics to your organization" with
-  a link. Accept it, then assign the project to a team when prompted.
-- **Stripe**: an in-dashboard prompt to accept account ownership (only if the
-  Stripe owner is currently Joe). Accept it.
-- **Resend / Cloudflare / others**: you will not need to accept anything; Joe
-  does the work with the temporary role you granted.
+Evening 1, in this order:
 
-Keep the emails; they are the audit trail.
+1. **GitHub, nothing to accept.** Joe moves the code straight into your
+   organisation. Only if GitHub refuses: an email "JoeKaulPulse would like to
+   transfer K-Clinics to you" arrives → **Accept**. Then move it into the
+   organisation yourself: open the repository → **Settings** → scroll to the
+   bottom (**Danger Zone**) → **Transfer** → **Select one of my
+   organizations** → `kclinics` → type the repository name in the box → **I
+   understand, transfer this repository**.
+2. **GitHub, rename** (7.1 step 4): repository → **Settings** → in the
+   **Repository name** box replace `K-Clinics` with `k-clinics` → **Rename**.
+3. **GitHub, install the Vercel app** (7.3 step 3): open
+   https://github.com/apps/vercel/installations/new → choose `kclinics` →
+   **Only select repositories** → pick `k-clinics` → **Install**.
+4. **GitHub, the Build-board app** (7.2): Joe transfers it to your
+   organisation; if an email asks you to accept, accept. Then make Joe its
+   manager so he can finish the set-up: organisation page → **Settings** →
+   **Developer settings** → **GitHub Apps** → `kclinics-board` → **App
+   managers** → type `JoeKaulPulse` → **Grant**. (He removes himself in
+   10.5.)
+5. **Vercel, nothing to accept.** The project appears under the **K-Clinics**
+   team and you get an email "Project transferred". Open vercel.com once to
+   see it there.
+6. **The database, one click** (7.5 path A): vercel.com → **K-Clinics** team →
+   project `k-clinics` → **Storage** → click the Neon database → **Open in
+   Neon**. That registers you as an owner of the database console. If Joe
+   says the database is "Neon-native" instead, you get an email from Neon
+   with an **Accept transfer** link; click it.
+7. **Sentry** (7.7): either an email inviting you as **Owner** (route A:
+   accept, then **Settings → Subscription** → add the clinic card) or an
+   email "Transfer project k-clinics to your organization" (route B: click
+   the link → **Accept** → when Sentry asks which *team* should see the
+   project, choose the only one listed, usually `#k-clinics`).
+8. **GitHub, lock the organisation down** (7.1 "Locking the organisation
+   down", 20 minutes with Joe on a screen-share).
+
+Days 7–8:
+
+9. **Resend** (7.8 route A): email invitation as Admin → accept → **Settings
+   → Billing** → clinic card → **Settings → Team** → Joe's row → **Member**.
+   Do not remove Joe yet (10.5).
+10. **Stripe** (7.9): a prompt in your Stripe dashboard asking you to accept
+    ownership → accept. Two-step verification must already be on (**Settings
+    → Personal**).
+11. **Cloudflare** (7.10 route a only): an email inviting you as **Super
+    Administrator** → accept → sign in → **My Profile → Authentication** →
+    enable two-factor and save the recovery codes in the vault. Joe never
+    tells you a password.
+12. **Anthropic** (7.12): with Joe on a call, create the API key and paste it
+    into the vault, then send the zero-data-retention request (7.12).
+13. **Google Business Profile, Ads, GA4, Meta, TikTok** (7.11): Joe walks you
+    through each screen on a call; you click, he reads.
+14. **Hostinger** (7.13, only if the domain is under Joe's login): an email
+    "Domain move request" → **Accept** → **Confirm**.
+
+Done when: every item above that applies is ticked with a date.
 
 ---
 
@@ -664,20 +846,51 @@ These accounts are already the clinic's; the change is only about roles.
       the dedicated admin identity the dashboard will use from now on:
       **Directory → Users → Add new user** → first name `Platform`, last name
       `Admin`, email `admin@kclinics.co.uk` → Add → open the user → **Admin
-      roles and privileges → Super Admin → Save**. Sign in once as that user,
-      set a strong password from the vault and turn on 2-Step Verification.
-      Tell Joe it exists (he repoints the dashboard to it in 4.8a).
+      roles and privileges → Super Admin → Save**. When Google shows the new
+      user's temporary password, do not write it down or send it: click
+      **Copy password**, open a private browser window, sign in as
+      `admin@kclinics.co.uk`, and when Google asks for a new password use one
+      generated in Bitwarden (**+ New item → Login → Generate password**) and
+      save the login there. Turn on 2-Step Verification for that user with
+      your own phone. Nobody uses this login day to day: it exists so the
+      dashboard can manage staff mailboxes. Tell Joe it exists (he repoints
+      the dashboard to it in 4.8a). **Do this block first, on Day 3: Joe
+      cannot finish his preparation until it is done.**
 - [ ] **6.2 Google Cloud.** console.cloud.google.com → project picker →
       **KClinics** → **IAM & Admin → IAM** → **Grant access** → New principals
-      `inna.k@kclinics.co.uk` → Role **Owner** → **Save**. (Joe's `webmaster@`
-      Owner role is removed in section 10.5, *after* yours is confirmed working.)
+      `inna.k@kclinics.co.uk` (Google calls the box "New principals"; it just
+      means people) → Role **Owner** → **Save**. Google then emails you an
+      invitation ("You have been granted access to project KClinics"): open
+      it and click **Accept**; the role does not exist until you do. Check
+      afterwards: console.cloud.google.com → project picker → **KClinics** →
+      **IAM & Admin → IAM** → your address shows **Owner**. (Joe's
+      `webmaster@` Owner role is removed in section 10.5, *after* yours is
+      confirmed working.)
 - [ ] **6.3 Stripe.** dashboard.stripe.com → **Settings → Team and security →
       Team members**: confirm which login is marked **Owner**. If it is not
       you, tell Joe (section 7.9 handles the transfer).
-- [ ] **6.4 yay.com, Xero, TrueLayer, Google Business Profile, Search Console,
-      GA4, Google Ads, Meta Business, TikTok.** For each: confirm the primary
-      owner/admin is a clinic identity, and that no developer login has *owner*
-      rights. Note anything else in Appendix A.
+- [ ] **6.4 The clinic's other accounts** (yay.com, Xero, TrueLayer, Google
+      Business Profile, Search Console, GA4, Google Ads, Meta Business,
+      TikTok). Do this on a 30-minute call with Joe: you sign in, he tells you
+      where to click. For each account you check two things: (1) the *owner*
+      or *primary admin* is a clinic person, and (2) neither Joe nor
+      `webmaster@` is an owner or admin. Where the people list is (wording may
+      differ slightly):
+
+      | Account | Where to look |
+      | --- | --- |
+      | yay.com | my.yay.com → **Account** → **Users**; the account holder is under **Account details** |
+      | Xero | xero.com → organisation name (top left) → **Settings** → **Users** |
+      | TrueLayer | console.truelayer.com → **Settings** → **Team** |
+      | Google Business Profile | business.google.com → **Business Profile settings** → **People and access** |
+      | Search Console | search.google.com/search-console → **Settings** → **Users and permissions** |
+      | GA4 | analytics.google.com → **Admin** → **Account access management** |
+      | Google Ads | ads.google.com → **Admin** (gear icon) → **Access and security** |
+      | Meta Business | business.facebook.com → **Settings** → **People** |
+      | TikTok | business.tiktok.com → **Business Center** → **Members** |
+
+      Joe writes what you find into Appendix A rows A18 to A20. Do not remove
+      anyone yet; that is 10.5.
 
 Done when: you are Owner on Google Cloud `KClinics`, Super Admin in Workspace,
 and every marketing/finance account has a clinic-owned primary admin.
@@ -723,7 +936,9 @@ invite; no deploy in flight.
    **Rename**. Redirects follow renames as well.
 5. If D2 = private: **Settings → General → Danger Zone → Change visibility →
    Private** (Team plan first, or the rules below are not enforced).
-6. Ruleset on `main` (Inna or Joe): **Settings → Rules → Rulesets → New
+6. Ruleset on `main` (Joe: he keeps admin rights on the repository after
+   transferring it, so Inna is not needed for this): **Settings → Rules →
+   Rulesets → New
    ruleset → New branch ruleset** → name `main-protection` → Enforcement
    **Active** → bypass list empty → target branch `main` → tick **Require a
    pull request before merging**, **Require status checks to pass** (add
@@ -757,24 +972,50 @@ as org owner, or Joe as org member can do it); if GitHub refuses because the
 old name was retired, transfer back under a new name (for example
 `K-Clinics-app`) — redirects then point there. Nothing is lost either way.
 
-**Hardening after the transfer (Inna, 20 minutes):**
+**Locking the organisation down (Inna, 20 minutes, with Joe on a
+screen-share reading each line; exact wording on GitHub may differ
+slightly):**
 
-- Organisation **Settings → Member privileges**: turn **Repository
-  creation** off for members now that the transfer is done; disallow members
-  deleting or transferring repositories.
-- **Settings → Personal access tokens → Settings**: fine-grained tokens
-  require administrator approval; classic tokens **Restrict**.
-- **Settings → Actions → General**: allow only GitHub-authored and verified
-  actions plus `gitleaks/gitleaks-action@*` and `github/codeql-action@*`;
-  workflow permissions **Read repository contents and packages**; untick
-  **Allow GitHub Actions to create and approve pull requests**; require
-  approval for workflows from public forks.
-- Repository **Settings → Deploy keys / Webhooks / Secrets** and organisation
-  **Settings → Third-party Access → GitHub Apps**: expect nothing but the
-  gitleaks secret and the Vercel, Claude (if D6-a) and `kclinics-board` apps;
-  remove anything else.
-- **People**: add a second organisation **Owner** (a trusted staff member) so
-  the organisation never has a single owner.
+1. Organisation page → **Settings** → **Member privileges**. Under
+   **Repository creation** untick **Public** and **Private** → **Save**. Under
+   **Repository deletion and transfer** untick **Allow members to delete or
+   transfer repositories for this organization** → **Save**.
+2. Same page, left sidebar **Personal access tokens** → **Settings**: choose
+   **Require administrator approval** (fine-grained tokens) and **Restrict
+   access via personal access tokens (classic)** → **Save changes**.
+3. Left sidebar **Actions** → **General**: choose **Allow kclinics, and
+   select non-kclinics, actions and reusable workflows**; tick **Allow
+   actions created by GitHub** and **Allow actions by Marketplace verified
+   creators**; in the text box underneath type
+   `gitleaks/gitleaks-action@*, github/codeql-action@*` → **Save**. Further
+   down, **Workflow permissions** → choose **Read repository contents and
+   packages permissions**; untick **Allow GitHub Actions to create and
+   approve pull requests** → **Save**. Under **Fork pull request workflows
+   from outside collaborators** choose **Require approval for all outside
+   collaborators** → **Save**.
+4. Left sidebar **Third-party access** → **GitHub Apps**: the list should
+   show only **Vercel**, **kclinics-board** and (only if D6-a) **Claude**.
+   Tell Joe before removing anything else; remove it with **Configure →
+   Uninstall**.
+5. Left sidebar **People** → **Invite member** → your backup admin's GitHub
+   username → after they accept, their row → **⋯** → **Change role** →
+   **Owner**.
+6. Organisation **Settings → Billing and plans**: confirm a spending limit or
+   payment method is set, so GitHub does not block the first workflow run.
+
+Done when: Joe confirms on the call that a direct change of his to `main` is
+refused, and **People** shows two Owners.
+
+**Plan-and-feature facts behind D2 (for Joe):** on a Free organisation,
+rulesets and required status checks are enforced only on public
+repositories; CodeQL and dependency-review run free only on public
+repositories and otherwise need the Code Security add-on (about $30 per
+active committer a month); GitHub-native secret scanning is public-only or
+the Secret Protection add-on; gitleaks-action needs an organisation licence
+key either way; Actions minutes are unlimited on standard runners for public
+repositories, 2,000 a month on Free private and 3,000 on Team; Team is about
+$4 per user a month at an introductory rate; an outside collaborator on a
+private repository takes a seat.
 
 ### 7.2 Build-board GitHub App and PAT
 
@@ -783,7 +1024,9 @@ Official: https://docs.github.com/en/apps/maintaining-github-apps/transferring-o
 1. Joe: GitHub → profile → **Settings → Developer settings → GitHub Apps →
    kclinics-board → Advanced → Transfer ownership** → new owner `kclinics` →
    confirm. Inna (org owner) accepts if prompted.
-2. Inna: **Your organizations → kclinics → Settings → Developer settings →
+2. Joe, as App manager (Inna grants this in 5.11 step 4 after the transfer;
+   an organisation owner or app manager is needed for the steps below):
+   GitHub → **Your organizations → kclinics → Settings → Developer settings →
    GitHub Apps → kclinics-board → Edit** → confirm Permissions still show
    Issues **Read and write** and Metadata **Read-only** → **Install App** →
    **Install** next to `kclinics` → **Only select repositories** →
@@ -791,9 +1034,13 @@ Official: https://docs.github.com/en/apps/maintaining-github-apps/transferring-o
    **installation id changes**: note the new one (the number at the end of
    the installation URL, also under organisation Settings → Third-party
    Access → GitHub Apps → Configure).
-3. Same app page → **Private keys → Generate a private key** (a `.pem`
-   downloads; GitHub requires the new key to exist before the old one can
-   go) → then **Delete** the old key. Compare the **App ID** shown on the
+3. Joe, same app page → **Private keys → Generate a private key** (a `.pem`
+   lands in the browser's Downloads folder: attach it to the vault item for
+   `GITHUB_APP_PRIVATE_KEY` within the minute, then delete the download and
+   empty the bin — `*.pem` is gitignored but must never sit in a checkout;
+   GitHub requires the new key to exist before the old one can go) → then
+   **Delete** the old key. Inna does not handle this file at any point.
+   Compare the **App ID** shown on the
    organisation's app page with the `GITHUB_APP_ID` value in Vercel (it
    should be unchanged; if it differs, use the new one). Record the new
    `GITHUB_APP_PRIVATE_KEY` and `GITHUB_APP_INSTALLATION_ID` for section 8.
@@ -978,12 +1225,18 @@ Neon resource, its **Settings** show billing on the K-Clinics team, and
 Neon says the environment variables and settings transfer with it, and that
 Vercel prompts to **upgrade the Neon plan** if the destination cannot hold
 the project (autoscaling limits, restore-history window) — accept that
-prompt, it keeps today's plan. Nothing to deploy. Inna: from Vercel →
-Storage → the Neon resource → **Open in Neon** (members of a Vercel-managed
-Neon organisation are the Vercel team's members: Owner/Admin/Member become
-Neon Admins the first time they click Open in Neon, so add your backup admin
-to the Vercel team and have them click it once — that is how the console
-stops being single-person). Joe: create a new **personal** `NEON_API_KEY`
+prompt, it keeps today's plan. Nothing to deploy. Inna, with Joe on the
+phone: vercel.com → **K-Clinics** team → project `k-clinics` → **Storage** →
+click the Neon database → **Open in Neon**. The first click makes you an
+admin of the database console; nothing else happens. Then have your backup
+admin do the same once, so the console is never tied to one person. They
+must first be a member of the Vercel team (**Settings → Members → Invite**,
+role **Member**, about £16 a month; the free Viewer role does not count).
+That seat is listed in section 13. (For Joe: members of a Vercel-managed
+Neon organisation are exactly the Vercel team's members — Owner, Admin and
+Member map to Neon Admin, Viewer and Billing to Neon Member — and anyone in
+it can open the SQL editor on the production database, which is why Joe's
+Vercel membership ends in 10.5.) Joe: create a new **personal** `NEON_API_KEY`
 with access to that organisation for `scripts/safe-migrate.mjs`
 (`NEON_PROJECT_ID` is unchanged). **Do not** delete the Neon resource or
 uninstall the Neon integration on the KAUL team yet: deleting a
@@ -1019,8 +1272,9 @@ and a member able to create projects in the destination, hence 5.5) →
 confirm. The destination plan must be the same tier or higher. Neon lists
 the project under the new organisation within a minute. Alternative when
 Joe cannot be a member of Inna's organisation: on the same Transfer page
-Joe clicks **Create claim link** and sends it to Inna; she opens it signed
-in as herself and chooses the destination organisation (the equivalent API
+Joe clicks **Create claim link** and passes it to Inna **through the vault
+(a secure note) — never chat or email; it is a bearer link** — she opens it
+signed in as herself and chooses the destination organisation (the equivalent API
 route is a private preview and may be refused; the membership route above
 is the primary one, and Neon's transfer API in any case needs a *personal*
 key with access to both organisations, never an organisation key).
@@ -1200,10 +1454,12 @@ Choose the route from Appendix A:
 Resend teams have just two roles, **Admin** and **Member**, and a sole Admin
 is prompted to promote someone else before leaving — so this route is fully
 self-serve. Resend → Settings → Team → invite `inna.k@kclinics.co.uk` as
-**Admin**; Inna accepts, enables two-factor and changes Billing to the
-clinic card; Inna then removes Joe (or downgrades him to Member per D5).
-Nothing changes for the app; no DNS change, no gap. Then rotate the API key
-and both webhook secrets in section 10.
+**Admin**; Inna accepts, enables two-factor, changes Billing to the clinic
+card, and downgrades Joe to **Member** (Settings → Team → Joe's row → role).
+Do not remove him yet: he still needs the console to delete old keys during
+section 10, and is removed in 10.5. Nothing changes for the app; no DNS
+change, no gap. Then rotate the API key and both webhook secrets in
+section 10.
 
 **Route B — move the domains to Inna's new team** (team is shared or is Joe's
 personal identity). Two facts shape this: a claimed domain is a *new* domain
@@ -1318,11 +1574,14 @@ widget and both keys are untouched. No redeploy, no downtime.
    `www.kclinics.co.uk` → widget mode **Managed** → **Create** → copy the
    **Site key** and the **Secret key** into the vault.
 2. In Vercel (K-Clinics team) replace `NEXT_PUBLIC_TURNSTILE_SITE_KEY` and
-   `TURNSTILE_SECRET_KEY` for Production and Preview, then **Redeploy** (the
-   site key is baked into the build). Do both keys in the same change: in
-   production the login CAPTCHA **fails closed**, so a mismatched pair means
-   every login attempt after the third failure is rejected until the next
-   redeploy. Do not leave it overnight.
+   `TURNSTILE_SECRET_KEY` for Production and Preview **in one save**, then
+   **Redeploy** (the site key is read from the environment at request time,
+   but Vercel only applies variable changes to new deployments). Never clear
+   `TURNSTILE_SECRET_KEY` as an interim step: with the secret **unset** both
+   login routes skip the CAPTCHA entirely (fail open — bot protection off);
+   with the pair **mismatched** the CAPTCHA fails closed and every login after
+   the third failure is rejected until the next redeploy. Do not leave either
+   state overnight.
 3. Old account: delete the old widget after verification (12.4).
 
 **DNS zone (both routes):** nothing changes. Joe's access to Hostinger must be
@@ -1382,8 +1641,16 @@ touched.
    clinic's; moving an *ad account* between Business Centers is irreversible
    and goes through a TikTok representative); recreate the developer app if
    it is Joe's. The app's stored OAuth tokens
-   (`ExternalConnection`) keep working wherever the OAuth client is
-   unchanged. Nothing to redeploy.
+   (`ExternalConnection`) keep working wherever the OAuth client is unchanged
+   **and the Google user who authorised them still exists and is not
+   suspended** — Google revokes a suspended user's refresh tokens, and these
+   were most likely authorised as `webmaster@`. Before `webmaster@` loses its
+   roles or is suspended (10.5): Inna signs in to `/admin` as herself and
+   clicks **Connect** again on Reviews → Google Business Profile, Marketing →
+   Connections → Google, and Google Calendar if used, choosing a clinic
+   identity (her own or `admin@kclinics.co.uk`); confirm each shows connected
+   and no longer mentions `webmaster@`. Only then suspend `webmaster@`.
+   Nothing to redeploy.
 
 Verify: `/admin/api-health` **Google rating**, **Google Business Profile**,
 **Google Ads**, **GA4** stay green.
@@ -1431,13 +1698,17 @@ Verify: `/admin/api-health` **Google rating**, **Google Business Profile**,
   `kclinics-production`; a member who will stay (Inna or the backup admin)
   creates the API key `vercel-production` there; paste it into Admin →
   Settings → Credentials & keys → "Anthropic (Claude) API key" (encrypted,
-  no redeploy) or Vercel `ANTHROPIC_API_KEY`. Ask Anthropic for **zero data
-  retention** on the organisation and record the answer in the DPIA — note
-  that even under it, content flagged by safety systems can be retained for
-  up to two years, and that the app's current models (Claude Haiku 4.5 and
-  Sonnet 4.6) are not "covered models" with a mandatory 30-day retention;
-  re-check if the models are ever upgraded. After verification Joe deletes
-  the K-Clinics key in his own organisation. Delete
+  no redeploy) or Vercel `ANTHROPIC_API_KEY`. Inna (the account owner)
+  emails support@anthropic.com from `inna.k@kclinics.co.uk`: "KCLINICS SKIN &
+  LASER LIMITED (organisation id: [Joe supplies]) processes health-related
+  data through the API. Please enable zero data retention for our
+  organisation and confirm which models it covers." Joe files the reply in
+  the data-protection impact assessment (`docs/data-protection/dpia.md`) —
+  note that even under zero data retention, content flagged by safety
+  systems can be kept for up to two years, and that the app's current models
+  (Claude Haiku 4.5 and Sonnet 4.6) are not "covered models" with a mandatory
+  30-day retention; re-check if the models are ever upgraded. After
+  verification Joe deletes the K-Clinics key in his own organisation. Delete
   `CLAUDE_ROUTINE_FIRE_URL/TOKEN` from Vercel unless D6 keeps the
   automation.
 - **Deepgram** (optional voice transcription): removing a member from a
@@ -1453,9 +1724,11 @@ Verify: `/admin/api-health` **Google rating**, **Google Business Profile**,
   prefers Tenor whenever `TENOR_API_KEY` is set — so **delete
   `TENOR_API_KEY`** rather than recreating it. Inna (or a clinic staff login)
   creates a GIPHY developer account → dashboard → **Create an API Key** → app
-  name "K-Clinics team chat" → Vercel `GIPHY_API_KEY` → redeploy (beta keys
-  allow 100 calls an hour; applying for production upgrades the same key
-  if the team chat exceeds that). Delete Joe's key.
+  name "K-Clinics team chat" → click **Copy** next to the key → paste it into
+  a Bitwarden Secure note named `GIPHY API key`; Joe loads it into Vercel as
+  `GIPHY_API_KEY` and republishes the site (section 8). Beta keys allow 100
+  calls an hour; applying for production upgrades the same key if the team
+  chat exceeds that. Delete Joe's key.
 
 Verify: `/admin/api-health` **SMS**, **AI (Anthropic)**, **Voice
 transcription**, **Telephony** green; a kiosk session analyses a test photo;
@@ -1489,8 +1762,11 @@ the live-chat assistant answers.
   days; the DNS records travel with the domain). Hosting or email plans
   move by the separate "move services" flow. Otherwise nothing moves: Inna
   enables two-factor on the clinic's Hostinger login and removes Joe under
-  **Account sharing → Manage access** in 10.5. Turn on the domain lock and
-  check the registrant email is a clinic address. The CalDAV mailbox
+  **Account sharing → Manage access** in 10.5. Inna: hPanel → **Domains** →
+  `kclinics.co.uk` → on the domain overview page switch **Domain lock**
+  (called **Transfer lock** on some screens) to **On**, and under **Contact
+  information** (WHOIS) check the registrant email is a clinic address, not
+  Joe's; if it is Joe's, click **Edit** and change it. The CalDAV mailbox
   password (`HOSTINGER_CALDAV_PASS`) is rotated in 10.2; if the Hostinger
   email plan is being retired after the Workspace move, revive the Google
   Calendar sync first (`GOOGLE_INTEGRATION_ENABLED=true`) and then clear the
@@ -1533,19 +1809,23 @@ be transferred. Everything a routine does uses that person's GitHub identity.
    kclinics.co.uk and download Chromium) → environment variables in `.env`
    format: `BASE_URL=https://kclinics.co.uk`, the new `BOARD_QUEUE_TOKEN` and
    `QA_TOKEN` (same value), fresh `QA_ADMIN_EMAIL`/`QA_ADMIN_PASSWORD` and
-   `QA_ACADEMY_LOGIN`/`QA_ACADEMY_PASSWORD` for new QA accounts, and an
-   optional **read-only** `DATABASE_URL` (a new read-only role) → leave the
+   `QA_ACADEMY_LOGIN`/`QA_ACADEMY_PASSWORD` for new QA accounts → leave the
    setup script empty (the repository's own session-start hook installs
    dependencies; a setup script that runs longer than about five minutes
-   defeats the environment's snapshot cache) → **Create environment**.
+   defeats the environment's snapshot cache) → **Create environment**. Do
+   **not** add a production `DATABASE_URL`, even read-only: it would expose
+   client identities and legacy plaintext clinical text to an unattended
+   agent environment. If a data audit ever needs it, use a Neon branch with
+   scrubbed data and first add "Anthropic (Claude Code environment)" to
+   `docs/data-protection/processors.md` with the scope and date.
 4. Routine: claude.ai/code → Routines → **New routine** → name `K-Clinics
    build board` → repository `kclinics/k-clinics` → environment `K-Clinics` →
    trigger **API** → prompt that tells the session to act on the
    `routine-fire-payload` block → **Create** → open it → **Edit routine →
    Add trigger → API** → copy the fire URL and **Generate token** (shown
-   once).
-5. Vercel → set `CLAUDE_ROUTINE_FIRE_URL` and `CLAUDE_ROUTINE_FIRE_TOKEN` →
-   redeploy. Test: `/admin/build` → **Continue working** → "Claude session
+   once). Inna saves both in the post-handover vault collection.
+5. Inna enters `CLAUDE_ROUTINE_FIRE_URL` and `CLAUDE_ROUTINE_FIRE_TOKEN` in
+   Vercel herself, marked Sensitive → redeploy. Test: `/admin/build` → **Continue working** → "Claude session
    started" with a **Watch session** link (401 = token mismatch, 400 = routine
    paused, 429 = the daily allowance — the board's own cap of 8 fires, or
    the plan's routine allowance unless usage credits are switched on at
@@ -1634,15 +1914,15 @@ own devices so the handover is proven from her side.
 | 2 | Healthcheck script | `node scripts/healthcheck.mjs` (with `CRON_SECRET`) all green | [ ] |
 | 3 | API health page | `/admin/api-health` — no new red lights | [ ] |
 | 4 | Go-live tracker | `/admin/go-live` — DNS group green, Stripe LIVE, Resend ready | [ ] |
-| 5 | **I** Admin login + passkey | Inna signs in at `/admin/login` with password, then with her passkey (Face ID / Touch ID) | [ ] |
-| 6 | **I** Client portal | Inna logs into a test client account at `/account` | [ ] |
+| 5 | **I** Admin login + passkey | Inna signs in at https://kclinics.co.uk/admin/login with her password, signs out, then uses **Sign in with Face ID / Touch ID** | [ ] |
+| 6 | **I** Client portal | Beforehand Joe creates a test client (Admin → **Clients** → **New client**) whose email is an address Inna controls. Inna opens https://kclinics.co.uk/account/forgot-password, enters that address, sets a password from the emailed link, signs in at https://kclinics.co.uk/account and opens **Appointments** | [ ] |
 | 7 | Booking end-to-end | Book a test slot at `/book` with a Stripe test card (or a £0 setup) → appears in Admin → Bookings; confirmation email received | [ ] |
 | 8 | Email reply threads | Reply to the confirmation email → appears in Admin → Chat/Inbox via `reply.mail.` | [ ] |
 | 9 | Stripe webhook | Stripe → Developers → Webhooks → endpoint → **Send test event** → 2xx | [ ] |
 | 10 | Cron heartbeats | `/admin/api-health` **Scheduled jobs** shows fresh heartbeats for daily, dispatch, kiosk-cleanup (wait for the next slot) | [ ] |
-| 11 | Sentry | Trigger the test error (Admin → Status → "Send test event", or `/api/debug/sentry` if present) → event visible in Inna's Sentry | [ ] |
+| 11 | Sentry | Admin → **Platform status** → "Send test event" (or a deliberate error on a preview) → event visible in Inna's Sentry | [ ] |
 | 12 | Push notifications | A staff device receives a test push (Admin → Notifications → Test) | [ ] |
-| 13 | File upload | Admin → Media → upload an image → renders on the site | [ ] |
+| 13 | File upload | Admin → **Media library** → **Upload** → pick an image → it appears in the grid and on the page it is used on | [ ] |
 | 14 | Kiosk | Full kiosk session with a photo (once the store is private) or the graceful 503 message if not yet | [ ] |
 | 15 | AI chat | Public live chat → the assistant answers | [ ] |
 | 16 | SMS | Send a test reminder to a staff mobile (Admin → Clients → test client) | [ ] |
@@ -1653,16 +1933,36 @@ own devices so the handover is proven from her side.
 | 21 | Visual QA | `node scripts/visual-qa.mjs` from a full-network session: no console errors, screenshots reviewed | [ ] |
 | 22 | Region guard | Next morning's daily cron raised no "database region" alert | [ ] |
 | 23 | **I** Billing emails | Inna received the first invoice/receipt emails from Vercel, Neon (if native), Resend, Sentry, Anthropic | [ ] |
-| 24 | **I** Console access | Inna can open, on her own: Vercel project, Neon console, Sentry project, Resend domains, Stripe dashboard, Hostinger DNS records, Cloudflare Turnstile, GitHub org | [ ] |
+| 24 | **I** Console access | Inna, on her own laptop, can open each of these (bookmark them): Vercel (vercel.com → **K-Clinics** team → `k-clinics`); the database console (from that project → **Storage** → **Open in Neon**, or console.neon.tech if Neon-native); Sentry (sentry.io → **Projects** → `k-clinics`); Resend (resend.com → **Domains**: `mail.kclinics.co.uk` shows **Verified**); Stripe (dashboard.stripe.com); Hostinger DNS (hpanel.hostinger.com → **Domains** → `kclinics.co.uk` → **DNS / Name Servers**); Cloudflare (dash.cloudflare.com → **Turnstile**: one widget listed); GitHub (github.com/kclinics → **People** shows you as Owner) | [ ] |
 
-Done when: every row is ticked, including all **I** rows.
+Done when: every row is ticked, including all **I** rows. Any re-run of rows
+1–3 after the section 10 rotation uses `/admin/api-health` with Inna's login
+(no `CRON_SECRET` needed), not `scripts/healthcheck.mjs` from Joe's machine.
 
 ---
 
 ## 10. Phase 5 — Revoke access and rotate secrets
 
-Do this only after section 9 passes. Order matters: **rotate first, then
-remove Joe**, so that if a rotation breaks something Joe can still fix it.
+Do this only after section 9 passes. **Inna generates and enters every new
+value; Joe advises by voice and never sees a value.** Order:
+
+1. Inna removes Joe from the vault collection (5.2) and creates a second
+   collection, "Platform — K-Clinics — post-handover", that Joe is never
+   added to.
+2. Inna downgrades Joe on Vercel to **Viewer** or removes him (10.5, first
+   two rows) *before* any value is entered — a Member can read non-Sensitive
+   variables.
+3. Inna rotates (10.2, then 10.3), saving each new value in the
+   post-handover collection first and then entering it in Vercel with
+   **Sensitive** ticked (write-only; nobody, Joe included, can read it back)
+   or in Admin → Settings → Credentials & keys, and redeploys herself
+   (**Deployments → ⋯ → Redeploy**).
+4. If a rotation breaks something, the rollback is the previous value from
+   the vault, not Joe's access. Joe may still *delete* old keys in provider
+   consoles and revoke his own tokens, which is why his provider logins are
+   removed last (10.5).
+5. Inna tells staff the day before: everyone is signed out once when the
+   session secrets change; passwords and Face ID keep working.
 
 ### 10.1 What is never rotated (and why)
 
@@ -1676,26 +1976,41 @@ remove Joe**, so that if a rotation breaks something Joe can still fix it.
   Because Joe has seen these values, **do rotate them this way** as the last
   rotation (10.3), never by simply replacing the value.
 - `VAPID_PUBLIC_KEY` / `VAPID_PRIVATE_KEY`: rotating silently disconnects every
-  staff push subscription. Leave them unless Inna wants every device to
-  re-subscribe.
-- `KIOSK_IP_SALT`: rotating resets the kiosk anti-abuse counters; harmless, but
-  pointless.
+  staff push subscription. Accepted residual: the private key is only
+  exploitable together with the `PushSubscription` rows in the database,
+  which Joe can no longer read after 10.2 and 10.5, so leave the pair unless
+  Inna wants every device to re-subscribe. Re-open this decision if the
+  database is ever suspected compromised, and confirm first whether the pair
+  is set at all (Appendix E says it is currently unset).
+- `KIOSK_IP_SALT` is **not** in this list any more: today's value is derived
+  from `HEALTH_ENCRYPTION_KEY`, which Joe knows, so it is rotated in 10.2 at
+  the cost of a one-off reset of the per-IP kiosk counters.
 
-### 10.2 Rotation table (Joe, with Inna watching)
+### 10.2 Rotation table (Inna does, Joe guides — no screen-share of the value field)
 
-Generate new values with `openssl rand -base64 32` (or `-hex 32` where the
-current value is hex). Change the value in Vercel, redeploy, then tick.
+Generate new values with Admin → **Security centre** → **Generate secret**, or
+`openssl rand -base64 32` (or `-hex 32` where the current value is hex) on
+Inna's machine — never in Joe's terminal. **Before each row, open Admin →
+Settings → Credentials & keys and read the "source" column for that key: if
+it says `app`, the value in the database overrides Vercel — paste the new
+value there (it takes effect within 30 seconds, no redeploy) and delete or
+update the Vercel copy to match; if it says `env`, change it in Vercel
+(Sensitive ticked) and redeploy.** Never leave an old value in the other
+place. After the change, the "updated by" on the Credentials page must show
+Inna's name and `/admin/api-health` must be green *before* the old key is
+deleted at the provider. Then tick.
 
 | Secret | Where else it must be updated | Side effect | Done |
 | --- | --- | --- | --- |
 | `ADMIN_JWT_SECRET`, `CLIENT_JWT_SECRET`, `ACADEMY_JWT_SECRET` | nowhere | every staff member, client and student is signed out once; passkeys, passwords and two-factor keep working | [ ] |
+| `KIOSK_IP_SALT` | nowhere (set a fresh `openssl rand -hex 32`, out of opening hours) | one-off reset of the per-IP kiosk counters | [ ] |
 | `CRON_SECRET` | Claude/QA tooling if it uses it; any external uptime monitor calling `/api/health` with the bearer. The edge middleware's blocked-IP feed falls back to this value when `MW_BLOCK_SECRET` is unset, so rotate the two together (or set `MW_BLOCK_SECRET` explicitly) | none for users | [ ] |
 | `BOARD_QUEUE_TOKEN` (= `QA_TOKEN`) | the Claude Code environment, if retained (D6-a) | none | [ ] |
 | `GOOGLE_REVIEW_IMPORT_TOKEN`, `MIGRATE_TOKEN`, `MW_BLOCK_SECRET` | nowhere | none | [ ] |
-| `STRIPE_SECRET_KEY` | Stripe → Developers → API keys → **Roll key…** with an expiry of up to seven days, or replace with a **restricted key** (Balance read, Customers, SetupIntents/PaymentIntents, Charges/Refunds, Checkout) and delete the full key after the redeploy | none | [ ] |
+| `STRIPE_SECRET_KEY` | Stripe → Developers → API keys → **Roll key…** → choose the **shortest delay that covers the redeploy** (1 hour; never "now", never 7 days), redeploy inside that window and confirm `/admin/api-health` Payments is green; or replace with a **restricted key** (Balance read, Customers, SetupIntents/PaymentIntents, Charges/Refunds, Checkout) and delete the full key after the redeploy | none | [ ] |
 | `STRIPE_WEBHOOK_SECRET` | Stripe → Webhooks → endpoint → **Roll secret** (old secret can stay valid for up to 24 hours) | none (Stripe overlaps old/new) | [ ] |
 | `RESEND_API_KEY`, `RESEND_WEBHOOK_SECRET`, `RESEND_INBOUND_SECRET` | Resend → API keys / Webhooks (new endpoint or rotate) | none | [ ] |
-| `YAY_WEBHOOK_SECRET` | yay.com → Web Hooks → both hooks' URL `?token=` and Auth Token field | calls logged during the seconds in between are missed | [ ] |
+| `YAY_WEBHOOK_SECRET` | yay.com → Voice → Calls → Web Hooks → each hook → **Auth Token** field only (the route reads the `Authorization: Bearer` / `X-Auth-Token` header or the JSON body and ignores the URL; **never** add `?token=` to the hook URL — it would leak the secret into access logs and fail with 401). Set the new value in Vercel first, redeploy, then change both hooks | calls logged during the seconds in between are missed | [ ] |
 | `ANTHROPIC_API_KEY`, `DEEPGRAM_API_KEY`, `GOOGLE_PLACES_API_KEY`, `GOOGLE_TRANSLATE_KEY`, `GIPHY_API_KEY` | regenerate in each provider console (Google: **Regenerate key**, keeping the API restriction); paste into Admin → Credentials & keys (GIPHY: Vercel + redeploy); delete the old key there | none | [ ] |
 | `TWILIO_AUTH_TOKEN` | Twilio → Account → API keys & tokens → **create Secondary Auth Token** → paste into Admin → Credentials & keys → **Promote** it to primary (the old one dies instantly, so promote only after the app has the new value) | none | [ ] |
 | `TURNSTILE_SECRET_KEY` | Cloudflare → Turnstile → widget → Settings → **Rotate Secret Key** (two-hour overlap) → Vercel → redeploy | none if redeployed within two hours | [ ] |
@@ -1705,10 +2020,18 @@ current value is hex). Change the value in Vercel, redeploy, then tick.
 | `GITHUB_APP_PRIVATE_KEY` | done in 7.2 | none | [ ] |
 | `HOSTINGER_CALDAV_PASS` | Hostinger → mailbox → new app password | none | [ ] |
 | `INDEXNOW_KEY` | none (served automatically at `/indexnow-key.txt`) | none | [ ] |
-| Neon database password (path A/B kept the old strings) | Neon console → Roles → reset password → update the four `DATABASE_URL*`/`POSTGRES_*` vars → redeploy | a few seconds of failed queries during the redeploy; do it late evening | [ ] |
+| Neon database password (path A/B kept the old strings) | Neon console → the **production** branch → Roles → reset password. Vercel-managed: the integration-owned variables cannot be edited by hand — check in Vercel → Storage → the Neon resource whether the new string is re-injected automatically; if not, disconnect/reconnect the resource (7.5) or, Neon-native, update the four vars → redeploy. **Same evening:** reset the role password on the `pre-handover-*` branch too (or delete its compute under Branches → the branch → Computes) so the old credentials open nothing; and drop the read-only role Joe's Claude environment used | a few seconds of failed queries during the redeploy; do it late evening | [ ] |
 | `BLOB_READ_WRITE_TOKEN` | Vercel → Storage → store → Settings → **Regenerate token** (or new store token) | none | [ ] |
 | `UPSTASH_REDIS_REST_TOKEN` | Upstash console → Reset token (rotate whichever route was taken — Upstash advised rotating all tokens after Vercel's April 2026 incident) | active login lockouts and throttles reset once | [ ] |
 | `SENTRY_DSN` | Sentry → project → Client Keys → create new, disable old | none | [ ] |
+| `YAY_AUTH_PASSWORD` (if click-to-dial is set up) | yay.com → the API/reseller user → change password → Vercel → redeploy | click-to-dial briefly unavailable | [ ] |
+| `META_CLIENT_SECRET`, `TIKTOK_CLIENT_SECRET` (env-only) | developers.facebook.com → the app → Settings → Basic → **Reset** app secret; TikTok developer portal → app → regenerate → Vercel → redeploy | staff re-connect Meta/TikTok on Marketing → Connections | [ ] |
+| Provider keys created *by Joe's user* (Twilio API keys, Resend, Stripe restricted keys, Neon personal API keys) | each console's key list shows the creator: delete every key Joe created once its replacement is live | none | [ ] |
+| Cloudflare (route a only) | My Profile → **API Tokens**: delete every token; **Change Global API Key**; Manage Account → Members: confirm only clinic identities | none | [ ] |
+| Hostinger | hPanel → Account → API tokens: delete any Joe created | none | [ ] |
+| `Setting` row `github_app_token` (cached App token) | Admin → Build & Issues → GitHub connection → Disconnect/Reconnect (7.2) clears it; otherwise it expires within the hour | none | [ ] |
+| Joe's `AdminUser.googleRefreshToken` | Joe: myaccount.google.com → Security → Third-party access → remove K-Clinics; the row is nulled when his account is deactivated (10.4) | none | [ ] |
+| `GOOGLE_ADS_DEVELOPER_TOKEN` | cannot be regenerated; usable only with the clinic's OAuth credentials and manager account, so removing Joe from the manager account (7.11) closes it — record as an accepted residual | none | [ ] |
 
 ### 10.3 Health keyring rotation (last, and only via the runbook)
 
@@ -1717,10 +2040,14 @@ current value is hex). Change the value in Vercel, redeploy, then tick.
    ring doubles as the HMAC ring and you must not introduce a separate HMAC
    key now; if you ever do, put the AES key's value into
    `HEALTH_HMAC_KEYS_OLD` at the same moment).
-2. Vercel: set `HEALTH_ENCRYPTION_KEYS_OLD` = current `HEALTH_ENCRYPTION_KEY`
-   (comma-append if a value exists) and, where it exists,
-   `HEALTH_HMAC_KEYS_OLD` = current `HEALTH_HMAC_KEY`; then set the new active
-   key(s). Redeploy.
+2. Vercel, **Production and Preview together** (previews share the
+   database): set `HEALTH_ENCRYPTION_KEYS_OLD` = current
+   `HEALTH_ENCRYPTION_KEY` (comma-append if a value exists) and, where it
+   exists, `HEALTH_HMAC_KEYS_OLD` = current `HEALTH_HMAC_KEY`; then set the
+   new active key(s) in both environments in the same change. Redeploy
+   production **and** redeploy (or delete) every open preview deployment so
+   no build is left running with the old active key. Never remove the old
+   key (step 6) while any preview still lists it as `HEALTH_ENCRYPTION_KEY`.
 3. Confirm `/api/health` (with `CRON_SECRET`) reports `encryptionSelfTest:
    ok`, that Admin → Integrations → **Clinical data encryption** shows the
    new active key id with "re-encryption in progress, N remaining", and that
@@ -1751,34 +2078,66 @@ current value is hex). Change the value in Vercel, redeploy, then tick.
 
 ### 10.4 Accounts inside the app
 
-- Admin → **Staff**: Inna is **OWNER** (she must be, or the export/passkey
-  step-up will not be available to her); set Joe's and `webmaster@`'s staff
-  records to **DEVELOPER** (or Inactive per D5); delete any
-  `qa-*@kaulindustries.com` demo users; review every OWNER/ADMIN row.
-- Admin → **Security**: confirm two-factor is required for OWNER/ADMIN roles;
-  check the passkey list on Inna's account.
+- Admin → **Staff & access**: Inna is **OWNER** (she must be, or the
+  export/passkey step-up will not be available to her); set Joe's and
+  `webmaster@`'s staff records to **Inactive** (not deleted — the audit trail
+  references them) and delete their passkeys and two-factor (their row →
+  Security); deactivate, do not delete, the `qa-*@kaulindustries.com` demo
+  users, the `QA_ADMIN_EMAIL` account and the academy QA login, and reset
+  their passwords to random values; review every OWNER/ADMIN row.
+- Admin → **Security centre**: confirm two-factor is required for OWNER/ADMIN
+  roles; check the passkey list on Inna's **My profile** page.
+- **Passwords Joe set or could have reset:** Inna changes her own password
+  (**My profile**) and regenerates her recovery codes; every staff member
+  whose password was created or reset by Joe changes theirs at next login;
+  Inna uses "sign out everywhere" for each such account.
 - Admin → **Settings → Credentials & keys**: every key shows source **app** or
   **env** and a recent "updated by" that is not Joe.
 - `GOOGLE_SSO_ALLOWED_DOMAINS` = `kclinics.co.uk` (no `kaulindustries.com`).
 
-### 10.5 Remove or downgrade Joe (Inna does this, from her own logins)
+### 10.5 Remove or downgrade Joe
 
-| Where | Action (D5-a remove / D5-b downgrade) |
-| --- | --- |
-| GitHub org | After the transfer Joe is a member/collaborator. **People** → tick `JoeKaulPulse` → **Convert to outside collaborator** → confirm; then repository **Settings → Collaborators & teams** → role **Write** (not Admin). At the end of the support period: **People → Outside collaborators → Manage → Remove access**. Joe also revokes any OAuth or GitHub App authorisations for K-Clinics tooling under his own Settings → Applications |
-| Vercel team | Settings → Members → Joe's row → **…** → change role to **Viewer** (free, read-only) **or Remove from Team**. First check Team → Integrations → Manage shows *Inna* as the installer of Neon and Upstash (an integration installed by someone who leaves is switched off). Afterwards regenerate the Protection Bypass for Automation secret (Settings → Deployment Protection) if one exists; Joe revokes any personal Vercel access tokens scoped to the team (Account Settings → Tokens) |
-| Neon org | People → Joe → Remove or Member |
-| Resend, Sentry, Anthropic, Twilio, Deepgram, Cloudflare | Team/Members → Joe → Remove or lowest role |
-| Stripe | Settings → Team and security → overflow menu next to Joe's role → **Edit** → the "Manage roles" drawer → remove all roles (or leave Developer, view-only) |
-| Google Workspace | Only after 4.8a: Directory → Users → `webmaster@` → remove **Super Admin**; keep the mailbox only if D5-b, as a normal user; otherwise **Suspend** (keeps the mail) |
-| Google Cloud `KClinics` | IAM → `webmaster@` → remove **Owner** (after 7.11 confirms Inna's works) |
-| Xero / TrueLayer / GBP / Search Console / GA4 / Ads | remove Joe's logins or set to view-only |
-| Hostinger | Account sharing → remove; delete any app passwords issued to Joe |
-| Password manager | remove Joe from the "Platform — K-Clinics" collection; Joe confirms he has deleted the local `.env*` pulls |
-| Claude Code (Joe's account) | Joe deletes the K-Clinics environment variables (`BASE_URL`, `QA_TOKEN`, `BOARD_QUEUE_TOKEN`, `QA_ADMIN_*`, `QA_ACADEMY_*`, `DATABASE_URL`) and the Routine; the read-only DB role used there is dropped in Neon |
+Inna does the first table from her own logins, in the order shown, with Joe
+on the phone for the first two rows (they happen at the *start* of section
+10, before any value is rotated). Joe does the second list himself. Stop and
+phone Joe if a screen does not match.
 
-Done when: every rotated secret is ticked, the keyring shows 0 remaining, and
-Joe can no longer sign in anywhere with owner rights.
+**Before you start, one check that must pass (Vercel):** vercel.com →
+**K-Clinics** team → **Integrations** → next to **Neon** and **Upstash** click
+**Manage**. The name shown as the installer must be **you**. If either shows
+Joe, stop: removing him would switch off the database connection. Joe
+uninstalls it and you reinstall it (5.4 step 7) before you continue.
+
+| Where | What you click (D5-a remove / D5-b downgrade) | Done when |
+| --- | --- | --- |
+| Password manager (first) | Bitwarden **Admin Console → Members** → Joe → **Remove**; create the collection "Platform — K-Clinics — post-handover" for the new values. Ask Joe for a one-line written confirmation that he has securely deleted every local copy of: the `.env*` pulls, `kclinics-*.dump`, the JSON export, the 4.4 Blob copy and CSV, the 4.6 SQL output and screenshots, any scratch database, `scripts/migrate-wp/.env`, and browser downloads of the same | Joe not listed; his confirmation filed |
+| Vercel team (second) | **Settings → Members** → Joe's row → role dropdown → **Viewer** (D5-b, free, read-only) or **⋯ → Remove** (D5-a). Then **Settings → Deployment Protection** → if a **Protection Bypass for Automation** secret is shown, click **Regenerate**. Then **Storage** → the Neon database → **Open in Neon** → **People**: Joe must not be listed at any role; if he is, remove him there and re-check the Vercel members list | Joe's row shows Viewer or is gone; next month's Vercel invoice has one seat fewer |
+| GitHub organisation | Organisation page → **People** → tick `JoeKaulPulse` → in the dropdown that appears above the list choose **Convert to outside collaborator** → **Convert**. Then repository `k-clinics` → **Settings** → **Collaborators and teams** → Joe's row → role dropdown → **Write** (D5-b) or **Remove** (D5-a). Also **Settings → Developer settings → GitHub Apps → kclinics-board → App managers** → remove Joe. At the end of the support period: **People** → **Outside collaborators** → Joe's row → **⋯** → **Remove from organization** | Joe's name is not under **People → Members** |
+| Neon (only if the database is Neon-native) | console.neon.tech → organisation **K-Clinics** → **People** → Joe → **Remove** (or **Member**); **Roles**: any role Joe added is removed | Joe not listed |
+| Sentry, Anthropic, Twilio, Deepgram, GIPHY, DeepL | **Settings → Members** (Sentry, Anthropic), **Admin → Manage users** (Twilio), **Settings → Team** (Deepgram) → Joe → **Remove** or the lowest role; DeepL: Joe closes his account once `DEEPL_API_KEY` is cleared | Joe not listed |
+| Resend and Cloudflare | Only after Joe confirms every old key he needed to delete is gone (10.2): Resend **Settings → Team** → Joe → **Remove**; Cloudflare **Manage Account → Members** → Joe → **Remove** | Joe not listed |
+| Stripe | **Settings → Team and security** → overflow menu next to Joe's role → **Edit** → the "Manage roles" drawer → remove all roles (D5-a) or leave **Developer** (D5-b) | — |
+| Google Workspace (only after Joe confirms 4.8a is done and 7.11's reconnects are complete) | admin.google.com → **Directory → Users** → `webmaster@kclinics.co.uk` → **Admin roles and privileges** → switch **Super Admin** off → **Save**. D5-a: same user → **More options** (⋮, top right) → **Suspend user** → **Suspend** (the mailbox is kept; nobody can sign in) | The user shows no admin role, or "Suspended" |
+| Google Cloud `KClinics` (only after 7.11 confirmed your Owner role works) | console.cloud.google.com → **IAM & Admin → IAM** → the `webmaster@` row → pencil icon → remove the **Owner** role → **Save** | `webmaster@` no longer listed as Owner |
+| Xero, TrueLayer, Google Business Profile, Search Console, GA4, Google Ads, Meta, TikTok, Bing Webmaster | Same screens as the table in 6.4: remove Joe's login or set it to view-only; Meta: also the developer app's **Roles** → remove; TikTok: **Business Center → Members** → remove | Appendix A rows A19 and A20 ticked |
+| yay.com | Account holder is you (7.12); **Account → Users** → remove Joe's login; **Allowed IP ranges** reviewed | Only clinic names listed |
+| Alert channel | Delete the old incoming webhook in Joe's Slack/Discord/Make workspace; the new one lives in a clinic workspace (section 8) | Alerts arrive in the clinic channel |
+| Prisma Console | Joe confirms 7.6 is complete: no project or database holding clinic data remains under his logins; Accelerate billing cancelled | Joe's written confirmation filed |
+| Hostinger | hPanel → top-right profile → **Account sharing** → **Manage access** → Joe → **Remove**. If Joe ever signed in with *your* Hostinger password, change it now (profile → **Account → Security → Change password**) and turn on two-factor | Only clinic names listed |
+
+**Joe, on his own accounts:** GitHub → Settings → Applications → revoke any
+authorisation for K-Clinics tooling, and delete the K-Clinics personal access
+token (a fine-grained token cannot reach the organisation's repository
+anyway); Vercel → Account Settings → Tokens → delete any token scoped to the
+K-Clinics team; Neon → Account → API keys → delete the personal key used for
+`scripts/safe-migrate.mjs` unless D5-b keeps it; claude.ai/code → delete the
+K-Clinics environment variables and the Routine (7.14); drop the read-only
+database role while still a member, or ask Inna to do it with him on the
+phone.
+
+Done when: every rotated secret in 10.2 is ticked, the keyring shows 0
+remaining, and Joe confirms on a call that he can no longer sign in anywhere
+with owner or admin rights.
 
 ---
 
@@ -1809,7 +2168,12 @@ known-good state from the backups in section 4.3 with Joe on a call.
       transferred. Cancel nothing that other projects use.
 - [ ] **12.2 Old Neon project / Prisma Console:** delete after confirming 30
       days of clean operation and that the backups in 4.3 have been re-verified
-      against the *new* database.
+      against the *new* database. Also delete the `pre-handover-YYYY-MM-DD`
+      Neon branch and snapshot, then the `pg_dump`, the JSON export and the
+      4.4 Blob copy in the clinic's storage once a fresh post-rotation backup
+      exists (10.3 step 7) — until then a pre-rotation backup plus the old key
+      still decrypts everything; log each deletion date in
+      `docs/data-protection/` (retention record).
 - [ ] **12.3 Old Resend team:** delete the domains and remaining keys; close
       the team if it was K-Clinics-only.
 - [ ] **12.4 Old Turnstile widget** (D8 route b): delete the widget in the old
@@ -1829,8 +2193,10 @@ known-good state from the backups in section 4.3 with Joe on a call.
       Hostinger DNS; Cloudflare is Turnstile only),
       `docs/GOOGLE_WORKSPACE_MIGRATION.md` §1 (DNS is at Hostinger, not
       Cloudflare), `docs/data-protection/processors.md`
-      (Vercel, Neon, Resend, Sentry, Anthropic rows: contracting party is the
-      clinic; date accepted; region; Neon's documentation now brands the
+      (Vercel, Neon, Resend, Sentry, Anthropic, Twilio, Deepgram rows:
+      contracting entity `KCLINICS SKIN & LASER LIMITED`, DPA version and the
+      date Inna accepted it in section 5, region; close the Deepgram and
+      yay.com "[OWNER TO CONFIRM]" cells; Neon's documentation now brands the
       service "Lakebase Postgres" under Databricks, so re-check the legal
       entity and the DPA link on that row), `docs/data-protection/breach-response.md`
       (Technical responder now named), `docs/data-protection/README.md`
@@ -1849,8 +2215,11 @@ known-good state from the backups in section 4.3 with Joe on a call.
       `docs/GOOGLE_WORKSPACE_MIGRATION.md` (chat inbound on `reply.mail.`).
       Appendix C lists every line.
 - [ ] **12.8 Handover pack** stored in the vault and given to Inna: Appendix A
-      completed with dates; the env export (current values, post-rotation); the
-      offline copy of the health keys; the backup files' locations; this
+      completed with dates; the post-handover vault collection (Inna's; Joe
+      has no access — there is no post-rotation env pull); the result of
+      `git log --all -p -S HEALTH_ENCRYPTION_KEY` on the repository (expect no
+      hit, proving no key was ever committed); the offline copy of the health
+      keys; the backup files' locations; this
       document; the support arrangement (what Joe still does, until when, how
       to reach him, and what happens if he is unavailable); and a short
       **known technical debt** list for whoever maintains the platform next:
@@ -1867,23 +2236,29 @@ known-good state from the backups in section 4.3 with Joe on a call.
 
 ## 13. What the clinic will pay after handover (monthly, approximate)
 
-| Service | Plan | Approx. cost | Confirm at |
+| Service | What it is | Always (per month) | Extra, depending on your decisions |
 | --- | --- | --- | --- |
-| Vercel | Pro: $20 per Owner/Member seat; Viewer seats free; $20 monthly usage credit, 1 TB transfer included | $20 (Inna) + $20 while Joe is a Member | vercel.com/pricing |
-| Neon | Launch (pay-as-you-go, no minimum: about $0.11 per compute-hour, $0.35 per GB-month, 7-day restore) — Scale (about $0.22 per compute-hour, 30-day restore) only if D4 keeps the 30-day target; billed on the Vercel invoice when Vercel-managed | ~£10–40 | neon.com/pricing |
-| GitHub | Free, or Team if private with branch protection | $0 or ~$4 per user | github.com/pricing |
-| Resend | Pro | ~$20 | resend.com/pricing |
-| Sentry | Developer (free) or Team | $0–26 | sentry.io/pricing |
-| Anthropic | usage, capped by `AI_MONTHLY_CAP` | £10–50 | console.anthropic.com |
-| Upstash | pay-as-you-go via Vercel | £0–8 | — |
-| Twilio | usage | ~£0.04 per SMS | twilio.com/pricing |
-| Cloudflare | Free | $0 | — |
-| Claude (only if D6-a) | Pro, or Team seats | $20 (Pro) or $20–25 per Team seat | claude.com/pricing |
+| Vercel | runs the website | £16 (your seat) | + £16 per extra Member: Joe while he can publish fixes (D5); your backup admin if they need database-console access (7.5). Viewers are free |
+| Neon (on the Vercel invoice) | the database | £10–40 usage | + £[Joe fills in] for a 7-day rewind window; + £[Joe fills in] for 30 days (D4) |
+| GitHub | holds the code | £0 if public | £3 per person if private (D2), typically £6–9; + about £25 per developer for the two optional deep scans |
+| Resend | sends and receives the app's emails | £16 | — |
+| Sentry | error reports | £0 | £21 if the free tier's limits are hit |
+| Anthropic | the AI features | £10–50 usage | — |
+| Upstash (on the Vercel invoice) | abuse-limiting counters | £0–6 | — |
+| Twilio | text messages | about 4p per message | — |
+| Cloudflare | login bot-check | £0 | — |
+| Claude subscription | overnight helper | £0 | from about £15–18 (D6-a) |
+| Bitwarden | password manager | £3 per person (£6–9) | — |
 | Google Workspace / Cloud | already the clinic's | unchanged | — |
-| Password manager | Bitwarden Teams | ~$4 per user | bitwarden.com |
 
-Roughly £70–120 a month of fixed platform cost plus usage, all on the clinic's
-card, all cancellable by Inna alone.
+Roughly £70–120 a month fixed plus usage before the optional extras; all on
+the clinic's card, all cancellable by Inna alone. Joe confirms each figure at
+sign-up (prices are quoted in dollars by most of these providers) and writes
+the real number into this table. For Joe: Vercel Pro is $20 per Owner/Member
+seat with a $20 usage credit; Neon Launch is pay-as-you-go (about $0.11 per
+compute-hour, $0.35 per GB-month, 7-day restore) and Scale about $0.22 per
+compute-hour with 30-day restore; GitHub Team about $4 per user; Claude Pro
+$20, Team $20–25 per seat.
 
 ---
 
@@ -1899,10 +2274,13 @@ The handover is complete when Inna can tick every line without Joe's help.
       failure).
 - [ ] Two-step verification is on for every one of those logins; recovery
       codes are in the vault.
-- [ ] I can open the live site's settings, database console, error monitor
-      and email logs on my own laptop.
+- [ ] On my own laptop, without Joe, I can open Vercel (the website's
+      settings), the Neon console (the database), Sentry (error reports) and
+      Resend (email logs), using the bookmarks from section 9 row 24.
 - [ ] I have the health-data encryption keys in two places (vault + offline).
-- [ ] Every secret in section 10.2 has been rotated after Joe's access ended.
+- [ ] Every secret in section 10.2 was rotated by me (Joe guided by phone
+      and never saw a value) after his vault and Vercel access ended, and Joe
+      was then removed from every remaining account (10.5), in that order.
 - [ ] Joe has no owner or admin role anywhere (Appendix A, column "Joe now").
 - [ ] The verification matrix (section 9) passed on a date after the last
       rotation.
@@ -1914,6 +2292,12 @@ Signed: Inna ____________ date ______ · Joe ____________ date ______
 ---
 
 ## Appendix A — Asset and account register (fill in before Phase 2)
+
+Joe fills in "Today's owner login" and "Shared with Joe's other projects?"
+(his step 4.1) and copies the route that follows from Inna's answers in
+section 2 into "Decision / route". Inna reads the completed table before
+starting 5.5 to 5.10 and 6.4. Both tick "Done" with a date. While the
+repository is public, keep the filled-in copy in the vault, not here.
 
 | # | Asset | Provider | Today's owner login | Shared with Joe's other projects? | Decision / route | Target owner | Joe now (end state) | Done |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
@@ -1930,7 +2314,7 @@ Signed: Inna ____________ date ______ · Joe ____________ date ______
 | A11 | Company mailboxes | Google Workspace | clinic | — | roles only (6.1, 10.5) | Inna (Super Admin) | `webmaster@` demoted/suspended | [ ] |
 | A12 | Google Cloud project `KClinics` | Google | clinic org; `webmaster@` Owner | — | add Inna Owner (6.2), remove Joe (10.5) | Inna | none | [ ] |
 | A13 | Payments | Stripe | [CONFIRM owner] | — | owner transfer if needed (7.9) | Inna | none / Developer | [ ] |
-| A14 | Error monitoring | Sentry | [CONFIRM] | [CONFIRM] | transfer project or new (7.3/8) | Inna | Manager (temp) → none | [ ] |
+| A14 | Error monitoring | Sentry | [CONFIRM] | [CONFIRM] | hand over the organisation, transfer the project, or new (7.7) | Inna | Manager (temp) → none | [ ] |
 | A15 | AI | Anthropic | [CONFIRM] | [CONFIRM] | new org + key (5.8, 7.12) | Inna | Developer (temp) → none | [ ] |
 | A16 | Transcription | Deepgram | [CONFIRM] | [CONFIRM] | new key (7.12) | Inna | none | [ ] |
 | A17 | SMS | Twilio | [CONFIRM] | [CONFIRM] | owner change or new (7.12) | Inna | none | [ ] |
@@ -2203,8 +2587,8 @@ Column key. **Set today**: V-Prod = Vercel Production (required by code in produ
 | `UPSTASH_REDIS_REST_URL` / `_TOKEN` | Upstash (Marketplace) | Upstash | `lib/security/rate-limit.ts:9`; `lib/api-health.ts:115-116` | no | Transfer the Marketplace resource or provision anew; counters are ephemeral, Postgres fallback in between. | no |
 | `SENTRY_DSN` | V-opt (recommended) | Sentry | `sentry.server.config.ts:3`; `sentry.edge.config.ts:3`; `instrumentation.ts:4`; `lib/api-health.ts:450` | no | Transfer project (same region) or create new org; releases/session data not transferred. | no |
 | `NEXT_PUBLIC_SENTRY_DSN` | V-opt | Sentry | `instrumentation-client.ts:3`; `lib/api-health.ts:451` | **yes** | Same DSN; rebuild. | no |
-| `TURNSTILE_SECRET_KEY` | V-Prod | Cloudflare | `lib/security/guard.ts:117,131` | no | Fails closed in production: admin/client login CAPTCHA rejected until set. Widgets are per Cloudflare account. | no |
-| `NEXT_PUBLIC_TURNSTILE_SITE_KEY` | V-Prod | Cloudflare | `app/api/admin/login/route.ts:40`; `app/api/account/login/route.ts:19` | **yes** | Rebuild. | no |
+| `TURNSTILE_SECRET_KEY` | V-Prod | Cloudflare | `lib/security/guard.ts:116-125`; `app/api/admin/login/route.ts:47`; `app/api/account/login/route.ts:27` | no | **Unset = fails open**: `turnstileConfigured` is false and both login routes skip the CAPTCHA, leaving only the lockout counters. **Set but mismatched = fails closed**: every login after the third failure is rejected. Never delete it as an interim step. Widgets are per Cloudflare account. | no |
+| `NEXT_PUBLIC_TURNSTILE_SITE_KEY` | V-Prod | Cloudflare | `app/api/admin/login/route.ts:40`; `app/api/account/login/route.ts:19` | **yes** | Read server-side at request time and returned to the login form; a redeploy is still needed because Vercel applies variable changes only to new deployments. | no |
 | `RESEND_API_KEY` | V-Prod or DB | Resend | `lib/email.ts:91`; `lib/api-health.ts:146` | no | New key after the Domain Claim into the clinic's Resend team. | yes |
 | `ANTHROPIC_API_KEY` | V-Prod or DB; also CC | Anthropic | `lib/chat-ai.ts:212`; `lib/kiosk-ai.ts:123,324`; `lib/ai-consultation.ts:85`; `lib/ai-marketing.ts:26`; `app/api/admin/seo/route.ts:78`; `app/api/admin/bookings/transcribe/route.ts:77`; `.claude/hooks/session-start.sh:106` | no | Issue from a clinic-owned console; revoke old. | yes |
 | `DEEPGRAM_API_KEY` | DB or V-opt | Deepgram | `app/api/admin/bookings/transcribe/route.ts:23`; `lib/api-health.ts:231` | no | | yes |
@@ -2318,7 +2702,7 @@ Column key. **Set today**: V-Prod = Vercel Production (required by code in produ
 1. Joe, on his own machine, links the project and pulls production values into a local file: `vercel link` then `vercel env pull .env.handover --environment=production` (Preview separately if anything differs). This is the most complete source, but not a full one: variables saved as **Sensitive** are write-only and come back neither from the dashboard nor from `env pull` — for those the vault copy is the only record (see 4.5).
 2. Confirm the set of names against this catalogue with `vercel env ls production` and record any name that is present but not listed here, or listed here but absent.
 3. Hand the file over through a password-manager shared vault (1Password/Bitwarden) or a one-time, expiring secret link; never by email, WhatsApp, Google Doc or board comment. Split it: the DATA-BOUND block goes in its own item labelled "never rotate without the runbook".
-4. Inna (or whoever sets up the new Vercel project) enters DATA-BOUND and CONFIG values verbatim, ACCOUNT-BOUND values from the clinic's new provider accounts, and generates every ROTATE-AT-HANDOVER value fresh (`openssl rand -base64 32` for JWT/keys, `openssl rand -hex 24` for tokens). `NEXT_PUBLIC_*` and the Stripe pair must be present before the first build.
+4. Only in the new-project fallback (the transfer carries every variable, Sensitive ones included): Inna enters DATA-BOUND and CONFIG values verbatim, ACCOUNT-BOUND values from the clinic's new provider accounts, and generates every ROTATE-AT-HANDOVER value fresh (`openssl rand -base64 32` for JWT/keys, `openssl rand -hex 24` for tokens). `NEXT_PUBLIC_*` and the Stripe pair must be present before the first build. If any DATA-BOUND value is unreadable (Sensitive with no vault copy), do not take this path — see 4.5.
 5. After the new deployment is verified (`/api/health` with the new `CRON_SECRET`, Admin > Integrations all green, `node scripts/healthcheck.mjs`), Joe deletes `.env.handover`, the Vercel CLI link, and every local `.env` / `scripts/migrate-wp/.env`, then revokes his side: Neon read-only role and API key, GitHub PAT, Claude Routine, Anthropic key, Slack webhook, and removes the Claude Code environment variables.
 6. Keep an offline copy of the DATA-BOUND block (health keyring, VAPID pair, kiosk salt if set) in the clinic's vault as the backup the runbook requires; env vars are configuration, not a backup.
 
@@ -2410,7 +2794,7 @@ Two values have no recovery path if lost: `HEALTH_ENCRYPTION_KEY` (with anything
 | `ADMIN_JWT_SECRET` | Staff session JWT (`kc_admin`, 12h absolute, 2h idle) and the passkey step-up unlock JWTs (`kc_su_export`, `kc_su_rotate-keys`, `kc_su_finance`). 4th-choice kiosk salt (never reached in production). JWT self-test only in `/api/health`. | `lib/auth.ts:72-86`; `lib/auth-edge.ts:48-55, 66-74`; `middleware.ts:228, 256-257`; `lib/webauthn.ts:46-50, 61-78`; `lib/kiosk.ts:86`; `app/api/health/route.ts:75` | Rotate: every staff member signed out, in-flight step-ups void. Nothing persistent breaks. | Regenerate (Admin -> Security -> "Generate secret", `app/api/admin/security/route.ts:36-38`, or `openssl rand -base64 32`). |
 | `CLIENT_JWT_SECRET` | Client portal JWT (`kc_client`, 7d). | `lib/auth.ts:129-143`; `lib/auth-edge.ts:57-64` | Clients signed out. | Regenerate. |
 | `ACADEMY_JWT_SECRET` | Academy JWT (`kc_academy`, 7d). Required in production; `.env.example:19` wrongly says it falls back. | `lib/auth-edge.ts:87-94`; `lib/auth.ts:173-183` | Trainees signed out. Missing: production build throws. | Regenerate; must exist before first deploy. |
-| `CRON_SECRET` | Bearer that Vercel Cron sends to `/api/cron/daily`, `/api/cron/dispatch`, `/api/cron/kiosk-cleanup`, `/api/health`, `/api/admin/api-health`; also the ops password-reset route and the default for `MW_BLOCK_SECRET`. | `lib/cron-auth.ts:21-29`; `app/api/cron/daily/route.ts:14-19`; `vercel.json`; `middleware.ts:141` | Missing or wrong: all crons 401 (no reminders, no re-encryption sweep, no backfills). | Regenerate in the new project; confirm the first 08:00 UTC run returns 200. |
+| `CRON_SECRET` | Bearer that Vercel Cron sends to `/api/cron/daily`, `/api/cron/dispatch`, `/api/cron/kiosk-cleanup`, `/api/health`, `/api/admin/api-health`; also the default for `MW_BLOCK_SECRET` (`middleware.ts:141`, `app/api/blocked-ips/route.ts:16`). It is **not** accepted by the client password-reset route (`app/api/account/reset-password/route.ts:9-11`, BLD-465); the comment in `lib/cron-auth.ts:3-4` is stale and is fixed in the 4.8 PR. | `lib/cron-auth.ts:21-29`; `app/api/cron/daily/route.ts:14-19`; `vercel.json`; `middleware.ts:141` | Missing or wrong: all crons 401 (no reminders, no re-encryption sweep, no backfills). | Regenerate in the new project; confirm the first 08:00 UTC run returns 200. |
 | `MW_BLOCK_SECRET` | Optional shared secret for the edge IP deny-list feed. If neither it nor `CRON_SECRET` is set the feed returns `[]` and blocking silently stops. Needs `NEXT_PUBLIC_SITE_URL` as the trusted self-fetch base. | `middleware.ts:133, 135-145`; `app/api/blocked-ips/route.ts:16-20` | Fail-open. | Regenerate or leave to the `CRON_SECRET` default. |
 | `KIOSK_IP_SALT` (legacy name `ENCRYPTION_KEY`) | Salt for kiosk IP pseudonymisation. Preference: `KIOSK_IP_SALT`, `ENCRYPTION_KEY`, sha256 of `HEALTH_ENCRYPTION_KEY`, sha256 of `ADMIN_JWT_SECRET`, throw. | `lib/kiosk.ts:54-67, 83-93`; `prisma/schema.prisma:4346, 4410` | Changing the salt resets per-IP kiosk limits and orphans stored `ipHash` values. Because it is derived from the health key today, rotating that key changes the salt. | Set `KIOSK_IP_SALT` explicitly before the keyring rotation. If an `ENCRYPTION_KEY` var exists in the current env, move its value into `KIOSK_IP_SALT` to keep counters. |
 | `VAPID_PUBLIC_KEY` / `VAPID_PRIVATE_KEY` / `VAPID_SUBJECT` | Web-push. Browsers subscribe with the public key; sends are signed with the private key. | `lib/push.ts:10-21`; `components/admin/NotificationPreferences.tsx:90`; `app/api/admin/notifications/push/route.ts:10-11` | Any change kills every `PushSubscription` (schema `4312-4323`); push services return 401/403, which `sendPush` does not prune (`lib/push.ts:53`), and the UI still reports "on" (`NotificationPreferences.tsx:77`). | Copy unchanged. Never rotate as part of the handover. Not tied to any provider account. |
@@ -2418,7 +2802,7 @@ Two values have no recovery path if lost: `HEALTH_ENCRYPTION_KEY` (with anything
 | `CLAUDE_ROUTINE_FIRE_URL` / `CLAUDE_ROUTINE_FIRE_TOKEN` | Fires Joe's Claude Code routine from the build board. | `lib/build-board.ts` | None on the clinic. | Remove unless the clinic sets up its own Anthropic account. |
 | `STRIPE_SECRET_KEY`, `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY`, `STRIPE_WEBHOOK_SECRET` | Payments. Env-only by design; the publishable key is baked into the browser bundle at build time. | `lib/secrets.ts:53-57` | Wrong webhook secret: payments do not complete (`docs/DEPLOY.md:180`). | Re-issue when the Stripe account settles; set in env and redeploy; update the webhook endpoint in Stripe. |
 | `RESEND_WEBHOOK_SECRET`, `RESEND_INBOUND_SECRET` | HMAC verification of the delivery and inbound webhooks (fail closed in production). | `app/api/webhooks/resend/route.ts:19-24`; `app/api/webhooks/chat-inbound/route.ts:23-28` | Delivery events and inbound chat replies rejected. | Re-issued per webhook endpoint when Resend moves. |
-| `TURNSTILE_SECRET_KEY` / `NEXT_PUBLIC_TURNSTILE_SITE_KEY` | Cloudflare Turnstile; widgets are per Cloudflare account; site key is baked at build. | `lib/security/guard.ts:116-125` (`.env.example:39-42` still says "fails open" — stale since BLD-344) | Unset or wrong in production: **fails closed** — every CAPTCHA-gated login attempt is rejected until the key is set. | New widget in the clinic's Cloudflare account, both keys in env, redeploy in the same change. |
+| `TURNSTILE_SECRET_KEY` / `NEXT_PUBLIC_TURNSTILE_SITE_KEY` | Cloudflare Turnstile; widgets are per Cloudflare account; the site key is read at request time. | `lib/security/guard.ts:116-125`; `app/api/admin/login/route.ts:47`; `app/api/account/login/route.ts:27` (`.env.example:40` is right for the login routes) | Unset: CAPTCHA silently skipped at both login routes (fail open). Wrong or mismatched with the site key: fails closed — logins rejected after three failures. | New widget in the clinic's Cloudflare account, both keys in env in one save, redeploy. |
 | `BLOB_READ_WRITE_TOKEN`, `UPSTASH_REDIS_REST_*`, `SENTRY_DSN`, `GITHUB_APP_*`, `GITHUB_TOKEN`, `YAY_WEBHOOK_SECRET`, `YAY_AUTH_PASSWORD`, Hostinger CalDAV vars, `INDEXNOW_KEY`, `DATABASE_URL` family | Provider-issued. | various | Follow the provider account. | Re-issue as each provider moves. Blob and Upstash are re-injected by Vercel Storage when the resource transfers with the project. |
 | `SEED_ADMIN_PASSWORD` | Seed script only. | `prisma/seed.mjs` | None. | Ignore. |
 
@@ -2491,7 +2875,7 @@ Order:
 2. Move the database and the Vercel project with identical `HEALTH_*` and `VAPID_*` values, `NEXT_PUBLIC_SITE_URL=https://kclinics.co.uk`, `USE_MIGRATIONS=true`, and an explicit `KIOSK_IP_SALT`. Verify: `/api/health` reports `encryptionSelfTest: ok` (`app/api/health/route.ts:89-94`), the same active key id, one assessment, one consent certificate (no tamper), one gallery image, and Admin -> Settings -> Credentials shows source "app".
 3. Regenerate in one redeploy: `ADMIN_JWT_SECRET`, `CLIENT_JWT_SECRET`, `ACADEMY_JWT_SECRET`, `CRON_SECRET`, `MW_BLOCK_SECRET`, `BOARD_QUEUE_TOKEN` (and `QA_TOKEN` wherever the harness runs), `GOOGLE_REVIEW_IMPORT_TOKEN`. Remove `CLAUDE_ROUTINE_FIRE_URL/TOKEN`. Deactivate Joe's `AdminUser` (do not delete; audit trail).
 4. Re-issue provider credentials as each account moves: Stripe (env + redeploy + webhook endpoint), Resend API key (Credentials page) and webhook secrets (env), Turnstile (env + redeploy), everything else via the Credentials page. Reconnect any OAuth integration whose client id changed.
-5. Last: rotate the health keyring. Joe's copy of the old key only matters with database access, which step 2 removed (`docs/KEY_ROTATION.md:24`), so this can be slow and careful.
+5. Last: rotate the health keyring. Joe's copy of the old key only matters together with database access; that access ends at 10.2 (database password reset, read-only role dropped, pre-handover branch reset) and 10.5 (removed from Vercel and Neon), so the rotation starts after those steps and can then be slow and careful (`docs/KEY_ROTATION.md:24`). Until the sweep reports 0 remaining, a copy of any backup taken before the rotation plus the old key still decrypts everything — which is why the backup copies are destroyed or re-taken in 12.2.
 
 Keyring runbook (`docs/KEY_ROTATION.md:14-19`; `docs/SECURITY.md:73-77`):
 
