@@ -10,6 +10,7 @@ import { TreatmentCard } from '@/components/ui/TreatmentCard';
 import { FaqAccordion } from '@/components/ui/FaqAccordion';
 import { Button, ArrowIcon } from '@/components/ui/Button';
 import { BookingButtons } from '@/components/booking/BookingButtons';
+import { MobileStickyBookBar } from '@/components/treatment/MobileStickyBookBar';
 import { PhoneButton } from '@/components/marketing/PhoneLink';
 import { site } from '@/lib/site';
 import { pricingForTreatment, formatPence, statusLabel, type ServiceStatus } from '@/lib/services';
@@ -115,6 +116,13 @@ export async function TreatmentTemplate({ t }: { t: Treatment }) {
 
   return (
     <article>
+      {/* BLD-1609: slim sticky Book Now bar for mobile, visible mid-scroll once
+          the hero's own booking CTA has scrolled out of view (hidden again near
+          the pricing table's CTA — no duplicate/overlapping CTAs). Only for
+          treatments that are actually bookable online. */}
+      {!comingSoon && !enquiryOnly && (
+        <MobileStickyBookBar treatmentSlug={t.slug} priceLabel={formatPence(fromOfferPence ?? fromPence)} />
+      )}
       {/* Hero */}
       <section className="surface-ink grain relative overflow-hidden pt-[calc(var(--header-h,5.25rem)+1rem)]">
         <span
