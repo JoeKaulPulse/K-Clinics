@@ -136,16 +136,27 @@ the build board be installed on the organisation rather than on a person.
 *Recommended: organisation.*
 
 **D2 — Keep the code public, or make it private?**
-The repository is public today. Anyone can read the platform code, its open
-issues and the Build board's notes about fixed vulnerabilities. For a clinic
-platform holding health data, *private* is the safer default. Private costs a
-little: branch protection (which stops anyone pushing straight to `main`) needs
-the GitHub **Team** plan (about $4 per user per month) on a private repository,
-and the free CodeQL and dependency-review scans only run on public
-repositories (on a private one they need the paid Code Security add-on, or the
-`npm audit` + gitleaks checks that stay free). *Recommended: private, GitHub
-Team plan, one or two seats.* If Inna prefers to stay public, nothing else in
-the plan changes.
+The repository is public today: anyone can read the platform code, its open
+issues and the Build board's notes about fixed vulnerabilities. What each
+choice gives you, on a GitHub organisation:
+
+| | Public repo, Free org | Private repo, Free org | Private repo, Team org |
+| --- | --- | --- | --- |
+| Rules that stop pushes straight to `main` | enforced | **not enforced** | enforced |
+| Required checks before merge (Typecheck etc.) | yes | no | yes |
+| CodeQL and dependency-review scans | free | fail | need the Code Security add-on (about $30 per active committer a month) or removing those two jobs |
+| GitHub's own secret scanning | free | no | Secret Protection add-on |
+| `npm audit` + gitleaks checks | yes (gitleaks needs a free organisation licence key) | yes | yes |
+| Actions minutes | unlimited on standard runners | 2,000 a month | 3,000 a month |
+| Price | £0 | £0 | about $4 per user a month (Inna, plus Joe while a member; an outside collaborator on a private repo also takes a seat) |
+
+A private repo on the Free plan is the one combination to avoid: it looks
+protected but nothing is enforced. *Recommended for a platform holding health
+data: private on the Team plan, keeping `npm audit` and gitleaks and removing
+the CodeQL and dependency-review jobs unless Inna wants to pay for Code
+Security.* Staying public (Free) is a legitimate cheaper choice that keeps
+every scan and rule for nothing — if Inna prefers it, nothing else in the
+plan changes.
 
 **D3 — Vercel plan.**
 The site runs on Pro today (cron jobs, London region, deployment protection,
@@ -186,8 +197,9 @@ items. That runs on Joe's Anthropic subscription. Options: (a) Inna takes a
 Claude subscription that includes Claude Code on the web, connects the new
 GitHub organisation and Joe recreates the environment and the Routine under
 her account; (b) switch it off (remove two environment variables; the board
-keeps working, items just wait for a human). *Recommended: (b) at handover,
-revisit (a) once the dust settles.*
+keeps working, items just wait for a human). Routines and environments
+belong to one claude.ai account and cannot be transferred. *Recommended: (b)
+at handover, revisit (a) once the dust settles.* Steps for both in 7.14.
 
 **D7 — File store: fix the private-storage issue during the move?**
 The Blob store is public-only, which is why kiosk photo upload and academy
@@ -332,8 +344,14 @@ The order inside Phase 2 matters and is fixed:
       `lib/google-sso.ts` and `.env.example`, the QA seed users in
       `prisma/seed.mjs`, the repository URLs in `docs/DEPLOY.md` and
       `docs/GO_LIVE.md`, and a note in `CLAUDE.md` pointing to this plan.
-      Read the new links from env where possible so the next move is a
-      variable change, not a code change.
+      Also in this PR: pass `GITLEAKS_LICENSE: ${{ secrets.GITLEAKS_LICENSE }}`
+      to the gitleaks step in `.github/workflows/security.yml` (organisation
+      repositories need the key); if D2 = private without Code Security,
+      remove the CodeQL workflow and the dependency-review job; and either
+      delete `.github/workflows/deploy.yml` (it re-enables GitHub Pages if
+      anyone runs it) or accept the new Pages URL. Read the new links from
+      env where possible so the next move is a variable change, not a code
+      change.
 - [ ] **4.8a Workspace admin repoint (before Joe's Super Admin is removed).**
       The dashboard's Workspace page (`/admin/workspace`) impersonates the
       super-admin named in the encrypted secret `GOOGLE_WORKSPACE_ADMIN_EMAIL`,
@@ -349,10 +367,13 @@ The order inside Phase 2 matters and is fixed:
       account that runs under Joe's address (see
       `audit/academy-portal-visual-audit.md`), and list every `AdminUser` row
       on `@kaulindustries.com` or `webmaster@` for 10.4.
-- [ ] **4.9 Turn off the GitHub Pages demo** (Settings → Pages → Source: None)
+- [ ] **4.9 Turn off the GitHub Pages demo** (Settings → Pages → Build and
+      deployment → Source **Deploy from a branch** → branch **None** → Save)
       and set the repository "Website" field to `https://kclinics.co.uk`. The
       demo URL will not redirect after transfer; nothing links to it that
-      matters.
+      matters. Note that `.github/workflows/deploy.yml` re-enables Pages if
+      anyone runs it later — delete it in the 4.8 PR unless the demo is
+      wanted at its new address.
 - [ ] **4.10 Confirm the restore works.** Restore the `pg_dump` into a scratch
       Neon branch (or a local Postgres) and run `npx prisma migrate status`
       and `npx prisma migrate diff --from-config-datasource --to-schema
@@ -418,22 +439,34 @@ Done when: the vault exists, Joe and the backup admin can see it.
 2. Turn on two-factor authentication: top-right profile photo → **Settings** →
    **Password and authentication** → **Enable two-factor authentication** (use
    the authenticator app option; save the recovery codes to the vault).
-3. Create the organisation: profile photo → **Your organizations** → **New
-   organization** → choose **Free** (or **Team** if decision D2 says private
-   with branch protection) → Organization name `kclinics` (if taken, `k-clinics`
-   or `kclinics-ltd`) → Contact email `inna.k@kclinics.co.uk` → "This
-   organization belongs to: A business or institution" → name of the business
-   → **Next** → skip adding members for now → **Complete setup**.
+3. Create the organisation: profile photo → **Settings** → left sidebar
+   **Organizations** → **New organization** → choose **Free** (or **Team** if
+   decision D2 says private) → Organization name `kclinics` (if taken,
+   `k-clinics` or `kclinics-ltd`) → Contact email `inna.k@kclinics.co.uk` →
+   "This organization belongs to: A business or institution" → name of the
+   business → **Next** → skip adding members for now → **Complete setup**.
 4. Require two-factor for everyone: organisation page → **Settings** →
    **Authentication security** → tick **Require two-factor authentication for
-   everyone in the kclinics organization** → **Save**.
-5. Invite Joe temporarily: organisation page → **People** → **Invite member** →
-   type `JoeKaulPulse` → role **Member** → **Send invitation**. (Member is
-   enough for him to transfer the repository in; the organisation's default
-   lets members create repositories. Leave "Owner" unticked.)
-6. Send Joe the organisation name.
+   everyone in the kclinics organization** → **Save**. (Anyone without
+   two-factor is removed from the organisation — tell Joe first; his account
+   already has it.)
+5. Organisation → **Settings → Member privileges** → **Base permissions** →
+   **No permission** → confirm. Leave **Repository creation** allowed for
+   members until the transfer is done (Joe needs it to transfer the
+   repository in). Under **Pages creation** untick **Public** unless the demo
+   site is wanted.
+6. Invite Joe temporarily: organisation page → **People** → **Invite member** →
+   type `JoeKaulPulse` → role **Member** → **Send invitation**. Leave "Owner"
+   unticked. Because members may create repositories, Joe can transfer the
+   repository straight in with no acceptance step from you.
+7. Get the free gitleaks organisation licence key (the repository's
+   secret-scan check needs one on an organisation): https://gitleaks.io →
+   licence request form (name, email, company) → the key arrives by email →
+   save it in the vault and send it to Joe through the vault.
+8. Send Joe the organisation name.
 
-Done when: the organisation exists, 2FA is required, and Joe has accepted the
+Done when: the organisation exists, 2FA is required, base permissions are
+"No permission", the gitleaks key is in the vault, and Joe has accepted the
 Member invitation.
 
 ### 5.4 Vercel team (decision D3)
@@ -578,9 +611,11 @@ Done when: the account exists, 2FA is on, Joe is invited.
 During Evening 1 and Days 7–8 Joe will trigger transfers. For each one you will
 receive an email or an in-app prompt in the new account:
 
-- **GitHub**: an email "JoeKaulPulse wants to transfer K-Clinics to kclinics"
-  with an **Accept** button (only if Joe cannot complete it himself as a
-  Member). Click it.
+- **GitHub**: nothing to accept — as an organisation Member with repository
+  creation allowed, Joe transfers the repository straight in. (If that is
+  ever refused, the fallback is a transfer to *your personal* GitHub account,
+  which you accept from an email within one day, and then you transfer it
+  into the organisation yourself.)
 - **Vercel**: Joe transfers directly into your team because he is a Member;
   you will see the project appear at vercel.com under the K-Clinics team.
 - **Neon** (native path): an email to the organisation admins with a link to
@@ -640,43 +675,80 @@ Official: https://docs.github.com/en/repositories/creating-and-managing-reposito
 Pre-checks: 4.8 merged; 4.9 done (Pages off); Joe has accepted the org Member
 invite; no deploy in flight.
 
-1. GitHub → `JoeKaulPulse/K-Clinics` → **Settings** → scroll to **Danger Zone**
-   → **Transfer** → type the repository name to confirm → **Select one of my
-   organizations** → `kclinics` → **I understand, transfer this repository**.
-   If GitHub says Joe lacks permission to create repositories in the org, Inna
-   receives an email and clicks **Accept** (5.11).
-2. What carries automatically: code, branches, issues (all 139), pull requests,
-   repository-level Actions secrets, deploy keys, webhooks, Dependabot config,
-   the CodeQL workflow. Old URLs redirect. What does **not** carry:
-   environment-level secrets (none are used), GitHub Pages (already off), and
-   installed GitHub Apps' access (re-installed in 7.2 and 7.3).
-3. Rename for consistency: org → repository → **Settings → General** → name
-   `k-clinics` (lowercase). Redirects follow renames as well.
-4. If D2 = private: **Settings → General → Danger Zone → Change visibility →
-   Private**. Then **Settings → Rules → Rulesets → New branch ruleset**: target
-   `main`, tick **Require a pull request before merging** and **Require status
-   checks to pass** (choose `typecheck` and the Security checks), **Block force
-   pushes**. (On the Free plan with a private repo these rules will not
-   activate — that is the D2 trade-off.)
-5. CI on an organisation: the secret scan step uses `gitleaks-action`, which
-   needs a licence key (`GITLEAKS_LICENSE` repository secret) when the
-   repository is owned by an organisation — free for personal accounts only.
-   Either obtain the free/paid key at gitleaks.io and add the secret, or
-   replace the step with GitHub's built-in secret scanning (free on public
-   repos; part of the Code Security add-on on private ones). CodeQL and
-   dependency-review keep running free on a public repository; on a private
-   one they need Code Security, otherwise remove those two jobs so CI does
-   not fail on every PR. Check **Settings → Code security** → Dependabot
-   alerts and security updates are on (organisation defaults can override).
-6. Update the local remote for every checkout Joe uses:
+1. Screenshot the current repository **Settings** pages first: Collaborators
+   & teams, Webhooks, Deploy keys, Secrets and variables → Actions,
+   Environments, Pages, Rules → Rulesets, Branches, Code security.
+2. GitHub → `JoeKaulPulse/K-Clinics` → **Settings** → scroll to **Danger Zone**
+   → **Transfer** → under "New owner" **Select one of my organizations** →
+   `kclinics` → read the warnings → type `K-Clinics` to confirm → **I
+   understand, transfer this repository**. As an organisation Member with
+   repository creation allowed there is no acceptance step. (If GitHub
+   refuses, transfer to Inna's personal account instead — she accepts from an
+   email within a day — and she then transfers it into the organisation.)
+3. What carries automatically: code, all branches, issues (the 139 board
+   mirrors; assignments to non-members are cleared), pull requests,
+   repository-level Actions secrets, deploy keys, webhooks, Dependabot
+   config, the CodeQL workflow. Old web and git URLs redirect. What does
+   **not** carry: Actions run history (treat old logs as disposable),
+   environment-level secrets (none are used), GitHub Pages (already off),
+   and installed GitHub Apps' access — installations belong to the account,
+   so Vercel, Claude and `kclinics-board` are re-installed on the
+   organisation (7.2, 7.3, 7.14). Because the repository ran Actions more
+   than 100 times in the week before, GitHub permanently retires the old
+   `JoeKaulPulse/K-Clinics` name: the redirect is safe, but a transfer *back*
+   would need a new name.
+4. Rename for consistency (an organisation owner does this, so Inna):
+   repository → **Settings → General** → name `k-clinics` (lowercase) →
+   **Rename**. Redirects follow renames as well.
+5. If D2 = private: **Settings → General → Danger Zone → Change visibility →
+   Private** (Team plan first, or the rules below are not enforced).
+6. Ruleset on `main` (Inna or Joe): **Settings → Rules → Rulesets → New
+   ruleset → New branch ruleset** → name `main-protection` → Enforcement
+   **Active** → bypass list empty → target branch `main` → tick **Require a
+   pull request before merging**, **Require status checks to pass** (add
+   `typecheck`, `npm audit`, `Secret scan (gitleaks)`, and, while public,
+   `Dependency review` and CodeQL's `Analyze`), **Block force pushes**,
+   **Restrict deletions** → **Create**.
+7. CI on an organisation: the secret-scan step uses `gitleaks-action`, which
+   needs an organisation licence key. Repository **Settings → Secrets and
+   variables → Actions → New repository secret** → name `GITLEAKS_LICENSE` →
+   paste the key from the vault (5.3 step 7); the code PR in 4.8 passes it to
+   the step in `security.yml`. CodeQL and dependency-review keep running free
+   on a public repository; on a private one they need Code Security,
+   otherwise the same PR removes those two jobs so CI does not fail on every
+   PR. Check **Settings → Code security** → Dependabot alerts and security
+   updates are on (organisation defaults can override).
+8. Update the local remote for every checkout Joe uses:
    `git remote set-url origin https://github.com/kclinics/k-clinics.git`.
 
 Verify: `git ls-remote https://github.com/kclinics/k-clinics.git main` returns
 the same SHA as before; Issues tab shows the same count; Actions tab lists the
-four workflows; https://github.com/JoeKaulPulse/K-Clinics redirects.
+workflows; https://github.com/JoeKaulPulse/K-Clinics redirects; a push to a
+feature branch by Joe works and a direct push to `main` is rejected.
 
 Rollback: **Settings → Danger Zone → Transfer** back to `JoeKaulPulse` (Inna,
-as org owner, or Joe as org member can do it). Nothing is lost either way.
+as org owner, or Joe as org member can do it); if GitHub refuses because the
+old name was retired, transfer back under a new name (for example
+`K-Clinics-app`) — redirects then point there. Nothing is lost either way.
+
+**Hardening after the transfer (Inna, 20 minutes):**
+
+- Organisation **Settings → Member privileges**: turn **Repository
+  creation** off for members now that the transfer is done; disallow members
+  deleting or transferring repositories.
+- **Settings → Personal access tokens → Settings**: fine-grained tokens
+  require administrator approval; classic tokens **Restrict**.
+- **Settings → Actions → General**: allow only GitHub-authored and verified
+  actions plus `gitleaks/gitleaks-action@*` and `github/codeql-action@*`;
+  workflow permissions **Read repository contents and packages**; untick
+  **Allow GitHub Actions to create and approve pull requests**; require
+  approval for workflows from public forks.
+- Repository **Settings → Deploy keys / Webhooks / Secrets** and organisation
+  **Settings → Third-party Access → GitHub Apps**: expect nothing but the
+  gitleaks secret and the Vercel, Claude (if D6-a) and `kclinics-board` apps;
+  remove anything else.
+- **People**: add a second organisation **Owner** (a trusted staff member) so
+  the organisation never has a single owner.
 
 ### 7.2 Build-board GitHub App and PAT
 
@@ -685,14 +757,24 @@ Official: https://docs.github.com/en/apps/maintaining-github-apps/transferring-o
 1. Joe: GitHub → profile → **Settings → Developer settings → GitHub Apps →
    kclinics-board → Advanced → Transfer ownership** → new owner `kclinics` →
    confirm. Inna (org owner) accepts if prompted.
-2. In the org: **Settings → GitHub Apps** → `kclinics-board` → confirm it is
-   installed on `k-clinics` only, permissions Issues (read/write) + Metadata.
-   If the installation did not survive, **Install App** → Only select
-   repositories → `k-clinics`. Note the new **installation id** (the number at
-   the end of the installation URL).
-3. Generate a **new private key** (App settings → Private keys → Generate) and
-   delete the old one. Record `GITHUB_APP_ID` (unchanged), the new
-   `GITHUB_APP_PRIVATE_KEY` and the `GITHUB_APP_INSTALLATION_ID` for section 8.
+2. Inna: **Your organizations → kclinics → Settings → Developer settings →
+   GitHub Apps → kclinics-board → Edit** → confirm Permissions still show
+   Issues **Read and write** and Metadata **Read-only** → **Install App** →
+   **Install** next to `kclinics` → **Only select repositories** →
+   `k-clinics` → **Install**. Installations belong to the account, so the
+   **installation id changes**: note the new one (the number at the end of
+   the installation URL, also under organisation Settings → Third-party
+   Access → GitHub Apps → Configure).
+3. Same app page → **Private keys → Generate a private key** (a `.pem`
+   downloads; GitHub requires the new key to exist before the old one can
+   go) → then **Delete** the old key. Compare the **App ID** shown on the
+   organisation's app page with the `GITHUB_APP_ID` value in Vercel (it
+   should be unchanged; if it differs, use the new one). Record the new
+   `GITHUB_APP_PRIVATE_KEY` and `GITHUB_APP_INSTALLATION_ID` for section 8.
+   (Alternative if the transfer misbehaves: Inna creates a fresh app under
+   the organisation — Developer settings → New GitHub App, webhook off,
+   Issues read/write + Metadata read-only, "Only on this account" — installs
+   it, and all three variables are replaced; Joe then deletes his app.)
 4. Delete the fallback PAT the board used (`GITHUB_TOKEN`): Joe's Settings →
    Developer settings → Personal access tokens → the K-Clinics token → Delete.
    Also clear the encrypted copy the board may hold: Admin → Build & Issues →
@@ -1306,7 +1388,59 @@ the live-chat assistant answers.
   Calendar sync first (`GOOGLE_INTEGRATION_ENABLED=true`) and then clear the
   three `HOSTINGER_CALDAV_*` variables.
 
-### 7.14 Noticed while checking the live DNS (out of scope, worth fixing)
+### 7.14 Build automation (Claude Code) — decision D6
+
+Routines and cloud environments belong to one claude.ai account and cannot
+be transferred. Everything a routine does uses that person's GitHub identity.
+
+**D6-b — switch it off (recommended at handover):**
+
+1. Vercel → **Settings → Environment Variables** → delete
+   `CLAUDE_ROUTINE_FIRE_URL` and `CLAUDE_ROUTINE_FIRE_TOKEN` → redeploy. The
+   board's "Continue working" button then saves to the work queue and shows
+   "Saved to Claude's work queue"; nothing wakes an unattended session.
+2. Leave "mirror" off on `/admin/build` so the board never posts `@claude`
+   comments nobody acts on.
+3. Joe: claude.ai/code → Routines → the K-Clinics routine → **Revoke** the API
+   trigger token (or delete the routine) → archive the K-Clinics environment.
+4. Rotate `BOARD_QUEUE_TOKEN` in Vercel (it lived in Joe's environment and
+   inside every fire payload) and update `QA_TOKEN` wherever the visual-QA
+   harness will run (10.2).
+5. Update `CLAUDE.md` and `.env.example` so they say who owns the Claude
+   environment now (12.7).
+
+**D6-a — Inna runs it under her own subscription (later, once stable):**
+
+1. Inna subscribes to a Claude plan that includes Claude Code on the web
+   (Pro or Max for one person; Team if the clinic wants an admin console —
+   check https://claude.com/pricing).
+2. claude.ai/code → **Continue on web** → **Sign in with GitHub** (her
+   account, org owner) → approve → install the **Claude** GitHub App on the
+   `kclinics` organisation with **Only select repositories → k-clinics**.
+3. Environment: environment selector → **Add cloud environment** → name
+   `K-Clinics` → **Network access: Full** (the visual-QA harness must reach
+   kclinics.co.uk and download Chromium) → environment variables in `.env`
+   format: `BASE_URL=https://kclinics.co.uk`, the new `BOARD_QUEUE_TOKEN` and
+   `QA_TOKEN` (same value), fresh `QA_ADMIN_EMAIL`/`QA_ADMIN_PASSWORD` and
+   `QA_ACADEMY_LOGIN`/`QA_ACADEMY_PASSWORD` for new QA accounts, and an
+   optional **read-only** `DATABASE_URL` (a new read-only role) → **Create
+   environment**. The repository's own session-start hook installs
+   dependencies.
+4. Routine: claude.ai/code → Routines → **New routine** → name `K-Clinics
+   build board` → repository `kclinics/k-clinics` → environment `K-Clinics` →
+   trigger **API** → prompt that tells the session to act on the
+   `routine-fire-payload` block → **Create** → open it → **Edit routine →
+   Add trigger → API** → copy the fire URL and **Generate token** (shown
+   once).
+5. Vercel → set `CLAUDE_ROUTINE_FIRE_URL` and `CLAUDE_ROUTINE_FIRE_TOKEN` →
+   redeploy. Test: `/admin/build` → **Continue working** → "Claude session
+   started" with a **Watch session** link (401 = token mismatch, 400 = routine
+   paused, 429 = the board's daily cap of 8 fires).
+
+Verify: `/admin/build` shows the expected state (queue-only, or a session
+link); no session is started from Joe's account after the revoke.
+
+### 7.15 Noticed while checking the live DNS (out of scope, worth fixing)
 
 - The apex SPF record still says `v=spf1 include:_spf.mail.hostinger.com
   ~all` and there is no `google._domainkey` DKIM record, although the apex MX
@@ -1510,7 +1644,7 @@ current value is hex). Change the value in Vercel, redeploy, then tick.
 
 | Where | Action (D5-a remove / D5-b downgrade) |
 | --- | --- |
-| GitHub org | People → Joe → Remove, **or** convert to **Outside collaborator** with *Write* on `k-clinics` only |
+| GitHub org | After the transfer Joe is a member/collaborator. **People** → tick `JoeKaulPulse` → **Convert to outside collaborator** → confirm; then repository **Settings → Collaborators & teams** → role **Write** (not Admin). At the end of the support period: **People → Outside collaborators → Manage → Remove access**. Joe also revokes any OAuth or GitHub App authorisations for K-Clinics tooling under his own Settings → Applications |
 | Vercel team | Settings → Members → Joe's row → **…** → change role to **Viewer** (free, read-only) **or Remove from Team**. First check Team → Integrations → Manage shows *Inna* as the installer of Neon and Upstash (an integration installed by someone who leaves is switched off). Afterwards regenerate the Protection Bypass for Automation secret (Settings → Deployment Protection) if one exists; Joe revokes any personal Vercel access tokens scoped to the team (Account Settings → Tokens) |
 | Neon org | People → Joe → Remove or Member |
 | Resend, Sentry, Anthropic, Twilio, Deepgram, Cloudflare | Team/Members → Joe → Remove or lowest role |
@@ -2265,6 +2399,13 @@ Also: `USE_MIGRATIONS` is an env var, not in `vercel.json`, so confirm it is `tr
 - Neon: Neon-managed Vercel integration — https://neon.com/docs/guides/neon-managed-vercel-integration
 - GitHub: transferring a repository — https://docs.github.com/en/repositories/creating-and-managing-repositories/transferring-a-repository
 - GitHub: transferring a GitHub App — https://docs.github.com/en/apps/maintaining-github-apps/transferring-ownership-of-a-github-app
+- GitHub: creating an organisation — https://docs.github.com/en/organizations/collaborating-with-groups-in-organizations/creating-a-new-organization-from-scratch · outside collaborators — https://docs.github.com/en/organizations/managing-user-access-to-your-organizations-repositories/managing-outside-collaborators/adding-outside-collaborators-to-repositories-in-your-organization · requiring 2FA — https://docs.github.com/en/organizations/keeping-your-organization-secure/managing-two-factor-authentication-for-your-organization/requiring-two-factor-authentication-in-your-organization · rulesets — https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/managing-rulesets/creating-rulesets-for-a-repository · plans — https://docs.github.com/en/get-started/learning-about-github/githubs-plans
+- Vercel: Git settings and the GitHub App — https://vercel.com/docs/project-configuration/git-settings · https://vercel.com/docs/git/vercel-for-github · roles — https://vercel.com/docs/rbac/access-roles · Marketplace resource transfer — https://vercel.com/changelog/transfer-marketplace-resources-between-teams
+- Claude Code: routines — https://code.claude.com/docs/en/routines · cloud environments — https://code.claude.com/docs/en/cloud-environments
+- Neon: Vercel-managed integration — https://neon.com/docs/guides/vercel-managed-integration · backup and restore — https://neon.com/docs/guides/backup-restore · migrate between Neon projects — https://neon.com/docs/import/migrate-from-neon · plans — https://neon.com/docs/introduction/plans
+- Anthropic: commercial terms — https://www.anthropic.com/legal/commercial-terms
+- Stripe: roll API keys — https://docs.stripe.com/keys · Twilio: change account owner — https://help.twilio.com/articles/31381999536027
+- gitleaks action licence — https://github.com/gitleaks/gitleaks-action
 - Resend: Domain Claim — https://resend.com/changelog/domain-claim · managing domains — https://resend.com/docs/dashboard/domains/manage-domains
 - Stripe: change the account owner — https://support.stripe.com/questions/change-the-owner-of-a-stripe-account
 - Sentry: transfer projects between organisations — https://sentry.zendesk.com/hc/en-us/articles/23572020203419
