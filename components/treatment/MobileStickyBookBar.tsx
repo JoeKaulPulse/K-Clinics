@@ -1,7 +1,8 @@
 'use client';
 
 import Link from 'next/link';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { useHideAtFooter } from '@/components/chat/useHideAtFooter';
 import { site } from '@/lib/site';
 
 // BLD-1609: WhatsAppButton (components/layout/WhatsAppButton.tsx) is the only
@@ -22,6 +23,11 @@ export function MobileStickyBookBar({ treatmentSlug, priceLabel }: { treatmentSl
   // bar before the observer attaches.
   const [ctaInView, setCtaInView] = useState(true);
   const [scrolledPastHero, setScrolledPastHero] = useState(false);
+  // Same footer rule the other floating launchers follow (BLD-556): without it
+  // this bar permanently covers the last ~64px of the footer, since the page
+  // cannot scroll past a fixed overlay at the document's true bottom.
+  const atFooter = useHideAtFooter();
+  const barRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const targets = Array.from(document.querySelectorAll('[data-booking-cta]'));
@@ -45,11 +51,25 @@ export function MobileStickyBookBar({ treatmentSlug, priceLabel }: { treatmentSl
     return () => window.removeEventListener('scroll', onScroll);
   }, []);
 
-  const visible = scrolledPastHero && !ctaInView;
+  const visible = scrolledPastHero && !ctaInView && !atFooter;
   const bookHref = `${site.booking.path}?treatment=${encodeURIComponent(treatmentSlug)}`;
+
+  // Publish the bar's live height so the WhatsApp launcher (fixed bottom-5
+  // right-5, z-40, md:hidden — the same corner as this bar's "Book Now") lifts
+  // clear of it instead of painting on top and swallowing its taps: the
+  // marketing layout renders WhatsAppButton after {children}, so at equal
+  // z-index it wins. 0px whenever the bar is hidden or on md+ (display:none →
+  // offsetHeight 0), which restores the launcher's normal position.
+  useEffect(() => {
+    const root = document.documentElement;
+    const h = visible ? (barRef.current?.offsetHeight ?? 0) : 0;
+    root.style.setProperty('--mobile-cta-h', `${h}px`);
+    return () => { root.style.removeProperty('--mobile-cta-h'); };
+  }, [visible]);
 
   return (
     <div
+      ref={barRef}
       aria-hidden={!visible}
       className={`fixed inset-x-0 bottom-0 z-40 flex items-center justify-between gap-4 border-t border-[var(--color-line)] bg-[var(--color-porcelain)]/95 px-4 py-3 shadow-[var(--shadow-soft)] backdrop-blur transition-transform duration-300 md:hidden print:hidden ${visible ? 'translate-y-0' : 'pointer-events-none translate-y-full'}`}
       style={{ paddingBottom: 'max(0.75rem, env(safe-area-inset-bottom))' }}
