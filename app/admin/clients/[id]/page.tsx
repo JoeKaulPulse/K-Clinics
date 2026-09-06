@@ -84,6 +84,10 @@ export default async function ClientDetail({ params }: { params: Promise<{ id: s
   // booking routes refuse new bookings while any remain.
   const { outstandingBalance } = await import('@/lib/outstanding');
   const owed = await outstandingBalance(c.id);
+  // BLD-1572: staff-recorded ("Mark as Debt") outstanding balance — a manual
+  // record separate from the automated late-cancel/no-show one above.
+  const { clientDebtBalance } = await import('@/lib/client-debt');
+  const debt = await clientDebtBalance(c.id);
 
   // Clinical (health) data — gated on the revocable `clients.clinical.view`
   // permission (not role), so a permission revoke actually withholds it here too,
@@ -197,6 +201,14 @@ export default async function ClientDetail({ params }: { params: Promise<{ id: s
           <h1 className="flex flex-wrap items-center gap-2 font-[family-name:var(--font-display)] text-3xl">
             {fullName}
             <ClientStatusBadge status={c.clientStatus} />
+            {/* BLD-1572 + BLD-1066: one combined "Outstanding balance" badge —
+                whichever mechanism recorded it (automated fee or staff-recorded
+                debt), the client is unmistakably marked. */}
+            {(owed.totalPence + debt.totalPence) > 0 && (
+              <span className="rounded-full bg-[var(--color-blush)]/25 px-2.5 py-0.5 text-xs font-medium text-[var(--color-blush-deep)]">
+                Outstanding balance — £{((owed.totalPence + debt.totalPence) / 100).toFixed(2)}
+              </span>
+            )}
           </h1>
           {c.clientStatus === 'RED' && (
             <p role="alert" className="mt-2 inline-flex max-w-md items-center gap-1.5 rounded-[var(--radius-sm)] border border-[var(--color-blush-deep)] bg-[var(--color-blush)]/15 px-3 py-1.5 text-sm font-medium text-[var(--color-blush-deep)]">
@@ -252,6 +264,31 @@ export default async function ClientDetail({ params }: { params: Promise<{ id: s
             ))}
           </ul>
           <p className="mt-2 text-xs text-[var(--color-stone)]">Online booking is blocked for this client until the balance is charged (open the appointment → charge the card) or the fee is waived on the appointment. Either clears this warning automatically.</p>
+        </div>
+      )}
+
+      {/* BLD-1572: staff-recorded ("Mark as Debt") outstanding balance — the
+          card couldn't be charged, the payment failed, or the client left
+          without paying. Same visual treatment as the BLD-1066 warning above
+          so the profile never shows two differently-styled "owed money"
+          banners. Persists until a staff member resolves it (no clear UI yet). */}
+      {debt.totalPence > 0 && (
+        <div role="alert" className="mt-6 rounded-[var(--radius-md)] border border-[var(--color-blush-deep)] bg-[var(--color-blush)]/15 p-4">
+          <p className="font-medium text-[var(--color-blush-deep)]">Outstanding balance — £{(debt.totalPence / 100).toFixed(2)}</p>
+          <ul className="mt-1 space-y-0.5 text-sm text-[var(--color-ink)]">
+            {debt.items.map((i) => (
+              <li key={i.id}>
+                {i.bookingId ? (
+                  <Link href={`/admin/bookings/${i.bookingId}`} className="underline-offset-2 hover:underline">
+                    £{(i.amountPence / 100).toFixed(2)} · {i.reason} · {new Date(i.createdAt).toLocaleDateString('en-GB')} · {i.createdBy}
+                  </Link>
+                ) : (
+                  <span>£{(i.amountPence / 100).toFixed(2)} · {i.reason} · {new Date(i.createdAt).toLocaleDateString('en-GB')} · {i.createdBy}</span>
+                )}
+              </li>
+            ))}
+          </ul>
+          <p className="mt-2 text-xs text-[var(--color-stone)]">Recorded manually by staff — from "Mark as Debt" on an appointment.</p>
         </div>
       )}
 

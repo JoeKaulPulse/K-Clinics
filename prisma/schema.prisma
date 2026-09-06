@@ -203,6 +203,7 @@ enum AuditAction {
   ROOM_TURNOVER // a room was handed over for cleaning after a session (PRJ-63.11)
   INCIDENT_LOGGED // a staff-only internal incident (accident) report was logged (BLD-760)
   CLIENT_STATUS_CHANGED // a client's GREEN/YELLOW/RED status was set or cleared (BLD-1532)
+  CLIENT_DEBT_RECORDED // a staff member manually recorded an outstanding balance ("Mark as Debt") (BLD-1572)
 }
 
 enum ReviewStatus {
@@ -426,6 +427,7 @@ model Client {
   academyStudents AcademyStudent[] // BLD-528: linked K Academy trainee account(s) (same person, by email)
   incidents      Incident[] // BLD-760: staff-only internal incident (accident) reports
   portfolioEntries PortfolioEntry[] @relation("ClientPortfolioEntries") // BLD-1291: academy cases photographing this client
+  debts          ClientDebt[] // BLD-1572: staff-recorded outstanding balance ("Mark as Debt")
 
   @@index([createdAt])
   @@index([dob])
@@ -597,6 +599,43 @@ model Incident {
 
   @@index([clientId])
   @@index([bookingId])
+}
+
+// ── Staff-recorded outstanding balance / "Mark as Debt" — BLD-1572 ──────────
+// A manual record that a client owes the clinic money — the card couldn't be
+// charged, the payment failed, or they left without paying. Distinct from the
+// automated late-cancel/no-show balance derived in lib/outstanding.ts (BLD-1066),
+// which is computed from Booking.chargedAt/lateCancel/status and clears itself
+// once charged or waived: this is a manual, staff-typed record with its own
+// amount and reason, so it needs a row to hold that free text and persists
+// until a staff member later clears it (resolvedAt — no "clear" UI yet, but the
+// field is here so a future one doesn't need a schema change). Same relation
+// shape as Incident above: SetNull on both FKs so the debt record — an
+// HMRC-relevant financial fact — outlives a client erasure or a deleted
+// booking, matching how Booking charge/refund rows are kept (pseudonymised)
+// rather than deleted (BLD-286).
+model ClientDebt {
+  id       String  @id @default(cuid())
+  client   Client? @relation(fields: [clientId], references: [id], onDelete: SetNull)
+  clientId String?
+
+  booking   Booking? @relation(fields: [bookingId], references: [id], onDelete: SetNull)
+  bookingId String?
+
+  amountPence Int
+  reason      String // why the payment is outstanding — free text, staff-entered
+
+  createdBy String // staff email who recorded the debt
+  createdAt DateTime @default(now())
+
+  // Not built as a UI action in this change, but present so a later "mark as
+  // paid/cleared" control needs no schema change.
+  resolvedAt DateTime?
+  resolvedBy String?
+
+  @@index([clientId])
+  @@index([bookingId])
+  @@index([clientId, resolvedAt])
 }
 
 model Appointment {
@@ -797,6 +836,7 @@ model Booking {
   followUp    FollowUp? // post-treatment follow-up questionnaire
   liveSession AppointmentSession? // BLD-138 interactive in-clinic session
   incidents   Incident[] // BLD-760: internal incident reports linked to this appointment
+  debts       ClientDebt[] // BLD-1572: staff-recorded outstanding balance linked to this appointment
 
   @@index([startAt])
   @@index([status])

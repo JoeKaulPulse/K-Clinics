@@ -18,6 +18,7 @@ import { BeforePhotoCapture } from '@/components/admin/BeforePhotoCapture';
 import { ReadinessPanel } from '@/components/admin/ReadinessPanel';
 import { AddTreatment } from '@/components/admin/AddTreatment';
 import { PriceOverride } from '@/components/admin/PriceOverride';
+import { MarkAsDebt } from '@/components/admin/MarkAsDebt';
 import { ScheduleFollowUp } from '@/components/admin/ScheduleFollowUp';
 import { BnplPaymentButton } from '@/components/admin/BnplPaymentButton';
 import { SameDayRequestActions } from '@/components/admin/SameDayRequestActions';
@@ -204,6 +205,10 @@ export default async function BookingDetail({ params }: { params: Promise<{ id: 
   // one of their appointments, so it's seen the moment a booking is opened.
   const { outstandingBalance } = await import('@/lib/outstanding');
   const owedHere = await outstandingBalance(b.clientId);
+  // BLD-1572: staff-recorded ("Mark as Debt") outstanding balance — separate
+  // from the automated late-cancel/no-show one above.
+  const { clientDebtBalance } = await import('@/lib/client-debt');
+  const debtHere = await clientDebtBalance(b.clientId);
   const perSessionPence = courseSessions > 1 && basePence > 0 ? Math.round(basePence / courseSessions) : basePence;
   // BLD-1119: !b.prepaidAt as well as !b.chargedAt — an add-on on a BNPL pre-paid
   // course can never be collected (every charge surface refuses a pre-paid
@@ -267,6 +272,17 @@ export default async function BookingDetail({ params }: { params: Promise<{ id: 
         <div role="alert" className="mt-4 rounded-[var(--radius-md)] border border-[var(--color-blush-deep)] bg-[var(--color-blush)]/15 px-4 py-3 text-sm">
           <span className="font-medium text-[var(--color-blush-deep)]">Outstanding payment — £{(owedHere.totalPence / 100).toFixed(2)}.</span>{' '}
           {name} has {owedHere.items.length === 1 ? 'an unpaid fee' : `${owedHere.items.length} unpaid fees`} from {owedHere.items.map((i) => `${i.treatmentTitle} (${i.kind === 'no-show' ? 'no-show' : 'late cancellation'})`).join(', ')}. Online booking is blocked until it’s charged or waived —{' '}
+          <Link href={`/admin/clients/${b.clientId}`} className="underline underline-offset-2">see the client profile</Link>.
+        </div>
+      )}
+
+      {/* BLD-1572: staff-recorded ("Mark as Debt") outstanding balance — same
+          treatment as the BLD-1066 warning above so the client profile never
+          shows two visually different "you're owed money" banners. */}
+      {debtHere.totalPence > 0 && (
+        <div role="alert" className="mt-4 rounded-[var(--radius-md)] border border-[var(--color-blush-deep)] bg-[var(--color-blush)]/15 px-4 py-3 text-sm">
+          <span className="font-medium text-[var(--color-blush-deep)]">Outstanding balance — £{(debtHere.totalPence / 100).toFixed(2)}.</span>{' '}
+          {name} has {debtHere.items.length === 1 ? 'a debt recorded' : `${debtHere.items.length} debts recorded`} by staff —{' '}
           <Link href={`/admin/clients/${b.clientId}`} className="underline underline-offset-2">see the client profile</Link>.
         </div>
       )}
@@ -474,7 +490,14 @@ export default async function BookingDetail({ params }: { params: Promise<{ id: 
           {sessionCan(session, 'clients.edit') && <LogIncident clientId={b.client.id} bookingId={b.id} />}
           {multiLocation && activeLocations.length > 0 && <BookingLocation bookingId={b.id} current={b.locationId} locations={activeLocations} />}
           <div data-tour="clinical-actions">
-            <h2 className="mb-3 font-[family-name:var(--font-display)] text-xl">Actions</h2>
+            <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+              <h2 className="font-[family-name:var(--font-display)] text-xl">Actions</h2>
+              {/* BLD-1572: staff-recorded outstanding balance — for when the card
+                  couldn't be charged, the payment failed, or the client left
+                  without paying. Same permission as the charge/refund controls
+                  below (bookings.charge). */}
+              {sessionCan(session, 'bookings.charge') && <MarkAsDebt clientId={b.clientId} bookingId={b.id} clientName={name} />}
+            </div>
             <BookingActions
               bookingId={b.id}
               status={b.status}
