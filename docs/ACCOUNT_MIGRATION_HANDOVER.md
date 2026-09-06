@@ -38,9 +38,10 @@ from, the Stripe payments set-up, the URLs every third party calls.
 holds the code, which Vercel team runs the site, and every credential the
 developer has ever seen (rotated at the end).
 
-**Expected downtime for visitors:** none. Two steps carry a small risk and are
-done in the evening with a rollback ready: the DNS move (section 7.9) and, only
-if a transfer fails, a database copy (section 7.5, path C).
+**Expected downtime for visitors:** none. DNS does not move (it already sits
+in the clinic's Hostinger account). One step carries a small risk and is done
+in the evening with a rollback ready: a database copy, and only if a transfer
+is refused (section 7.5, path C).
 
 **Three rules that never bend:**
 
@@ -63,8 +64,8 @@ work, then a 30-day quiet period before the old accounts are closed.
 | Days 1–3 | Decisions (section 2) and the ownership check (Appendix A) | Inna + Joe |
 | Days 3–5 | Inna creates the new homes (section 5); Joe prepares and takes backups (section 4) | both |
 | Evening 1 (Day 6) | Code, website, database and monitoring transfers (sections 7.1–7.6) | Joe initiates, Inna accepts |
-| Days 7–8 | Email, payments, Google, telephony, AI and the smaller accounts (sections 7.7–7.12); new credentials loaded (section 8) | both |
-| Evening 2 (Day 9) | DNS move, if decision D8 says so (section 7.9) | Joe, Inna on call |
+| Days 7–8 | Email, payments, Turnstile, Google, telephony, AI and the smaller accounts (sections 7.7–7.12); new credentials loaded (section 8) | both |
+| Evening 2 (Day 9) | Only if a transfer was refused: database copy (7.5 path C) or Blob copy (Appendix B) | Joe, Inna on call |
 | Days 10–12 | Verification (section 9), then revoke and rotate (section 10) | both |
 | Day 30+ | Decommission the old side, update the records (section 12), final sign-off (section 14) | both |
 
@@ -95,9 +96,9 @@ work starts.
 | Asset | Today | Notes |
 | --- | --- | --- |
 | Domain registration `kclinics.co.uk` | Hostinger — the clinic's account **[CONFIRM]** | Nothing changes unless the registration sits under Joe's Hostinger login. |
-| DNS zone | Cloudflare — account owner **[CONFIRM]** (Joe or clinic) | Holds the Vercel records, the Resend records (`mail.` and `reply.mail.`), Google Workspace MX/SPF/DKIM, and the Turnstile widgets. |
-| Bot protection | Cloudflare Turnstile widget(s) in the same Cloudflare account | Keys live in Vercel (`TURNSTILE_SECRET_KEY`, `NEXT_PUBLIC_TURNSTILE_SITE_KEY`). Per-account: a new Cloudflare account means new keys. |
-| Transactional email | Resend — team owner **[CONFIRM]** | Sends from `mail.kclinics.co.uk`; receives chat replies on `reply.mail.kclinics.co.uk`; two webhooks into the app. |
+| DNS zone | **Hostinger DNS** (nameservers `apollo.dns-parking.com` / `athena.dns-parking.com`, checked live 6 Sep 2026) — the clinic's Hostinger account **[CONFIRM]** | Holds the Vercel records (apex `A 216.150.1.1`, `www` CNAME to a `vercel-dns-017.com` target), the Resend records on `mail.` / `send.mail.` / `reply.mail.`, the Workspace MX and the verification TXTs. Several repo docs and `lib/go-live.ts` say "Cloudflare" — that is stale; Cloudflare is not in the DNS path. |
+| Bot protection | Cloudflare Turnstile widget(s) — Cloudflare account owner **[CONFIRM]** (Joe or clinic) | Cloudflare is used **only** for Turnstile. Keys live in Vercel (`TURNSTILE_SECRET_KEY`, `NEXT_PUBLIC_TURNSTILE_SITE_KEY`). Widgets are per account: a new Cloudflare account means new keys and a redeploy. |
+| Transactional email | Resend — team owner **[CONFIRM]** | Sends from `mail.kclinics.co.uk` (DKIM TXT on `resend._domainkey.mail`, SPF + return-path on `send.mail.`); **receives** chat replies on the same `mail.` subdomain (MX → Resend Inbound); `reply.mail.` is a CNAME for Resend link tracking. Two webhooks into the app. The env values `CHAT_INBOUND_DOMAIN` and `EMAIL_REPLY_TO` must be carried over exactly (the code defaults point at `reply.mail.`, which cannot receive mail). |
 | Company mailboxes | Google Workspace — the clinic's | `webmaster@kclinics.co.uk` is **Joe's identity** inside the clinic's Workspace (Super Admin) and is Owner of the Google Cloud project `KClinics`. |
 | Google Cloud project `KClinics` | The clinic's Workspace organisation | OAuth client (calendar, SSO, Business Profile), Places API key, Translate key, the Workspace Directory service account. |
 | Shared clinic calendar | Hostinger CalDAV (parked Google Calendar sync) | Clinic's; nothing to move. |
@@ -186,14 +187,17 @@ and do the two-store change as a separate follow-up afterwards. If a new
 store has to be created anyway, create both stores then and run the copy in
 Appendix B. *Recommended: don't combine the two changes unless forced.*
 
-**D8 — DNS: move the Cloudflare zone?**
-If the Cloudflare account is Joe's, the clinic must end up controlling DNS.
-Two routes: (a) if the Cloudflare account only serves K-Clinics, hand the
-*account* to Inna (change its email to hers, she sets password + two-step,
-Joe is removed) — no DNS change at all; (b) if the account is shared with
-Joe's other sites, create a clinic Cloudflare account, recreate the zone and
-switch the nameservers at Hostinger (Evening 2). *Recommended: (a) wherever
-possible.* If the account is already the clinic's, D8 is moot.
+**D8 — Turnstile: where should the Cloudflare account live?**
+DNS itself does not move: every record already sits in the clinic's Hostinger
+account (nameservers `apollo/athena.dns-parking.com`). Cloudflare is used only
+for the Turnstile bot-protection widget. If the Cloudflare account holding
+that widget is Joe's: (a) if it serves only K-Clinics, hand the *account* to
+Inna (change its email to hers, she sets password + two-step, Joe is removed)
+— nothing else changes; (b) if it is shared with Joe's other sites, Inna
+creates a free clinic Cloudflare account, Joe creates a new widget there and
+swaps the two Turnstile keys in Vercel with a redeploy (section 7.9). No
+nameserver change, no downtime. *Recommended: (a) wherever possible.* If the
+account is already the clinic's, D8 is moot.
 
 ---
 
@@ -215,8 +219,9 @@ The order inside Phase 2 matters and is fixed:
 2. Website (Vercel project, with its domains, settings and connected storage).
 3. Database (only if it did not travel with the Vercel project).
 4. Monitoring (Sentry), then email (Resend), then payments (Stripe).
-5. Google, telephony, AI, SMS and the smaller accounts.
-6. DNS last, on its own evening, because it is the one step with a real blast radius.
+5. Turnstile keys (no DNS change), Google, telephony, AI, SMS and the smaller accounts.
+6. Any forced data copy (database path C, Blob) last, on its own evening,
+   because it is the one kind of step with a real blast radius.
 
 ---
 
@@ -257,9 +262,14 @@ The order inside Phase 2 matters and is fixed:
       hostname prefix in any stored blob URL); the Upstash database name; the
       Sentry project slug and DSN; the Resend domain ids; the Stripe webhook
       endpoint id; the GitHub App id and installation id.
-- [ ] **4.7 Lower the DNS TTLs** on `kclinics.co.uk` apex/`www` and the `mail.` /
-      `reply.mail.` records to 300 seconds (5 minutes) so any rollback is fast.
-      (Cloudflare proxied records ignore TTL; DNS-only records honour it.)
+- [ ] **4.7 Export the DNS zone and lower TTLs.** In Hostinger hPanel →
+      Domains → `kclinics.co.uk` → DNS / Name Servers → DNS records: screenshot
+      or export every record (there are Vercel, Resend, Workspace and
+      verification records — Appendix E lists them), then set the TTL on the
+      apex/`www` and the `mail.` / `send.mail.` / `reply.mail.` records to 300
+      seconds so any change during the Resend step (7.7) propagates fast.
+      Confirm Joe's access to hPanel is via Hostinger "Account sharing" (so it
+      can be removed in 10.5), not via Inna's own login.
 - [ ] **4.8 Code changes, as one PR** (merge before Evening 1): the items in
       Appendix C marked *before* and *at* — the hard-coded GitHub/Vercel links
       in `components/admin/dashboard/DeveloperView.tsx`, the repository
@@ -465,15 +475,17 @@ For each of these the pattern is the same:
 
 Done when: each account named in Appendix A exists and Joe is invited.
 
-### 5.10 Cloudflare (only if decision D8 = route (b))
+### 5.10 Cloudflare, for Turnstile only (only if decision D8 = route (b))
 
 1. Go to https://dash.cloudflare.com/sign-up → sign up with
-   `inna.k@kclinics.co.uk`. Enable two-factor: profile → **Authentication**.
-2. Do **not** add the domain yet — Joe does that on Evening 2 with the exported
-   records in hand.
+   `inna.k@kclinics.co.uk` (Free plan). Enable two-factor: profile →
+   **Authentication**.
+2. Do **not** add the domain `kclinics.co.uk` to Cloudflare and do **not**
+   change nameservers anywhere — DNS stays at Hostinger. Turnstile works
+   without the domain being on Cloudflare.
 3. **Manage Account → Members → Invite** → `joe@kaulindustries.com` → role
-   **Administrator** (temporary; Cloudflare's "DNS" role is not enough to create
-   Turnstile widgets). Downgrade or remove at the end.
+   **Administrator** (temporary; needed to create the Turnstile widget).
+   Remove at the end.
 
 Done when: the account exists, 2FA is on, Joe is invited.
 
@@ -628,11 +640,14 @@ vault (4.5).
    (`kclinics.co.uk`, `www`), environment variables, deployments, aliases,
    cron configuration (from `vercel.json`) and any connected storage it can
    move. **The live site is not interrupted**: the domain stays attached to the
-   same deployment; Cloudflare's records need no change.
+   same deployment; the DNS records at Hostinger need no change.
 2. In the **K-Clinics** team, open the project and check in this order:
    - **Settings → Domains**: `kclinics.co.uk` and `www.kclinics.co.uk` are
-     listed and valid. The old `k-clinics-kaul-joe.vercel.app` alias is gone;
-     `k-clinics.vercel.app` may need re-adding (optional).
+     listed and valid. If Vercel now shows a *different* recommended value for
+     the `www` CNAME (today it is a project-specific `…vercel-dns-017.com`
+     target) or the apex `A` record, update that one record in Hostinger DNS
+     — otherwise leave DNS alone. The old `k-clinics-kaul-joe.vercel.app`
+     alias is gone; `k-clinics.vercel.app` may need re-adding (optional).
    - **Settings → Environment Variables**: the same names exist for Production
      and Preview as in the 4.5 screenshot. Any variable that came from a
      Marketplace integration (`POSTGRES_*`, `DATABASE_URL*`, `UPSTASH_*`,
@@ -792,17 +807,22 @@ personal identity).
 
 1. New team (Inna's, Joe as Admin): **Domains → Add Domain** →
    `mail.kclinics.co.uk`. Resend detects it is verified elsewhere and offers
-   **Domain Claim**: add the TXT record it shows in Cloudflare → **Verify
-   ownership**. Resend releases the domain from the old team and shows the
-   sending records (SPF/DKIM). If Resend asks you to contact support because
-   the old team sent recently, do that first — support releases it within a
-   working day; plan for it.
-2. Add the records exactly as shown. If the DKIM selector differs from the
-   old one, add the new record **alongside** the old one, wait for **Verified**,
-   then remove the old. This keeps signing continuous.
-3. Repeat for `reply.mail.kclinics.co.uk` under **Inbound** (MX + CNAME + CAA
-   records) and point its webhook at
-   `https://kclinics.co.uk/api/webhooks/chat-inbound`.
+   **Domain Claim**: add the TXT record it shows in **Hostinger DNS** →
+   **Verify ownership**. Resend releases the domain from the old team and
+   shows the sending records (DKIM TXT on `resend._domainkey.mail`, SPF TXT
+   and return-path MX on `send.mail.`). If Resend asks you to contact support
+   because the old team sent recently, do that first — support releases it
+   within a working day; plan for it.
+2. Add the records exactly as shown. If the DKIM value differs from the old
+   one, replace it in the same record (only one `resend._domainkey.mail` TXT
+   can exist), verify, and re-send a test within minutes so the gap is short.
+3. Enable **Receiving** (inbound) on the same `mail.kclinics.co.uk` domain —
+   today's MX on `mail.` points at Resend Inbound, so keep that MX exactly as
+   it is — and point the inbound webhook at
+   `https://kclinics.co.uk/api/webhooks/chat-inbound`. Leave the
+   `reply.mail.` CNAME (Resend link tracking) in place; re-enable open/click
+   tracking on the domain so the same CNAME target stays valid, or update it
+   to the value the new team shows.
 4. **Webhooks → Add Endpoint** → `https://kclinics.co.uk/api/webhooks/resend`
    → events `email.delivered`, `email.opened`, `email.clicked`,
    `email.bounced`, `email.complained` → copy the signing secret.
@@ -846,56 +866,46 @@ Verify: `/admin/api-health` **Payments (Stripe)** green; a £0 SetupIntent
 through the booking flow succeeds; Stripe → Developers → Webhooks shows recent
 2xx deliveries.
 
-### 7.9 DNS: Cloudflare (decision D8)
+### 7.9 Turnstile (Cloudflare) and the DNS zone (Hostinger) — decision D8
 
-Official: https://developers.cloudflare.com/fundamentals/manage-domains/move-domain/ ·
-https://developers.cloudflare.com/dns/manage-dns-records/how-to/import-and-export/
+DNS does not move. All records for `kclinics.co.uk` live in Hostinger DNS
+(nameservers `apollo.dns-parking.com` / `athena.dns-parking.com`), and the
+site is served directly by Vercel. The only Cloudflare dependency is the
+Turnstile bot-protection widget, whose two keys sit in Vercel.
 
-**Route (a) — hand over the account** (Cloudflare account serves only
-K-Clinics): Joe → dash.cloudflare.com → profile → **Change email** → enter
+**Route (a) — hand over the Cloudflare account** (it serves only K-Clinics):
+Joe → dash.cloudflare.com → profile → **Change email** → enter
 `inna.k@kclinics.co.uk` → Inna confirms from her mailbox → Inna sets a new
 password and **enables 2FA** → Inna adds her backup admin under **Manage
-Account → Members** → Joe's own identity is now gone from the account. Turnstile
-widgets, DNS records and certificates are untouched. No downtime.
+Account → Members** → Joe's own identity is now gone from the account. The
+widget and both keys are untouched. No redeploy, no downtime.
 
-**Route (b) — new account, Evening 2:**
+**Route (b) — new widget in Inna's Cloudflare account (5.10):**
 
-1. Old account → `kclinics.co.uk` → **DNS → Records → Export** (BIND file).
-   Also screenshot **SSL/TLS** (mode), **Rules**, **Turnstile** widget list and
-   any proxied (orange-cloud) records. Note the current nameserver pair.
-2. New account (Inna's, Joe as Administrator) → **Add a domain** →
-   `kclinics.co.uk` → Free plan → **Import** the BIND file → check every record
-   is present and the proxy status matches the old zone (Vercel apex/`www`
-   should be **DNS only**). Cloudflare shows the **new nameserver pair**.
-3. Turnstile: new account → **Turnstile → Add widget** → hostname
-   `kclinics.co.uk` (+ `www`), Managed mode → copy the **Site key** and **Secret
-   key**. In Vercel replace `NEXT_PUBLIC_TURNSTILE_SITE_KEY` and
-   `TURNSTILE_SECRET_KEY` → **Redeploy** *immediately after the nameserver
-   change propagates* (the site key is baked into the build, so do it once
-   the new zone answers; until then the old widget still validates). Note
-   that in production the login CAPTCHA **fails closed**: with a wrong or
-   missing secret every login attempt after the third failure is rejected,
-   so do not leave the old and new keys mismatched overnight.
-4. Registrar: Inna (or Joe with Inna on a call) → Hostinger hPanel →
-   **Domains → kclinics.co.uk → DNS / Nameservers → Change nameservers** →
-   enter the two new Cloudflare nameservers → Save. Propagation is usually
-   minutes, up to an hour. Check with `dig NS kclinics.co.uk +short` and
-   https://whatsmydns.net.
-5. New zone → **SSL/TLS** → set the same mode as before (Full (strict) if any
-   record is proxied; irrelevant for DNS-only records). Vercel issues its own
-   certificate; nothing to do there.
-6. Old account: leave the zone in place for 30 days (it is inert once the
-   nameservers move), then delete.
+1. New account (Joe as temporary Administrator) → **Turnstile → Add widget**
+   → widget name `kclinics.co.uk` → hostnames `kclinics.co.uk` and
+   `www.kclinics.co.uk` → widget mode **Managed** → **Create** → copy the
+   **Site key** and the **Secret key** into the vault.
+2. In Vercel (K-Clinics team) replace `NEXT_PUBLIC_TURNSTILE_SITE_KEY` and
+   `TURNSTILE_SECRET_KEY` for Production and Preview, then **Redeploy** (the
+   site key is baked into the build). Do both keys in the same change: in
+   production the login CAPTCHA **fails closed**, so a mismatched pair means
+   every login attempt after the third failure is rejected until the next
+   redeploy. Do not leave it overnight.
+3. Old account: delete the old widget after verification (12.4).
 
-Verify: site loads; booking confirmation email arrives (Resend DKIM pass in
-the headers); reply to a chat email threads back (inbound MX); mail-tester
-score unchanged; login page shows the Turnstile widget and a wrong-password
-attempt after three failures still shows the CAPTCHA; `/admin/go-live` DNS
-group all green.
+**DNS zone (both routes):** nothing changes. Joe's access to Hostinger must be
+through Hostinger "Account sharing" on the clinic's account (4.7); it is
+removed in 10.5. Do not add `kclinics.co.uk` to Cloudflare and do not change
+nameservers as part of this plan.
 
-Rollback: at Hostinger, put the **old** nameserver pair back (the old zone is
-untouched), restore the old Turnstile keys in Vercel and redeploy. TTLs are
-low (4.7), so this takes minutes.
+Verify: login page shows the Turnstile widget; after three wrong passwords the
+CAPTCHA appears and a correct password then succeeds; `/admin/go-live` DNS
+group unchanged; `dig NS kclinics.co.uk +short` still returns the two
+`dns-parking.com` servers.
+
+Rollback: old Turnstile keys back in Vercel, redeploy. Nothing else was
+touched.
 
 ### 7.10 Google (Workspace, Cloud, Business Profile, Search Console, Ads, GA4)
 
@@ -923,8 +933,13 @@ Verify: `/admin/api-health` **Google rating**, **Google Business Profile**,
 
 - **yay.com** (clinic's): confirm the clinic login is the account owner; in
   **Web Hooks** the Call Ended / Voicemail hooks point at
-  `https://kclinics.co.uk/api/integrations/yay?token=…`. The token is rotated
-  in section 10.2 (paste the new value in both hooks).
+  `https://kclinics.co.uk/api/integrations/yay` with the token in each hook's
+  **Auth Token** field (the route accepts it as a bearer/`X-Auth-Token`
+  header or in the body, and rejects `?token=` in the URL). The token is
+  rotated in section 10.2 (paste the new value in both hooks). Click-to-dial
+  depends on yay's "Allowed IP ranges" matching Vercel's egress addresses,
+  which are dynamic; test it after cutover and either widen the allow-list or
+  record that click-to-dial is off.
 - **Twilio**: if the account is Joe's and serves only K-Clinics, change the
   account owner (Console → **Settings → Account settings → Account details &
   security → Change account owner**; for accounts not under a Twilio
@@ -960,6 +975,21 @@ the live-chat assistant answers.
   use Hostinger's "move a domain/service between Hostinger accounts" support
   flow (https://www.hostinger.com/support/4068055-how-to-move-a-domain-between-hostinger-accounts/)
   to Inna's account; otherwise just remove Joe's account-sharing access.
+
+### 7.13 Noticed while checking the live DNS (out of scope, worth fixing)
+
+- The apex SPF record still says `v=spf1 include:_spf.mail.hostinger.com
+  ~all` and there is no `google._domainkey` DKIM record, although the apex MX
+  already points at `smtp.google.com`. Mail sent *from Gmail* as
+  `@kclinics.co.uk` is therefore not fully authenticated. Finish Phase 4 of
+  `docs/GOOGLE_WORKSPACE_MIGRATION.md` (replace the apex SPF with
+  `v=spf1 include:_spf.google.com ~all`, add Google's DKIM) — a five-minute
+  job in Hostinger DNS that Inna can do with Joe on a call. The Resend
+  records on `mail.` / `send.mail.` are separate and unaffected.
+- `/indexnow-key.txt` returns 404: `INDEXNOW_KEY` is unset. Optional.
+- No search-engine verification meta tags are served; Search Console is
+  verified by the apex `google-site-verification` TXT instead. Keep that
+  record.
 
 ---
 
@@ -1036,7 +1066,7 @@ own devices so the handover is proven from her side.
 | 21 | Visual QA | `node scripts/visual-qa.mjs` from a full-network session: no console errors, screenshots reviewed | [ ] |
 | 22 | Region guard | Next morning's daily cron raised no "database region" alert | [ ] |
 | 23 | **I** Billing emails | Inna received the first invoice/receipt emails from Vercel, Neon (if native), Resend, Sentry, Anthropic | [ ] |
-| 24 | **I** Console access | Inna can open, on her own: Vercel project, Neon console, Sentry project, Resend domains, Stripe dashboard, Cloudflare DNS, GitHub org | [ ] |
+| 24 | **I** Console access | Inna can open, on her own: Vercel project, Neon console, Sentry project, Resend domains, Stripe dashboard, Hostinger DNS records, Cloudflare Turnstile, GitHub org | [ ] |
 
 Done when: every row is ticked, including all **I** rows.
 
@@ -1152,8 +1182,8 @@ Joe can no longer sign in anywhere with owner rights.
 | Site up but no new deploys | Fix the Git link (7.3 step 3); the current deployment keeps serving | none |
 | Emails stop or land in spam | Put the old `RESEND_API_KEY` back and redeploy; re-add the old DKIM record; check SPF has exactly one record on `mail.` | none |
 | Payments fail | Confirm the three Stripe vars match the account's live keys; check the webhook endpoint URL and secret; Stripe retries webhooks for days | reconcile later |
-| Site unreachable after the nameserver change | Put the old nameserver pair back at Hostinger | none |
 | Login CAPTCHA broken | Old Turnstile keys back in Vercel, redeploy | none |
+| A DNS record was changed by mistake | Restore it from the 4.7 export in Hostinger hPanel (TTLs are 300 s) | none |
 | Database unreachable after path C | Old connection strings back, redeploy | writes since the freeze |
 | Health records will not open | Restore the exact previous `HEALTH_*` values (and `*_KEYS_OLD`) from the vault; never "fix" by generating new keys | none if the vault copy is intact |
 | Staff all signed out | Expected after JWT rotation; not a fault | none |
@@ -1174,8 +1204,9 @@ known-good state from the backups in section 4.3 with Joe on a call.
       against the *new* database.
 - [ ] **12.3 Old Resend team:** delete the domains and remaining keys; close
       the team if it was K-Clinics-only.
-- [ ] **12.4 Old Cloudflare zone** (route b): delete the zone; delete the old
-      Turnstile widgets.
+- [ ] **12.4 Old Turnstile widget** (D8 route b): delete the widget in the old
+      Cloudflare account; if that account held nothing else for the clinic,
+      Joe closes or keeps it as he likes.
 - [ ] **12.5 Old Sentry / Anthropic / Twilio / Deepgram** projects or keys:
       delete; cancel any subscription still on Joe's card.
 - [ ] **12.6 Joe's card:** Joe reviews his statements for any remaining charge
@@ -1186,7 +1217,10 @@ known-good state from the backups in section 4.3 with Joe on a call.
       `docs/DEPLOY.md`, `docs/GO_LIVE.md`, `README.md` (repository URLs, Pages
       table row), `CLAUDE.md` (session provisioning, `BASE_URL`/`QA_TOKEN`
       ownership), `.env.example` (`GOOGLE_SSO_ALLOWED_DOMAINS`), `lib/go-live.ts`
-      (nothing owner-specific, confirm), `docs/data-protection/processors.md`
+      (the "Domain & DNS (Cloudflare)" group heading and its links should say
+      Hostinger DNS; Cloudflare is Turnstile only),
+      `docs/GOOGLE_WORKSPACE_MIGRATION.md` §1 (DNS is at Hostinger, not
+      Cloudflare), `docs/data-protection/processors.md`
       (Vercel, Neon, Resend, Sentry, Anthropic rows: contracting party is the
       clinic; date accepted; region), `docs/data-protection/breach-response.md`
       (Technical responder now named), `docs/data-protection/README.md`
@@ -1236,8 +1270,8 @@ The handover is complete when Inna can tick every line without Joe's help.
 
 - [ ] I am the owner (billing + admin) of: GitHub org, Vercel team, Neon
       organisation or Vercel-managed Neon resource, Resend, Sentry, Anthropic,
-      Stripe, Cloudflare, Twilio (if used), Deepgram (if used), Hostinger,
-      Google Workspace, Google Cloud `KClinics`.
+      Stripe, Cloudflare (Turnstile), Twilio (if used), Deepgram (if used),
+      Hostinger (domain + DNS), Google Workspace, Google Cloud `KClinics`.
 - [ ] A second clinic person is admin on each of those (no single point of
       failure).
 - [ ] Two-step verification is on for every one of those logins; recovery
@@ -1267,8 +1301,8 @@ Signed: Inna ____________ date ______ · Joe ____________ date ______
 | A5 | Upstash Redis | Vercel Marketplace | team KAUL | [CONFIRM] | with A3, else recreate (8) | team K-Clinics | — | [ ] |
 | A6 | Postgres database | Neon | [CONFIRM: Vercel-managed or Neon-native] | [CONFIRM] | path A/B/C (7.5) | Inna | none | [ ] |
 | A7 | Prisma Console leftovers | Prisma | Joe [CONFIRM exists] | [CONFIRM] | delete or transfer (7.6) | — | none | [ ] |
-| A8 | Domain registration | Hostinger | [CONFIRM] | — | keep / move account (7.12) | clinic | none | [ ] |
-| A9 | DNS zone + Turnstile | Cloudflare | [CONFIRM] | [CONFIRM] | D8 route a/b (7.9) | Inna | Administrator (temp) → none | [ ] |
+| A8 | Domain registration + DNS zone | Hostinger (nameservers `dns-parking.com`) | [CONFIRM] | — | keep; remove Joe's account sharing (7.12, 10.5) | clinic | none | [ ] |
+| A9 | Turnstile widget | Cloudflare | [CONFIRM] | [CONFIRM] | D8 route a/b (7.9) | Inna | Administrator (temp) → none | [ ] |
 | A10 | Transactional email | Resend | [CONFIRM] | [CONFIRM] | route A/B (7.7) | Inna | Member or none | [ ] |
 | A11 | Company mailboxes | Google Workspace | clinic | — | roles only (6.1, 10.5) | Inna (Super Admin) | `webmaster@` demoted/suspended | [ ] |
 | A12 | Google Cloud project `KClinics` | Google | clinic org; `webmaster@` Owner | — | add Inna Owner (6.2), remove Joe (10.5) | Inna | none | [ ] |
@@ -1667,7 +1701,75 @@ Column key. **Set today**: V-Prod = Vercel Production (required by code in produ
 
 ## Appendix E — External registrations to re-check at cutover
 
-APPENDIX-E-PLACEHOLDER
+Scope: everything a third party holds about this deployment (inbound webhook URLs, OAuth redirect URIs, DNS records, verification tokens, API credentials, egress-IP allow-lists) and what each depends on. Dependency key: **Domain** = unchanged as long as `kclinics.co.uk` and `NEXT_PUBLIC_SITE_URL` stay; **Vercel** = tied to the Vercel project/team; **Credential** = re-issued if the provider account/team changes; **Account** = tied to a person's account and must be re-homed.
+
+Every registered URL in the codebase is built from `lib/site.ts:14` (`https://kclinics.co.uk`) or `NEXT_PUBLIC_SITE_URL`; nothing reads `VERCEL_URL` or a `*.vercel.app` host. Live checks on 2026-09-06: `/api/health` ok (production), `/api/integrations/yay` reports `configured:true`, `/indexnow-key.txt` 404 (IndexNow key unset), no search-engine verification meta tags in the HTML, `x-vercel-id` shows `lhr1` execution, `server: Vercel` with no Cloudflare proxy headers.
+
+#### Two supplied facts that live DNS contradicts
+
+| Fact as supplied | What DNS shows today | Consequence for the plan |
+| --- | --- | --- |
+| DNS zone on Cloudflare | NS = `apollo.dns-parking.com`, `athena.dns-parking.com` (Hostinger DNS); site served directly by Vercel (no `cf-ray`) | DNS edits happen in the clinic's Hostinger hPanel. Decision D8 / sections 5.10 and 7.9 of `docs/ACCOUNT_MIGRATION_HANDOVER.md` (lines 189-195, 468-476, 846) and `lib/go-live.ts:124` assume Cloudflare; confirm with Joe whether a nameserver move is planned or the text is wrong. Cloudflare then matters only for Turnstile. |
+| Resend Inbound on `reply.mail.kclinics.co.uk` | `mail.kclinics.co.uk` MX 10 `inbound-smtp.eu-west-1.amazonaws.com` (Resend Inbound) + `resend._domainkey.mail` DKIM; `send.mail` SPF `include:amazonses.com` + MX `feedback-smtp.eu-west-1.amazonses.com`; `reply.mail.kclinics.co.uk` is a CNAME to `links1.resend-dns.com` (Resend link tracking) and cannot carry MX | The code default `reply.mail.<host>` (`lib/chat-email.ts:33`) and `EMAIL_REPLY_TO` default `replies@reply.mail.<host>` (`lib/email.ts:99`) are only deliverable if `CHAT_INBOUND_DOMAIN` and `EMAIL_REPLY_TO` are set in Vercel to `mail.kclinics.co.uk` / a real mailbox (`.env.example:58-61` says exactly that). Confirm the values (names only) before cutover. |
+
+Other apex records to preserve verbatim if the zone is ever exported: `google-site-verification` TXT (Search Console domain property), `facebook-domain-verification` TXT (Meta Business), `google-gws-recovery-domain-verification` TXT, MX `smtp.google.com`, `_dmarc` (p=none). Aside: apex SPF still says `include:_spf.mail.hostinger.com` and `google._domainkey` is absent, so Workspace sending auth from `docs/GOOGLE_WORKSPACE_MIGRATION.md` §Phase 4 is not finished. `cms.kclinics.co.uk` does not resolve (`WORDPRESS_API_URL` unused).
+
+#### Checklist table
+
+| # | Registration | Exact URL / host in code | Where it is registered | Depends on | Cutover action | Done when |
+| --- | --- | --- | --- | --- | --- | --- |
+| 1 | Stripe payment webhook | `https://kclinics.co.uk/api/stripe/webhook` (`app/api/stripe/webhook/route.ts:25-36`); Checkout return URLs from `NEXT_PUBLIC_SITE_URL` (`app/api/admin/bookings/session/route.ts:202-203`) | Stripe → Developers → Webhooks; Payment Element wallets need kclinics.co.uk under Stripe → Payment method domains | Domain; Credential (`STRIPE_WEBHOOK_SECRET`, `STRIPE_SECRET_KEY`, `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY`, env-only per `lib/secrets.ts:56-57`) | Owner transfer: nothing. New Stripe account: new endpoint + three keys + redeploy | Test event shows 2xx in Stripe; API health `stripe` green |
+| 2 | Resend delivery webhook | `https://kclinics.co.uk/api/webhooks/resend` (`app/api/webhooks/resend/route.ts:14-40`) | Resend → Webhooks (`.env.example:50-53`) | Domain; Credential (`RESEND_WEBHOOK_SECRET`, `RESEND_API_KEY`) — webhooks are per Resend team | If team changes: re-create endpoint, set new signing secret and API key | EmailEvent rows update after a test send |
+| 3 | Resend Inbound (chat replies) | `https://kclinics.co.uk/api/webhooks/chat-inbound` (`app/api/webhooks/chat-inbound/route.ts:46-56`); addresses `chat-<token>@<CHAT_INBOUND_DOMAIN>` (`lib/chat-email.ts:32-33,58`) | Resend → Domains/Inbound; MX/DKIM/SPF/CNAME on `mail.`, `send.mail.`, `reply.mail.` in the Hostinger zone | Domain + DNS records; Credential (`RESEND_INBOUND_SECRET` or `RESEND_WEBHOOK_SECRET`) | Preserve subdomain records; confirm `CHAT_INBOUND_DOMAIN`/`EMAIL_REPLY_TO` values; if team changes use Domain Claim then re-create the inbound route | Reply to a chat transcript email threads into `/admin` chat |
+| 4 | yay.com Call Ended + Voicemail Notify | `https://kclinics.co.uk/api/integrations/yay` POST; token in `Authorization: Bearer`, `X-Auth-Token` or body (`app/api/integrations/yay/route.ts:21-40`; `?token=` is rejected, lines 27-29) | yay.com → Web Hooks, Auth Token = `YAY_WEBHOOK_SECRET` (`docs/twilio-yay/build-pdf.cjs:63-67,106-107`) | Domain; secret transfers with env | None expected | Test call appears in Admin → Calls; API health `yay` fresh |
+| 5 | yay.com click-to-dial egress IP | `${YAY_API_BASE:-https://api.yay.com}/calls/click-to-dial` (`lib/yay.ts:12,228-240`) with `YAY_AUTH_RESELLER/USER/PASSWORD` | yay → Allowed IP ranges (`lib/yay.ts:213-216`; `docs/twilio-yay/build-pdf.cjs:80,109`) | Vercel egress IP pool (dynamic; region `lhr1` per `vercel.json:3`, no static IP without Secure Compute) | Expect breakage; test after cutover; widen or drop the yay allow-list, or accept no click-to-dial | Click-to-dial rings the extension, or decision recorded |
+| 6 | Vercel Cron (5 jobs) | `/api/cron/daily`, `/api/cron/dispatch`, `/api/cron/kiosk-cleanup`, `/api/health`, `/api/admin/api-health` (`vercel.json:4-25`); auth `Authorization: Bearer CRON_SECRET` or `x-cron-secret` (`lib/cron-auth.ts:21-29`) | Vercel project config (from repo) | Vercel (Pro needed for sub-daily schedules and 300 s `maxDuration`, `vercel.json:26-33`) | Target team on Pro with payment method; redeploy production after transfer | Vercel → Cron Jobs lists 5; API health `cron` heartbeats fresh |
+| 7 | Vercel region | `regions: ["lhr1"]` (`vercel.json:3`); DB residency check `DB_APPROVED_REGIONS` default `eu-west-2` (`app/api/cron/daily/route.ts:345-348`) | Project config | Vercel plan (Pro allows region selection) | None; keep the DB in eu-west-2 | `x-vercel-id` contains `lhr1`; no DATA RESIDENCY log line |
+| 8 | Middleware self-fetch | `${NEXT_PUBLIC_SITE_URL}/api/blocked-ips`, `/api/redirects` with `MW_BLOCK_SECRET`/`CRON_SECRET` (`middleware.ts:133,140-141`) | None (internal) | Domain | Keep `NEXT_PUBLIC_SITE_URL` | Blocked-IP feed loads (fails open otherwise) |
+| 9 | Build-board queue (Claude Code environment) | `https://kclinics.co.uk/api/build/queue`, Bearer `BOARD_QUEUE_TOKEN` (`app/api/build/queue/route.ts:15-25`; `.claude/hooks/session-start.sh:98-118`) | Joe's Claude Code environment (`BASE_URL`, `QA_TOKEN`, `QA_ADMIN_*`, `QA_ACADEMY_*`, read-only `DATABASE_URL`, `ANTHROPIC_API_KEY`) | Domain; Account (Joe's Anthropic) | Rotate `BOARD_QUEUE_TOKEN`, `GOOGLE_REVIEW_IMPORT_TOKEN` (`app/api/admin/reviews/google/import/route.ts:9-19`), QA accounts and the read-only DB role; re-create the environment under the clinic if wanted | Old token returns 401 |
+| 10 | Claude Code Routine | POST `CLAUDE_ROUTINE_FIRE_URL` with `CLAUDE_ROUTINE_FIRE_TOKEN` (`lib/build-board.ts:1111-1112,1138-1150`); GitHub-comment fallback lines 1173-1175 | Joe's Anthropic account (Routine) | Account | Unset both (routine stops) or re-create under a clinic Claude account | Board 'wake' either disabled or reaches the new routine |
+| 11 | Google Calendar OAuth | `GOOGLE_REDIRECT_URI` = `https://kclinics.co.uk/api/admin/gcal/callback` (`lib/google-calendar.ts:21,28,52,72`; env only, `.env.example:94`) | Google Cloud → Credentials → OAuth client (clinic project 'KClinics') | Domain; GCP project (clinic's) | None; parked (`GOOGLE_INTEGRATION_ENABLED` off) | n/a until revived |
+| 12 | Google SSO OAuth | `https://kclinics.co.uk/api/admin/oauth/google/callback` (`lib/google-sso.ts:50-51`, override `GOOGLE_SSO_REDIRECT_URI`); allowed domains default `kclinics.co.uk, kaulindustries.com` (`lib/google-sso.ts:36-41`) | Same OAuth client | Domain; identity (Joe's Workspace domain allowed by default) | Set `GOOGLE_SSO_ALLOWED_DOMAINS=kclinics.co.uk`; remove Joe's admin users | SSO with a kaulindustries.com account is refused |
+| 13 | Google Business Profile OAuth | `https://kclinics.co.uk/api/admin/integrations/google-business/callback` (`lib/google-business.ts:35-39`; scope `business.manage` line 10; `GOOGLE_BUSINESS_ACCOUNT_ID/LOCATION_ID` env lines 27-28) | Same OAuth client + Business Profile API access on the GCP project | Domain; GCP project | Ensure a clinic identity is Owner on the GCP project and on the Business Profile | Connect Google Business succeeds on Reviews page |
+| 14 | Marketing OAuth — Google Ads/GA4/GSC | `https://kclinics.co.uk/api/admin/marketing/oauth/callback?provider=google` (`lib/marketing-connections.ts:29,37,44,107`) | Same OAuth client | Domain; GCP project | None | Marketing → Connections shows Google connected |
+| 15 | Marketing OAuth — Meta | `…/api/admin/marketing/oauth/callback?provider=meta` (`lib/marketing-connections.ts:52-66`; `META_CLIENT_ID/SECRET`) | developers.facebook.com → Facebook Login → Valid OAuth Redirect URIs; apex `facebook-domain-verification` TXT | Domain; Account (app/Business Manager owner unknown) | Confirm owner; transfer or re-create app, re-add URI, re-issue id/secret | Meta connect succeeds |
+| 16 | Marketing OAuth — TikTok | `…/api/admin/marketing/oauth/callback?provider=tiktok` (`lib/marketing-connections.ts:73-81`; `TIKTOK_CLIENT_ID/SECRET`) | business-api.tiktok.com developer portal | Domain; Account (owner unknown) | Confirm owner; re-add URI if re-created | TikTok connect succeeds |
+| 17 | Xero OAuth | `https://kclinics.co.uk/api/admin/integrations/xero/callback` (`lib/xero.ts:23-25`, override `XERO_REDIRECT_URI`) | developer.xero.com/app/manage → Redirect URIs | Domain; Account (developer app owner unknown) | Confirm owner; re-create app + URI + `XERO_CLIENT_ID/SECRET` if needed; reconnect | Xero connection light green |
+| 18 | TrueLayer OAuth | `https://kclinics.co.uk/api/admin/integrations/truelayer/callback` (`lib/truelayer.ts:16-18`, override `TRUELAYER_REDIRECT_URI`) | console.truelayer.com → Redirect URIs | Domain; Account (owner unknown) | As Xero | Bank feed reconnects |
+| 19 | Google Workspace service account | Admin SDK Directory scopes (`lib/google-workspace.ts:26-34`); `GOOGLE_WORKSPACE_SA_KEY`, `GOOGLE_WORKSPACE_ADMIN_EMAIL` (`lib/secrets.ts:50-52`) | admin.google.com → Security → API controls → Domain-wide delegation (client ID) | GCP project; impersonated admin (must not be webmaster@ after handover) | Set admin email to a clinic super-admin; rotate SA key when Joe leaves | `/admin` Workspace users list loads |
+| 20 | GitHub App `kclinics-board` + repo slug | `api.github.com/app/installations/{GITHUB_APP_INSTALLATION_ID}/access_tokens` (`lib/github-app.ts:9-11,50`); `api.github.com/repos/{GITHUB_REPO}/issues` (`lib/build-board.ts:757-776,904`); PAT fallback `GITHUB_TOKEN` or saved connection | GitHub Developer settings (App owner); installation on the repo | Account (owner slug changes on transfer; installation id is per account; PAT is Joe's) | Set `GITHUB_REPO=<new-owner>/K-Clinics`; transfer App; reinstall; set new installation id; delete PAT | API health `github` green; mirror push works |
+| 21 | Vercel ↔ GitHub link | Project Git link to `JoeKaulPulse/K-Clinics` (Vercel GitHub App on Joe's account); production branch `main` | Vercel → Settings → Git | Vercel + Account | Re-link to the transferred repo with the Vercel GitHub App installed on the clinic account | Push to `main` deploys to production |
+| 22 | GitHub Pages demo | `https://<owner>.github.io/K-Clinics/` (manual `deploy.yml:7-8,60-62`; `next.config.mjs:206-208`) | GitHub Pages of the repo owner | Account (URL changes with owner; no redirect) | Re-run if the demo link is used anywhere | New Pages URL renders |
+| 23 | Vercel custom domains | `kclinics.co.uk` A 216.150.1.1; `www` CNAME `fe8059f70f428825.vercel-dns-017.com`; no `_vercel` TXT | Vercel → Domains; Hostinger DNS | Vercel (transfer moves domains; a fresh project would need `_vercel` TXT verification) | Use project transfer, not re-create; leave DNS as is | Both hostnames verified; www redirects |
+| 24 | `*.vercel.app` aliases | `k-clinics.vercel.app`, `k-clinics-kaul-joe.vercel.app`, `k-clinics-git-main-kaul-joe.vercel.app`; referenced only in `docs/DEPLOY.md:14,112` | Vercel | Vercel (team slug changes; SSO protection already blocks them for third parties) | Update docs; nothing external uses them | n/a |
+| 25 | Vercel Blob store | Persisted `https://<store>.public.blob.vercel-storage.com/...` URLs, host-validated (`lib/portfolio-blob.ts:26`, `app/api/academy/pdf/route.ts:50`, `next.config.mjs:35,199-201`); `BLOB_READ_WRITE_TOKEN` | Vercel → Storage | Vercel (store must transfer with the project or every stored URL breaks) | Check `transferredStoreIds`/`resourceTransferErrors`; only then re-provision private for BLD-1304 | API health `blob` green; media loads |
+| 26 | Upstash Redis | `UPSTASH_REDIS_REST_URL/TOKEN` (`lib/security/rate-limit.ts:9-11`) | Vercel → Storage (Marketplace) | Vercel (resource per team; falls back to Postgres if absent) | Transfer from resource settings or create anew on the clinic team | API health `redis` PONG |
+| 27 | Neon Postgres | `-pooler` host via `POSTGRES_PRISMA_URL`/`DATABASE_URL` (`lib/db.ts:119-122`); `NEON_API_KEY`/`NEON_PROJECT_ID` in `scripts/safe-migrate.mjs:61-62` | Neon console / Vercel Storage | Credential (unchanged on Neon-native transfer; new on copy); region must stay eu-west-2 | Update the four Vercel vars only if the project is re-created; keep encryption keyring identical; re-issue Neon API key | `/api/health` `database:connected`; no residency error |
+| 28 | Search Console verification | Apex `google-site-verification` TXT (DNS method); meta-tag env vars unused in prod (`app/layout.tsx:44-49`); API property `https://kclinics.co.uk/` or `SEARCH_CONSOLE_SITE` (`lib/search-console.ts:20-28`) | search.google.com/search-console; Hostinger DNS | Domain; Account (verifying Google account, likely webmaster@) | Add a clinic Google account as Owner before removing webmaster@; keep TXT | Clinic account sees the property |
+| 29 | Bing / Yandex verification | `BING_SITE_VERIFICATION`, `YANDEX_VERIFICATION` meta (`app/layout.tsx:47-49`); none live | Bing Webmaster Tools | Domain | Optional | n/a |
+| 30 | IndexNow | `https://api.indexnow.org/indexnow` with `keyLocation https://kclinics.co.uk/indexnow-key.txt` (`lib/indexnow.ts:25,31`; `app/indexnow-key.txt/route.ts:7-8`) | None (self-served key); live 404 = unset | Domain | Nothing; optionally set `INDEXNOW_KEY` | Key file returns 200 |
+| 31 | GA4 / Google Ads / Meta pixels + CAPI | gtag.js, fbevents.js (`components/marketing/TrackingScripts.tsx:46-60`); `google-analytics.com/mp/collect`, `graph.facebook.com/v23.0/{pixel}/events` (`lib/conversions.ts:72,85,109`); IDs/secrets in DB `tracking_config` (`lib/tracking.ts:14`, `app/api/admin/tracking/route.ts:33-39`) | GA4 property, Google Ads account, Meta Business (owners unknown) | Account | Add clinic admins to each property; no URL change | API health `ga4`, `tracking-ids` |
+| 32 | Google API keys (Places, Translate, Tenor) and Ads token | `maps.googleapis.com/maps/api/place/details` (`lib/reviews-aggregate.ts:107`); `translation.googleapis.com`; `tenor.googleapis.com` (`app/api/admin/team-chat/gifs/route.ts:19-20`); `googleads.googleapis.com/v22` (`lib/ad-spend.ts:87`) | Google Cloud → Credentials (must be API-restricted only, `lib/secrets.ts:29`); Google Ads MCC → API Center | Credential; GCP project / MCC owner | Confirm keys live in the clinic project; rotate if created elsewhere | API health `google-places`, `translation`, `ads` |
+| 33 | Cloudflare Turnstile | `challenges.cloudflare.com/turnstile/v0/siteverify` (`lib/security/guard.ts:131-134`); `NEXT_PUBLIC_TURNSTILE_SITE_KEY` build-time (`app/api/admin/login/route.ts:40`) | Cloudflare account → Turnstile widget bound to kclinics.co.uk | Domain (widget); Credential (per Cloudflare account) | If account is Joe's: new widget in clinic account, both keys, redeploy | CAPTCHA renders and verifies on repeated failed login |
+| 34 | WebAuthn passkeys | rpID `kclinics.co.uk`, origins apex + www (`lib/webauthn.ts:25-42`); rows in `WebAuthnCredential` (`prisma/schema.prisma:1302`) | Browsers/authenticators | Domain + DB rows + `ADMIN_JWT_SECRET` | None | Owner passkey step-up succeeds after cutover |
+| 35 | Web-push VAPID | `VAPID_PUBLIC_KEY/PRIVATE_KEY/SUBJECT` (`lib/push.ts:11-14`); `PushSubscription` rows (`prisma/schema.prisma:4312-4323`); `/sw.js` | Browser push services | Credential (keypair must never change once subscriptions exist); currently unset | Carry the same keypair if set | Test push arrives |
+| 36 | Sentry | `SENTRY_DSN`, `NEXT_PUBLIC_SENTRY_DSN` (`sentry.server.config.ts:3-6`, `sentry.edge.config.ts`, `instrumentation-client.ts:3`); no `withSentryConfig`/auth token | sentry.io project (org owner probably Joe) | Credential (DSN may change on project transfer/re-create) | Transfer project or create new; update both vars; redeploy | API health `sentry`; test error received |
+| 37 | Anthropic API | `api.anthropic.com/v1/messages` (`lib/chat-ai.ts:131`, `lib/ai-consultation.ts:265`, `lib/kiosk-ai.ts:34`); `ANTHROPIC_API_KEY` ManagedSecret/env | console.anthropic.com (org unknown, probably Joe's) | Credential/Account | New clinic org + key; revoke old | Kiosk analysis and chat AI work |
+| 38 | Deepgram, GIPHY | `api.deepgram.com/v1/listen` (`app/api/admin/bookings/transcribe/route.ts:51`); `api.giphy.com` (`gifs/route.ts:37`) | Provider consoles | Credential | Re-issue only if accounts are Joe's | API health `deepgram` |
+| 39 | Twilio | `api.twilio.com` outbound only (`lib/sms.ts:24,62`); no inbound/status webhooks | Twilio console | Credential (unchanged on owner transfer) | Update ManagedSecret only if token rotated | API health `twilio` |
+| 40 | Hostinger CalDAV | `HOSTINGER_CALDAV_URL/USER/PASS` (`lib/hostinger-calendar.ts:15-17`) | Hostinger mailbox (clinic) — possibly retired after the Workspace move | Credential | Confirm the calendar still exists or unset | API health `caldav` or grey |
+| 41 | Ops alert webhook | `CRON_ALERT_WEBHOOK_URL` POSTs (`app/api/health/route.ts:154`, `app/api/cron/daily/route.ts:521`, `app/api/cron/dispatch/route.ts:58`, `app/api/cron/kiosk-cleanup/route.ts:152`, `app/api/admin/api-health/route.ts:90`, `app/api/stripe/webhook/route.ts:509`) | Slack/Discord/Make incoming webhook (owner unknown) | Credential/Account | Point at a clinic channel or unset | Test alert lands in the clinic channel |
+| 42 | Keyless hosts | `api.open-meteo.com` (`lib/weather.ts:40`), `api.pwnedpasswords.com` (`lib/security/breached-password.ts:13`), Google JWKS (`lib/google-sso.ts:19`), Google Maps embed (`lib/site.ts:38`) | None | None | None | n/a |
+| 43 | Encryption keyring for DB-stored credentials | `HEALTH_ENCRYPTION_KEY(S)`, `HEALTH_HMAC_KEY(S)` (`lib/secrets.ts:13,60`; `docs/KEY_ROTATION.md`) | Vercel env | Credential (must be identical on the new deployment) | Carry over unchanged; rotate later via keyring rotation | Connection Centre shows keys 'Set in app' readable |
+
+#### Cutover verification order
+
+1. Vercel transfer accepted: check domains verified, crons listed, Blob `transferredStoreIds`, Upstash resource present, `NEXT_PUBLIC_SITE_URL` unchanged, production redeployed from the re-linked repo.
+2. `GET https://kclinics.co.uk/api/health` and `/admin` API health page: all critical lights green (database, public-api, blob, redis, cron, stripe, resend).
+3. Inbound webhooks: Stripe test event, Resend test email + reply, yay test call.
+4. OAuth round-trips: Google (Reviews + Marketing), Xero, TrueLayer; SSO from a kclinics.co.uk account and a refused kaulindustries.com attempt.
+5. Passkey step-up by an OWNER; Turnstile challenge path.
+6. Revoke: Joe's PAT, `BOARD_QUEUE_TOKEN`, `GOOGLE_REVIEW_IMPORT_TOKEN`, QA accounts, read-only DB role, old Anthropic key, Claude Routine pair, webmaster@ Workspace/GCP roles.
 
 ## Appendix F — Secrets, encryption and what must never be lost
 
@@ -1687,7 +1789,7 @@ APPENDIX-F-PLACEHOLDER
 - Resend: Domain Claim — https://resend.com/changelog/domain-claim · managing domains — https://resend.com/docs/dashboard/domains/manage-domains
 - Stripe: change the account owner — https://support.stripe.com/questions/change-the-owner-of-a-stripe-account
 - Sentry: transfer projects between organisations — https://sentry.zendesk.com/hc/en-us/articles/23572020203419
-- Cloudflare: move a domain between accounts — https://developers.cloudflare.com/fundamentals/manage-domains/move-domain/ · import/export DNS — https://developers.cloudflare.com/dns/manage-dns-records/how-to/import-and-export/
+- Cloudflare Turnstile: get started (widgets, site/secret keys) — https://developers.cloudflare.com/turnstile/get-started/
 - Hostinger: move a domain between accounts — https://www.hostinger.com/support/4068055-how-to-move-a-domain-between-hostinger-accounts/
 - Twilio: change account owner — https://help.twilio.com/articles/31381999536027
 - Upstash on Vercel — https://upstash.com/docs/redis/howto/vercelintegration
