@@ -599,7 +599,10 @@ Official: https://docs.github.com/en/apps/maintaining-github-apps/transferring-o
    `GITHUB_APP_PRIVATE_KEY` and the `GITHUB_APP_INSTALLATION_ID` for section 8.
 4. Delete the fallback PAT the board used (`GITHUB_TOKEN`): Joe's Settings →
    Developer settings → Personal access tokens → the K-Clinics token → Delete.
-   The board prefers the App when all three App variables are set; the
+   Also clear the encrypted copy the board may hold: Admin → Build & Issues →
+   GitHub connection → **Disconnect** (this removes the `github`
+   `ExternalConnection` row), then reconnect with the new `owner/name`. The
+   board prefers the App when all three App variables are set; the
    `GITHUB_REPO` value becomes `kclinics/k-clinics`.
 
 Verify (after section 8's redeploy): `/admin/api-health` shows **GitHub (board
@@ -869,7 +872,10 @@ widgets, DNS records and certificates are untouched. No downtime.
    key**. In Vercel replace `NEXT_PUBLIC_TURNSTILE_SITE_KEY` and
    `TURNSTILE_SECRET_KEY` → **Redeploy** *immediately after the nameserver
    change propagates* (the site key is baked into the build, so do it once
-   the new zone answers; until then the old widget still validates).
+   the new zone answers; until then the old widget still validates). Note
+   that in production the login CAPTCHA **fails closed**: with a wrong or
+   missing secret every login attempt after the third failure is rejected,
+   so do not leave the old and new keys mismatched overnight.
 4. Registrar: Inna (or Joe with Inna on a call) → Hostinger hPanel →
    **Domains → kclinics.co.uk → DNS / Nameservers → Change nameservers** →
    enter the two new Cloudflare nameservers → Save. Propagation is usually
@@ -1086,10 +1092,15 @@ current value is hex). Change the value in Vercel, redeploy, then tick.
 
 ### 10.3 Health keyring rotation (last, and only via the runbook)
 
-1. `openssl rand -hex 32` twice (AES key and HMAC key).
+1. `openssl rand -hex 32` for the new AES key (and a second one for the HMAC
+   key **only if `HEALTH_HMAC_KEY` is set today** — if it is unset, the AES
+   ring doubles as the HMAC ring and you must not introduce a separate HMAC
+   key now; if you ever do, put the AES key's value into
+   `HEALTH_HMAC_KEYS_OLD` at the same moment).
 2. Vercel: set `HEALTH_ENCRYPTION_KEYS_OLD` = current `HEALTH_ENCRYPTION_KEY`
-   (comma-append if a value exists), `HEALTH_HMAC_KEYS_OLD` = current
-   `HEALTH_HMAC_KEY`; then set the two new active keys. Redeploy.
+   (comma-append if a value exists) and, where it exists,
+   `HEALTH_HMAC_KEYS_OLD` = current `HEALTH_HMAC_KEY`; then set the new active
+   key(s). Redeploy.
 3. Confirm health records, Admin → Credentials & keys and staff two-factor
    still work (old data decrypts through the ring).
 4. Set `HEALTH_KEY_REENCRYPT=true` temporarily, or wait for the nightly cron;
@@ -1510,7 +1521,149 @@ Classes: **(a)** change in code/docs when the repo and Vercel project move · **
 
 ## Appendix D — Environment variable catalogue
 
-APPENDIX-D-PLACEHOLDER
+Scope: every `process.env.NAME` under `app/`, `lib/`, `components/`, `middleware.ts`, `next.config.mjs`, `instrumentation*.ts`, `sentry*.ts`, `scripts/`, `prisma/` and `prisma.config.ts` (136 distinct names), plus names that only appear in `.env.example`, in `lib/secrets.ts` `SECRET_DEFS` (read through `getSecret()`, which prefers an encrypted `ManagedSecret` row and falls back to `process.env`), in `lib/marketing-connections.ts`, or in docs.
+
+Column key. **Set today**: V-Prod = Vercel Production (required by code in production; the Vercel API does not return the env listing, so confirm with `vercel env ls production`); V-opt = Vercel, optional feature, presence unconfirmed; Neon/Blob/Upstash = injected by that Vercel integration; CC = Joe's Claude Code environment (tooling only); GHA = GitHub Actions workflow; Local = local scripts only; Sys = Vercel/Next build-time. **DB** = can be stored encrypted in the database via Admin > Settings > Credentials (`lib/secrets.ts` `SECRET_DEFS`, non-`envOnly`). **NP** = `NEXT_PUBLIC_` (inlined into the browser bundle at build time). Note that *every* Vercel env change needs a redeploy to reach the serverless functions; NP additionally needs a rebuild. `ManagedSecret` rows travel with the database and stay readable only if the keyring below is preserved.
+
+#### 1. DATA-BOUND — copy byte-for-byte or data becomes unreadable
+
+| Variable | Set today | Issued by | Read at | NP | Side-effect if changed | DB |
+| --- | --- | --- | --- | --- | --- | --- |
+| `HEALTH_ENCRYPTION_KEY` | V-Prod | generated (`openssl rand -hex 32`) | `lib/crypto.ts:47-53,73`; `lib/kiosk.ts:86`; `app/api/health/route.ts:70`; `lib/integrations.ts:279`; `app/api/build/migrate-wp/route.ts:94` | no | Everything under the keyring becomes unreadable: `HealthAssessment.cipher`, consent records (`lib/consent.ts:232`), clinical free-text columns (`lib/clinical-crypto.ts`), all OAuth tokens in `ExternalConnection.tokensEnc` (`lib/oauth-connections.ts:28`), `AdminUser.googleRefreshToken`, `AdminUser.totpSecret` (2FA, `lib/security/twofa.ts:30`), `ManagedSecret.valueEnc`, `CallRecord.raw`, chat/AI payloads. Also the kiosk salt is derived from it when `KIOSK_IP_SALT` is unset. Rotation only via `docs/KEY_ROTATION.md` (old value into `_KEYS_OLD`, redeploy, wait for 0 remaining). | no |
+| `HEALTH_HMAC_KEY` | V-Prod (optional) | generated | `lib/crypto.ts:78-82`; `app/api/health/route.ts:71`; `lib/integrations.ts:290` | no | Integrity checks fail on existing records. If it is unset today the AES ring doubles as the HMAC ring, so do **not** introduce it fresh at handover; if introduced later, put the AES key value into `HEALTH_HMAC_KEYS_OLD` at the same time. | no |
+| `HEALTH_ENCRYPTION_KEYS_OLD` | V-Prod only mid-rotation | previous key | `lib/crypto.ts:55-59,73`; `lib/key-rotation.ts:240` | no | Old ciphertext undecryptable if dropped before the sweep reports 0 remaining. | no |
+| `HEALTH_HMAC_KEYS_OLD` | probably unset | previous key | `lib/crypto.ts:81`; `.env.example:29` | no | As above for HMAC. | no |
+| `VAPID_PUBLIC_KEY` / `VAPID_PRIVATE_KEY` | V-opt | `npx web-push generate-vapid-keys` | `lib/push.ts:11,20,21` | no | Rotation invalidates every `PushSubscription` row (`prisma/schema.prisma:4312`); staff must re-enable notifications. | no |
+| `KIOSK_IP_SALT` | probably unset (derived) | generated | `lib/kiosk.ts:84-87` | no | Resets per-IP kiosk anti-abuse counters and the per-device hash on `KioskSession` rows. Resolution: `KIOSK_IP_SALT` > `ENCRYPTION_KEY` > sha256(`HEALTH_ENCRYPTION_KEY`) > sha256(`ADMIN_JWT_SECRET`) > throw in production. Preserving the health key preserves today's salt. | no |
+| `ENCRYPTION_KEY` | almost certainly unset | legacy | `lib/kiosk.ts:84` | no | Legacy alias for the salt; confirm absent, do not add. | no |
+
+#### 2. ACCOUNT-BOUND — re-issued from the clinic's own provider account
+
+| Variable | Set today | Issued by | Read at | NP | Notes / side-effect | DB |
+| --- | --- | --- | --- | --- | --- | --- |
+| `DATABASE_URL`, `DATABASE_URL_UNPOOLED`, `POSTGRES_URL`, `POSTGRES_PRISMA_URL`, `POSTGRES_URL_NON_POOLING` | Neon (Vercel integration); `DATABASE_URL` also CC (read-only role) | Neon | `lib/db.ts:39-47` (runtime prefers `POSTGRES_PRISMA_URL`), `scripts/db-sync.mjs:73-83` (schema sync prefers `POSTGRES_URL_NON_POOLING`), `lib/crm.ts:12-27`, `prisma.config.ts:20`, `app/api/cron/daily/route.ts:344` (region check), seeds, `scripts/restore.mjs:121` | no | Unchanged if the Neon project transfers normally; all five change if a new project must be created (Vercel-managed Neon orgs cannot be transferred). Revoke Joe's read-only role either way. | no |
+| `BLOB_READ_WRITE_TOKEN` | Blob (Vercel Storage) | Vercel | 18 sites: `lib/kiosk.ts:147`, `lib/portfolio-blob.ts:67`, `lib/api-health.ts:102`, `app/api/admin/blob-upload/route.ts:20`, `app/api/admin/media/route.ts:33`, `app/api/kiosk/sessions/[token]/photo(s)/route.ts`, `app/api/cron/daily/route.ts:274`, `app/api/kiosk/test-cleanup/route.ts:33` … | no | A new store means new URLs; `MediaAsset` and other rows holding `*.public.blob.vercel-storage.com` URLs must be copied and rewritten (separate task; opportunity to provision private, BLD-1304). | no |
+| `UPSTASH_REDIS_REST_URL` / `_TOKEN` | Upstash (Marketplace) | Upstash | `lib/security/rate-limit.ts:9`; `lib/api-health.ts:115-116` | no | Transfer the Marketplace resource or provision anew; counters are ephemeral, Postgres fallback in between. | no |
+| `SENTRY_DSN` | V-opt (recommended) | Sentry | `sentry.server.config.ts:3`; `sentry.edge.config.ts:3`; `instrumentation.ts:4`; `lib/api-health.ts:450` | no | Transfer project (same region) or create new org; releases/session data not transferred. | no |
+| `NEXT_PUBLIC_SENTRY_DSN` | V-opt | Sentry | `instrumentation-client.ts:3`; `lib/api-health.ts:451` | **yes** | Same DSN; rebuild. | no |
+| `TURNSTILE_SECRET_KEY` | V-Prod | Cloudflare | `lib/security/guard.ts:117,131` | no | Fails closed in production: admin/client login CAPTCHA rejected until set. Widgets are per Cloudflare account. | no |
+| `NEXT_PUBLIC_TURNSTILE_SITE_KEY` | V-Prod | Cloudflare | `app/api/admin/login/route.ts:40`; `app/api/account/login/route.ts:19` | **yes** | Rebuild. | no |
+| `RESEND_API_KEY` | V-Prod or DB | Resend | `lib/email.ts:91`; `lib/api-health.ts:146` | no | New key after the Domain Claim into the clinic's Resend team. | yes |
+| `ANTHROPIC_API_KEY` | V-Prod or DB; also CC | Anthropic | `lib/chat-ai.ts:212`; `lib/kiosk-ai.ts:123,324`; `lib/ai-consultation.ts:85`; `lib/ai-marketing.ts:26`; `app/api/admin/seo/route.ts:78`; `app/api/admin/bookings/transcribe/route.ts:77`; `.claude/hooks/session-start.sh:106` | no | Issue from a clinic-owned console; revoke old. | yes |
+| `DEEPGRAM_API_KEY` | DB or V-opt | Deepgram | `app/api/admin/bookings/transcribe/route.ts:23`; `lib/api-health.ts:231` | no | | yes |
+| `STRIPE_SECRET_KEY` | V-Prod | Stripe | `lib/stripe.ts:4`; `lib/api-health.ts:127`; `lib/finance-feeds.ts:24` | no | Env-only by design (`lib/secrets.ts:56`). Roll the key even if the account stays the clinic's. | no (envOnly) |
+| `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` | V-Prod | Stripe | `lib/stripe-client.ts:5`; `lib/booking-mode.ts:11` | **yes** | A placeholder value silently flips booking into demo mode. | no (envOnly) |
+| `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` | V-Prod and/or DB | Google Cloud project "KClinics" (clinic-owned; Joe Owner) | env-only path `lib/google-calendar.ts:28,51,70-72,89-90`; getSecret path `lib/google-sso.ts:25,56,75,98`, `lib/google-business.ts:43,62,77`, `lib/ad-spend.ts:70`, `lib/google-auth.ts:10`, `lib/marketing-connections.ts:39` | no | Keep the client ID (stored refresh tokens stay valid), rotate the secret after Joe's Owner role is removed; keep env and DB copies in step. | yes (Calendar path still reads env) |
+| `GOOGLE_PLACES_API_KEY`, `GOOGLE_TRANSLATE_KEY` | DB or V-opt | Google Cloud (clinic project) | `lib/reviews-aggregate.ts:104`; `lib/translate.ts:21`; `lib/api-health.ts:187,218` | no | Regenerate after access clean-up. | yes |
+| `GOOGLE_ADS_DEVELOPER_TOKEN` | DB or V-opt | Google Ads MCC | `lib/ad-spend.ts:63`; `lib/google-ads-conversions.ts:27,38` | no | Confirm the MCC is the clinic's. | yes |
+| `GOOGLE_WORKSPACE_SA_KEY` | DB | Google Cloud service account | `lib/google-workspace.ts:19,59` | no | Rotate the SA key; pair with `GOOGLE_WORKSPACE_ADMIN_EMAIL` (currently likely `webmaster@`, Joe's identity — change to Inna's Super Admin). | yes |
+| `TWILIO_ACCOUNT_SID` / `TWILIO_AUTH_TOKEN` | V-opt or DB | Twilio | `instrumentation.ts:10` (boot warning); `lib/sms.ts:10-40`; `lib/api-health.ts:167-168` | no | Transfer Twilio ownership or re-create; rotate token. | yes |
+| `XERO_CLIENT_ID` / `_SECRET` | DB or V-opt | Xero developer app | `lib/xero.ts:20-35` | no | If the app is registered under Joe, re-create and re-connect (stored tokens are per client). | yes |
+| `TRUELAYER_CLIENT_ID` / `_SECRET` | DB or V-opt | TrueLayer console | `lib/truelayer.ts:13-31` | no | As Xero. | yes |
+| `META_CLIENT_ID` / `_SECRET`, `TIKTOK_CLIENT_ID` / `_SECRET` | V-opt (env-only; not in `SECRET_DEFS`) | Meta / TikTok developer apps | `lib/marketing-connections.ts:61,77` | no | Confirm whether set and whose developer account owns the apps. | no |
+| `YAY_AUTH_RESELLER` / `YAY_AUTH_PASSWORD` | V-opt | yay.com (clinic) | `lib/yay.ts:223-225`; `lib/api-health.ts:315` | no | Rotate password; egress IP allow-list in yay may need the new deployment's IPs. | no |
+| `HOSTINGER_CALDAV_URL` / `_USER` / `_PASS` | V-opt | Hostinger (clinic) | `lib/hostinger-calendar.ts:15-17`; `lib/api-health.ts:294-296` | no | Deprecated after the Workspace move; revoke the app password when removed. | no |
+| `GITHUB_APP_ID`, `GITHUB_APP_PRIVATE_KEY`, `GITHUB_APP_INSTALLATION_ID` | V-Prod | GitHub App "kclinics-board" (JoeKaulPulse) | `lib/github-app.ts:22,29,36,50` | no | Transfer the App to the clinic account (ID survives), generate a new private key, re-install on the transferred repo (new installation id). Cached token in `Setting` key `github_app_token`. | no |
+| `GITHUB_TOKEN` | V-opt (PAT fallback) | GitHub (Joe) | `lib/build-board.ts:767` | no | Remove; revoke; also clear the encrypted `github` `ExternalConnection` row (`lib/build-board.ts:750-754`). | no |
+| `CLAUDE_ROUTINE_FIRE_URL` / `_TOKEN` | V-Prod | Claude Code Routine (Joe's Anthropic account) | `lib/build-board.ts:1112,1139-1140` | no | Remove at handover (board falls back to GitHub-issue wake); Joe deletes the Routine. | no |
+| `CRON_ALERT_WEBHOOK_URL` | V-opt | Slack/Discord/Make workspace (probably Joe's) | `app/api/cron/daily/route.ts:521`; `app/api/cron/dispatch/route.ts:58`; `app/api/cron/kiosk-cleanup/route.ts:152`; `app/api/health/route.ts:154`; `app/api/admin/api-health/route.ts:90`; `app/api/stripe/webhook/route.ts:509` | no | Replace with a clinic-owned webhook or unset. | no |
+| `TENOR_API_KEY` / `GIPHY_API_KEY` | V-opt | Google / GIPHY | `app/api/admin/team-chat/gifs/route.ts:53-54` | no | Re-issue or drop. | no |
+| `NEON_API_KEY` / `NEON_PROJECT_ID` | Local | Neon | `scripts/safe-migrate.mjs:61-62` | no | Tooling only; Joe revokes. | no |
+
+#### 3. ROTATE-AT-HANDOVER — secrets the developer has seen; regenerate freely
+
+| Variable | Set today | Read at | Side-effect of rotation | DB |
+| --- | --- | --- | --- | --- |
+| `ADMIN_JWT_SECRET` | V-Prod | `lib/auth-edge.ts:48-55`; `lib/webauthn.ts:47`; `lib/kiosk.ts:86`; `instrumentation.ts:18-21` (must be 32+ bytes) | All staff signed out; in-flight passkey ceremonies fail. No data impact while `HEALTH_ENCRYPTION_KEY` is set. | no |
+| `CLIENT_JWT_SECRET` | V-Prod | `lib/auth-edge.ts:57-64` | All client-portal users signed out. | no |
+| `ACADEMY_JWT_SECRET` | V-Prod | `lib/auth-edge.ts:87-94` | All academy students signed out. | no |
+| `CRON_SECRET` | V-Prod (also Joe's local healthcheck env) | `lib/cron-auth.ts:22`; `middleware.ts:141`; `app/api/blocked-ips/route.ts:16`; `scripts/healthcheck.mjs:34` | None; Vercel Cron picks up the env value automatically. | no |
+| `MW_BLOCK_SECRET` | V-opt | `middleware.ts:141`; `app/api/blocked-ips/route.ts:16` | None (falls back to `CRON_SECRET`). | no |
+| `BOARD_QUEUE_TOKEN` (= `QA_TOKEN` in CC) | V-Prod + CC | `app/api/build/queue/route.ts:15,25,53`; `app/api/kiosk/test-cleanup/route.ts:13,21`; `lib/build-board.ts:1121` | Joe's Claude environment loses queue access (intended). | no |
+| `GOOGLE_REVIEW_IMPORT_TOKEN` | V-opt | `app/api/admin/reviews/google/import/route.ts:15` | None. | no |
+| `MIGRATE_TOKEN` | V-opt (should be absent) | `app/api/build/migrate-wp/route.ts:48,81` | Leave unset; endpoint is already refused on production (`:66,79`). | no |
+| `RESEND_WEBHOOK_SECRET` | V-Prod | `app/api/webhooks/resend/route.ts:32` | Re-create the endpoint in the clinic's Resend team; fails closed (503) while unset. | no |
+| `RESEND_INBOUND_SECRET` | V-Prod | `app/api/webhooks/chat-inbound/route.ts:49` | Re-create the inbound webhook; falls back to `RESEND_WEBHOOK_SECRET`. | no |
+| `STRIPE_WEBHOOK_SECRET` | V-Prod | `app/api/stripe/webhook/route.ts:27`; `lib/api-health.ts:135` | New endpoint / rolled secret in Stripe; delete the old endpoint. | no |
+| `YAY_WEBHOOK_SECRET` | V-Prod | `app/api/integrations/yay/route.ts:9,22`; `lib/api-health.ts:312` | Update the Auth Token in each yay.com hook. | no |
+| `INDEXNOW_KEY` | V-opt | `lib/indexnow.ts:12`; `app/indexnow-key.txt/route.ts:7` | None (served publicly). | no |
+| `GITHUB_APP_PRIVATE_KEY` | V-Prod | `lib/github-app.ts:29` | Also account-bound; regenerate after transfer. | no |
+| `SEED_ADMIN_PASSWORD`, `SEED_QA_PASSWORD`, `DEMO_PASSWORD` | should be absent from Vercel | `prisma/seed.mjs:10,27`; `scripts/seed-demo-users.mjs:32` | Confirm absent; deactivate `qa-*@kaulindustries.com` and demo `AdminUser` rows. | no |
+| `QA_ADMIN_EMAIL` / `QA_ADMIN_PASSWORD`, `QA_ACADEMY_LOGIN` / `QA_ACADEMY_PASSWORD` | CC | `scripts/visual-qa-admin.mjs:19-20`; `scripts/chat-audit.mjs:15-16`; CLAUDE.md | Deactivate or reset those accounts. | no |
+
+#### 4. CONFIG — non-secret
+
+| Variable | Set today | Read at | NP | Notes | DB |
+| --- | --- | --- | --- | --- | --- |
+| `NEXT_PUBLIC_SITE_URL` | V-Prod | 51 sites incl. `middleware.ts:133`, `lib/webauthn.ts:25` (passkey RP ID), `lib/tenant.ts:25` | **yes** | Must stay `https://kclinics.co.uk`; a host change invalidates every passkey and OAuth redirect. | no |
+| `NEXT_PUBLIC_BASE_URL` | V-opt (legacy alias) | `lib/academy-auth.ts:270`; `lib/academy-payments.ts:116`; `lib/forum.ts:144`; `lib/lms.ts:416,474`; `lib/notifications.ts:122` | **yes** | Leave unset unless set today. | no |
+| `NEXT_PUBLIC_CRM_ENABLED`, `CRM_ENABLED` | V-Prod (`true`); GHA sets `false` for Pages | `lib/crm.ts:13-14` | yes / no | | no |
+| `EMAIL_FROM`, `EMAIL_REPLY_TO` | V-Prod or DB | `lib/email.ts:98-99` | no | Defaults derive from the site host. | yes |
+| `CLINIC_NOTIFY_EMAIL`, `ACADEMY_NOTIFY_EMAIL`, `CAREERS_NOTIFY_EMAIL` | V-Prod / V-opt | `lib/booking-notify.ts:7`; `app/api/academy/apply/route.ts:97`; `app/api/careers/apply/route.ts:44` | no | Confirm Workspace mailboxes. | no |
+| `CHAT_INBOUND_DOMAIN`, `EMAIL_SEND_DOMAIN` | V-opt | `lib/chat-email.ts:32-33` | no | Defaults `reply.mail.<host>` / `mail.<host>`. | no |
+| `GOOGLE_REDIRECT_URI`, `GOOGLE_SSO_REDIRECT_URI`, `XERO_REDIRECT_URI`, `TRUELAYER_REDIRECT_URI` | V-Prod / V-opt | `lib/google-calendar.ts:28`; `lib/google-sso.ts:51`; `lib/xero.ts:24`; `lib/truelayer.ts:17` | no | Only `GOOGLE_REDIRECT_URI` is required; others default from the site URL. | no |
+| `GOOGLE_INTEGRATION_ENABLED`, `GOOGLE_SSO_ENABLED` | V-Prod | `lib/google-calendar.ts:37`; `lib/google-sso.ts:30` | no | Flags. | no |
+| `GOOGLE_SSO_ALLOWED_DOMAINS` | probably unset | `lib/google-sso.ts:37-41` | no | **Code default includes `kaulindustries.com`.** Set explicitly to `kclinics.co.uk` and change the default. | no |
+| `GOOGLE_PLACE_ID`, `GOOGLE_BUSINESS_ACCOUNT_ID`, `GOOGLE_BUSINESS_LOCATION_ID` | V-Prod / DB | `lib/google-business.ts:46-47,56` | no | Identifiers. | Place ID yes |
+| `GOOGLE_ADS_CUSTOMER_ID`, `GOOGLE_ADS_LOGIN_CUSTOMER_ID`, `GOOGLE_ADS_CONVERSION_ACTION_ID`, `GA4_PROPERTY_ID`, `SEARCH_CONSOLE_SITE`, `GOOGLE_WORKSPACE_ADMIN_EMAIL`, `GOOGLE_WORKSPACE_CUSTOMER_ID` | DB | `lib/ad-spend.ts`; `lib/google-ads-conversions.ts`; `lib/ga4-data.ts:17`; `lib/search-console.ts:23`; `lib/google-workspace.ts` | no | Travel with the DB; admin email must move off `webmaster@`. | yes |
+| `TWILIO_FROM` | DB / V-opt | `lib/secrets.ts:69` default `+447828877444` | no | | yes |
+| `YAY_AUTH_USER`, `YAY_API_BASE` | V-opt | `lib/yay.ts:12,224` | no | | no |
+| `GITHUB_REPO` | V-Prod | `lib/build-board.ts:758` | no | Becomes the new `owner/name` after transfer. | no |
+| `NEXT_PUBLIC_GA4_ID`, `NEXT_PUBLIC_GOOGLE_ADS_ID`, `NEXT_PUBLIC_META_PIXEL_ID` | V-opt | `lib/tracking.ts:40-42` (defaults `G-EC16PXFXN0`, `AW-17853644523`, `872329642090480` at `:26,37-38`) | **yes** | Confirm the properties are clinic-owned; defaults live in code. | no |
+| `NEXT_PUBLIC_WHATSAPP` | V-opt | `components/layout/WhatsAppButton.tsx:11` | **yes** | | no |
+| `GOOGLE_SITE_VERIFICATION`, `BING_SITE_VERIFICATION`, `YANDEX_VERIFICATION` | V-opt | `app/layout.tsx:47-49` | no | Tokens tied to the Search Console / Bing account owner; add Inna as owner before Joe leaves. | no |
+| `VAPID_SUBJECT` | V-opt | `lib/push.ts:14` (default `mailto:support@kclinics.co.uk`) | no | | no |
+| `SLOT_INTERVAL_MIN`, `AI_MONTHLY_CAP`, `AI_DISABLE_ESCALATION`, `COURSE_FINANCE_URL`, `CONSULT_BACKFILL_EMAILS` | V-opt | `lib/availability.ts:9`; `lib/ai-consultation.ts:18,130`; `app/(marketing)/academy/funding/page.tsx:30`; `lib/consult-notify-backfill.ts:52` | no | | no |
+| `DB_APPROVED_REGIONS` | probably unset | `app/api/cron/daily/route.ts:345` (default `eu-west-2`) | no | Nightly cron fails if the Neon host leaves the list. | no |
+| `USE_MIGRATIONS`, `DB_SYNC_NONFATAL`, `SEED_ON_BUILD`, `CSP_DISABLED`, `HEALTH_KEY_REENCRYPT`, `ACADEMY_RLS` | V-Prod (`USE_MIGRATIONS=true` expected); others unset | `scripts/db-sync.mjs:86,97`; `scripts/run-seeds.mjs:10`; `next.config.mjs:42`; `lib/key-rotation.ts:240`; `lib/db.ts:68` | no | Build/behaviour flags; copy `USE_MIGRATIONS` before the first production deploy. | no |
+
+#### 5. SYSTEM — provided by Vercel/Next or by the GitHub Actions workflow
+
+| Variable | Provided by | Read at |
+| --- | --- | --- |
+| `VERCEL`, `VERCEL_ENV`, `VERCEL_DEPLOYMENT_ID`, `VERCEL_GIT_COMMIT_SHA` | Vercel | `lib/db.ts:131,160`; `scripts/db-sync.mjs:114`; `app/api/health/route.ts:24-31`; `lib/build-board.ts:171`; `lib/platform-status.ts:174-175` |
+| `NODE_ENV`, `NEXT_RUNTIME`, `NEXT_PHASE` | Next.js | 33 / 3 / 2 sites (`lib/crypto.ts:50`, `instrumentation.ts:2,26,55`, `lib/db.ts:130`) |
+| `GHPAGES`, `PAGES_BASE_PATH` | `.github/workflows/deploy.yml:66-67` (manual Pages demo) | `next.config.mjs:5-6`; `scripts/db-sync.mjs:38` |
+| `NEXT_PUBLIC_BASE_PATH`, `NEXT_PUBLIC_STATIC_DEMO` (NP) | derived in `next.config.mjs:182` | `components/ui/BeforeAfter.tsx:7`; `lib/treatment-images.ts:18`; `lib/static-demo.ts:7` |
+| `GITHUB_TOKEN` (Actions) | `.github/workflows/security.yml:47` | Actions-provided; unrelated to the Vercel PAT of the same name |
+
+#### 6. TOOLING — Claude Code environment or local scripts only
+
+`BASE_URL`, `QA_TOKEN`, `QA_ADMIN_EMAIL`, `QA_ADMIN_PASSWORD`, `QA_ACADEMY_LOGIN`, `QA_ACADEMY_PASSWORD`, `QA_IGNORE_HTTPS_ERRORS`, `QA_BROWSER_DIRECT`, `QA_CHROMIUM_PATH`, `QA_DM_TO`, `QA_OUT`, `QA_SELFIE` (`scripts/visual-qa.mjs:28-68`, `scripts/visual-qa-admin.mjs:15-34`, `scripts/chat-audit.mjs:14-19`, `.claude/hooks/session-start.sh:105-127`); `DATABASE_URL` (read-only role) and `ANTHROPIC_API_KEY` in the same environment; `ADMIN_SHOTS_BASE/EMAIL/PASSWORD/OUT` (`scripts/admin-shots.mjs:13-16`); `SHOTS_DIR` (`scripts/brand/build-activation-guide.mjs:13`); `SEED_ADMIN_EMAIL/NAME` (`prisma/seed.mjs:9,11`); `SEED_QA_ROLES` (`prisma/seed.mjs:26`); `NEON_API_KEY`, `NEON_PROJECT_ID`; `HTTPS_PROXY`, `NODE_EXTRA_CA_CERTS`, `PLAYWRIGHT_BROWSERS_PATH`. None belong in Vercel. If the clinic keeps a Claude Code environment of its own it needs `BASE_URL`, a fresh `BOARD_QUEUE_TOKEN`/`QA_TOKEN`, fresh QA logins and a new read-only DB role; Joe's environment must lose all of them.
+
+#### 7. DEPRECATED / UNUSED
+
+| Variable | Where | Action |
+| --- | --- | --- |
+| `PRISMA_DATABASE_URL`, `ACCELERATE_URL` | `lib/db.ts:30-31`; `lib/platform-status.ts:34` | Prisma Accelerate path, not in production; never set. |
+| `ENCRYPTION_KEY` | `lib/kiosk.ts:84` | Legacy salt alias; confirm absent. |
+| `DEEPL_API_KEY`, `DEEPL_API_FREE` | `lib/secrets.ts:28` ("No longer used"); `.env.example:151-152` | Drop; clear any `ManagedSecret` row. |
+| `BOOKING_TIMEZONE` | `.env.example:81` only | No code reads it. |
+| `SENDER_EMAIL` | `docs/DEPLOY.md:80` only | Doc error; should read `EMAIL_REPLY_TO`. |
+| `WORDPRESS_API_URL` | `docs/INTEGRATIONS.md` only | Headless WordPress removed. |
+| `MIGRATE_TOKEN` | `app/api/build/migrate-wp/route.ts:48` | WP import complete; leave unset. |
+| `TYL_API_KEY`, `TYL_MERCHANT_ID` | `lib/terminal.ts:45` | Stub provider; never set. |
+| `HOSTINGER_CALDAV_*` | `lib/hostinger-calendar.ts:15-17` | Remove after the Workspace move. |
+| `GITHUB_TOKEN` (Vercel PAT) | `lib/build-board.ts:767` | Superseded by the GitHub App; remove and revoke. |
+| `CLAUDE_ROUTINE_FIRE_URL/_TOKEN` | `lib/build-board.ts:1112` | Joe's account; remove. |
+| `CONSULT_BACKFILL_EMAILS` | `lib/consult-notify-backfill.ts:52` | One-off backfill override. |
+
+#### Code-level identities that are not env vars but must change at handover
+
+- `lib/google-sso.ts:38` default allowed domains include `kaulindustries.com`.
+- `lib/tracking.ts:26,37-38` hard-coded GA4 / Google Ads / Meta Pixel IDs.
+- `lib/secrets.ts:69` default Twilio sender `+447828877444`; `lib/push.ts:14` default VAPID subject `support@kclinics.co.uk`.
+- `prisma/seed.mjs:30-33` QA users at `qa-*@kaulindustries.com` (only when `SEED_QA_ROLES=true`); check `AdminUser` for any `@kaulindustries.com` rows and deactivate.
+- `docs/DEPLOY.md:80` (`SENDER_EMAIL`) and `.env.example` (`BOOKING_TIMEZONE`, `DEEPL_*`) are stale.
+
+#### How to export the current values safely
+
+1. Joe, on his own machine, links the project and pulls production values into a local file: `vercel link` then `vercel env pull .env.handover --environment=production` (Preview separately if anything differs). This is the only complete source; the dashboard hides sensitive values once saved.
+2. Confirm the set of names against this catalogue with `vercel env ls production` and record any name that is present but not listed here, or listed here but absent.
+3. Hand the file over through a password-manager shared vault (1Password/Bitwarden) or a one-time, expiring secret link; never by email, WhatsApp, Google Doc or board comment. Split it: the DATA-BOUND block goes in its own item labelled "never rotate without the runbook".
+4. Inna (or whoever sets up the new Vercel project) enters DATA-BOUND and CONFIG values verbatim, ACCOUNT-BOUND values from the clinic's new provider accounts, and generates every ROTATE-AT-HANDOVER value fresh (`openssl rand -base64 32` for JWT/keys, `openssl rand -hex 24` for tokens). `NEXT_PUBLIC_*` and the Stripe pair must be present before the first build.
+5. After the new deployment is verified (`/api/health` with the new `CRON_SECRET`, Admin > Integrations all green, `node scripts/healthcheck.mjs`), Joe deletes `.env.handover`, the Vercel CLI link, and every local `.env` / `scripts/migrate-wp/.env`, then revokes his side: Neon read-only role and API key, GitHub PAT, Claude Routine, Anthropic key, Slack webhook, and removes the Claude Code environment variables.
+6. Keep an offline copy of the DATA-BOUND block (health keyring, VAPID pair, kiosk salt if set) in the clinic's vault as the backup the runbook requires; env vars are configuration, not a backup.
 
 ## Appendix E — External registrations to re-check at cutover
 
