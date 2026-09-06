@@ -154,18 +154,31 @@ payment method. *Recommended: Vercel Pro, one seat for Inna, plus one for Joe
 while he is still working on it (about $20 per seat per month).*
 
 **D4 — Database home.**
-Keep whatever model exists today. If the Neon project is *Vercel-managed* it
-should travel with the Vercel project; if it is *Neon-native* it is transferred
-between Neon organisations with its connection string unchanged. Only if a
-transfer is refused do we copy the data to a fresh Neon project (path C in
-7.5). *Recommended: keep the existing model; never copy data unless forced.*
+Keep whatever model exists today. If the Neon project is *Vercel-managed*
+(all the evidence says it is: it was created from Vercel's Storage tab and
+carries Vercel's `POSTGRES_*` variable set) it travels with the Vercel project
+and is billed on the clinic's Vercel invoice; if it is *Neon-native* it is
+transferred between Neon organisations with its connection string unchanged.
+Only if a transfer is refused do we copy the data to a fresh Neon project
+(path C in 7.5). Moving a Vercel-managed database into a Neon-native account
+is not self-serve (a Neon support ticket, or a copy), so decide now whether
+"Neon billed through Vercel" is acceptable. Also choose the restore window:
+7 days (Launch) or 30 days (Scale, dearer) — the repo's disaster-recovery
+target says 30 days. *Recommended: keep the existing model, Neon billed via
+Vercel; 7-day restore window plus weekly snapshots kept 90 days; never copy
+data unless forced.*
 
 **D5 — Joe's access after handover.**
 Either (a) remove Joe from everything, or (b) keep Joe as a least-privilege
-member (GitHub outside collaborator with write access behind branch
-protection; Vercel Member; no owner rights anywhere) for an agreed support
-period, revocable at any moment. *Recommended: (b) for 90 days, then review.*
-Either way every credential Joe has seen is rotated (section 10).
+member for an agreed support period, revocable at any moment: GitHub
+*outside collaborator* with write access behind branch protection; Vercel
+**Viewer** (free, read-only: logs, previews, comments) — Vercel Pro has only
+Owner, Member ($20 a month, can deploy and change settings on every project)
+and Viewer, so "developer on one project only" does not exist on Pro; while
+Joe still needs to deploy he must be a paid Member, and on a private
+repository only commits by team members deploy. No owner rights anywhere.
+*Recommended: (b) as Viewer for 90 days, then review.* Either way every
+credential Joe has seen is rotated (section 10).
 
 **D6 — The overnight build automation (Claude Code).**
 The Build board can wake an unattended Claude Code session that fixes queued
@@ -237,8 +250,13 @@ The order inside Phase 2 matters and is fixed:
       `CLAUDE_ROUTINE_FIRE_URL` in Vercel).
 - [ ] **4.3 Full database backup, three ways.**
       1. Neon: create a branch named `pre-handover-YYYY-MM-DD` from the
-         production branch (Neon console → Branches → Create branch). A branch is
-         a full point-in-time copy that can be restored or promoted.
+         production branch (Neon console → Branches → Create branch) **and** a
+         manual snapshot with the same name (Backup & restore → Create
+         snapshot). Both are instant. Note the project's restore-window
+         setting (Settings → Restore window): Launch allows up to 7 days,
+         Scale up to 30; the repo's own target in
+         `prisma/migrations/README.md` is 30 days, which needs Scale or an
+         amended target (decision D4).
       2. App export: sign in as OWNER at `/admin` **on kclinics.co.uk** (not a
          `*.vercel.app` URL — passkeys are bound to the domain), run Settings →
          Data export (`/api/admin/export`, passkey step-up required, so the
@@ -259,19 +277,44 @@ The order inside Phase 2 matters and is fixed:
 - [ ] **4.4 File-store inventory.** List every blob (`vercel blob list` or the SDK
       `list()` loop) into a CSV with pathname, size, uploadedAt. Keep it with the
       backups; it is the checklist for Appendix B if the store has to be copied.
-- [ ] **4.5 Environment export.** From a linked checkout: `vercel env pull
-      .env.production.local --environment=production` and the same for
-      `preview`. Also screenshot Vercel → Settings → Environment Variables (names
-      + scopes only). Put the pulled files straight into the shared password
-      manager vault (section 5.2) as a secure note, then delete the local copies.
-      **These files are the crown jewels: they contain the health-data
-      encryption keys.**
+- [ ] **4.5 Environment export.** From a linked checkout (`vercel link --scope
+      kaul-joe --project k-clinics`): `vercel env pull .env.handover.production
+      --environment=production` and the same for `preview`. Also screenshot
+      Vercel → Settings → Environment Variables (names + scopes only). **Any
+      variable marked "Sensitive" is write-only: it is excluded from `env
+      pull` and cannot be read back from the dashboard or API.** Check the
+      list for Sensitive rows; for each, either the value is already in the
+      vault (it must be, for the data-bound keys) or it is a rotate-class
+      secret you will regenerate anyway. A project transfer copies Sensitive
+      values across; this export is only for rollback and for the
+      new-project fallback. Put the pulled files straight into the shared
+      password manager vault (section 5.2) as a secure note, then delete the
+      local copies. **These files are the crown jewels: they contain the
+      health-data encryption keys.**
 - [ ] **4.6 Record the fixed identifiers** that must be reproduced or verified
       afterwards: Vercel project id `prj_KXAOC4uXaRNsYIiA8IwYGfiMYZUE`; the
       Neon project id, branch id and endpoint host; the Blob store id (the
       hostname prefix in any stored blob URL); the Upstash database name; the
       Sentry project slug and DSN; the Resend domain ids; the Stripe webhook
-      endpoint id; the GitHub App id and installation id.
+      endpoint id; the GitHub App id and installation id. Screenshot Vercel →
+      Settings → Domains, Deployment Protection, Cron Jobs, Functions, the
+      project's Firewall tab (custom rules), Storage (which Neon/Upstash/Blob
+      resources are connected and their variable names), Team → Integrations,
+      and Team → Settings → Drains/Webhooks. Read these once from the database
+      (any SQL client on the direct URL) and keep the output with the
+      backups:
+
+      ```sql
+      SELECT version();
+      SELECT pg_size_pretty(pg_database_size(current_database()));
+      SELECT extname, extversion FROM pg_extension;
+      SELECT rolname FROM pg_roles WHERE rolname NOT LIKE 'pg_%';
+      SELECT count(*) FROM pg_policies;
+      SELECT count(*), max(migration_name) FROM _prisma_migrations;  -- expect 72
+      SELECT (SELECT count(*) FROM "Client"), (SELECT count(*) FROM "Booking"),
+             (SELECT count(*) FROM "AdminUser"), (SELECT count(*) FROM "ManagedSecret"),
+             (SELECT count(*) FROM "MediaAsset");
+      ```
 - [ ] **4.7 Export the DNS zone and lower TTLs.** In Hostinger hPanel →
       Domains → `kclinics.co.uk` → DNS / Name Servers → DNS records: screenshot
       or export every record (there are Vercel, Resend, Workspace and
@@ -403,17 +446,28 @@ Member invitation.
    codes to the vault.
 3. Create the team: top-left scope switcher (your name) → **Create Team** →
    Team name `K-Clinics` → plan **Pro** → **Continue** → enter the clinic card
-   → **Confirm**. (Pro is required: a project can only be transferred into a
-   team with a payment method on file.)
-4. Billing details: team → **Settings** → **Billing** → add the company name
-   `KCLINICS SKIN & LASER LIMITED`, address and VAT/company number as shown.
+   → **Confirm**. (Pro is required: the site's every-5-minutes cron jobs and
+   300-second functions are not allowed on Hobby, and a project can only be
+   transferred into a team with a payment method on file. If Vercel offers a
+   free Pro *trial*, still add the card now: without it the team drops back
+   to Hobby after 14 days and the transfer can be refused.)
+4. Billing details: team → **Settings** → **Billing** → **Payment Method →
+   Add new card** if not already saved; add the company name `KCLINICS SKIN
+   & LASER LIMITED`, address and company number on the same page.
 5. Invite Joe temporarily: team → **Settings** → **Members** → **Invite** →
    `joe@kaulindustries.com` → role **Member** → **Send**. (Member, not Owner.)
-6. Note the team's slug (the word after `vercel.com/` when the team is
+6. Same page, **Collaboration** setting → choose **Manual Approval**, so
+   unknown Git committers are never auto-added as paid seats.
+7. Install the two storage integrations the site uses **yourself**, before
+   the transfer: team → **Integrations → Browse Marketplace** → **Neon** →
+   **Install** (choose "no resource for now" if asked); then the same for
+   **Upstash**. An integration belongs to the person who installed it and is
+   switched off if that person leaves the team — so it must be you, not Joe.
+8. Note the team's slug (the word after `vercel.com/` when the team is
    selected) and send it to Joe.
 
-Done when: the Pro team exists with the clinic card, and Joe has accepted the
-Member invitation.
+Done when: the Pro team exists with the clinic card, Neon and Upstash are
+installed under your name, and Joe has accepted the Member invitation.
 
 ### 5.5 Neon (only if decision D4 says the database is Neon-native)
 
@@ -659,11 +713,16 @@ invite; 7.1 complete; no deploy in flight; `vercel env pull` backups in the
 vault (4.5).
 
 1. Vercel (KAUL team) → project `k-clinics` → **Settings → General** → scroll to
-   **Transfer Project** → **Transfer** → choose the destination team
-   **K-Clinics** → confirm. Vercel moves the project with its domains
-   (`kclinics.co.uk`, `www`), environment variables, deployments, aliases,
-   cron configuration (from `vercel.json`) and any connected storage it can
-   move. **The live site is not interrupted**: the domain stays attached to the
+   the bottom → **Transfer Project** → **Transfer** → choose the destination
+   team **K-Clinics** → read the preview list of domains, aliases and
+   environment variables that will move → confirm. Vercel moves the project
+   with its domains (`kclinics.co.uk`, `www`, `k-clinics.vercel.app`),
+   environment variables (Sensitive ones included), deployments, aliases,
+   cron configuration (from `vercel.json`) and — for a Vercel-managed Neon
+   database — the Neon resource itself. The transfer takes between ten
+   seconds and ten minutes; no deploys or settings changes are possible
+   meanwhile; Joe and the new team's owners get an email when it finishes.
+   **The live site is not interrupted**: the domain stays attached to the
    same deployment; the DNS records at Hostinger need no change.
 2. In the **K-Clinics** team, open the project and check in this order:
    - **Settings → Domains**: `kclinics.co.uk` and `www.kclinics.co.uk` are
@@ -678,12 +737,17 @@ vault (4.5).
      `BLOB_READ_WRITE_TOKEN`) is still present; `USE_MIGRATIONS=true`,
      `NEXT_PUBLIC_SITE_URL=https://kclinics.co.uk` and the `HEALTH_*` /
      `VAPID_*` values are unchanged.
-   - **Storage**: which resources came across (Neon, Upstash, Blob). Anything
+   - **Storage**: which resources came across. Expected: the **Neon**
+     database (moves automatically with a Vercel-managed project, connection
+     strings unchanged); the **Blob store** does *not* move with the project
+     and has its own transfer (7.4); **Upstash** is not on Vercel's
+     resource-transfer list and is simply recreated (section 8). Anything
      missing is handled in 7.4/7.5 and section 8. (Through the API the accept
-     response lists `transferredStoreIds` and `resourceTransferErrors`; the
-     dashboard shows the same as connected/absent.)
-   - **Settings → Deployment Protection**: re-enable **Vercel Authentication**
-     for all deployments except custom domains (it was on before).
+     response lists `transferredStoreIds`, `resourceTransferErrors` and
+     `partnerCalls`; the dashboard shows the same as connected/absent.)
+   - **Settings → Deployment Protection**: re-enable **Vercel Authentication →
+     Standard Protection** (all preview and deployment URLs protected, custom
+     domains public — the state it was in before).
    - **Settings → Functions**: region London (`lhr1`); **Settings → General**:
      Node.js 24.x, framework Next.js.
    - **Settings → Cron Jobs**: five jobs listed (daily 08:00, dispatch every
@@ -693,16 +757,18 @@ vault (4.5).
      not always transfer).
    - **Settings → Notifications / Integrations**: Speed Insights and Web
      Analytics may need switching back on; historic analytics stays behind.
-3. Re-link Git: **Settings → Git** → if it shows "Disconnected" or still
-   `JoeKaulPulse/K-Clinics`, click **Disconnect**, then **Connect Git
-   Repository → GitHub** → when prompted, **install the Vercel GitHub App on
-   the `kclinics` organisation** (Inna may need to approve: GitHub org →
-   Settings → GitHub Apps → Pending requests) → choose `kclinics/k-clinics` →
-   Production Branch `main`.
-4. Trigger a deploy by pushing an empty-change commit to `main` is **not**
-   necessary; instead open the last production deployment → **Redeploy** (same
-   build, new team) and watch it finish. `scripts/db-sync.mjs` will report
-   "schema already in sync".
+3. Re-link Git. Inna first installs the Vercel GitHub App on the organisation:
+   https://github.com/apps/vercel/installations/new → choose `kclinics` →
+   **Only select repositories** → `k-clinics` → **Install** (an organisation
+   owner must do or approve this). Then Joe: Vercel → **Settings → Git** →
+   **Connected Git Repository → Disconnect** → **Connect → GitHub** → if the
+   repository is missing, **Configure GitHub App** and add it → choose
+   `kclinics/k-clinics` → **Production Branch** `main`; leave "Ignored Build
+   Step" empty.
+4. Do **not** push an empty commit; instead open the last production
+   deployment → **Redeploy** (same build, new team) and watch it finish.
+   `scripts/db-sync.mjs` will report "baseline 0_init already recorded" and
+   "migrations applied successfully" with nothing pending.
 
 Verify: https://kclinics.co.uk loads (check the commit hash via
 `/api/health` → `commit`); with `CRON_SECRET`, `/api/health` reports
@@ -712,20 +778,37 @@ Verify: https://kclinics.co.uk loads (check the commit hash via
 new repo gets a Preview deployment comment; **Deployments** shows the
 redeploy as Current.
 
-Rollback: transfer the project back to KAUL (same menu). Domains and env vars
-travel back. If the Git link is the only problem, the previous deployment keeps
-serving; nothing is down while it is fixed.
+Rollback: transfer the project back to KAUL (same menu; Joe must still be a
+Member of the new team and an Owner of KAUL). Domains and env vars travel
+back. If the Git link is the only problem, the previous deployment keeps
+serving; nothing is down while it is fixed. If Vercel ever refuses the
+transfer outright, the fallback is a new project in the new team with the
+domain moved by `vercel alias set <new-deployment-url> kclinics.co.uk` before
+it is removed from the old project (zero downtime) — Appendix G lists the
+docs; do not attempt it without Joe.
 
 ### 7.4 File store (Vercel Blob)
 
-- **If the Blob store came across** with the project (visible under Storage in
-  the new team and `BLOB_READ_WRITE_TOKEN` unchanged): nothing to do now.
-  Schedule BLD-1304 (private store) as a follow-up after handover.
-- **If it did not**: create a new store in the K-Clinics team
-  (**Storage → Create Database → Blob** → name `kclinics-media` → **Private**
-  access → region London) and run the copy + URL rewrite in **Appendix B**.
-  Until the copy is done the old store keeps serving existing URLs (do not
-  delete it), and uploads go to the new store once section 8 sets the new token.
+The Blob store is **not** part of a project transfer; Vercel moves stores
+separately. Immediately after 7.3, with the **KAUL** team selected: Vercel
+dashboard → **Storage** (sidebar) → open the `k-clinics` Blob store → use the
+transfer option to choose the destination **K-Clinics** team → you land on
+the new team's Storage page. The store id (and so every file URL held in the
+database) is unchanged, and `BLOB_READ_WRITE_TOKEN` already came across with
+the environment variables. Then: store → **Projects** tab → confirm
+`k-clinics` is connected for Production and Preview (else **Connect to
+Project**).
+
+- **If the store moved** (either automatically — check `transferredStoreIds`
+  — or via the step above): nothing else to do now. Schedule BLD-1304 (a
+  second, *private* store for kiosk and portfolio uploads, see Appendix B
+  "Decision: store topology") as a follow-up after handover.
+- **If it cannot be moved**: create the new store(s) in the K-Clinics team
+  (**Storage → Create Database → Blob** → name → access **Public** for the
+  general store and a second **Private** one → London region if offered) and
+  run the copy + URL rewrite in **Appendix B**. Until the copy is done the old
+  store keeps serving existing URLs (do not delete it), and uploads go to the
+  new store once section 8 sets the new token.
 
 Verify: upload an image in **Admin → Media** and it appears; open an existing
 academy homework file; kiosk upload once the store is private.
@@ -740,59 +823,130 @@ https://neon.com/docs/guides/neon-managed-vercel-integration
 
 First determine the path (Joe, five minutes):
 
-- Open Vercel → old team → **Storage**. If the Postgres resource is listed
-  there as a Marketplace/Neon resource → **Vercel-managed** → path A.
+- Open Vercel → old team → project → **Storage**. A Postgres resource with the
+  Neon logo, a plan/billing line and an **Open in Neon** button →
+  **Vercel-managed** → path A. (Other tells: the `POSTGRES_*` /
+  `DATABASE_URL*` variables carry an integration badge and cannot be edited
+  by hand; in the Neon console the project sits in an organisation named
+  `Vercel: KAUL` and its plan settings are greyed out with "managed in
+  Vercel".)
 - Otherwise open https://console.neon.tech, find the project holding the
-  `*.eu-west-2.aws.neon.tech` endpoint. If its organisation is named like
-  "Vercel: KAUL" → still Vercel-managed → path A. If it is under Joe's personal
-  account or a normal organisation → **Neon-native** → path B.
+  `*.eu-west-2.aws.neon.tech` endpoint. If it is under Joe's personal account
+  or a normal organisation → **Neon-native** → path B.
+- Either way, record from Neon → project → **Settings → General**: project
+  id, region (expect `aws-eu-west-2`), Postgres version, plan, restore window.
 
-**Path A — Vercel-managed.** The resource should have transferred in 7.3.
-Confirm in the new team: Storage shows the Neon resource, its **Settings**
-show billing on the K-Clinics team, and **Open in Neon** signs Inna into the
-Neon console for it. Connection strings are unchanged; nothing to deploy.
-Inna: from Vercel → Storage → the Neon resource → **Open in Neon**, then in
-Neon set up a second admin (your backup admin) so the console is never
-single-person.
-If the resource did **not** transfer (`resourceTransferErrors`), Vercel's
-Marketplace resource **Settings → Transfer** on the old team can move it to
-the K-Clinics team; if that is refused too, go to path C.
+**Path A — Vercel-managed (the likely case).** With the Neon integration
+already installed on the new team by Inna (5.4 step 7), the resource travels
+with the project transfer in 7.3. Confirm in the new team: Storage shows the
+Neon resource, its **Settings** show billing on the K-Clinics team, and
+**Open in Neon** signs Inna into the Neon organisation `Vercel: K-Clinics`.
+Connection strings are unchanged; nothing to deploy. Inna: from Vercel →
+Storage → the Neon resource → **Open in Neon**, then in Neon set up a second
+admin (your backup admin) so the console is never single-person. Joe: create
+a new `NEON_API_KEY` in that organisation for `scripts/safe-migrate.mjs`
+(`NEON_PROJECT_ID` is unchanged), then on the old team uninstall Neon once
+nothing else uses it (`vercel integration remove neon`).
+If the resource did **not** transfer (`resourceTransferErrors` names it),
+move it on its own: old team → Storage → the Neon resource → **Settings →
+Transfer a resource to another team** → destination `K-Clinics` (needs: the
+same person is Owner/Member on both teams; Neon installed on the
+destination; **every project disconnected from the resource first**). The
+disconnect removes the integration-owned variables from the project, so
+first add plain copies of the four `DATABASE_URL*`/`POSTGRES_*` values as
+ordinary env vars (the running deployment keeps its baked-in values either
+way), disconnect, transfer, reconnect (`vercel integration resource connect
+<name> k-clinics -e production -e preview`), redeploy, then delete the plain
+copies. It is not reversible. If that is refused too, go to path C.
+Note for decision D4: moving a Vercel-managed database into a Neon-native
+organisation is not self-serve — it is a Neon support ticket or a copy.
 
 **Path B — Neon-native.** Neon transfers projects between organisations with
-credentials and connection strings **unchanged** (nothing to redeploy). Neon
-console → the project → **Settings → General → Transfer project** → choose the
-destination organisation `K-Clinics` (Joe must be an Admin there, hence 5.5).
-The destination plan must be the same tier or higher. Neon lists the project
-under the new organisation within a minute. Note: Neon does not allow
-Vercel-managed organisations as source or destination, which is why the two
-paths are separate.
+credentials and connection strings **unchanged** (nothing to redeploy). First
+remove any project-level integrations (Neon project → **Integrations** →
+remove Vercel/GitHub if present; this does not touch the Vercel env vars).
+Then Neon console → the project → **Settings → Transfer** (sidebar) → choose
+the destination organisation `K-Clinics` (Joe must be an Admin in the source
+and a member able to create projects in the destination, hence 5.5) →
+confirm. The destination plan must be the same tier or higher. Neon lists
+the project under the new organisation within a minute. Alternative when
+Joe is not a member of Inna's organisation: Joe creates a transfer request
+(Neon API `POST /projects/{id}/transfer_requests`) and sends Inna the claim
+link it returns (valid 24 hours); she accepts it signed in as herself.
+Afterwards: Inna removes Joe (or downgrades him) under **People**; Joe
+creates a `NEON_API_KEY` in the new organisation for
+`scripts/safe-migrate.mjs`; Inna re-adds the Vercel integration from the
+Neon side if it was used. Note: Neon does not allow Vercel-managed
+organisations as source or destination, which is why the two paths are
+separate.
 
 **Path C — copy to a fresh Neon project (only if A and B both refuse).** This
 is the one path with a write freeze. Do it in the evening:
 
+0. Rehearse first: create a Neon branch of production, `pg_dump` it and
+   `pg_restore` into a scratch project, and time it. The window below assumes
+   a few-GB database (single-digit minutes for the copy; budget 45–60
+   minutes including checks). Install the PostgreSQL client tools matching
+   the source major version (`pg_dump --version`). Always use the **direct**
+   (non-`-pooler`) URLs; never `pg_dumpall` or `pg_dump -C` (unsupported on
+   Neon).
 1. In the K-Clinics Neon organisation create project `kclinics` in region
-   **AWS eu-west-2 (London)** (the nightly region guard `DB_APPROVED_REGIONS`
-   and the data-protection register both require London), Postgres 17 (match
-   the current major version from `SELECT version()`).
-2. Enable the extension: `CREATE EXTENSION IF NOT EXISTS pg_trgm;`.
-3. Put the app in maintenance for writes: in Vercel set `DB_SYNC_NONFATAL`
-   aside and pause the crons (Settings → Cron Jobs → disable), then announce a
-   15-minute booking pause to staff.
-4. Fresh dump from the *unpooled* URL, then restore into the new project:
-   `pg_dump "$OLD_DATABASE_URL_UNPOOLED" -Fc --no-owner --no-privileges -f
-   final.dump` and `pg_restore --no-owner --no-privileges -d
-   "$NEW_DATABASE_URL_UNPOOLED" final.dump`. The `_prisma_migrations` table
-   comes with the dump, so `prisma migrate status` shows every migration
-   applied and `scripts/db-sync.mjs` will find nothing to do.
-5. In Vercel (new team) replace `DATABASE_URL`, `DATABASE_URL_UNPOOLED`,
-   `POSTGRES_PRISMA_URL` (pooler host, keep `?pgbouncer=true` if present) and
-   `POSTGRES_URL_NON_POOLING` for Production and Preview with the new project's
-   strings → **Redeploy**. Re-enable the crons.
-6. Verify with the read-only role: row counts of `Client`, `Booking`,
-   `AdminUser`, `ManagedSecret`, `MediaAsset` match the old database;
-   `/api/health` (with `CRON_SECRET`) returns `database: connected` and every
-   probe `ok`.
-7. Keep the old project untouched for 30 days.
+   **AWS Europe (London), `aws-eu-west-2`** (the nightly region guard
+   `DB_APPROVED_REGIONS` and the data-protection register both require
+   London; the region cannot be changed later), the **same Postgres major
+   version** as today (from `SELECT version()` in 4.6), database `neondb`,
+   default role `neondb_owner`. Set the restore window (D4) and mark the
+   production branch **Protected**. Copy the pooled and direct connection
+   strings from the **Connect** dialog.
+2. On the new database run `CREATE EXTENSION IF NOT EXISTS pg_trgm;` (the
+   default role can, being a `neon_superuser` member) so the trigram indexes
+   restore without an ordering error.
+3. Freeze writes, out of hours (after the 03:30 kiosk-cleanup cron, before
+   the 08:00 daily run): announce a short booking pause to staff and pause
+   the crons (Settings → Cron Jobs → disable). Vercel has no maintenance
+   switch; if a longer window is needed, point the old project's
+   `DATABASE_URL`/`POSTGRES_PRISMA_URL` at the `pre-handover` **branch** and
+   redeploy, so the site keeps reading while any stray write lands on a
+   branch that will be discarded.
+4. Fresh dump and restore:
+
+   ```
+   pg_dump "$OLD_DIRECT_URL" -Fc -v --no-owner --no-privileges -f final.dump
+   pg_restore -v --no-owner --no-privileges -j 4 -d "$NEW_DIRECT_URL" final.dump
+   ```
+
+   Ignore only "already exists" errors for the extension. `pg_dump` carries
+   the `_prisma_migrations` history (72 rows), ids and sequences, so
+   `prisma migrate status` shows every migration applied and
+   `scripts/db-sync.mjs` will find nothing to do. It does **not** carry
+   roles: recreate any extra roles found in 4.6 (for example the read-only
+   role the Claude environment used) in Neon → Roles, and re-grant.
+5. Verify on the new database: the row counts from 4.6 match;
+   `SELECT count(*) FROM _prisma_migrations` equals the old count;
+   `SELECT extname FROM pg_extension` includes `pg_trgm`; from a laptop
+   `DATABASE_URL="$NEW_DIRECT_URL" npx prisma migrate status` says "up to
+   date" and `npx prisma migrate diff --from-config-datasource --to-schema
+   prisma/schema.prisma --exit-code` exits 0.
+6. In Vercel (new team): if the old Neon resource is Marketplace-connected,
+   **Storage → resource → Disconnect** from `k-clinics` first (it removes the
+   integration-owned variables); then **Settings → Environment Variables**
+   set, for **Production and Preview together** (previews share the
+   database), `DATABASE_URL` and `POSTGRES_PRISMA_URL` = new pooled string,
+   `DATABASE_URL_UNPOOLED` and `POSTGRES_URL_NON_POOLING` = new direct
+   string, marked Sensitive. Leave `USE_MIGRATIONS`, `HEALTH_*` and
+   `CRON_SECRET` untouched → **Redeploy** → watch the build log for
+   "baseline 0_init already recorded — skipping adoption" and "migrations
+   applied successfully". Re-enable the crons; unfreeze.
+7. Verify live: `/api/health` (with `CRON_SECRET`) returns `database:
+   connected` and every probe `ok`; sign in and open a client record (it
+   decrypts); create and cancel a test booking; `/admin/api-health`
+   Database green; next morning's daily cron raises no region alert.
+8. Update `NEON_PROJECT_ID`/`NEON_API_KEY` wherever safe-migrate runs, the
+   read-only `DATABASE_URL` in any Claude environment, and the Neon row in
+   `docs/data-protection/processors.md` (date, same region). Keep the old
+   project untouched for 30 days, then delete it; keep `final.dump`
+   encrypted for the retention period and then destroy it (it holds
+   special-category data).
 
 Verify (all paths): `/api/health` green; `/admin/api-health` **Database**
 green; the nightly cron does not raise a region alert; Inna can open the Neon
@@ -804,16 +958,28 @@ step 3 freezes writes).
 
 ### 7.6 Prisma Console clean-up (Joe)
 
-1. Sign in at https://console.prisma.io with the account used in 2026 for
-   Prisma Postgres/Accelerate. List every workspace, project and database.
-2. For anything named for K-Clinics: confirm the live app does not use it
-   (`PRISMA_DATABASE_URL` and `ACCELERATE_URL` are absent in Vercel — see
-   `lib/db.ts`), take a final export if it holds any data, then either
-   **transfer the project** to a workspace Inna creates (Prisma's Management
-   API and Console support project transfer) or **delete it** (Project →
-   Settings → Delete). Recommended: delete; the runtime does not depend on it.
-3. Remove any Prisma-issued env vars that are still present in Vercel but
-   unused (`ACCELERATE_URL`, `PRISMA_DATABASE_URL`) so nobody is misled later.
+1. Confirm the runtime does not use it: Vercel → Settings → Environment
+   Variables → search `PRISMA_DATABASE_URL`, `ACCELERATE_URL` and
+   `prisma+postgres` in every environment — none should exist; delete any
+   leftovers. `/admin` platform status should read "Direct postgres://".
+2. Sign in at https://console.prisma.io with every login Joe used
+   (GitHub, Google, email). From a terminal: `npx prisma platform auth
+   login`, `npx prisma platform workspace show`, then `npx prisma platform
+   project show --workspace <id>` for each workspace. List every project and
+   database.
+3. For anything that held K-Clinics data (a Prisma Postgres database from
+   the earlier set-up): it may contain an **old copy of clinic data**. Either
+   delete it (Console → project → Settings → Delete, or `npx prisma platform
+   project delete`) and record the deletion date in the data-protection
+   records, or, only if the clinic wants to keep it, transfer it — there is
+   no transfer button; the Management API `POST
+   https://api.prisma.io/v1/projects/{id}/transfer` (token scoped to Inna's
+   workspace) or the manual route (invite Inna as workspace Admin, she
+   removes Joe). Recommended: delete.
+4. Cancel any paid Accelerate / Prisma Postgres plan on the workspace
+   (Workspace → Billing) so nothing bills Joe's card.
+5. Optional code clean-up later: drop `@prisma/extension-accelerate` and the
+   dormant Accelerate branch in `lib/db.ts`.
 
 Verify: `lib/platform-status.ts` shows the direct/pooled Neon path, no Prisma
 Accelerate; no billing line from Prisma remains on Joe's card.
@@ -1205,7 +1371,7 @@ current value is hex). Change the value in Vercel, redeploy, then tick.
 | Where | Action (D5-a remove / D5-b downgrade) |
 | --- | --- |
 | GitHub org | People → Joe → Remove, **or** convert to **Outside collaborator** with *Write* on `k-clinics` only |
-| Vercel team | Settings → Members → Joe → Remove, **or** keep **Member** |
+| Vercel team | Settings → Members → Joe's row → **…** → change role to **Viewer** (free, read-only) **or Remove from Team**. First check Team → Integrations → Manage shows *Inna* as the installer of Neon and Upstash (an integration installed by someone who leaves is switched off). Afterwards regenerate the Protection Bypass for Automation secret (Settings → Deployment Protection) if one exists; Joe revokes any personal Vercel access tokens scoped to the team (Account Settings → Tokens) |
 | Neon org | People → Joe → Remove or Member |
 | Resend, Sentry, Anthropic, Twilio, Deepgram, Cloudflare | Team/Members → Joe → Remove or lowest role |
 | Stripe | Team → Joe → Remove (or Developer, view-only) |
@@ -1294,8 +1460,8 @@ known-good state from the backups in section 4.3 with Joe on a call.
 
 | Service | Plan | Approx. cost | Confirm at |
 | --- | --- | --- | --- |
-| Vercel | Pro, 1–2 seats + usage | $20 per seat + usage | vercel.com/pricing |
-| Neon | Launch (or the tier the project is on today) | ~$5–25 + usage | neon.com/pricing |
+| Vercel | Pro: $20 per Owner/Member seat; Viewer seats free; $20 monthly usage credit, 1 TB transfer included | $20 (Inna) + $20 while Joe is a Member | vercel.com/pricing |
+| Neon | Launch (pay-as-you-go, no minimum: about $0.11 per compute-hour, $0.35 per GB-month, 7-day restore) — Scale (about $0.22 per compute-hour, 30-day restore) only if D4 keeps the 30-day target; billed on the Vercel invoice when Vercel-managed | ~£10–40 | neon.com/pricing |
 | GitHub | Free, or Team if private with branch protection | $0 or ~$4 per user | github.com/pricing |
 | Resend | Pro | ~$20 | resend.com/pricing |
 | Sentry | Developer (free) or Team | $0–26 | sentry.io/pricing |
