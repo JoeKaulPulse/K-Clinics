@@ -1774,8 +1774,31 @@ model HealthAssessment {
   // Snapshot of who/what the assessment was for (e.g. an upcoming booking).
   bookingId   String?
 
+  translation HealthAssessmentTranslation?
+
   @@index([clientId, type])
   @@index([submittedAt])
+}
+
+// BLD-1658: cache for the machine translation shown to staff, so a clinician
+// re-opening the same assessment doesn't re-send special-category free-text
+// answers to Google Translate on every view. Kept in its own table (rather
+// than a column on HealthAssessment) because that record is append-only and
+// never updated once submitted — this cache is a display-layer optimisation,
+// not part of the clinical record, and is safe to overwrite/regenerate.
+// Encrypted the same way as the source answers (BLD-1658 audit note: staff
+// are told answers are "seen only by your care team" — a plaintext cache of
+// the same free text would undermine that as much as the uncached re-send did).
+model HealthAssessmentTranslation {
+  assessmentId  String           @id
+  assessment    HealthAssessment @relation(fields: [assessmentId], references: [id], onDelete: Cascade)
+  // Hash of the exact source free-text values this translation covers; a
+  // mismatch (e.g. the admin-managed question set changed) invalidates the
+  // cache and triggers a fresh translation rather than showing stale text.
+  sourceHash    String
+  cipher        String
+  integrityHash String
+  createdAt     DateTime         @default(now())
 }
 
 // ── First-visit discount ledger (abuse guardrail) ───────────────────────────
