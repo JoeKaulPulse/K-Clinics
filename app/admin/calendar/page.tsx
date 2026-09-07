@@ -103,10 +103,10 @@ export default async function CalendarPage({ searchParams }: { searchParams: Pro
       <div className="relative flex flex-wrap items-center justify-between gap-4">
         <h1 className="font-[family-name:var(--font-display)] text-3xl">{t(locale, 'nav.calendar')}</h1>
         <div className="flex items-center gap-2 text-sm">
-          <Link href={`/admin/calendar?date=${iso(prev)}`} className="rounded-full border border-[var(--color-line)] px-3 py-1.5 transition-colors duration-150 hover:bg-[var(--color-bone)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-gold)]" aria-label="Previous day">←</Link>
+          <Link href={`/admin/calendar?date=${iso(prev)}`} className="rounded-full border border-[var(--color-line)] px-3 py-1.5 transition-colors duration-150 hover:bg-[var(--color-bone)]" aria-label="Previous day">←</Link>
           <span className="min-w-44 text-center font-medium">{day.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' })}</span>
-          <Link href={`/admin/calendar?date=${iso(next)}`} className="rounded-full border border-[var(--color-line)] px-3 py-1.5 transition-colors duration-150 hover:bg-[var(--color-bone)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-gold)]" aria-label="Next day">→</Link>
-          <Link href="/admin/calendar" className="ml-2 rounded-full bg-[var(--color-ink)] px-3 py-1.5 text-[var(--color-porcelain)] transition-colors duration-150 hover:bg-[var(--color-ink-soft)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-gold)]">Today</Link>
+          <Link href={`/admin/calendar?date=${iso(next)}`} className="rounded-full border border-[var(--color-line)] px-3 py-1.5 transition-colors duration-150 hover:bg-[var(--color-bone)]" aria-label="Next day">→</Link>
+          <Link href="/admin/calendar" className="ml-2 rounded-full bg-[var(--color-ink)] px-3 py-1.5 text-[var(--color-porcelain)] transition-colors duration-150 hover:bg-[var(--color-ink-soft)]">Today</Link>
           {canManageSchedule && clinicians.length > 0 && <CalendarBlockButton clinicians={columns.filter((c) => c.id).map((c) => ({ id: c.id as string, name: c.name }))} dateISO={iso(dayStart)} />}
           {canManageSchedule && <CalendarClosureButton dateISO={iso(dayStart)} closure={closure} />}
         </div>
