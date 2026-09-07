@@ -196,6 +196,19 @@ export function integrityHash(cipher: string, parts: Record<string, string | num
   return hmacWith(hmacRing()[0].key, cipher, parts);
 }
 
+/** Keyed (HMAC) digest of a PLAINTEXT value, for use as a lookup/cache key.
+ *  A bare SHA-256 of low-entropy special-category text (e.g. a health-form
+ *  free-text answer) stored next to the ciphertext is a brute-force oracle for
+ *  anyone holding the database but not the keys — the exact reader this
+ *  app-level encryption exists to stop, and one we deliberately create when a
+ *  read-only DB role is handed out for a data audit. Keying the digest closes
+ *  that. Uses the ACTIVE HMAC key only: rotating HEALTH_HMAC_KEY changes the
+ *  digest, which invalidates derived caches (they regenerate on next use)
+ *  rather than corrupting anything. */
+export function keyedHash(scope: string, value: string): string {
+  return crypto.createHmac('sha256', hmacRing()[0].key).update(`${scope}|${value}`).digest('hex');
+}
+
 /** Verify against any key in the HMAC ring (so old hashes survive rotation). */
 export function verifyIntegrity(cipher: string, parts: Record<string, string | number>, expected: string): boolean {
   const b = Buffer.from(expected);

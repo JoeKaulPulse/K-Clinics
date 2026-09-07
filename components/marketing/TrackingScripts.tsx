@@ -13,12 +13,22 @@ const safe = (s: string) => s.replace(/[^A-Za-z0-9_-]/g, '');
 // BLD-1051/BLD-1655: these route trees carry bearer credentials in the URL path
 // or query string — /booking/manage?t= and /booking/card?t= are both
 // Booking.manageToken (the card page also mints a Stripe SetupIntent from it),
-// /booking/pay?pi= carries the PaymentIntent reference, /sign/[token] is a
-// single-use clinical consent-signing token, and /live/[token] reuses the same
-// Booking.manageToken. GA4/Meta's automatic pageview reports the full URL
-// (path + query), so every one of these is excluded, matching BehaviorRecorder's
-// existing exclusion. Note: /book (the acquisition funnel) is deliberately NOT
-// excluded — it carries no credential and is where trackPurchase fires.
+// /booking/pay?pi= carries the PaymentIntent reference, and /sign, /live,
+// /follow-up, /review and /nps are each a bare /[token] route (a single-use
+// consent-signing token, or a Booking.manageToken). GA4/Meta's automatic
+// pageview reports the full URL (path + query), so every one of these is
+// excluded, matching BehaviorRecorder's existing exclusion. Note: /book (the
+// acquisition funnel) is deliberately NOT excluded — it carries no credential
+// and is where trackPurchase fires; /reviews (the public page) is likewise not
+// matched, the `(\/|$)` boundary stops /review swallowing it.
+//
+// Scope note: only /booking sits inside app/(marketing), which is the layout
+// that renders this component — the five [token] trees live at app/ root, so
+// today they never mount TrackingScripts at all and their entries here are
+// defence-in-depth for the day one of them moves into the marketing group.
+// Neither this guard nor that fact stops GA4 enhanced measurement, which reports
+// history changes from an already-loaded gtag.js; it only prevents the pixels
+// being loaded by these pages.
 const NO_TRACK_PATH = /^\/(booking|sign|live|follow-up|review|nps)(\/|$)/;
 
 export function TrackingScripts({ ga4Id, googleAdsId, metaPixelId }: { ga4Id: string; googleAdsId: string; metaPixelId: string }) {
