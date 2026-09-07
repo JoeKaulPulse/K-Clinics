@@ -83,7 +83,7 @@ export function RoomAvailabilityBoard({
                         onClick={() => onSet?.(room.id, s)}
                         aria-pressed={on}
                         disabled={busyId === room.id}
-                        className={`rounded-full px-2.5 py-1 text-xs font-medium transition-colors disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-gold)] ${
+                        className={`rounded-full px-2.5 py-1 text-xs font-medium transition-colors disabled:opacity-50 ${
                           on ? 'bg-[var(--color-ink)] text-[var(--color-porcelain)]' : 'text-[var(--color-stone)] hover:text-[var(--color-ink)]'
                         }`}
                       >
@@ -99,7 +99,7 @@ export function RoomAvailabilityBoard({
                     onClick={() => onOccupy?.(room.id, true)}
                     aria-pressed={room.occupiedManual}
                     disabled={busyId === room.id}
-                    className={`rounded-full px-2.5 py-1 text-xs font-medium transition-colors disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-gold)] ${
+                    className={`rounded-full px-2.5 py-1 text-xs font-medium transition-colors disabled:opacity-50 ${
                       room.occupiedManual ? 'bg-[var(--color-blush-deep)] text-white' : 'text-[var(--color-stone)] hover:text-[var(--color-ink)]'
                     }`}
                   >
@@ -110,7 +110,7 @@ export function RoomAvailabilityBoard({
                     onClick={() => onOccupy?.(room.id, false)}
                     aria-pressed={!room.occupiedManual}
                     disabled={busyId === room.id}
-                    className={`rounded-full px-2.5 py-1 text-xs font-medium transition-colors disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-gold)] ${
+                    className={`rounded-full px-2.5 py-1 text-xs font-medium transition-colors disabled:opacity-50 ${
                       !room.occupiedManual ? 'bg-[var(--color-ink)] text-[var(--color-porcelain)]' : 'text-[var(--color-stone)] hover:text-[var(--color-ink)]'
                     }`}
                   >

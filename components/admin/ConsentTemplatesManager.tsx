@@ -17,7 +17,7 @@ export function ConsentTemplatesManager({ rows, services, groups }: { rows: Temp
   return (
     <div className="space-y-5">
       <div className="flex justify-end">
-        <button onClick={() => setCreating((v) => !v)} className="inline-flex items-center gap-2 rounded-full bg-[var(--color-ink)] px-4 py-2 text-sm font-medium text-[var(--color-porcelain)] transition-colors hover:bg-[var(--color-espresso)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-gold)]">
+        <button onClick={() => setCreating((v) => !v)} className="inline-flex items-center gap-2 rounded-full bg-[var(--color-ink)] px-4 py-2 text-sm font-medium text-[var(--color-porcelain)] transition-colors hover:bg-[var(--color-espresso)]">
           <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" aria-hidden><path d="M8 3v10M3 8h10" /></svg>
           New consent form
         </button>

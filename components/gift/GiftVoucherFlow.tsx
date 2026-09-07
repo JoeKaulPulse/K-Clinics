@@ -137,7 +137,7 @@ export function GiftVoucherFlow({ physicalEnabled = false, physicalFeePence = 0,
             </div>
 
             {/* Right — live preview + design picker (sticky on desktop) */}
-            <div className="self-start lg:sticky lg:top-6">
+            <div className="self-start lg:sticky lg:top-28">
               <GiftCardPreview designId={f.design} amountPence={amountPence || 0} recipientName={f.recipientName} message={f.message} purchaserName={f.purchaserName} />
               <p className={`${label} mt-4`}>Card design</p>
               <div className="flex flex-wrap gap-2">
