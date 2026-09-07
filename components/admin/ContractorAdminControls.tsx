@@ -86,7 +86,7 @@ export function ContractorNote({ id, note }: { id: string; note: string | null }
         onChange={(e) => { setValue(e.target.value); setSaved(false); }}
         placeholder="Add a note…"
         aria-label="Add a note"
-        className="w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-porcelain)] px-2 py-1 text-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-gold)]"
+        className="w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-porcelain)] px-2 py-1 text-xs"
       />
       <button type="button" disabled={pending || !dirty} onClick={save}
         className={`${btn} shrink-0 border border-[var(--color-line)] bg-[var(--color-bone)]/60 text-[var(--color-ink)]`}>

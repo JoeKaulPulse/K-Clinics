@@ -52,7 +52,7 @@ export function EditClientDetails({ client }: { client: EditableClient }) {
 
   if (!open) {
     return (
-      <button onClick={() => setOpen(true)} className="inline-flex items-center gap-2 rounded-full border border-[var(--color-line)] px-4 py-2 text-sm font-medium hover:bg-[var(--color-bone)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-gold)]">
+      <button onClick={() => setOpen(true)} className="inline-flex items-center gap-2 rounded-full border border-[var(--color-line)] px-4 py-2 text-sm font-medium hover:bg-[var(--color-bone)]">
         <svg width="14" height="14" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden><path d="M4 13.5 13 4.5l2.5 2.5L6.5 16H4z" /><path d="M11.5 6 14 8.5" /></svg>
         Edit details
       </button>

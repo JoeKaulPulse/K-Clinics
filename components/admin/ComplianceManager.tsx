@@ -10,7 +10,7 @@ type Row = {
   lastRenewedAt: string | null; status: RenewalStatus; days: number;
 };
 
-const field = 'w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-gold)]';
+const field = 'w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-3 py-2 text-sm';
 const label = 'mb-1 block text-xs font-medium text-[var(--color-stone)]';
 const money = (p: number | null) => (p == null ? '' : `£${(p / 100).toLocaleString('en-GB', { maximumFractionDigits: 0 })}`);
 const fmtDate = (iso: string) => new Date(iso).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });

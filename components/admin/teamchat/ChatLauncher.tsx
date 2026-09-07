@@ -40,7 +40,7 @@ export function ChatLauncher() {
       <button
         onClick={() => setOpen((o) => !o)}
         aria-label="Team chat" aria-haspopup="menu" aria-expanded={open}
-        className="relative flex h-10 w-10 items-center justify-center rounded-full text-[var(--color-ink)] transition-colors hover:bg-[var(--color-bone)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-gold)]"
+        className="relative flex h-10 w-10 items-center justify-center rounded-full text-[var(--color-ink)] transition-colors hover:bg-[var(--color-bone)]"
         title="Team chat"
       >
         <svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden>

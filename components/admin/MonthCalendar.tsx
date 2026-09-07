@@ -62,9 +62,9 @@ export function MonthCalendar({
   return (
     <div className="rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-4">
       <div className="flex items-center justify-between gap-2">
-        <Link href={`${basePath}?date=${selectedISO}&month=${prevMonth}`} aria-label="Previous month" className="grid h-7 w-7 place-items-center rounded-full border border-[var(--color-line)] text-sm transition-colors hover:bg-[var(--color-bone)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-gold)]">←</Link>
+        <Link href={`${basePath}?date=${selectedISO}&month=${prevMonth}`} aria-label="Previous month" className="grid h-7 w-7 place-items-center rounded-full border border-[var(--color-line)] text-sm transition-colors hover:bg-[var(--color-bone)]">←</Link>
         <span className="text-sm font-medium">{monthLabel}</span>
-        <Link href={`${basePath}?date=${selectedISO}&month=${nextMonth}`} aria-label="Next month" className="grid h-7 w-7 place-items-center rounded-full border border-[var(--color-line)] text-sm transition-colors hover:bg-[var(--color-bone)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-gold)]">→</Link>
+        <Link href={`${basePath}?date=${selectedISO}&month=${nextMonth}`} aria-label="Next month" className="grid h-7 w-7 place-items-center rounded-full border border-[var(--color-line)] text-sm transition-colors hover:bg-[var(--color-bone)]">→</Link>
       </div>
       <div className="mt-3 grid grid-cols-7 gap-1 text-center text-[0.65rem] text-[var(--color-stone)]">
         {MONTH_WEEKDAYS.map((w, i) => <span key={i}>{w}</span>)}
@@ -84,7 +84,7 @@ export function MonthCalendar({
               title={hasBookings ? `${count} booking${count > 1 ? 's' : ''} — open ${dISO}` : `Open ${dISO}`}
               aria-current={isSelected ? 'date' : undefined}
               className={[
-                'relative grid aspect-square place-items-center rounded-full text-xs tabular-nums transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-gold)]',
+                'relative grid aspect-square place-items-center rounded-full text-xs tabular-nums transition-colors',
                 hasBookings
                   ? 'bg-[var(--color-blush-deep)] font-medium text-[var(--color-porcelain)] hover:bg-[color-mix(in_oklab,var(--color-blush-deep)_82%,var(--color-ink))]'
                   : 'hover:bg-[var(--color-bone)]',

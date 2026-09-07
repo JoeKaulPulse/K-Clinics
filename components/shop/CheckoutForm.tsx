@@ -163,7 +163,7 @@ function PayStep({ orderId, onDone }: { orderId: string; onDone: (no: string, va
 function Summary({ items, subtotalPence, shipping, estTotal }: { items: { productId: string; name: string; qty: number; pricePence: number }[]; subtotalPence: number; shipping: number; estTotal: number }) {
   const list = useMemo(() => items, [items]);
   return (
-    <div className="lg:sticky lg:top-4 lg:self-start rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-6">
+    <div className="lg:sticky lg:top-28 lg:self-start rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-6">
       <h2 className="mb-3 font-[family-name:var(--font-display)] text-lg">Summary</h2>
       <ul className="space-y-2 text-sm">
         {list.map((i) => <li key={i.productId} className="flex justify-between"><span className="text-[var(--color-stone)]">{i.name} × {i.qty}</span><span>{money(i.pricePence * i.qty)}</span></li>)}
