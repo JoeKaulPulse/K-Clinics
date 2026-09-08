@@ -155,7 +155,7 @@ export function GiftVoucherFlow({ physicalEnabled = false, physicalFeePence = 0,
           <h3 className="font-[family-name:var(--font-display)] text-2xl">Pay {money(amountPence)}</h3>
           <p className="mt-1 text-sm text-[var(--color-stone)]">Your card is charged now for the voucher value.</p>
           <div className="mt-5">
-            <Elements stripe={getStripe()} options={{ clientSecret, appearance: { theme: 'flat', variables: { colorPrimary: '#a98a6d', fontFamily: 'system-ui, sans-serif', borderRadius: '10px', colorBackground: '#f6ece3' } } }}>
+            <Elements stripe={getStripe()} options={{ clientSecret, appearance: { theme: 'flat', variables: { colorPrimary: '#816748', fontFamily: 'system-ui, sans-serif', borderRadius: '10px', colorBackground: '#f6ece3' } } }}>
               <PayStep voucherId={voucherId} clientSecret={clientSecret} onDone={(c) => { trackPurchase({ valuePence: amountPence, eventId: voucherId, metaPurchase: true }); setCode(c); setStage('done'); }} onError={setError} />
             </Elements>
           </div>
