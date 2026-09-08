@@ -195,7 +195,7 @@ export const SETTING_META: Record<SettingKey, { label: string; description: stri
   },
   referral_ask_email: {
     label: 'Referral-ask emails',
-    description: 'Email a client 5-10 days after a completed visit, inviting them to share their existing referral link (Account → Rewards). Sent once per booking — never repeated for the same visit. Off by default.',
+    description: 'Email a client 5-10 days after a completed visit, inviting them to share their existing referral link (Account → Rewards). Asked once per visit, and no more than once every 90 days per client — so someone on a course of weekly sessions is not asked every week. Off by default.',
   },
 };
 

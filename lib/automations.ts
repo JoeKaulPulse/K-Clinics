@@ -821,14 +821,29 @@ async function laserHairRemovalPrep(t: Tally) {
 // falls inside that window or how many times the cron runs in a day.
 const REFERRAL_ASK_MIN_DAYS = 5;
 const REFERRAL_ASK_MAX_DAYS = 10;
+// Per-CLIENT cooldown, on top of the per-booking dedup below. The dedup alone
+// only stops the same visit being asked twice; it says nothing about how often
+// a person is asked. A course client is the normal case here, not an edge one --
+// laser hair removal runs 6-8 sessions, often weekly -- and each completed
+// session is a different bookingId, so without this they would get "Know someone
+// who'd love KClinics?" every single week for the length of their course. Ask
+// each client at most once a quarter, in the same spirit as the 30-day tier
+// nudge and 120-day membership renewal dedups above.
+const REFERRAL_ASK_CLIENT_COOLDOWN_DAYS = 90;
 async function referralAsk(t: Tally) {
   try {
     const { getSetting } = await import('@/lib/settings');
     if (!(await getSetting('referral_ask_email'))) return;
-    const { getOrCreateReferralCode } = await import('@/lib/client-loyalty');
+    // LOYALTY carries the actual reward terms, so the copy below states the real
+    // offer and can't drift from the mechanism that pays it out.
+    const { getOrCreateReferralCode, LOYALTY, pointsToPence } = await import('@/lib/client-loyalty');
+    const gbp = (pence: number) => `£${(pence / 100).toLocaleString('en-GB', { maximumFractionDigits: pence % 100 ? 2 : 0 })}`;
+    const rewardLabel = gbp(pointsToPence(LOYALTY.referralReward));
+    const thresholdLabel = gbp(LOYALTY.referralThresholdPence);
     const now = Date.now();
     const start = new Date(now - REFERRAL_ASK_MAX_DAYS * 864e5);
     const end = new Date(now - REFERRAL_ASK_MIN_DAYS * 864e5);
+    const cooldownSince = new Date(now - REFERRAL_ASK_CLIENT_COOLDOWN_DAYS * 864e5);
     const base = (SITE_URL || '').replace(/\/$/, '');
     const bookings = await db.booking.findMany({
       where: { status: 'COMPLETED', startAt: { gte: start, lte: end } },
@@ -838,19 +853,25 @@ async function referralAsk(t: Tally) {
     for (const b of bookings) {
       const c = b.client;
       if (!canEmail(c)) continue;
-      // Per-booking dedup — a client can complete many bookings, each worth
-      // its own ask, but never twice for the same one.
+      // Per-booking dedup — the same visit is never asked about twice.
       const dup = await db.emailEvent.findFirst({ where: { clientId: c.id, kind: 'REFERRAL_ASK', status: 'SENT', meta: { path: ['bookingId'], equals: b.id } } });
       if (dup) continue;
+      // Per-client cooldown — and never mind which booking. See the constant
+      // above: a course client completes a session a week, each its own
+      // bookingId, so the per-booking dedup on its own would let the same
+      // person be asked to refer a friend every week for months.
+      const recent = await db.emailEvent.findFirst({ where: { clientId: c.id, kind: 'REFERRAL_ASK', status: 'SENT', createdAt: { gte: cooldownSince } } });
+      if (recent) continue;
       const code = await getOrCreateReferralCode(c.id);
       const link = `${base}/account/signup?ref=${encodeURIComponent(code)}`;
       const body = `
         <h1 style="margin:0 0 12px;font-size:25px;">Loved your ${escapeHtml(b.treatmentTitle || 'visit')}, ${escapeHtml(c.firstName || 'there')}?</h1>
-        <p style="margin:0 0 14px;">If a friend would love it too, share your personal referral link — you'll both be thanked with loyalty points once they complete their first treatment.</p>
+        <p style="margin:0 0 14px;">If a friend would love it too, share your personal referral link. Once their first treatment is complete, ${rewardLabel} in reward points lands for each of you, to spend on your next visit.</p>
+        <p style="margin:0 0 14px;font-size:14px;color:#91766e;">Their first treatment needs to be ${thresholdLabel} or more to qualify. Points are worth ${gbp(100 * LOYALTY.pointValuePence)} per 100 and come off your next visit.</p>
         <p style="margin:6px 0 18px;"><a href="${link}" style="display:inline-block;background:#a98a6d;color:#fff;text-decoration:none;padding:13px 26px;border-radius:999px;font-size:14px;">Share your referral link</a></p>
         <p style="margin:14px 0 6px;font-size:14px;color:#91766e;">Or copy it: <a href="${link}" style="color:#a98a6d;">${link}</a></p>`;
       const subject = `Know someone who'd love ${site.name}?`;
-      const res = await sendEmail({ to: c.email, subject, html: emailShell({ body, preheader: `Share your referral link and you'll both be thanked.`, unsubUrl: unsub(c.unsubToken) }), headers: unsubHeaders(c.unsubToken) });
+      const res = await sendEmail({ to: c.email, subject, html: emailShell({ body, preheader: `Give ${rewardLabel}, get ${rewardLabel} when a friend completes their first treatment.`, unsubUrl: unsub(c.unsubToken) }), headers: unsubHeaders(c.unsubToken) });
       await db.emailEvent.create({ data: { clientId: c.id, kind: 'REFERRAL_ASK', to: c.email, subject: 'Referral ask', status: res.ok ? 'SENT' : 'FAILED', providerId: res.id, error: res.error, meta: { bookingId: b.id } } }).catch(() => {});
       res.ok ? t.referralAsks++ : t.errors++;
     }
