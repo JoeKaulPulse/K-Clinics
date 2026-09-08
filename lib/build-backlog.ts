@@ -5136,7 +5136,7 @@ export const BUILD_BACKLOG: BacklogItem[] = [
   },
   {
     title: 'Send Terms & Conditions Acceptance Email to Existing Clients',
-    type: 'TASK', urgency: 'P1', status: 'IN_REVIEW', assignee: 'claude',
+    type: 'TASK', urgency: 'P1', status: 'SHIPPED', assignee: 'claude', pr: PR(1927),
     value: 7, effort: 3,
     detail: 'Owner-filed task: email clients with no recorded acceptance of the current Terms & Conditions, with a secure review-and-actively-accept link; record status/date/version; surface on the client profile.',
     notes: [
