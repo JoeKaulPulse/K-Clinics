@@ -5136,7 +5136,7 @@ export const BUILD_BACKLOG: BacklogItem[] = [
   },
   {
     title: 'Day-close reconciliation ignores same-day refunds in expected card takings',
-    type: 'TASK', urgency: 'P2', status: 'IN_REVIEW', assignee: 'claude',
+    type: 'TASK', urgency: 'P2', status: 'SHIPPED', assignee: 'claude', pr: PR(1929),
     value: 6, effort: 3,
     detail: 'lib/day-close.ts computeExpected() sums gross treatment charges, product orders and voucher sales for the expected card-takings figure, but never subtracts same-day refunds (Booking.refundedPence, or Order rows flipped to REFUNDED) -- a same-day card refund made the terminal Z-report look short, or masked a genuine shortfall, against what the system told staff to expect.',
     notes: [
@@ -5148,7 +5148,7 @@ export const BUILD_BACKLOG: BacklogItem[] = [
   },
   {
     title: 'Other surfaces still label the short T&Cs page as "Privacy Policy" (BLD-1579 follow-up)',
-    type: 'TASK', urgency: 'P3', status: 'IN_REVIEW', assignee: 'claude',
+    type: 'TASK', urgency: 'P3', status: 'SHIPPED', assignee: 'claude', pr: PR(1929),
     value: 4, effort: 1,
     detail: 'Three more surfaces linked a "Privacy Policy" / "Privacy" label to /info/website-privacy-terms (a short T&Cs page) instead of /info/privacy-policy (the real policy covering special-category/health data): components/contact/EnquiryForm.tsx, app/(marketing)/ai-consultation/page.tsx (shown in the facial-photo AI consent context -- the highest-value fix, since that is exactly where special-category data handling should be linked), and components/portal/PortalShell.tsx. BLD-1579 already fixed the same mislabel in the footer.',
     notes: [
