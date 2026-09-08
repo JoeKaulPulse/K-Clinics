@@ -5136,7 +5136,7 @@ export const BUILD_BACKLOG: BacklogItem[] = [
   },
   {
     title: 'Gift-voucher codes have only 32 bits of entropy',
-    type: 'ERROR', urgency: 'P2', status: 'IN_REVIEW', assignee: 'claude',
+    type: 'ERROR', urgency: 'P2', status: 'SHIPPED', assignee: 'claude', pr: PR(1928),
     value: 5, effort: 1,
     detail: 'lib/gift-vouchers.ts genCode() built a code like KC-GV-XXXX-XXXX from only 4 random bytes (32 bits). The claim endpoint (app/api/account/gift-card/claim/route.ts) rate-limits to 5 attempts/600s per IP, but a distributed brute force spread across many IPs still had a non-trivial chance of guessing a live active code.',
     notes: [
