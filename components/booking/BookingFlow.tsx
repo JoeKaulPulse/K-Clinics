@@ -708,6 +708,15 @@ function AccountStep({ onAuthed, setError, headingRef }: { onAuthed: (i: { first
   // inline age check in sync with it.
   const maxDob = useMemo(() => new Date().toLocaleDateString('en-CA'), []);
   const dobMsg = f.dob ? dobError(f.dob) : (errors.dob || null);
+  // BLD-1674: refs for the focus-move-to-first-invalid-field behaviour below —
+  // a screen-reader user who submits an incomplete form otherwise gets no
+  // feedback at all (the inline messages are visually adjacent but never focused).
+  const fieldRefs = useRef<Record<string, HTMLElement | null>>({});
+  const FIELD_ORDER = ['firstName', 'lastName', 'email', 'phone', 'dob', 'password', 'consent'];
+  function focusFirstInvalid(fieldErrors: Record<string, string>) {
+    const first = FIELD_ORDER.find((k) => fieldErrors[k]);
+    if (first) fieldRefs.current[first]?.focus();
+  }
 
   async function signup() {
     const digits = (f.phone.match(/\d/g) || []).length;
@@ -722,7 +731,7 @@ function AccountStep({ onAuthed, setError, headingRef }: { onAuthed: (i: { first
     if (!f.consent) fieldErrors.consent = 'Please accept the booking terms to continue.';
     // Clear any stale banner from a previous submit — the inline messages are
     // now the whole story for client-side validation.
-    if (Object.keys(fieldErrors).length > 0) { setErrors(fieldErrors); setError(''); return; }
+    if (Object.keys(fieldErrors).length > 0) { setErrors(fieldErrors); setError(''); focusFirstInvalid(fieldErrors); return; }
     setErrors({});
     setBusy(true); setError('');
     try {
@@ -784,12 +793,12 @@ function AccountStep({ onAuthed, setError, headingRef }: { onAuthed: (i: { first
 
       {mode === 'signup' ? (
         <div className="mt-6 grid gap-4 sm:grid-cols-2">
-          <div><label htmlFor="bf-firstName" className={label}>First name *</label><input id="bf-firstName" autoComplete="given-name" aria-invalid={!!errors.firstName} aria-describedby={errors.firstName ? 'bf-firstName-err' : undefined} className={field} value={f.firstName} onChange={(e) => { setF({ ...f, firstName: e.target.value }); clearErr('firstName'); }} />{errors.firstName && <p id="bf-firstName-err" className="mt-1.5 text-xs text-[var(--color-blush-deep)]">{errors.firstName}</p>}</div>
-          <div><label htmlFor="bf-lastName" className={label}>Last name *</label><input id="bf-lastName" autoComplete="family-name" aria-invalid={!!errors.lastName} aria-describedby={errors.lastName ? 'bf-lastName-err' : undefined} className={field} value={f.lastName} onChange={(e) => { setF({ ...f, lastName: e.target.value }); clearErr('lastName'); }} />{errors.lastName && <p id="bf-lastName-err" className="mt-1.5 text-xs text-[var(--color-blush-deep)]">{errors.lastName}</p>}</div>
-          <div className="sm:col-span-2"><label htmlFor="bf-email" className={label}>Email *</label><input id="bf-email" type="email" autoComplete="email" aria-invalid={!!errors.email} aria-describedby={errors.email ? 'bf-email-err' : undefined} className={field} value={f.email} onChange={(e) => { setF({ ...f, email: e.target.value }); clearErr('email'); }} />{errors.email && <p id="bf-email-err" className="mt-1.5 text-xs text-[var(--color-blush-deep)]">{errors.email}</p>}</div>
-          <div><label htmlFor="bf-phone" className={label}>Mobile *</label><input id="bf-phone" type="tel" autoComplete="tel" aria-invalid={!!errors.phone} aria-describedby={errors.phone ? 'bf-phone-err' : undefined} className={field} value={f.phone} onChange={(e) => { setF({ ...f, phone: e.target.value }); clearErr('phone'); }} />{errors.phone && <p id="bf-phone-err" className="mt-1.5 text-xs text-[var(--color-blush-deep)]">{errors.phone}</p>}</div>
-          <div><label htmlFor="bf-dob" className={label}>Date of birth *</label><input id="bf-dob" type="date" autoComplete="bday" max={maxDob} aria-invalid={!!dobMsg} aria-describedby={dobMsg ? 'bf-dob-err' : undefined} className={field} value={f.dob} onChange={(e) => { setF({ ...f, dob: e.target.value }); clearErr('dob'); }} />{dobMsg && <p id="bf-dob-err" className="mt-1.5 text-xs text-[var(--color-blush-deep)]">{dobMsg}</p>}</div>
-          <div className="sm:col-span-2"><label htmlFor="bf-password" className={label}>Password (8+) <span className="font-normal text-[var(--color-stone)]">— optional; or continue as a guest below</span></label><input id="bf-password" type="password" autoComplete="new-password" aria-invalid={!!errors.password} aria-describedby={errors.password ? 'bf-password-err' : undefined} className={field} value={f.password} onChange={(e) => { setF({ ...f, password: e.target.value }); clearErr('password'); }} />{errors.password && <p id="bf-password-err" className="mt-1.5 text-xs text-[var(--color-blush-deep)]">{errors.password}</p>}</div>
+          <div><label htmlFor="bf-firstName" className={label}>First name *</label><input id="bf-firstName" ref={(el) => { fieldRefs.current.firstName = el; }} autoComplete="given-name" aria-invalid={!!errors.firstName} aria-describedby={errors.firstName ? 'bf-firstName-err' : undefined} className={field} value={f.firstName} onChange={(e) => { setF({ ...f, firstName: e.target.value }); clearErr('firstName'); }} />{errors.firstName && <p id="bf-firstName-err" role="alert" className="mt-1.5 text-xs text-[var(--color-blush-deep)]">{errors.firstName}</p>}</div>
+          <div><label htmlFor="bf-lastName" className={label}>Last name *</label><input id="bf-lastName" ref={(el) => { fieldRefs.current.lastName = el; }} autoComplete="family-name" aria-invalid={!!errors.lastName} aria-describedby={errors.lastName ? 'bf-lastName-err' : undefined} className={field} value={f.lastName} onChange={(e) => { setF({ ...f, lastName: e.target.value }); clearErr('lastName'); }} />{errors.lastName && <p id="bf-lastName-err" role="alert" className="mt-1.5 text-xs text-[var(--color-blush-deep)]">{errors.lastName}</p>}</div>
+          <div className="sm:col-span-2"><label htmlFor="bf-email" className={label}>Email *</label><input id="bf-email" ref={(el) => { fieldRefs.current.email = el; }} type="email" autoComplete="email" aria-invalid={!!errors.email} aria-describedby={errors.email ? 'bf-email-err' : undefined} className={field} value={f.email} onChange={(e) => { setF({ ...f, email: e.target.value }); clearErr('email'); }} />{errors.email && <p id="bf-email-err" role="alert" className="mt-1.5 text-xs text-[var(--color-blush-deep)]">{errors.email}</p>}</div>
+          <div><label htmlFor="bf-phone" className={label}>Mobile *</label><input id="bf-phone" ref={(el) => { fieldRefs.current.phone = el; }} type="tel" autoComplete="tel" aria-invalid={!!errors.phone} aria-describedby={errors.phone ? 'bf-phone-err' : undefined} className={field} value={f.phone} onChange={(e) => { setF({ ...f, phone: e.target.value }); clearErr('phone'); }} />{errors.phone && <p id="bf-phone-err" role="alert" className="mt-1.5 text-xs text-[var(--color-blush-deep)]">{errors.phone}</p>}</div>
+          <div><label htmlFor="bf-dob" className={label}>Date of birth *</label><input id="bf-dob" ref={(el) => { fieldRefs.current.dob = el; }} type="date" autoComplete="bday" max={maxDob} aria-invalid={!!dobMsg} aria-describedby={dobMsg ? 'bf-dob-err' : undefined} className={field} value={f.dob} onChange={(e) => { setF({ ...f, dob: e.target.value }); clearErr('dob'); }} />{dobMsg && <p id="bf-dob-err" role="alert" className="mt-1.5 text-xs text-[var(--color-blush-deep)]">{dobMsg}</p>}</div>
+          <div className="sm:col-span-2"><label htmlFor="bf-password" className={label}>Password (8+) <span className="font-normal text-[var(--color-stone)]">— optional; or continue as a guest below</span></label><input id="bf-password" ref={(el) => { fieldRefs.current.password = el; }} type="password" autoComplete="new-password" aria-invalid={!!errors.password} aria-describedby={errors.password ? 'bf-password-err' : undefined} className={field} value={f.password} onChange={(e) => { setF({ ...f, password: e.target.value }); clearErr('password'); }} />{errors.password && <p id="bf-password-err" role="alert" className="mt-1.5 text-xs text-[var(--color-blush-deep)]">{errors.password}</p>}</div>
           <div className="sm:col-span-2"><label htmlFor="bf-gender" className={label}>Gender (optional — tailors recommendations)</label>
             <select id="bf-gender" className={field} value={f.gender} onChange={(e) => setF({ ...f, gender: e.target.value })}>
               <option value="">Prefer not to say</option>
@@ -803,8 +812,8 @@ function AccountStep({ onAuthed, setError, headingRef }: { onAuthed: (i: { first
           {/* BLD-1067: the full consequence chain is named at the tick, and the
               acceptance is now recorded server-side (when/where/version). */}
           <div className="sm:col-span-2">
-            <label className="flex items-start gap-3 text-sm text-[var(--color-stone)]"><input type="checkbox" checked={f.consent} onChange={(e) => { setF({ ...f, consent: e.target.checked }); clearErr('consent'); }} aria-invalid={!!errors.consent} aria-describedby={errors.consent ? 'bf-consent-err' : undefined} className="mt-1 h-4 w-4 accent-[var(--color-gold)]" />I agree to the booking terms: my card is saved but not charged now; I’ll be charged when the service is delivered; cancellations within 24 hours and missed appointments are charged in full; an unpaid fee must be settled before I can book again. *</label>
-            {errors.consent && <p id="bf-consent-err" className="mt-1.5 text-xs text-[var(--color-blush-deep)]">{errors.consent}</p>}
+            <label className="flex items-start gap-3 text-sm text-[var(--color-stone)]"><input type="checkbox" ref={(el) => { fieldRefs.current.consent = el; }} checked={f.consent} onChange={(e) => { setF({ ...f, consent: e.target.checked }); clearErr('consent'); }} aria-invalid={!!errors.consent} aria-describedby={errors.consent ? 'bf-consent-err' : undefined} className="mt-1 h-4 w-4 accent-[var(--color-gold)]" />I agree to the booking terms: my card is saved but not charged now; I’ll be charged when the service is delivered; cancellations within 24 hours and missed appointments are charged in full; an unpaid fee must be settled before I can book again. *</label>
+            {errors.consent && <p id="bf-consent-err" role="alert" className="mt-1.5 text-xs text-[var(--color-blush-deep)]">{errors.consent}</p>}
           </div>
         </div>
       ) : (
