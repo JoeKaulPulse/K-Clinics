@@ -67,7 +67,7 @@ export default async function AiConsultationPage() {
             ))}
           </div>
           <p className="mt-6 text-sm text-[var(--color-stone)]">
-            Full detail is in our <Link href="/info/website-privacy-terms" className="link-underline font-medium text-[var(--color-ink)]">privacy policy</Link>. Questions? Email <a href="mailto:support@kclinics.co.uk" className="link-underline font-medium text-[var(--color-ink)]">support@kclinics.co.uk</a>.
+            Full detail is in our <Link href="/info/privacy-policy" className="link-underline font-medium text-[var(--color-ink)]">privacy policy</Link>. Questions? Email <a href="mailto:support@kclinics.co.uk" className="link-underline font-medium text-[var(--color-ink)]">support@kclinics.co.uk</a>.
           </p>
         </div>
       </section>

@@ -203,6 +203,7 @@ export function DayCloseRunner({
                       {expected.chargeCount} treatment charge{expected.chargeCount === 1 ? '' : 's'} · {money(expected.chargesPence)}
                       {expected.orderCount > 0 && <> · {expected.orderCount} product order{expected.orderCount === 1 ? '' : 's'} · {money(expected.ordersPence)}</>}
                       {expected.voucherCount > 0 && <> · {expected.voucherCount} voucher sale{expected.voucherCount === 1 ? '' : 's'} · {money(expected.vouchersPence)}</>}
+                      {expected.refundCount > 0 && <> · {expected.refundCount} refund{expected.refundCount === 1 ? '' : 's'} · −{money(expected.refundedPence)}</>}
                     </p>
                   </div>
 

@@ -5135,12 +5135,34 @@ export const BUILD_BACKLOG: BacklogItem[] = [
     ],
   },
   {
+    title: 'Day-close reconciliation ignores same-day refunds in expected card takings',
+    type: 'TASK', urgency: 'P2', status: 'SHIPPED', assignee: 'claude', pr: PR(1929),
+    value: 6, effort: 3,
+    detail: 'lib/day-close.ts computeExpected() sums gross treatment charges, product orders and voucher sales for the expected card-takings figure, but never subtracts same-day refunds (Booking.refundedPence, or Order rows flipped to REFUNDED) -- a same-day card refund made the terminal Z-report look short, or masked a genuine shortfall, against what the system told staff to expect.',
+    notes: [
+      'Fix: computeExpected() now nets same-day refunds off cardPence. Booking refunds are bracketed by refundedAt using the same clinic-local day window and non-card-channel exclusion as the existing gross charges query (chargedPence/chargedAt is gross and never decremented on refund, so this cannot double-subtract against the gross sum). Order refunds are always the full totalPence (Order has no partial-refund field), bracketed by updatedAt -- the only timestamp Order stamps on a refund -- and scoped to stripePaymentIntentId so a cash/POS order marked refunded manually is not treated as a card reversal. New refundedPence/refundCount fields on ExpectedTakings are surfaced in the day-close UI (components/admin/DayCloseRunner.tsx) so the on-screen breakdown still reconciles to the displayed total.',
+      'Two known inaccuracies, found on the adversarial review pass and now documented in the code rather than papered over. (1) Booking.refundedPence is a cumulative watermark and refundedAt only stamps the LAST refund, so a booking refunded in two parts on two different days has its whole total subtracted again on the second day (£50 Monday then £30 Wednesday nets £50 and then £80, overstating Wednesday by £50 and showing a phantom terminal surplus). A single refund, full or partial, is exact -- that is the ordinary case. (2) A lost chargeback also advances refundedPence/refundedAt, so it is netted off even though a chargeback is a Stripe balance adjustment that never reaches a terminal Z-report. Per-refund amounts do exist in the AuditLog PAYMENT_REFUNDED rows, but every one of those writes is best-effort and the dispute path logs no amount, so sourcing a money figure from them would risk silently losing a real refund -- worse than the bounded error. A correct fix needs a per-refund ledger row written alongside the refundedPence advance; logged for triage rather than bolted on here.',
+      'Corrected an overclaim in the first cut\'s own comment: it said an unrelated later edit to an already-REFUNDED order would "only misdate the refund by a day, never double-count it". Each day\'s expected figure is computed independently at close time, so such an edit would net the refund off on the original day AND again on the day of the edit. No live path does this today (nothing mutates a REFUNDED order), but the comment now says what it would actually cost.',
+      'Verified: npx tsc --noEmit and npm run build pass clean.',
+    ],
+  },
+  {
     title: 'Gift-voucher codes have only 32 bits of entropy',
     type: 'ERROR', urgency: 'P2', status: 'SHIPPED', assignee: 'claude', pr: PR(1928),
     value: 5, effort: 1,
     detail: 'lib/gift-vouchers.ts genCode() built a code like KC-GV-XXXX-XXXX from only 4 random bytes (32 bits). The claim endpoint (app/api/account/gift-card/claim/route.ts) rate-limits to 5 attempts/600s per IP, but a distributed brute force spread across many IPs still had a non-trivial chance of guessing a live active code.',
     notes: [
       'Fix: lib/gift-vouchers.ts genCode() now builds KC-GV-XXXX-XXXX-XXXX-XXXX from 4 segments of 2 random bytes each (8 bytes / 64 bits total), keeping the same hex alphabet and 4-char segment width. Checked every KC-GV- display/validation/storage site across the codebase (GiftVoucher.code is an unconstrained Prisma String, no @db.VarChar cap; no regex/length validation on the code anywhere in lib/validation.ts or the API routes) -- none truncate or reject a longer code. Updated the two purely-decorative sample codes that showed the old shape (components/gift/GiftCardPreview.tsx placeholder dots, lib/email-previews.ts sample) to match. Already-issued shorter codes in the DB stay valid; only newly generated codes are longer.',
+      'Verified: npx tsc --noEmit and npm run build pass clean.',
+    ],
+  },
+  {
+    title: 'Other surfaces still label the short T&Cs page as "Privacy Policy" (BLD-1579 follow-up)',
+    type: 'TASK', urgency: 'P3', status: 'SHIPPED', assignee: 'claude', pr: PR(1929),
+    value: 4, effort: 1,
+    detail: 'Three more surfaces linked a "Privacy Policy" / "Privacy" label to /info/website-privacy-terms (a short T&Cs page) instead of /info/privacy-policy (the real policy covering special-category/health data): components/contact/EnquiryForm.tsx, app/(marketing)/ai-consultation/page.tsx (shown in the facial-photo AI consent context -- the highest-value fix, since that is exactly where special-category data handling should be linked), and components/portal/PortalShell.tsx. BLD-1579 already fixed the same mislabel in the footer.',
+    notes: [
+      'Fix: swapped the three hrefs to /info/privacy-policy, matching the footer\'s BLD-1579 fix. Link text left unchanged. Confirmed /info/privacy-policy 200s.',
       'Verified: npx tsc --noEmit and npm run build pass clean.',
     ],
   },
