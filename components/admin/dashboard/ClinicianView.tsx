@@ -24,7 +24,17 @@ export async function ClinicianView({ session }: { session: Session }) {
   const start = new Date(now); start.setHours(0, 0, 0, 0);
   const end = new Date(now); end.setHours(23, 59, 59, 999);
   const canClinical = sessionCan(session, 'clients.clinical.view');
-  const canAllBookings = sessionCan(session, 'bookings.view');
+  // BLD-1652: true only for a real Specialist session (not an OWNER/ADMIN
+  // previewing this view, which reflects their own real access) — used below to
+  // strip every clinic-wide/cross-practitioner field this view could otherwise
+  // surface, at the query level rather than by hiding rendered elements.
+  const isSpecialist = session.role === 'PRACTITIONER';
+  // PRACTITIONER holds bookings.view (needed for the full /admin/bookings list,
+  // out of scope here) but a real Specialist must never see this dashboard's
+  // "whole clinic" roll-up of every other practitioner's appointments/clients —
+  // only their own. Checked before the query below runs, so clinic-wide rows
+  // are never fetched for a Specialist, not merely hidden after the fact.
+  const canAllBookings = !isSpecialist && sessionCan(session, 'bookings.view');
   const canRooms = sessionCan(session, 'rooms.prep.manage');
 
   const select = {
@@ -37,7 +47,10 @@ export async function ClinicianView({ session }: { session: Session }) {
   const [mine, clinic, rooms] = await Promise.all([
     db.booking.findMany({ where: { practitionerId: session.sub, startAt: { gte: start, lte: end }, status: { notIn: ['CANCELLED'] } }, orderBy: { startAt: 'asc' }, select }).catch(() => []),
     canAllBookings ? db.booking.findMany({ where: { startAt: { gte: start, lte: end }, status: { notIn: ['CANCELLED'] } }, orderBy: { startAt: 'asc' }, select }).catch(() => []) : Promise.resolve([]),
-    canRooms ? getRoomsForDay({ now }).catch(() => []) : Promise.resolve([]),
+    // BLD-1652: a real Specialist session only gets their own client/treatment
+    // in current/next per room (an admin previewing this view is unaffected —
+    // isSpecialist reflects the actual session role, matching canAllBookings above).
+    canRooms ? getRoomsForDay({ now, practitionerId: isSpecialist ? session.sub : undefined }).catch(() => []) : Promise.resolve([]),
   ]);
 
   type Bk = (typeof mine)[number];
