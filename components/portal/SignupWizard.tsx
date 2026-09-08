@@ -178,7 +178,14 @@ export function SignupWizard({ initialLocale = 'en' }: { initialLocale?: Locale 
                   </label>
                   <label className="flex items-start gap-3 text-sm text-[var(--color-stone)]">
                     <input type="checkbox" checked={d.consent} onChange={(e) => set('consent', e.target.checked)} className="mt-0.5 h-4 w-4 accent-[var(--color-gold)]" />
-                    <span>{t('signup.consent')}</span>
+                    {/* BLD-1653: name and link the current Terms & Privacy Policy at
+                        the point of acceptance, not just behind a bare label. */}
+                    <span>
+                      {t('signup.consentPre')}{' '}
+                      <Link href="/info/terms-conditions" target="_blank" rel="noopener noreferrer" className="underline">{t('signup.consentTerms')}</Link>
+                      {' & '}
+                      <Link href="/info/privacy-policy" target="_blank" rel="noopener noreferrer" className="underline">{t('signup.consentPrivacy')}</Link>.
+                    </span>
                   </label>
                 </div>
               </Step>
