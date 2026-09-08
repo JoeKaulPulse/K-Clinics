@@ -5136,7 +5136,7 @@ export const BUILD_BACKLOG: BacklogItem[] = [
   },
   {
     title: 'Referral program is never proactively promoted to clients',
-    type: 'TASK', urgency: 'P2', status: 'IN_REVIEW', assignee: 'claude',
+    type: 'TASK', urgency: 'P2', status: 'SHIPPED', assignee: 'claude', pr: PR(1930),
     value: 7, effort: 3,
     detail: 'components/portal/ReferralCard.tsx and the refer-a-friend page exist but nothing ever proactively emails a client to ask for a referral.',
     notes: [
