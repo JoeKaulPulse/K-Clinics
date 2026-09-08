@@ -83,7 +83,15 @@ export default async function MyDayPage({ searchParams }: { searchParams: Promis
 
   // Date-specific timeline (for non-today dates, or as fallback for roles
   // whose day-view content is the appointment list).
-  const canViewAll = sessionCan(session, 'bookings.view');
+  // BLD-1652: My Day is the clinician dashboard's own "Open My day →" target and
+  // renders the same ClinicianView on today, so it needs the same scoping — a
+  // Specialist/Practitioner stepping to any other date otherwise got the full
+  // "Whole clinic" list (every practitioner's appointments, client names and
+  // medical flags) that the dashboard and calendar now withhold. Gated on the
+  // real session role, checked before the query, so clinic-wide rows are never
+  // fetched for a Specialist rather than merely hidden. OWNER/ADMIN/FRONT_DESK
+  // and every other bookings.view holder are unaffected.
+  const canViewAll = session.role !== 'PRACTITIONER' && sessionCan(session, 'bookings.view');
   const selectBooking = {
     id: true, startAt: true, endAt: true, durationMin: true, treatmentTitle: true, status: true,
     startedAt: true, finishedAt: true, actualMinutes: true,
