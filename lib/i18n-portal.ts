@@ -33,7 +33,12 @@ export const PORTAL_DICT: Record<string, Entry> = {
   'field.password': { en: 'Create a password', uk: 'Створіть пароль' },
   'field.optional': { en: 'optional', uk: 'необовʼязково' },
   'signup.marketing': { en: 'Send me offers, events and skincare tips. We may also use your contact details, in hashed form, to show you our offers on social media — see our Privacy Policy.', uk: 'Надсилайте мені пропозиції, події та поради по догляду. Ми також можемо використовувати ваші контактні дані у хешованому вигляді, щоб показувати вам наші пропозиції в соцмережах — див. Політику конфіденційності.' },
-  'signup.consent': { en: 'I agree to the Terms & Privacy Policy.', uk: 'Я погоджуюся з Умовами та Політикою конфіденційності.' },
+  // BLD-1653: split so "Terms" and "Privacy Policy" render as links to the
+  // current published pages, mirroring SignupForm.tsx/BookingFlow.tsx — the
+  // client can read what they're agreeing to at the point of acceptance.
+  'signup.consentPre': { en: 'I agree to the', uk: 'Я погоджуюся з' },
+  'signup.consentTerms': { en: 'Terms', uk: 'Умовами' },
+  'signup.consentPrivacy': { en: 'Privacy Policy', uk: 'Політикою конфіденційності' },
   'signup.consentRequired': { en: 'Please accept the terms to continue.', uk: 'Будь ласка, прийміть умови, щоб продовжити.' },
   'signup.ageDeclare': { en: 'I confirm I am 18 years of age or older.', uk: 'Я підтверджую, що мені виповнилося 18 років.' },
   'signup.ageRequired': { en: 'Please confirm you are 18 or over to continue.', uk: 'Підтвердьте, що вам 18+, щоб продовжити.' },
