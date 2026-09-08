@@ -5,6 +5,7 @@ import { ensureReviewRequest, reviewLink, googleReviewLink } from './review-syst
 import { site } from './site';
 import { escapeHtml } from './sanitize';
 import { marketableClientWhere } from './consent';
+import { TEST_CLIENT_TAG } from './test-clients';
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || site.url;
 const unsub = (token: string) => `${SITE_URL}/api/unsubscribe?t=${token}`;
@@ -286,8 +287,18 @@ async function tcsReminders(t: Tally) {
     const signupUrl = `${base}/account/signup`;
     const cutoff = new Date(Date.now() - TCS_REMINDER_CADENCE_DAYS * 864e5);
     const dueFilter = { OR: [{ tcsReminderSentAt: null }, { tcsReminderSentAt: { lt: cutoff } }] };
+    // BLD-1653 review fix: never mail a record the platform itself has already
+    // judged not to be a real person. scanAndTagTestClients (lib/test-clients.ts)
+    // tags junk/keyboard-mash signups `likely-test` -- the WordPress migration
+    // tagged them too -- and the admin client list hides them by default. Those
+    // rows match this audience exactly (legacy, no portal password, no recorded
+    // acceptance, an address nobody reads), and this is a care-class send with
+    // no marketing-consent gate to filter them out the way the marketing
+    // automations get for free. Left in the audience they would be the first
+    // thing a 500-a-day run mails, bouncing off the clinic's sending domain and
+    // taking real booking confirmations' deliverability down with them.
     const clients = await db.client.findMany({
-      where: { termsAcceptedAt: null, passwordHash: null, email: { not: '' }, unsubscribed: false, ...dueFilter },
+      where: { termsAcceptedAt: null, passwordHash: null, email: { not: '' }, unsubscribed: false, NOT: { tags: { has: TEST_CLIENT_TAG } }, ...dueFilter },
       select: { id: true, email: true, firstName: true, unsubscribed: true },
       orderBy: { createdAt: 'asc' },
       take: TCS_REMINDER_MAX_PER_RUN,
