@@ -5136,7 +5136,7 @@ export const BUILD_BACKLOG: BacklogItem[] = [
   },
   {
     title: 'Restrict Specialist Dashboard & Calendar Access',
-    type: 'TASK', urgency: 'P1', status: 'IN_REVIEW', assignee: 'claude',
+    type: 'TASK', urgency: 'P1', status: 'SHIPPED', assignee: 'claude', pr: PR(1926),
     value: 8, effort: 4,
     detail: 'Owner-filed task: Specialist/Practitioner-role users could see clinic-wide dashboard stats (revenue, total clients, subscribers, etc) and every practitioner\'s calendar column/appointments, not just their own, with no backend enforcement -- only ever hidden (if at all) in the UI.',
     notes: [
