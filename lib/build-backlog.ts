@@ -5135,6 +5135,16 @@ export const BUILD_BACKLOG: BacklogItem[] = [
     ],
   },
   {
+    title: 'Gift-voucher codes have only 32 bits of entropy',
+    type: 'ERROR', urgency: 'P2', status: 'SHIPPED', assignee: 'claude', pr: PR(1928),
+    value: 5, effort: 1,
+    detail: 'lib/gift-vouchers.ts genCode() built a code like KC-GV-XXXX-XXXX from only 4 random bytes (32 bits). The claim endpoint (app/api/account/gift-card/claim/route.ts) rate-limits to 5 attempts/600s per IP, but a distributed brute force spread across many IPs still had a non-trivial chance of guessing a live active code.',
+    notes: [
+      'Fix: lib/gift-vouchers.ts genCode() now builds KC-GV-XXXX-XXXX-XXXX-XXXX from 4 segments of 2 random bytes each (8 bytes / 64 bits total), keeping the same hex alphabet and 4-char segment width. Checked every KC-GV- display/validation/storage site across the codebase (GiftVoucher.code is an unconstrained Prisma String, no @db.VarChar cap; no regex/length validation on the code anywhere in lib/validation.ts or the API routes) -- none truncate or reject a longer code. Updated the two purely-decorative sample codes that showed the old shape (components/gift/GiftCardPreview.tsx placeholder dots, lib/email-previews.ts sample) to match. Already-issued shorter codes in the DB stay valid; only newly generated codes are longer.',
+      'Verified: npx tsc --noEmit and npm run build pass clean.',
+    ],
+  },
+  {
     title: 'Send Terms & Conditions Acceptance Email to Existing Clients',
     type: 'TASK', urgency: 'P1', status: 'SHIPPED', assignee: 'claude', pr: PR(1927),
     value: 7, effort: 3,

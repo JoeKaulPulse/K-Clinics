@@ -47,7 +47,7 @@ export function GiftCardPreview({
         <div className="flex items-end justify-between">
           <span>
             <span className="block text-[0.55rem] uppercase tracking-[0.3em]" style={{ color: soft(t.ink, 55) }}>Aesthetics · Laser · London</span>
-            <span className="mt-0.5 block font-[family-name:var(--font-mono,monospace)] text-[0.65rem] tracking-widest" style={{ color: soft(t.ink, 55) }}>KC-GV-••••-••••</span>
+            <span className="mt-0.5 block font-[family-name:var(--font-mono,monospace)] text-[0.65rem] tracking-widest" style={{ color: soft(t.ink, 55) }}>KC-GV-••••-••••-••••-••••</span>
           </span>
           {purchaserName && message ? <span className="text-[0.65rem]" style={{ color: soft(t.ink, 70) }}>— {purchaserName}</span> : <span aria-hidden />}
         </div>
