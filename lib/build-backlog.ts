@@ -5134,6 +5134,26 @@ export const BUILD_BACKLOG: BacklogItem[] = [
       'Verified: npx tsc --noEmit and npm run build pass clean (DB-connection vars unset in-sandbox, as above).',
     ],
   },
+  {
+    title: 'Day-close reconciliation ignores same-day refunds in expected card takings',
+    type: 'TASK', urgency: 'P2', status: 'IN_REVIEW', assignee: 'claude',
+    value: 6, effort: 3,
+    detail: 'lib/day-close.ts computeExpected() sums gross treatment charges, product orders and voucher sales for the expected card-takings figure, but never subtracts same-day refunds (Booking.refundedPence, or Order rows flipped to REFUNDED) -- a same-day card refund made the terminal Z-report look short, or masked a genuine shortfall, against what the system told staff to expect.',
+    notes: [
+      'Fix: computeExpected() now nets same-day refunds off cardPence. Booking refunds are bracketed by refundedAt using the same clinic-local day window and non-card-channel exclusion as the existing gross charges query (chargedPence/chargedAt is gross and never decremented on refund, so this cannot double-subtract). Order refunds are always the full totalPence (Order has no partial-refund field), bracketed by updatedAt -- the only timestamp Order stamps on a refund -- and scoped to stripePaymentIntentId so a cash/POS order marked refunded manually is not treated as a card reversal. New refundedPence/refundCount fields on ExpectedTakings are surfaced in the day-close UI (components/admin/DayCloseRunner.tsx) so the on-screen breakdown still reconciles to the displayed total.',
+      'Verified: npx tsc --noEmit and npm run build pass clean.',
+    ],
+  },
+  {
+    title: 'Other surfaces still label the short T&Cs page as "Privacy Policy" (BLD-1579 follow-up)',
+    type: 'TASK', urgency: 'P3', status: 'IN_REVIEW', assignee: 'claude',
+    value: 4, effort: 1,
+    detail: 'Three more surfaces linked a "Privacy Policy" / "Privacy" label to /info/website-privacy-terms (a short T&Cs page) instead of /info/privacy-policy (the real policy covering special-category/health data): components/contact/EnquiryForm.tsx, app/(marketing)/ai-consultation/page.tsx (shown in the facial-photo AI consent context -- the highest-value fix, since that is exactly where special-category data handling should be linked), and components/portal/PortalShell.tsx. BLD-1579 already fixed the same mislabel in the footer.',
+    notes: [
+      'Fix: swapped the three hrefs to /info/privacy-policy, matching the footer\'s BLD-1579 fix. Link text left unchanged. Confirmed /info/privacy-policy 200s.',
+      'Verified: npx tsc --noEmit and npm run build pass clean.',
+    ],
+  },
 ];
 
 // A content hash over every item's title + status + PR, so ANY change (a new
