@@ -899,7 +899,7 @@ function Done({ firstName, treatment, slot, orderTotal, variantId, category, boo
 
 function ElementsWrapper({ clientSecret, children }: { clientSecret: string; children: React.ReactNode }) {
   return (
-    <Elements stripe={getStripe()} options={{ clientSecret, appearance: { theme: 'flat', variables: { colorPrimary: '#a98a6d', fontFamily: 'system-ui, sans-serif', borderRadius: '10px', colorBackground: '#f6ece3' } } }}>
+    <Elements stripe={getStripe()} options={{ clientSecret, appearance: { theme: 'flat', variables: { colorPrimary: '#816748', fontFamily: 'system-ui, sans-serif', borderRadius: '10px', colorBackground: '#f6ece3' } } }}>
       {children}
     </Elements>
   );

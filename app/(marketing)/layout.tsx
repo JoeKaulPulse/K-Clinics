@@ -24,7 +24,7 @@ export default async function MarketingLayout({ children }: { children: React.Re
   return (
     <MotionProvider>
       <IntroLazy />
-      <JsonLd data={[organizationLd(), websiteLd()]} />
+      <JsonLd data={[organizationLd(config.dentistryLive), websiteLd()]} />
       <ScrollProgress />
       <Cursor />
       <a
