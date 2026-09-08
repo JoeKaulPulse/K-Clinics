@@ -5134,6 +5134,18 @@ export const BUILD_BACKLOG: BacklogItem[] = [
       'Verified: npx tsc --noEmit and npm run build pass clean (DB-connection vars unset in-sandbox, as above).',
     ],
   },
+  {
+    title: 'Send Terms & Conditions Acceptance Email to Existing Clients',
+    type: 'TASK', urgency: 'P1', status: 'IN_REVIEW', assignee: 'claude',
+    value: 7, effort: 3,
+    detail: 'Owner-filed task: email clients with no recorded acceptance of the current Terms & Conditions, with a secure review-and-actively-accept link; record status/date/version; surface on the client profile.',
+    notes: [
+      'Already built (BLD-1067/BLD-1452), verified end to end: Client.termsAcceptedAt/termsAcceptedSource/termsVersion (additive, nullable, no schema change needed) record WHEN/WHERE/WHAT-version with a first-acceptance-wins no-clobber update; lib/automations.ts#tcsReminders() queries termsAcceptedAt: null, passwordHash: null (the only clients who can self-serve accept), respects unsubscribed/canEmailCare, claims each client before sending (no double-send across overlapping cron runs), re-sends at most every 14 days and caps at 3 attempts per client (counted from EmailEvent history, so a permanently-failing address does not retry forever); the admin client profile (app/admin/clients/[id]/page.tsx) already shows a T&Cs accepted/not-yet-accepted chip with date, source and version in the tooltip, styled like the adjacent marketing-consent and card-on-file chips -- no admin change needed.',
+      'Fix: the reminder email\'s only link target, /account/signup (components/portal/SignupWizard.tsx), had a required "I agree to the Terms & Privacy Policy" tick with no way to actually reach the Terms text from that step -- unlike the equivalent tick in the sibling SignupForm.tsx and BookingFlow.tsx, which name and link the current pages at the point of acceptance (BLD-1067). Split the translated string (lib/i18n-portal.ts) so "Terms" and "Privacy Policy" render as links to /info/terms-conditions and /info/privacy-policy (current published pages, open in a new tab), matching the established pattern, so the client can read what they are accepting before ticking the box.',
+      'Enabled: flipped tcs_reminder_email to true in lib/settings.ts (BLD-1653 is the owner-filed go-ahead this was gated on since BLD-1452). No other change to the automation, audience query or schema -- the guards documented in the code comment (passwordHash-null audience, 3-attempt cap, 14-day cadence, claim-before-send) were re-checked against the code, not just the comment, and hold.',
+      'Verified: npx tsc --noEmit and npm run build pass clean.',
+    ],
+  },
 ];
 
 // A content hash over every item's title + status + PR, so ANY change (a new
