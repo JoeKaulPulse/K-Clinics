@@ -35,7 +35,8 @@ export type SettingKey =
   | 'reminder_48h'               // send a 2-day-ahead appointment reminder (BLD-126)
   | 'contractor_checkin_enabled' // PRJ-63: contractors self-sign-in at reception via QR
   | 'health_retention_purge'     // PRJ-1069.10: purge health assessments past the 8-year clinical window (owner sign-off = this toggle)
-  | 'tcs_reminder_email';        // BLD-1452: email clients with no recorded T&Cs acceptance, asking them to accept + add a card
+  | 'tcs_reminder_email'         // BLD-1452: email clients with no recorded T&Cs acceptance, asking them to accept + add a card
+  | 'referral_ask_email';        // BLD-1664: email a client 5-10 days after a completed visit, asking them to refer a friend
 
 export const SETTING_DEFAULTS: Record<SettingKey, boolean> = {
   allow_clinician_choice: false,
@@ -68,6 +69,7 @@ export const SETTING_DEFAULTS: Record<SettingKey, boolean> = {
   contractor_checkin_enabled: false, // PRJ-63: ships dark; owner enables after review
   health_retention_purge: false, // PRJ-1069.10: irreversible health-data deletion — the owner turning this on IS the sign-off
   tcs_reminder_email: false, // BLD-1452: built and reviewed (mirrors abandoned_order_recovery/BLD-1278) — ships off pending an explicit owner go-ahead. termsAcceptedAt is also null for every staff-created/legacy client that has never signed up, booked or enquired online (BLD-1067), so the first run after enabling could reach a much larger and older audience than "someone who recently skipped the tick" — the owner should confirm that's the intended reach before flipping this on. Review fix: the audience is limited to clients with no portal password, because completing signup is the only self-serve action that records the acceptance, and each client is asked at most three times.
+  referral_ask_email: false, // BLD-1664: built and reviewed — ships off pending an explicit owner go-ahead, since flipping this sends live customer emails on the next daily cron with no way to recall them (same reasoning as abandoned_order_recovery/tcs_reminder_email).
 };
 
 export const SETTING_META: Record<SettingKey, { label: string; description: string }> = {
@@ -190,6 +192,10 @@ export const SETTING_META: Record<SettingKey, { label: string; description: stri
   tcs_reminder_email: {
     label: 'T&Cs acceptance reminder emails',
     description: 'Email clients whose profile still shows "T&Cs not yet accepted", asking them to finish setting up their online account — the signup tick is what records the acceptance. Only clients who have never set a portal password are emailed (for anyone else there is nothing on the site they can click to accept), at most once every 14 days and no more than three times each. Off by default — it reaches staff-created/legacy clients who have simply never signed up, booked or enquired online, so review the likely audience before turning it on.',
+  },
+  referral_ask_email: {
+    label: 'Referral-ask emails',
+    description: 'Email a client 5-10 days after a completed visit, inviting them to share their existing referral link (Account → Rewards). Sent once per booking — never repeated for the same visit. Off by default.',
   },
 };
 

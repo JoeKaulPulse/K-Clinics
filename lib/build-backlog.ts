@@ -5134,6 +5134,17 @@ export const BUILD_BACKLOG: BacklogItem[] = [
       'Verified: npx tsc --noEmit and npm run build pass clean (DB-connection vars unset in-sandbox, as above).',
     ],
   },
+  {
+    title: 'Referral program is never proactively promoted to clients',
+    type: 'TASK', urgency: 'P2', status: 'IN_REVIEW', assignee: 'claude',
+    value: 7, effort: 3,
+    detail: 'components/portal/ReferralCard.tsx and the refer-a-friend page exist but nothing ever proactively emails a client to ask for a referral.',
+    notes: [
+      'Fix: new referralAsk automation in lib/automations.ts emails a client 5-10 days after a COMPLETED booking, inviting them to share their existing referral link (the same code/link the portal Rewards page already shows, minted by lib/client-loyalty.ts getOrCreateReferralCode and pointing at /account/signup?ref=<code>). Gated behind a new referral_ask_email setting (lib/settings.ts) and marketing consent (canEmail), and wired into runDailyAutomations alongside the other daily jobs. Dedup is per booking: an emailEvent row of kind REFERRAL_ASK (new EmailKind enum value, additive) carries the bookingId in its meta, and the job skips any booking that already has one -- so a booking is asked at most once regardless of how many days it sits inside the 5-10 day window or how many times the cron runs.',
+      'Ships OFF by default (referral_ask_email: false) pending explicit owner sign-off to enable, matching the existing convention for new customer-messaging automations in this codebase (abandoned_order_recovery, nps_survey, tcs_reminder_email).',
+      'Verified: npx tsc --noEmit and npm run build pass clean.',
+    ],
+  },
 ];
 
 // A content hash over every item's title + status + PR, so ANY change (a new
