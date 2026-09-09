@@ -3,6 +3,10 @@ import * as Sentry from '@sentry/nextjs';
 import { crmEnabled } from '@/lib/crm';
 
 export const runtime = 'nodejs';
+// BLD-1692: bound the upstream Blob fetch below, matching the house convention
+// (kiosk-ai, ai-consultation, kiosk-blob, email) — a hung upstream must not
+// hold this serverless slot indefinitely.
+export const maxDuration = 20;
 
 // A distinct, loggable reason for every denial (BLD-865) — a generic 401/404 with
 // no detail meant a real student-side access-check failure (e.g. an enrolment not
@@ -49,7 +53,7 @@ export async function GET(req: Request) {
   try { host = new URL(src).hostname; } catch { return denyWithReason('bad-index', 404, student.id, lessonId); }
   if (!host.endsWith('.public.blob.vercel-storage.com')) return denyWithReason('bad-index', 404, student.id, lessonId);
 
-  const upstream = await fetch(src).catch(() => null);
+  const upstream = await fetch(src, { signal: AbortSignal.timeout(15_000) }).catch(() => null);
   if (!upstream || !upstream.ok || !upstream.body) return denyWithReason('upstream-error', 502, student.id, lessonId);
 
   return new NextResponse(upstream.body, {
