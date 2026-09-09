@@ -51,7 +51,7 @@ export function GrantQuizAttempts({ studentId, blocked }: { studentId: string; b
                 <input
                   autoFocus value={reason} onChange={(e) => setReason(e.target.value)}
                   placeholder="Reason (e.g. tutor approved a resit)" aria-label="Reason for the extra attempt"
-                  className="min-w-[12rem] flex-1 rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-2 py-1.5 text-xs"
+                  className="min-w-[12rem] flex-1 rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-porcelain)] px-2 py-1.5 text-xs"
                 />
                 <button type="button" disabled={pending} onClick={() => grant(q.id)} className="rounded-full bg-[var(--color-ink)] px-3 py-1.5 text-xs font-medium text-[var(--color-porcelain)] disabled:opacity-40">
                   {pending ? 'Granting…' : 'Confirm'}
