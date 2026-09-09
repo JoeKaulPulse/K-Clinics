@@ -29,14 +29,14 @@ export function CalendarBlockButton({ clinicians, dateISO }: { clinicians: Clini
     else { const j = await res.json().catch(() => ({})); setMsg(j.error || 'Could not block.'); }
   }
 
-  const field = 'rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-2 py-1.5 text-sm';
+  const field = 'rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-porcelain)] px-2 py-1.5 text-sm';
 
   if (!open) {
     return <button onClick={() => setOpen(true)} className="rounded-full border border-[var(--color-line)] px-3 py-1.5 text-sm font-medium hover:border-[var(--color-gold)] hover:text-[var(--color-gold-deep)]">Block time</button>;
   }
 
   return (
-    <div className="absolute right-0 top-12 z-30 w-72 rounded-[var(--radius-md)] border border-[var(--color-line)] bg-white p-4 shadow-[var(--shadow-soft)]">
+    <div className="absolute right-0 top-12 z-30 w-72 rounded-[var(--radius-md)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-4 shadow-[var(--shadow-soft)]">
       <p className="mb-2 text-sm font-medium">Block time</p>
       <div className="space-y-2">
         <select value={staffId} onChange={(e) => setStaffId(e.target.value)} className={`${field} w-full`}>

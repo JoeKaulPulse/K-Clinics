@@ -17,7 +17,7 @@ export type QrRow = {
   svg: string;
 };
 
-const field = 'rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-2 py-1.5 text-sm';
+const field = 'rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-porcelain)] px-2 py-1.5 text-sm';
 
 async function post(payload: object) {
   const res = await fetch('/api/admin/qr', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
