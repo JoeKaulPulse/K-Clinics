@@ -6,6 +6,7 @@ import { KSpeech } from '@/components/academy/KMascot';
 import { Illustration, matchIllustration } from '@/components/academy/Illustrations';
 import { AmbientBackdrop } from '@/components/academy/AmbientBackdrop';
 import { useDialogBehaviours } from '@/components/ui/Dialog';
+import { useReducedMotionSafe } from '@/components/motion/use-reduced-motion-safe';
 
 // A short animated "video" explainer generated on the fly from a lesson's own
 // points — the K narrates each beat (typed speech) over a matched illustration,
@@ -20,11 +21,22 @@ export function ExplainerPlayer({ title, level, points, onClose, onStart }: { ti
   const cur = scenes[i];
   const last = i >= scenes.length - 1;
 
+  // BLD-1679: pause/stop for the auto-advancing reel (WCAG 2.2.2), mirroring
+  // Testimonials.tsx — a tri-state override (null follows hover/focus, true is
+  // paused, false is "play anyway") plus a hover/focus pause and a
+  // prefers-reduced-motion check, rather than a plain boolean that could only
+  // ever stop auto-advance for good after one interaction.
+  const [hovered, setHovered] = useState(false);
+  const [focused, setFocused] = useState(false);
+  const [override, setOverride] = useState<boolean | null>(null);
+  const reduce = useReducedMotionSafe();
+  const paused = override ?? (hovered || focused);
+
   useEffect(() => {
-    if (last) return;
+    if (last || reduce || paused) return;
     const t = setTimeout(() => setI((x) => x + 1), cur.kind === 'title' ? 4200 : 5400);
     return () => clearTimeout(t);
-  }, [i, last, cur.kind]);
+  }, [i, last, cur.kind, reduce, paused]);
   // BLD-1501: dialog semantics (role, focus trap, Escape-to-close) — also
   // covers the body-scroll lock this player needs while it's open on top of
   // ImmersiveCourse, which locks too; the shared ref-count (BLD-1194) means
@@ -50,13 +62,25 @@ export function ExplainerPlayer({ title, level, points, onClose, onStart }: { ti
   const art = cur.kind === 'point' ? matchIllustration(cur.text) : null;
 
   return (
-    <div ref={panelRef} className="fixed inset-0 z-[320] flex flex-col bg-[var(--color-ink)] text-[var(--color-porcelain)]" style={{ paddingTop: 'env(safe-area-inset-top)', paddingBottom: 'env(safe-area-inset-bottom)' }} role="dialog" aria-modal="true" aria-label={`${title} — 60-second explainer`} aria-keyshortcuts="ArrowRight ArrowLeft Escape" tabIndex={-1} onClick={() => !last && setI((x) => x + 1)} onKeyDown={onKeyDown}>
+    <div ref={panelRef} className="fixed inset-0 z-[320] flex flex-col bg-[var(--color-ink)] text-[var(--color-porcelain)]" style={{ paddingTop: 'env(safe-area-inset-top)', paddingBottom: 'env(safe-area-inset-bottom)' }} role="dialog" aria-modal="true" aria-label={`${title} — 60-second explainer`} aria-keyshortcuts="ArrowRight ArrowLeft Escape" tabIndex={-1} onClick={() => !last && setI((x) => x + 1)} onKeyDown={onKeyDown} onMouseEnter={() => setHovered(true)} onMouseLeave={() => setHovered(false)} onFocus={() => setFocused(true)} onBlur={() => setFocused(false)}>
       <AmbientBackdrop tone="dark" />
       <header className="relative z-10 flex items-center justify-between px-5 py-3">
         <span className="text-xs uppercase tracking-[0.18em] text-white/45">60-second explainer</span>
-        <button onClick={(e) => { e.stopPropagation(); onClose(); }} aria-label="Close explainer" className="grid h-9 w-9 place-items-center rounded-full text-white/70 transition-colors hover:bg-white/10 hover:text-white">
-          <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" aria-hidden><path d="m3 3 10 10M13 3 3 13" /></svg>
-        </button>
+        <div className="flex items-center gap-2">
+          {!last && !reduce && (
+            <button
+              type="button"
+              onClick={(e) => { e.stopPropagation(); setOverride(override !== true); }}
+              aria-label={override === true ? 'Play explainer' : 'Pause explainer'}
+              className="grid h-9 w-9 place-items-center rounded-full text-white/70 transition-colors hover:bg-white/10 hover:text-white"
+            >
+              {override === true ? '▶' : '❚❚'}
+            </button>
+          )}
+          <button onClick={(e) => { e.stopPropagation(); onClose(); }} aria-label="Close explainer" className="grid h-9 w-9 place-items-center rounded-full text-white/70 transition-colors hover:bg-white/10 hover:text-white">
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" aria-hidden><path d="m3 3 10 10M13 3 3 13" /></svg>
+          </button>
+        </div>
       </header>
 
       {/* The reel advances on a timer, so a screen reader has to be told each

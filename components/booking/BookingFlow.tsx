@@ -762,12 +762,24 @@ function AccountStep({ onAuthed, setError, headingRef }: { onAuthed: (i: { first
   // Guest booking (BLD-550): same identity + consent, no password. Creates a
   // passwordless account + session so the rest of the flow works; they get an
   // email to set a password later.
+  // BLD-1682: per-field errors + focus-move-to-first-invalid, matching signup()
+  // (BLD-1674) — same required fields as guest checkout itself (no password,
+  // since guest has none), same fieldErrors/focusFirstInvalid pattern, reusing
+  // both directly since guest() shares AccountStep's closure with signup().
   async function guest() {
     const digits = (f.phone.match(/\d/g) || []).length;
     const dobErr = dobError(f.dob);
-    if (!f.firstName || !f.lastName.trim() || !/\S+@\S+\.\S+/.test(f.email) || digits < 7 || dobErr || !f.consent) {
-      setError(dobErr || 'Please complete all required fields (surname, a valid mobile, date of birth) and accept the terms.'); return;
-    }
+    const fieldErrors: Record<string, string> = {};
+    if (!f.firstName) fieldErrors.firstName = 'First name is required.';
+    if (!f.lastName.trim()) fieldErrors.lastName = 'Last name is required.';
+    if (!/\S+@\S+\.\S+/.test(f.email)) fieldErrors.email = 'Enter a valid email address.';
+    if (digits < 7) fieldErrors.phone = 'Enter a valid mobile number.';
+    if (dobErr) fieldErrors.dob = dobErr;
+    if (!f.consent) fieldErrors.consent = 'Please accept the booking terms to continue.';
+    // Clear any stale banner from a previous submit — the inline messages are
+    // now the whole story for client-side validation, same as signup().
+    if (Object.keys(fieldErrors).length > 0) { setErrors(fieldErrors); setError(''); focusFirstInvalid(fieldErrors); return; }
+    setErrors({});
     setBusy(true); setError('');
     try {
       const res = await fetch('/api/booking/guest', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ firstName: f.firstName, lastName: f.lastName, email: f.email, phone: f.phone, dob: f.dob, gender: f.gender || undefined, marketingOptIn: f.marketingOptIn, consent: f.consent, locale: 'en', company: f.company }) });
