@@ -21,16 +21,19 @@ export function ExplainerPlayer({ title, level, points, onClose, onStart }: { ti
   const cur = scenes[i];
   const last = i >= scenes.length - 1;
 
-  // BLD-1679: pause/stop for the auto-advancing reel (WCAG 2.2.2), mirroring
-  // Testimonials.tsx — a tri-state override (null follows hover/focus, true is
-  // paused, false is "play anyway") plus a hover/focus pause and a
-  // prefers-reduced-motion check, rather than a plain boolean that could only
-  // ever stop auto-advance for good after one interaction.
-  const [hovered, setHovered] = useState(false);
-  const [focused, setFocused] = useState(false);
-  const [override, setOverride] = useState<boolean | null>(null);
+  // BLD-1679: an explicit pause/play toggle for the auto-advancing reel, plus a
+  // prefers-reduced-motion check — WCAG 2.2.2 (Pause, Stop, Hide) asks for a
+  // mechanism to pause, and the button below is it.
+  //
+  // Deliberately NOT Testimonials.tsx's hover/focus auto-pause. That pattern
+  // suits a small inline carousel, but this player is a full-screen dialog:
+  // useDialogBehaviours focuses the panel's first focusable child on open
+  // (which is the pause button itself), so a focus-pause would leave the reel
+  // paused from the moment it opens, and a hover-pause would pause it for any
+  // desktop pointer resting anywhere on the screen. Either one silently turns
+  // the 60-second explainer into a single static slide.
+  const [paused, setPaused] = useState(false);
   const reduce = useReducedMotionSafe();
-  const paused = override ?? (hovered || focused);
 
   useEffect(() => {
     if (last || reduce || paused) return;
@@ -62,7 +65,7 @@ export function ExplainerPlayer({ title, level, points, onClose, onStart }: { ti
   const art = cur.kind === 'point' ? matchIllustration(cur.text) : null;
 
   return (
-    <div ref={panelRef} className="fixed inset-0 z-[320] flex flex-col bg-[var(--color-ink)] text-[var(--color-porcelain)]" style={{ paddingTop: 'env(safe-area-inset-top)', paddingBottom: 'env(safe-area-inset-bottom)' }} role="dialog" aria-modal="true" aria-label={`${title} — 60-second explainer`} aria-keyshortcuts="ArrowRight ArrowLeft Escape" tabIndex={-1} onClick={() => !last && setI((x) => x + 1)} onKeyDown={onKeyDown} onMouseEnter={() => setHovered(true)} onMouseLeave={() => setHovered(false)} onFocus={() => setFocused(true)} onBlur={() => setFocused(false)}>
+    <div ref={panelRef} className="fixed inset-0 z-[320] flex flex-col bg-[var(--color-ink)] text-[var(--color-porcelain)]" style={{ paddingTop: 'env(safe-area-inset-top)', paddingBottom: 'env(safe-area-inset-bottom)' }} role="dialog" aria-modal="true" aria-label={`${title} — 60-second explainer`} aria-keyshortcuts="ArrowRight ArrowLeft Escape" tabIndex={-1} onClick={() => !last && setI((x) => x + 1)} onKeyDown={onKeyDown}>
       <AmbientBackdrop tone="dark" />
       <header className="relative z-10 flex items-center justify-between px-5 py-3">
         <span className="text-xs uppercase tracking-[0.18em] text-white/45">60-second explainer</span>
@@ -70,11 +73,11 @@ export function ExplainerPlayer({ title, level, points, onClose, onStart }: { ti
           {!last && !reduce && (
             <button
               type="button"
-              onClick={(e) => { e.stopPropagation(); setOverride(override !== true); }}
-              aria-label={override === true ? 'Play explainer' : 'Pause explainer'}
+              onClick={(e) => { e.stopPropagation(); setPaused((p) => !p); }}
+              aria-label={paused ? 'Play explainer' : 'Pause explainer'}
               className="grid h-9 w-9 place-items-center rounded-full text-white/70 transition-colors hover:bg-white/10 hover:text-white"
             >
-              {override === true ? '▶' : '❚❚'}
+              {paused ? '▶' : '❚❚'}
             </button>
           )}
           <button onClick={(e) => { e.stopPropagation(); onClose(); }} aria-label="Close explainer" className="grid h-9 w-9 place-items-center rounded-full text-white/70 transition-colors hover:bg-white/10 hover:text-white">
