@@ -133,14 +133,14 @@ const nextConfig = {
   // externalising it. Turbopack loads externalised server packages through
   // hash-aliased ids (require("@prisma/client-<hash>")) backed by symlinks in
   // .next/node_modules — and that machinery proved unreliable inside Vercel's
-  // lambda filesystem: the ESM external import of @prisma/extension-accelerate
-  // failed with "Failed to load external module …: Cannot find module" on every
-  // DB-touching route, across cached AND clean builds. Listing the packages in
-  // transpilePackages opts @prisma/client out of Next's DEFAULT external list
-  // and forces all four to compile into the chunks: no external requires, no
-  // symlinks, nothing left to resolve at runtime. The generated client's WASM
-  // query compiler is embedded as base64 JS, so it bundles cleanly.
-  transpilePackages: ['@prisma/client', '@prisma/adapter-pg', '@prisma/extension-accelerate', 'pg'],
+  // lambda filesystem: an ESM external import failed with "Failed to load
+  // external module …: Cannot find module" on every DB-touching route, across
+  // cached AND clean builds. Listing the packages in transpilePackages opts
+  // @prisma/client out of Next's DEFAULT external list and forces all three to
+  // compile into the chunks: no external requires, no symlinks, nothing left
+  // to resolve at runtime. The generated client's WASM query compiler is
+  // embedded as base64 JS, so it bundles cleanly.
+  transpilePackages: ['@prisma/client', '@prisma/adapter-pg', 'pg'],
   // Keep non-runtime files OUT of serverless function bundles. lib/og.tsx reads
   // images/fonts with a dynamic fs.readFileSync(path.join(process.cwd(), …)) that
   // Next/Turbopack can't statically analyse, so it traces the WHOLE project into
