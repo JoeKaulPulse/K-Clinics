@@ -9,7 +9,7 @@ const IMPACT: Record<string, string> = { high: 'bg-[var(--color-jade)]/15 text-[
 function Copy({ label, text, multiline }: { label?: string; text: string; multiline?: boolean }) {
   const [done, setDone] = useState(false);
   return (
-    <div className="group rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white p-2.5">
+    <div className="group rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-2.5">
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
           {label && <p className="text-[0.6rem] uppercase tracking-wide text-[var(--color-stone)]">{label}</p>}
@@ -84,7 +84,7 @@ export function CampaignAiPanel({ campaignId, enabled, initial }: { campaignId: 
           <p className="text-sm text-[var(--color-stone)]">Generate on-brand email, ad copy, landing-page sections &amp; SEO from your brief. Review &amp; use what you like — nothing is published automatically.</p>
         </div>
         <div className="flex gap-2">
-          <button onClick={optimise} disabled={optBusy || !enabled} className="rounded-full border border-[var(--color-line)] bg-white px-4 py-2 text-sm hover:border-[var(--color-gold)] disabled:opacity-50">{optBusy ? 'Analysing…' : 'Optimise performance'}</button>
+          <button onClick={optimise} disabled={optBusy || !enabled} className="rounded-full border border-[var(--color-line)] bg-[var(--color-porcelain)] px-4 py-2 text-sm hover:border-[var(--color-gold)] disabled:opacity-50">{optBusy ? 'Analysing…' : 'Optimise performance'}</button>
           <button onClick={generate} disabled={busy || !enabled} className="rounded-full bg-[var(--color-ink)] px-5 py-2 text-sm text-[var(--color-porcelain)] disabled:opacity-50">
             {busy ? 'Generating…' : pack ? 'Regenerate' : 'Generate content'}
           </button>
@@ -92,7 +92,7 @@ export function CampaignAiPanel({ campaignId, enabled, initial }: { campaignId: 
       </div>
 
       {advice && (
-        <div className="mt-5 rounded-[var(--radius-md)] border border-[var(--color-line)] bg-white p-4">
+        <div className="mt-5 rounded-[var(--radius-md)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-4">
           <h3 className="mb-1 text-sm font-semibold">Optimisation analysis</h3>
           <p className="text-sm text-[var(--color-stone)]">{advice.summary}</p>
           <ul className="mt-3 space-y-2">

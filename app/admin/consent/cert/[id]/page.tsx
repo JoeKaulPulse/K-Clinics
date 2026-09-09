@@ -34,7 +34,7 @@ export default async function CertificatePage({ params }: { params: Promise<{ id
         <button onClick={undefined} className="rounded-full border border-[var(--color-line)] px-4 py-1.5 text-sm" style={{ cursor: 'pointer' }} data-print>Print / save PDF</button>
       </div>
 
-      <div className="rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-white p-8">
+      <div className="rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-8">
         <div className="mb-6 border-b border-[var(--color-line)] pb-4 text-center">
           <p className="font-[family-name:var(--font-display)] text-2xl">{site.name}</p>
           <p className="text-sm text-[var(--color-stone)]">Certificate of {rec.declined ? 'declined photo consent' : 'consent'}</p>

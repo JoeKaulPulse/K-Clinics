@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { emailBlocksToHtml, applyMergeTags, blankBlock, MERGE_TAGS, type EmailBlock, type Align } from '@/lib/email-builder';
 
-const field = 'rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-3 py-2 text-sm';
+const field = 'rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-porcelain)] px-3 py-2 text-sm';
 const TYPES: { t: EmailBlock['type']; label: string }[] = [
   { t: 'heading', label: 'Heading' }, { t: 'subheading', label: 'Label' }, { t: 'paragraph', label: 'Text' },
   { t: 'list', label: 'List' }, { t: 'image', label: 'Image' }, { t: 'button', label: 'Button' },
@@ -190,18 +190,18 @@ export function EmailComposer({ segments, tags, initial, templates = [] }: { seg
               <span className={`text-[0.65rem] ${subject.length > 60 ? 'text-[var(--color-gold-deep)]' : 'text-[var(--color-stone)]'}`}>{subject.length} chars</span>
             </div>
             {abOn && (
-              <div className="mt-2 rounded-[var(--radius-md)] border border-dashed border-[var(--color-line)] bg-white/50 p-3">
+              <div className="mt-2 rounded-[var(--radius-md)] border border-dashed border-[var(--color-line)] bg-[var(--color-porcelain)]/50 p-3">
                 <label className="text-xs text-[var(--color-stone)]">Subject B
                   <input value={subjectB} onChange={(e) => setSubjectB(e.target.value)} placeholder="An alternative subject to test" className={`${field} mt-1 w-full`} />
                 </label>
                 <div className="mt-2 flex flex-wrap items-center gap-3 text-xs text-[var(--color-stone)]">
                   <label className="flex items-center gap-1.5">Sample
-                    <select value={abSamplePct} onChange={(e) => setAbSamplePct(Number(e.target.value))} className="rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-2 py-1">
+                    <select value={abSamplePct} onChange={(e) => setAbSamplePct(Number(e.target.value))} className="rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-porcelain)] px-2 py-1">
                       {[10, 15, 20, 25].map((p) => <option key={p} value={p}>{p}% each</option>)}
                     </select>
                   </label>
                   <label className="flex items-center gap-1.5">Decide after
-                    <select value={abWindowHours} onChange={(e) => setAbWindowHours(Number(e.target.value))} className="rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-2 py-1">
+                    <select value={abWindowHours} onChange={(e) => setAbWindowHours(Number(e.target.value))} className="rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-porcelain)] px-2 py-1">
                       {[2, 4, 8, 24].map((h) => <option key={h} value={h}>{h}h</option>)}
                     </select>
                   </label>
@@ -234,7 +234,7 @@ export function EmailComposer({ segments, tags, initial, templates = [] }: { seg
           <h2 className="mb-3 font-[family-name:var(--font-display)] text-lg">Content</h2>
           <div className="space-y-3">
             {blocks.map((b, i) => (
-              <div key={i} className="rounded-[var(--radius-md)] border border-[var(--color-line)] bg-white p-3">
+              <div key={i} className="rounded-[var(--radius-md)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-3">
                 <div className="mb-2 flex items-center justify-between">
                   <span className="text-[0.65rem] uppercase tracking-wide text-[var(--color-stone)]">{b.type}</span>
                   <span className="flex items-center gap-2 text-xs text-[var(--color-stone)]">
@@ -289,7 +289,7 @@ export function EmailComposer({ segments, tags, initial, templates = [] }: { seg
               : <button onClick={() => { if (confirm(`Send this email to ${audCount ?? 'the selected'} ${audCount === 1 ? 'person' : 'recipients'} now?`)) send(false); }} disabled={busy || !subject || !audCount} className="rounded-full bg-[var(--color-ink)] px-6 py-2 text-sm text-[var(--color-porcelain)] disabled:opacity-50">{busy ? 'Sending…' : 'Send now'}</button>}
           </div>
           {showSchedule && (
-            <div className="mt-3 flex flex-wrap items-end gap-2 rounded-[var(--radius-md)] border border-[var(--color-line)] bg-white p-3">
+            <div className="mt-3 flex flex-wrap items-end gap-2 rounded-[var(--radius-md)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-3">
               <label className="text-xs text-[var(--color-stone)]">Send at<input type="datetime-local" value={scheduleAt} onChange={(e) => setScheduleAt(e.target.value)} className={`${field} mt-1`} /></label>
               <button onClick={schedule} disabled={busy || !scheduleAt || !subject} className="rounded-full bg-[var(--color-gold-deep)] px-5 py-2 text-sm text-white disabled:opacity-50">Schedule send</button>
               <span className="text-xs text-[var(--color-stone)]">Delivered automatically within ~15 min of the chosen time.</span>

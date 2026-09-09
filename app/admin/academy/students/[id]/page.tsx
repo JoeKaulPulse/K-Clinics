@@ -126,7 +126,7 @@ export default async function AdminAcademyStudentPage({ params }: { params: Prom
           </div>
           {badgeRows.length > 0 && (
             <div className="mt-4 flex flex-wrap gap-2">
-              {badgeRows.map((b) => { const d = badgeByKey.get(b.badgeKey); return <span key={b.id} title={d?.description} className="inline-flex items-center gap-1.5 rounded-full border border-[var(--color-line)] bg-white px-2.5 py-1 text-xs"><BadgeIcon name={d?.icon} className="h-3.5 w-3.5 text-[var(--color-gold-deep)]" /> {d?.name ?? b.badgeKey}</span>; })}
+              {badgeRows.map((b) => { const d = badgeByKey.get(b.badgeKey); return <span key={b.id} title={d?.description} className="inline-flex items-center gap-1.5 rounded-full border border-[var(--color-line)] bg-[var(--color-porcelain)] px-2.5 py-1 text-xs"><BadgeIcon name={d?.icon} className="h-3.5 w-3.5 text-[var(--color-gold-deep)]" /> {d?.name ?? b.badgeKey}</span>; })}
             </div>
           )}
         </Card>
@@ -141,7 +141,7 @@ export default async function AdminAcademyStudentPage({ params }: { params: Prom
                 const fee = e.agreedFeePence ?? e.pricePence; // BLD-850: settle against the locked agreed fee when stamped
                 const outstanding = Math.max(0, fee - e.paidPence);
                 return (
-                  <div key={e.id} className="rounded-[var(--radius-md)] border border-[var(--color-line)] bg-white p-4">
+                  <div key={e.id} className="rounded-[var(--radius-md)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-4">
                     <div className="flex flex-wrap items-center justify-between gap-2">
                       <div>
                         <Link href={`/admin/academy/${e.course.id}`} className="font-medium hover:text-[var(--color-gold-deep)] hover:underline">{e.course.title}</Link>
