@@ -260,7 +260,7 @@ function Editor({ staff, actorRole, onClose, onSaved }: { staff: Staff | null; a
                           <span className="mt-0.5 block text-xs text-[var(--color-stone)]">{p.description}</span>
                         </span>
                         <span className={`mt-0.5 grid h-5 w-9 shrink-0 items-center rounded-full px-0.5 transition-colors ${on ? 'bg-[var(--color-gold)]' : 'bg-[var(--color-sand)]'}`}>
-                          <span className={`h-4 w-4 rounded-full bg-white transition-transform ${on ? 'translate-x-4' : ''}`} />
+                          <span className={`h-4 w-4 rounded-full bg-[var(--color-porcelain)] transition-transform ${on ? 'translate-x-4' : ''}`} />
                         </span>
                       </button>
                     );
@@ -292,7 +292,7 @@ function Editor({ staff, actorRole, onClose, onSaved }: { staff: Staff | null; a
   );
 }
 
-const field = 'w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-3 py-2.5 text-sm outline-none focus:border-[var(--color-gold)] focus-visible:ring-2 focus-visible:ring-[var(--color-gold)] disabled:opacity-60';
+const field = 'w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-porcelain)] px-3 py-2.5 text-sm outline-none focus:border-[var(--color-gold)] focus-visible:ring-2 focus-visible:ring-[var(--color-gold)] disabled:opacity-60';
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
@@ -320,7 +320,7 @@ function ProfileEditor({ staff, onClose, onSaved }: { staff: Staff; onClose: () 
   // Modal behaviours (focus-in, Tab trap, Escape, focus restore) — shared Dialog primitive (BLD-849/BLD-803).
   const { panelRef, onKeyDown } = useDialogBehaviours(onClose);
   const set = <K extends keyof typeof f>(k: K, v: (typeof f)[K]) => setF((s) => ({ ...s, [k]: v }));
-  const field = 'w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-3 py-2 text-sm outline-none focus:border-[var(--color-gold)] focus-visible:ring-2 focus-visible:ring-[var(--color-gold)]';
+  const field = 'w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-porcelain)] px-3 py-2 text-sm outline-none focus:border-[var(--color-gold)] focus-visible:ring-2 focus-visible:ring-[var(--color-gold)]';
 
   async function save() {
     setBusy(true); setErr('');

@@ -49,7 +49,7 @@ export function MaintenanceScheduler({ windows, serviceOptions }: { windows: Win
       </div>
 
       {open && (
-        <div className="mt-4 grid gap-3 rounded-[var(--radius-md)] border border-[var(--color-line)] bg-white p-4 sm:grid-cols-2">
+        <div className="mt-4 grid gap-3 rounded-[var(--radius-md)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-4 sm:grid-cols-2">
           <label className="text-xs font-medium uppercase tracking-wide text-[var(--color-stone)] sm:col-span-2">Title
             <input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} className="mt-1 w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] px-3 py-2 text-sm" placeholder="e.g. Database migration — expand step" />
           </label>

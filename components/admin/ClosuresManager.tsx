@@ -37,7 +37,7 @@ export function ClosuresManager({ closures, locations, multiLocation }: { closur
     router.refresh();
   }
 
-  const field = 'rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-2.5 py-1.5 text-sm';
+  const field = 'rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-porcelain)] px-2.5 py-1.5 text-sm';
 
   return (
     <section className="rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-6">
