@@ -13,7 +13,7 @@ export type CategoryDef = { key: string; label: string };
 
 const btn = 'rounded-full border border-[var(--color-line)] px-3 py-1 text-xs hover:border-[var(--color-gold)] disabled:opacity-40';
 const btnDark = 'rounded-full bg-[var(--color-ink)] px-4 py-1.5 text-xs font-medium text-[var(--color-porcelain)] disabled:opacity-50';
-const field = 'w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-2.5 py-1.5 text-sm';
+const field = 'w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-porcelain)] px-2.5 py-1.5 text-sm';
 const when = (iso: string) => new Date(iso).toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
 
 async function post(payload: object) { return fetch('/api/admin/forum', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) }); }
@@ -70,7 +70,7 @@ function ThreadRow({ thread: t, label, busy, act }: { thread: ModThread; label: 
   async function sendReply() { if (!reply.trim()) return; setReplying(true); await post({ op: 'staffReply', threadId: t.id, body: reply.trim() }); setReply(''); setReplying(false); router.refresh(); }
 
   return (
-    <div className={`rounded-[var(--radius-md)] border bg-white ${t.hidden ? 'border-dashed border-[var(--color-line)] opacity-70' : 'border-[var(--color-line)]'}`}>
+    <div className={`rounded-[var(--radius-md)] border bg-[var(--color-porcelain)] ${t.hidden ? 'border-dashed border-[var(--color-line)] opacity-70' : 'border-[var(--color-line)]'}`}>
       <div className="flex flex-wrap items-center gap-2 p-3">
         <button onClick={() => setOpen((v) => !v)} className="text-[var(--color-stone)]">{open ? '▾' : '▸'}</button>
         <span className="flex-1 text-sm">
@@ -110,7 +110,7 @@ function ThreadRow({ thread: t, label, busy, act }: { thread: ModThread; label: 
           )}
 
           <div className="flex gap-2">
-            <textarea value={reply} onChange={(e) => setReply(e.target.value)} rows={2} placeholder="Reply as K Academy…" aria-label="Reply to question" className="flex-1 rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-3 py-2 text-sm" />
+            <textarea value={reply} onChange={(e) => setReply(e.target.value)} rows={2} placeholder="Reply as K Academy…" aria-label="Reply to question" className="flex-1 rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-porcelain)] px-3 py-2 text-sm" />
             <button onClick={sendReply} disabled={replying || !reply.trim()} className="shrink-0 self-end rounded-full bg-[var(--color-gold-deep)] px-4 py-2 text-sm font-medium text-white hover:bg-[var(--color-ink)] disabled:opacity-50">{replying ? 'Sending…' : 'Reply'}</button>
           </div>
         </div>

@@ -76,7 +76,7 @@ export function DataExportCard() {
       </p>
 
       {/* Registered passkeys */}
-      <div className="mt-4 rounded-[var(--radius-md)] border border-[var(--color-line)] bg-white p-4">
+      <div className="mt-4 rounded-[var(--radius-md)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-4">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <p className="text-sm font-medium">Your passkeys</p>
           <button onClick={registerPasskey} disabled={busy === 'register'} className="rounded-full border border-[var(--color-line)] px-3 py-1.5 text-xs hover:border-[var(--color-gold)] disabled:opacity-50">
