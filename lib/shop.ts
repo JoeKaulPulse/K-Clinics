@@ -169,17 +169,26 @@ export async function finalizeOrder(orderId: string): Promise<{ ok: boolean; num
     // (not just VAT-applied ones) so it always reconciles exactly to the goods
     // subtotal, even when some items are exempt/zero-rated or the cart mixes
     // rates; the rate suffix is only shown when every applied item shares one.
+    //
+    // Only the explicit Product.vatClass counts for retail — no category
+    // fallback. effectiveVatClass' fallback derives EXEMPT from the *Service*
+    // category 'dentistry', but Product.category is a free-text shop category,
+    // so a shop category named "dentistry" would zero-rate standard-rated
+    // goods. Unset means STANDARD, which is what the product editor's
+    // "Default (standard)" says and exactly how the VAT report already totals
+    // retail (app/admin/reports/page.tsx, BLD-1170) — the receipt must agree
+    // with the books.
     let vatNetPence = 0, vatPence = 0, vatRatePct: number | null = null, vatMixedRates = false, vatShown = false;
     try {
       const { getVatConfig, effectiveVatClass, vatBreakdown } = await import('@/lib/vat');
       const cfg = await getVatConfig();
       if (cfg.registered) {
         const productIds = [...new Set(order.items.map((i) => i.productId).filter((id): id is string => !!id))];
-        const products = productIds.length ? await db.product.findMany({ where: { id: { in: productIds } }, select: { id: true, vatClass: true, category: true } }) : [];
+        const products = productIds.length ? await db.product.findMany({ where: { id: { in: productIds } }, select: { id: true, vatClass: true } }) : [];
         const byId = new Map(products.map((p) => [p.id, p]));
         for (const it of order.items) {
           const p = it.productId ? byId.get(it.productId) : undefined;
-          const b = vatBreakdown(it.unitPence * it.qty, cfg, effectiveVatClass({ vatClass: p?.vatClass, category: p?.category }));
+          const b = vatBreakdown(it.unitPence * it.qty, cfg, effectiveVatClass({ vatClass: p?.vatClass }));
           vatNetPence += b.netPence;
           vatPence += b.vatPence;
           if (b.applied) {
