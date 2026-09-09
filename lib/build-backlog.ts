@@ -5208,6 +5208,62 @@ export const BUILD_BACKLOG: BacklogItem[] = [
       'Verified: npx tsc --noEmit and npm run build pass clean.',
     ],
   },
+  {
+    title: '258 admin components hardcode bg-white, breaking the admin dark theme',
+    type: 'TASK', urgency: 'P1', status: 'SHIPPED', assignee: 'claude', pr: PR(1938),
+    value: 9, effort: 4,
+    detail: 'The admin has a real Light/System/Dark theme switcher (components/admin/ThemeToggle.tsx) backed by a full dark palette in app/globals.css, but 284 occurrences across 115 files under components/admin/ and app/admin/ used the literal Tailwind class bg-white instead of the theme token, so cards/inputs/table rows rendered as jarring white blocks in dark mode.',
+    notes: [
+      'Fix: converted all 284 occurrences to bg-[var(--color-porcelain)], matching the token already used 326 times elsewhere in already-dark-mode-aware admin components. 9 occurrences across 8 files were deliberately left as literal bg-white -- functional exceptions, not oversights: QR-code scanner backgrounds, a signature-image backdrop, email-preview iframes (recipients see them on their own light email clients), public-site preview iframes, and a logo-preview swatch that intentionally shows variants against both light and dark backdrops.',
+      'Review follow-up: those 9 exceptions are still broken in dark mode by a pre-existing blanket CSS rule (html[data-theme=\'dark\'] .bg-white in app/globals.css) that silently remaps literal bg-white to a dark fill -- the QR code becomes unscannable (dark modules on dark background) and the consent-certificate signature backdrop becomes invisible (transparent PNG over dark fill). Pre-existing on main, not introduced by this fix, so left out of scope here and logged separately for triage.',
+      'Verified: npx tsc --noEmit and npm run build pass clean.',
+    ],
+  },
+  {
+    title: 'Booking guest checkout, academy explainer reel and narration were not fully accessible',
+    type: 'TASK', urgency: 'P2', status: 'SHIPPED', assignee: 'claude', pr: PR(1939),
+    value: 6, effort: 3,
+    detail: 'Three related accessibility gaps: components/academy/ExplainerPlayer.tsx auto-advanced scenes every 4.2-5.4s with no way to pause (WCAG 2.2.2 failure); components/academy/KMascot.tsx typed narration character-by-character inside aria-live regions, so screen readers announced it letter-by-letter instead of as a sentence; and components/booking/BookingFlow.tsx guest() checkout only showed a single error banner with no per-field messages or focus-move, unlike signup() (fixed under BLD-1674).',
+    notes: [
+      'Fix: added a visible, keyboard-accessible pause/play toggle to ExplainerPlayer.tsx mirroring components/home/Testimonials.tsx\'s existing hover/focus-pause + reduced-motion pattern. KMascot.tsx\'s visible typed text is now aria-hidden, with a separate sr-only live region that announces the completed sentence once, fixing both call sites (ExplainerPlayer, ImmersiveCourse\'s SayMicro) from one place. guest() now builds the same fieldErrors object and calls the same focusFirstInvalid() helper as signup(), reused directly via shared closure.',
+      'Review fix (adversarial pass): the first cut\'s pause control copied Testimonials.tsx\'s tri-state override pattern, which breaks deterministically inside a full-screen dialog -- the dialog\'s own focus-on-open behaviour focuses the new pause button, and onFocus bubbling meant the reel never auto-advanced at all; separately, the panel being fixed inset-0 meant any pointer hover anywhere on screen also paused it. Replaced with a plain boolean driven only by the explicit button press, which is what WCAG 2.2.2 actually requires.',
+      'Verified: npx tsc --noEmit and npm run build pass clean.',
+    ],
+  },
+  {
+    title: 'Weak JWT secrets silently accepted, Redis rate-limit calls had no timeout, dentistryLive drift beyond organizationLd',
+    type: 'TASK', urgency: 'P2', status: 'SHIPPED', assignee: 'claude', pr: PR(1940),
+    value: 7, effort: 3,
+    detail: 'lib/auth-edge.ts padded any JWT secret under 32 bytes by repeating its bytes rather than rejecting it, yielding a low-entropy HS256 key; lib/security/rate-limit.ts called Upstash Redis with no timeout, so a slow-but-not-erroring endpoint stalled requests instead of falling back to Postgres; and four more call sites (app/llms.txt/route.ts, lib/chat-ai.ts, lib/og.tsx, components/treatment/TreatmentTemplate.tsx) still read the static site.dentistryLive constant instead of the live admin toggle, following the same drift BLD-1672 already fixed in lib/seo.tsx.',
+    notes: [
+      'Fix: a production-only assertSecretStrength() throw for ADMIN_JWT_SECRET/CLIENT_JWT_SECRET/ACADEMY_JWT_SECRET, matching the existing missing-secret fail-loud convention -- confirmed safe against production (no [auth] short-secret warning in current boot logs) and contained (the getters are called inside each verify function\'s own try/catch, so a future short secret degrades to invalid-session, not a site-wide 500). Redis calls now race against a 1500ms AbortSignal.timeout, falling through to the existing Postgres fallback exactly as on error. dentistryLive threaded through each of the four files matching its own server/client/static architecture.',
+      'Verified: npx tsc --noEmit and npm run build pass clean.',
+    ],
+  },
+  {
+    title: 'Remove the dormant Prisma Accelerate code path before Prisma retires Accelerate on 1 December 2026',
+    type: 'TASK', urgency: 'P2', status: 'SHIPPED', assignee: 'claude', pr: PR(1941),
+    value: 5, effort: 3,
+    detail: 'Production never used Prisma Accelerate -- lib/db.ts reaches Neon through the -pooler endpoint via @prisma/adapter-pg -- but the codebase still carried the dormant prisma+postgres:// branch and its plumbing (lib/db.ts, scripts/migrate-wp/*, the @prisma/extension-accelerate dependency, next.config.mjs transpilePackages, lib/platform-status.ts advice) ahead of Prisma\'s announced 1 Dec 2026 Accelerate retirement.',
+    notes: [
+      'Fix: removed resolvePooledUrl() and the Accelerate branch from lib/db.ts and the matching branch from scripts/migrate-wp/*.mjs; uninstalled @prisma/extension-accelerate; corrected lib/platform-status.ts\'s connection-mode check and PRISMA_DATABASE_URL advice; marked PRISMA_DATABASE_URL/ACCELERATE_URL unsupported in .env.example and docs/INTEGRATIONS.md.',
+      'Review verified independently (not just taken from the build report, since lib/db.ts is sensitive per the live BLD-1656 pooling discussion): resolveDirectUrl() and warnIfUnpooledInProduction() are byte-for-byte identical to main, and production cold-start logs\' own "No pooled database URL configured" line proves the deleted branch was already dead in production -- its removal cannot change pooling or connection-count behaviour.',
+      'Tenant-isolation guard re-run clean: scripts/test-tenant-isolation.ts (7/7), test-scope-query-valid.mjs, test-rls-seam.mjs, check-migration-drift.mjs.',
+      'Verified: npx tsc --noEmit, npm run lint and npm run build pass clean.',
+    ],
+  },
+  {
+    title: 'VAT breakdown is wired into booking-charge receipts only -- retail and academy receipts get no VAT line',
+    type: 'TASK', urgency: 'P2', status: 'SHIPPED', assignee: 'claude', pr: PR(1942),
+    value: 6, effort: 3,
+    detail: 'lib/vat.ts vatBreakdown()/effectiveVatClass() was only wired into the booking-charge receipt (lib/booking-actions.ts), leaving shop and academy receipts with no net/VAT/rate breakdown once vat_registered is switched on -- currently a no-op since that setting defaults off, but a UK VAT-invoice gap the moment it is enabled.',
+    notes: [
+      'Fix: threaded vatBreakdown()/effectiveVatClass() into lib/shop.ts finalizeOrder (per line item, from Product.vatClass) and tmplAcademyPaymentReceipt (standard-rated by default, since commercial training providers are not an "eligible body" under UK VAT law). Gift-voucher receipts deliberately left un-threaded: a KClinics voucher redeems against mixed EXEMPT/STANDARD treatments, making it a multi-purpose voucher under VATA 1994 Sch 10B -- no supply/VAT at sale, already correctly accounted for at redemption by the existing booking-charge path. Both new call sites are fully gated behind vat_registered, verified to render byte-identical output to before while it is off.',
+      'Review fix (adversarial pass): the first cut fell back to Product.category for the VAT-class lookup, but that fallback is written for Service.category -- a shop product merely categorised "dentistry" would have been zero-rated as EXEMPT, disagreeing with the admin VAT report (app/admin/reports/page.tsx), which applies the opposite BLD-1170 rule (explicit vatClass only, unset means STANDARD). Dropped the category fallback from the retail call site.',
+      'Known residual, not changed here: shipping is not broken out from goods on the receipt (both share the goods VAT total), and academy revenue is not included in the admin VAT report at all, so once vat_registered is switched on the academy receipt would show VAT the books do not total against -- worth a board item before that setting is enabled.',
+      'Verified: npx tsc --noEmit and npm run build pass clean.',
+    ],
+  },
 ];
 
 // A content hash over every item's title + status + PR, so ANY change (a new
