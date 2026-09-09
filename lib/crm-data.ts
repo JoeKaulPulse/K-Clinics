@@ -208,7 +208,12 @@ export async function listClients(opts: { q?: string; sort?: string; dir?: 'asc'
       select,
     }),
     // Count of records being hidden, so the list can offer a one-click reveal.
-    hidingTest ? db.client.count({ where: { tags: { has: 'likely-test' } } }) : Promise.resolve(0),
+    // BLD-1693: scoped by the same practitioner filter as the list itself —
+    // otherwise a Specialist is told how many likely-test records exist
+    // clinic-wide, and the "Show" link then reveals far fewer than promised.
+    hidingTest
+      ? db.client.count({ where: { AND: [{ tags: { has: 'likely-test' } }, ...(opts.practitionerId ? [{ bookings: { some: { practitionerId: opts.practitionerId } } }] : [])] } })
+      : Promise.resolve(0),
   ]);
   const pages = Math.max(1, Math.ceil(total / perPage));
   const page = Math.min(reqPage, pages);
