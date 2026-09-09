@@ -504,7 +504,7 @@ function SafetyStep({ p, live, pending, presenting, onReviewFlag, onSaveSop, onC
                   onChange={(e) => setItems((arr) => arr.map((x, j) => (j === i ? { ...x, response: e.target.value } : x)))}
                   placeholder="Client’s response…"
                   aria-label={`Response for: ${s.step}`}
-                  className="ml-7 mt-1.5 w-[calc(100%-1.75rem)] rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-3 py-2 text-sm outline-none transition-colors focus:border-[var(--color-gold)] focus-visible:ring-2 focus-visible:ring-[var(--color-gold)]"
+                  className="ml-7 mt-1.5 w-[calc(100%-1.75rem)] rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-porcelain)] px-3 py-2 text-sm outline-none transition-colors focus:border-[var(--color-gold)] focus-visible:ring-2 focus-visible:ring-[var(--color-gold)]"
                 />
               )}
             </li>
@@ -683,7 +683,7 @@ function TreatmentStep({ p, live, sessData, pending, presenting, canStart, gateH
                 <input id="session-comfort" value={comfort} onChange={(e) => setLocalComfort(e.target.value)}
                   onBlur={() => { if (comfort.trim()) { api({ op: 'save', field: 'comfort_note', value: comfort.trim() }).then(() => { setSavedMsg('Saved'); setTimeout(() => setSavedMsg(''), 1500); }); } }}
                   placeholder="e.g. prefers the room cooler, music low…"
-                  className="w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-4 py-3 text-sm outline-none transition-colors focus:border-[var(--color-gold)] focus-visible:ring-2 focus-visible:ring-[var(--color-gold)]" />
+                  className="w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-porcelain)] px-4 py-3 text-sm outline-none transition-colors focus:border-[var(--color-gold)] focus-visible:ring-2 focus-visible:ring-[var(--color-gold)]" />
                 <p className="mt-1 text-xs text-[var(--color-stone)]" role="status" aria-live="polite">{savedMsg || 'Edits after first save are audit-logged.'}</p>
               </div>
 
@@ -702,7 +702,7 @@ function TreatmentStep({ p, live, sessData, pending, presenting, canStart, gateH
                       }).catch(() => { savedNoteRef.current = null; setNoteSavedMsg('Autosave failed — click Save note.'); });
                     }}
                     placeholder="Settings, areas treated, observations…"
-                    className="w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-4 py-3 text-sm outline-none transition-colors focus:border-[var(--color-gold)] focus-visible:ring-2 focus-visible:ring-[var(--color-gold)]" />
+                    className="w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-porcelain)] px-4 py-3 text-sm outline-none transition-colors focus:border-[var(--color-gold)] focus-visible:ring-2 focus-visible:ring-[var(--color-gold)]" />
                   <p className="mt-1 text-xs text-[var(--color-stone)]" role="status" aria-live="polite">{noteSavedMsg || 'Autosaves when you click away; edits are audit-logged.'}</p>
                   <div className="mt-2 flex flex-wrap items-center gap-2">
                     <button type="button" disabled={pending} onClick={() => {
@@ -799,7 +799,7 @@ function AftercareStep({ p, live, sessData, api, onContinue }: {
           <div className="flex flex-wrap gap-3">
             <input id="aftercare-name" value={name} onChange={(e) => setName(e.target.value)} autoComplete="off"
               placeholder={p.client.firstName}
-              className="min-w-0 flex-1 rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-4 py-3 outline-none transition-colors focus:border-[var(--color-gold)] focus-visible:ring-2 focus-visible:ring-[var(--color-gold)]" />
+              className="min-w-0 flex-1 rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-porcelain)] px-4 py-3 outline-none transition-colors focus:border-[var(--color-gold)] focus-visible:ring-2 focus-visible:ring-[var(--color-gold)]" />
             <button type="button" disabled={busy} onClick={confirm}
               className="min-h-12 rounded-full bg-[var(--color-gold-deep)] px-7 py-3 font-medium text-white transition-colors hover:bg-[var(--color-ink)] disabled:opacity-50">
               {busy ? 'Saving…' : 'Confirm'}
@@ -951,7 +951,7 @@ function CheckoutStep({ p, live, sessData, pending, presenting, api, run, onCont
           <div className="mt-4">
             <div className="flex flex-wrap items-center gap-3">
               <label htmlFor="charge-amount" className="sr-only">Amount in pounds</label>
-              <span className="flex items-center gap-1 rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-3 py-2.5 text-sm">
+              <span className="flex items-center gap-1 rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-porcelain)] px-3 py-2.5 text-sm">
                 £<input id="charge-amount" inputMode="decimal" value={amount} onChange={(e) => setAmount(e.target.value)} className="w-24 rounded-[var(--radius-sm)] outline-none tabular-nums focus-visible:ring-2 focus-visible:ring-[var(--color-gold)]" />
               </span>
               {/* How to take payment */}
@@ -982,12 +982,12 @@ function CheckoutStep({ p, live, sessData, pending, presenting, api, run, onCont
                 <button type="button" onClick={() => setDiscOpen(true)} className="text-xs text-[var(--color-gold-deep)] underline-offset-2 hover:underline">Apply a discount / adjust price</button>
               ) : (
                 <div className="flex flex-wrap items-center gap-2 rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-bone)]/40 p-3 text-sm">
-                  <div className="flex items-center rounded-full border border-[var(--color-line)] bg-white p-0.5 text-xs">
+                  <div className="flex items-center rounded-full border border-[var(--color-line)] bg-[var(--color-porcelain)] p-0.5 text-xs">
                     <button type="button" onClick={() => setDiscType('percent')} aria-pressed={discType === 'percent'} className={`rounded-full px-2.5 py-1 ${discType === 'percent' ? 'bg-[var(--color-ink)] text-[var(--color-porcelain)]' : 'text-[var(--color-stone)]'}`}>% off</button>
                     <button type="button" onClick={() => setDiscType('amount')} aria-pressed={discType === 'amount'} className={`rounded-full px-2.5 py-1 ${discType === 'amount' ? 'bg-[var(--color-ink)] text-[var(--color-porcelain)]' : 'text-[var(--color-stone)]'}`}>£ off</button>
                   </div>
-                  <input inputMode="decimal" value={discVal} onChange={(e) => setDiscVal(e.target.value)} placeholder={discType === 'percent' ? '10' : '5.00'} aria-label="Discount value" className="w-16 rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-2 py-1.5 tabular-nums outline-none focus:border-[var(--color-gold)] focus-visible:ring-2 focus-visible:ring-[var(--color-gold)]" />
-                  <input value={discReason} onChange={(e) => setDiscReason(e.target.value)} placeholder="Reason (required)" aria-label="Discount reason" className="min-w-[10rem] flex-1 rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-2 py-1.5 outline-none focus:border-[var(--color-gold)] focus-visible:ring-2 focus-visible:ring-[var(--color-gold)]" />
+                  <input inputMode="decimal" value={discVal} onChange={(e) => setDiscVal(e.target.value)} placeholder={discType === 'percent' ? '10' : '5.00'} aria-label="Discount value" className="w-16 rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-porcelain)] px-2 py-1.5 tabular-nums outline-none focus:border-[var(--color-gold)] focus-visible:ring-2 focus-visible:ring-[var(--color-gold)]" />
+                  <input value={discReason} onChange={(e) => setDiscReason(e.target.value)} placeholder="Reason (required)" aria-label="Discount reason" className="min-w-[10rem] flex-1 rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-porcelain)] px-2 py-1.5 outline-none focus:border-[var(--color-gold)] focus-visible:ring-2 focus-visible:ring-[var(--color-gold)]" />
                   <button type="button" disabled={!discReason.trim() || !discVal.trim()} onClick={applyDiscount} className="rounded-full bg-[var(--color-ink)] px-3 py-1.5 text-xs font-medium text-[var(--color-porcelain)] disabled:opacity-40">Apply</button>
                   {discReason.trim() && <span className="text-xs text-[var(--color-stone)]">was {money(p.booking.pricePence)} → {money(amountPence)}</span>}
                 </div>
@@ -1006,7 +1006,7 @@ function CheckoutStep({ p, live, sessData, pending, presenting, api, run, onCont
                 <button type="button" onClick={() => setVOpen(true)} className="text-xs text-[var(--color-gold-deep)] underline-offset-2 hover:underline">Redeem a gift voucher</button>
               ) : (
                 <div className="flex flex-wrap items-center gap-2 rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-bone)]/40 p-3 text-sm">
-                  <input value={vCode} onChange={(e) => { setVCode(e.target.value); setVErr(''); }} onKeyDown={(e) => e.key === 'Enter' && applyVoucher()} placeholder="Voucher code" aria-label="Gift voucher code" className="min-w-[10rem] rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-2 py-1.5 uppercase outline-none focus:border-[var(--color-gold)] focus-visible:ring-2 focus-visible:ring-[var(--color-gold)]" />
+                  <input value={vCode} onChange={(e) => { setVCode(e.target.value); setVErr(''); }} onKeyDown={(e) => e.key === 'Enter' && applyVoucher()} placeholder="Voucher code" aria-label="Gift voucher code" className="min-w-[10rem] rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-porcelain)] px-2 py-1.5 uppercase outline-none focus:border-[var(--color-gold)] focus-visible:ring-2 focus-visible:ring-[var(--color-gold)]" />
                   <button type="button" onClick={applyVoucher} disabled={vBusy || !vCode.trim()} className="rounded-full bg-[var(--color-ink)] px-3 py-1.5 text-xs font-medium text-[var(--color-porcelain)] disabled:opacity-40">{vBusy ? 'Applying…' : 'Apply'}</button>
                   <span className="text-xs text-[var(--color-stone)]">Covers up to the amount above; any leftover stays on the voucher.</span>
                 </div>
@@ -1024,7 +1024,7 @@ function CheckoutStep({ p, live, sessData, pending, presenting, api, run, onCont
                 </button>
               )}
               {method === 'link' && (linkQr ? (
-                <div className="flex items-center gap-4 rounded-[var(--radius-md)] border border-[var(--color-line)] bg-white p-4">
+                <div className="flex items-center gap-4 rounded-[var(--radius-md)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-4">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img src={linkQr.qr} alt="Payment QR code" width={120} height={120} className="rounded-[var(--radius-sm)]" />
                   <div className="min-w-0 text-sm">
@@ -1042,7 +1042,7 @@ function CheckoutStep({ p, live, sessData, pending, presenting, api, run, onCont
               {method === 'terminal' && (
                 <div className="flex flex-wrap items-center gap-3">
                   {p.terminals.length > 0 ? (
-                    <select value={deviceId} onChange={(e) => setDeviceId(e.target.value)} aria-label="Card terminal" className="rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-3 py-2.5 text-sm">
+                    <select value={deviceId} onChange={(e) => setDeviceId(e.target.value)} aria-label="Card terminal" className="rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-porcelain)] px-3 py-2.5 text-sm">
                       {p.terminals.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
                     </select>
                   ) : <p className="text-sm text-[var(--color-stone)]">No card terminal is registered — add one under Devices.</p>}
@@ -1319,7 +1319,7 @@ function NextVisitStep({ p, sessData, api, onContinue, onSkip }: {
       <div className="rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-6">
         <label htmlFor="next-date" className="mb-1.5 block text-xs uppercase tracking-[0.16em] text-[var(--color-stone)]">Pick a day</label>
         <input id="next-date" type="date" value={date} min={new Date(Date.now() + 864e5).toISOString().slice(0, 10)} onChange={(e) => setDate(e.target.value)}
-          className="rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-4 py-3 text-sm outline-none transition-colors focus:border-[var(--color-gold)] focus-visible:ring-2 focus-visible:ring-[var(--color-gold)]" />
+          className="rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-porcelain)] px-4 py-3 text-sm outline-none transition-colors focus:border-[var(--color-gold)] focus-visible:ring-2 focus-visible:ring-[var(--color-gold)]" />
         <div className="mt-4 flex flex-wrap gap-2" role="listbox" aria-label="Available times">
           {loading ? <p className="text-sm text-[var(--color-stone)]">Checking the diary…</p>
             : slots.length === 0 ? <p className="text-sm text-[var(--color-stone)]">Nothing free that day — try another.</p>
@@ -1543,7 +1543,7 @@ function VoiceRecorder({ bookingId, onTranscript }: { bookingId: string; onTrans
   return (
     <div className="flex flex-col gap-1">
       <button type="button" onClick={start}
-        className="inline-flex min-h-11 items-center gap-2 rounded-full border border-[var(--color-line)] bg-white px-4 py-2 text-sm text-[var(--color-ink)] transition-colors hover:border-[var(--color-gold)] hover:bg-[var(--color-bone)]">
+        className="inline-flex min-h-11 items-center gap-2 rounded-full border border-[var(--color-line)] bg-[var(--color-porcelain)] px-4 py-2 text-sm text-[var(--color-ink)] transition-colors hover:border-[var(--color-gold)] hover:bg-[var(--color-bone)]">
         <svg aria-hidden width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><rect x="9" y="2" width="6" height="13" rx="3" /><path d="M5 10a7 7 0 0 0 14 0M12 19v3M9 22h6" /></svg>
         Record voice note
       </button>

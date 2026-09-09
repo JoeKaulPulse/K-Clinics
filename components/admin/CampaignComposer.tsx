@@ -120,7 +120,7 @@ export function CampaignComposer({ audience }: { audience: number }) {
             <h2 id={titleId} className="font-[family-name:var(--font-display)] text-2xl">Send this campaign?</h2>
             <p className="mt-1 text-sm text-[var(--color-stone)]">This cannot be recalled once it starts sending.</p>
 
-            <dl className="mt-4 space-y-3 rounded-[var(--radius-md)] border border-[var(--color-line)] bg-white p-4 text-sm">
+            <dl className="mt-4 space-y-3 rounded-[var(--radius-md)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-4 text-sm">
               <div>
                 <dt className="text-xs uppercase tracking-wide text-[var(--color-stone)]">Recipients</dt>
                 <dd className="mt-0.5 font-medium">

@@ -10,7 +10,7 @@ type Row = {
   lastRenewedAt: string | null; status: RenewalStatus; days: number;
 };
 
-const field = 'w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-3 py-2 text-sm';
+const field = 'w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-porcelain)] px-3 py-2 text-sm';
 const label = 'mb-1 block text-xs font-medium text-[var(--color-stone)]';
 const money = (p: number | null) => (p == null ? '' : `£${(p / 100).toLocaleString('en-GB', { maximumFractionDigits: 0 })}`);
 const fmtDate = (iso: string) => new Date(iso).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
@@ -146,7 +146,7 @@ function ItemForm({ initial, busy, onSave, onCancel, submitLabel }: { initial: t
   const [f, setF] = useState(initial);
   const set = (k: keyof typeof blank, v: string) => setF({ ...f, [k]: v });
   return (
-    <div className="rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-white p-5">
+    <div className="rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-5">
       <div className="grid gap-4 sm:grid-cols-2">
         <div className="sm:col-span-2"><label className={label}>Name *</label><input className={field} value={f.name} onChange={(e) => set('name', e.target.value)} placeholder="e.g. Public liability insurance" aria-label="Name" /></div>
         <div><label className={label}>Category</label>
