@@ -103,7 +103,9 @@ export function ChatManager() {
             </div>
             <p className="mt-0.5 truncate text-xs text-[var(--color-stone)]">{c.preview}</p>
             <p className="mt-0.5 flex items-center gap-1.5 text-[0.6rem] uppercase tracking-wide text-[var(--color-stone)]">
-              <span className={`rounded px-1 py-px font-semibold not-italic ${c.mode === 'AI' ? 'bg-[var(--color-bone)] text-[var(--color-gold-deep)]' : 'bg-[var(--color-ink)] text-[var(--color-porcelain)]'}`}>{c.mode === 'AI' ? 'AI' : 'Staff'}</span>
+              {/* BLD-1695: gold-deep only clears AA on porcelain/white (4.00:1 on this
+                  bg-bone badge) — ink-soft is used instead, per docs/projects/accessibility-aa.md S1. */}
+              <span className={`rounded px-1 py-px font-semibold not-italic ${c.mode === 'AI' ? 'bg-[var(--color-bone)] text-[var(--color-ink-soft)]' : 'bg-[var(--color-ink)] text-[var(--color-porcelain)]'}`}>{c.mode === 'AI' ? 'AI' : 'Staff'}</span>
               <span>{c.status === 'CLOSED' ? 'Closed' : 'Open'} · {fmt(c.lastMessageAt)}</span>
             </p>
           </button>
