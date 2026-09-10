@@ -46,7 +46,14 @@ export async function GET(req: Request) {
     safe(can('consultations.view'), async () =>
       // NB: concerns/message are encrypted at rest, so they can't be matched by a
       // SQL `contains` filter — consultations are searched by client name only.
-      (await db.consultation.findMany({ where: { client: nameOr }, orderBy: { createdAt: 'desc' }, take: 5, select: { id: true, clientId: true, concerns: true, client: { select: { firstName: true, lastName: true } } } }))
+      // BLD-1711: scoped by the same ownClient filter as the clients/bookings
+      // groups above. PRACTITIONER holds consultations.view AND
+      // clients.clinical.view by default, so without this a Specialist could
+      // search any client's name here and read a decrypted `concerns` snippet
+      // for a consultation belonging to a client they've never treated —
+      // re-opening, via search, the hole just closed on /admin/consultations
+      // and its detail page.
+      (await db.consultation.findMany({ where: { client: { ...ownClient, ...nameOr } }, orderBy: { createdAt: 'desc' }, take: 5, select: { id: true, clientId: true, concerns: true, client: { select: { firstName: true, lastName: true } } } }))
         .map((c) => {
           // BLD-1240/1392: decrypting concerns for the result snippet IS a
           // medical-record view — audit it (throttled per viewer/client/hour).

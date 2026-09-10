@@ -5264,6 +5264,18 @@ export const BUILD_BACKLOG: BacklogItem[] = [
       'Verified: npx tsc --noEmit and npm run build pass clean.',
     ],
   },
+  {
+    title: 'Consultations were not practitioner-scoped, SAR exports omitted GiftVoucher records, consult-form buttons silently no-op',
+    type: 'ERROR', urgency: 'P1', status: 'SHIPPED', assignee: 'claude', pr: PR(1948),
+    value: 8, effort: 3,
+    detail: 'Three End-of-Day Audit P1 items batched together: (BLD-1711) lib/crm-data.ts listConsultations/getConsultation and the consultation-notes API had no practitionerId scoping, unlike listClients/getClient/listBookings/getBooking, which BLD-1693 already scoped for the PRACTITIONER role -- a Specialist could browse and post clinical notes on another practitioner\'s consultation. (BLD-1715) both SAR export routes never fetched GiftVoucher even though erasure already matches and redacts it for the same client. (BLD-1713) the consult form\'s step-2 Continue and final Request-consultation buttons used a conditional inside onClick instead of the disabled prop, so a gated click silently did nothing with no visual cue.',
+    notes: [
+      'Fix: threaded practitionerId into listConsultations/getConsultation via the same client.bookings.some(...) ownership check getClient already uses (Consultation has no practitionerId column of its own); added the missing ownership check to the notes POST route; both admin consultations pages now pass session.sub for a PRACTITIONER session. Added a matching db.giftVoucher.findMany (claimedByClientId OR purchaserEmail, mirroring eraseClientData) to both SAR export routes, with the self-service export redacting the other party\'s name/email on a gifted voucher (same third-party-PII care as the existing referralsMade exclusion). ConsultForm.tsx\'s two buttons now use disabled instead of a silent no-op, matching BookingFlow.tsx\'s existing pattern.',
+      'Review fix (Opus max-effort pass): found a residual instance of the same IDOR class the branch was fixing -- app/api/admin/search/route.ts\'s consultation-results group had no ownClient filter, so a PRACTITIONER session could search any client\'s name in global admin search and get back a decrypted clinical concerns snippet for a consultation belonging to a client they have never treated. Scoped it with the same ownClient filter the clients/bookings search groups in that route already apply.',
+      'Residual, not changed here (flagged for a follow-up board item): the admin SAR export now also carries a gifted voucher\'s recipient name/email and shipping address when the subject was the purchaser -- consistent with how referralsMade already ships an unredacted third-party email in the same export, but worth a dedicated pass on third-party PII in the admin (staff-facing, verified-request) export generally. Separately, GiftVoucher.recipientEmail is not matched by either erasure or this export, so a voucher bought for the subject but never claimed is invisible to both. And app/admin/actions.ts write actions (e.g. setConsultStatus) have no practitioner scoping anywhere in that file -- scoping so far is read-path only; a whole-file pass is its own piece of work.',
+      'Verified: npx tsc --noEmit and npm run build pass clean.',
+    ],
+  },
 ];
 
 // A content hash over every item's title + status + PR, so ANY change (a new
