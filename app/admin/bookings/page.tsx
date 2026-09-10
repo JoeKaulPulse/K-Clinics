@@ -32,12 +32,15 @@ export default async function BookingsPage({ searchParams }: { searchParams: Pro
   const { listBookings } = await import('@/lib/crm-data');
   const session = await getSession();
   if (!sessionCan(session, 'bookings.view')) redirect('/admin');
+  // BLD-1693: a Specialist/Practitioner sees only their own bookings in this
+  // clinic-wide list — never every practitioner's.
+  const practitionerId = session && session.role === 'PRACTITIONER' ? session.sub : undefined;
 
   // listBookings and loadBookingTreatments are independent reads — neither
   // depends on the other's result (PRJ-1069.8), so run them concurrently
   // instead of serially.
   const [rows, can, locale, treatmentsForBooking] = await Promise.all([
-    listBookings({ filter, q, from, to }),
+    listBookings({ filter, q, from, to, practitionerId }),
     sessionPermissions(),
     getLocale(),
     // Specific service variants/areas per treatment category (Underarms, Full
