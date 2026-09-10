@@ -97,7 +97,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
   void passwordHash; void resetTokenHash; void resetTokenExp;
 
   // Fetch records not declared as reverse-FK relations on Client (no include path). (BLD-315)
-  const [signedConsents, beforePhotos, chatConversations, shopOrders, consentRequests, promoRedemptions] = await Promise.all([
+  const [signedConsents, beforePhotos, chatConversations, shopOrders, consentRequests, promoRedemptions, giftVouchers] = await Promise.all([
     db.signedConsent.findMany({ where: { clientId: id } }),
     // Metadata only here; the decrypted image is added under the clinical gate below (BLD-367).
     db.beforePhoto.findMany({ where: { clientId: id }, select: { id: true, bookingId: true, area: true, capturedBy: true, attestation: true, createdAt: true } }),
@@ -105,6 +105,12 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
     db.order.findMany({ where: { clientId: id }, include: { items: true }, orderBy: { createdAt: 'desc' } }),
     db.consentRequest.findMany({ where: { clientId: id }, orderBy: { createdAt: 'desc' } }),
     db.promoRedemption.findMany({ where: { clientId: id }, orderBy: { createdAt: 'desc' } }),
+    // BLD-1715: GiftVoucher has no FK relation to Client (claimedByClientId/
+    // purchaserEmail are plain columns, matched the same way eraseClientData
+    // matches them — app/admin/actions.ts:136-139), so it never surfaced in the
+    // include above and was missing from the SAR export even though erasure
+    // already covers it.
+    db.giftVoucher.findMany({ where: { OR: [{ claimedByClientId: id }, { purchaserEmail: c.email }] }, orderBy: { createdAt: 'desc' } }),
   ]);
 
   // BLD-1160: ChatMessage.body is encrypted at rest, like Consultation.message
@@ -122,6 +128,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
     shopOrders,
     consentRequests,
     promoRedemptions,
+    giftVouchers,
   };
 
   // BLD-1291: academy portfolio cases photographing this client (staff-linked

@@ -114,9 +114,17 @@ async function birthdaysInDays(days: number) {
   return out.sort((a, b) => a.inDays - b.inDays);
 }
 
-export async function listConsultations(status?: string) {
+// BLD-1711: `practitionerId`, when passed, restricts the result to consultations
+// for a client the given practitioner has actually had a booking with — same
+// scoping listClients/listBookings already apply for a PRACTITIONER session
+// (BLD-1693). Consultation has no practitionerId of its own, so it goes
+// through the client's bookings, same relation getClient checks below.
+export async function listConsultations(status?: string, opts: { practitionerId?: string } = {}) {
+  const and: Record<string, unknown>[] = [];
+  if (status && status !== 'ALL') and.push({ status: status as never });
+  if (opts.practitionerId) and.push({ client: { bookings: { some: { practitionerId: opts.practitionerId } } } });
   return db.consultation.findMany({
-    where: status && status !== 'ALL' ? { status: status as never } : undefined,
+    where: and.length ? { AND: and } : undefined,
     orderBy: { createdAt: 'desc' },
     include: { client: true },
     take: 100,
@@ -148,14 +156,24 @@ export async function countFlaggedAnalyses(): Promise<number> {
   return db.aiAnalysis.count({ where: { needsExpert: true, status: 'complete' } });
 }
 
-export async function getConsultation(id: string) {
+// BLD-1711: `practitionerId`, when passed, restricts the result to a
+// consultation for a client the given practitioner has actually had a
+// booking with — mirrors getClient/getBooking's guard below so a
+// PRACTITIONER session can't open another Specialist's consultation by id.
+export async function getConsultation(id: string, opts: { practitionerId?: string } = {}) {
   const c = await db.consultation.findUnique({
     where: { id },
     include: {
-      client: { select: { id: true, firstName: true, lastName: true, email: true } },
+      client: {
+        select: {
+          id: true, firstName: true, lastName: true, email: true,
+          bookings: { select: { practitionerId: true } },
+        },
+      },
       notes: { orderBy: { createdAt: 'asc' } },
     },
   });
+  if (c && opts.practitionerId && !c.client.bookings.some((b) => b.practitionerId === opts.practitionerId)) return null;
   if (c) { c.concerns = decClinical(c.concerns); c.message = decClinical(c.message); c.medicalNotes = decClinical(c.medicalNotes); }
   return c;
 }
