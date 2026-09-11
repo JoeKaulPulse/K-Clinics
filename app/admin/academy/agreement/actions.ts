@@ -2,16 +2,20 @@
 
 import { revalidatePath } from 'next/cache';
 import { crmEnabled } from '@/lib/crm';
-import { getSession, sessionCan } from '@/lib/auth';
+import { getSession } from '@/lib/auth';
 import type { AgreementSection } from '@/lib/learner-agreement';
 import type { Prisma } from '@prisma/client';
 
 // BLD-1731 — Learner Agreement admin management. Anyone with academy admin
-// access (settings.manage) can view the current agreement and save a working
-// draft; only the account OWNER can publish a new version. Publishing is what
-// changes what new learners are asked to sign, so the page hides the publish
-// control from a non-owner AND this action re-checks session.role === 'OWNER'
-// itself — a hidden page section is never the only guard.
+// access (settings.manage) can view the current agreement read-only; editing
+// and publishing are both restricted to the account OWNER, and both actions
+// re-check session.role === 'OWNER' themselves — a hidden page section is
+// never the only guard.
+//
+// The draft save is owner-gated too, not just the publish: the draft prefills
+// the owner's editor, so anyone who could write a draft could put wording in
+// front of the owner that a single Publish click makes the live contract.
+// That is the same authority as publishing, one step removed.
 
 function sanitizeSections(input: unknown): AgreementSection[] | null {
   if (!Array.isArray(input)) return null;
@@ -34,7 +38,7 @@ async function nextAgreementVersion(db: { learnerAgreementVersion: { count: (arg
 export async function saveAgreementDraft(sections: AgreementSection[]) {
   if (!crmEnabled) return { ok: false as const, error: 'CRM disabled' };
   const session = await getSession();
-  if (!session || !sessionCan(session, 'settings.manage')) return { ok: false as const, error: 'You don’t have permission to edit the Learner Agreement.' };
+  if (!session || session.role !== 'OWNER') return { ok: false as const, error: 'Only the account owner can edit the Learner Agreement.' };
   const clean = sanitizeSections(sections);
   if (!clean) return { ok: false as const, error: 'Add at least one section with a heading and body.' };
 

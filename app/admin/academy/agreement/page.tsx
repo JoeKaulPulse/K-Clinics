@@ -14,8 +14,10 @@ const fmtDT = (d: Date | null) => (d ? d.toLocaleString('en-GB', { day: 'numeric
 
 // BLD-1731 — Learner Agreement admin management. Any academy admin
 // (settings.manage) can see the current agreement read-only; only the
-// account OWNER sees the editor and the publish control (also re-checked
-// server-side in actions.ts — see the comment there).
+// account OWNER sees the editor and the publish control. Both the draft-save
+// and the publish action re-check OWNER server-side (see actions.ts), so the
+// hidden editor is never the only thing standing between a non-owner and the
+// wording learners sign.
 export default async function AdminAcademyAgreementPage() {
   if (!crmEnabled) return <CrmDisabled />;
   const session = await getSession();
