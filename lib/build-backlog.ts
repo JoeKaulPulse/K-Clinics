@@ -5276,6 +5276,16 @@ export const BUILD_BACKLOG: BacklogItem[] = [
       'Verified: npx tsc --noEmit and npm run build pass clean.',
     ],
   },
+  {
+    title: 'Session-replay ingest, Hostinger calendar sync and GA4 purchase reporting had three independent correctness gaps',
+    type: 'ERROR', urgency: 'P1', status: 'SHIPPED', assignee: 'claude', pr: PR(1950),
+    value: 8, effort: 2,
+    detail: 'Three End-of-Day Audit items from project PRJ-1191 batched together: (PRJ-1191.1) the client-side and server-side session-replay path exclusions had drifted apart, so the server accepted replay events reported under /shop or /academy even though the client never records there. (PRJ-1191.4) Hostinger CalDAV push/remove had no retry and no failure visibility, unlike the parallel Google Calendar path. (PRJ-1191.5) GA4 purchase was fired twice per booking, once client-side at booking-request time and again server-side at charge time, with no shared id to dedupe -- inflating reported revenue roughly 2x.',
+    notes: [
+      'Fix: extracted one shared NO_RECORD_PATH regex (lib/no-record-paths.ts) imported by both BehaviorRecorder.tsx and app/api/track/replay/route.ts, covering admin/account/book/booking/sign/shop/academy so client and server can no longer drift. Routed lib/hostinger-calendar.ts through the existing fetchWithRetry helper, added Sentry.captureException on failure, and added two new nullable Booking columns (calendarSyncError, calendarSyncErrorAt -- additive migration committed) surfaced as an admin banner on the booking detail page; bestEffort() call sites are unchanged, so a CalDAV failure still never blocks booking confirm/cancel. Dropped the client-side GA4 purchase event at the two pre-charge BookingFlow.tsx call sites, leaving the server-side sendPurchase() at charge time as the sole source of that event; Meta pixel tracking (already deduped via eventId) is untouched.',
+      'Verified: npx tsc --noEmit, npm run build and the migration-drift check all pass clean.',
+    ],
+  },
 ];
 
 // A content hash over every item's title + status + PR, so ANY change (a new
