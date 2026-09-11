@@ -195,6 +195,7 @@ enum AuditAction {
   CLIENT_ERASED
   STUDENT_ERASED // BLD-1124: distinct from CLIENT_ERASED — an academy trainee's data was erased (GDPR Art.17)
   CLIENT_EDITED
+  STUDENT_EDITED // BLD-1732: admin edited a trainee's first/last name (email stays locked; not learner-editable)
   DATA_EXPORTED
   DATA_IMPORTED // a data-migration step wrote records (e.g. WordPress import, BLD-187)
   SESSION_EDITED // a captured in-session answer was changed after first save (BLD-138)
@@ -3057,6 +3058,31 @@ model Enrolment {
   @@index([studentId])
   @@index([studentId, status])
   @@index([cohortId, status]) // BLD-1142: cohortsWithRemaining() groupBy on every course-page ISR
+}
+
+// BLD-1731: the Learner (Training) Agreement's wording, versioned and editable
+// from the K Academy admin area instead of hardcoded in lib/learner-agreement.ts.
+// One row per published (or drafted) wording; the CURRENT agreement is the most
+// recent PUBLISHED row (ordered by publishedAt) — publishing never edits or
+// removes an older row, so an enrolment's stamped agreementVersion always still
+// resolves to the exact wording that learner signed. Global policy content
+// (like Post), not tenant-scoped.
+enum LearnerAgreementStatus {
+  DRAFT
+  PUBLISHED
+}
+
+model LearnerAgreementVersion {
+  id          String                 @id @default(cuid())
+  version     String // human-readable + monotonic, e.g. "2026-09-11" (see nextAgreementVersion)
+  sections    Json // AgreementSection[] — { heading, body }[]
+  status      LearnerAgreementStatus @default(DRAFT)
+  publishedAt DateTime? // set once, when this row is published; never re-published
+  createdBy   String? // admin email, or 'system' for the initial lazy seed
+  createdAt   DateTime               @default(now())
+  updatedAt   DateTime               @updatedAt
+
+  @@index([status, publishedAt])
 }
 
 // BLD-528: itemised academy payments. One row per payment OR scheduled instalment.
