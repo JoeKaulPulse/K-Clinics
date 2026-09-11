@@ -5277,13 +5277,24 @@ export const BUILD_BACKLOG: BacklogItem[] = [
     ],
   },
   {
+    title: 'K Academy admin had no way to manage the Learner Agreement or correct a student name',
+    type: 'TASK', urgency: 'P0', status: 'SHIPPED', assignee: 'claude', pr: PR(1949),
+    value: 8, effort: 3,
+    detail: 'Two owner-reported gaps in the K Academy admin area: (BLD-1731) the Learner Agreement (lib/learner-agreement.ts) was a hardcoded source constant with no admin view, edit or publish path. (BLD-1732) admins had no way to correct a learner\'s first/last name from /admin/academy/students/[id]; the learner\'s own portal has no name-edit path either, and email must stay locked either way.',
+    notes: [
+      'Fix: added an additive LearnerAgreementVersion model and an owner-only "Agreements & Policies" section under /admin/academy (session.role === \'OWNER\', re-checked server-side in the publish action, mirroring the existing gate on app/admin/settings/page.tsx). The first DB version is seeded from the original constants so nothing changes for existing learners on deploy; PreCourseGate/precourse-ack and the marketing learn page now read the current published version through the same exported functions, keeping a signed acceptance traceable to the exact wording version it was signed against. Added an admin-only (settings.manage), audit-logged (new STUDENT_EDITED AuditAction value, additive) name-edit action on the student detail page; email remains locked in that UI.',
+      'Review fix (Opus max-effort pass): saveAgreementDraft only required settings.manage while the page renders the editor for OWNER alone, so a non-owner holding that grant could have called the server action directly -- now re-checks OWNER server-side, matching publishAgreement and the page. Also found the dynamic version made the precourse-ack route stamp whatever version was current at submit time rather than the one the learner actually read; the gate now sends the version it rendered and the route rejects a mismatch instead of stamping it, so a publish landing mid-session can no longer record a signature against wording the learner never saw.',
+      'Verified: npx tsc --noEmit and npm run build pass clean.',
+    ],
+  },
+  {
     title: 'Session-replay ingest, Hostinger calendar sync and GA4 purchase reporting had three independent correctness gaps',
     type: 'ERROR', urgency: 'P1', status: 'SHIPPED', assignee: 'claude', pr: PR(1950),
     value: 8, effort: 2,
     detail: 'Three End-of-Day Audit items from project PRJ-1191 batched together: (PRJ-1191.1) the client-side and server-side session-replay path exclusions had drifted apart, so the server accepted replay events reported under /shop or /academy even though the client never records there. (PRJ-1191.4) Hostinger CalDAV push/remove had no retry and no failure visibility, unlike the parallel Google Calendar path. (PRJ-1191.5) GA4 purchase was fired twice per booking, once client-side at booking-request time and again server-side at charge time, with no shared id to dedupe -- inflating reported revenue roughly 2x.',
     notes: [
       'Fix: extracted one shared NO_RECORD_PATH regex (lib/no-record-paths.ts) imported by both BehaviorRecorder.tsx and app/api/track/replay/route.ts, covering admin/account/book/booking/sign/shop/academy so client and server can no longer drift. Routed lib/hostinger-calendar.ts through the existing fetchWithRetry helper, added Sentry.captureException on failure, and added two new nullable Booking columns (calendarSyncError, calendarSyncErrorAt -- additive migration committed) surfaced as an admin banner on the booking detail page; bestEffort() call sites are unchanged, so a CalDAV failure still never blocks booking confirm/cancel. Dropped the client-side GA4 purchase event at the two pre-charge BookingFlow.tsx call sites, leaving the server-side sendPurchase() at charge time as the sole source of that event; Meta pixel tracking (already deduped via eventId) is untouched.',
-      'Verified: npx tsc --noEmit, npm run build and the migration-drift check all pass clean.',
+      'Verified: npx tsc --noEmit, npm run build and the migration-drift check all pass clean. Residual risk flagged for the owner: server-side GA4 purchase only fires when both a GA4 measurement ID and API secret are configured under Admin -> SEO -> "Tracking & pixels" -- if that secret is not set in production, this change takes GA4 booking-purchase reporting from double-counted to zero rather than to correct, so worth confirming that config is live before relying on the new numbers.',
     ],
   },
 ];

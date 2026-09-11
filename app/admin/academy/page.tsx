@@ -54,6 +54,7 @@ export default async function AdminAcademyPage() {
     { href: '/admin/academy/community', label: 'Community', value: String(forumThreads), sub: 'forum threads' },
     { href: '/admin/academy/portfolio', label: 'Portfolios', value: String(portfolioPending), sub: 'awaiting review' },
     { href: '/admin/careers', label: 'Careers', value: String(openVacancies), sub: 'open roles' },
+    { href: '/admin/academy/agreement', label: 'Agreements & Policies', value: 'Manage', sub: 'Learner Agreement' },
   ];
 
   const can = await sessionPermissions();
