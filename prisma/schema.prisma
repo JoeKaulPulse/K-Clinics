@@ -773,6 +773,15 @@ model Booking {
   // Best-effort — calendar sync never blocks the booking lifecycle.
   googleEventId String?
 
+  // PRJ-1191.4: last calendar-sync failure message (any provider) an admin can
+  // see, set by lib/hostinger-calendar.ts after fetchWithRetry exhausts its
+  // attempts and cleared on the next successful push/remove. Best-effort sync
+  // never blocks the booking lifecycle, so this is the only surfaced signal
+  // that a confirmed/cancelled booking may not actually be reflected on the
+  // shared clinic calendar.
+  calendarSyncError   String?
+  calendarSyncErrorAt DateTime?
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 

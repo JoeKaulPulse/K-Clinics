@@ -857,10 +857,14 @@ function RequestReceived({ firstName, treatment, slot, orderTotal, variantId, ca
     // BLD-873: a same-day request is a placed booking pending approval — fire
     // the same browser conversion Done does, deduped with the server CAPI
     // Schedule via the booking id (previously this outcome tracked nothing).
+    // PRJ-1191.5: ga4Purchase: false — the request is pre-charge; the sole GA4
+    // `purchase` fires server-side (lib/conversions.ts) when the card is
+    // actually charged, or this double-counted every booking in GA4.
     trackPurchase({
       valuePence: orderTotal,
       eventId: bookingId || undefined,
       detail: { items: [{ item_id: variantId, item_name: treatment, item_category: category }] },
+      ga4Purchase: false,
     });
   }, []);
   return (
@@ -878,12 +882,17 @@ function RequestReceived({ firstName, treatment, slot, orderTotal, variantId, ca
 
 function Done({ firstName, treatment, slot, orderTotal, variantId, category, bookingId }: { firstName: string; treatment?: string; slot: string; orderTotal: number; variantId: string; category?: string; bookingId?: string }) {
   useEffect(() => {
-    // GA4 `purchase` + Meta `Schedule` (pre-charge); eventId = booking id so the
-    // browser Pixel de-duplicates against the server-side CAPI Schedule.
+    // Meta `Schedule` (pre-charge); eventId = booking id so the browser Pixel
+    // de-duplicates against the server-side CAPI Schedule.
+    // PRJ-1191.5: no GA4 `purchase` here — the card is only saved, not charged,
+    // at this step. Firing it anyway (with no transaction_id) double-counted
+    // every booking against the real GA4 `purchase` lib/conversions.ts sends
+    // server-side at actual card-charge time.
     trackPurchase({
       valuePence: orderTotal,
       eventId: bookingId || undefined,
       detail: { items: [{ item_id: variantId, item_name: treatment, item_category: category }] },
+      ga4Purchase: false,
     });
   }, []);
   return (
