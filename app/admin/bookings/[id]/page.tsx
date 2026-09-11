@@ -266,6 +266,18 @@ export default async function BookingDetail({ params }: { params: Promise<{ id: 
         </div>
       )}
 
+      {/* PRJ-1191.4: the shared clinic calendar (Hostinger CalDAV) push/remove
+          failed after retries — this booking may not actually be reflected
+          there, a real double-booking risk since it's the only signal, other
+          than Sentry, that the sync failed at all. */}
+      {b.calendarSyncError && (
+        <div role="alert" className="mt-4 rounded-[var(--radius-md)] border border-[var(--color-blush-deep)] bg-[var(--color-blush)]/15 px-4 py-3 text-sm">
+          <span className="font-medium text-[var(--color-blush-deep)]">Calendar sync failed.</span>{' '}
+          This booking may not be up to date on the shared clinic calendar ({b.calendarSyncError}
+          {b.calendarSyncErrorAt ? `, ${b.calendarSyncErrorAt.toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', timeZone: 'Europe/London' })}` : ''}). It will retry next time the booking is saved, cancelled or rescheduled.
+        </div>
+      )}
+
       {/* BLD-1066: unpaid late-cancel/no-show balance on this client. */}
       {owedHere.totalPence > 0 && (
         <div role="alert" className="mt-4 rounded-[var(--radius-md)] border border-[var(--color-blush-deep)] bg-[var(--color-blush)]/15 px-4 py-3 text-sm">
