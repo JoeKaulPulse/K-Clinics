@@ -5276,6 +5276,16 @@ export const BUILD_BACKLOG: BacklogItem[] = [
       'Verified: npx tsc --noEmit and npm run build pass clean.',
     ],
   },
+  {
+    title: 'K Academy admin had no way to manage the Learner Agreement or correct a student name',
+    type: 'TASK', urgency: 'P0', status: 'SHIPPED', assignee: 'claude', pr: PR(1949),
+    value: 8, effort: 3,
+    detail: 'Two owner-reported gaps in the K Academy admin area: (BLD-1731) the Learner Agreement (lib/learner-agreement.ts) was a hardcoded source constant with no admin view, edit or publish path. (BLD-1732) admins had no way to correct a learner\'s first/last name from /admin/academy/students/[id]; the learner\'s own portal has no name-edit path either, and email must stay locked either way.',
+    notes: [
+      'Fix: added an additive LearnerAgreementVersion model and an owner-only "Agreements & Policies" section under /admin/academy (session.role === \'OWNER\', re-checked server-side in the publish action, mirroring the existing gate on app/admin/settings/page.tsx). The first DB version is seeded from the original constants so nothing changes for existing learners on deploy; PreCourseGate/precourse-ack and the marketing learn page now read the current published version through the same exported functions, keeping a signed acceptance traceable to the exact wording version it was signed against. Added an admin-only (settings.manage), audit-logged (new STUDENT_EDITED AuditAction value, additive) name-edit action on the student detail page; email remains locked in that UI.',
+      'Verified: npx tsc --noEmit and npm run build pass clean.',
+    ],
+  },
 ];
 
 // A content hash over every item's title + status + PR, so ANY change (a new
