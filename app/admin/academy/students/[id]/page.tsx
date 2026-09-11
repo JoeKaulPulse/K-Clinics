@@ -5,6 +5,7 @@ import { getSession, sessionCan, sessionPermissions } from '@/lib/auth';
 import { AdminShell } from '@/components/admin/AdminShell';
 import { CrmDisabled } from '@/components/admin/CrmDisabled';
 import { StudentActions } from '@/components/admin/StudentActions';
+import { EditStudentDetails } from '@/components/admin/EditStudentDetails';
 import { GrantQuizAttempts } from '@/components/admin/GrantQuizAttempts';
 import { EnrolInCourse } from '@/components/admin/EnrolInCourse';
 import { BadgeIcon } from '@/components/academy/BadgeIcon';
@@ -99,7 +100,10 @@ export default async function AdminAcademyStudentPage({ params }: { params: Prom
           <p className="mt-1 text-sm text-[var(--color-stone)]">{student.email}{student.phone ? ` · ${student.phone}` : ''}</p>
           <p className="mt-1 text-xs text-[var(--color-stone)]">Clinic client: {client ? <Link href={`/admin/clients/${client.id}`} className="text-[var(--color-gold-deep)] hover:underline">{client.firstName} {client.lastName ?? ''} →</Link> : <span>not linked</span>}</p>
         </div>
-        <StudentActions studentId={student.id} email={student.email} portalActive={student.portalActive} hasClient={!!client} />
+        <div className="flex flex-wrap items-center gap-2">
+          <EditStudentDetails studentId={student.id} firstName={student.firstName} lastName={student.lastName} />
+          <StudentActions studentId={student.id} email={student.email} portalActive={student.portalActive} hasClient={!!client} />
+        </div>
       </div>
 
       <div className="mt-8 grid gap-5 lg:grid-cols-2">

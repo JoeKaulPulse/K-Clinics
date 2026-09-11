@@ -22,14 +22,15 @@ export async function POST(req: Request) {
   if (agreementName.length < 2) return NextResponse.json({ ok: false, error: 'Please sign by typing your full name.' }, { status: 422 });
 
   const { db } = await import('@/lib/db');
-  const { LEARNER_AGREEMENT_VERSION } = await import('@/lib/learner-agreement');
+  const { getCurrentLearnerAgreement } = await import('@/lib/learner-agreement');
   const course = await db.course.findFirst({ where: { slug }, select: { id: true } });
   if (!course) return NextResponse.json({ ok: false, error: 'Course not found.' }, { status: 404 });
 
   const now = new Date();
+  const agreement = await getCurrentLearnerAgreement();
   await db.enrolment.updateMany({
     where: { studentId: student.id, courseId: course.id, status: { in: ['PAID', 'ENROLLED', 'COMPLETED'] }, preCourseAckAt: null },
-    data: { preCourseAckAt: now, agreementSignedAt: now, agreementSignedName: agreementName, agreementVersion: LEARNER_AGREEMENT_VERSION },
+    data: { preCourseAckAt: now, agreementSignedAt: now, agreementSignedName: agreementName, agreementVersion: agreement.version },
   });
   return NextResponse.json({ ok: true });
 }
