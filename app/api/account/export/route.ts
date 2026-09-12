@@ -79,6 +79,21 @@ export async function GET(req: Request) {
     recipientEmail: v.recipientEmail?.toLowerCase() === ownEmail ? v.recipientEmail : null,
   }));
 
+  // BLD-1721: BookingIntent and NewsletterSubscriber have no Client relation
+  // (matched by email, like GiftVoucher above) and were missing from this
+  // self-service export — both hold only the subject's own data, no
+  // third-party PII concern like giftVouchers above.
+  // Review fix (BLD-1721): matched against the lower-cased address (ownEmail
+  // above), not c.email raw. Every write to both tables lowercases, but
+  // Client.email does not — app/admin/clients/actions.ts saves a staff-edited
+  // address exactly as typed — so an exact match would silently return nothing
+  // for such a client and under-report the export. Mirrors how eraseClientData
+  // matches these two tables (app/admin/actions.ts).
+  const [bookingIntents, newsletterSubscription] = await Promise.all([
+    db.bookingIntent.findMany({ where: { email: { equals: ownEmail, mode: 'insensitive' } }, orderBy: { createdAt: 'desc' }, select: { treatmentSlug: true, treatmentTitle: true, variantLabel: true, source: true, createdAt: true } }),
+    db.newsletterSubscriber.findUnique({ where: { email: ownEmail }, select: { active: true, source: true, consentedAt: true, createdAt: true } }),
+  ]);
+
   const out = {
     exportedAt: new Date().toISOString(),
     account: {
@@ -100,6 +115,8 @@ export async function GET(req: Request) {
     waitlist: c.waitlist,
     emails: c.emails,
     giftVouchers,
+    bookingIntents,
+    newsletterSubscription,
     note: 'Clinical and special-category health detail (consultation notes, health-form answers, before/after photos, call transcripts) is not included in this self-service file. Request it through a verified subject-access request and we will provide it with an identity check.',
   };
 
