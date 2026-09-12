@@ -110,6 +110,7 @@ export const navGroups: NavGroup[] = [
     { href: '/admin/orders', key: 'nav.orders', perm: 'finance.view', keywords: 'sales transactions purchases receipts' },
     { href: '/admin/cashflow', key: 'nav.cashflow', perm: 'finance.view', keywords: 'money revenue income bank' },
     { href: '/admin/reports', key: 'nav.reports', perm: 'finance.view', keywords: 'analytics statements export accounting' },
+    { href: '/admin/finance/pricing', key: 'nav.pricingPlanner', perm: 'finance.view', keywords: 'price pricing planner calculator cost of goods cogs margin markup profit retail price what should i charge price list mark up costing break even' },
     { href: '/admin/finance/controls', key: 'nav.financeControls', perm: 'finance.manage', keywords: 'vat tax xero refunds locks audit' },
   ] },
   { heading: 'nav.group.admin', icon: 'admin', items: [
