@@ -131,7 +131,7 @@ export function PortalShell({ firstName, locale: localeProp, children }: { first
           <nav className="flex flex-wrap gap-x-5 gap-y-1" aria-label="Portal footer">
             <Link href="/book" className="hover:text-[var(--color-gold-deep)]">{t('dash.book')}</Link>
             <Link href="/contact" className="hover:text-[var(--color-gold-deep)]">Contact</Link>
-            <Link href="/info/website-privacy-terms" className="hover:text-[var(--color-gold-deep)]">Privacy</Link>
+            <Link href="/info/privacy-policy" className="hover:text-[var(--color-gold-deep)]">Privacy</Link>
           </nav>
         </footer>
       </div>

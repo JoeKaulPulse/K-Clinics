@@ -11,7 +11,7 @@ export type PaymentRow = { id: string; kind: string; method: string | null; stat
 // editable list price behind the £ field.
 export type Enrolment = { id: string; courseId: string; courseTitle: string; cohortId: string | null; applicantName: string; applicantEmail: string; applicantPhone: string | null; experience: string | null; financeInterest: boolean; status: string; pricePence: number; feePence: number; paidPence: number; notes: string | null; createdAt: string; studentId: string | null; offeredAt: string | null; offerExpiresAt: string | null; acceptedAt: string | null; paymentPlan: boolean; preCourseAckAt: string | null; payments: PaymentRow[] };
 
-const field = 'rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-2.5 py-1.5 text-sm';
+const field = 'rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-porcelain)] px-2.5 py-1.5 text-sm';
 const money = (p: number) => (p > 0 ? `£${(p / 100).toLocaleString('en-GB')}` : '—');
 const fmtDate = (iso: string) => new Date(iso).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
 const STATUSES = ['APPLIED', 'OFFERED', 'PAID', 'ENROLLED', 'COMPLETED', 'CANCELLED'];
@@ -116,7 +116,7 @@ export function Applications({ enrolments, courses }: { enrolments: Enrolment[];
                       </td>
                     </tr>
                     {isOpen && (
-                      <tr className="border-t border-[var(--color-line)] bg-white/60">
+                      <tr className="border-t border-[var(--color-line)] bg-[var(--color-porcelain)]/60">
                         <td colSpan={6} className="p-4"><PaymentPanel enrolment={e} onAct={act} /></td>
                       </tr>
                     )}
@@ -230,7 +230,7 @@ function PaymentPanel({ enrolment: e, onAct }: { enrolment: Enrolment; onAct: (p
         ) : (
           <ul className="mt-2 space-y-1.5">
             {e.payments.map((p) => (
-              <li key={p.id} className="flex flex-wrap items-center justify-between gap-2 rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-3 py-2 text-sm">
+              <li key={p.id} className="flex flex-wrap items-center justify-between gap-2 rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-porcelain)] px-3 py-2 text-sm">
                 <div>
                   <span className="font-medium">{money(p.amountPence)}</span>
                   <span className="text-[var(--color-stone)]"> · {p.kind.toLowerCase()}{p.method ? ` · ${METHOD_LABEL[p.method] ?? p.method}` : ''}</span>
@@ -304,7 +304,7 @@ function CourseCard({ course, enrolments }: { course: Course; enrolments: Enrolm
   const [editing, setEditing] = useState(false);
   async function act(payload: object) { await post(payload); router.refresh(); }
   return (
-    <div className={`rounded-[var(--radius-md)] border border-[var(--color-line)] bg-white p-4 ${course.active ? '' : 'opacity-60'}`}>
+    <div className={`rounded-[var(--radius-md)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-4 ${course.active ? '' : 'opacity-60'}`}>
       <div className="flex items-center justify-between gap-3">
         <div>
           <span className="font-medium">{course.title}</span>

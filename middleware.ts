@@ -106,11 +106,11 @@ async function loadRedirects(): Promise<RedirectMap> {
   } catch { /* keep stale cache on failure */ }
   return _redirects?.map ?? {};
 }
-async function matchRedirect(req: NextRequest): Promise<NextResponse | null> {
+// Only the public marketing surface needs a redirect lookup — never the app
+// areas or our own handlers.
+const isRedirectCandidate = (pathname: string) => !/^\/(admin|account|api|qr)(\/|$)/.test(pathname);
+function matchRedirect(req: NextRequest, map: RedirectMap): NextResponse | null {
   const { pathname, search, origin } = req.nextUrl;
-  // Only the public marketing surface — never the app areas or our own handlers.
-  if (/^\/(admin|account|api|qr)(\/|$)/.test(pathname)) return null;
-  const map = await loadRedirects();
   const key = pathname.length > 1 ? pathname.replace(/\/$/, '') : pathname;
   const hit = map[key] ?? map[pathname];
   if (!hit) return null;
@@ -177,16 +177,25 @@ export async function middleware(req: NextRequest) {
     return NextResponse.next();
   }
 
-  // ── IP deny-list — blocked IPs get nothing (checked before any work) ─────
+  // ── IP deny-list + URL redirects ──────────────────────────────────────────
+  // Both are self-fetches to internal API routes (Prisma needs the Node
+  // runtime; this middleware runs on the edge). On a cold edge instance
+  // (fresh deploy, low-traffic region, scale-out) neither module-memory cache
+  // is warm yet, so run them concurrently rather than sequentially — a cold
+  // instance then pays for one round-trip's worth of latency, not two
+  // (BLD-1694). The redirect map is only ever needed on the public marketing
+  // surface, so skip fetching it entirely for app/API routes.
   const ip = edgeClientIp(req);
-  if (ip !== 'unknown') {
-    const set = await blockedIps();
-    if (set.has(ip)) return new NextResponse('Access denied.', { status: 403 });
+  const wantsRedirectCheck = isRedirectCandidate(pathname);
+  const [blocked, redirectMap] = await Promise.all([
+    ip !== 'unknown' ? blockedIps() : Promise.resolve<Set<string>>(new Set()),
+    wantsRedirectCheck ? loadRedirects() : Promise.resolve<RedirectMap>({}),
+  ]);
+  if (blocked.has(ip)) return new NextResponse('Access denied.', { status: 403 });
+  if (wantsRedirectCheck) {
+    const redirected = matchRedirect(req, redirectMap);
+    if (redirected) return redirected;
   }
-
-  // ── URL redirects (old WordPress URLs / printed QR destinations) ─────────
-  const redirected = await matchRedirect(req);
-  if (redirected) return redirected;
 
   // ── Client portal ──────────────────────────────────────────────────────
   if (pathname.startsWith('/account')) {

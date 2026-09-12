@@ -70,11 +70,11 @@ export function IpActivity({ rows, blocked }: { rows: IpRow[]; blocked: BlockedR
         <div className="flex flex-wrap items-end gap-2">
           <label className="text-sm">
             <span className="mb-1 block text-xs text-[var(--color-stone)]">IP address</span>
-            <input value={manualIp} onChange={(e) => setManualIp(e.target.value)} placeholder="e.g. 203.0.113.42" className="w-48 rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-3 py-1.5 font-[family-name:var(--font-mono,monospace)] text-sm" />
+            <input value={manualIp} onChange={(e) => setManualIp(e.target.value)} placeholder="e.g. 203.0.113.42" className="w-48 rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-porcelain)] px-3 py-1.5 font-[family-name:var(--font-mono,monospace)] text-sm" />
           </label>
           <label className="text-sm">
             <span className="mb-1 block text-xs text-[var(--color-stone)]">Reason (optional)</span>
-            <input value={manualReason} onChange={(e) => setManualReason(e.target.value)} placeholder="e.g. credential stuffing" className="w-64 rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-3 py-1.5 text-sm" />
+            <input value={manualReason} onChange={(e) => setManualReason(e.target.value)} placeholder="e.g. credential stuffing" className="w-64 rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-porcelain)] px-3 py-1.5 text-sm" />
           </label>
           <button disabled={busy || !manualIp.trim()} onClick={blockManual} className="rounded-full bg-[var(--color-ink)] px-5 py-2 text-sm text-[var(--color-porcelain)] disabled:opacity-50">Block</button>
         </div>
@@ -105,7 +105,7 @@ export function IpActivity({ rows, blocked }: { rows: IpRow[]; blocked: BlockedR
       <section className="rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-5">
         <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
           <h2 className="font-[family-name:var(--font-display)] text-lg">Recent activity by IP <span className="text-sm text-[var(--color-stone)]">(7 days)</span></h2>
-          <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Filter IP, email or device…" aria-label="Filter activity" className="w-64 rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-3 py-1.5 text-sm" />
+          <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Filter IP, email or device…" aria-label="Filter activity" className="w-64 rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-porcelain)] px-3 py-1.5 text-sm" />
         </div>
         {filtered.length === 0 ? (
           <p className="text-sm text-[var(--color-stone)]">No IP activity recorded in this window.</p>

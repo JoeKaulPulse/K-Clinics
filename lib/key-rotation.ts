@@ -108,6 +108,7 @@ export async function rotationStatus(): Promise<RotationStatus> {
   // Integrity-hashed models
   pending.healthAssessments = await db.healthAssessment.count({ where: staleWhere('cipher')! }).catch(() => 0);
   pending.signedConsents = await db.signedConsent.count({ where: staleWhere('cipher')! }).catch(() => 0);
+  pending.healthAssessmentTranslations = await db.healthAssessmentTranslation.count({ where: staleWhere('cipher')! }).catch(() => 0);
   // GalleryItem before/after — Bytes columns (BLD-1041). Prisma can't
   // prefix-filter Bytes, so scan and test client-side; the table is small
   // (published cases), and plaintext rows (bytesKeyId null — the backfill's
@@ -170,6 +171,19 @@ export async function reencryptBatch(limit = 300): Promise<{ migrated: number; r
         const cipher = reEncJson(r.cipher);
         const ih = integrityHash(cipher, { clientId: r.clientId, templateKey: r.templateKey, contentHash: r.contentHash });
         await db.signedConsent.update({ where: { id: r.id }, data: { cipher, integrityHash: ih } });
+      });
+    }
+    budget -= rows.length;
+  }
+
+  // HealthAssessmentTranslation (BLD-1658 cache) — same integrity-hash coupling.
+  if (budget > 0) {
+    const rows = await db.healthAssessmentTranslation.findMany({ where: staleWhere('cipher')!, take: budget, select: { assessmentId: true, cipher: true, sourceHash: true } });
+    for (const r of rows) {
+      await safe(async () => {
+        const cipher = reEncJson(r.cipher);
+        const ih = integrityHash(cipher, { assessmentId: r.assessmentId, sourceHash: r.sourceHash });
+        await db.healthAssessmentTranslation.update({ where: { assessmentId: r.assessmentId }, data: { cipher, integrityHash: ih } });
       });
     }
     budget -= rows.length;

@@ -55,6 +55,30 @@ export async function GET(req: Request) {
     select: { number: true, status: true, totalPence: true, createdAt: true, paidAt: true, items: { select: { name: true, qty: true, unitPence: true } } },
   });
 
+  // BLD-1715: GiftVoucher has no FK relation to Client (claimedByClientId/
+  // purchaserEmail are plain columns, matched the same way eraseClientData
+  // matches them — app/admin/actions.ts:136-139), so it was missing from this
+  // export. Same third-party-PII care as referralsMade above (PRJ-1033.5):
+  // withhold the other party's name/email on a gifted-to-them or gifted-by-them
+  // voucher, keeping only the subject's own side of the transaction.
+  const giftVouchersRaw = await db.giftVoucher.findMany({
+    where: { OR: [{ claimedByClientId: c.id }, { purchaserEmail: c.email }] },
+    orderBy: { createdAt: 'desc' },
+    select: {
+      code: true, amountPence: true, balancePence: true, status: true, design: true, packageName: true,
+      delivered: true, deliverAt: true, expiresAt: true, claimedAt: true,
+      purchaserEmail: true, purchaserName: true, recipientEmail: true, recipientName: true, createdAt: true,
+    },
+  });
+  const ownEmail = c.email.toLowerCase();
+  const giftVouchers = giftVouchersRaw.map((v) => ({
+    ...v,
+    purchaserName: v.purchaserEmail.toLowerCase() === ownEmail ? v.purchaserName : null,
+    purchaserEmail: v.purchaserEmail.toLowerCase() === ownEmail ? v.purchaserEmail : null,
+    recipientName: v.recipientEmail?.toLowerCase() === ownEmail ? v.recipientName : null,
+    recipientEmail: v.recipientEmail?.toLowerCase() === ownEmail ? v.recipientEmail : null,
+  }));
+
   const out = {
     exportedAt: new Date().toISOString(),
     account: {
@@ -75,6 +99,7 @@ export async function GET(req: Request) {
     feedback: c.npsResponses,
     waitlist: c.waitlist,
     emails: c.emails,
+    giftVouchers,
     note: 'Clinical and special-category health detail (consultation notes, health-form answers, before/after photos, call transcripts) is not included in this self-service file. Request it through a verified subject-access request and we will provide it with an identity check.',
   };
 

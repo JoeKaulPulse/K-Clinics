@@ -157,7 +157,7 @@ export const treatments: Treatment[] = [
     title: 'Laser Hair Removal for Men',
     menuTitle: 'Laser Hair Removal — Men',
     audience: 'male',
-    tagline: 'Groomed, effortless, permanent. Engineered for him.',
+    tagline: 'Groomed, effortless, permanent hair reduction. Engineered for him.',
     metaTitle: "Men's Laser Hair Removal London | Back, Chest & Beard | KClinics",
     metaDescription:
       "Men's laser hair removal in Islington, London. Back, chest, shoulders, beard-line shaping and more with professional lasers at KClinics. Discreet, powerful, lasting.",
@@ -168,13 +168,13 @@ export const treatments: Treatment[] = [
     benefits: [
       { title: 'Built for coarse hair', text: 'Higher-energy protocols tuned to dense, stubborn male hair growth.' },
       { title: 'Beard-line sculpting', text: 'Precision shaping for a crisp, defined neckline that never needs trimming.' },
-      { title: 'End ingrowns', text: 'Permanently reduce razor bumps and ingrown hairs on the neck and body.' },
+      { title: 'End ingrowns', text: 'Permanent hair reduction on the neck and body means fewer razor bumps and ingrown hairs.' },
       { title: 'Discreet & fast', text: 'A private clinic experience; large areas handled in a single appointment.' },
     ],
     process: [
       { title: 'Assessment & patch test', text: 'We assess density and skin response, then build your tailored course.' },
       { title: 'Targeted sessions', text: 'Spaced with the growth cycle for the cleanest possible clearance.' },
-      { title: 'Maintenance-free', text: 'Enjoy smooth, defined results with only occasional top-ups.' },
+      { title: 'Low-maintenance results', text: 'Enjoy smooth, defined results with only occasional top-up sessions.' },
     ],
     faqs: [
       { q: 'Can you shape my beard line without removing the beard?', a: 'Absolutely — we define the neck and cheek lines precisely while preserving the beard you want to keep.' },

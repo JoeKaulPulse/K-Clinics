@@ -70,7 +70,12 @@ async function buildKnowledge(): Promise<string> {
   return lines.join('\n\n');
 }
 
-function systemPrompt(knowledge: string, open: boolean): string {
+// BLD-1683: dentistryLive is threaded in from the caller's getSiteConfig()
+// read (live, admin-toggleable) instead of the static site.dentistryLive
+// constant, matching the organizationLd() pattern (lib/seo.tsx, BLD-1672) —
+// otherwise the chat agent kept telling visitors dentistry wasn't bookable
+// after the owner flipped it on elsewhere.
+function systemPrompt(knowledge: string, open: boolean, dentistryLive: boolean): string {
   return `You are "K", the friendly virtual assistant for KClinics — an aesthetics & aesthetic-dentistry clinic in Clerkenwell, Islington, London. You answer visitor messages in a live chat on the website.
 
 ABOUT THE CLINIC
@@ -78,7 +83,7 @@ ABOUT THE CLINIC
 - Phone: ${site.phone}. Email: ${site.email}.
 - Opening hours: ${hoursText()} (London time).
 - Booking: visitors book online at ${site.booking.path} — they pick a treatment & time and save a card securely; nothing is charged until the treatment is delivered (or per the 24-hour cancellation policy). Consultations are complimentary.
-- Dentistry status: ${site.dentistryLive ? 'open and bookable.' : 'opening soon — dentistry is not bookable yet; invite interested visitors to register interest on the dentistry page.'}
+- Dentistry status: ${dentistryLive ? 'open and bookable.' : 'opening soon — dentistry is not bookable yet; invite interested visitors to register interest on the dentistry page.'}
 - The clinic is currently ${open ? 'OPEN — staff are available to take over.' : 'CLOSED — no staff are online right now.'}
 
 ${knowledge}
@@ -219,7 +224,9 @@ export async function maybeAutoReply(conversationId: string): Promise<void> {
     if (!messages.length) return;
 
     const knowledge = await buildKnowledge();
-    const result = await callHaiku(key, systemPrompt(knowledge, isOpenNow()), messages);
+    const { getSiteConfig } = await import('@/lib/site-config');
+    const { dentistryLive } = await getSiteConfig();
+    const result = await callHaiku(key, systemPrompt(knowledge, isOpenNow(), dentistryLive), messages);
 
     if (!result) { await handOver(conversationId, convo.visitorEmail, 'Thanks for your message!', 'assistant error'); return; }
 
