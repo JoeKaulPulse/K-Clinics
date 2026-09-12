@@ -64,7 +64,7 @@ export const articles: Article[] = [
     readMinutes: 5,
     published: '2026-02-24',
     keywords: ['anti-wrinkle injections London', 'natural anti-wrinkle results', 'how long do anti-wrinkle injections last'],
-    image: 'HydraFacial-Anti-Ageing.png',
+    image: 'HydraFacial-Anti-Ageing-opt.jpg',
     related: ['cosmetic-injections'],
     blocks: [
       { type: 'p', text: 'The best anti-wrinkle treatment is the one no one can quite identify. The goal isn’t a frozen face — it’s a softened, well-rested version of you. Here’s how that’s achieved.' },
@@ -116,7 +116,7 @@ export const articles: Article[] = [
     readMinutes: 4,
     published: '2026-03-20',
     keywords: ['laser treatment aftercare', 'skincare after laser', 'laser facial recovery London'],
-    image: 'Carbon-Laser-Peel.png',
+    image: 'Carbon-Laser-Peel-opt.jpg',
     related: ['hydraglow-facial', 'laser-skin-rejuvenation'],
     blocks: [
       { type: 'p', text: 'Laser skin treatments work by stimulating your skin’s natural renewal. What you do in the days afterwards has a real impact on both comfort and results.' },
@@ -140,7 +140,7 @@ export const articles: Article[] = [
     readMinutes: 5,
     published: '2026-04-02',
     keywords: ['HIFU London', 'RF skin tightening London', 'non-surgical facelift', 'skin tightening treatment'],
-    image: 'Body-SMAS-HIFU-Lifting-1.png',
+    image: 'Body-SMAS-HIFU-Lifting-1-opt.jpg',
     related: ['smas-hifu-lifting', 'rf-lifting'],
     blocks: [
       { type: 'p', text: 'If you’d like to lift and firm without surgery or injectables, two technologies lead the field: HIFU and radiofrequency (RF). Both work with your body’s own collagen — they just take different routes there.' },
@@ -164,7 +164,7 @@ export const articles: Article[] = [
     readMinutes: 4,
     published: '2026-04-15',
     keywords: ['aesthetic consultation London', 'free consultation clinic', 'what to expect consultation'],
-    image: 'HydraFacial-Anti-Ageing.png',
+    image: 'HydraFacial-Anti-Ageing-opt.jpg',
     related: ['cosmetic-injections', 'veneers'],
     blocks: [
       { type: 'p', text: 'Every great result begins with a great consultation. At KClinics it’s complimentary, unhurried and entirely no-obligation — here’s how to make the most of it.' },
