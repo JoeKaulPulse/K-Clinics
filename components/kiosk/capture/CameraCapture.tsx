@@ -333,6 +333,11 @@ export function CameraCapture({
 
       {phase === 'captured' && (
         <div className="mt-5 flex gap-3">
+          {/* BLD-1635: this button sits on the kiosk's dark ink surface
+              (KioskSessionFlow's <main> is bg-[var(--color-ink)]), not on
+              porcelain as the audit finding assumed. --color-gold-bright is
+              9.1:1 there; --color-gold-deep — the light-surface AA gold — is
+              only 2.9:1. Keep the bright champagne. */}
           {canRetake && (
             <button
               onClick={retake}
