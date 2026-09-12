@@ -249,19 +249,44 @@ export async function listClients(opts: { q?: string; sort?: string; dir?: 'asc'
   return { rows: finalRows, total, page, perPage, pages, hiddenTest };
 }
 
+// BLD-1464: the caller hides CLINICAL interactions from staff without
+// `clients.clinical.view` AFTER this query returns. With the row cap below
+// that filter would silently empty the timeline: on a clinical-heavy client
+// the 30 most recent interactions can be all-CLINICAL, so front-desk staff
+// would see nothing where they used to see every non-clinical note. Apply the
+// same restriction here instead, so the cap counts only rows the viewer can
+// actually be shown. Defaults to the restricted view — a caller must opt in.
+//
 // BLD-1693: `practitionerId`, when passed, restricts the result to a client the
 // given practitioner has actually had a booking with — a PRACTITIONER session
 // must not be able to open another Specialist's client by guessing/typing the
 // URL. Returns null (same as "not found") rather than a 403 so the detail page
 // 404s exactly as it already does for a bad id, without confirming the id exists.
-export async function getClient(id: string, opts: { practitionerId?: string } = {}) {
+export async function getClient(id: string, opts: { clinical?: boolean; practitionerId?: string } = {}) {
+  // The ownership check runs against the bookings table directly, NOT against
+  // the `bookings` include below: that list is capped at the 50 most recent
+  // (BLD-1464), so a practitioner whose only booking with a long-standing
+  // client falls outside that window would be locked out of a client they do
+  // treat. Checking first also skips the expensive include + decrypt entirely
+  // when the answer is "not yours".
+  if (opts.practitionerId) {
+    const own = await db.booking.findFirst({ where: { clientId: id, practitionerId: opts.practitionerId }, select: { id: true } });
+    if (!own) return null;
+  }
   const c = await db.client.findUnique({
     where: { id },
     include: {
-      consultations: { orderBy: { createdAt: 'desc' } },
-      interactions: { orderBy: { createdAt: 'desc' } },
-      appointments: { orderBy: { scheduledAt: 'desc' } },
-      bookings: { orderBy: { startAt: 'desc' } },
+      // BLD-1464: a long-tenured client's profile used to decrypt every
+      // consultation/interaction/appointment/booking on every open — capped
+      // most-recent-first, mirroring the `emails: { take: 20 }` pattern below.
+      consultations: { orderBy: { createdAt: 'desc' }, take: 30 },
+      interactions: {
+        where: opts.clinical ? undefined : { type: { not: 'CLINICAL' as const } },
+        orderBy: { createdAt: 'desc' },
+        take: 30,
+      },
+      appointments: { orderBy: { scheduledAt: 'desc' }, take: 30 },
+      bookings: { orderBy: { startAt: 'desc' }, take: 50 },
       emails: { orderBy: { createdAt: 'desc' }, take: 20 },
       assessments: {
         orderBy: { submittedAt: 'desc' },
@@ -275,7 +300,6 @@ export async function getClient(id: string, opts: { practitionerId?: string } = 
       },
     },
   });
-  if (c && opts.practitionerId && !c.bookings.some((b) => b.practitionerId === opts.practitionerId)) return null;
   if (c) {
     // Decrypt the at-rest clinical/contact free-text for display (tolerant of legacy plaintext).
     c.medicalFlag = decClinical(c.medicalFlag);

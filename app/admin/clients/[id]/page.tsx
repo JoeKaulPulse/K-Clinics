@@ -67,11 +67,16 @@ export default async function ClientDetail({ params }: { params: Promise<{ id: s
   const { id } = await params;
   const { getClient } = await import('@/lib/crm-data');
   const session = await getSession();
+  // Clinical (health) data — gated on the revocable `clients.clinical.view`
+  // permission (not role), so a permission revoke actually withholds it here too,
+  // matching the SAR export. Resolved before getClient() so the interaction cap
+  // (BLD-1464) is applied to rows this viewer can actually see.
+  const clinical = sessionCan(session, 'clients.clinical.view');
   // BLD-1693: a Specialist/Practitioner can only open a client they've
   // actually had a booking with — getClient returns null (404) otherwise,
   // same as an unknown id, so the page can't be used to probe which ids exist.
   const practitionerId = session && session.role === 'PRACTITIONER' ? session.sub : undefined;
-  const c = await getClient(id, { practitionerId });
+  const c = await getClient(id, { clinical, practitionerId });
   if (!c) notFound();
 
   const fullName = [c.firstName, c.lastName].filter(Boolean).join(' ');
@@ -88,11 +93,13 @@ export default async function ClientDetail({ params }: { params: Promise<{ id: s
   // booking routes refuse new bookings while any remain.
   const { outstandingBalance } = await import('@/lib/outstanding');
   const owed = await outstandingBalance(c.id);
+  // BLD-1572: staff-recorded ("Mark as Debt") outstanding balance — a manual
+  // record separate from the automated late-cancel/no-show one above.
+  const { clientDebtBalance } = await import('@/lib/client-debt');
+  const debt = await clientDebtBalance(c.id);
 
-  // Clinical (health) data — gated on the revocable `clients.clinical.view`
-  // permission (not role), so a permission revoke actually withholds it here too,
-  // matching the SAR export. Decrypt the latest version of each assessment type.
-  const clinical = sessionCan(session, 'clients.clinical.view');
+  // Decrypt the latest version of each assessment type (gated on `clinical`,
+  // resolved above alongside the getClient() call).
   // BLD-1511: getClient() decrypts medicalFlag/allergies/consultation notes/
   // allergyNote/interaction detail for display — audit the view (throttled
   // per viewer/client/hour), matching the booking-detail/consultation-detail
@@ -201,6 +208,14 @@ export default async function ClientDetail({ params }: { params: Promise<{ id: s
           <h1 className="flex flex-wrap items-center gap-2 font-[family-name:var(--font-display)] text-3xl">
             {fullName}
             <ClientStatusBadge status={c.clientStatus} />
+            {/* BLD-1572 + BLD-1066: one combined "Outstanding balance" badge —
+                whichever mechanism recorded it (automated fee or staff-recorded
+                debt), the client is unmistakably marked. */}
+            {(owed.totalPence + debt.totalPence) > 0 && (
+              <span className="rounded-full bg-[var(--color-blush)]/25 px-2.5 py-0.5 text-xs font-medium text-[var(--color-blush-deep)]">
+                Outstanding balance — £{((owed.totalPence + debt.totalPence) / 100).toFixed(2)}
+              </span>
+            )}
           </h1>
           {c.clientStatus === 'RED' && (
             <p role="alert" className="mt-2 inline-flex max-w-md items-center gap-1.5 rounded-[var(--radius-sm)] border border-[var(--color-blush-deep)] bg-[var(--color-blush)]/15 px-3 py-1.5 text-sm font-medium text-[var(--color-blush-deep)]">
@@ -259,6 +274,31 @@ export default async function ClientDetail({ params }: { params: Promise<{ id: s
         </div>
       )}
 
+      {/* BLD-1572: staff-recorded ("Mark as Debt") outstanding balance — the
+          card couldn't be charged, the payment failed, or the client left
+          without paying. Same visual treatment as the BLD-1066 warning above
+          so the profile never shows two differently-styled "owed money"
+          banners. Persists until a staff member resolves it (no clear UI yet). */}
+      {debt.totalPence > 0 && (
+        <div role="alert" className="mt-6 rounded-[var(--radius-md)] border border-[var(--color-blush-deep)] bg-[var(--color-blush)]/15 p-4">
+          <p className="font-medium text-[var(--color-blush-deep)]">Outstanding balance — £{(debt.totalPence / 100).toFixed(2)}</p>
+          <ul className="mt-1 space-y-0.5 text-sm text-[var(--color-ink)]">
+            {debt.items.map((i) => (
+              <li key={i.id}>
+                {i.bookingId ? (
+                  <Link href={`/admin/bookings/${i.bookingId}`} className="underline-offset-2 hover:underline">
+                    £{(i.amountPence / 100).toFixed(2)} · {i.reason} · {new Date(i.createdAt).toLocaleDateString('en-GB')} · {i.createdBy}
+                  </Link>
+                ) : (
+                  <span>£{(i.amountPence / 100).toFixed(2)} · {i.reason} · {new Date(i.createdAt).toLocaleDateString('en-GB')} · {i.createdBy}</span>
+                )}
+              </li>
+            ))}
+          </ul>
+          <p className="mt-2 text-xs text-[var(--color-stone)]">Recorded manually by staff — from "Mark as Debt" on an appointment.</p>
+        </div>
+      )}
+
       <div className="mt-8 grid gap-8 lg:grid-cols-[1.5fr_1fr]">
         <div className="space-y-10">
         {/* BLD-1014/BLD-1098: package (course) balances — staff see at a glance
@@ -288,6 +328,9 @@ export default async function ClientDetail({ params }: { params: Promise<{ id: s
         {/* Appointments — past / current / upcoming, with consent + insights */}
         <section>
           <h2 className="mb-3 font-[family-name:var(--font-display)] text-xl">Appointments</h2>
+          {/* BLD-1464: bookings are capped (take: 50, most-recent-first) at the query — a
+              full one shows this note rather than pretending the list is exhaustive. */}
+          {c.bookings.length === 50 && <p className="mb-3 text-xs text-[var(--color-stone)]">Showing the most recent 50 appointments.</p>}
           {(() => {
             const fmtPence = (p: number) => formatPrice(p);
             // BLD-1453: a booking linked to a package purchase (packageBookingId set)
@@ -381,6 +424,8 @@ export default async function ClientDetail({ params }: { params: Promise<{ id: s
         <section>
           <h2 className="mb-3 font-[family-name:var(--font-display)] text-xl">Timeline</h2>
           <div className="mb-4"><AddNote clientId={c.id} clinical={clinical} /></div>
+          {/* BLD-1464: interactions are capped (take: 30, most-recent-first) at the query. */}
+          {c.interactions.length === 30 && <p className="mb-3 text-xs text-[var(--color-stone)]">Showing the most recent 30 entries.</p>}
           {(() => {
             // Hide clinical notes from non-clinical staff; pinned float to the top.
             const visible = c.interactions.filter((it) => it.type !== 'CLINICAL' || clinical);
@@ -640,6 +685,8 @@ export default async function ClientDetail({ params }: { params: Promise<{ id: s
 
           <section>
             <h2 className="mb-3 font-[family-name:var(--font-display)] text-xl">Consultations</h2>
+            {/* BLD-1464: consultations are capped (take: 30, most-recent-first) at the query. */}
+            {c.consultations.length === 30 && <p className="mb-2 text-xs text-[var(--color-stone)]">Showing the most recent 30.</p>}
             <div className="space-y-2">
               {c.consultations.length === 0 && <p className="text-sm text-[var(--color-stone)]">None.</p>}
               {c.consultations.map((cn) => (

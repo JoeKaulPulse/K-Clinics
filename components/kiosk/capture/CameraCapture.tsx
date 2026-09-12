@@ -311,7 +311,15 @@ export function CameraCapture({
         )}
       </div>
 
-      {error && <p role="alert" aria-live="assertive" className="mt-3 text-center text-sm text-[var(--color-blush)]">{error}</p>}
+      {/* BLD-1702: real errors were visually identical to hint text (both
+         --color-blush) so guests couldn't tell them apart. Can't just switch
+         to --color-blush-deep -- like BLD-1635 found for this same
+         always-dark kiosk background, that token's :root (light-surface)
+         value is a DARK red (2.3:1 on --color-ink, below AA); its
+         dark-surface value isn't reachable here since dark tokens are scoped
+         to html[data-theme="dark"], admin-only. Using that dark-surface hex
+         directly (6.2:1 on --color-ink) instead. */}
+      {error && <p role="alert" aria-live="assertive" className="mt-3 text-center text-sm text-[#e98a8a]">{error}</p>}
 
       {/* Controls */}
       {phase === 'posing' && (

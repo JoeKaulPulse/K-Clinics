@@ -1012,6 +1012,20 @@ export function tmplAbandonedOrder(o: { firstName: string; resumeUrl: string }) 
   });
 }
 
+// BLD-1540: one-time nudge to a buyer who reached the Stripe payment step but
+// never completed a gift-voucher purchase. Mirrors tmplAbandonedOrder.
+export function tmplAbandonedGiftVoucher(o: { firstName: string; resumeUrl: string }) {
+  return emailShell({
+    preheader: `Your gift voucher is still waiting to be sent`,
+    body: `${heroBand('reminder')}
+    <h1 style="font-size:25px;margin:0 0 14px;">Pick up where you left off, ${escape(o.firstName)}.</h1>
+    <p>You started buying a gift voucher with us but didn't quite finish the payment. It only takes a moment to complete your gift voucher purchase.</p>
+    <p style="margin:26px 0;">${btn(o.resumeUrl, 'Finish my gift voucher purchase')}</p>
+    <p style="font-size:14px;color:#91766e;">If you'd rather talk it through first, just reply to this email or call us — we're happy to help.</p>
+    <p style="margin-top:20px;">With warmth,<br>The KClinics team</p>`,
+  });
+}
+
 // BLD-1452: nudge for a client whose profile still shows no recorded T&Cs
 // acceptance — points them at account setup, which is where the acceptance is
 // actually captured (the tick on the signup form; signupClient records it
