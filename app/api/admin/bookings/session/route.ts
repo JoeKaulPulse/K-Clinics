@@ -3,6 +3,11 @@ import { crmEnabled } from '@/lib/crm';
 import { CLINIC_TZ } from '@/lib/clinic-time';
 
 export const runtime = 'nodejs';
+// BLD-1704: the checkout step calls finalizeBookingCharge, which can wait on
+// Resend's rate gate (lib/email.ts) — same risk BLD-1692 fixed on the other
+// finalize routes, missed here because this route's charge path is one branch
+// among several rather than its whole body.
+export const maxDuration = 60;
 
 // BLD-138 v2 — realtime appointment-session coordination. The DB row is the
 // single source of truth; every device (front desk, host, clinician, checkout)
