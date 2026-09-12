@@ -39,9 +39,17 @@ export async function undoVoucherReservation(code: string | null, pence: number)
 const baseUrl = () => process.env.NEXT_PUBLIC_SITE_URL || site.url;
 const money = (p: number) => `£${(p / 100).toLocaleString('en-GB', { minimumFractionDigits: p % 100 ? 2 : 0 })}`;
 
+// BLD-1657: 4 segments of 2 random bytes each = 8 bytes (64 bits) of entropy,
+// up from the previous 2-segment/4-byte (32-bit) code — a distributed brute
+// force across the claim endpoint's per-IP rate limit (5/600s) is no longer
+// remotely feasible against a live active code. Same hex alphabet and 4-char
+// segment width as before, just more segments, so every existing
+// display/validation path (unconstrained String columns, no length regex —
+// checked across the codebase) keeps working unchanged. Already-issued
+// shorter codes in the DB stay valid; only newly generated codes are longer.
 function genCode(): string {
   const part = () => crypto.randomBytes(2).toString('hex').toUpperCase();
-  return `KC-GV-${part()}-${part()}`;
+  return `KC-GV-${part()}-${part()}-${part()}-${part()}`;
 }
 
 export type VoucherInput = {
@@ -196,6 +204,15 @@ async function sendVoucherEmails(voucherId: string, sendToRecipient: boolean, op
   const { sendEmail, tmplCustomGiftCard, tmplGiftVoucherReceipt } = await import('@/lib/email');
   const what = v.packageName || `gift card — ${money(v.amountPence)}`;
   const tasks: Promise<SendResult>[] = [];
+  // BLD-1680: deliberately NOT threading a vatBreakdown()/effectiveVatClass()
+  // call into tmplGiftVoucherReceipt, unlike the charge/order/academy receipts.
+  // A KClinics gift voucher/card is redeemable against any treatment (mixed
+  // EXEMPT dentistry + STANDARD aesthetics) — a "multi-purpose voucher" under UK
+  // VAT law (VATA 1994 Sch 10B). No supply happens at the point of sale, so no
+  // VAT is due and no net/VAT breakdown belongs on THIS receipt, regardless of
+  // vat_registered. VAT is correctly accounted for later, at redemption, by
+  // chargeBooking's existing vatBreakdown() call on the treatment actually
+  // booked (lib/booking-actions.ts) — that is the true tax point.
   if (opts.purchaserReceipt !== false) {
     tasks.push(sendEmail({ to: v.purchaserEmail, subject: `Your KClinics ${v.packageName ? 'gift' : 'gift card'} — ${v.packageName || money(v.amountPence)}`, html: tmplGiftVoucherReceipt({ purchaserName: v.purchaserName, amount: money(v.amountPence), code: v.code, recipientName: v.recipientName, scheduled: !sendToRecipient && !!v.deliverAt, deliverAt: v.deliverAt, designId: v.design, packageName: v.packageName }) }));
   }

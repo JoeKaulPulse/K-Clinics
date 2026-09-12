@@ -5,6 +5,7 @@ import { getSession, sessionCan, sessionPermissions } from '@/lib/auth';
 import { AdminShell } from '@/components/admin/AdminShell';
 import { CrmDisabled } from '@/components/admin/CrmDisabled';
 import { StudentActions } from '@/components/admin/StudentActions';
+import { EditStudentDetails } from '@/components/admin/EditStudentDetails';
 import { GrantQuizAttempts } from '@/components/admin/GrantQuizAttempts';
 import { EnrolInCourse } from '@/components/admin/EnrolInCourse';
 import { BadgeIcon } from '@/components/academy/BadgeIcon';
@@ -99,7 +100,10 @@ export default async function AdminAcademyStudentPage({ params }: { params: Prom
           <p className="mt-1 text-sm text-[var(--color-stone)]">{student.email}{student.phone ? ` · ${student.phone}` : ''}</p>
           <p className="mt-1 text-xs text-[var(--color-stone)]">Clinic client: {client ? <Link href={`/admin/clients/${client.id}`} className="text-[var(--color-gold-deep)] hover:underline">{client.firstName} {client.lastName ?? ''} →</Link> : <span>not linked</span>}</p>
         </div>
-        <StudentActions studentId={student.id} email={student.email} portalActive={student.portalActive} hasClient={!!client} />
+        <div className="flex flex-wrap items-center gap-2">
+          <EditStudentDetails studentId={student.id} firstName={student.firstName} lastName={student.lastName} />
+          <StudentActions studentId={student.id} email={student.email} portalActive={student.portalActive} hasClient={!!client} />
+        </div>
       </div>
 
       <div className="mt-8 grid gap-5 lg:grid-cols-2">
@@ -126,7 +130,7 @@ export default async function AdminAcademyStudentPage({ params }: { params: Prom
           </div>
           {badgeRows.length > 0 && (
             <div className="mt-4 flex flex-wrap gap-2">
-              {badgeRows.map((b) => { const d = badgeByKey.get(b.badgeKey); return <span key={b.id} title={d?.description} className="inline-flex items-center gap-1.5 rounded-full border border-[var(--color-line)] bg-white px-2.5 py-1 text-xs"><BadgeIcon name={d?.icon} className="h-3.5 w-3.5 text-[var(--color-gold-deep)]" /> {d?.name ?? b.badgeKey}</span>; })}
+              {badgeRows.map((b) => { const d = badgeByKey.get(b.badgeKey); return <span key={b.id} title={d?.description} className="inline-flex items-center gap-1.5 rounded-full border border-[var(--color-line)] bg-[var(--color-porcelain)] px-2.5 py-1 text-xs"><BadgeIcon name={d?.icon} className="h-3.5 w-3.5 text-[var(--color-gold-deep)]" /> {d?.name ?? b.badgeKey}</span>; })}
             </div>
           )}
         </Card>
@@ -141,7 +145,7 @@ export default async function AdminAcademyStudentPage({ params }: { params: Prom
                 const fee = e.agreedFeePence ?? e.pricePence; // BLD-850: settle against the locked agreed fee when stamped
                 const outstanding = Math.max(0, fee - e.paidPence);
                 return (
-                  <div key={e.id} className="rounded-[var(--radius-md)] border border-[var(--color-line)] bg-white p-4">
+                  <div key={e.id} className="rounded-[var(--radius-md)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-4">
                     <div className="flex flex-wrap items-center justify-between gap-2">
                       <div>
                         <Link href={`/admin/academy/${e.course.id}`} className="font-medium hover:text-[var(--color-gold-deep)] hover:underline">{e.course.title}</Link>

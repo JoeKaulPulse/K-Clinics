@@ -39,7 +39,7 @@ export function AddTreatment({ bookingId, variants }: { bookingId: string; varia
           value={variantId}
           onChange={(e) => setVariantId(e.target.value)}
           disabled={pending}
-          className="min-w-0 flex-1 rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-porcelain)] px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-gold)]"
+          className="min-w-0 flex-1 rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-porcelain)] px-3 py-2 text-sm"
         >
           <option value="">Choose a treatment…</option>
           {variants.map((v) => (

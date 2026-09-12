@@ -1,7 +1,19 @@
+import type { Metadata } from 'next';
 import { Button, ArrowIcon } from '@/components/ui/Button';
 import { GenerativeArt } from '@/components/ui/GenerativeArt';
 import { Header } from '@/components/layout/Header';
 import { getSiteConfig } from '@/lib/site-config';
+
+// BLD-1697: without its own metadata this page fell back to the root layout's
+// defaults (title/description built for the homepage, robots index:true) —
+// Next also auto-injects a noindex meta tag for a not-found response, so the
+// rendered <head> carried two conflicting robots tags. An explicit,
+// route-specific export fixes both.
+export const metadata: Metadata = {
+  title: 'Page not found',
+  description: 'The page you were looking for could not be found. Explore treatments, pricing and how to book at KClinics.',
+  robots: { index: false, follow: false },
+};
 
 export default async function NotFound() {
   const config = await getSiteConfig();

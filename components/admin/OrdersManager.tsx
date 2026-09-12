@@ -72,12 +72,12 @@ function Row({ r, open, onToggle, canManage }: { r: OrderRow; open: boolean; onT
             {canManage && (
               <div className="space-y-2">
                 <label className="block text-xs text-[var(--color-stone)]">Fulfilment
-                  <select disabled={busy} defaultValue={r.fulfillment} onChange={(e) => update({ fulfillment: e.target.value, status: e.target.value !== 'unfulfilled' && r.status === 'PAID' ? 'FULFILLED' : undefined })} className="mt-1 w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-2 py-1.5 text-sm disabled:opacity-50">
+                  <select disabled={busy} defaultValue={r.fulfillment} onChange={(e) => update({ fulfillment: e.target.value, status: e.target.value !== 'unfulfilled' && r.status === 'PAID' ? 'FULFILLED' : undefined })} className="mt-1 w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-porcelain)] px-2 py-1.5 text-sm disabled:opacity-50">
                     <option value="unfulfilled">Unfulfilled</option><option value="shipped">Shipped</option><option value="collected">Collected</option>
                   </select>
                 </label>
                 <label className="block text-xs text-[var(--color-stone)]">Tracking / note
-                  <input disabled={busy} value={tracking} onChange={(e) => setTracking(e.target.value)} onBlur={() => tracking !== r.trackingNote && update({ trackingNote: tracking })} className="mt-1 w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-2 py-1.5 text-sm disabled:opacity-50" />
+                  <input disabled={busy} value={tracking} onChange={(e) => setTracking(e.target.value)} onBlur={() => tracking !== r.trackingNote && update({ trackingNote: tracking })} className="mt-1 w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-porcelain)] px-2 py-1.5 text-sm disabled:opacity-50" />
                 </label>
                 {!closed && (
                   <div className="flex gap-3 text-xs">

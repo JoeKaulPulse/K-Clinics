@@ -193,7 +193,7 @@ export function GlobalSearch({ placeholder, pages = [] }: { placeholder: string;
           }}
           placeholder={placeholder}
           aria-label={placeholder}
-          className="h-11 w-full rounded-[var(--radius-md)] border border-[var(--color-line)] bg-white pl-9 pr-16 text-sm text-[var(--color-ink)] outline-none transition-shadow placeholder:text-[var(--color-stone)] focus:border-[var(--color-gold)] focus-visible:ring-2 focus-visible:ring-[var(--color-gold)] focus:shadow-[0_0_0_3px_color-mix(in_oklab,var(--color-gold)_22%,transparent)]"
+          className="h-11 w-full rounded-[var(--radius-md)] border border-[var(--color-line)] bg-[var(--color-porcelain)] pl-9 pr-16 text-sm text-[var(--color-ink)] outline-none transition-shadow placeholder:text-[var(--color-stone)] focus:border-[var(--color-gold)] focus-visible:ring-2 focus-visible:ring-[var(--color-gold)] focus:shadow-[0_0_0_3px_color-mix(in_oklab,var(--color-gold)_22%,transparent)]"
         />
         <span className="absolute right-2.5 flex items-center gap-1">
           {loading && (
@@ -223,7 +223,7 @@ export function GlobalSearch({ placeholder, pages = [] }: { placeholder: string;
         <div
           id="kc-search-list"
           role="listbox"
-          className="absolute z-40 mt-2 max-h-[min(70vh,30rem)] w-full overflow-auto overscroll-contain rounded-[var(--radius-md)] border border-[var(--color-line)] bg-white shadow-[var(--shadow-lift)]"
+          className="absolute z-40 mt-2 max-h-[min(70vh,30rem)] w-full overflow-auto overscroll-contain rounded-[var(--radius-md)] border border-[var(--color-line)] bg-[var(--color-porcelain)] shadow-[var(--shadow-lift)]"
         >
           {showRecent ? (
             <>
@@ -276,7 +276,7 @@ export function GlobalSearch({ placeholder, pages = [] }: { placeholder: string;
             ))
           )}
           {!showRecent && hasResults && (
-            <div className="sticky bottom-0 flex items-center gap-3 border-t border-[var(--color-line)] bg-white/95 px-3 py-1.5 text-[0.62rem] text-[var(--color-stone)] backdrop-blur">
+            <div className="sticky bottom-0 flex items-center gap-3 border-t border-[var(--color-line)] bg-[var(--color-porcelain)]/95 px-3 py-1.5 text-[0.62rem] text-[var(--color-stone)] backdrop-blur">
               <span><kbd className="font-sans">↑</kbd> <kbd className="font-sans">↓</kbd> navigate</span>
               <span><kbd className="font-sans">↵</kbd> open</span>
               <span><kbd className="font-sans">esc</kbd> close</span>

@@ -1,6 +1,7 @@
 import 'server-only';
 import { db } from '@/lib/db';
 import { site } from '@/lib/site';
+import { fetchWithRetry } from '@/lib/fetch-retry';
 
 // ── Hostinger calendar (CalDAV) ─────────────────────────────────────────────
 // Pushes confirmed appointments to a shared clinic calendar via CalDAV, so they
@@ -50,6 +51,25 @@ function buildICS(ev: { uid: string; start: Date; end: Date; summary: string; de
   ].join('\r\n');
 }
 
+// PRJ-1191.4: was a bare one-shot fetch() with only a console.error on failure
+// — a transient CalDAV blip or bad credential meant a confirmed/cancelled
+// booking silently never appeared or disappeared on the shared clinic
+// calendar. Mirrors the Google Calendar path (fetchWithRetry + Sentry +
+// a DB-persisted error an admin can see), as closely as CalDAV allows: the
+// clinic calendar has no per-booking status endpoint of its own to check
+// against.
+async function recordSyncFailure(bookingId: string, op: 'push' | 'remove', e: unknown) {
+  const message = e instanceof Error ? e.message : String(e);
+  console.error(`[hostinger-calendar] ${op} failed:`, message, bookingId);
+  const Sentry = await import('@sentry/nextjs');
+  Sentry.captureException(e, { tags: { area: 'hostinger-calendar', stage: op }, extra: { bookingId } });
+  await db.booking.update({ where: { id: bookingId }, data: { calendarSyncError: message.slice(0, 500), calendarSyncErrorAt: new Date() } }).catch(() => {});
+}
+
+async function clearSyncFailure(bookingId: string) {
+  await db.booking.updateMany({ where: { id: bookingId, calendarSyncError: { not: null } }, data: { calendarSyncError: null, calendarSyncErrorAt: null } }).catch(() => {});
+}
+
 /** Create/update the calendar event for a confirmed booking. Best-effort. */
 export async function pushBooking(bookingId: string): Promise<{ ok: boolean; error?: string }> {
   const cfg = config();
@@ -67,16 +87,20 @@ export async function pushBooking(bookingId: string): Promise<{ ok: boolean; err
       description: [`Client: ${name}`, b.client?.phone ? `Phone: ${b.client.phone}` : '', b.client?.email ? `Email: ${b.client.email}` : '', b.notes ? `Notes: ${b.notes}` : ''].filter(Boolean).join('\n'),
       location: loc,
     });
-    const res = await fetch(`${cfg.base}${uidFor(bookingId)}.ics`, {
+    const res = await fetchWithRetry(`${cfg.base}${uidFor(bookingId)}.ics`, {
       method: 'PUT',
       headers: { 'content-type': 'text/calendar; charset=utf-8', authorization: cfg.auth },
       body: ics,
-      signal: AbortSignal.timeout(10_000),
-    });
-    if (!res.ok && res.status !== 204 && res.status !== 201) return { ok: false, error: `CalDAV PUT ${res.status}` };
+    }, { label: 'hostinger-caldav', timeoutMs: 10_000 });
+    if (!res.ok && res.status !== 204 && res.status !== 201) {
+      const error = `CalDAV PUT ${res.status}`;
+      await recordSyncFailure(bookingId, 'push', new Error(error));
+      return { ok: false, error };
+    }
+    await clearSyncFailure(bookingId);
     return { ok: true };
   } catch (e) {
-    console.error('[hostinger-calendar] push failed:', (e as Error)?.message);
+    await recordSyncFailure(bookingId, 'push', e);
     return { ok: false, error: (e as Error).message };
   }
 }
@@ -86,10 +110,21 @@ export async function removeBooking(bookingId: string): Promise<{ ok: boolean }>
   const cfg = config();
   if (!cfg) return { ok: false };
   try {
-    await fetch(`${cfg.base}${uidFor(bookingId)}.ics`, { method: 'DELETE', headers: { authorization: cfg.auth }, signal: AbortSignal.timeout(10_000) });
+    const res = await fetchWithRetry(`${cfg.base}${uidFor(bookingId)}.ics`, {
+      method: 'DELETE',
+      headers: { authorization: cfg.auth },
+    }, { label: 'hostinger-caldav', timeoutMs: 10_000 });
+    // A resource that's already gone (404/410) is not a sync failure — the
+    // booking is correctly absent from the calendar either way.
+    if (!res.ok && res.status !== 404 && res.status !== 410) {
+      const error = `CalDAV DELETE ${res.status}`;
+      await recordSyncFailure(bookingId, 'remove', new Error(error));
+      return { ok: false };
+    }
+    await clearSyncFailure(bookingId);
     return { ok: true };
   } catch (e) {
-    console.error('[hostinger-calendar] remove failed:', (e as Error)?.message);
+    await recordSyncFailure(bookingId, 'remove', e);
     return { ok: false };
   }
 }

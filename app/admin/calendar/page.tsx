@@ -32,7 +32,14 @@ function daysInMonthISO(monthISO: string): number {
 export default async function CalendarPage({ searchParams }: { searchParams: Promise<{ date?: string; month?: string }> }) {
   if (!crmEnabled) return <CrmDisabled />;
   const session = await getSession();
-  if (!sessionCan(session, 'calendar.view')) redirect('/admin');
+  if (!session || !sessionCan(session, 'calendar.view')) redirect('/admin');
+  // BLD-1652: a Specialist/Practitioner keeps calendar access but must see only
+  // their own column, appointments, time-off and availability — never another
+  // practitioner's. Every query below is scoped by this at the data-fetching
+  // layer (not filtered after the fact), so a Specialist can't recover the full
+  // clinic view by requesting this page directly. OWNER/ADMIN/FRONT_DESK etc.
+  // are unaffected and keep the full multi-column calendar.
+  const isSpecialist = session.role === 'PRACTITIONER';
 
   const { date, month } = await searchParams;
   const day = date ? new Date(date + 'T00:00:00') : new Date();
@@ -57,22 +64,39 @@ export default async function CalendarPage({ searchParams }: { searchParams: Pro
 
   const { db } = await import('@/lib/db');
   const [clinicians, bookings, timeOff, monthBookings] = await Promise.all([
-    db.adminUser.findMany({ where: { isClinician: true, active: true }, orderBy: { name: 'asc' }, select: { id: true, name: true, color: true } }),
+    // BLD-1652: a Specialist's column list is just themself — never fetch the
+    // roster of other clinicians. Queried by id directly (not the isClinician/
+    // active filter used for the full roster) so their own column always
+    // renders even if isClinician happens to be unset on their profile.
+    isSpecialist
+      ? db.adminUser.findMany({ where: { id: session.sub }, select: { id: true, name: true, color: true } })
+      : db.adminUser.findMany({ where: { isClinician: true, active: true }, orderBy: { name: 'asc' }, select: { id: true, name: true, color: true } }),
     db.booking.findMany({
       // BLD-1096: also show a CANCELLED appointment whose prepaid package
       // session was still marked used — staff need to see on the diary that
       // the slot is empty (client didn't attend) but the session was spent.
-      where: { startAt: { gte: dayStart, lte: dayEnd }, OR: [{ status: { in: LIVE_STATUSES } }, { status: 'CANCELLED', packageSessionUsedAt: { not: null } }] },
+      // BLD-1652: a Specialist only ever gets their own bookings back — the
+      // filter is applied in the query, not on the array afterward.
+      where: {
+        startAt: { gte: dayStart, lte: dayEnd },
+        ...(isSpecialist ? { practitionerId: session.sub } : {}),
+        OR: [{ status: { in: LIVE_STATUSES } }, { status: 'CANCELLED', packageSessionUsedAt: { not: null } }],
+      },
       orderBy: { startAt: 'asc' },
       include: { client: { select: { firstName: true, lastName: true, medicalFlag: true, clientStatus: true } } },
     }),
     // Match the booking engine (lib/availability.ts): only time-off that
     // actually blocks bookings — exclude declined/cancelled requests, and
     // Google "busy" mirrors are shown with their own label below.
-    db.staffTimeOff.findMany({ where: { startAt: { lt: dayEnd }, endAt: { gt: dayStart }, status: { notIn: ['DECLINED', 'CANCELLED'] } } }),
+    // BLD-1652: scoped to the Specialist's own staffId — another practitioner's
+    // leave/availability is not "information relevant to themselves".
+    db.staffTimeOff.findMany({ where: { startAt: { lt: dayEnd }, endAt: { gt: dayStart }, status: { notIn: ['DECLINED', 'CANCELLED'] }, ...(isSpecialist ? { staffId: session.sub } : {}) } }),
     // BLD-995: one lightweight query for the whole visible month, counted
     // client-side per clinic-local day rather than 28-31 separate queries.
-    db.booking.findMany({ where: { startAt: { gte: monthStart, lte: monthEnd }, status: { in: LIVE_STATUSES } }, select: { startAt: true } }),
+    // BLD-1652: a Specialist's month-at-a-glance counts only their own
+    // appointments — the clinic-wide booking density is a business stat, not
+    // information about themselves.
+    db.booking.findMany({ where: { startAt: { gte: monthStart, lte: monthEnd }, status: { in: LIVE_STATUSES }, ...(isSpecialist ? { practitionerId: session.sub } : {}) }, select: { startAt: true } }),
   ]);
   const monthCounts: Record<string, number> = {};
   for (const b of monthBookings) { const d = clinicDateISO(b.startAt); monthCounts[d] = (monthCounts[d] ?? 0) + 1; }
@@ -80,8 +104,13 @@ export default async function CalendarPage({ searchParams }: { searchParams: Pro
   const canManageSchedule = sessionCan(session, 'schedule.manage');
   const closure = closures[0] ? { id: closures[0].id, reason: closures[0].reason } : null;
 
-  // Columns: each clinician + an "Unassigned" column.
-  const columns = [...clinicians.map((c) => ({ id: c.id, name: c.name || 'Clinician', color: c.color })), { id: null as string | null, name: 'Unassigned', color: null }];
+  // Columns: each clinician + an "Unassigned" column — but a Specialist gets
+  // only their own column (BLD-1652): no other practitioners' columns, and no
+  // "Unassigned" column either, since those bookings aren't theirs and the
+  // bookings query above already excludes them.
+  const columns = isSpecialist
+    ? clinicians.map((c) => ({ id: c.id, name: c.name || 'Clinician', color: c.color }))
+    : [...clinicians.map((c) => ({ id: c.id, name: c.name || 'Clinician', color: c.color })), { id: null as string | null, name: 'Unassigned', color: null }];
   const hours = Array.from({ length: (DAY_END - DAY_START) / 60 + 1 }, (_, i) => DAY_START + i * 60);
 
   const can = await sessionPermissions();
@@ -103,10 +132,10 @@ export default async function CalendarPage({ searchParams }: { searchParams: Pro
       <div className="relative flex flex-wrap items-center justify-between gap-4">
         <h1 className="font-[family-name:var(--font-display)] text-3xl">{t(locale, 'nav.calendar')}</h1>
         <div className="flex items-center gap-2 text-sm">
-          <Link href={`/admin/calendar?date=${iso(prev)}`} className="rounded-full border border-[var(--color-line)] px-3 py-1.5 transition-colors duration-150 hover:bg-[var(--color-bone)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-gold)]" aria-label="Previous day">←</Link>
+          <Link href={`/admin/calendar?date=${iso(prev)}`} className="rounded-full border border-[var(--color-line)] px-3 py-1.5 transition-colors duration-150 hover:bg-[var(--color-bone)]" aria-label="Previous day">←</Link>
           <span className="min-w-44 text-center font-medium">{day.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' })}</span>
-          <Link href={`/admin/calendar?date=${iso(next)}`} className="rounded-full border border-[var(--color-line)] px-3 py-1.5 transition-colors duration-150 hover:bg-[var(--color-bone)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-gold)]" aria-label="Next day">→</Link>
-          <Link href="/admin/calendar" className="ml-2 rounded-full bg-[var(--color-ink)] px-3 py-1.5 text-[var(--color-porcelain)] transition-colors duration-150 hover:bg-[var(--color-ink-soft)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-gold)]">Today</Link>
+          <Link href={`/admin/calendar?date=${iso(next)}`} className="rounded-full border border-[var(--color-line)] px-3 py-1.5 transition-colors duration-150 hover:bg-[var(--color-bone)]" aria-label="Next day">→</Link>
+          <Link href="/admin/calendar" className="ml-2 rounded-full bg-[var(--color-ink)] px-3 py-1.5 text-[var(--color-porcelain)] transition-colors duration-150 hover:bg-[var(--color-ink-soft)]">Today</Link>
           {canManageSchedule && clinicians.length > 0 && <CalendarBlockButton clinicians={columns.filter((c) => c.id).map((c) => ({ id: c.id as string, name: c.name }))} dateISO={iso(dayStart)} />}
           {canManageSchedule && <CalendarClosureButton dateISO={iso(dayStart)} closure={closure} />}
         </div>
