@@ -263,6 +263,16 @@ export async function listClients(opts: { q?: string; sort?: string; dir?: 'asc'
 // URL. Returns null (same as "not found") rather than a 403 so the detail page
 // 404s exactly as it already does for a bad id, without confirming the id exists.
 export async function getClient(id: string, opts: { clinical?: boolean; practitionerId?: string } = {}) {
+  // The ownership check runs against the bookings table directly, NOT against
+  // the `bookings` include below: that list is capped at the 50 most recent
+  // (BLD-1464), so a practitioner whose only booking with a long-standing
+  // client falls outside that window would be locked out of a client they do
+  // treat. Checking first also skips the expensive include + decrypt entirely
+  // when the answer is "not yours".
+  if (opts.practitionerId) {
+    const own = await db.booking.findFirst({ where: { clientId: id, practitionerId: opts.practitionerId }, select: { id: true } });
+    if (!own) return null;
+  }
   const c = await db.client.findUnique({
     where: { id },
     include: {
@@ -290,7 +300,6 @@ export async function getClient(id: string, opts: { clinical?: boolean; practiti
       },
     },
   });
-  if (c && opts.practitionerId && !c.bookings.some((b) => b.practitionerId === opts.practitionerId)) return null;
   if (c) {
     // Decrypt the at-rest clinical/contact free-text for display (tolerant of legacy plaintext).
     c.medicalFlag = decClinical(c.medicalFlag);
