@@ -127,7 +127,13 @@ export async function TreatmentTemplate({ t, dentistryLive = site.dentistryLive 
           the pricing table's CTA — no duplicate/overlapping CTAs). Only for
           treatments that are actually bookable online. */}
       {!comingSoon && !enquiryOnly && (
-        <MobileStickyBookBar treatmentSlug={t.slug} priceLabel={formatPence(fromOfferPence ?? fromPence)} />
+        <MobileStickyBookBar
+          treatmentSlug={t.slug}
+          // Keep the "From" qualifier the hero and pricing table both carry: the
+          // figure is the lowest variant price, so a bare "£120" on the sticky
+          // bar would read as the price of the treatment.
+          priceLabel={(fromOfferPence ?? fromPence) ? `From ${formatPence(fromOfferPence ?? fromPence)}` : formatPence(null)}
+        />
       )}
       {/* Hero */}
       <section className="surface-ink grain relative overflow-hidden pt-[calc(var(--header-h,5.25rem)+1rem)]">
