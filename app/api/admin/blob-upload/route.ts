@@ -27,9 +27,11 @@ export async function POST(req: Request) {
   if (file.size > MAX) return NextResponse.json({ ok: false, error: 'File is over 4.5 MB — use a smaller file or compress it.', tooLarge: true }, { status: 413 });
   // PRJ-1191.11: verify the declared Content-Type against the actual bytes
   // wherever that's checkable (images + PDF — the common relabel-as-an-image
-  // bypass) instead of trusting it outright; video/audio/office-doc/zip types
-  // this module can't fingerprint still fall back to the declared type, same
-  // as before.
+  // bypass) instead of trusting it outright. Anything declared or sniffed as
+  // an image/PDF must have the magic bytes to match, so a script/HTML/SVG
+  // payload labelled image/png is rejected too, not just a wrong image format;
+  // video/audio/office-doc/zip types this module can't fingerprint still fall
+  // back to the declared type, same as before.
   const mime = await verifiedFileMime(file);
   if (!mime || !OK.test(mime)) return NextResponse.json({ ok: false, error: 'That file type is not supported.' }, { status: 415 });
 

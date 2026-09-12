@@ -56,20 +56,26 @@ export async function effectiveFileMime(file: Blob & { type?: string }): Promise
 // families the same sniffer sometimes reports under slightly different names
 // than a real client would declare — not a spoof, just naming variance.
 const EQUIVALENT_MIME = [new Set(['image/jpg', 'image/jpeg']), new Set(['image/heic', 'image/heif'])];
+// Declared-type families sniffFileMime can fingerprint. Every image type either
+// upload route accepts (png/jpeg/webp/gif/avif/heic/heif) and PDF start with
+// fixed magic bytes, so for these a null sniff means the bytes contradict the
+// label rather than that this module lacks a check.
+const VERIFIABLE_DECLARED = /^(image\/|application\/pdf$)/;
 function mimeFamiliesMatch(a: string, b: string): boolean {
   if (a === b) return true;
   return EQUIVALENT_MIME.some((set) => set.has(a) && set.has(b));
 }
 
-/** The type an upload route should TRUST: verified against the file's actual
- *  bytes whenever the format is one `sniffFileMime` recognises (images +
- *  PDF) — a declared type that doesn't match those bytes is rejected outright
- *  (empty return) rather than trusted, closing the mislabelled-file bypass.
- *  For a format `sniffFileMime` can't fingerprint (video/audio/office docs/
- *  zip — no magic-byte check implemented here), falls back to the declared
- *  type unverified, same as `effectiveFileMime`: this narrows the trust gap
- *  to formats this module genuinely cannot check yet, rather than claiming a
- *  verification it doesn't do. */
+/** The type an upload route should TRUST. Any image or PDF — declared as one
+ *  or sniffed as one — must be backed by matching magic bytes, or it is
+ *  rejected outright (empty return): that covers both a wrong label (GIF bytes
+ *  declared image/png) and no label the bytes support at all (an HTML/SVG
+ *  payload declared image/png), which is the whole mislabelled-file bypass.
+ *  Only a format `sniffFileMime` cannot fingerprint AND that isn't claiming to
+ *  be an image/PDF (video/audio/office docs/zip) falls back to the declared
+ *  type unverified, same as `effectiveFileMime` — the trust gap is exactly the
+ *  formats this module has no magic-byte check for, rather than any file that
+ *  happens not to sniff. */
 export async function verifiedFileMime(file: Blob & { type?: string }): Promise<string> {
   const sniffed = await sniffFileMime(file);
   const declared = (file.type || '').toLowerCase();
@@ -77,5 +83,18 @@ export async function verifiedFileMime(file: Blob & { type?: string }): Promise<
     if (declared && !mimeFamiliesMatch(declared, sniffed)) return ''; // mismatch — reject
     return sniffed;
   }
+  // Review fix (PRJ-1191.11): bytes in no format sniffFileMime recognises.
+  // Falling back to the declared type here unconditionally left the bypass
+  // this function exists to close wide open — the attacker's file is PRECISELY
+  // the unsniffable case. An HTML/SVG/script payload has no magic bytes, so
+  // sniffing returns null and declaring it "image/png" sailed straight through
+  // both callers' allow-lists. The fallback is only legitimate where this
+  // module genuinely cannot fingerprint the format, so it is now scoped to
+  // exactly that: a declared type in a family sniffFileMime DOES cover
+  // (any image/*, application/pdf) with bytes that don't back it up is a lie,
+  // not a coverage gap, and is rejected. video/audio/office-doc/zip — which
+  // have no magic-byte check here — still fall back to the declared type,
+  // unchanged.
+  if (VERIFIABLE_DECLARED.test(declared)) return '';
   return declared;
 }

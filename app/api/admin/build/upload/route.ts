@@ -21,9 +21,10 @@ export async function POST(req: Request) {
   if (!(file instanceof File)) return NextResponse.json({ ok: false, error: 'No file.' }, { status: 400 });
   if (file.size > MAX) return NextResponse.json({ ok: false, error: 'Image is over 12 MB.' }, { status: 413 });
   // PRJ-1191.11: verify against the actual bytes, not just the declared
-  // Content-Type — this route only ever accepts images, so every case is
-  // sniffable; a mismatch (e.g. a script file relabelled as image/png) is
-  // rejected outright instead of trusted.
+  // Content-Type — this route only ever accepts images, every one of which
+  // sniffFileMime fingerprints. Both a mismatch (a GIF declared image/png) and
+  // an unrecognisable file (a script/HTML/SVG payload relabelled image/png,
+  // which sniffs to nothing) come back empty and are rejected here.
   const mime = await verifiedFileMime(file);
   if (!mime || !OK.test(mime)) return NextResponse.json({ ok: false, error: 'Images only.' }, { status: 415 });
 
