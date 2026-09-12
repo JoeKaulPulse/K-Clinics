@@ -21,7 +21,13 @@ export async function GET(req: Request) {
   const locationId = url.searchParams.get('locationId');
   try {
     const { getRoomsForDay } = await import('@/lib/room-prep');
-    const rooms = await getRoomsForDay({ locationId });
+    // BLD-1652: this is the endpoint RoomPrepStatus polls live from the
+    // Specialist's own dashboard, so it needs the same scoping as the page's
+    // initial server render — a Specialist/Practitioner only gets their own
+    // client + treatment back for a room's current/next booking; a
+    // FRONT_DESK/OWNER/ADMIN session is unaffected (front-of-house genuinely
+    // needs the whole clinic's room occupancy).
+    const rooms = await getRoomsForDay({ locationId, practitionerId: session.role === 'PRACTITIONER' ? session.sub : undefined });
     return NextResponse.json({ ok: true, rooms, canManage: sessionCan(session, 'rooms.prep.manage') }, { headers: { 'Cache-Control': 'no-store' } });
   } catch (e) {
     console.error('[rooms/prep] load failed', e);

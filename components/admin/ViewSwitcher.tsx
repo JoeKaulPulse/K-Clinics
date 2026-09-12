@@ -45,7 +45,7 @@ export function ViewSwitcher({ active }: { active: DashboardView }) {
         onClick={() => setOpen((o) => !o)}
         aria-haspopup="menu"
         aria-expanded={open}
-        className="inline-flex items-center gap-1.5 rounded-full border border-[var(--color-line)] bg-[var(--color-porcelain)] px-3 py-1.5 text-xs font-medium text-[var(--color-ink)] transition-colors hover:border-[var(--color-gold)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-gold)] disabled:opacity-60"
+        className="inline-flex items-center gap-1.5 rounded-full border border-[var(--color-line)] bg-[var(--color-porcelain)] px-3 py-1.5 text-xs font-medium text-[var(--color-ink)] transition-colors hover:border-[var(--color-gold)] disabled:opacity-60"
         disabled={!!busy}
       >
         <span className="text-[var(--color-stone)]">Viewing as</span>

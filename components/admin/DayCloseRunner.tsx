@@ -203,6 +203,7 @@ export function DayCloseRunner({
                       {expected.chargeCount} treatment charge{expected.chargeCount === 1 ? '' : 's'} · {money(expected.chargesPence)}
                       {expected.orderCount > 0 && <> · {expected.orderCount} product order{expected.orderCount === 1 ? '' : 's'} · {money(expected.ordersPence)}</>}
                       {expected.voucherCount > 0 && <> · {expected.voucherCount} voucher sale{expected.voucherCount === 1 ? '' : 's'} · {money(expected.vouchersPence)}</>}
+                      {expected.refundCount > 0 && <> · {expected.refundCount} refund{expected.refundCount === 1 ? '' : 's'} · −{money(expected.refundedPence)}</>}
                     </p>
                   </div>
 
@@ -251,7 +252,7 @@ export function DayCloseRunner({
                       const counted = parseFloat(counts[it.id]);
                       const diff = Number.isFinite(counted) ? counted - it.expectedQty : 0;
                       return (
-                        <div key={it.id} className="flex items-center justify-between gap-3 rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-3 py-2">
+                        <div key={it.id} className="flex items-center justify-between gap-3 rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-porcelain)] px-3 py-2">
                           <div className="min-w-0">
                             <p className="truncate text-sm font-medium">{it.name}</p>
                             <p className="text-xs text-[var(--color-stone)]">{it.category || 'Stock'} · system: {it.expectedQty} {it.unit}</p>
@@ -266,7 +267,7 @@ export function DayCloseRunner({
                               inputMode="decimal"
                               value={counts[it.id]}
                               onChange={(e) => setCounts((p) => ({ ...p, [it.id]: e.target.value }))}
-                              className="w-20 rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-2 py-1.5 text-right text-sm outline-none focus:border-[var(--color-gold)] focus-visible:ring-2 focus-visible:ring-[var(--color-gold)]"
+                              className="w-20 rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-porcelain)] px-2 py-1.5 text-right text-sm outline-none focus:border-[var(--color-gold)] focus-visible:ring-2 focus-visible:ring-[var(--color-gold)]"
                             />
                             <span className="w-10 text-xs text-[var(--color-stone)]">{it.unit}</span>
                           </div>
@@ -300,7 +301,7 @@ export function DayCloseRunner({
                               aria-label="Reading or note"
                               value={st?.note ?? ''}
                               onChange={(e) => setNote(current.section.id, it.id, e.target.value)}
-                              className="mt-2.5 ml-8 w-[calc(100%-2rem)] rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-3 py-1.5 text-sm outline-none focus:border-[var(--color-gold)] focus-visible:ring-2 focus-visible:ring-[var(--color-gold)]"
+                              className="mt-2.5 ml-8 w-[calc(100%-2rem)] rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-porcelain)] px-3 py-1.5 text-sm outline-none focus:border-[var(--color-gold)] focus-visible:ring-2 focus-visible:ring-[var(--color-gold)]"
                             />
                           )}
                         </li>
@@ -330,7 +331,7 @@ export function DayCloseRunner({
                   )}
 
                   <label className="mt-6 block text-sm font-medium">Notes for the manager (optional)</label>
-                  <textarea rows={3} value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Anything to flag — variance reasons, faults, incidents…" aria-label="Notes for the manager" className="mt-2 w-full rounded-[var(--radius-md)] border border-[var(--color-line)] bg-white px-4 py-3 outline-none focus:border-[var(--color-gold)] focus-visible:ring-2 focus-visible:ring-[var(--color-gold)]" />
+                  <textarea rows={3} value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Anything to flag — variance reasons, faults, incidents…" aria-label="Notes for the manager" className="mt-2 w-full rounded-[var(--radius-md)] border border-[var(--color-line)] bg-[var(--color-porcelain)] px-4 py-3 outline-none focus:border-[var(--color-gold)] focus-visible:ring-2 focus-visible:ring-[var(--color-gold)]" />
 
                   {error && <p role="alert" aria-live="assertive" className="mt-5 rounded-[var(--radius-sm)] bg-[var(--color-blush)]/25 px-4 py-2.5 text-sm text-[var(--color-ink)]">{error}</p>}
                   <button onClick={submit} disabled={status === 'saving'} className="mt-8 rounded-full bg-[var(--color-gold-deep)] px-7 py-3.5 font-medium text-white shadow-[var(--shadow-gold)] hover:bg-[var(--color-ink)] disabled:opacity-60">
@@ -362,7 +363,7 @@ function MoneyField({ label, value, onChange, autoFocus, compact }: { label: str
   return (
     <label className={`block ${compact ? '' : 'mt-6'}`}>
       <span className="text-sm font-medium">{label}</span>
-      <div className="mt-1.5 flex items-center rounded-[var(--radius-md)] border border-[var(--color-line)] bg-white px-3 focus-within:border-[var(--color-gold)]">
+      <div className="mt-1.5 flex items-center rounded-[var(--radius-md)] border border-[var(--color-line)] bg-[var(--color-porcelain)] px-3 focus-within:border-[var(--color-gold)]">
         <span className="text-[var(--color-stone)]">£</span>
         <input
           type="number"

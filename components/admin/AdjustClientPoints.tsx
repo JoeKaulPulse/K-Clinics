@@ -24,12 +24,12 @@ export function AdjustClientPoints({ clientId }: { clientId: string }) {
     else { const j = await res.json().catch(() => ({})); setMsg(j.error || 'Could not apply.'); }
   }
 
-  const field = 'w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-3 py-2 text-sm outline-none focus:border-[var(--color-gold)] focus-visible:ring-2 focus-visible:ring-[var(--color-gold)]';
+  const field = 'w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-porcelain)] px-3 py-2 text-sm outline-none focus:border-[var(--color-gold)] focus-visible:ring-2 focus-visible:ring-[var(--color-gold)]';
 
   if (!open) return <button onClick={() => setOpen(true)} className="text-xs font-medium text-[var(--color-gold-deep)] hover:underline">+ Adjust points</button>;
 
   return (
-    <div className="mt-3 space-y-2 rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white p-3">
+    <div className="mt-3 space-y-2 rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-3">
       <input type="number" inputMode="numeric" placeholder="Points (− to deduct)" aria-label="Points" value={points} onChange={(e) => setPoints(e.target.value)} className={field} />
       <input placeholder="Reason (shown to client)" aria-label="Reason" value={reason} onChange={(e) => setReason(e.target.value)} className={field} />
       {msg && <p className="text-xs text-[var(--color-blush-deep)]">{msg}</p>}

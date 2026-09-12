@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation';
 type Resource = { id: string; slug: string; name: string; kind: string; tags: string[]; floor: string | null; capacity: number; active: boolean; locationId: string | null; equipmentIds: string[] };
 type Loc = { id: string; name: string };
 
-const field = 'rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-2.5 py-1.5 text-sm';
+const field = 'rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-porcelain)] px-2.5 py-1.5 text-sm';
 
 async function post(payload: object) {
   return fetch('/api/admin/resources', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
@@ -126,7 +126,7 @@ function RoomRow({ room, equipment }: { room: Resource; equipment: Resource[] })
       </div>
 
       {open && (
-        <div className="mt-3 space-y-3 rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white/60 p-3">
+        <div className="mt-3 space-y-3 rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-porcelain)]/60 p-3">
           <div>
             <p className="mb-1 text-xs font-medium text-[var(--color-stone)]">Used for (tags)</p>
             <div className="flex items-center gap-2">

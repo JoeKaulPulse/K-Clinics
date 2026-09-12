@@ -49,7 +49,7 @@ export function PriceOverride({ bookingId, basePence, paid = false }: { bookingI
       </p>
       <div className="flex flex-wrap items-center gap-2">
         <label htmlFor="price-override-amount" className="sr-only">New treatment price in pounds</label>
-        <span className="flex items-center gap-1 rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-2 py-1.5">
+        <span className="flex items-center gap-1 rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-porcelain)] px-2 py-1.5">
           £<input id="price-override-amount" inputMode="decimal" value={amount} onChange={(e) => setAmount(e.target.value)} className="w-20 rounded-[var(--radius-sm)] outline-none tabular-nums focus-visible:ring-2 focus-visible:ring-[var(--color-gold)]" />
         </span>
         <input
@@ -57,7 +57,7 @@ export function PriceOverride({ bookingId, basePence, paid = false }: { bookingI
           onChange={(e) => setReason(e.target.value)}
           placeholder="Reason (required)"
           aria-label="Reason for the price change"
-          className="min-w-[10rem] flex-1 rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-2 py-1.5 outline-none focus:border-[var(--color-gold)] focus-visible:ring-2 focus-visible:ring-[var(--color-gold)]"
+          className="min-w-[10rem] flex-1 rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-porcelain)] px-2 py-1.5 outline-none focus:border-[var(--color-gold)] focus-visible:ring-2 focus-visible:ring-[var(--color-gold)]"
         />
         <button type="button" disabled={!valid || pending} onClick={save} className="rounded-full bg-[var(--color-ink)] px-3 py-1.5 text-xs font-medium text-[var(--color-porcelain)] disabled:opacity-40">
           {pending ? 'Saving…' : 'Apply'}

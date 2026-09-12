@@ -39,7 +39,7 @@ export function ProductsList({ rows }: { rows: ProductRow[] }) {
       <section className="rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-5">
         <h2 className="mb-1 font-[family-name:var(--font-display)] text-lg">New product</h2>
         <div className="flex flex-wrap items-end gap-2">
-          <label className="text-xs text-[var(--color-stone)]">Name<br /><input value={name} onChange={(e) => setName(e.target.value)} placeholder="Vitamin C Serum" className="rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-3 py-2 text-sm w-64" /></label>
+          <label className="text-xs text-[var(--color-stone)]">Name<br /><input value={name} onChange={(e) => setName(e.target.value)} placeholder="Vitamin C Serum" className="rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-porcelain)] px-3 py-2 text-sm w-64" /></label>
           <button onClick={create} disabled={busy} className="rounded-full bg-[var(--color-ink)] px-4 py-2 text-sm text-[var(--color-porcelain)] disabled:opacity-50">{busy ? 'Creating…' : 'Create & edit'}</button>
         </div>
       </section>

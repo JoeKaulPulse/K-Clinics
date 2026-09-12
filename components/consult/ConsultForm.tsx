@@ -232,11 +232,11 @@ export function ConsultForm() {
           ← Back
         </button>
         {step < 3 ? (
-          <Button onClick={() => canNext && setStep((s) => s + 1)} variant={canNext ? 'gold' : 'outline'}>
+          <Button onClick={() => setStep((s) => s + 1)} disabled={!canNext} variant={canNext ? 'gold' : 'outline'}>
             Continue <ArrowIcon />
           </Button>
         ) : (
-          <Button onClick={() => d.consent && submit()} disabled={status === 'sending'} variant={d.consent ? 'gold' : 'outline'}>
+          <Button onClick={submit} disabled={!d.consent || status === 'sending'} variant={d.consent ? 'gold' : 'outline'}>
             {status === 'sending' ? 'Sending…' : 'Request consultation'} <ArrowIcon />
           </Button>
         )}
