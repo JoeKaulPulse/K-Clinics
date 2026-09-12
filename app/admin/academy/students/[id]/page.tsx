@@ -150,7 +150,7 @@ export default async function AdminAcademyStudentPage({ params }: { params: Prom
                       <div>
                         <Link href={`/admin/academy/${e.course.id}`} className="font-medium hover:text-[var(--color-gold-deep)] hover:underline">{e.course.title}</Link>
                         <span className="ml-2 rounded-full bg-[var(--color-bone)] px-2 py-0.5 text-[0.65rem] uppercase tracking-wide text-[var(--color-stone)]">{e.status}</span>
-                        <span className="block text-xs text-[var(--color-stone)]">{money(e.paidPence)} of {money(fee)} paid{outstanding > 0 ? ` · ${money(outstanding)} due` : ' · paid in full'}{e.cohort ? ` · cohort ${e.cohort.name || fmt(e.cohort.startAt)}` : ''}{e.preCourseAckAt ? ' · pre-course read ✓' : ''}</span>
+                        <span className="block text-xs text-[var(--color-stone)]">{money(e.paidPence)} of {money(fee)} paid{outstanding > 0 ? ` · ${money(outstanding)} due` : ' · paid in full'}{e.cohort ? ` · cohort ${e.cohort.name || fmt(e.cohort.startAt)}` : ''}{e.preCourseAckAt ? ' · pre-course read ✓' : ''}{/* BLD-1730: signing date+time (and the exact wording version signed) was tracked but never shown here */}{e.agreementSignedAt ? ` · agreement signed ${fmtDT(e.agreementSignedAt)}${e.agreementVersion ? ` (version ${e.agreementVersion})` : ''}` : ' · agreement not signed'}</span>
                       </div>
                       <Link href={`/academy/learn/${e.course.slug}`} className="text-xs text-[var(--color-gold-deep)] hover:underline">View course →</Link>
                     </div>

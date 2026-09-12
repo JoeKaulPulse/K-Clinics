@@ -47,6 +47,7 @@ enum EmailKind {
   CHAT
   ABANDONED_BOOKING
   ABANDONED_ORDER // BLD-1204: abandoned shop-order recovery
+  ABANDONED_GIFTVOUCHER // BLD-1540: abandoned gift-voucher-purchase recovery
   NO_SHOW
   STAFF_DIGEST
   STAFF_NUDGE

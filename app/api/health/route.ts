@@ -145,22 +145,59 @@ export async function GET(req: Request) {
   // only caught by a manual audit. The Vercel Cron entry in vercel.json now
   // hits this route every 5 minutes with CRON_SECRET; on failure, alert the
   // same way every other cron does (mirrors app/api/cron/daily/route.ts).
+  //
+  // BLD-1723: with no dedup, a sustained outage re-paged on every single
+  // 5-minute cron hit for as long as it lasted — alert fatigue on the exact
+  // path meant to be trustworthy. Alert immediately on a fresh failure and at
+  // most once per cooldown while it stays down; clear the watermark the
+  // moment it recovers so the NEXT incident still alerts right away.
+  const ALERT_WATERMARK_KEY = 'health_alert_last_sent_at';
+  const ALERT_COOLDOWN_MS = 30 * 60 * 1000;
   if (!report.ok && authed) {
-    const summary = `[kclinics health] check failed — database:${report.database} env:${report.env}${cronStale ? ' — cron heartbeat stale' : ''}`;
+    let shouldAlert = true;
     try {
-      const Sentry = await import('@sentry/nextjs');
-      Sentry.captureMessage(summary, 'error');
-    } catch { /* Sentry not available — non-fatal */ }
-    const webhookUrl = process.env.CRON_ALERT_WEBHOOK_URL;
-    if (webhookUrl) {
-      const body = JSON.stringify({ text: summary, ...report });
-      // BLD-1137: await the alert — the serverless runtime can freeze once the
-      // response is sent, so an un-awaited fetch may silently never send.
-      // PRJ-1118.10: bound it — a hung webhook endpoint previously stalled this
-      // request indefinitely; on timeout the alert is simply dropped (non-fatal,
-      // matching every other outcome of this best-effort send).
-      try { await fetch(webhookUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body, signal: AbortSignal.timeout(8_000) }); } catch { /* non-fatal */ }
+      const { db } = await import('@/lib/db');
+      const row = await db.setting.findUnique({ where: { key: ALERT_WATERMARK_KEY } });
+      const lastAlertAt = row?.value ? Number(row.value) : 0;
+      shouldAlert = !lastAlertAt || Date.now() - lastAlertAt >= ALERT_COOLDOWN_MS;
+      if (shouldAlert) {
+        await db.setting.upsert({
+          where: { key: ALERT_WATERMARK_KEY },
+          create: { key: ALERT_WATERMARK_KEY, value: String(Date.now()) },
+          update: { value: String(Date.now()) },
+        });
+      }
+    } catch {
+      // Can't read/write the watermark (often because the DB itself is the
+      // thing that's down) — fail OPEN and alert rather than risk a silent
+      // outage; a duplicate page is the safer failure mode.
+      shouldAlert = true;
     }
+
+    if (shouldAlert) {
+      const summary = `[kclinics health] check failed — database:${report.database} env:${report.env}${cronStale ? ' — cron heartbeat stale' : ''}`;
+      try {
+        const Sentry = await import('@sentry/nextjs');
+        Sentry.captureMessage(summary, 'error');
+      } catch { /* Sentry not available — non-fatal */ }
+      const webhookUrl = process.env.CRON_ALERT_WEBHOOK_URL;
+      if (webhookUrl) {
+        const body = JSON.stringify({ text: summary, ...report });
+        // BLD-1137: await the alert — the serverless runtime can freeze once the
+        // response is sent, so an un-awaited fetch may silently never send.
+        // PRJ-1118.10: bound it — a hung webhook endpoint previously stalled this
+        // request indefinitely; on timeout the alert is simply dropped (non-fatal,
+        // matching every other outcome of this best-effort send).
+        try { await fetch(webhookUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body, signal: AbortSignal.timeout(8_000) }); } catch { /* non-fatal */ }
+      }
+    }
+  } else if (report.ok && authed) {
+    // Recovered — clear the watermark so the next incident alerts immediately
+    // instead of possibly landing inside the previous incident's cooldown.
+    try {
+      const { db } = await import('@/lib/db');
+      await db.setting.deleteMany({ where: { key: ALERT_WATERMARK_KEY } });
+    } catch { /* non-fatal */ }
   }
 
   return NextResponse.json(report, { status: report.ok ? 200 : 503 });

@@ -1,6 +1,6 @@
 import 'server-only';
 import { db } from './db';
-import { sendEmail, emailShell, tmplBirthday, tmplFollowUp, tmplWinBack, tmplReviewRequest, tmplAppointmentReminder, tmplFormReminder, tmplAbandonedBooking, tmplAbandonedOrder, tmplAftercare, tmplSatisfaction, tmplRebook, tmplCourseContentReady, tmplTcsReminder, tmplLaserHairRemovalPrep } from './email';
+import { sendEmail, emailShell, tmplBirthday, tmplFollowUp, tmplWinBack, tmplReviewRequest, tmplAppointmentReminder, tmplFormReminder, tmplAbandonedBooking, tmplAbandonedOrder, tmplAbandonedGiftVoucher, tmplAftercare, tmplSatisfaction, tmplRebook, tmplCourseContentReady, tmplTcsReminder, tmplLaserHairRemovalPrep } from './email';
 import { ensureReviewRequest, reviewLink, googleReviewLink } from './review-system';
 import { site } from './site';
 import { escapeHtml } from './sanitize';
@@ -41,13 +41,13 @@ const TCS_REMINDER_MAX_PER_RUN = 500;
 // address is retried on every run.
 const TCS_REMINDER_MAX_PER_CLIENT = 3;
 
-type Tally = { birthdays: number; followUps: number; winBacks: number; reviews: number; reminders: number; formReminders: number; treatmentFollowUps: number; giftVouchers: number; tierNudges: number; anniversaries: number; abandonedBookings: number; abandonedOrders: number; bookingIntents: number; membershipRenewals: number; staffDigests: number; staffNudges: number; reencrypted: number; aftercare: number; satisfaction: number; rebookNudges: number; npsPromoters: number; npsDetractors: number; liveClassReminders: number; courseContentReady: number; tcsReminders: number; treatmentPrep: number; referralAsks: number; errors: number };
+type Tally = { birthdays: number; followUps: number; winBacks: number; reviews: number; reminders: number; formReminders: number; treatmentFollowUps: number; giftVouchers: number; tierNudges: number; anniversaries: number; abandonedBookings: number; abandonedOrders: number; abandonedGiftVouchers: number; bookingIntents: number; membershipRenewals: number; staffDigests: number; staffNudges: number; reencrypted: number; aftercare: number; satisfaction: number; rebookNudges: number; npsPromoters: number; npsDetractors: number; liveClassReminders: number; courseContentReady: number; tcsReminders: number; treatmentPrep: number; referralAsks: number; errors: number };
 
 export async function runDailyAutomations(): Promise<Tally> {
-  const t: Tally = { birthdays: 0, followUps: 0, winBacks: 0, reviews: 0, reminders: 0, formReminders: 0, treatmentFollowUps: 0, giftVouchers: 0, tierNudges: 0, anniversaries: 0, abandonedBookings: 0, abandonedOrders: 0, bookingIntents: 0, membershipRenewals: 0, staffDigests: 0, staffNudges: 0, reencrypted: 0, aftercare: 0, satisfaction: 0, rebookNudges: 0, npsPromoters: 0, npsDetractors: 0, liveClassReminders: 0, courseContentReady: 0, tcsReminders: 0, treatmentPrep: 0, referralAsks: 0, errors: 0 };
+  const t: Tally = { birthdays: 0, followUps: 0, winBacks: 0, reviews: 0, reminders: 0, formReminders: 0, treatmentFollowUps: 0, giftVouchers: 0, tierNudges: 0, anniversaries: 0, abandonedBookings: 0, abandonedOrders: 0, abandonedGiftVouchers: 0, bookingIntents: 0, membershipRenewals: 0, staffDigests: 0, staffNudges: 0, reencrypted: 0, aftercare: 0, satisfaction: 0, rebookNudges: 0, npsPromoters: 0, npsDetractors: 0, liveClassReminders: 0, courseContentReady: 0, tcsReminders: 0, treatmentPrep: 0, referralAsks: 0, errors: 0 };
   const { staffWeeklyDigest, staffReengagement } = await import('@/lib/staff-emails');
   // BLD-120: allSettled so one failing automation can't abort the rest.
-  const results = await Promise.allSettled([birthdays(t), followUps(t), reviews(t), winBacks(t), reminders(t), formReminders(t), treatmentFollowUps(t), scheduledGiftVouchers(t), tierNudges(t), anniversaries(t), abandonedBookings(t), abandonedOrders(t), bookingIntentRecovery(t), membershipRenewal(t), staffWeeklyDigest(t), staffReengagement(t), keyReencryption(t), aftercare(t), satisfaction(t), rebookNudge(t), promoterFollowUp(t), detractorFollowUp(t), liveClassReminders(t), courseContentReady(t), tcsReminders(t), laserHairRemovalPrep(t), referralAsk(t)]);
+  const results = await Promise.allSettled([birthdays(t), followUps(t), reviews(t), winBacks(t), reminders(t), formReminders(t), treatmentFollowUps(t), scheduledGiftVouchers(t), tierNudges(t), anniversaries(t), abandonedBookings(t), abandonedOrders(t), abandonedGiftVouchers(t), bookingIntentRecovery(t), membershipRenewal(t), staffWeeklyDigest(t), staffReengagement(t), keyReencryption(t), aftercare(t), satisfaction(t), rebookNudge(t), promoterFollowUp(t), detractorFollowUp(t), liveClassReminders(t), courseContentReady(t), tcsReminders(t), laserHairRemovalPrep(t), referralAsk(t)]);
   for (const r of results) {
     if (r.status === 'rejected') { t.errors++; console.error('[automations] unhandled automation failure:', r.reason); }
   }
@@ -245,6 +245,44 @@ async function abandonedOrders(t: Tally) {
       res.ok ? t.abandonedOrders++ : t.errors++;
     }
   } catch (e) { t.errors++; console.error('[automations] abandoned orders failed:', (e as Error)?.message); }
+}
+
+// ── Abandoned-gift-voucher recovery (opt-in) ──
+// BLD-1540: a one-time nudge to buyers who reached the Stripe payment step for
+// a gift voucher (GiftVoucher created PENDING with stripePaymentIntentId set)
+// but never completed payment. Mirrors abandonedOrders() above: same 2–72h
+// timing window, same EmailEvent dedupe pattern, same email-sending mechanism.
+// Gated behind the abandoned_giftvoucher_recovery setting.
+async function abandonedGiftVouchers(t: Tally) {
+  try {
+    const { getSetting } = await import('@/lib/settings');
+    if (!(await getSetting('abandoned_giftvoucher_recovery'))) return;
+    const base = (SITE_URL || '').replace(/\/$/, '');
+    const now = Date.now();
+    const rows = await db.giftVoucher.findMany({
+      where: {
+        status: 'PENDING',
+        stripePaymentIntentId: { not: null },
+        purchaserEmail: { not: '' },
+        createdAt: { gte: new Date(now - 72 * 3600e3), lte: new Date(now - 2 * 3600e3) },
+      },
+      take: 500,
+    });
+    for (const v of rows) {
+      // Honour a hard unsubscribe if this email maps to a known client — this is
+      // a one-time transactional nudge (not marketing), same stance as
+      // abandonedOrders above.
+      const client = await db.client.findFirst({ where: { email: { equals: v.purchaserEmail, mode: 'insensitive' } }, select: { unsubscribed: true } }).catch(() => null);
+      if (client?.unsubscribed) continue;
+      // Once per voucher only.
+      const dup = await db.emailEvent.findFirst({ where: { kind: 'ABANDONED_GIFTVOUCHER', status: 'SENT', meta: { path: ['giftVoucherId'], equals: v.id } } });
+      if (dup) continue;
+      const resumeUrl = `${base}/gift-vouchers`;
+      const res = await sendEmail({ to: v.purchaserEmail, subject: 'Finish your gift voucher purchase', html: tmplAbandonedGiftVoucher({ firstName: v.purchaserName.split(/\s+/)[0] || 'there', resumeUrl }) });
+      await db.emailEvent.create({ data: { clientId: null, kind: 'ABANDONED_GIFTVOUCHER', to: v.purchaserEmail, subject: 'Finish your gift voucher purchase', status: res.ok ? 'SENT' : 'FAILED', providerId: res.id, error: res.error, meta: { giftVoucherId: v.id } } }).catch(() => {});
+      res.ok ? t.abandonedGiftVouchers++ : t.errors++;
+    }
+  } catch (e) { t.errors++; console.error('[automations] abandoned gift vouchers failed:', (e as Error)?.message); }
 }
 
 // ── T&Cs acceptance reminder (opt-in) ──
