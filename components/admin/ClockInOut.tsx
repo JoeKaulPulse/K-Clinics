@@ -57,7 +57,7 @@ export function ClockInOut({ onShift, onBreak, shiftStartIso, workedTodayMin, br
         {onShift && <span className="hidden text-xs tabular-nums text-[var(--color-stone)] sm:inline">· {fmt(liveWorked)}</span>}
         {!onShift ? (
           <button type="button" onClick={() => run(() => clockInOutAction('in'))} disabled={pending}
-            className="rounded-full bg-[var(--color-ink)] px-3 py-1 text-xs font-medium text-[var(--color-porcelain)] transition-opacity hover:opacity-90 disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-gold)]">
+            className="rounded-full bg-[var(--color-ink)] px-3 py-1 text-xs font-medium text-[var(--color-porcelain)] transition-opacity hover:opacity-90 disabled:opacity-50">
             {pending ? '…' : 'Clock in'}
           </button>
         ) : (

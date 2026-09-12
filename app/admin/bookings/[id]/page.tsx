@@ -40,7 +40,11 @@ export default async function BookingDetail({ params }: { params: Promise<{ id: 
   const { getSop, parseSopSteps } = await import('@/lib/sops');
   const session = await getSession();
   if (!sessionCan(session, 'bookings.view')) redirect('/admin');
-  const b = await getBooking(id);
+  // BLD-1693: a Specialist/Practitioner can only open their own booking —
+  // getBooking returns null (404) for another practitioner's, same as an
+  // unknown id.
+  const practitionerId = session && session.role === 'PRACTITIONER' ? session.sub : undefined;
+  const b = await getBooking(id, { practitionerId });
   if (!b) notFound();
 
   const within24h = b.startAt.getTime() - Date.now() < 24 * 60 * 60 * 1000;
@@ -264,6 +268,18 @@ export default async function BookingDetail({ params }: { params: Promise<{ id: 
         <div role="alert" className="mt-4 rounded-[var(--radius-md)] border border-[var(--color-blush-deep)] bg-[var(--color-blush)]/15 px-4 py-3 text-sm">
           <span className="font-medium text-[var(--color-blush-deep)]">⚠ Blocked client.</span>{' '}
           {name} is marked red and cannot book appointments online. {b.client.clientStatusReason ? b.client.clientStatusReason : 'See the client profile for details.'}
+        </div>
+      )}
+
+      {/* PRJ-1191.4: the shared clinic calendar (Hostinger CalDAV) push/remove
+          failed after retries — this booking may not actually be reflected
+          there, a real double-booking risk since it's the only signal, other
+          than Sentry, that the sync failed at all. */}
+      {b.calendarSyncError && (
+        <div role="alert" className="mt-4 rounded-[var(--radius-md)] border border-[var(--color-blush-deep)] bg-[var(--color-blush)]/15 px-4 py-3 text-sm">
+          <span className="font-medium text-[var(--color-blush-deep)]">Calendar sync failed.</span>{' '}
+          This booking may not be up to date on the shared clinic calendar ({b.calendarSyncError}
+          {b.calendarSyncErrorAt ? `, ${b.calendarSyncErrorAt.toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', timeZone: 'Europe/London' })}` : ''}). It will retry next time the booking is saved, cancelled or rescheduled.
         </div>
       )}
 

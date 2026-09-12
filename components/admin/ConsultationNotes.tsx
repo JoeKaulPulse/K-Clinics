@@ -56,7 +56,7 @@ export function ConsultationNotes({ consultationId, initial }: { consultationId:
           onSubmit={submit}
           multiline
           placeholder="Add a note… (@ to mention a colleague)"
-          className="w-full resize-none rounded-[var(--radius-md)] border border-[var(--color-line)] bg-white px-3 py-2 text-sm outline-none focus:border-[var(--color-ink)]"
+          className="w-full resize-none rounded-[var(--radius-md)] border border-[var(--color-line)] bg-[var(--color-porcelain)] px-3 py-2 text-sm outline-none focus:border-[var(--color-ink)]"
         />
         <button
           type="button"

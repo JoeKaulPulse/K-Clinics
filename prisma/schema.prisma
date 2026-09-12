@@ -60,6 +60,7 @@ enum EmailKind {
   COURSE_CONTENT_READY // BLD-1231: one-time nudge once a zero-content course's first module publishes
   TCS_REMINDER // BLD-1452: nudge a client with no recorded T&Cs acceptance to accept + add a card
   TREATMENT_PREP // BLD-1573: pre-treatment prep instructions (e.g. Laser Hair Removal, 48h before)
+  REFERRAL_ASK // BLD-1664: ask a client to refer a friend, 5-10 days after a completed visit
 }
 
 enum EmailStatus {
@@ -194,6 +195,7 @@ enum AuditAction {
   CLIENT_ERASED
   STUDENT_ERASED // BLD-1124: distinct from CLIENT_ERASED — an academy trainee's data was erased (GDPR Art.17)
   CLIENT_EDITED
+  STUDENT_EDITED // BLD-1732: admin edited a trainee's first/last name (email stays locked; not learner-editable)
   DATA_EXPORTED
   DATA_IMPORTED // a data-migration step wrote records (e.g. WordPress import, BLD-187)
   SESSION_EDITED // a captured in-session answer was changed after first save (BLD-138)
@@ -809,6 +811,15 @@ model Booking {
   // pushed (and when no clinician is connected); cleared on cancellation.
   // Best-effort — calendar sync never blocks the booking lifecycle.
   googleEventId String?
+
+  // PRJ-1191.4: last calendar-sync failure message (any provider) an admin can
+  // see, set by lib/hostinger-calendar.ts after fetchWithRetry exhausts its
+  // attempts and cleared on the next successful push/remove. Best-effort sync
+  // never blocks the booking lifecycle, so this is the only surfaced signal
+  // that a confirmed/cancelled booking may not actually be reflected on the
+  // shared clinic calendar.
+  calendarSyncError   String?
+  calendarSyncErrorAt DateTime?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -1814,8 +1825,31 @@ model HealthAssessment {
   // Snapshot of who/what the assessment was for (e.g. an upcoming booking).
   bookingId   String?
 
+  translation HealthAssessmentTranslation?
+
   @@index([clientId, type])
   @@index([submittedAt])
+}
+
+// BLD-1658: cache for the machine translation shown to staff, so a clinician
+// re-opening the same assessment doesn't re-send special-category free-text
+// answers to Google Translate on every view. Kept in its own table (rather
+// than a column on HealthAssessment) because that record is append-only and
+// never updated once submitted — this cache is a display-layer optimisation,
+// not part of the clinical record, and is safe to overwrite/regenerate.
+// Encrypted the same way as the source answers (BLD-1658 audit note: staff
+// are told answers are "seen only by your care team" — a plaintext cache of
+// the same free text would undermine that as much as the uncached re-send did).
+model HealthAssessmentTranslation {
+  assessmentId  String           @id
+  assessment    HealthAssessment @relation(fields: [assessmentId], references: [id], onDelete: Cascade)
+  // Hash of the exact source free-text values this translation covers; a
+  // mismatch (e.g. the admin-managed question set changed) invalidates the
+  // cache and triggers a fresh translation rather than showing stale text.
+  sourceHash    String
+  cipher        String
+  integrityHash String
+  createdAt     DateTime         @default(now())
 }
 
 // ── First-visit discount ledger (abuse guardrail) ───────────────────────────
@@ -3073,6 +3107,31 @@ model Enrolment {
   @@index([studentId])
   @@index([studentId, status])
   @@index([cohortId, status]) // BLD-1142: cohortsWithRemaining() groupBy on every course-page ISR
+}
+
+// BLD-1731: the Learner (Training) Agreement's wording, versioned and editable
+// from the K Academy admin area instead of hardcoded in lib/learner-agreement.ts.
+// One row per published (or drafted) wording; the CURRENT agreement is the most
+// recent PUBLISHED row (ordered by publishedAt) — publishing never edits or
+// removes an older row, so an enrolment's stamped agreementVersion always still
+// resolves to the exact wording that learner signed. Global policy content
+// (like Post), not tenant-scoped.
+enum LearnerAgreementStatus {
+  DRAFT
+  PUBLISHED
+}
+
+model LearnerAgreementVersion {
+  id          String                 @id @default(cuid())
+  version     String // human-readable + monotonic, e.g. "2026-09-11" (see nextAgreementVersion)
+  sections    Json // AgreementSection[] — { heading, body }[]
+  status      LearnerAgreementStatus @default(DRAFT)
+  publishedAt DateTime? // set once, when this row is published; never re-published
+  createdBy   String? // admin email, or 'system' for the initial lazy seed
+  createdAt   DateTime               @default(now())
+  updatedAt   DateTime               @updatedAt
+
+  @@index([status, publishedAt])
 }
 
 // BLD-528: itemised academy payments. One row per payment OR scheduled instalment.

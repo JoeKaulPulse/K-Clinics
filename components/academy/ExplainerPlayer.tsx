@@ -6,6 +6,7 @@ import { KSpeech } from '@/components/academy/KMascot';
 import { Illustration, matchIllustration } from '@/components/academy/Illustrations';
 import { AmbientBackdrop } from '@/components/academy/AmbientBackdrop';
 import { useDialogBehaviours } from '@/components/ui/Dialog';
+import { useReducedMotionSafe } from '@/components/motion/use-reduced-motion-safe';
 
 // A short animated "video" explainer generated on the fly from a lesson's own
 // points — the K narrates each beat (typed speech) over a matched illustration,
@@ -20,11 +21,25 @@ export function ExplainerPlayer({ title, level, points, onClose, onStart }: { ti
   const cur = scenes[i];
   const last = i >= scenes.length - 1;
 
+  // BLD-1679: an explicit pause/play toggle for the auto-advancing reel, plus a
+  // prefers-reduced-motion check — WCAG 2.2.2 (Pause, Stop, Hide) asks for a
+  // mechanism to pause, and the button below is it.
+  //
+  // Deliberately NOT Testimonials.tsx's hover/focus auto-pause. That pattern
+  // suits a small inline carousel, but this player is a full-screen dialog:
+  // useDialogBehaviours focuses the panel's first focusable child on open
+  // (which is the pause button itself), so a focus-pause would leave the reel
+  // paused from the moment it opens, and a hover-pause would pause it for any
+  // desktop pointer resting anywhere on the screen. Either one silently turns
+  // the 60-second explainer into a single static slide.
+  const [paused, setPaused] = useState(false);
+  const reduce = useReducedMotionSafe();
+
   useEffect(() => {
-    if (last) return;
+    if (last || reduce || paused) return;
     const t = setTimeout(() => setI((x) => x + 1), cur.kind === 'title' ? 4200 : 5400);
     return () => clearTimeout(t);
-  }, [i, last, cur.kind]);
+  }, [i, last, cur.kind, reduce, paused]);
   // BLD-1501: dialog semantics (role, focus trap, Escape-to-close) — also
   // covers the body-scroll lock this player needs while it's open on top of
   // ImmersiveCourse, which locks too; the shared ref-count (BLD-1194) means
@@ -54,9 +69,21 @@ export function ExplainerPlayer({ title, level, points, onClose, onStart }: { ti
       <AmbientBackdrop tone="dark" />
       <header className="relative z-10 flex items-center justify-between px-5 py-3">
         <span className="text-xs uppercase tracking-[0.18em] text-white/45">60-second explainer</span>
-        <button onClick={(e) => { e.stopPropagation(); onClose(); }} aria-label="Close explainer" className="grid h-9 w-9 place-items-center rounded-full text-white/70 transition-colors hover:bg-white/10 hover:text-white">
-          <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" aria-hidden><path d="m3 3 10 10M13 3 3 13" /></svg>
-        </button>
+        <div className="flex items-center gap-2">
+          {!last && !reduce && (
+            <button
+              type="button"
+              onClick={(e) => { e.stopPropagation(); setPaused((p) => !p); }}
+              aria-label={paused ? 'Play explainer' : 'Pause explainer'}
+              className="grid h-9 w-9 place-items-center rounded-full text-white/70 transition-colors hover:bg-white/10 hover:text-white"
+            >
+              {paused ? '▶' : '❚❚'}
+            </button>
+          )}
+          <button onClick={(e) => { e.stopPropagation(); onClose(); }} aria-label="Close explainer" className="grid h-9 w-9 place-items-center rounded-full text-white/70 transition-colors hover:bg-white/10 hover:text-white">
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" aria-hidden><path d="m3 3 10 10M13 3 3 13" /></svg>
+          </button>
+        </div>
       </header>
 
       {/* The reel advances on a timer, so a screen reader has to be told each

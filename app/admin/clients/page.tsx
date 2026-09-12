@@ -30,7 +30,10 @@ export default async function ClientsPage({ searchParams }: { searchParams: Prom
   const { listClients } = await import('@/lib/crm-data');
   const session = await getSession();
   if (!sessionCan(session, 'clients.view')) redirect('/admin');
-  const { rows, total, page, pages, perPage, hiddenTest } = await listClients({ q, sort, dir, flag, page: reqPage, includeTest });
+  // BLD-1693: a Specialist/Practitioner sees only clients they've actually had
+  // a booking with — never the whole clinic roster.
+  const practitionerId = session && session.role === 'PRACTITIONER' ? session.sub : undefined;
+  const { rows, total, page, pages, perPage, hiddenTest } = await listClients({ q, sort, dir, flag, page: reqPage, includeTest, practitionerId });
   const canEdit = sessionCan(session, 'clients.edit');
 
   const can = await sessionPermissions();

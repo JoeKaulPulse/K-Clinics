@@ -187,7 +187,7 @@ export function AdminShell({
       href={n.href}
       data-tour={n.key}
       aria-current={isActive(n) ? 'page' : undefined}
-      className={`flex min-h-[2.75rem] items-center justify-between gap-2 whitespace-nowrap rounded-[var(--radius-sm)] px-4 py-2.5 text-sm transition-[background-color,color,transform] duration-150 active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-gold)] motion-reduce:transition-none motion-reduce:active:scale-100 lg:min-h-0 ${
+      className={`flex min-h-[2.75rem] items-center justify-between gap-2 whitespace-nowrap rounded-[var(--radius-sm)] px-4 py-2.5 text-sm transition-[background-color,color,transform] duration-150 active:scale-[0.99] motion-reduce:transition-none motion-reduce:active:scale-100 lg:min-h-0 ${
         isActive(n)
           ? 'bg-[var(--color-ink)] font-medium text-[var(--color-porcelain)]'
           : 'text-[var(--color-ink-soft)] hover:bg-[var(--color-bone)] hover:text-[var(--color-ink)]'
@@ -246,7 +246,7 @@ export function AdminShell({
             <button
               onClick={() => toggleGroup(key)}
               aria-expanded={open}
-              className="flex w-full cursor-pointer items-center gap-2 rounded-[var(--radius-sm)] px-4 pb-1 pt-4 text-[0.6rem] font-semibold uppercase tracking-[0.14em] text-[var(--color-stone)] transition-colors hover:text-[var(--color-stone)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-gold)]"
+              className="flex w-full cursor-pointer items-center gap-2 rounded-[var(--radius-sm)] px-4 pb-1 pt-4 text-[0.6rem] font-semibold uppercase tracking-[0.14em] text-[var(--color-stone)] transition-colors hover:text-[var(--color-stone)]"
             >
               <svg
                 viewBox="0 0 16 16" width="10" height="10" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden
@@ -318,7 +318,7 @@ export function AdminShell({
                   onClick={() => setProfileOpen((o) => !o)}
                   aria-haspopup="menu"
                   aria-expanded={profileOpen}
-                  className="flex items-center gap-2 rounded-full p-1 transition-colors hover:bg-[var(--color-bone)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-gold)] md:pr-2.5"
+                  className="flex items-center gap-2 rounded-full p-1 transition-colors hover:bg-[var(--color-bone)] md:pr-2.5"
                 >
                   <span className="flex h-8 w-8 items-center justify-center rounded-full bg-[var(--color-ink)] text-xs font-semibold text-[var(--color-porcelain)]">{initials}</span>
                   <span className="hidden max-w-[10rem] truncate text-sm text-[var(--color-ink-soft)] md:block">{user}</span>

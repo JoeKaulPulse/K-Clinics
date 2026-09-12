@@ -157,15 +157,15 @@ function Editor({ staff, treatments, googleConfigured, locations, multiLocation 
                 <input type="checkbox" checked={r.on} onChange={(e) => setRows((s) => s.map((x, i) => i === d ? { ...x, on: e.target.checked } : x))} className="h-4 w-4 accent-[var(--color-gold)]" />
                 <span className="text-sm font-medium">{DAYS[d]}</span>
               </label>
-              <input type="time" value={r.start} disabled={!r.on} onChange={(e) => setRows((s) => s.map((x, i) => i === d ? { ...x, start: e.target.value } : x))} className="rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-2 py-1.5 text-sm disabled:opacity-40" />
+              <input type="time" value={r.start} disabled={!r.on} onChange={(e) => setRows((s) => s.map((x, i) => i === d ? { ...x, start: e.target.value } : x))} className="rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-porcelain)] px-2 py-1.5 text-sm disabled:opacity-40" />
               <span className="text-[var(--color-stone)]">–</span>
-              <input type="time" value={r.end} disabled={!r.on} onChange={(e) => setRows((s) => s.map((x, i) => i === d ? { ...x, end: e.target.value } : x))} className="rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-2 py-1.5 text-sm disabled:opacity-40" />
+              <input type="time" value={r.end} disabled={!r.on} onChange={(e) => setRows((s) => s.map((x, i) => i === d ? { ...x, end: e.target.value } : x))} className="rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-porcelain)] px-2 py-1.5 text-sm disabled:opacity-40" />
               <span className="ml-2 hidden text-xs text-[var(--color-stone)] sm:inline">break</span>
-              <input type="time" value={r.breakStart} disabled={!r.on} title="Break start (optional)" onChange={(e) => setRows((s) => s.map((x, i) => i === d ? { ...x, breakStart: e.target.value } : x))} className="rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-2 py-1.5 text-sm disabled:opacity-40" />
+              <input type="time" value={r.breakStart} disabled={!r.on} title="Break start (optional)" onChange={(e) => setRows((s) => s.map((x, i) => i === d ? { ...x, breakStart: e.target.value } : x))} className="rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-porcelain)] px-2 py-1.5 text-sm disabled:opacity-40" />
               <span className="text-[var(--color-stone)]">–</span>
-              <input type="time" value={r.breakEnd} disabled={!r.on} title="Break end (optional)" onChange={(e) => setRows((s) => s.map((x, i) => i === d ? { ...x, breakEnd: e.target.value } : x))} className="rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-2 py-1.5 text-sm disabled:opacity-40" />
+              <input type="time" value={r.breakEnd} disabled={!r.on} title="Break end (optional)" onChange={(e) => setRows((s) => s.map((x, i) => i === d ? { ...x, breakEnd: e.target.value } : x))} className="rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-porcelain)] px-2 py-1.5 text-sm disabled:opacity-40" />
               {multiLocation && allowedLocs.length > 0 && (
-                <select value={r.locationId} disabled={!r.on} onChange={(e) => setRows((s) => s.map((x, i) => i === d ? { ...x, locationId: e.target.value } : x))} className="rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-2 py-1.5 text-sm disabled:opacity-40">
+                <select value={r.locationId} disabled={!r.on} onChange={(e) => setRows((s) => s.map((x, i) => i === d ? { ...x, locationId: e.target.value } : x))} className="rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-porcelain)] px-2 py-1.5 text-sm disabled:opacity-40">
                   <option value="">{allowedLocs.length === 1 ? allowedLocs[0].name : 'Location…'}</option>
                   {allowedLocs.map((l) => <option key={l.id} value={l.id}>{l.name}</option>)}
                 </select>
@@ -262,7 +262,7 @@ function TimeOff({ staff, onChange }: { staff: Staff; onChange: () => void }) {
     onChange();
   }
 
-  const f = 'rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-2 py-1.5 text-sm';
+  const f = 'rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-porcelain)] px-2 py-1.5 text-sm';
   return (
     <section className="rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-6">
       <h2 className="mb-4 font-[family-name:var(--font-display)] text-xl">Time off & blocks</h2>

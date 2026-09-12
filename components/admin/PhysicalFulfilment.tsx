@@ -24,7 +24,7 @@ export function PhysicalFulfilment({ items, canManage }: { items: Card[]; canMan
       <p className="mt-1 text-sm text-[var(--color-gold-deep)]">Printed-card upgrades that have been paid for and are waiting to be posted to the recipient.</p>
       <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
         {items.map((c) => (
-          <div key={c.id} className="rounded-[var(--radius-md)] border border-[var(--color-line)] bg-white p-4 text-sm">
+          <div key={c.id} className="rounded-[var(--radius-md)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-4 text-sm">
             <p className="font-medium">{c.shipName || c.recipientName || '—'}</p>
             <p className="mt-0.5 text-[var(--color-stone)]">
               {[c.shipLine1, c.shipLine2, c.shipCity, c.shipPostcode].filter(Boolean).join(', ')}

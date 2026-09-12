@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import type { BrandKit, BrandColor } from '@/lib/brand';
 
-const field = 'mt-1 w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-3 py-2 text-sm';
+const field = 'mt-1 w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-porcelain)] px-3 py-2 text-sm';
 const linesToArr = (s: string) => s.split('\n').map((l) => l.trim()).filter(Boolean);
 
 export function BrandKitManager({ initial }: { initial: BrandKit }) {
@@ -39,7 +39,7 @@ export function BrandKitManager({ initial }: { initial: BrandKit }) {
       <Card title="Colour palette" action={<button onClick={addColor} className="rounded-full border border-[var(--color-line)] px-3 py-1 text-xs hover:border-[var(--color-gold)]">+ Add colour</button>}>
         <div className="grid gap-3 sm:grid-cols-2">
           {b.palette.map((c, i) => (
-            <div key={i} className="flex items-center gap-3 rounded-[var(--radius-md)] border border-[var(--color-line)] bg-white p-3">
+            <div key={i} className="flex items-center gap-3 rounded-[var(--radius-md)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-3">
               <input type="color" value={c.hex} onChange={(e) => setColor(i, { hex: e.target.value })} className="h-10 w-10 shrink-0 cursor-pointer rounded border border-[var(--color-line)]" aria-label="Colour" />
               <div className="min-w-0 flex-1">
                 <input value={c.name} onChange={(e) => setColor(i, { name: e.target.value })} placeholder="Name" aria-label="Colour name" className="w-full rounded-[var(--radius-sm)] bg-transparent text-sm font-medium outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-gold)]" />
