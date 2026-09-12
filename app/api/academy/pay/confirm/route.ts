@@ -2,6 +2,10 @@ import { NextResponse } from 'next/server';
 import { crmEnabled } from '@/lib/crm';
 
 export const runtime = 'nodejs';
+// BLD-1704: finalizeEnrolmentPayment can wait on Resend's rate gate
+// (lib/email.ts) — same risk BLD-1692 fixed on the other finalize-calling
+// routes.
+export const maxDuration = 60;
 
 // BLD-528: finalise an enrolment payment synchronously after the client confirms
 // on the Payment Element, so the portal updates immediately even before the

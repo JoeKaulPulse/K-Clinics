@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { crmEnabled } from '@/lib/crm';
+import { verifiedFileMime } from '@/lib/security/file-type';
 
 export const runtime = 'nodejs';
 
@@ -19,12 +20,17 @@ export async function POST(req: Request) {
   const file = form?.get('file');
   if (!(file instanceof File)) return NextResponse.json({ ok: false, error: 'No file.' }, { status: 400 });
   if (file.size > MAX) return NextResponse.json({ ok: false, error: 'Image is over 12 MB.' }, { status: 413 });
-  if (!file.type || !OK.test(file.type)) return NextResponse.json({ ok: false, error: 'Images only.' }, { status: 415 });
+  // PRJ-1191.11: verify against the actual bytes, not just the declared
+  // Content-Type — this route only ever accepts images, so every case is
+  // sniffable; a mismatch (e.g. a script file relabelled as image/png) is
+  // rejected outright instead of trusted.
+  const mime = await verifiedFileMime(file);
+  if (!mime || !OK.test(mime)) return NextResponse.json({ ok: false, error: 'Images only.' }, { status: 415 });
 
   try {
     const { put } = await import('@vercel/blob');
     const safe = (file.name || 'shot.png').replace(/[^a-zA-Z0-9.\-_]/g, '-').slice(0, 60);
-    const blob = await put(`build/${Date.now().toString(36)}-${safe}`, file, { access: 'public', addRandomSuffix: false, contentType: file.type || undefined });
+    const blob = await put(`build/${Date.now().toString(36)}-${safe}`, file, { access: 'public', addRandomSuffix: false, contentType: mime });
     return NextResponse.json({ ok: true, url: blob.url });
   } catch (e) {
     console.error('[build/upload] failed', e);

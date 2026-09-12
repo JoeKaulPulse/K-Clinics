@@ -48,3 +48,34 @@ export async function sniffFileMime(file: Blob): Promise<string | null> {
 export async function effectiveFileMime(file: Blob & { type?: string }): Promise<string> {
   return file.type || (await sniffFileMime(file)) || '';
 }
+
+// PRJ-1191.11: effectiveFileMime above only fills in a BLANK declared type — a
+// staff upload route that trusts a PRESENT declared type is still trivially
+// bypassed (e.g. an HTML/SVG file with embedded script, relabelled
+// "image/png", sails through an allow-list that only checks file.type). Two
+// families the same sniffer sometimes reports under slightly different names
+// than a real client would declare — not a spoof, just naming variance.
+const EQUIVALENT_MIME = [new Set(['image/jpg', 'image/jpeg']), new Set(['image/heic', 'image/heif'])];
+function mimeFamiliesMatch(a: string, b: string): boolean {
+  if (a === b) return true;
+  return EQUIVALENT_MIME.some((set) => set.has(a) && set.has(b));
+}
+
+/** The type an upload route should TRUST: verified against the file's actual
+ *  bytes whenever the format is one `sniffFileMime` recognises (images +
+ *  PDF) — a declared type that doesn't match those bytes is rejected outright
+ *  (empty return) rather than trusted, closing the mislabelled-file bypass.
+ *  For a format `sniffFileMime` can't fingerprint (video/audio/office docs/
+ *  zip — no magic-byte check implemented here), falls back to the declared
+ *  type unverified, same as `effectiveFileMime`: this narrows the trust gap
+ *  to formats this module genuinely cannot check yet, rather than claiming a
+ *  verification it doesn't do. */
+export async function verifiedFileMime(file: Blob & { type?: string }): Promise<string> {
+  const sniffed = await sniffFileMime(file);
+  const declared = (file.type || '').toLowerCase();
+  if (sniffed) {
+    if (declared && !mimeFamiliesMatch(declared, sniffed)) return ''; // mismatch — reject
+    return sniffed;
+  }
+  return declared;
+}
