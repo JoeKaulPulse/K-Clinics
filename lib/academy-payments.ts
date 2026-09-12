@@ -371,11 +371,26 @@ async function sendPaymentReceipt(enrolmentId: string, amountPence: number): Pro
   });
   if (!e?.applicantEmail) return;
   const fee = effectiveFeePence(e, e.course);
+  // VAT breakdown on the receipt once the clinic is VAT-registered (dormant
+  // otherwise). Academy courses aren't modelled as Products (no per-course
+  // vatClass field), so there's nothing to look up — but commercial training
+  // isn't an "eligible body" supply under UK VAT law, so it defaults to
+  // STANDARD the same way effectiveVatClass() falls back a non-dentistry
+  // Service to STANDARD when its vatClass is unset.
+  let vat: { netPence: number; vatPence: number; ratePct: number } | null = null;
+  try {
+    const { getVatConfig, effectiveVatClass, vatBreakdown } = await import('@/lib/vat');
+    const cfg = await getVatConfig();
+    if (cfg.registered) {
+      const b = vatBreakdown(amountPence, cfg, effectiveVatClass({}));
+      if (b.applied) vat = { netPence: b.netPence, vatPence: b.vatPence, ratePct: b.ratePct };
+    }
+  } catch { /* receipt still sends without the VAT line */ }
   const { sendEmail, tmplAcademyPaymentReceipt } = await import('@/lib/email');
   await sendEmail({
     to: e.applicantEmail,
     subject: `Payment received — ${e.course.title}`,
-    html: tmplAcademyPaymentReceipt({ firstName: (e.applicantName || 'there').split(/\s+/)[0], courseTitle: e.course.title, amountPence, outstandingPence: Math.max(0, fee - e.paidPence), portalUrl: `${siteBase()}/academy/portal` }),
+    html: tmplAcademyPaymentReceipt({ firstName: (e.applicantName || 'there').split(/\s+/)[0], courseTitle: e.course.title, amountPence, outstandingPence: Math.max(0, fee - e.paidPence), portalUrl: `${siteBase()}/academy/portal`, vat }),
   });
 }
 

@@ -83,7 +83,15 @@ export default async function MyDayPage({ searchParams }: { searchParams: Promis
 
   // Date-specific timeline (for non-today dates, or as fallback for roles
   // whose day-view content is the appointment list).
-  const canViewAll = sessionCan(session, 'bookings.view');
+  // BLD-1652: My Day is the clinician dashboard's own "Open My day →" target and
+  // renders the same ClinicianView on today, so it needs the same scoping — a
+  // Specialist/Practitioner stepping to any other date otherwise got the full
+  // "Whole clinic" list (every practitioner's appointments, client names and
+  // medical flags) that the dashboard and calendar now withhold. Gated on the
+  // real session role, checked before the query, so clinic-wide rows are never
+  // fetched for a Specialist rather than merely hidden. OWNER/ADMIN/FRONT_DESK
+  // and every other bookings.view holder are unaffected.
+  const canViewAll = session.role !== 'PRACTITIONER' && sessionCan(session, 'bookings.view');
   const selectBooking = {
     id: true, startAt: true, endAt: true, durationMin: true, treatmentTitle: true, status: true,
     startedAt: true, finishedAt: true, actualMinutes: true,
@@ -127,9 +135,9 @@ export default async function MyDayPage({ searchParams }: { searchParams: Promis
 
   const dateNav = (
     <div className="flex items-center gap-2">
-      <Link href={`/admin/my-day?d=${iso(prev)}`} className="rounded-full border border-[var(--color-line)] px-3 py-1.5 text-sm transition-colors duration-150 hover:bg-[var(--color-bone)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-gold)]" aria-label="Previous day">←</Link>
-      <Link href="/admin/my-day" className="rounded-full border border-[var(--color-line)] px-4 py-1.5 text-sm transition-colors duration-150 hover:bg-[var(--color-bone)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-gold)]">{uk ? 'Сьогодні' : 'Today'}</Link>
-      <Link href={`/admin/my-day?d=${iso(next)}`} className="rounded-full border border-[var(--color-line)] px-3 py-1.5 text-sm transition-colors duration-150 hover:bg-[var(--color-bone)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-gold)]" aria-label="Next day">→</Link>
+      <Link href={`/admin/my-day?d=${iso(prev)}`} className="rounded-full border border-[var(--color-line)] px-3 py-1.5 text-sm transition-colors duration-150 hover:bg-[var(--color-bone)]" aria-label="Previous day">←</Link>
+      <Link href="/admin/my-day" className="rounded-full border border-[var(--color-line)] px-4 py-1.5 text-sm transition-colors duration-150 hover:bg-[var(--color-bone)]">{uk ? 'Сьогодні' : 'Today'}</Link>
+      <Link href={`/admin/my-day?d=${iso(next)}`} className="rounded-full border border-[var(--color-line)] px-3 py-1.5 text-sm transition-colors duration-150 hover:bg-[var(--color-bone)]" aria-label="Next day">→</Link>
     </div>
   );
 

@@ -72,7 +72,11 @@ export default async function ClientDetail({ params }: { params: Promise<{ id: s
   // matching the SAR export. Resolved before getClient() so the interaction cap
   // (BLD-1464) is applied to rows this viewer can actually see.
   const clinical = sessionCan(session, 'clients.clinical.view');
-  const c = await getClient(id, { clinical });
+  // BLD-1693: a Specialist/Practitioner can only open a client they've
+  // actually had a booking with — getClient returns null (404) otherwise,
+  // same as an unknown id, so the page can't be used to probe which ids exist.
+  const practitionerId = session && session.role === 'PRACTITIONER' ? session.sub : undefined;
+  const c = await getClient(id, { clinical, practitionerId });
   if (!c) notFound();
 
   const fullName = [c.firstName, c.lastName].filter(Boolean).join(' ');

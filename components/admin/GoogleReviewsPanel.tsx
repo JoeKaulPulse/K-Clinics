@@ -28,7 +28,7 @@ function CopyField({ label, value }: { label: string; value: string }) {
     <div>
       <p className="text-[0.65rem] font-semibold uppercase tracking-wide text-[var(--color-stone)]">{label}</p>
       <div className="mt-1 flex items-center gap-2">
-        <code className="min-w-0 flex-1 truncate rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-2.5 py-1.5 text-xs text-[var(--color-ink)]">{value}</code>
+        <code className="min-w-0 flex-1 truncate rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-porcelain)] px-2.5 py-1.5 text-xs text-[var(--color-ink)]">{value}</code>
         <button
           onClick={() => { navigator.clipboard?.writeText(value).then(() => { setCopied(true); setTimeout(() => setCopied(false), 1500); }).catch(() => {}); }}
           className="shrink-0 rounded-full border border-[var(--color-line)] px-3 py-1.5 text-xs font-medium hover:bg-[var(--color-bone)]"
@@ -122,7 +122,7 @@ function LocationSetup({ onReady }: { onReady: () => void }) {
     return (
       <div className="mt-4 rounded-[var(--radius-md)] border border-[var(--color-line)] bg-[var(--color-bone)]/50 p-4">
         <p className="text-sm font-medium text-[var(--color-ink)]">We found your business</p>
-        <div className="mt-2 rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-3 py-2">
+        <div className="mt-2 rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-porcelain)] px-3 py-2">
           <p className="text-sm font-medium">{l.title}</p>
           {l.address && <p className="text-xs text-[var(--color-stone)]">{l.address}</p>}
         </div>
@@ -137,7 +137,7 @@ function LocationSetup({ onReady }: { onReady: () => void }) {
       <p className="text-sm font-medium text-[var(--color-ink)]">Which location are these reviews for?</p>
       <div className="mt-2 space-y-2">
         {locations.map((l) => (
-          <label key={l.ref} className={`flex cursor-pointer items-start gap-3 rounded-[var(--radius-sm)] border px-3 py-2 ${chosen === l.ref ? 'border-[var(--color-gold)] bg-white' : 'border-[var(--color-line)] bg-white/60'}`}>
+          <label key={l.ref} className={`flex cursor-pointer items-start gap-3 rounded-[var(--radius-sm)] border px-3 py-2 ${chosen === l.ref ? 'border-[var(--color-gold)] bg-[var(--color-porcelain)]' : 'border-[var(--color-line)] bg-[var(--color-porcelain)]/60'}`}>
             <input type="radio" name="gloc" checked={chosen === l.ref} onChange={() => setChosen(l.ref)} className="mt-1 accent-[var(--color-gold-deep)]" />
             <span className="min-w-0">
               <span className="block text-sm font-medium">{l.title}</span>
@@ -236,7 +236,7 @@ function ManualAdd({ onAdded }: { onAdded: () => void }) {
     );
   }
   return (
-    <div className="mt-4 space-y-2 rounded-[var(--radius-md)] border border-[var(--color-line)] bg-white p-4">
+    <div className="mt-4 space-y-2 rounded-[var(--radius-md)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-4">
       <p className="text-sm font-medium text-[var(--color-ink)]">Add a Google review</p>
       <p className="text-xs text-[var(--color-stone)]">Copy each one from your Google Business dashboard. It publishes on the website immediately — handy while Google approves the automatic import.</p>
       <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Reviewer name (e.g. Jane D.)" aria-label="Reviewer name" className={input} />
@@ -286,7 +286,7 @@ function BulkAdd({ onAdded }: { onAdded: () => void }) {
     return <button onClick={() => setOpen(true)} className="mt-2 rounded-full border border-[var(--color-line)] px-4 py-2 text-sm font-medium text-[var(--color-stone)] hover:bg-[var(--color-bone)]">Paste many at once</button>;
   }
   return (
-    <div className="mt-3 space-y-2 rounded-[var(--radius-md)] border border-[var(--color-line)] bg-white p-4">
+    <div className="mt-3 space-y-2 rounded-[var(--radius-md)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-4">
       <p className="text-sm font-medium text-[var(--color-ink)]">Paste your existing Google reviews</p>
       <p className="text-xs text-[var(--color-stone)]">One per line: <code className="text-[0.7rem]">rating | name | date | review text</code>. Date is optional. They publish on the site immediately.</p>
       <textarea value={text} onChange={(e) => setText(e.target.value)} rows={8} aria-label="Reviews to import" placeholder={'5 | Jane D. | 2025-01-10 | Brilliant, the whole team were so kind.\n5 | Tom R. | 2025-02-02 | Highly recommend — natural results.'} className="w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-porcelain)] px-3 py-2 font-[family-name:var(--font-mono)] text-xs outline-none focus:border-[var(--color-gold)] focus-visible:ring-2 focus-visible:ring-[var(--color-gold)]" />
@@ -323,7 +323,7 @@ function GoogleReviewCard({ review, onChange }: { review: GReview; onChange: () 
   }
 
   return (
-    <div className="rounded-[var(--radius-md)] border border-[var(--color-line)] bg-white p-4">
+    <div className="rounded-[var(--radius-md)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-4">
       <div className="flex flex-wrap items-center gap-2">
         <Stars n={review.starRating} />
         <span className="text-sm font-medium">{review.reviewerName || 'Google reviewer'}</span>
