@@ -82,7 +82,7 @@ export function EnquiryForm() {
         <div>
           <label htmlFor="name" className={label}>Name</label>
           <input id="name" name="name" autoComplete="name" aria-invalid={!!errors.name} aria-describedby={errors.name ? 'name-err' : undefined} className={field} placeholder="Your name" onChange={() => clearErr('name')} />
-          {errors.name && <p id="name-err" className="mt-1.5 text-xs text-[var(--color-blush-deep)]">{errors.name}</p>}
+          {errors.name && <p id="name-err" role="alert" className="mt-1.5 text-xs text-[var(--color-blush-deep)]">{errors.name}</p>}
         </div>
         <div>
           <label htmlFor="phone" className={label}>Phone</label>
@@ -91,7 +91,7 @@ export function EnquiryForm() {
         <div className="md:col-span-2">
           <label htmlFor="email" className={label}>Email</label>
           <input id="email" name="email" type="email" autoComplete="email" aria-invalid={!!errors.email} aria-describedby={errors.email ? 'email-err' : undefined} className={field} placeholder="you@email.com" onChange={() => clearErr('email')} />
-          {errors.email && <p id="email-err" className="mt-1.5 text-xs text-[var(--color-blush-deep)]">{errors.email}</p>}
+          {errors.email && <p id="email-err" role="alert" className="mt-1.5 text-xs text-[var(--color-blush-deep)]">{errors.email}</p>}
         </div>
         <div className="md:col-span-2">
           <label htmlFor="interest" className={label}>I&rsquo;m interested in</label>
@@ -114,7 +114,7 @@ export function EnquiryForm() {
         <div className="md:col-span-2">
           <label htmlFor="message" className={label}>Message *</label>
           <textarea id="message" name="message" rows={4} aria-invalid={!!errors.message} aria-describedby={errors.message ? 'message-err' : undefined} className={field} placeholder="Tell us a little about what you're looking for…" onChange={() => clearErr('message')} />
-          {errors.message && <p id="message-err" className="mt-1.5 text-xs text-[var(--color-blush-deep)]">{errors.message}</p>}
+          {errors.message && <p id="message-err" role="alert" className="mt-1.5 text-xs text-[var(--color-blush-deep)]">{errors.message}</p>}
         </div>
       </div>
 
