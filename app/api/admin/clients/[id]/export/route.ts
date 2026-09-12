@@ -122,11 +122,18 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
     // BLD-1721: BookingIntent (an "email me my selection" capture from the
     // funnel — no Client relation, matched by email like GiftVoucher above)
     // was missing from the SAR export.
-    db.bookingIntent.findMany({ where: { email: c.email }, orderBy: { createdAt: 'desc' } }),
+    // Review fix (BLD-1721): match case-insensitively. Every BookingIntent and
+    // NewsletterSubscriber write lowercases the address, but Client.email does
+    // not — app/admin/clients/actions.ts saves a staff-edited address exactly
+    // as typed — so an exact match silently returns nothing for such a client
+    // and under-reports the SAR. Mirrors how eraseClientData already matches
+    // these two tables (app/admin/actions.ts), keeping export and erasure over
+    // the same rows.
+    db.bookingIntent.findMany({ where: { email: { equals: c.email, mode: 'insensitive' } }, orderBy: { createdAt: 'desc' } }),
     // BLD-1721: NewsletterSubscriber likewise has no Client relation — the
     // subject's own newsletter subscription record (active/unsubscribed,
     // consent date, source) was missing entirely.
-    db.newsletterSubscriber.findUnique({ where: { email: c.email } }),
+    db.newsletterSubscriber.findUnique({ where: { email: c.email.toLowerCase() } }),
   ]);
 
   // BLD-1160: ChatMessage.body is encrypted at rest, like Consultation.message
