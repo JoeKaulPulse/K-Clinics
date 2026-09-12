@@ -55,6 +55,19 @@ export function trackViewItem({ id, name, category, valuePence = 0 }: { id: stri
   meta('ViewContent', { content_ids: [id], content_name: name, content_type: 'product', ...(category ? { content_category: category } : {}), currency: 'GBP', value });
 }
 
+/** Add to cart — a shop item added to the bag (top-of-funnel retargeting).
+ *  GA4 `add_to_cart` + Meta `AddToCart`, same params shape as `trackViewItem`
+ *  (product id, name, price, currency) plus quantity; fired from
+ *  components/shop/AddToCart.tsx alongside the existing view_item/ViewContent
+ *  and begin_checkout/InitiateCheckout events so the funnel joins up in
+ *  GA4/Meta (BLD-1631). */
+export function trackAddToCart({ id, name, category, valuePence = 0, quantity = 1 }: { id: string; name: string; category?: string; valuePence?: number; quantity?: number }) {
+  const qty = Math.max(1, quantity);
+  const value = (Math.max(0, valuePence) / 100) * qty;
+  ga4('add_to_cart', { currency: 'GBP', value, items: [{ item_id: id, item_name: name, quantity: qty, ...(category ? { item_category: category } : {}) }] });
+  meta('AddToCart', { content_ids: [id], content_name: name, content_type: 'product', ...(category ? { content_category: category } : {}), currency: 'GBP', value });
+}
+
 /** Purchase — a completed booking, or a true point-of-sale purchase (shop/gift
  *  voucher/academy — `metaPurchase: true`), on the Meta side. GA4's `purchase`
  *  has no such pre-charge/point-of-sale split: it is sent once, server-side,

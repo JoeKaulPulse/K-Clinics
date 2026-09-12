@@ -16,6 +16,9 @@ export function EnquiryForm() {
   const [status, setStatus] = useState<'idle' | 'sent' | 'mailto'>('idle');
   const [busy, setBusy] = useState(false);
   const [marketingOptIn, setMarketingOptIn] = useState(false);
+  // BLD-1612: per-field validation errors, same pattern as BookingFlow.
+  const [errors, setErrors] = useState<Record<string, string>>({});
+  const clearErr = (k: string) => setErrors((prev) => (prev[k] ? { ...prev, [k]: '' } : prev));
   // BLD-125: stable IDs for aria-describedby on the success/fallback message.
   const statusId = useId();
 
@@ -26,7 +29,15 @@ export function EnquiryForm() {
     const email = String(f.get('email') || '');
     const phone = String(f.get('phone') || '');
     const interest = String(f.get('interest') || '');
-    const message = String(f.get('message') || '');
+    const message = String(f.get('message') || '').trim();
+
+    // BLD-1612: inline, per-field validation ahead of the API call.
+    const fieldErrors: Record<string, string> = {};
+    if (!name) fieldErrors.name = 'Please enter your name.';
+    if (!/\S+@\S+\.\S+/.test(email)) fieldErrors.email = 'Enter a valid email address.';
+    if (!message || message.length < 2) fieldErrors.message = 'Please tell us a little about what you’re looking for.';
+    if (Object.keys(fieldErrors).length > 0) { setErrors(fieldErrors); return; }
+    setErrors({});
 
     const mailtoFallback = () => {
       const subject = `Enquiry from ${name || 'website'} — ${interest || 'General'}`;
@@ -70,7 +81,8 @@ export function EnquiryForm() {
       <div className="grid gap-5 md:grid-cols-2">
         <div>
           <label htmlFor="name" className={label}>Name</label>
-          <input id="name" name="name" required autoComplete="name" className={field} placeholder="Your name" />
+          <input id="name" name="name" autoComplete="name" aria-invalid={!!errors.name} aria-describedby={errors.name ? 'name-err' : undefined} className={field} placeholder="Your name" onChange={() => clearErr('name')} />
+          {errors.name && <p id="name-err" role="alert" className="mt-1.5 text-xs text-[var(--color-blush-deep)]">{errors.name}</p>}
         </div>
         <div>
           <label htmlFor="phone" className={label}>Phone</label>
@@ -78,7 +90,8 @@ export function EnquiryForm() {
         </div>
         <div className="md:col-span-2">
           <label htmlFor="email" className={label}>Email</label>
-          <input id="email" name="email" type="email" required autoComplete="email" className={field} placeholder="you@email.com" />
+          <input id="email" name="email" type="email" autoComplete="email" aria-invalid={!!errors.email} aria-describedby={errors.email ? 'email-err' : undefined} className={field} placeholder="you@email.com" onChange={() => clearErr('email')} />
+          {errors.email && <p id="email-err" role="alert" className="mt-1.5 text-xs text-[var(--color-blush-deep)]">{errors.email}</p>}
         </div>
         <div className="md:col-span-2">
           <label htmlFor="interest" className={label}>I&rsquo;m interested in</label>
@@ -100,7 +113,8 @@ export function EnquiryForm() {
         </div>
         <div className="md:col-span-2">
           <label htmlFor="message" className={label}>Message *</label>
-          <textarea id="message" name="message" rows={4} required minLength={2} className={field} placeholder="Tell us a little about what you're looking for…" />
+          <textarea id="message" name="message" rows={4} aria-invalid={!!errors.message} aria-describedby={errors.message ? 'message-err' : undefined} className={field} placeholder="Tell us a little about what you're looking for…" onChange={() => clearErr('message')} />
+          {errors.message && <p id="message-err" role="alert" className="mt-1.5 text-xs text-[var(--color-blush-deep)]">{errors.message}</p>}
         </div>
       </div>
 

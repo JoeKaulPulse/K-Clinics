@@ -601,9 +601,20 @@ export async function refundEnrolmentPayment(paymentId: string, staffEmail?: str
   if (!p.stripePaymentIntentId) return { ok: false, error: 'No Stripe charge on this payment — use Remove to correct it instead.' };
   const { stripe, stripeEnabled } = await import('@/lib/stripe');
   if (!stripeEnabled) return { ok: false, error: 'Stripe is not configured.' };
+  // BLD-1271: net against any refundedPence already recorded — e.g. a prior
+  // partial dashboard refund already reconciled by reconcileEnrolmentPaymentRefund,
+  // which will have decremented paidPence by that delta already. Decrementing by
+  // the full original amountPence here would double-count that portion.
+  const delta = Math.max(0, p.amountPence - p.refundedPence);
+  if (!(delta > 0)) return { ok: false, error: 'This payment has already been fully refunded.' };
+  // BLD-1605: pin `amount` to the outstanding delta explicitly — without it
+  // Stripe defaults to refunding the full remaining balance on the charge, so
+  // a concurrent out-of-band (dashboard) partial refund would make this call
+  // over-refund at Stripe while the DB ledger below only ever records `delta`.
+  // Mirrors refundBooking's explicit `amount` in lib/booking-actions.ts.
   try {
     await stripe().refunds.create(
-      { payment_intent: p.stripePaymentIntentId, metadata: { paymentId, enrolmentId: p.enrolmentId } },
+      { payment_intent: p.stripePaymentIntentId, amount: delta, metadata: { paymentId, enrolmentId: p.enrolmentId } },
       { idempotencyKey: `academy-refund-${p.id}` },
     );
   } catch (e) {
@@ -613,12 +624,6 @@ export async function refundEnrolmentPayment(paymentId: string, staffEmail?: str
   // charge.refunded echo of THIS refund computes a zero delta instead of
   // decrementing paidPence a second time (its metadata carries paymentId, not
   // bookingId/orderId, so the originatedInApp skip doesn't catch it).
-  //
-  // BLD-1271: net against any refundedPence already recorded — e.g. a prior
-  // partial dashboard refund already reconciled by reconcileEnrolmentPaymentRefund,
-  // which will have decremented paidPence by that delta already. Decrementing by
-  // the full original amountPence here would double-count that portion.
-  const delta = Math.max(0, p.amountPence - p.refundedPence);
   // The claim is CAS'd on refundedPence as well as state, because `delta` was
   // computed from a read taken BEFORE the Stripe round-trip above. A webhook
   // reconciliation landing in that window (a partial dashboard refund raises
