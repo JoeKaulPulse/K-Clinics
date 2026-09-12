@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import Link from 'next/link';
 
 export function FinancialControls({ refundWindowDays, minMarginPct, vat, kiosk }: { refundWindowDays: number; minMarginPct: number; vat: { registered: boolean; inclusive: boolean; defaultRatePct: number }; kiosk: { pct: number; enabled: boolean } }) {
   const [days, setDays] = useState(String(refundWindowDays));
@@ -66,7 +67,7 @@ export function FinancialControls({ refundWindowDays, minMarginPct, vat, kiosk }
 
       <section className="rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-5">
         <h2 className="font-[family-name:var(--font-display)] text-lg">Profit rules</h2>
-        <p className="mt-1 text-sm text-[var(--color-stone)]">A minimum margin target. Services below it are flagged in Reports → Profitability by service. Set 0 to turn off.</p>
+        <p className="mt-1 text-sm text-[var(--color-stone)]">A minimum margin target. Services below it are flagged in Reports → Profitability by service, and in the <Link href="/admin/finance/pricing" className="underline">Pricing planner</Link>, which works a price out from what something costs you. Set 0 to turn off.</p>
         <div className="mt-3 flex flex-wrap items-end gap-2">
           <label className="text-xs text-[var(--color-stone)]">Minimum margin (%)<br />
             <input value={margin} onChange={(e) => { setMargin(e.target.value.replace(/\D/g, '').slice(0, 3)); setMarginMsg(''); }} inputMode="numeric" className="mt-1 w-24 rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-porcelain)] px-3 py-2 text-sm outline-none focus:border-[var(--color-gold)] focus-visible:ring-2 focus-visible:ring-[var(--color-gold)]" />

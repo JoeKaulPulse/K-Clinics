@@ -4840,3 +4840,28 @@ model ComplianceItem {
 
   @@index([active, renewalAt])
 }
+
+// Saved pricing scenarios (BLD-1758): a cost-of-goods → retail price working,
+// kept so a price can be revisited and defended later ("why is this £X?").
+// `inputs` holds the PlannerInputs snapshot (lib/pricing-planner.ts) and the
+// computed figures are denormalised alongside it so the list reads without
+// re-running the maths. linkedType/linkedId optionally tie a scenario to the
+// catalogue row it prices (a ServiceVariant or a Product) — a loose link, not a
+// foreign key, so deleting the row leaves the working intact.
+model PricingScenario {
+  id         String   @id @default(cuid())
+  name       String
+  linkedType String? // 'variant' | 'product'
+  linkedId   String?
+  inputs     Json
+  pricePence Int      @default(0) // the retail price this scenario settles on
+  costPence  Int      @default(0) // direct cost per sale at the time it was saved
+  marginPct  Int      @default(0)
+  notes      String?  @db.Text
+  createdBy  String?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([updatedAt])
+  @@index([linkedType, linkedId])
+}

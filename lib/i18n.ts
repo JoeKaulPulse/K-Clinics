@@ -114,6 +114,7 @@ export const DICT: Record<string, Entry> = {
   'nav.golive': { en: 'Go live', uk: 'Запуск' },
   'nav.status': { en: 'Platform status', uk: 'Статус платформи' },
   'nav.apihealth': { en: 'API health', uk: 'Стан API' },
+  'nav.pricingPlanner': { en: 'Pricing planner', uk: 'Планувальник цін' },
   'nav.financeControls': { en: 'Financial controls', uk: 'Фінансовий контроль' },
   'nav.promotions': { en: 'Promotions', uk: 'Промокоди' },
   'nav.chat': { en: 'Live chat', uk: 'Онлайн-чат' },
