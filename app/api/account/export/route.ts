@@ -79,6 +79,15 @@ export async function GET(req: Request) {
     recipientEmail: v.recipientEmail?.toLowerCase() === ownEmail ? v.recipientEmail : null,
   }));
 
+  // BLD-1721: BookingIntent and NewsletterSubscriber have no Client relation
+  // (matched by email, like GiftVoucher above) and were missing from this
+  // self-service export — both hold only the subject's own data, no
+  // third-party PII concern like giftVouchers above.
+  const [bookingIntents, newsletterSubscription] = await Promise.all([
+    db.bookingIntent.findMany({ where: { email: c.email }, orderBy: { createdAt: 'desc' }, select: { treatmentSlug: true, treatmentTitle: true, variantLabel: true, source: true, createdAt: true } }),
+    db.newsletterSubscriber.findUnique({ where: { email: c.email }, select: { active: true, source: true, consentedAt: true, createdAt: true } }),
+  ]);
+
   const out = {
     exportedAt: new Date().toISOString(),
     account: {
@@ -100,6 +109,8 @@ export async function GET(req: Request) {
     waitlist: c.waitlist,
     emails: c.emails,
     giftVouchers,
+    bookingIntents,
+    newsletterSubscription,
     note: 'Clinical and special-category health detail (consultation notes, health-form answers, before/after photos, call transcripts) is not included in this self-service file. Request it through a verified subject-access request and we will provide it with an identity check.',
   };
 
