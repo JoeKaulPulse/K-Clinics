@@ -114,9 +114,17 @@ async function birthdaysInDays(days: number) {
   return out.sort((a, b) => a.inDays - b.inDays);
 }
 
-export async function listConsultations(status?: string) {
+// BLD-1711: `practitionerId`, when passed, restricts the result to consultations
+// for a client the given practitioner has actually had a booking with — same
+// scoping listClients/listBookings already apply for a PRACTITIONER session
+// (BLD-1693). Consultation has no practitionerId of its own, so it goes
+// through the client's bookings, same relation getClient checks below.
+export async function listConsultations(status?: string, opts: { practitionerId?: string } = {}) {
+  const and: Record<string, unknown>[] = [];
+  if (status && status !== 'ALL') and.push({ status: status as never });
+  if (opts.practitionerId) and.push({ client: { bookings: { some: { practitionerId: opts.practitionerId } } } });
   return db.consultation.findMany({
-    where: status && status !== 'ALL' ? { status: status as never } : undefined,
+    where: and.length ? { AND: and } : undefined,
     orderBy: { createdAt: 'desc' },
     include: { client: true },
     take: 100,
@@ -148,14 +156,24 @@ export async function countFlaggedAnalyses(): Promise<number> {
   return db.aiAnalysis.count({ where: { needsExpert: true, status: 'complete' } });
 }
 
-export async function getConsultation(id: string) {
+// BLD-1711: `practitionerId`, when passed, restricts the result to a
+// consultation for a client the given practitioner has actually had a
+// booking with — mirrors getClient/getBooking's guard below so a
+// PRACTITIONER session can't open another Specialist's consultation by id.
+export async function getConsultation(id: string, opts: { practitionerId?: string } = {}) {
   const c = await db.consultation.findUnique({
     where: { id },
     include: {
-      client: { select: { id: true, firstName: true, lastName: true, email: true } },
+      client: {
+        select: {
+          id: true, firstName: true, lastName: true, email: true,
+          bookings: { select: { practitionerId: true } },
+        },
+      },
       notes: { orderBy: { createdAt: 'asc' } },
     },
   });
+  if (c && opts.practitionerId && !c.client.bookings.some((b) => b.practitionerId === opts.practitionerId)) return null;
   if (c) { c.concerns = decClinical(c.concerns); c.message = decClinical(c.message); c.medicalNotes = decClinical(c.medicalNotes); }
   return c;
 }
@@ -165,10 +183,15 @@ export const CLIENTS_PER_PAGE = 50;
 // Paginated client list. Returns the page of rows plus the total count and page
 // metadata so the admin list can show "X–Y of Z" and Prev/Next instead of
 // rendering hundreds of rows in one ~9500px-tall scroll (BLD-621).
-export async function listClients(opts: { q?: string; sort?: string; dir?: 'asc' | 'desc'; flag?: string; page?: number; perPage?: number; includeTest?: boolean } = {}) {
+export async function listClients(opts: { q?: string; sort?: string; dir?: 'asc' | 'desc'; flag?: string; page?: number; perPage?: number; includeTest?: boolean; practitionerId?: string } = {}) {
   const { q, sort = 'created', dir = 'desc', flag } = opts;
   const perPage = Math.min(Math.max(opts.perPage ?? CLIENTS_PER_PAGE, 1), 200);
   const and: Record<string, unknown>[] = [];
+  // BLD-1693: a PRACTITIONER session passes its own id here so a Specialist's
+  // client list (and its total/count) is limited to clients they've actually
+  // had a booking with — never the whole clinic roster. Matches the
+  // practitionerId scoping BLD-1652 already applies to the calendar/dashboard.
+  if (opts.practitionerId) and.push({ bookings: { some: { practitionerId: opts.practitionerId } } });
   if (q) and.push({ OR: [
     { firstName: { contains: q, mode: 'insensitive' } },
     { lastName: { contains: q, mode: 'insensitive' } },
@@ -203,7 +226,12 @@ export async function listClients(opts: { q?: string; sort?: string; dir?: 'asc'
       select,
     }),
     // Count of records being hidden, so the list can offer a one-click reveal.
-    hidingTest ? db.client.count({ where: { tags: { has: 'likely-test' } } }) : Promise.resolve(0),
+    // BLD-1693: scoped by the same practitioner filter as the list itself —
+    // otherwise a Specialist is told how many likely-test records exist
+    // clinic-wide, and the "Show" link then reveals far fewer than promised.
+    hidingTest
+      ? db.client.count({ where: { AND: [{ tags: { has: 'likely-test' } }, ...(opts.practitionerId ? [{ bookings: { some: { practitionerId: opts.practitionerId } } }] : [])] } })
+      : Promise.resolve(0),
   ]);
   const pages = Math.max(1, Math.ceil(total / perPage));
   const page = Math.min(reqPage, pages);
@@ -221,7 +249,12 @@ export async function listClients(opts: { q?: string; sort?: string; dir?: 'asc'
   return { rows: finalRows, total, page, perPage, pages, hiddenTest };
 }
 
-export async function getClient(id: string) {
+// BLD-1693: `practitionerId`, when passed, restricts the result to a client the
+// given practitioner has actually had a booking with — a PRACTITIONER session
+// must not be able to open another Specialist's client by guessing/typing the
+// URL. Returns null (same as "not found") rather than a 403 so the detail page
+// 404s exactly as it already does for a bad id, without confirming the id exists.
+export async function getClient(id: string, opts: { practitionerId?: string } = {}) {
   const c = await db.client.findUnique({
     where: { id },
     include: {
@@ -242,6 +275,7 @@ export async function getClient(id: string) {
       },
     },
   });
+  if (c && opts.practitionerId && !c.bookings.some((b) => b.practitionerId === opts.practitionerId)) return null;
   if (c) {
     // Decrypt the at-rest clinical/contact free-text for display (tolerant of legacy plaintext).
     c.medicalFlag = decClinical(c.medicalFlag);
@@ -254,10 +288,13 @@ export async function getClient(id: string) {
   return c;
 }
 
-export async function listBookings(opts: { filter?: string; q?: string; from?: string; to?: string } = {}) {
+export async function listBookings(opts: { filter?: string; q?: string; from?: string; to?: string; practitionerId?: string } = {}) {
   const { filter = 'upcoming', q, from, to } = opts;
   const now = new Date();
   const and: Record<string, unknown>[] = [];
+  // BLD-1693: same practitioner scoping as listClients above — a PRACTITIONER
+  // session only ever sees its own bookings in the clinic-wide list.
+  if (opts.practitionerId) and.push({ practitionerId: opts.practitionerId });
   if (filter === 'upcoming') { and.push({ startAt: { gte: now } }, { status: { in: ['PENDING', 'CONFIRMED'] } }); }
   else if (filter === 'past') and.push({ startAt: { lt: now } });
   else if (filter && filter !== 'ALL') and.push({ status: filter });
@@ -281,7 +318,10 @@ export async function listBookings(opts: { filter?: string; q?: string; from?: s
   });
 }
 
-export async function getBooking(id: string) {
+// BLD-1693: `practitionerId`, when passed, restricts the result to a booking
+// owned by that practitioner — mirrors getClient's guard above so a
+// PRACTITIONER session can't open another Specialist's booking by id.
+export async function getBooking(id: string, opts: { practitionerId?: string } = {}) {
   const b = await db.booking.findUnique({
     where: { id },
     include: {
@@ -298,6 +338,7 @@ export async function getBooking(id: string) {
       auditEvents: { orderBy: { createdAt: 'asc' } },
     },
   });
+  if (b && opts.practitionerId && b.practitionerId !== opts.practitionerId) return null;
   if (b) {
     b.allergyNote = decClinical(b.allergyNote);
     if (b.client) { b.client.medicalFlag = decClinical(b.client.medicalFlag); b.client.allergies = decClinical(b.client.allergies); }

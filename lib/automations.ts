@@ -5,6 +5,7 @@ import { ensureReviewRequest, reviewLink, googleReviewLink } from './review-syst
 import { site } from './site';
 import { escapeHtml } from './sanitize';
 import { marketableClientWhere } from './consent';
+import { TEST_CLIENT_TAG } from './test-clients';
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || site.url;
 const unsub = (token: string) => `${SITE_URL}/api/unsubscribe?t=${token}`;
@@ -40,13 +41,13 @@ const TCS_REMINDER_MAX_PER_RUN = 500;
 // address is retried on every run.
 const TCS_REMINDER_MAX_PER_CLIENT = 3;
 
-type Tally = { birthdays: number; followUps: number; winBacks: number; reviews: number; reminders: number; formReminders: number; treatmentFollowUps: number; giftVouchers: number; tierNudges: number; anniversaries: number; abandonedBookings: number; abandonedOrders: number; bookingIntents: number; membershipRenewals: number; staffDigests: number; staffNudges: number; reencrypted: number; aftercare: number; satisfaction: number; rebookNudges: number; npsPromoters: number; npsDetractors: number; liveClassReminders: number; courseContentReady: number; tcsReminders: number; treatmentPrep: number; errors: number };
+type Tally = { birthdays: number; followUps: number; winBacks: number; reviews: number; reminders: number; formReminders: number; treatmentFollowUps: number; giftVouchers: number; tierNudges: number; anniversaries: number; abandonedBookings: number; abandonedOrders: number; bookingIntents: number; membershipRenewals: number; staffDigests: number; staffNudges: number; reencrypted: number; aftercare: number; satisfaction: number; rebookNudges: number; npsPromoters: number; npsDetractors: number; liveClassReminders: number; courseContentReady: number; tcsReminders: number; treatmentPrep: number; referralAsks: number; errors: number };
 
 export async function runDailyAutomations(): Promise<Tally> {
-  const t: Tally = { birthdays: 0, followUps: 0, winBacks: 0, reviews: 0, reminders: 0, formReminders: 0, treatmentFollowUps: 0, giftVouchers: 0, tierNudges: 0, anniversaries: 0, abandonedBookings: 0, abandonedOrders: 0, bookingIntents: 0, membershipRenewals: 0, staffDigests: 0, staffNudges: 0, reencrypted: 0, aftercare: 0, satisfaction: 0, rebookNudges: 0, npsPromoters: 0, npsDetractors: 0, liveClassReminders: 0, courseContentReady: 0, tcsReminders: 0, treatmentPrep: 0, errors: 0 };
+  const t: Tally = { birthdays: 0, followUps: 0, winBacks: 0, reviews: 0, reminders: 0, formReminders: 0, treatmentFollowUps: 0, giftVouchers: 0, tierNudges: 0, anniversaries: 0, abandonedBookings: 0, abandonedOrders: 0, bookingIntents: 0, membershipRenewals: 0, staffDigests: 0, staffNudges: 0, reencrypted: 0, aftercare: 0, satisfaction: 0, rebookNudges: 0, npsPromoters: 0, npsDetractors: 0, liveClassReminders: 0, courseContentReady: 0, tcsReminders: 0, treatmentPrep: 0, referralAsks: 0, errors: 0 };
   const { staffWeeklyDigest, staffReengagement } = await import('@/lib/staff-emails');
   // BLD-120: allSettled so one failing automation can't abort the rest.
-  const results = await Promise.allSettled([birthdays(t), followUps(t), reviews(t), winBacks(t), reminders(t), formReminders(t), treatmentFollowUps(t), scheduledGiftVouchers(t), tierNudges(t), anniversaries(t), abandonedBookings(t), abandonedOrders(t), bookingIntentRecovery(t), membershipRenewal(t), staffWeeklyDigest(t), staffReengagement(t), keyReencryption(t), aftercare(t), satisfaction(t), rebookNudge(t), promoterFollowUp(t), detractorFollowUp(t), liveClassReminders(t), courseContentReady(t), tcsReminders(t), laserHairRemovalPrep(t)]);
+  const results = await Promise.allSettled([birthdays(t), followUps(t), reviews(t), winBacks(t), reminders(t), formReminders(t), treatmentFollowUps(t), scheduledGiftVouchers(t), tierNudges(t), anniversaries(t), abandonedBookings(t), abandonedOrders(t), bookingIntentRecovery(t), membershipRenewal(t), staffWeeklyDigest(t), staffReengagement(t), keyReencryption(t), aftercare(t), satisfaction(t), rebookNudge(t), promoterFollowUp(t), detractorFollowUp(t), liveClassReminders(t), courseContentReady(t), tcsReminders(t), laserHairRemovalPrep(t), referralAsk(t)]);
   for (const r of results) {
     if (r.status === 'rejected') { t.errors++; console.error('[automations] unhandled automation failure:', r.reason); }
   }
@@ -286,8 +287,18 @@ async function tcsReminders(t: Tally) {
     const signupUrl = `${base}/account/signup`;
     const cutoff = new Date(Date.now() - TCS_REMINDER_CADENCE_DAYS * 864e5);
     const dueFilter = { OR: [{ tcsReminderSentAt: null }, { tcsReminderSentAt: { lt: cutoff } }] };
+    // BLD-1653 review fix: never mail a record the platform itself has already
+    // judged not to be a real person. scanAndTagTestClients (lib/test-clients.ts)
+    // tags junk/keyboard-mash signups `likely-test` -- the WordPress migration
+    // tagged them too -- and the admin client list hides them by default. Those
+    // rows match this audience exactly (legacy, no portal password, no recorded
+    // acceptance, an address nobody reads), and this is a care-class send with
+    // no marketing-consent gate to filter them out the way the marketing
+    // automations get for free. Left in the audience they would be the first
+    // thing a 500-a-day run mails, bouncing off the clinic's sending domain and
+    // taking real booking confirmations' deliverability down with them.
     const clients = await db.client.findMany({
-      where: { termsAcceptedAt: null, passwordHash: null, email: { not: '' }, unsubscribed: false, ...dueFilter },
+      where: { termsAcceptedAt: null, passwordHash: null, email: { not: '' }, unsubscribed: false, NOT: { tags: { has: TEST_CLIENT_TAG } }, ...dueFilter },
       select: { id: true, email: true, firstName: true, unsubscribed: true },
       orderBy: { createdAt: 'asc' },
       take: TCS_REMINDER_MAX_PER_RUN,
@@ -805,6 +816,77 @@ async function laserHairRemovalPrep(t: Tally) {
       res.ok ? t.treatmentPrep++ : t.errors++;
     }
   } catch (e) { t.errors++; console.error('[automations] laser hair removal prep reminder failed:', (e as Error)?.message); }
+}
+
+// BLD-1664: referral-ask touch, 5-10 days after a completed visit — invites a
+// client to share their existing referral link (the same code/link the portal
+// Rewards page shows, minted by lib/client-loyalty.ts's getOrCreateReferralCode
+// and pointing at /account/signup?ref=<code>, exactly as ReferralCard renders
+// it). Gated on referral_ask_email (ships off) and marketing consent, same
+// class of send as the satisfaction/rebook nurture above. A 5-10 day window
+// (rather than one exact day) gives several consecutive daily cron runs a
+// chance to catch a booking if a run is late or skipped; the per-booking
+// dedup below (emailEvent kind + bookingId in meta, same pattern as
+// aftercare/satisfaction/rebookNudge/laserHairRemovalPrep) is what actually
+// prevents a double-send — it holds regardless of how many times a booking
+// falls inside that window or how many times the cron runs in a day.
+const REFERRAL_ASK_MIN_DAYS = 5;
+const REFERRAL_ASK_MAX_DAYS = 10;
+// Per-CLIENT cooldown, on top of the per-booking dedup below. The dedup alone
+// only stops the same visit being asked twice; it says nothing about how often
+// a person is asked. A course client is the normal case here, not an edge one --
+// laser hair removal runs 6-8 sessions, often weekly -- and each completed
+// session is a different bookingId, so without this they would get "Know someone
+// who'd love KClinics?" every single week for the length of their course. Ask
+// each client at most once a quarter, in the same spirit as the 30-day tier
+// nudge and 120-day membership renewal dedups above.
+const REFERRAL_ASK_CLIENT_COOLDOWN_DAYS = 90;
+async function referralAsk(t: Tally) {
+  try {
+    const { getSetting } = await import('@/lib/settings');
+    if (!(await getSetting('referral_ask_email'))) return;
+    // LOYALTY carries the actual reward terms, so the copy below states the real
+    // offer and can't drift from the mechanism that pays it out.
+    const { getOrCreateReferralCode, LOYALTY, pointsToPence } = await import('@/lib/client-loyalty');
+    const gbp = (pence: number) => `£${(pence / 100).toLocaleString('en-GB', { maximumFractionDigits: pence % 100 ? 2 : 0 })}`;
+    const rewardLabel = gbp(pointsToPence(LOYALTY.referralReward));
+    const thresholdLabel = gbp(LOYALTY.referralThresholdPence);
+    const now = Date.now();
+    const start = new Date(now - REFERRAL_ASK_MAX_DAYS * 864e5);
+    const end = new Date(now - REFERRAL_ASK_MIN_DAYS * 864e5);
+    const cooldownSince = new Date(now - REFERRAL_ASK_CLIENT_COOLDOWN_DAYS * 864e5);
+    const base = (SITE_URL || '').replace(/\/$/, '');
+    const bookings = await db.booking.findMany({
+      where: { status: 'COMPLETED', startAt: { gte: start, lte: end } },
+      include: { client: true },
+      take: 500,
+    });
+    for (const b of bookings) {
+      const c = b.client;
+      if (!canEmail(c)) continue;
+      // Per-booking dedup — the same visit is never asked about twice.
+      const dup = await db.emailEvent.findFirst({ where: { clientId: c.id, kind: 'REFERRAL_ASK', status: 'SENT', meta: { path: ['bookingId'], equals: b.id } } });
+      if (dup) continue;
+      // Per-client cooldown — and never mind which booking. See the constant
+      // above: a course client completes a session a week, each its own
+      // bookingId, so the per-booking dedup on its own would let the same
+      // person be asked to refer a friend every week for months.
+      const recent = await db.emailEvent.findFirst({ where: { clientId: c.id, kind: 'REFERRAL_ASK', status: 'SENT', createdAt: { gte: cooldownSince } } });
+      if (recent) continue;
+      const code = await getOrCreateReferralCode(c.id);
+      const link = `${base}/account/signup?ref=${encodeURIComponent(code)}`;
+      const body = `
+        <h1 style="margin:0 0 12px;font-size:25px;">Loved your ${escapeHtml(b.treatmentTitle || 'visit')}, ${escapeHtml(c.firstName || 'there')}?</h1>
+        <p style="margin:0 0 14px;">If a friend would love it too, share your personal referral link. Once their first treatment is complete, ${rewardLabel} in reward points lands for each of you, to spend on your next visit.</p>
+        <p style="margin:0 0 14px;font-size:14px;color:#91766e;">Their first treatment needs to be ${thresholdLabel} or more to qualify. Points are worth ${gbp(100 * LOYALTY.pointValuePence)} per 100 and come off your next visit.</p>
+        <p style="margin:6px 0 18px;"><a href="${link}" style="display:inline-block;background:#a98a6d;color:#fff;text-decoration:none;padding:13px 26px;border-radius:999px;font-size:14px;">Share your referral link</a></p>
+        <p style="margin:14px 0 6px;font-size:14px;color:#91766e;">Or copy it: <a href="${link}" style="color:#a98a6d;">${link}</a></p>`;
+      const subject = `Know someone who'd love ${site.name}?`;
+      const res = await sendEmail({ to: c.email, subject, html: emailShell({ body, preheader: `Give ${rewardLabel}, get ${rewardLabel} when a friend completes their first treatment.`, unsubUrl: unsub(c.unsubToken) }), headers: unsubHeaders(c.unsubToken) });
+      await db.emailEvent.create({ data: { clientId: c.id, kind: 'REFERRAL_ASK', to: c.email, subject: 'Referral ask', status: res.ok ? 'SENT' : 'FAILED', providerId: res.id, error: res.error, meta: { bookingId: b.id } } }).catch(() => {});
+      res.ok ? t.referralAsks++ : t.errors++;
+    }
+  } catch (e) { t.errors++; console.error('[automations] referral ask failed:', (e as Error)?.message); }
 }
 
 // BLD-653: NPS promoters (score 9-10) get a thank-you email ~24h after responding,

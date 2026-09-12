@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import type { AdminDeck } from '@/lib/flashcards';
 
 // BLD-531: staff authoring for flashcard decks + cards (per course).
-const field = 'w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-2.5 py-1.5 text-sm';
+const field = 'w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-porcelain)] px-2.5 py-1.5 text-sm';
 const label = 'block text-xs font-medium text-[var(--color-stone)]';
 const btnDark = 'rounded-full bg-[var(--color-ink)] px-4 py-1.5 text-xs font-medium text-[var(--color-porcelain)] disabled:opacity-50';
 const btnGhost = 'text-xs text-[var(--color-stone)] hover:text-[var(--color-ink)] disabled:opacity-40';
@@ -79,7 +79,7 @@ function CardRow({ card, index, total, ids, busy, act }: { card: AdminDeck['card
   }
 
   return (
-    <div className="rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white p-3">
+    <div className="rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-3">
       <div className="mb-2 flex items-center gap-2">
         <span className="text-xs text-[var(--color-stone)]">Card {index + 1}</span>
         <span className="flex-1" />

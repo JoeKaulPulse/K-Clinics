@@ -14,7 +14,7 @@ const TYPES: { value: string; label: string }[] = [
   { value: 'multi', label: 'Multiple choice' }, { value: 'scale', label: 'Scale (1–10)' }, { value: 'date', label: 'Date' },
 ];
 const typeLabel = (t: string) => TYPES.find((x) => x.value === t)?.label ?? t;
-const field = 'w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-porcelain)] px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-gold)]';
+const field = 'w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-porcelain)] px-3 py-2 text-sm';
 
 export function HealthFormManager({ formKey, questions }: { formKey: string; questions: CustomQ[] }) {
   const router = useRouter();

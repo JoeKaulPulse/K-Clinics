@@ -105,7 +105,7 @@ export function ClientStatusEditor({
               rows={2}
               placeholder="Optional note for staff (e.g. reason for the flag)"
               aria-label="Client status note"
-              className="w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-3 py-2 text-sm outline-none focus:border-[var(--color-gold)] focus-visible:ring-2 focus-visible:ring-[var(--color-gold)]"
+              className="w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-porcelain)] px-3 py-2 text-sm outline-none focus:border-[var(--color-gold)] focus-visible:ring-2 focus-visible:ring-[var(--color-gold)]"
             />
             <div className="mt-2 flex items-center gap-2">
               <button disabled={pending} onClick={() => save(pendingChoice, note)} className="rounded-full bg-[var(--color-gold-deep)] px-4 py-1.5 text-xs font-medium text-white disabled:opacity-60">

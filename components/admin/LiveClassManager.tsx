@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation';
 type LiveClass = { id: string; courseId: string; courseTitle: string; title: string; startAt: string; endAt: string | null; joinUrl: string | null; trainer: string | null; description: string | null };
 type CourseRef = { id: string; title: string };
 
-const field = 'rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-2.5 py-1.5 text-sm';
+const field = 'rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-porcelain)] px-2.5 py-1.5 text-sm';
 const toLocal = (iso: string | null) => (iso ? new Date(iso).toISOString().slice(0, 16) : '');
 const fmt = (iso: string) => new Date(iso).toLocaleString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
 
@@ -37,7 +37,7 @@ function Row({ l, courses }: { l: LiveClass; courses: CourseRef[] }) {
   const [editing, setEditing] = useState(false);
   async function act(payload: object) { await post(payload); router.refresh(); }
   return (
-    <div className="rounded-[var(--radius-md)] border border-[var(--color-line)] bg-white p-3">
+    <div className="rounded-[var(--radius-md)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-3">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="min-w-0">
           <span className="font-medium">{l.title}</span>
