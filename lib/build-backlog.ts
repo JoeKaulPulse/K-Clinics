@@ -5297,6 +5297,121 @@ export const BUILD_BACKLOG: BacklogItem[] = [
       'Verified: npx tsc --noEmit, npm run build and the migration-drift check all pass clean. Residual risk flagged for the owner: server-side GA4 purchase only fires when both a GA4 measurement ID and API secret are configured under Admin -> SEO -> "Tracking & pixels" -- if that secret is not set in production, this change takes GA4 booking-purchase reporting from double-counted to zero rather than to correct, so worth confirming that config is live before relying on the new numbers.',
     ],
   },
+  {
+    title: 'Kiosk retake-button contrast finding was a false positive; guest-checkout/group/franchise forms had no inline field errors',
+    type: 'TASK', urgency: 'P2', status: 'SHIPPED', assignee: 'claude', pr: PR(1916),
+    value: 5, effort: 2,
+    detail: 'BLD-1635: the original finding assumed the kiosk Retake button sits on a light surface; it actually renders on the dark --color-ink kiosk background, where --color-gold-bright already measures 9.1:1 -- no code change needed. BLD-1612: EnquiryForm, GroupBookingForm and FranchiseEnquiryForm used a single page-level alert instead of BookingFlow.tsx\'s per-field inline pattern.',
+    notes: [
+      'Fix: the three forms now use BookingFlow\'s aria-invalid/aria-describedby inline-error pattern. A stale docs-only comment records why BLD-1635 needed no code change.',
+      'Review fix (Opus max-effort pass, after this branch sat unmerged for 6 days and was rebased onto current main): the inline errors dropped role="alert" (present on every BookingFlow error paragraph) while also removing native required/minLength -- a screen-reader user on an invalid submit got no native bubble and no announcement. Added role="alert" to all 11 new error messages.',
+      'Verified: npx tsc --noEmit passes clean; npm run build succeeded in this run\'s local verification (sandbox has no live DB, so this only confirms compile/type correctness, not full production behaviour) and Typecheck CI passed.',
+    ],
+  },
+  {
+    title: 'Shop had no add-to-cart pixel; consultation page had no trust signals; five live pages missing from the SEO Centre; treatment pages had no mobile sticky booking CTA',
+    type: 'TASK', urgency: 'P2', status: 'SHIPPED', assignee: 'claude', pr: PR(1917),
+    value: 6, effort: 3,
+    detail: 'BLD-1631: shop "Add to bag" fired no add_to_cart/AddToCart GA4+Meta event. BLD-1606: the consultation lead-gen page had no social proof. BLD-1607: /shop, /group-bookings, /academy/bundles, /academy/funding, /roadmap were live but absent from the SEO Centre\'s scored STATIC registry. BLD-1609: treatment pages had no persistent booking CTA while scrolling on mobile.',
+    notes: [
+      'Fix: trackAddToCart() added to lib/analytics-events.ts mirroring trackViewItem; TrustStrip added to the consultation page; the five pages added to the SEO Centre STATIC registry; a slim sticky mobile "Book Now" bar added to treatment pages.',
+      'Review pass (original) found the new sticky bar and the existing WhatsApp launcher both rendered fixed-position at the same corner/z-index, the launcher covering the new tap target -- fixed with a shared height offset.',
+      'Review fix (Opus max-effort pass, after rebase onto current main): the sticky bar rendered the lowest-variant price bare ("GBP120") while the hero and pricing table both label the same figure "From GBP120" -- on a CTA bar it read as the treatment\'s all-in price. Prefixed it, leaving the no-price case as "On consultation".',
+      'Verified: npx tsc --noEmit passes clean; Typecheck CI passed after rebase.',
+    ],
+  },
+  {
+    title: 'AI provider calls had no retry, stuck build-claims never recovered, kiosk/display error screens needed a manual retry',
+    type: 'TASK', urgency: 'P2', status: 'SHIPPED', assignee: 'claude', pr: PR(1918),
+    value: 7, effort: 3,
+    detail: 'BLD-1641: lib/kiosk-ai.ts, lib/ai-consultation.ts, lib/chat-ai.ts and lib/ai-marketing.ts called the Anthropic API with a bare fetch(), so a transient 429/529 failed the customer-facing kiosk/consultation/chat flow outright. BLD-1582: a build/task queue item stuck IN_PROGRESS past a threshold never recovered, unlike kiosk sessions\' existing stale-claim pattern. BLD-1611: the unattended kiosk/display/room-display/live/nps routes had no self-recovering error boundary.',
+    notes: [
+      'Fix: the four AI call sites now route through the existing fetchWithRetry helper (retries 429 and 5xx). The build/task queue gained the same stale-claim reclaim pattern kiosk sessions already use. Segment-local error.tsx added for the unattended display routes.',
+      'Review pass (original) found the error boundaries\' fixed-interval retry had no backoff or cap, risking an unattended screen retrying (and Sentry-logging) a permanent error every 10-12s forever -- replaced with exponential backoff, a capped Sentry event count per streak, and escalation to a full reload, state surviving remount/reload via sessionStorage. Also swapped two instances of the brand name typeset as plain text in the logo position for the real logo components (CLAUDE.md non-negotiable).',
+      'Review fix (Opus max-effort pass, after rebase onto current main): independently re-verified the timeout-exclusion rule survives fetchWithRetry\'s now-broader retry set (a DOMException TimeoutError is instanceof Error in Node, so it rethrows correctly rather than retrying past the kiosk\'s 60s budget) with a live Node run, not from memory.',
+      'Verified: npx tsc --noEmit passes clean; Typecheck CI passed after rebase.',
+    ],
+  },
+  {
+    title: 'Academy refund relied on Stripe\'s implicit full-remaining-balance default; gift-voucher checkout abandonment had no recovery email',
+    type: 'ERROR', urgency: 'P1', status: 'SHIPPED', assignee: 'claude', pr: PR(1919),
+    value: 7, effort: 2,
+    detail: 'BLD-1605: refundEnrolmentPayment called stripe().refunds.create() without an explicit amount, relying on Stripe\'s default (full remaining balance) instead of the exact partial-refund delta the booking-refund path always pins. BLD-1540: gift-voucher purchases abandoned mid-Stripe-checkout had no recovery email, unlike shop orders and bookings.',
+    notes: [
+      'Fix: refundEnrolmentPayment now passes amount: delta explicitly, matching the booking-refund pattern, guarded against a zero/negative delta. New abandonedGiftVouchers() daily job mirrors abandonedOrders() (2-72h PENDING + Stripe PaymentIntent window, EmailEvent dedupe, unsubscribe check); additive EmailKind enum value; gated behind a new abandoned_giftvoucher_recovery setting, off by default (ships dark, owner reviews copy and enables).',
+      'CI caught a real gap on rebase: the schema.prisma enum addition had no matching prisma/migrations/ entry (the exact class of change that previously took /admin/bookings down -- schema gains a value the live DB never receives, since migrate deploy only applies migration files). Generated the migration with prisma migrate diff against the pre-rebase schema and committed it.',
+      'Verified: npx tsc --noEmit passes clean; Typecheck CI (including the migration-drift check) passed after the migration fix.',
+    ],
+  },
+  {
+    title: 'Admin waitlist had no notify/remove/manual-add actions; stale consultation leads got no staff escalation; client-detail page decrypted a client\'s entire history on every open',
+    type: 'TASK', urgency: 'P1', status: 'SHIPPED', assignee: 'claude', pr: PR(1920),
+    value: 7, effort: 4,
+    detail: 'BLD-1646: the admin waitlist page had no way to notify, remove or manually add a waitlist entry. BLD-1542: unanswered general/group/corporate consultations stuck at status NEW past 48h got no staff escalation, unlike tasks. BLD-1464: getClient() decrypted every consultation/interaction/appointment/booking on every profile open, with no row cap, unlike the existing emails: {take: 20} pattern.',
+    notes: [
+      'Fix: waitlist notify/remove/manual-add actions added (gated on bookings.manage). workFor() (staff digest + re-engagement nudge) now also surfaces Consultation rows stuck at NEW past 48h. getClient() now caps consultations/interactions/appointments/bookings relations, most-recent-first.',
+      'Review pass (original) found the client-detail page filters out CLINICAL-category interactions for display AFTER the query, so the new 30-row cap could be entirely clinical notes on a clinical-heavy client -- front-desk staff would see a near-empty timeline. Moved the filter into the query itself. Flagged (not blocking): implementing waitlist "notify" required extending sendWaitlistOffer to also send SMS, a small addition to a live customer-messaging flow beyond the ticket\'s literal ask.',
+      'Review fix (Opus max-effort pass, after rebase onto current main): a real regression from the rebase\'s merge composition -- the BLD-1464 row cap (bookings: take 50) also capped the array the already-merged BLD-1693 practitioner-ownership check reads, so a PRACTITIONER whose booking with a long-standing client falls outside the 50 most recent would 404 on a client they actually treat. Now checked with a direct db.booking.findFirst({clientId, practitionerId}) before the include, which also skips the expensive query+decrypt when the answer is "not yours".',
+      'Verified: npx tsc --noEmit passes clean; Typecheck CI passed after rebase and the ownership-check fix.',
+    ],
+  },
+  {
+    title: 'Owner request: record and surface an outstanding client balance when a card charge fails or a client walks out without paying',
+    type: 'TASK', urgency: 'P1', status: 'SHIPPED', assignee: 'claude', pr: PR(1921),
+    value: 7, effort: 4,
+    detail: 'Owner-submitted feature request (BLD-1572): staff had no way to record a client debt (failed card charge, walked out without paying) outside the existing automatic no-show/late-cancel fee mechanism.',
+    notes: [
+      'Fix: new "Mark as Debt" staff action (amount + reason) saved as a new ClientDebt record, surfaced as an outstanding-balance banner on the client profile and booking detail pages (same treatment as the existing BLD-1066 late-fee warning). Additive schema only: new ClientDebt model, two nullable relation fields, one new AuditAction enum value.',
+      'Review pass (original) verified the booking-ownership check (a linked booking must belong to the target client) and added a sanity ceiling on the entered amount. Flagged for an owner decision, not built here: whether a manually-recorded debt should also block online rebooking, unlike the existing BLD-1066 mechanism which does.',
+      'CI caught the same migration-drift gap as BLD-1540 above on rebase: the new ClientDebt table + enum value had no migration file. Generated one via prisma migrate diff against the pre-rebase schema (additive only: new table, nullable FKs, no @unique) and committed it.',
+      'Review fix (Opus max-effort pass, after rebase onto current main): two GDPR gaps, both fixed -- ClientDebt.reason (staff-typed free text, SetNull relation) survived both Art. 17 erasure and hard delete untouched; now redacted in both paths, keeping amount/date, matching how Incident already is. The new table was also invisible to the Art. 15 SAR export (the same class of gap BLD-1715 closed for GiftVoucher); added debts: true to the export include.',
+      'Verified: npx tsc --noEmit passes clean; Typecheck CI passed after the migration and GDPR fixes.',
+    ],
+  },
+  {
+    title: '25 oversized treatment PNGs (12.9MB) were served uncompressed',
+    type: 'TASK', urgency: 'P2', status: 'SHIPPED', assignee: 'claude', pr: PR(1922),
+    value: 5, effort: 2,
+    detail: 'BLD-1608: 25 live-referenced treatment PNGs totalling 12.9MB were never converted to JPEG, unlike the rest of the catalogue (BLD-1270).',
+    notes: [
+      'Fix: converted to JPEG at the same quality/size parameters BLD-1270 used; all code references (import/slug-image-map.json, lib/treatment-images.ts, lib/articles.ts) repointed; manifest regenerated. Served weight drops to 1.1MB. Original PNGs deliberately left on disk unreferenced: a same-basename .png/.jpg collision pattern exists from the original WordPress export, and one migrated-image resolver has a basename fallback that could silently resolve a legacy reference to the wrong photo if the "correct" file were removed.',
+      'Review verified independently on rebase (Opus max-effort pass): programmatically confirmed 25 files added and 0 removed, every referenced filename resolves to a file on disk, no added file is unreferenced and no removed file is still referenced; spot-checked one conversion visually against its source PNG (same photo, dimensions preserved, no quality damage).',
+      'Verified: npx tsc --noEmit passes clean; Typecheck CI passed after rebase.',
+    ],
+  },
+  {
+    title: 'GitHub App token mint failed on a malformed PEM; a stuck query could hold a serverless instance\'s only DB connection forever; four more finalize routes had no timeout override; two staff upload routes trusted the declared file type outright',
+    type: 'ERROR', urgency: 'P1', status: 'SHIPPED', assignee: 'claude', pr: PR(1951),
+    value: 7, effort: 3,
+    detail: 'BLD-1667: production logged "DECODER routines::unsupported" minting the GitHub App token -- the PEM normalisation only unescaped literal \\n, missing other real env-UI mangling (wrapping quotes, \\r\\n, literal \\\\r\\\\n). BLD-1642: the serverless Postgres pool (max: 1) had connection/idle timeouts but no statement_timeout/query_timeout, so one genuinely stuck query could hold an instance\'s only connection forever. BLD-1704: four routes call a finalize*() function gated on Resend\'s rate limiter (the same risk BLD-1692 fixed elsewhere) with no maxDuration override. PRJ-1191.11: two staff-facing upload routes validated only the browser-declared Content-Type, trivially bypassed by relabelling a file.',
+    notes: [
+      'Fix: normalizePem() added (lib/github-app.ts) to also strip wrapping quotes and normalise \\r\\n/\\\\r\\\\n/\\r. statement_timeout: 25_000 / query_timeout: 30_000 added to the serverless pool config. maxDuration = 60 added to app/api/admin/bookings/session, app/api/admin/orders, app/api/admin/pos and app/api/academy/pay/confirm. New verifiedFileMime() (lib/security/file-type.ts) checks a declared Content-Type against the file\'s actual magic bytes for sniffable formats (image/PDF), wired into the two upload routes.',
+      'Review fix (Opus max-effort pass): verifiedFileMime() still fell back to trusting the declared type whenever the bytes were unrecognised -- exactly the attacker\'s case, since an HTML/SVG/script payload has no image magic bytes. Scoped the fallback to formats the module genuinely cannot fingerprint: anything declared or sniffed as image/* or application/pdf must now be backed by matching bytes on the images-only route; video/audio/office-doc/zip still fall through unverified as before. Verified against real magic-byte headers that no legitimate format across either route\'s allow-list is spuriously rejected, and that cross-family fakes (e.g. PNG bytes declared image/gif) are correctly caught.',
+      'Verified: npx tsc --noEmit passes clean; npm run build succeeded in this run\'s local verification; Typecheck CI passed.',
+    ],
+  },
+  {
+    title: 'Client SAR export had no practitioner scoping; SAR exports omitted BookingIntent and NewsletterSubscriber',
+    type: 'ERROR', urgency: 'P1', status: 'SHIPPED', assignee: 'claude', pr: PR(1952),
+    value: 7, effort: 2,
+    detail: 'BLD-1720: app/api/admin/clients/[id]/export/route.ts had no practitioner-ownership check at all, unlike getClient/getBooking/listConsultations (BLD-1693/1711) -- a PRACTITIONER session could export the full SAR record of a client they had never treated. BLD-1721: BookingIntent and NewsletterSubscriber both store the subject\'s own email with no Client FK relation, the same shape GiftVoucher was in before BLD-1715, and were missing from both the admin and self-service SAR exports.',
+    notes: [
+      'Fix: added the same bookings-ownership 404-on-mismatch guard getClient/getBooking already use. Added BookingIntent/NewsletterSubscriber email-matched lookups to both export routes, mirroring the GiftVoucher pattern.',
+      'Review fix (Opus max-effort pass): the new email matching used the client\'s email in its exact stored case, but Client.email is not guaranteed lower-cased everywhere it\'s written (a staff-edited address saves as typed), while both new tables always lower-case on write -- an exact-case match would silently under-report the export for such a client. Switched to case-insensitive matching, mirroring how eraseClientData already matches these two tables.',
+      'Verified: npx tsc --noEmit passes clean; npm run build succeeded in this run\'s local verification; Typecheck CI passed.',
+    ],
+  },
+  {
+    title: 'Three academy portal pages missing noindex; 9 treatment meta title/descriptions exceeded SERP limits; kiosk errors were visually identical to hint text; agreement signing date was tracked but never shown; health-check alerts had no dedup',
+    type: 'TASK', urgency: 'P2', status: 'SHIPPED', assignee: 'claude', pr: PR(1953),
+    value: 6, effort: 3,
+    detail: 'BLD-1725: the academy settings/practice/leaderboard pages (all gated behind student auth) were missing noindex, unlike every sibling gated page. PRJ-1191.6: 9 lib/treatments.ts metaTitle/metaDescription entries exceeded SERP length limits (2 titles > 60 chars, 7 descriptions > 160, one at 187). BLD-1702: real kiosk errors used the same --color-blush token as ordinary hint text, visually indistinguishable. BLD-1730: the student profile tracked agreementSignedAt/agreementVersion but never displayed them. BLD-1723: /api/health\'s alert path had no dedup -- a sustained outage re-paged on every 5-minute cron hit.',
+    notes: [
+      'Fix: noindex: true added to the three pages. The 9 oversized strings trimmed to fit while preserving meaning. The four role="alert" kiosk error paragraphs switched to a hardcoded dark-surface hex (6.2:1 on --color-ink) instead of --color-blush-deep, whose :root value is a dark red (2.3:1, fails AA) and whose dark-surface value is unreachable on the kiosk (dark tokens are scoped to html[data-theme="dark"], admin-only) -- same class of trap BLD-1635 already found and reverted for this background. Student profile now shows agreement signing date+time via the page\'s already-present (until now unused) fmtDT helper. /api/health gained a Settings-table watermark: alert immediately on a fresh failure, at most once per 30-minute cooldown while still down, cleared on recovery; fails open (alerts) if the watermark itself can\'t be read/written.',
+      'Review pass (Opus max-effort) independently recomputed the WCAG contrast ratios from the raw sRGB token values rather than trusting the claim, confirming 2.3:1 and 6.2:1 exactly; traced the /api/health control flow to confirm the alert/recovery branch reads report.ok\'s final post-cronStale value, not a stale read; and re-verified all 9 trimmed strings against their limits from source. No code changes required.',
+      'Verified: npx tsc --noEmit passes clean; npm run build succeeded in this run\'s local verification; Typecheck CI passed.',
+    ],
+  },
 ];
 
 // A content hash over every item's title + status + PR, so ANY change (a new
