@@ -38,6 +38,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
       waitlist: true,
       referralsMade: true,
       points: true, // loyalty ledger — the subject's own points history (BLD-315)
+      debts: true, // BLD-1572: staff-recorded outstanding balances are the subject's own data (Art. 15)
       callRecords: { select: { id: true, direction: true, durationSec: true, fromNumber: true, toNumber: true, answeredAt: true, endedAt: true, transcript: true, createdAt: true } },
     },
   });
