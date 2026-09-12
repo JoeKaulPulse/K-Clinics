@@ -121,7 +121,7 @@ export function GoLiveChecklist({ groups: initial }: { groups: GoLiveGroup[] }) 
                           key={j}
                           href={l.href}
                           {...(l.external ? { target: '_blank', rel: 'noreferrer noopener' } : {})}
-                          className="inline-flex items-center gap-1.5 rounded-full border border-[var(--color-line)] bg-white px-3 py-1 text-xs font-medium text-[var(--color-ink)] transition-colors hover:border-[var(--color-gold)] hover:bg-[var(--color-bone)]"
+                          className="inline-flex items-center gap-1.5 rounded-full border border-[var(--color-line)] bg-[var(--color-porcelain)] px-3 py-1 text-xs font-medium text-[var(--color-ink)] transition-colors hover:border-[var(--color-gold)] hover:bg-[var(--color-bone)]"
                         >
                           {l.label}
                           <span aria-hidden className="text-[var(--color-stone)]">{l.external ? '↗' : '→'}</span>

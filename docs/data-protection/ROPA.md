@@ -66,11 +66,11 @@ special-category (health) data is involved.
 | Item | Detail |
 | --- | --- |
 | Purpose | Capture medical history / pre-treatment questionnaires and informed-consent signatures before treatment. |
-| Data categories | Health questionnaire answers; signed consent (body, e-signature image, IP, user-agent, timestamps). (`HealthAssessment`, `SignedConsent`, `ConsentRequest`) |
+| Data categories | Health questionnaire answers; signed consent (body, e-signature image, IP, user-agent, timestamps). (`HealthAssessment`, `SignedConsent`, `ConsentRequest`) Also the English machine translation of foreign-language free-text answers, cached per assessment (`HealthAssessmentTranslation`, BLD-1658) — same special category, encrypted the same way, deleted with its parent assessment by FK cascade. |
 | Special category | Yes — full medical history. |
 | Lawful basis | Art. 6(1)(c) legal obligation / Art. 6(1)(f) (clinical safety, insurance, professional duty). |
 | Art. 9 condition | Art. 9(2)(h) health care. **[OWNER TO CONFIRM with solicitor.]** |
-| Recipients / processors | Hosting + database host only. Google Translate is used to render foreign-language answers into English for staff (`lib/integrations.ts`), if configured — originals preserved. |
+| Recipients / processors | Hosting + database host only. Google Translate is used to render foreign-language answers into English for staff (`lib/integrations.ts`), if configured — originals preserved. BLD-1658: the result is cached encrypted, so the same answers are sent to Google once rather than on every staff view. |
 | Retention | With the clinical record. Append-only and immutable (corrections create a new version; never edited/deleted in place). |
 | Security | Encrypted cipher + HMAC `integrityHash` (tamper-evident); append-only model. |
 

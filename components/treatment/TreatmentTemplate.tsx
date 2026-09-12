@@ -60,10 +60,16 @@ function groupAreas<T extends { name: string }>(items: T[]): { heading: string; 
   return order.filter((h) => byHeading.has(h)).map((h) => ({ heading: h, items: byHeading.get(h)! }));
 }
 
-export async function TreatmentTemplate({ t }: { t: Treatment }) {
+// BLD-1683: dentistryLive defaults to the static site.dentistryLive constant,
+// but the caller (app/(marketing)/[slug]/page.tsx) already reads the real
+// admin-toggleable value via getSiteConfig() for its own JSON-LD (BLD-1483)
+// and passes it through here too, matching the organizationLd() pattern
+// (lib/seo.tsx, BLD-1672) — otherwise this page kept showing "Coming soon"
+// after the owner flipped dentistry on elsewhere.
+export async function TreatmentTemplate({ t, dentistryLive = site.dentistryLive }: { t: Treatment; dentistryLive?: boolean }) {
   const categoryHref = t.category === 'aesthetics' ? '/treatments' : '/dentistry';
   const categoryLabel = t.category === 'aesthetics' ? 'Aesthetics' : 'Dentistry';
-  const comingSoon = t.category === 'dentistry' && !site.dentistryLive;
+  const comingSoon = t.category === 'dentistry' && !dentistryLive;
   const related = t.related.map(getTreatment).filter(Boolean) as Treatment[];
 
   // Pricing + presentation status derived live from the admin catalogue (SSOT).

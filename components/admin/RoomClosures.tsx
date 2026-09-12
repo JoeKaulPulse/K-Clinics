@@ -33,7 +33,7 @@ export function RoomClosures({ rooms, closures }: { rooms: RoomOpt[]; closures: 
   const act = (fn: () => Promise<{ ok: boolean; error?: string }>) => start(async () => { const r = await fn(); if (r.ok) router.refresh(); else setErr(r.error || 'Something went wrong.'); });
 
   if (rooms.length === 0) return null;
-  const inp = 'rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-3 py-2 text-sm outline-none focus:border-[var(--color-gold)] focus-visible:ring-2 focus-visible:ring-[var(--color-gold)]';
+  const inp = 'rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-porcelain)] px-3 py-2 text-sm outline-none focus:border-[var(--color-gold)] focus-visible:ring-2 focus-visible:ring-[var(--color-gold)]';
 
   return (
     <section className="rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-5">
@@ -58,7 +58,7 @@ export function RoomClosures({ rooms, closures }: { rooms: RoomOpt[]; closures: 
           {[...active, ...upcoming].map((c) => {
             const isActive = active.includes(c);
             return (
-              <li key={c.id} className="flex flex-wrap items-center justify-between gap-3 rounded-[var(--radius-md)] border border-[var(--color-line)] bg-white px-4 py-2.5">
+              <li key={c.id} className="flex flex-wrap items-center justify-between gap-3 rounded-[var(--radius-md)] border border-[var(--color-line)] bg-[var(--color-porcelain)] px-4 py-2.5">
                 <div className="min-w-0 text-sm">
                   <span className="font-medium">{c.roomName}</span>
                   <span className={`ml-2 rounded-full px-2 py-0.5 text-[0.6rem] uppercase tracking-[0.12em] ${isActive ? 'bg-[var(--color-blush)]/25 text-[var(--color-blush-deep)]' : 'bg-[var(--color-bone)] text-[var(--color-stone)]'}`}>{isActive ? 'Blocked now' : 'Upcoming'}</span>

@@ -18,7 +18,7 @@ export function HeatmapViewer({ path, baseUrl, points }: { path: string; baseUrl
         <div className="flex items-center gap-3 text-xs text-[var(--color-stone)]">
           <label className="flex items-center gap-1.5"><input type="checkbox" checked={show} onChange={(e) => setShow(e.target.checked)} className="accent-[var(--color-gold)]" /> Overlay</label>
           <label className="flex items-center gap-1.5">Height
-            <select value={height} onChange={(e) => setHeight(Number(e.target.value))} className="rounded border border-[var(--color-line)] bg-white px-1 py-0.5">
+            <select value={height} onChange={(e) => setHeight(Number(e.target.value))} className="rounded border border-[var(--color-line)] bg-[var(--color-porcelain)] px-1 py-0.5">
               <option value={1200}>Short</option><option value={1800}>Medium</option><option value={3000}>Tall</option>
             </select>
           </label>

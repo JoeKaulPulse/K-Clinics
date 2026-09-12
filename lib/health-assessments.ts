@@ -1,9 +1,61 @@
 import 'server-only';
 import * as Sentry from '@sentry/nextjs';
 import { db } from '@/lib/db';
-import { encryptJson, decryptJson, integrityHash, verifyIntegrity } from '@/lib/crypto';
+import { encryptJson, decryptJson, integrityHash, verifyIntegrity, keyedHash } from '@/lib/crypto';
 import { getEffectiveQuestionnaire, getQuestionnaireAtVersion } from '@/lib/questionnaire-versions';
 import { logAudit } from '@/lib/audit';
+
+// BLD-1658: encrypted cache of translated free-text answers, keyed to the exact
+// source values so a later change to the admin-managed question set (which would
+// change which answers are free-text) can't serve a stale/mismatched translation.
+// The key is an HMAC (keyedHash), not a bare digest: HealthAssessmentTranslation
+// .sourceHash sits in clear next to the ciphertext, and an unkeyed hash of a
+// short answer ("Penicillin", "None") is trivially brute-forced by a reader with
+// the database but not the encryption keys — which would give away in the cache
+// exactly what the cipher column is there to protect.
+function sourceHashOf(values: string[]): string {
+  return keyedHash('health-assessment-translation', JSON.stringify(values));
+}
+
+async function getCachedTranslation(assessmentId: string, sourceValues: string[]): Promise<string[] | null> {
+  try {
+    const row = await db.healthAssessmentTranslation.findUnique({ where: { assessmentId } });
+    if (!row) return null;
+    const sourceHash = sourceHashOf(sourceValues);
+    if (row.sourceHash !== sourceHash) return null;
+    if (!verifyIntegrity(row.cipher, { assessmentId, sourceHash }, row.integrityHash)) return null;
+    const cached = decryptJson<unknown>(row.cipher);
+    // Shape guard: anything that isn't exactly one string per source value falls
+    // back to a fresh translation. Without it a malformed row would write
+    // `undefined` into a clinical answer that a clinician reads as the client's.
+    if (!Array.isArray(cached) || cached.length !== sourceValues.length || !cached.every((v) => typeof v === 'string')) return null;
+    return cached as string[];
+  } catch {
+    return null;
+  }
+}
+
+async function cacheTranslation(assessmentId: string, sourceValues: string[], translated: string[]): Promise<void> {
+  // Never cache a result that doesn't line up with its source (translateToEnglish
+  // already guarantees this on ok:true — belt and braces, because a bad row would
+  // otherwise be served to clinicians until the answers change).
+  if (translated.length !== sourceValues.length) return;
+  try {
+    const sourceHash = sourceHashOf(sourceValues);
+    const cipher = encryptJson(translated);
+    const hash = integrityHash(cipher, { assessmentId, sourceHash });
+    await db.healthAssessmentTranslation.upsert({
+      where: { assessmentId },
+      create: { assessmentId, sourceHash, cipher, integrityHash: hash },
+      update: { sourceHash, cipher, integrityHash: hash },
+    });
+  } catch (err) {
+    // Caching is a display-layer optimisation — a write failure must never
+    // break viewing the assessment (translation just isn't cached this time).
+    console.error('[health-assessments] cacheTranslation failed:', (err as Error)?.message, { assessmentId });
+    Sentry.captureException(err, { tags: { area: 'health-assessments' } });
+  }
+}
 
 // BLD-595: one ASSESSMENT_VIEWED entry per (clientId, actor) per 30 min so the
 // audit trail is complete without flooding the log when staff navigate multiple
@@ -133,14 +185,25 @@ export async function formatAssessment(id: string, audit?: { actor: string; acto
 
   // Free-text answers are stored exactly as the client typed them. When that
   // wasn't English, translate to British English for staff; keep the original.
+  // BLD-1658: cached alongside the assessment (see getCachedTranslation) so
+  // repeat views of the same record don't re-send this special-category free
+  // text to Google Translate every time.
   let translatedNote: string | null = null;
   if (sourceLocale !== 'en') {
     const { translateToEnglish, localeName, translationConfigured } = await import('@/lib/translate');
     const freeIdx = items.map((it, i) => (it.freeText ? i : -1)).filter((i) => i >= 0);
     if (freeIdx.length > 0) {
-      const { translated, ok } = await translateToEnglish(freeIdx.map((i) => items[i].value));
-      if (ok) {
-        freeIdx.forEach((i, k) => { items[i].original = items[i].value; items[i].value = translated[k]; });
+      const sourceValues = freeIdx.map((i) => items[i].value);
+      let translated = await getCachedTranslation(id, sourceValues);
+      let ok = translated !== null;
+      if (!translated) {
+        const res = await translateToEnglish(sourceValues);
+        ok = res.ok;
+        translated = res.translated;
+        if (ok) await cacheTranslation(id, sourceValues, translated);
+      }
+      if (ok && translated) {
+        freeIdx.forEach((i, k) => { items[i].original = items[i].value; items[i].value = translated![k]; });
         translatedNote = `Translated from ${localeName(sourceLocale)}`;
       } else {
         translatedNote = (await translationConfigured())

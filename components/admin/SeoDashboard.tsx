@@ -7,7 +7,7 @@ type Issue = { category: string; severity: string; message: string };
 type PageScore = { path: string; title: string; description: string; focusKeyword: string | null; type: string; overridden: boolean; onpage: number; technical: number; generative: number; local: number; overall: number; grade: string; issues: Issue[] };
 type Audit = { pages: PageScore[]; health: number; byCategory: Record<string, number>; counts: Record<string, number> };
 
-const field = 'w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-2.5 py-1.5 text-sm';
+const field = 'w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-porcelain)] px-2.5 py-1.5 text-sm';
 const tone = (s: number) => (s >= 80 ? 'text-[var(--color-jade)]' : s >= 70 ? 'text-[var(--color-gold-deep)]' : 'text-[var(--color-blush-deep)]');
 const bg = (s: number) => (s >= 80 ? 'bg-[var(--color-jade)]' : s >= 70 ? 'bg-[var(--color-gold-deep)]' : 'bg-[var(--color-blush-deep)]');
 const gradeTone = (g: string) => (g === 'A' || g === 'B' ? 'bg-[var(--color-jade)]' : g === 'C' || g === 'D' ? 'bg-[var(--color-gold-deep)]' : 'bg-[var(--color-blush-deep)]');
@@ -108,7 +108,7 @@ function PageEditor({ p }: { p: PageScore }) {
   }
 
   return (
-    <div className="mb-3 rounded-[var(--radius-md)] border border-[var(--color-line)] bg-white p-4">
+    <div className="mb-3 rounded-[var(--radius-md)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-4">
       {p.issues.length > 0 && (
         <ul className="mb-4 space-y-1">
           {p.issues.map((i, idx) => (

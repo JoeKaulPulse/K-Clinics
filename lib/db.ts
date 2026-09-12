@@ -1,39 +1,27 @@
 import { PrismaClient } from '@prisma/client';
 import type { PrismaPromise } from '@prisma/client';
-import { withAccelerate } from '@prisma/extension-accelerate';
 import { Pool } from 'pg';
 import { PrismaPg } from '@prisma/adapter-pg';
 import { PHASE_PRODUCTION_BUILD } from 'next/constants';
 import { isAcademyModel, applyTenantScope } from '@/lib/tenant-scope';
 
 // ── Database client ──────────────────────────────────────────────────────────
-// Prisma Postgres is meant to be reached through Prisma's connection *pooler*
-// (the prisma+postgres:// address). Going through the pooler means the whole
-// serverless fleet shares a small managed pool of real connections, instead of
-// every function instance opening its own direct connection — which is what was
-// exhausting the underlying Postgres's low connection cap (booking/admin pages
-// erroring under traffic + deploys at the same time).
+// Every serverless instance opening its own direct Postgres connection is what
+// was exhausting the underlying Postgres's low connection cap (booking/admin
+// pages erroring under traffic + deploys at the same time). Production avoids
+// that by pointing DATABASE_URL/POSTGRES_PRISMA_URL at Neon's pooled endpoint
+// (`…-pooler.…neon.tech`), so the whole serverless fleet shares a small managed
+// pool of real connections instead of each instance opening its own.
 //
 // Prisma 7 removed `datasources` from the PrismaClient constructor and also
 // dropped the old binary/library engine — the only engine is now the WASM
-// "client" engine, which REQUIRES either `accelerateUrl` or an `adapter`.
-// The adapter approach uses pg's Pool, which is lazy (connects on first query,
+// "client" engine, which requires an `adapter`. This uses the pg driver
+// adapter (`@prisma/adapter-pg`), whose Pool is lazy (connects on first query,
 // not at construction time) so builds without a DATABASE_URL still succeed.
 //
 // Migrations are deliberately the *other* way round — scripts/db-sync.mjs always
 // uses a direct postgres:// URL — so schema syncs never compete with live
 // traffic for the pooled connections.
-
-/** A pooled Prisma Accelerate URL, if one is configured. */
-function resolvePooledUrl(): string | undefined {
-  const candidates = [
-    process.env.PRISMA_DATABASE_URL,   // Prisma Postgres / Accelerate (preferred)
-    process.env.ACCELERATE_URL,
-    process.env.DATABASE_URL,          // may itself be a prisma+postgres:// URL
-    process.env.POSTGRES_URL,
-  ].filter(Boolean) as string[];
-  return candidates.find((u) => /^prisma(\+postgres)?:\/\//.test(u));
-}
 
 /** A direct postgres:// connection, used only when no pooled URL is configured. */
 function resolveDirectUrl(): string | undefined {
@@ -51,9 +39,9 @@ const log = process.env.NODE_ENV === 'development' ? (['warn', 'error'] as const
 // ── ClinicOS multi-tenancy — Ring 0.2 (BLD-300) + Ring 1d RLS (BLD-301) ───────
 // Scope every Academy query to the current tenant, centrally, instead of editing
 // ~100 call sites (PLATFORM_SAAS_PLAN.md §6.3 step 3). The hook is applied as the
-// OUTERMOST extension so it rewrites args before Accelerate computes its cache key
-// (cache stays tenant-partitioned). Non-Academy models short-circuit immediately
-// — no tenant lookup, no behaviour change for booking/CRM/etc. Single tenant
+// OUTERMOST extension so it rewrites args before any other extension sees
+// them. Non-Academy models short-circuit immediately — no tenant lookup, no
+// behaviour change for booking/CRM/etc. Single tenant
 // today → currentTenantId() returns the default id and the injected filter
 // matches every row, so the live site is unchanged. RLS is the Ring 1 backstop
 // for by-id ops the hook intentionally leaves alone (see lib/tenant-scope.ts).
@@ -80,7 +68,7 @@ const tenantExtension = {
         // RLS path. The policy admits a row only when the connection has set
         // `app.tenant_id` for the current transaction, so batch [ set GUC, scoped
         // query ] into ONE transaction — both run on the same pooled connection.
-        // Transaction-local (the `true` arg) is required under Accelerate/PgBouncer
+        // Transaction-local (the `true` arg) is required under PgBouncer
         // connection multiplexing, where a session-level SET would leak a tenant id
         // into the next request. This is Prisma's documented RLS extension pattern:
         // `query(scoped)` is the terminal operation, so it neither re-enters this
@@ -96,10 +84,9 @@ const tenantExtension = {
   },
 } as const;
 
-// A client we can chain a second `$extends` onto without TS re-instantiating the
-// (already deep) Accelerate-extended type — applying two extensions through the
-// full generic signature trips TS2589 "excessively deep". The runtime object is
-// unchanged; only the static type is widened for the second hop.
+// A client we can chain `$extends` onto without TS re-instantiating the full
+// generic PrismaClient signature, which can trip TS2589 "excessively deep".
+// The runtime object is unchanged; only the static type is widened.
 type Extendable = { $extends: (ext: unknown) => unknown };
 
 // BLD-1269: with no pooled URL configured we fall through to the direct-
@@ -141,35 +128,31 @@ function warnIfUnpooledInProduction(pooled: string | undefined): void {
 }
 
 function makeClient(): PrismaClient {
-  const pooled = resolvePooledUrl();
-  warnIfUnpooledInProduction(pooled);
-  let base: Extendable;
-  if (pooled) {
-    // Route every runtime query through the Accelerate pooler.
-    base = new PrismaClient({ accelerateUrl: pooled, log: [...log] }).$extends(withAccelerate()) as unknown as Extendable;
-  } else {
-    // Direct connection path: use the pg driver adapter. pg's Pool is lazy —
-    // it does not connect until the first query, so this is safe to construct
-    // even when no DATABASE_URL is configured (e.g. during static builds or CI
-    // without a database). It will fail at query time, not at import time.
-    //
-    // pg + PrismaPg are static imports (bundled via transpilePackages in
-    // next.config.mjs). The previous dynamic require()s were invisible to
-    // Turbopack's tracer and broke in the deployed lambda.
-    const direct = resolveDirectUrl();
-    const onServerless = Boolean(process.env.VERCEL) || process.env.NODE_ENV === 'production';
-    const pool = new Pool({
-      ...(direct ? { connectionString: direct } : {}),
-      ...(onServerless ? { max: 1, connectionTimeoutMillis: 10_000, idleTimeoutMillis: 15_000 } : {}),
-    });
-    const adapter = new PrismaPg(pool);
-    base = new PrismaClient({ adapter, log: [...log] }) as unknown as Extendable;
-  }
+  // No pooled (Accelerate-style) URL is ever configured in this codebase
+  // anymore — see warnIfUnpooledInProduction's own comment for why the direct
+  // URL below (Neon's `-pooler` endpoint) already counts as pooled.
+  warnIfUnpooledInProduction(undefined);
+  // Direct connection path: use the pg driver adapter. pg's Pool is lazy —
+  // it does not connect until the first query, so this is safe to construct
+  // even when no DATABASE_URL is configured (e.g. during static builds or CI
+  // without a database). It will fail at query time, not at import time.
+  //
+  // pg + PrismaPg are static imports (bundled via transpilePackages in
+  // next.config.mjs). The previous dynamic require()s were invisible to
+  // Turbopack's tracer and broke in the deployed lambda.
+  const direct = resolveDirectUrl();
+  const onServerless = Boolean(process.env.VERCEL) || process.env.NODE_ENV === 'production';
+  const pool = new Pool({
+    ...(direct ? { connectionString: direct } : {}),
+    ...(onServerless ? { max: 1, connectionTimeoutMillis: 10_000, idleTimeoutMillis: 15_000 } : {}),
+  });
+  const adapter = new PrismaPg(pool);
+  const base = new PrismaClient({ adapter, log: [...log] }) as unknown as Extendable;
   // Apply the tenant-scope hook last → outermost.
   return base.$extends(tenantExtension) as unknown as PrismaClient;
 }
 
-// The Accelerate-extended client is a structural superset of PrismaClient for
+// The tenant-extended client is a structural superset of PrismaClient for
 // every call this codebase makes (model delegates, $transaction, $queryRaw), so
 // we expose it as PrismaClient to keep the rest of the app unchanged.
 const globalForPrisma = globalThis as unknown as { prisma?: PrismaClient };

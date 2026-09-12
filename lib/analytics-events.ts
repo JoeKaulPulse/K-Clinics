@@ -68,20 +68,26 @@ export function trackAddToCart({ id, name, category, valuePence = 0, quantity = 
   meta('AddToCart', { content_ids: [id], content_name: name, content_type: 'product', ...(category ? { content_category: category } : {}), currency: 'GBP', value });
 }
 
-/** Purchase — a completed booking. GA4 `purchase`; on the Meta side a booking is
- *  pre-charge, so we fire `Schedule` (not `Purchase`): the actual Meta `Purchase`
- *  is sent server-side from `lib/conversions.ts` when the card is charged, deduped
- *  by booking id. Set `metaPurchase: true` for a true point-of-sale Purchase.
- *  `valuePence` is in pence and converted to pounds for both platforms; pass
- *  `eventId` (booking id) to de-duplicate against the server-side CAPI copy. */
+/** Purchase — a completed booking, or a true point-of-sale purchase (shop/gift
+ *  voucher/academy — `metaPurchase: true`), on the Meta side. GA4's `purchase`
+ *  has no such pre-charge/point-of-sale split: it is sent once, server-side,
+ *  from `lib/conversions.ts`'s `sendPurchase`/`ga4Purchase` at actual
+ *  card-charge time. So `ga4Purchase: false` (PRJ-1191.5 — see BookingFlow.tsx's
+ *  pre-charge booking-request callers) skips the GA4 side here entirely rather
+ *  than double-firing it with no `transaction_id` to dedupe against the
+ *  server-side copy. Meta still gets `Schedule` (not `Purchase`) pre-charge —
+ *  it dedupes correctly via `eventId` against the server-side CAPI copy, so
+ *  that side is unaffected. `valuePence` is in pence, converted to pounds for
+ *  both platforms. */
 export function trackPurchase({
   valuePence,
   currency = 'GBP',
   eventId,
   detail = {},
   metaPurchase = false,
-}: { valuePence: number; currency?: string; eventId?: string; detail?: Record<string, unknown>; metaPurchase?: boolean }) {
+  ga4Purchase = true,
+}: { valuePence: number; currency?: string; eventId?: string; detail?: Record<string, unknown>; metaPurchase?: boolean; ga4Purchase?: boolean }) {
   const value = Math.max(0, valuePence) / 100;
-  ga4('purchase', { currency, value, ...detail });
+  if (ga4Purchase) ga4('purchase', { currency, value, ...detail });
   meta(metaPurchase ? 'Purchase' : 'Schedule', { currency, value }, eventId);
 }

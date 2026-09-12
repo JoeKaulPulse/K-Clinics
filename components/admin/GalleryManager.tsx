@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation';
 type Item = { id: string; category: string; treatmentSlug: string | null; caption: string | null; published: boolean; consent: boolean; v: number };
 
 const CATEGORIES = ['Veneers', 'Composite Bonding', 'Teeth Whitening', 'Clear Aligners', 'Braces', 'Dentures', 'Botox', 'Dermal Fillers', 'Lip Fillers', 'HydraGlow Facial', 'Chemical Peel', 'Microneedling', 'PRP Therapy', 'Laser Hair Removal', 'IPL Phototherapy', 'Body Contouring', 'SMAS HIFU Lifting', 'RF Lifting', 'Anti-Cellulite'];
-const field = 'w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-3 py-2 text-sm outline-none focus:border-[var(--color-gold)] focus-visible:ring-2 focus-visible:ring-[var(--color-gold)]';
+const field = 'w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-porcelain)] px-3 py-2 text-sm outline-none focus:border-[var(--color-gold)] focus-visible:ring-2 focus-visible:ring-[var(--color-gold)]';
 
 // Downscale an image file to a JPEG data URL (max 1400px, quality ~0.82).
 function downscale(file: File): Promise<string> {
@@ -136,7 +136,7 @@ function Case({ it }: { it: Item }) {
   const [busy, setBusy] = useState(false);
   async function act(payload: object) { setBusy(true); const r = await post(payload); setBusy(false); if (r.ok) router.refresh(); else alert(r.error || 'Failed.'); }
   return (
-    <div className={`overflow-hidden rounded-[var(--radius-md)] border border-[var(--color-line)] bg-white ${it.published ? '' : 'opacity-95'}`}>
+    <div className={`overflow-hidden rounded-[var(--radius-md)] border border-[var(--color-line)] bg-[var(--color-porcelain)] ${it.published ? '' : 'opacity-95'}`}>
       <div className="grid grid-cols-2">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src={`/api/gallery/${it.id}/before?v=${it.v}`} alt="Before" className="aspect-square w-full object-cover" />

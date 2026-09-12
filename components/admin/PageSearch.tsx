@@ -45,7 +45,7 @@ export function PageSearch({
         />
       </div>
       {showSubmit && (
-        <button className="h-11 shrink-0 rounded-full bg-[var(--color-ink)] px-4 text-sm font-medium text-[var(--color-porcelain)] transition-colors hover:bg-[var(--color-ink-soft)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-gold)]">
+        <button className="h-11 shrink-0 rounded-full bg-[var(--color-ink)] px-4 text-sm font-medium text-[var(--color-porcelain)] transition-colors hover:bg-[var(--color-ink-soft)]">
           {submitLabel}
         </button>
       )}

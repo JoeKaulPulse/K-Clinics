@@ -19,7 +19,13 @@ export async function GET(req: Request) {
   const rawImg = clip(searchParams.get('img'), 200);
   const img = /^\/(treatments|hero)\/[\w.-]+\.(jpe?g|png|webp|avif)$/i.test(rawImg) ? rawImg : null;
 
-  const res = renderOg({ eyebrow, title, tag: tag || undefined, image: img });
+  // BLD-1683: this route renders per-request (unlike the three force-static OG
+  // routes), so it can read the real admin-toggleable flag instead of falling
+  // through to renderOg's static-constant default.
+  const { getSiteConfig } = await import('@/lib/site-config');
+  const { dentistryLive } = await getSiteConfig(); // falls back to safe static defaults internally on any DB error
+
+  const res = renderOg({ eyebrow, title, tag: tag || undefined, image: img, dentistryLive });
   res.headers.set('cache-control', 'public, immutable, no-transform, max-age=31536000');
   return res;
 }
