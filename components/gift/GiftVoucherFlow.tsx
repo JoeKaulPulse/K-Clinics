@@ -156,7 +156,7 @@ export function GiftVoucherFlow({ physicalEnabled = false, physicalFeePence = 0,
           <p className="mt-1 text-sm text-[var(--color-stone)]">Your card is charged now for the voucher value.</p>
           <div className="mt-5">
             <Elements stripe={getStripe()} options={{ clientSecret, appearance: { theme: 'flat', variables: { colorPrimary: '#816748', fontFamily: 'system-ui, sans-serif', borderRadius: '10px', colorBackground: '#f6ece3' } } }}>
-              <PayStep voucherId={voucherId} clientSecret={clientSecret} onDone={(c) => { trackPurchase({ valuePence: amountPence, eventId: voucherId, metaPurchase: true }); setCode(c); setStage('done'); }} onError={setError} />
+              <PayStep voucherId={voucherId} clientSecret={clientSecret} onDone={(c) => { trackPurchase({ valuePence: amountPence, eventId: voucherId, metaPurchase: true, detail: { transaction_id: voucherId, items: [{ item_id: pkg?.slug || 'gift-voucher', item_name: pkg?.name || 'Gift voucher', item_category: 'gift-voucher' }] } }); setCode(c); setStage('done'); }} onError={setError} />
             </Elements>
           </div>
           {error && <p role="alert" aria-live="assertive" className="mt-4 rounded-[var(--radius-sm)] bg-[var(--color-blush)]/25 px-4 py-3 text-sm text-[var(--color-ink)]">{error}</p>}

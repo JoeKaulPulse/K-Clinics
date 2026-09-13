@@ -117,7 +117,7 @@ export function CheckoutForm() {
           <section className="rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-5">
             <h2 className="mb-3 font-[family-name:var(--font-display)] text-lg">Payment</h2>
             <Elements stripe={getStripe()} options={{ clientSecret, appearance: { theme: 'flat', variables: { colorPrimary: '#816748', fontFamily: 'system-ui, sans-serif', borderRadius: '10px', colorBackground: '#f6ece3' } } }}>
-              <PayStep orderId={orderId} onDone={(no, valuePence) => { trackPurchase({ valuePence, eventId: orderId, metaPurchase: true }); clear(); setOrderNo(no); setStage('done'); }} />
+              <PayStep orderId={orderId} onDone={(no, valuePence) => { trackPurchase({ valuePence, eventId: orderId, metaPurchase: true, detail: { transaction_id: orderId, items: items.map((i) => ({ item_id: i.slug, item_name: i.name, item_category: 'shop', quantity: i.qty })) } }); clear(); setOrderNo(no); setStage('done'); }} />
             </Elements>
           </section>
         )}

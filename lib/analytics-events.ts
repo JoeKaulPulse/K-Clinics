@@ -89,5 +89,11 @@ export function trackPurchase({
 }: { valuePence: number; currency?: string; eventId?: string; detail?: Record<string, unknown>; metaPurchase?: boolean; ga4Purchase?: boolean }) {
   const value = Math.max(0, valuePence) / 100;
   if (ga4Purchase) ga4('purchase', { currency, value, ...detail });
-  meta(metaPurchase ? 'Purchase' : 'Schedule', { currency, value }, eventId);
+  // BLD-1698: callers that pass `detail.items` (shape matches trackViewItem/
+  // trackAddToCart above) also get Meta's content_ids/content_type — previously
+  // every trackPurchase call sent Meta bare {currency, value} regardless of detail.
+  const items = Array.isArray(detail.items) ? (detail.items as { item_id?: string }[]) : undefined;
+  const metaParams: Record<string, unknown> = { currency, value };
+  if (items?.length) { metaParams.content_ids = items.map((i) => i.item_id).filter(Boolean); metaParams.content_type = 'product'; }
+  meta(metaPurchase ? 'Purchase' : 'Schedule', metaParams, eventId);
 }
