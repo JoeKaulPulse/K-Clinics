@@ -89,11 +89,28 @@ export function trackPurchase({
 }: { valuePence: number; currency?: string; eventId?: string; detail?: Record<string, unknown>; metaPurchase?: boolean; ga4Purchase?: boolean }) {
   const value = Math.max(0, valuePence) / 100;
   if (ga4Purchase) ga4('purchase', { currency, value, ...detail });
-  // BLD-1698: callers that pass `detail.items` (shape matches trackViewItem/
-  // trackAddToCart above) also get Meta's content_ids/content_type — previously
-  // every trackPurchase call sent Meta bare {currency, value} regardless of detail.
-  const items = Array.isArray(detail.items) ? (detail.items as { item_id?: string }[]) : undefined;
+  // BLD-1698: point-of-sale callers that pass `detail.items` (shape matches
+  // trackViewItem/trackAddToCart above) also get Meta's content_ids/content_type
+  // — previously every trackPurchase call sent Meta bare {currency, value}
+  // regardless of detail.
+  //
+  // Gated on `metaPurchase` deliberately, so this covers the retail surfaces
+  // only (shop products, gift vouchers, academy courses). The `Schedule` side is
+  // the booking flow, and its item_id is a ServiceVariant id — a stable
+  // per-treatment identifier. BLD-1251 removed exactly that class of field from
+  // the browser events it audited: it generalises even the *id* to the category
+  // for dentistry and intimate/medical aesthetics, because tying a procedure to
+  // an identifiable ad profile is UK GDPR Art. 9 special-category territory that
+  // generic cookie-banner consent does not cover. That fix explicitly left the
+  // booking-flow events as a follow-up owner decision, so bookings keep sending
+  // Meta bare {currency, value} until the owner makes it.
+  const items = metaPurchase && Array.isArray(detail.items) ? (detail.items as { item_id?: string }[]) : undefined;
   const metaParams: Record<string, unknown> = { currency, value };
-  if (items?.length) { metaParams.content_ids = items.map((i) => i.item_id).filter(Boolean); metaParams.content_type = 'product'; }
+  if (items?.length) {
+    // Only attach the pair when at least one id survives — content_type
+    // 'product' alongside an empty content_ids is a malformed Meta payload.
+    const ids = items.map((i) => i.item_id).filter(Boolean);
+    if (ids.length) { metaParams.content_ids = ids; metaParams.content_type = 'product'; }
+  }
   meta(metaPurchase ? 'Purchase' : 'Schedule', metaParams, eventId);
 }
