@@ -7,17 +7,24 @@ name: Live health check
 # runners can reach kclinics.co.uk (the Claude build sandbox cannot, see
 # fetch-media.yml), so this is the one place it can run unattended.
 #
-# Deliberately separate from /api/health's own Vercel cron (BLD-1723, every 5
-# minutes with its own alert-dedup): that one is the fast liveness probe this
-# script itself calls. This is the fuller checklist, on a slower cadence. A
-# failing run shows red in the Actions tab and emails repo watchers per
-# GitHub's standard scheduled-workflow-failure notification -- no separate
-# alerting to wire up.
+# Deliberately separate from /api/health's own Vercel cron (every 5 minutes,
+# vercel.json): that one is the fast liveness probe this script itself calls.
+# This is the fuller checklist, on a slower cadence. A failing run shows red in
+# the Actions tab and emails repo watchers per GitHub's standard
+# scheduled-workflow-failure notification -- no separate alerting to wire up.
+#
+# Note that an authorised /api/health hit is not side-effect free: on failure
+# the route raises a Sentry error and posts to CRON_ALERT_WEBHOOK_URL with no
+# dedupe watermark (see lib/api-health.ts), so during an outage this adds two
+# more alerts an hour on top of the Vercel cron's twelve.
 
 on:
   schedule:
     - cron: "*/30 * * * *"
   workflow_dispatch:
+
+permissions:
+  contents: read
 
 jobs:
   healthcheck:
@@ -28,6 +35,21 @@ jobs:
       - uses: actions/setup-node@v6
         with:
           node-version: '22'
+      # Without the secret /api/health returns only `{ ok: true }` plus a
+      # liveness ping -- it withholds the schema probes, the JWT/encryption
+      # self-tests, the integration list and the cron-heartbeat staleness check
+      # as reconnaissance (BLD-160). healthcheck.mjs then has nothing red to
+      # count, prints "All core checks passed" and exits 0. That is the worst
+      # outcome for a monitor: a green tick every 30 minutes that verified
+      # almost nothing. Fail loudly instead if the secret is not configured.
+      - name: Check CRON_SECRET is configured
+        env:
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          if [ -z "$CRON_SECRET" ]; then
+            echo "::error::CRON_SECRET repository secret is not set. The health check would run unauthenticated and pass without verifying schema, secrets, integrations or cron heartbeats. Add it under Settings -> Secrets and variables -> Actions."
+            exit 1
+          fi
       - name: Run health check
         env:
           BASE_URL: https://kclinics.co.uk
