@@ -7,7 +7,7 @@ import { useRouter } from 'next/navigation';
 export type ModPost = { id: string; authorName: string; isStaff: boolean; body: string; hidden: boolean; createdAt: string };
 export type ModThread = {
   id: string; category: string; title: string; body: string; authorName: string; isStaff: boolean;
-  pinned: boolean; locked: boolean; hidden: boolean; replyCount: number; lastPostAt: string; createdAt: string; posts: ModPost[];
+  pinned: boolean; locked: boolean; hidden: boolean; replyCount: number; lastPostAt: string; createdAt: string;
 };
 export type CategoryDef = { key: string; label: string };
 
@@ -67,12 +67,33 @@ function ThreadRow({ thread: t, label, busy, act }: { thread: ModThread; label: 
   const [open, setOpen] = useState(false);
   const [reply, setReply] = useState('');
   const [replying, setReplying] = useState(false);
-  async function sendReply() { if (!reply.trim()) return; setReplying(true); await post({ op: 'staffReply', threadId: t.id, body: reply.trim() }); setReply(''); setReplying(false); router.refresh(); }
+  // BLD-1724: posts load only when the thread is expanded, instead of every
+  // thread's full post history shipping on every page load.
+  const [posts, setPosts] = useState<ModPost[] | null>(null);
+  const [loadingPosts, setLoadingPosts] = useState(false);
+  async function loadPosts() {
+    setLoadingPosts(true);
+    const res = await post({ op: 'threadPosts', threadId: t.id });
+    const j = await res.json().catch(() => ({}));
+    setPosts(Array.isArray(j.posts) ? j.posts : []);
+    setLoadingPosts(false);
+  }
+  async function toggleOpen() {
+    const next = !open;
+    setOpen(next);
+    if (next && posts === null) await loadPosts();
+  }
+  // Thread-level actions (pin/lock/hide/delete) go through the parent's `act`
+  // as before; post-level actions also need the freshly-loaded posts to
+  // reflect the change, since they're no longer part of the server-rendered
+  // `threads` prop that router.refresh() updates.
+  async function actAndReloadPosts(payload: object) { await act(payload); await loadPosts(); }
+  async function sendReply() { if (!reply.trim()) return; setReplying(true); await post({ op: 'staffReply', threadId: t.id, body: reply.trim() }); setReply(''); setReplying(false); await loadPosts(); router.refresh(); }
 
   return (
     <div className={`rounded-[var(--radius-md)] border bg-[var(--color-porcelain)] ${t.hidden ? 'border-dashed border-[var(--color-line)] opacity-70' : 'border-[var(--color-line)]'}`}>
       <div className="flex flex-wrap items-center gap-2 p-3">
-        <button onClick={() => setOpen((v) => !v)} className="text-[var(--color-stone)]">{open ? '▾' : '▸'}</button>
+        <button onClick={toggleOpen} className="text-[var(--color-stone)]">{open ? '▾' : '▸'}</button>
         <span className="flex-1 text-sm">
           <span className="font-medium text-[var(--color-ink)]">{t.title}</span>
           <span className="text-[var(--color-stone)]"> · {label(t.category)} · {t.authorName}{t.isStaff ? ' (tutor)' : ''} · {t.replyCount} repl{t.replyCount === 1 ? 'y' : 'ies'}</span>
@@ -92,15 +113,16 @@ function ThreadRow({ thread: t, label, busy, act }: { thread: ModThread; label: 
             <button onClick={() => { if (confirm('Delete this thread and all its replies permanently?')) act({ op: 'deleteThread', id: t.id }); }} disabled={busy} className="rounded-full px-3 py-1 text-xs text-[var(--color-blush-deep)] hover:underline disabled:opacity-40">Delete thread</button>
           </div>
 
-          {t.posts.length > 0 && (
+          {loadingPosts && <p className="text-sm text-[var(--color-stone)]">Loading replies…</p>}
+          {posts && posts.length > 0 && (
             <ul className="space-y-1.5">
-              {t.posts.map((p) => (
+              {posts.map((p) => (
                 <li key={p.id} className={`rounded-[var(--radius-sm)] border border-[var(--color-line)] p-2.5 text-sm ${p.hidden ? 'opacity-60' : ''}`}>
                   <div className="flex items-center justify-between gap-2">
                     <span className="text-xs font-medium text-[var(--color-ink)]">{p.authorName}{p.isStaff ? ' (tutor)' : ''} <span className="text-[var(--color-stone)]">· {when(p.createdAt)}</span></span>
                     <span className="flex gap-2">
-                      <button onClick={() => act({ op: 'hidePost', id: p.id, value: !p.hidden })} disabled={busy} className={btn}>{p.hidden ? 'Unhide' : 'Hide'}</button>
-                      <button onClick={() => { if (confirm('Delete this reply permanently?')) act({ op: 'deletePost', id: p.id }); }} disabled={busy} className="text-xs text-[var(--color-blush-deep)] hover:underline disabled:opacity-40">Delete</button>
+                      <button onClick={() => actAndReloadPosts({ op: 'hidePost', id: p.id, value: !p.hidden })} disabled={busy} className={btn}>{p.hidden ? 'Unhide' : 'Hide'}</button>
+                      <button onClick={() => { if (confirm('Delete this reply permanently?')) actAndReloadPosts({ op: 'deletePost', id: p.id }); }} disabled={busy} className="text-xs text-[var(--color-blush-deep)] hover:underline disabled:opacity-40">Delete</button>
                     </span>
                   </div>
                   <p className="mt-1 whitespace-pre-line text-[var(--color-ink-soft)]">{p.body}</p>
