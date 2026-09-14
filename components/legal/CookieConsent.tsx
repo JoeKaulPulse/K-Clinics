@@ -44,8 +44,6 @@ function save(v: ConsentValue) {
   window.dispatchEvent(new CustomEvent('kc-consent', { detail: v }));
 }
 
-const FOCUSABLE = 'button:not([disabled]), [href], input:not([disabled]), [tabindex]:not([tabindex="-1"])';
-
 export function CookieConsent() {
   const [show, setShow] = useState(false);
   const [customise, setCustomise] = useState(false);
@@ -57,6 +55,7 @@ export function CookieConsent() {
   // the banner needed to find "Reject non-essential".
   const [expanded, setExpanded] = useState(false);
   const dialogRef = useRef<HTMLDivElement>(null);
+  const acceptRef = useRef<HTMLButtonElement>(null);
   const prevFocusRef = useRef<HTMLElement | null>(null);
 
   useEffect(() => {
@@ -74,16 +73,20 @@ export function CookieConsent() {
     return () => window.removeEventListener('kc-open-consent', open);
   }, []);
 
-  // Auto-focus first button on open; restore prior focus on close. The banner
+  // Auto-focus "Accept all" on open; restore prior focus on close. The banner
   // is deliberately NON-modal (PRJ-939.11): it has no backdrop and the page
   // behind stays scrollable and clickable, so it must not claim aria-modal or
   // trap Tab — keyboard users can browse the page and come back to it, exactly
   // as mouse users can.
+  // BLD-1766: focus the primary action directly via ref, not the first
+  // focusable element in DOM order — that was the inline "Privacy Policy"
+  // link inside the body copy, landing keyboard/screen-reader users on a
+  // low-priority link instead of the button most people want.
   useEffect(() => {
     if (show) {
       prevFocusRef.current = document.activeElement as HTMLElement;
       requestAnimationFrame(() => {
-        dialogRef.current?.querySelector<HTMLElement>(FOCUSABLE)?.focus();
+        acceptRef.current?.focus();
       });
     } else if (prevFocusRef.current) {
       prevFocusRef.current.focus();
@@ -125,7 +128,18 @@ export function CookieConsent() {
           // scrollbar — the failure BLD-1355 fixed. The taller cap then is
           // harmless: the visitor has already engaged, so covering the hero
           // CTAs is no longer the problem BLD-1543 was about.
-          className={`fixed bottom-3 left-3 right-20 z-[80] mx-auto flex ${customise ? 'max-h-[80vh]' : 'max-h-[45vh]'} max-w-2xl flex-col overflow-y-auto rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-3 shadow-[var(--shadow-lift)] sm:max-h-[85vh] sm:p-5 md:bottom-6 md:left-6 md:right-auto md:max-h-none md:overflow-visible md:p-6`}
+          // BLD-1765: at md+ the banner switches to a bottom-left corner
+          // placement with no right bound (md:right-auto), so its WIDTH was
+          // the only thing keeping it off center-page content — and
+          // max-w-2xl (672px) was wide enough that, anchored at left-6, its
+          // right edge landed at ~696px on a 1440px viewport: squarely under
+          // the homepage closing CTA's left ("Book online") button and
+          // clipping trust copy on the /book treatment panel. Narrower at
+          // md+ (max-w-sm, a touch wider once "Customise" adds the toggle
+          // rows) keeps it hugging the corner instead of reaching into the
+          // page's central content. Below md the right-20 offset already
+          // bounds the width, so mobile is unaffected.
+          className={`fixed bottom-3 left-3 right-20 z-[80] mx-auto flex ${customise ? 'max-h-[80vh] md:max-w-md' : 'max-h-[45vh] md:max-w-sm'} max-w-2xl flex-col overflow-y-auto rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-3 shadow-[var(--shadow-lift)] sm:max-h-[85vh] sm:p-5 md:bottom-6 md:left-6 md:right-auto md:max-h-none md:overflow-visible md:p-6`}
         >
           <p className="font-[family-name:var(--font-display)] text-base sm:text-lg">Your privacy, your choice</p>
           {expanded ? (
@@ -166,7 +180,7 @@ export function CookieConsent() {
               fit well inside the shrunk mobile banner; sm: and up restore the
               original py-2.5/text-sm sizing. */}
           <div className="mt-3 flex flex-col gap-1.5 sm:mt-4 sm:flex-row sm:flex-wrap sm:gap-2.5">
-            <button onClick={() => decide(true, true)} className="rounded-full bg-[var(--color-gold-deep)] px-4 py-2 text-center text-xs font-medium text-white hover:bg-[var(--color-ink)] sm:px-5 sm:py-2.5 sm:text-sm sm:flex-none">
+            <button ref={acceptRef} onClick={() => decide(true, true)} className="rounded-full bg-[var(--color-gold-deep)] px-4 py-2 text-center text-xs font-medium text-white hover:bg-[var(--color-ink)] sm:px-5 sm:py-2.5 sm:text-sm sm:flex-none">
               Accept all
             </button>
             <button onClick={() => decide(false, false)} className="rounded-full border border-[var(--color-ink)] px-4 py-2 text-center text-xs font-medium hover:bg-[var(--color-bone)] sm:px-5 sm:py-2.5 sm:text-sm sm:flex-none">
