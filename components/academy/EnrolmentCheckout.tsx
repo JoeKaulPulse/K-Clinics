@@ -121,7 +121,7 @@ export function EnrolmentCheckout(props: {
             <button onClick={() => { setStage('choose'); setError(''); }} className="text-xs text-[var(--color-stone)] hover:underline">← Change</button>
           </div>
           <Elements stripe={getStripe()} options={{ clientSecret, appearance: { theme: 'flat', variables: { colorPrimary: '#816748', fontFamily: 'system-ui, sans-serif', borderRadius: '10px', colorBackground: '#f6ece3' } } }}>
-            <PayStep paymentId={paymentId} onDone={() => { trackPurchase({ valuePence: chargePence, eventId: paymentId, metaPurchase: true }); setStage('done'); router.refresh(); }} />
+            <PayStep paymentId={paymentId} onDone={() => { trackPurchase({ valuePence: chargePence, eventId: paymentId, metaPurchase: true, detail: { transaction_id: paymentId, items: [{ item_id: courseSlug, item_name: courseTitle, item_category: 'academy' }] } }); setStage('done'); router.refresh(); }} />
           </Elements>
         </div>
       )}
