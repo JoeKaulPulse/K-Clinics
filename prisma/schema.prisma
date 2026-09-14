@@ -207,6 +207,8 @@ enum AuditAction {
   INCIDENT_LOGGED // a staff-only internal incident (accident) report was logged (BLD-760)
   CLIENT_STATUS_CHANGED // a client's GREEN/YELLOW/RED status was set or cleared (BLD-1532)
   CLIENT_DEBT_RECORDED // a staff member manually recorded an outstanding balance ("Mark as Debt") (BLD-1572)
+  CLIENT_DEBT_UPDATED // a staff member corrected the amount/reason on a recorded outstanding balance (BLD-1763)
+  CLIENT_DEBT_RESOLVED // a staff member cleared/waived a recorded outstanding balance (BLD-1763)
 }
 
 enum ReviewStatus {
