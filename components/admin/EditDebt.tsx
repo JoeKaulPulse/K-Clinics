@@ -48,7 +48,7 @@ export function EditDebt({ clientId, debtId, amountPence, reason }: { clientId: 
 
   async function clear() {
     if (!confirm('Clear this outstanding balance? This can’t be undone from here.')) return;
-    setBusy(true);
+    setBusy(true); setError('');
     const r = await fetch(`/api/admin/clients/${clientId}/debt/${debtId}`, { method: 'DELETE' })
       .then((x) => x.json()).catch(() => ({ ok: false }));
     setBusy(false);
@@ -57,9 +57,14 @@ export function EditDebt({ clientId, debtId, amountPence, reason }: { clientId: 
   }
 
   return (
-    <span className="inline-flex items-center gap-2 text-xs">
-      <button onClick={() => setOpen(true)} disabled={busy} className="text-[var(--color-gold-deep)] hover:underline disabled:opacity-50">Edit</button>
+    <span className="inline-flex flex-wrap items-center gap-2 text-xs">
+      <button onClick={() => { setError(''); setOpen(true); }} disabled={busy} className="text-[var(--color-gold-deep)] hover:underline disabled:opacity-50">Edit</button>
       <button onClick={clear} disabled={busy} className="text-[var(--color-blush-deep)] hover:underline disabled:opacity-50">Clear</button>
+      {/* "Clear" is pressed from this row with the dialog shut, so a failed
+          DELETE has nowhere to surface inside the dialog — the row simply sat
+          there unchanged and the refusal (403, 404, a dropped request) was
+          invisible. Render it here whenever the dialog isn't open. */}
+      {error && !open && <span role="alert" className="text-[var(--color-blush-deep)]">{error}</span>}
 
       <Dialog open={open} onClose={close} labelledby={`edit-debt-title-${debtId}`}>
         <div className="w-full max-w-md rounded-t-[var(--radius-xl)] bg-[var(--color-porcelain)] p-6 shadow-[var(--shadow-lift)] sm:rounded-[var(--radius-xl)]">
