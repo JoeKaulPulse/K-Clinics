@@ -32,7 +32,6 @@ export function CheckoutForm() {
 
   const shipping = f.method === 'collect' || subtotalPence >= 5000 ? 0 : 495;
   const estTotal = subtotalPence + shipping;
-  const shipInvalid = f.method === 'ship' && (!f.shipLine1.trim() || !f.shipPostcode.trim());
 
   async function startCheckout() {
     const errs: Record<string, string> = {};
@@ -134,7 +133,13 @@ export function CheckoutForm() {
             </section>
 
             {error && <p role="alert" aria-live="assertive" className="text-sm text-[var(--color-blush-deep)]">{error}</p>}
-            <Button onClick={() => !busy && startCheckout()} disabled={busy || !f.name.trim() || !f.email.trim() || shipInvalid} variant="gold" size="lg">{busy ? 'Please wait…' : 'Continue to payment'} <ArrowIcon /></Button>
+            {/* PRJ-1191.10: the button stays clickable while the shipping
+                fields are empty, as BookingFlow.tsx's submit does. Disabling it
+                on those fields would make the inline shipLine1/shipPostcode
+                errors below unreachable (startCheckout never runs) and leave a
+                shopper with a dead greyed-out button and no message at all —
+                worse than the server-side error it replaced. */}
+            <Button onClick={() => !busy && startCheckout()} disabled={busy || !f.name.trim() || !f.email.trim()} variant="gold" size="lg">{busy ? 'Please wait…' : 'Continue to payment'} <ArrowIcon /></Button>
           </>
         ) : (
           <section className="rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-5">

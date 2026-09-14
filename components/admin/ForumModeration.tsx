@@ -71,12 +71,23 @@ function ThreadRow({ thread: t, label, busy, act }: { thread: ModThread; label: 
   // thread's full post history shipping on every page load.
   const [posts, setPosts] = useState<ModPost[] | null>(null);
   const [loadingPosts, setLoadingPosts] = useState(false);
+  const [postsError, setPostsError] = useState('');
+  // A failed load must say so: the replies are no longer server-rendered, so
+  // swallowing the error would show a thread that reads "3 replies" with
+  // nothing under it — a moderator would take that as nothing to moderate.
   async function loadPosts() {
     setLoadingPosts(true);
-    const res = await post({ op: 'threadPosts', threadId: t.id });
-    const j = await res.json().catch(() => ({}));
-    setPosts(Array.isArray(j.posts) ? j.posts : []);
-    setLoadingPosts(false);
+    setPostsError('');
+    try {
+      const res = await post({ op: 'threadPosts', threadId: t.id });
+      const j = await res.json().catch(() => ({}));
+      if (!res.ok || !Array.isArray(j.posts)) { setPostsError(j.error || 'Could not load the replies. Try again.'); return; }
+      setPosts(j.posts as ModPost[]);
+    } catch {
+      setPostsError('Could not load the replies. Check your connection and try again.');
+    } finally {
+      setLoadingPosts(false);
+    }
   }
   async function toggleOpen() {
     const next = !open;
@@ -114,6 +125,11 @@ function ThreadRow({ thread: t, label, busy, act }: { thread: ModThread; label: 
           </div>
 
           {loadingPosts && <p className="text-sm text-[var(--color-stone)]">Loading replies…</p>}
+          {postsError && (
+            <p role="alert" className="text-sm text-[var(--color-blush-deep)]">
+              {postsError} <button onClick={loadPosts} className="underline">Retry</button>
+            </p>
+          )}
           {posts && posts.length > 0 && (
             <ul className="space-y-1.5">
               {posts.map((p) => (
