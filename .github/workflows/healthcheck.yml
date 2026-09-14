@@ -1,0 +1,35 @@
+name: Live health check
+
+# PRJ-1191.9: scripts/healthcheck.mjs (the green/red deployment + integration
+# checklist CLAUDE.md documents) was manual-only -- nothing scheduled it, so
+# its checks (DB connectivity, schema drift, login/encryption self-tests,
+# integration status) lapsed unless a human remembered to run it. GitHub's
+# runners can reach kclinics.co.uk (the Claude build sandbox cannot, see
+# fetch-media.yml), so this is the one place it can run unattended.
+#
+# Deliberately separate from /api/health's own Vercel cron (BLD-1723, every 5
+# minutes with its own alert-dedup): that one is the fast liveness probe this
+# script itself calls. This is the fuller checklist, on a slower cadence. A
+# failing run shows red in the Actions tab and emails repo watchers per
+# GitHub's standard scheduled-workflow-failure notification -- no separate
+# alerting to wire up.
+
+on:
+  schedule:
+    - cron: "*/30 * * * *"
+  workflow_dispatch:
+
+jobs:
+  healthcheck:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '22'
+      - name: Run health check
+        env:
+          BASE_URL: https://kclinics.co.uk
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: node scripts/healthcheck.mjs
