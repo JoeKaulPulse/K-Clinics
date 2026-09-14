@@ -5412,6 +5412,28 @@ export const BUILD_BACKLOG: BacklogItem[] = [
       'Verified: npx tsc --noEmit passes clean; npm run build succeeded in this run\'s local verification; Typecheck CI passed.',
     ],
   },
+  {
+    title: 'Admin dashboard "Not on GitHub" stat failed AA contrast; IP-activity empty state ignored the active search filter; shop/gift-voucher/academy purchase events lacked item-level data',
+    type: 'TASK', urgency: 'P2', status: 'SHIPPED', assignee: 'claude', pr: PR(1956),
+    value: 8, effort: 3,
+    detail: 'BLD-1718: app/admin/page.tsx:466 rendered a stat in text-[var(--color-gold)] (2.75:1), failing AA even at the large-text floor -- the same token pair already fixed on the public booking path. BLD-1722: components/admin/IpActivity.tsx showed "No IP activity recorded in this window" whether there was genuinely no data or the staff member\'s own search matched nothing. BLD-1698: components/shop/CheckoutForm.tsx, GiftVoucherFlow.tsx and EnrolmentCheckout.tsx called trackPurchase() with no `detail`, so GA4 got no items array/transaction_id and Meta Purchase got no content_ids/content_type -- only BookingFlow.tsx had this.',
+    notes: [
+      'Fix: swapped to --color-gold-deep on the admin stat. IP-activity empty state now branches on whether a filter is active. The three retail call sites now pass detail: { transaction_id, items }, and trackPurchase()\'s shared Meta call forwards content_ids/content_type when items are present.',
+      'Review fix (Opus max-effort pass): the first cut would have started sending Meta a per-treatment ServiceVariant id on every BOOKING event too (trackPurchase is shared), which BLD-1251 had deliberately avoided pending an owner decision. Scoped the new Meta item params to metaPurchase-gated call sites only (shop/voucher/academy), leaving the booking flow\'s Meta event unchanged. A second independent review pass verified this scoping holds by reading the gate condition directly, and confirmed the added ids/transaction_ids match values already sent elsewhere (no new data category reaches Meta).',
+      'Verified: npx tsc --noEmit passes clean; npm run build passes clean (DB_SYNC_NONFATAL=true; sandbox cannot reach the production Postgres host).',
+    ],
+  },
+  {
+    title: 'Shop checkout had no inline validation for required shipping fields; admin forum moderation loaded up to ~150k post rows in one query',
+    type: 'TASK', urgency: 'P2', status: 'SHIPPED', assignee: 'claude', pr: PR(1957),
+    value: 12, effort: 6,
+    detail: 'PRJ-1191.10: components/shop/CheckoutForm.tsx only validated name/email client-side; shipLine1/shipPostcode are required server-side but were unmarked and unvalidated, with no asterisks, aria-invalid or per-field message, unlike components/booking/BookingFlow.tsx. BLD-1724: lib/forum.ts adminListThreads() fetched up to 300 threads each with take: 500 posts -- worst case ~150k post rows in one response, on every admin moderation-board page view.',
+    notes: [
+      'Fix: CheckoutForm.tsx now has the same fieldErrors + focus-move-to-first-invalid pattern as BookingFlow.tsx for name/email/shipLine1/shipPostcode. adminListThreads() is now summary-only; a new adminGetThreadPosts() lazy-loads one thread\'s posts (including hidden ones) only when a moderator expands it in ForumModeration.tsx.',
+      'Review fix (Opus max-effort pass): the checkout button\'s disabled condition originally included the new shipping-required check, which made the inline validation dead code -- the button was disabled before startCheckout() could ever run and show the messages, replacing the old server round-trip error with a silent dead button. Removed, matching BookingFlow.tsx\'s own click-to-validate pattern. Also added error handling to the forum lazy-load (a failed fetch previously left "Loading replies..." up forever with no explanation).',
+      'Verified: npx tsc --noEmit passes clean; npm run build passes clean (DB_SYNC_NONFATAL=true; sandbox cannot reach the production Postgres host).',
+    ],
+  },
 ];
 
 // A content hash over every item's title + status + PR, so ANY change (a new
