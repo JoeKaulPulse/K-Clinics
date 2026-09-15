@@ -35,6 +35,7 @@ import { ClientStatusEditor } from '@/components/admin/ClientStatusEditor';
 import { ClientStatusBadge } from '@/components/admin/ClientStatusBadge';
 import { ClientTasks } from '@/components/admin/ClientTasks';
 import { LogIncident } from '@/components/admin/LogIncident';
+import { EditDebt } from '@/components/admin/EditDebt';
 import { DataPrivacy } from '@/components/admin/DataPrivacy';
 import { sessionCan } from '@/lib/auth';
 import { fmtClinicTime, fmtClinicDate } from '@/lib/clinic-time';
@@ -282,15 +283,19 @@ export default async function ClientDetail({ params }: { params: Promise<{ id: s
       {debt.totalPence > 0 && (
         <div role="alert" className="mt-6 rounded-[var(--radius-md)] border border-[var(--color-blush-deep)] bg-[var(--color-blush)]/15 p-4">
           <p className="font-medium text-[var(--color-blush-deep)]">Outstanding balance — £{(debt.totalPence / 100).toFixed(2)}</p>
-          <ul className="mt-1 space-y-0.5 text-sm text-[var(--color-ink)]">
+          <ul className="mt-1 space-y-1 text-sm text-[var(--color-ink)]">
             {debt.items.map((i) => (
-              <li key={i.id}>
+              <li key={i.id} className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
                 {i.bookingId ? (
                   <Link href={`/admin/bookings/${i.bookingId}`} className="underline-offset-2 hover:underline">
                     £{(i.amountPence / 100).toFixed(2)} · {i.reason} · {new Date(i.createdAt).toLocaleDateString('en-GB')} · {i.createdBy}
                   </Link>
                 ) : (
                   <span>£{(i.amountPence / 100).toFixed(2)} · {i.reason} · {new Date(i.createdAt).toLocaleDateString('en-GB')} · {i.createdBy}</span>
+                )}
+                {/* BLD-1763: correct or clear a mistaken/settled debt without a database edit. */}
+                {sessionCan(session, 'bookings.charge') && (
+                  <EditDebt clientId={c.id} debtId={i.id} amountPence={i.amountPence} reason={i.reason} />
                 )}
               </li>
             ))}
