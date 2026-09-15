@@ -10,6 +10,7 @@ import { TreatmentCard } from '@/components/ui/TreatmentCard';
 import { FaqAccordion } from '@/components/ui/FaqAccordion';
 import { Button, ArrowIcon } from '@/components/ui/Button';
 import { BookingButtons } from '@/components/booking/BookingButtons';
+import { MobileStickyBookBar } from '@/components/treatment/MobileStickyBookBar';
 import { PhoneButton } from '@/components/marketing/PhoneLink';
 import { site } from '@/lib/site';
 import { pricingForTreatment, formatPence, statusLabel, type ServiceStatus } from '@/lib/services';
@@ -59,10 +60,16 @@ function groupAreas<T extends { name: string }>(items: T[]): { heading: string; 
   return order.filter((h) => byHeading.has(h)).map((h) => ({ heading: h, items: byHeading.get(h)! }));
 }
 
-export async function TreatmentTemplate({ t }: { t: Treatment }) {
+// BLD-1683: dentistryLive defaults to the static site.dentistryLive constant,
+// but the caller (app/(marketing)/[slug]/page.tsx) already reads the real
+// admin-toggleable value via getSiteConfig() for its own JSON-LD (BLD-1483)
+// and passes it through here too, matching the organizationLd() pattern
+// (lib/seo.tsx, BLD-1672) — otherwise this page kept showing "Coming soon"
+// after the owner flipped dentistry on elsewhere.
+export async function TreatmentTemplate({ t, dentistryLive = site.dentistryLive }: { t: Treatment; dentistryLive?: boolean }) {
   const categoryHref = t.category === 'aesthetics' ? '/treatments' : '/dentistry';
   const categoryLabel = t.category === 'aesthetics' ? 'Aesthetics' : 'Dentistry';
-  const comingSoon = t.category === 'dentistry' && !site.dentistryLive;
+  const comingSoon = t.category === 'dentistry' && !dentistryLive;
   const related = t.related.map(getTreatment).filter(Boolean) as Treatment[];
 
   // Pricing + presentation status derived live from the admin catalogue (SSOT).
@@ -115,6 +122,19 @@ export async function TreatmentTemplate({ t }: { t: Treatment }) {
 
   return (
     <article>
+      {/* BLD-1609: slim sticky Book Now bar for mobile, visible mid-scroll once
+          the hero's own booking CTA has scrolled out of view (hidden again near
+          the pricing table's CTA — no duplicate/overlapping CTAs). Only for
+          treatments that are actually bookable online. */}
+      {!comingSoon && !enquiryOnly && (
+        <MobileStickyBookBar
+          treatmentSlug={t.slug}
+          // Keep the "From" qualifier the hero and pricing table both carry: the
+          // figure is the lowest variant price, so a bare "£120" on the sticky
+          // bar would read as the price of the treatment.
+          priceLabel={(fromOfferPence ?? fromPence) ? `From ${formatPence(fromOfferPence ?? fromPence)}` : formatPence(null)}
+        />
+      )}
       {/* Hero */}
       <section className="surface-ink grain relative overflow-hidden pt-[calc(var(--header-h,5.25rem)+1rem)]">
         <span

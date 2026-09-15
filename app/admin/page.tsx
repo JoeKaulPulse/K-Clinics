@@ -463,7 +463,7 @@ export default async function AdminOverview() {
               <p className="text-xs text-[var(--color-stone)]">Blocked</p>
             </div>
             <div>
-              <p className={`font-[family-name:var(--font-display)] text-2xl ${buildUnsynced > 0 ? 'text-[var(--color-gold)]' : 'text-[var(--color-ink)]'}`}>{buildUnsynced}</p>
+              <p className={`font-[family-name:var(--font-display)] text-2xl ${buildUnsynced > 0 ? 'text-[var(--color-gold-deep)]' : 'text-[var(--color-ink)]'}`}>{buildUnsynced}</p>
               <p className="text-xs text-[var(--color-stone)]">Not on GitHub</p>
             </div>
           </div>

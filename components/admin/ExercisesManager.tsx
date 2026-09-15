@@ -12,7 +12,7 @@ export type ExConfig = { spots?: Spot[]; pairs?: Pair[]; items?: string[]; point
 export type AdminExercise = { id: string; courseId: string; title: string; type: string; instructions: string | null; imageUrl: string | null; config: ExConfig; order: number; active: boolean };
 
 const TYPES = [{ key: 'HOTSPOT', label: 'Image hotspots' }, { key: 'MATCH', label: 'Match pairs' }, { key: 'ORDER', label: 'Order the steps' }, { key: 'LABEL', label: 'Label the diagram' }, { key: 'TYPEIN', label: 'Name on image (type)' }];
-const field = 'w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-2.5 py-1.5 text-sm';
+const field = 'w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-porcelain)] px-2.5 py-1.5 text-sm';
 const label = 'block text-xs font-medium text-[var(--color-stone)]';
 const btnDark = 'rounded-full bg-[var(--color-ink)] px-4 py-1.5 text-xs font-medium text-[var(--color-porcelain)] disabled:opacity-50';
 const btnGhost = 'rounded-full border border-[var(--color-line)] px-3 py-1 text-xs hover:border-[var(--color-gold)] disabled:opacity-40';
@@ -84,7 +84,7 @@ function ExerciseRow({ ex, busy, act, canUp, canDown, onMove }: { ex: AdminExerc
           {type === 'ORDER' && <OrderEditor items={items} setItems={setItems} />}
           {type === 'LABEL' && <PointEditor imageUrl={imageUrl} uploading={uploading} onUpload={uploadImage} onClearImage={() => setImageUrl('')} count={points.length} addAt={(x, y) => setPoints([...points, { label: `Point ${points.length + 1}`, x, y }])} markers={points.map((p) => ({ x: p.x, y: p.y }))}>
             {points.map((p, i) => (
-              <li key={i} className="flex flex-wrap items-center gap-2 rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-2.5 py-1.5 text-sm">
+              <li key={i} className="flex flex-wrap items-center gap-2 rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-porcelain)] px-2.5 py-1.5 text-sm">
                 <span className="grid h-5 w-5 place-items-center rounded-full bg-[var(--color-ink)] text-[0.6rem] text-[var(--color-porcelain)]">{i + 1}</span>
                 <input className="flex-1 rounded border border-[var(--color-line)] px-2 py-1 text-xs" value={p.label} onChange={(e) => setPoints(points.map((q, j) => (j === i ? { ...q, label: e.target.value } : q)))} placeholder="Correct label for this point" />
                 <button onClick={() => setPoints(points.filter((_, j) => j !== i))} className="text-xs text-[var(--color-blush-deep)] hover:underline">remove</button>
@@ -93,7 +93,7 @@ function ExerciseRow({ ex, busy, act, canUp, canDown, onMove }: { ex: AdminExerc
           </PointEditor>}
           {type === 'TYPEIN' && <PointEditor imageUrl={imageUrl} uploading={uploading} onUpload={uploadImage} onClearImage={() => setImageUrl('')} count={targets.length} addAt={(x, y) => setTargets([...targets, { accepted: [''], x, y }])} markers={targets.map((t) => ({ x: t.x, y: t.y }))}>
             {targets.map((t, i) => (
-              <li key={i} className="flex flex-wrap items-center gap-2 rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-2.5 py-1.5 text-sm">
+              <li key={i} className="flex flex-wrap items-center gap-2 rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-porcelain)] px-2.5 py-1.5 text-sm">
                 <span className="grid h-5 w-5 place-items-center rounded-full bg-[var(--color-ink)] text-[0.6rem] text-[var(--color-porcelain)]">{i + 1}</span>
                 <input className="flex-1 rounded border border-[var(--color-line)] px-2 py-1 text-xs" value={t.accepted.join(', ')} onChange={(e) => setTargets(targets.map((q, j) => (j === i ? { ...q, accepted: e.target.value.split(',').map((s) => s.trim()) } : q)))} placeholder="Accepted answers, comma-separated" />
                 <button onClick={() => setTargets(targets.filter((_, j) => j !== i))} className="text-xs text-[var(--color-blush-deep)] hover:underline">remove</button>
@@ -163,7 +163,7 @@ function useCrosshair({ disabled, label, hint, onPlace }: { disabled: boolean; l
     <>
       {showCross && !disabled && (
         <span aria-hidden style={{ left: `${pos.x}%`, top: `${pos.y}%` }} className="pointer-events-none absolute h-5 w-5 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-white ring-2 ring-[#2a2420]">
-          <span className="absolute left-1/2 top-1/2 h-1 w-1 -translate-x-1/2 -translate-y-1/2 rounded-full bg-white ring-1 ring-[#2a2420]" />
+          <span className="absolute left-1/2 top-1/2 h-1 w-1 -translate-x-1/2 -translate-y-1/2 rounded-full bg-[var(--color-porcelain)] ring-1 ring-[#2a2420]" />
         </span>
       )}
       <span ref={liveRef} aria-live="polite" className="sr-only" />
@@ -213,7 +213,7 @@ function HotspotEditor({ imageUrl, spots, setSpots, uploading, onUpload, onClear
           {spots.length > 0 && (
             <ul className="space-y-1.5">
               {spots.map((s, i) => (
-                <li key={i} className="flex flex-wrap items-center gap-2 rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-2.5 py-1.5 text-sm">
+                <li key={i} className="flex flex-wrap items-center gap-2 rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-porcelain)] px-2.5 py-1.5 text-sm">
                   <span className="grid h-5 w-5 place-items-center rounded-full bg-[var(--color-ink)] text-[0.6rem] text-[var(--color-porcelain)]">{i + 1}</span>
                   <input className="flex-1 rounded border border-[var(--color-line)] px-2 py-1 text-xs" value={s.label} onChange={(e) => setSpot(i, { label: e.target.value })} placeholder="Label (what to find)" />
                   <label className="flex items-center gap-1 text-xs text-[var(--color-stone)]">size <input type="range" min={3} max={25} value={s.r} onChange={(e) => setSpot(i, { r: Number(e.target.value) })} /></label>

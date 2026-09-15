@@ -11,6 +11,9 @@ import { PhoneLink } from '@/components/marketing/PhoneLink';
 export function FranchiseEnquiryForm() {
   const [status, setStatus] = useState<'idle' | 'sent' | 'error'>('idle');
   const [busy, setBusy] = useState(false);
+  // BLD-1612: per-field validation errors, same pattern as BookingFlow.
+  const [errors, setErrors] = useState<Record<string, string>>({});
+  const clearErr = (k: string) => setErrors((prev) => (prev[k] ? { ...prev, [k]: '' } : prev));
 
   async function handleSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -20,8 +23,17 @@ export function FranchiseEnquiryForm() {
     const phone = String(f.get('phone') || '');
     const location = String(f.get('location') || '');
     const model = String(f.get('model') || '');
-    const note = String(f.get('message') || '');
+    const note = String(f.get('message') || '').trim();
     const company = String(f.get('company') || ''); // honeypot
+
+    // BLD-1612: inline, per-field validation ahead of the API call.
+    const fieldErrors: Record<string, string> = {};
+    if (!name) fieldErrors.name = 'Please enter your name.';
+    if (!phone) fieldErrors.phone = 'Please enter a phone number.';
+    if (!/\S+@\S+\.\S+/.test(email)) fieldErrors.email = 'Enter a valid email address.';
+    if (note.length < 2) fieldErrors.message = 'Please tell us a little about your enquiry.';
+    if (Object.keys(fieldErrors).length > 0) { setErrors(fieldErrors); return; }
+    setErrors({});
 
     setBusy(true);
     try {
@@ -64,9 +76,9 @@ export function FranchiseEnquiryForm() {
       <h3 className="font-[family-name:var(--font-display)] text-2xl">Enquire about a franchise</h3>
       <p className="mt-1 text-sm text-[var(--color-stone)]">Tell us a little about you and we’ll be in touch about the opportunity.</p>
       <div className="mt-6 grid gap-5 sm:grid-cols-2">
-        <div><label htmlFor="fn" className={label}>Name *</label><input id="fn" name="name" required autoComplete="name" className={field} placeholder="Your name" /></div>
-        <div><label htmlFor="fp" className={label}>Phone *</label><input id="fp" name="phone" type="tel" required autoComplete="tel" className={field} placeholder="Best number" /></div>
-        <div className="sm:col-span-2"><label htmlFor="fe" className={label}>Email *</label><input id="fe" name="email" type="email" required autoComplete="email" className={field} placeholder="you@email.com" /></div>
+        <div><label htmlFor="fn" className={label}>Name *</label><input id="fn" name="name" autoComplete="name" aria-invalid={!!errors.name} aria-describedby={errors.name ? 'fn-err' : undefined} className={field} placeholder="Your name" onChange={() => clearErr('name')} />{errors.name && <p id="fn-err" role="alert" className="mt-1.5 text-xs text-[var(--color-blush-deep)]">{errors.name}</p>}</div>
+        <div><label htmlFor="fp" className={label}>Phone *</label><input id="fp" name="phone" type="tel" autoComplete="tel" aria-invalid={!!errors.phone} aria-describedby={errors.phone ? 'fp-err' : undefined} className={field} placeholder="Best number" onChange={() => clearErr('phone')} />{errors.phone && <p id="fp-err" role="alert" className="mt-1.5 text-xs text-[var(--color-blush-deep)]">{errors.phone}</p>}</div>
+        <div className="sm:col-span-2"><label htmlFor="fe" className={label}>Email *</label><input id="fe" name="email" type="email" autoComplete="email" aria-invalid={!!errors.email} aria-describedby={errors.email ? 'fe-err' : undefined} className={field} placeholder="you@email.com" onChange={() => clearErr('email')} />{errors.email && <p id="fe-err" role="alert" className="mt-1.5 text-xs text-[var(--color-blush-deep)]">{errors.email}</p>}</div>
         <div><label htmlFor="fl" className={label}>Preferred location</label><input id="fl" name="location" className={field} placeholder="City / area" /></div>
         <div><label htmlFor="fm" className={label}>Model of interest</label>
           <select id="fm" name="model" className={field} defaultValue="">
@@ -75,7 +87,7 @@ export function FranchiseEnquiryForm() {
             <option value="50/50 Franchise">50/50 Franchise</option>
           </select>
         </div>
-        <div className="sm:col-span-2"><label htmlFor="fmsg" className={label}>Your message *</label><textarea id="fmsg" name="message" rows={4} required minLength={2} className={field} placeholder="Your background, timeline and any questions…" /></div>
+        <div className="sm:col-span-2"><label htmlFor="fmsg" className={label}>Your message *</label><textarea id="fmsg" name="message" rows={4} aria-invalid={!!errors.message} aria-describedby={errors.message ? 'fmsg-err' : undefined} className={field} placeholder="Your background, timeline and any questions…" onChange={() => clearErr('message')} />{errors.message && <p id="fmsg-err" role="alert" className="mt-1.5 text-xs text-[var(--color-blush-deep)]">{errors.message}</p>}</div>
       </div>
       <input type="text" name="company" tabIndex={-1} autoComplete="off" className="absolute -left-[9999px] h-0 w-0" aria-hidden />
       <div className="mt-6 flex flex-wrap items-center gap-4">

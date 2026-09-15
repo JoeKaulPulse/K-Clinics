@@ -41,7 +41,7 @@ export function ReviewsBoard({ reviews, questions }: { reviews: ReviewItem[]; qu
         reviews.length === 0 ? <Empty>No reviews yet.</Empty> : (
           <ul className="space-y-3">
             {reviews.map((r) => (
-              <li key={r.id} className="rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-white p-4">
+              <li key={r.id} className="rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-4">
                 <div className="flex flex-wrap items-center gap-2">
                   <Stars rating={r.rating} />
                   <span className="text-sm font-medium">{r.courseTitle}</span>
@@ -85,7 +85,7 @@ function QuestionRow({ q, busy, act }: { q: QuestionItem; busy: boolean; act: (p
     setSending(false); setReply('');
   }
   return (
-    <li className={`rounded-[var(--radius-lg)] border p-4 ${q.hidden ? 'border-dashed border-[var(--color-line)] opacity-60' : q.resolved ? 'border-[var(--color-line)]' : 'border-[var(--color-gold)]/40 bg-[var(--color-gold)]/5'} bg-white`}>
+    <li className={`rounded-[var(--radius-lg)] border p-4 ${q.hidden ? 'border-dashed border-[var(--color-line)] opacity-60' : q.resolved ? 'border-[var(--color-line)]' : 'border-[var(--color-gold)]/40 bg-[var(--color-gold)]/5'} bg-[var(--color-porcelain)]`}>
       <p className="text-xs text-[var(--color-stone)]">{q.courseTitle} · {q.moduleTitle} · <span className="font-medium text-[var(--color-ink-soft)]">{q.lessonTitle}</span></p>
       <div className="mt-1.5 flex flex-wrap items-center gap-2">
         <span className="text-sm font-medium">{q.authorName}</span>
@@ -109,7 +109,7 @@ function QuestionRow({ q, busy, act }: { q: QuestionItem; busy: boolean; act: (p
       )}
 
       <div className="mt-3 flex flex-col gap-2 sm:flex-row">
-        <textarea value={reply} onChange={(e) => setReply(e.target.value)} rows={2} placeholder="Reply as K Academy (also marks the question answered and emails the trainee)…" aria-label="Reply to question" className="flex-1 rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-3 py-2 text-sm" />
+        <textarea value={reply} onChange={(e) => setReply(e.target.value)} rows={2} placeholder="Reply as K Academy (also marks the question answered and emails the trainee)…" aria-label="Reply to question" className="flex-1 rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-porcelain)] px-3 py-2 text-sm" />
         <button onClick={sendReply} disabled={sending || !reply.trim()} className="shrink-0 self-end rounded-full bg-[var(--color-gold-deep)] px-4 py-2 text-sm font-medium text-white hover:bg-[var(--color-ink)] disabled:opacity-50">{sending ? 'Sending…' : 'Reply'}</button>
       </div>
 

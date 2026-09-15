@@ -44,13 +44,14 @@ export default async function LearnPage({ params }: { params: Promise<{ slug: st
   // already acknowledged are not re-gated.
   if (!learning.preCourseAck) {
     const { PreCourseGate } = await import('@/components/academy/PreCourseGate');
-    const { LEARNER_AGREEMENT_SECTIONS, LEARNER_AGREEMENT_VERSION } = await import('@/lib/learner-agreement');
+    const { getCurrentLearnerAgreement } = await import('@/lib/learner-agreement');
+    const agreement = await getCurrentLearnerAgreement();
     return (
       <AcademyPortalShell firstName={student.firstName}>
         <PreCourseGate
           slug={slug} title={learning.course.title} level={learning.course.level}
           content={learning.course.preCourseInfo ?? ''}
-          agreement={{ sections: LEARNER_AGREEMENT_SECTIONS, version: LEARNER_AGREEMENT_VERSION }}
+          agreement={agreement}
         />
       </AcademyPortalShell>
     );

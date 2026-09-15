@@ -6,12 +6,22 @@ export const dynamic = 'force-static';
 
 // llms.txt — a concise, machine-readable guide for AI answer engines & agents
 // (the emerging convention at llmstxt.org). Helps assistants cite KClinics
-// accurately. Static and dependency-free so it's safe in any build.
-export function GET() {
+// accurately. Static and dependency-free so it's safe in any build — DB access
+// below is best-effort only (getSiteConfig() never throws, it falls back to
+// the same static defaults on a DB-less build like the GitHub Pages export).
+export async function GET() {
   const base = (process.env.NEXT_PUBLIC_SITE_URL || site.url).replace(/\/$/, '');
   const aesthetics = treatments.filter((t) => t.category === 'aesthetics');
   const dentistry = treatments.filter((t) => t.category === 'dentistry');
   const line = (t: { slug: string; title: string; tagline?: string }) => `- [${t.title}](${base}/${t.slug})${t.tagline ? `: ${t.tagline}` : ''}`;
+  // BLD-1683: read the real admin-toggleable flag (same call sitemap.ts and
+  // the treatment pages already make) instead of the static site.dentistryLive
+  // constant, so an AI answer engine doesn't keep telling users dentistry
+  // isn't bookable after the owner flips it on elsewhere. This route is only
+  // rebuilt at deploy time (force-static, no revalidate — static export has no
+  // ISR), so it reflects the flag as of the last build, same as the OG images.
+  const { getSiteConfig } = await import('@/lib/site-config');
+  const { dentistryLive } = await getSiteConfig();
 
   const body = `# ${site.name}
 
@@ -32,7 +42,7 @@ Location: ${site.address.street}, ${site.address.locality}, London. Phone: ${sit
 ${aesthetics.map(line).join('\n')}
 
 ## Dentistry
-${site.dentistryLive ? dentistry.map(line).join('\n') : `Dentistry is opening soon and not yet bookable — see [Dentistry](${base}/dentistry) to register interest.`}
+${dentistryLive ? dentistry.map(line).join('\n') : `Dentistry is opening soon and not yet bookable — see [Dentistry](${base}/dentistry) to register interest.`}
 
 ## Training (K Academy)
 - [Courses & enrolment](${base}/academy): Ofqual-regulated, VTCT & CPD-accredited; blended Thinkific theory + practical days + in-house VTCT exam; Clearpay finance available.
@@ -48,7 +58,7 @@ ${site.hours.map((h) => `- ${h.day}: ${h.open === 'Closed' ? 'Closed' : `${h.ope
 - Free cancellation up to 24 hours before an appointment; within 24 hours the full fee applies.
 - Finance: pay-as-you-go courses and 0% interest-free options on eligible treatments.
 - Location & transport: ${site.address.street}, ${site.address.locality}, ${site.address.postalCode} — minutes from Farringdon, Barbican and Old Street; step-free access.
-- Dentistry is ${site.dentistryLive ? 'open and bookable' : 'opening soon (register interest on the dentistry page)'}.
+- Dentistry is ${dentistryLive ? 'open and bookable' : 'opening soon (register interest on the dentistry page)'}.
 
 ## FAQs
 ${allGeneralFaqs.map((f) => `### ${f.q}\n${f.a}`).join('\n\n')}

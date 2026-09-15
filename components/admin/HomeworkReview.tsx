@@ -32,7 +32,7 @@ function ReviewCard({ row, onSaved }: { row: Row; onSaved: () => void }) {
   }
 
   return (
-    <div className="rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-white p-4">
+    <div className="rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div>
           <p className="font-medium">{row.student}</p>
@@ -47,10 +47,10 @@ function ReviewCard({ row, onSaved }: { row: Row; onSaved: () => void }) {
       )}
       {row.note && <p className="mt-2 text-sm text-[var(--color-stone)]"><span className="text-[var(--color-stone)]">Learner note:</span> {row.note}</p>}
       <div className="mt-3 grid gap-2 sm:grid-cols-[190px_1fr]">
-        <select value={status} onChange={(e) => setStatus(e.target.value)} className="rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-3 py-2 text-sm">
+        <select value={status} onChange={(e) => setStatus(e.target.value)} className="rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-porcelain)] px-3 py-2 text-sm">
           {STATUSES.map((s) => <option key={s} value={s}>{STATUS_LABEL[s]}</option>)}
         </select>
-        <textarea value={feedback} onChange={(e) => setFeedback(e.target.value)} rows={2} placeholder="Feedback for the learner (shown in their lesson)…" aria-label="Feedback for learner" className="rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-3 py-2 text-sm" />
+        <textarea value={feedback} onChange={(e) => setFeedback(e.target.value)} rows={2} placeholder="Feedback for the learner (shown in their lesson)…" aria-label="Feedback for learner" className="rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-porcelain)] px-3 py-2 text-sm" />
       </div>
       <div className="mt-2 flex items-center gap-3">
         <button onClick={save} disabled={busy} className="rounded-full bg-[var(--color-ink)] px-4 py-2 text-sm font-medium text-[var(--color-porcelain)] disabled:opacity-50">{busy ? 'Saving…' : 'Save review'}</button>

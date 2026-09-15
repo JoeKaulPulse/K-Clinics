@@ -81,14 +81,14 @@ export function NotificationBell() {
       <button
         onClick={() => setOpen((o) => !o)}
         aria-label={`Notifications${unread ? ` (${unread} unread)` : ''}`}
-        className="relative flex h-9 w-9 items-center justify-center rounded-full border border-[var(--color-line)] bg-white text-[var(--color-ink)] hover:bg-[var(--color-bone)]"
+        className="relative flex h-9 w-9 items-center justify-center rounded-full border border-[var(--color-line)] bg-[var(--color-porcelain)] text-[var(--color-ink)] hover:bg-[var(--color-bone)]"
       >
         <svg viewBox="0 0 24 24" className="h-[18px] w-[18px]" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9" /><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0" /></svg>
         {unread > 0 && <span className="absolute -right-1 -top-1 grid h-[18px] min-w-[18px] place-items-center rounded-full bg-[var(--color-gold-deep)] px-1 text-[0.6rem] font-semibold text-[var(--color-porcelain)]">{unread > 9 ? '9+' : unread}</span>}
       </button>
 
       {open && (
-        <div className="absolute right-0 z-40 mt-2 w-[22rem] max-w-[92vw] overflow-hidden rounded-[var(--radius-md)] border border-[var(--color-line)] bg-white shadow-[var(--shadow-lift)]">
+        <div className="absolute right-0 z-40 mt-2 w-[22rem] max-w-[92vw] overflow-hidden rounded-[var(--radius-md)] border border-[var(--color-line)] bg-[var(--color-porcelain)] shadow-[var(--shadow-lift)]">
           <div className="flex items-center justify-between border-b border-[var(--color-line)] bg-[var(--color-bone)] px-3 py-2">
             <span className="text-[0.62rem] font-semibold uppercase tracking-wide text-[var(--color-stone)]">Notifications</span>
             <div className="flex items-center gap-2">

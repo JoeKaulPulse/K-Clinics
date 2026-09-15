@@ -46,7 +46,7 @@ export function EnrolInCourse({ studentEmail, studentName, courses }: { studentE
       <p className="text-sm font-medium">Enrol {studentName} in another course</p>
       <p className="mt-0.5 text-xs text-[var(--color-stone)]">This adds the course to their existing profile — it won’t create a new student record.</p>
       <div className="mt-3 flex flex-wrap items-center gap-2">
-        <select value={courseId} onChange={(e) => { setCourseId(e.target.value); setError(''); }} className="rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-3 py-1.5 text-sm">
+        <select value={courseId} onChange={(e) => { setCourseId(e.target.value); setError(''); }} className="rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-porcelain)] px-3 py-1.5 text-sm">
           <option value="">Choose a course…</option>
           {courses.map((c) => <option key={c.id} value={c.id}>{c.title}{c.level ? ` (${c.level})` : ''}</option>)}
         </select>

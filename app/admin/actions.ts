@@ -154,6 +154,13 @@ export async function eraseClientData(clientId: string) {
     // location nulled, leaving only the anonymised safety fact (category, severity,
     // RIDDOR flag, date). Documented in docs/data-protection/retention-schedule.md.
     db.incident.updateMany({ where: { clientId }, data: { descriptionEnc: encClinical(JSON.stringify({ redacted: 'client-erased' })), location: null } }),
+    // BLD-1572: staff-recorded debts (ClientDebt) are RETAINED — an amount owed
+    // is a financial fact with the same HMRC basis as the bookings above, and
+    // the relation is SetNull so the row outlives the client either way. But
+    // `reason` is staff-typed free text that routinely names the person or what
+    // they were treated for, so it gets the Incident treatment: keep the
+    // amount/date, strip the narrative.
+    db.clientDebt.updateMany({ where: { clientId }, data: { reason: 'Redacted — client erased' } }),
     // PRJ-1032.17: BookingIntent (abandoned-checkout funnel) captures the person's
     // email for the finish-your-booking nudge. Guest rows aren't reached by any FK
     // and have no retention basis once erased — delete by email (mirrors the
@@ -256,6 +263,10 @@ export async function deleteClient(clientId: string, confirm: string) {
   // wipes them outright. Redact the encrypted narrative first, the same way
   // eraseClientData() already does, so the anonymised safety fact survives.
   await db.incident.updateMany({ where: { clientId }, data: { descriptionEnc: encClinical(JSON.stringify({ redacted: 'client-deleted' })), location: null } });
+  // BLD-1572: same for staff-recorded debts — ClientDebt.clientId is SetNull, so
+  // the row (and its staff-typed free-text reason) would otherwise survive the
+  // hard delete as an orphan no clientId lookup can ever reach again.
+  await db.clientDebt.updateMany({ where: { clientId }, data: { reason: 'Redacted — client deleted' } });
 
   try {
     // Cascades to the client's bookings, assessments, points, reviews, etc.

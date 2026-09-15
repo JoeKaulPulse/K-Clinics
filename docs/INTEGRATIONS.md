@@ -32,6 +32,12 @@ Redeploy after adding a batch. Locally, copy `.env.example` → `.env`.
 **Without these:** the site falls back to the static marketing-only mode; no
 login, bookings, or portal.
 
+**Prisma Accelerate is not supported.** The app connects to Postgres directly
+via `@prisma/adapter-pg` (through Neon's `-pooler` endpoint for connection
+pooling) — `PRISMA_DATABASE_URL`, `ACCELERATE_URL`, and a `prisma+postgres://`
+`DATABASE_URL` are not read by the runtime. Prisma retires Accelerate on
+1 December 2026; nothing in this codebase depends on it.
+
 ---
 
 ## 2. Clinical data encryption — **Required once clinical data exists**

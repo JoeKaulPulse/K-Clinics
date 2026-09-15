@@ -37,6 +37,35 @@
 // public/treatments/manifest.json is NOT written here: scripts/gen-image-manifest.mjs
 // regenerates it from the folder on every dev start and prebuild.
 //
+// BLD-1608 follow-up: BLD-1270 left ~134 ambiguous basenames untouched entirely
+// (both `X.png` and `X.jpg` present) because it couldn't tell whether the two
+// were unrelated content sharing a name or the same photo pre/post-conversion.
+// A number of those `.png` sides are still the live-referenced image (present
+// in one of MAP_FILES/TS_FILES below) at full WordPress-export size, while
+// their same-basename sibling is a *different*, unrelated photo that nothing
+// in the codebase references — a coincidental filename collision, not a real
+// ambiguity about which file is "the" image. For exactly that shape (the
+// oversized side is referenced, the colliding sibling is not referenced
+// anywhere) this script now converts the referenced side too, but to a new,
+// non-colliding filename rather than renaming onto the taken `<base>.jpg` —
+// and it leaves the original oversized file on disk untouched rather than
+// deleting it. Two reasons for the extra caution here that don't apply to the
+// unambiguous rename path below:
+//  - lib/treatment-images.ts#resolve()'s basename-only fallback (for
+//    DB-authored WordPress content citing the pre-conversion filename) only
+//    answers when a basename maps to exactly one present file. Deleting the
+//    oversized original would leave the unrelated sibling as that one file,
+//    so any legacy reference to the old name would silently start resolving
+//    to the WRONG photo instead of failing loudly. Converting to an unrelated
+//    new filename (not sharing a basename with anything) sidesteps this
+//    entirely: it's additive, so the existing ambiguous pair — and its
+//    "decline rather than guess" fallback behaviour — is left exactly as-is.
+//  - This sandbox cannot reach the production database (every direct
+//    connection attempt times out) to positively confirm no Post row's
+//    content/coverImage cites one of these exact original filenames, so the
+//    conservative choice is to keep the original resolvable under its exact
+//    name rather than remove it.
+//
 // Usage: node scripts/optimize-treatment-images.mjs [--dry-run]
 import fs from 'fs';
 import path from 'path';
@@ -68,7 +97,25 @@ function basenameOf(file) {
   return file.replace(/\.[^.]+$/, '').toLowerCase();
 }
 
+// What does the live app actually reference by exact filename today? Read
+// this up front (before any conversion) so the ambiguous-but-referenced check
+// below can tell "the live photo" apart from "an unrelated same-named file".
+function loadReferencedFiles() {
+  const referenced = new Set();
+  for (const mapPath of MAP_FILES) {
+    const data = JSON.parse(fs.readFileSync(mapPath, 'utf8'));
+    for (const v of Object.values(data)) if (typeof v === 'string') referenced.add(v);
+  }
+  for (const tsPath of TS_FILES) {
+    const ts = fs.readFileSync(tsPath, 'utf8');
+    for (const m of ts.matchAll(/'([^'\s]+\.(?:png|jpe?g))'/gi)) referenced.add(m[1]);
+  }
+  return referenced;
+}
+const referencedFiles = loadReferencedFiles();
+
 const allFiles = fs.readdirSync(DIR).filter((f) => /\.(jpe?g|png|webp|avif)$/i.test(f));
+const allFilesLower = new Set(allFiles.map((f) => f.toLowerCase()));
 const byBase = new Map();
 for (const f of allFiles) {
   const base = basenameOf(f);
@@ -84,7 +131,22 @@ const candidates = allFiles.filter((f) => {
   return size > SIZE_THRESHOLD;
 });
 
-console.log(`[optimize-treatment-images] ${allFiles.length} images total, ${ambiguousBases.size} ambiguous basename(s) skipped, ${candidates.length} candidate(s) for conversion.`);
+// The ambiguous-but-safely-convertible case described above: this file IS
+// referenced by the live app, its basename-sibling(s) are NOT referenced by
+// anything, and it's over threshold. Converts additively (new filename,
+// original left in place) — see the comment block above.
+const ambiguousCandidates = allFiles.filter((f) => {
+  if (!/\.(png|jpe?g)$/i.test(f)) return false;
+  const base = basenameOf(f);
+  if (!ambiguousBases.has(base)) return false;
+  if (!referencedFiles.has(f)) return false;
+  const siblings = byBase.get(base).filter((s) => s !== f);
+  if (siblings.some((s) => referencedFiles.has(s))) return false; // sibling also live — genuinely ambiguous, leave alone
+  const size = fs.statSync(path.join(DIR, f)).size;
+  return size > SIZE_THRESHOLD;
+});
+
+console.log(`[optimize-treatment-images] ${allFiles.length} images total, ${ambiguousBases.size} ambiguous basename(s), ${candidates.length} candidate(s) for conversion, ${ambiguousCandidates.length} referenced-but-ambiguous candidate(s) for additive conversion.`);
 
 const renames = []; // { from, to }
 let totalBefore = 0;
@@ -144,6 +206,65 @@ for (const file of candidates) {
 }
 
 console.log(`\n[optimize-treatment-images] ${renames.length} file(s) converted. ${(totalBefore / 1024 / 1024).toFixed(1)}MB -> ${(totalAfter / 1024 / 1024).toFixed(1)}MB.`);
+
+// Additive pass: referenced-but-ambiguous files (see comment block above).
+// New filename, original left on disk, only the live reference is repointed.
+let additiveBefore = 0;
+let additiveAfter = 0;
+const leftInPlace = []; // { file, size } — old files still on disk, now unreferenced
+
+for (const file of ambiguousCandidates) {
+  const srcPath = path.join(DIR, file);
+  const before = fs.statSync(srcPath).size;
+
+  const meta = await sharp(srcPath).metadata();
+  if (meta.hasAlpha) {
+    const stats = await sharp(srcPath).stats();
+    const alphaChannel = stats.channels[stats.channels.length - 1];
+    if (alphaChannel && alphaChannel.min < 255) {
+      console.log(`[skip-ambiguous] ${file} — has real alpha transparency, JPEG can't represent it.`);
+      continue;
+    }
+  }
+
+  // Find a filename that doesn't collide with anything currently on disk,
+  // checked case-insensitively (this folder is also deployed to filesystems
+  // that fold case, so two names differing only by case are the same file).
+  const base = file.replace(/\.[^.]+$/, '');
+  let dest = `${base}-opt.jpg`;
+  let n = 2;
+  while (allFilesLower.has(dest.toLowerCase())) {
+    dest = `${base}-opt${n}.jpg`;
+    n++;
+  }
+  const destPath = path.join(DIR, dest);
+
+  let img = sharp(srcPath).rotate().flatten({ background: '#ffffff' });
+  if ((meta.width || 0) > MAX_DIMENSION || (meta.height || 0) > MAX_DIMENSION) {
+    img = img.resize({ width: MAX_DIMENSION, height: MAX_DIMENSION, fit: 'inside', withoutEnlargement: true });
+  }
+  const outBuf = await img.jpeg({ quality: JPEG_QUALITY, mozjpeg: true }).toBuffer();
+
+  if (outBuf.length >= before) {
+    console.log(`[skip-ambiguous] ${file} — JPEG (${outBuf.length}) not smaller than original (${before}), keeping as-is.`);
+    continue;
+  }
+
+  additiveBefore += before;
+  additiveAfter += outBuf.length;
+  console.log(`[convert-ambiguous] ${file} (${before}) -> ${dest} (${outBuf.length}, ${(100 * outBuf.length / before).toFixed(1)}%) — original left in place, unreferenced`);
+
+  if (!DRY_RUN) {
+    fs.writeFileSync(destPath, outBuf);
+    allFilesLower.add(dest.toLowerCase());
+  }
+  renames.push({ from: file, to: dest });
+  leftInPlace.push({ file, size: before });
+}
+
+if (ambiguousCandidates.length) {
+  console.log(`[optimize-treatment-images] ${leftInPlace.length} referenced-but-ambiguous file(s) additively converted. ${(additiveBefore / 1024 / 1024).toFixed(1)}MB -> ${(additiveAfter / 1024 / 1024).toFixed(1)}MB (new files; ${(leftInPlace.reduce((s, x) => s + x.size, 0) / 1024 / 1024).toFixed(1)}MB of original files intentionally left on disk, now unreferenced).`);
+}
 
 if (DRY_RUN || renames.length === 0) {
   console.log('[optimize-treatment-images] dry run or nothing to update — skipping reference rewrite.');

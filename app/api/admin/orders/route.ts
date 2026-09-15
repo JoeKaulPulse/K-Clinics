@@ -4,6 +4,10 @@ import * as Sentry from '@sentry/nextjs';
 import { crmEnabled } from '@/lib/crm';
 
 export const runtime = 'nodejs';
+// BLD-1704: a manual PENDING→PAID goes through finalizeOrder, which can wait
+// on Resend's rate gate (lib/email.ts) — same risk BLD-1692 fixed on the
+// other finalize-calling routes.
+export const maxDuration = 60;
 
 // Manage retail orders (status + fulfilment). These change money/fulfilment
 // state, so require finance.manage.

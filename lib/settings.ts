@@ -20,6 +20,7 @@ export type SettingKey =
   | 'require_before_photo'       // laser: before-photo (or signed opt-out) required before starting
   | 'abandoned_booking_recovery' // email a nudge to finish an unpaid/incomplete booking
   | 'abandoned_order_recovery'   // email a nudge to finish an unpaid shop order (BLD-1204)
+  | 'abandoned_giftvoucher_recovery' // email a nudge to finish an unpaid gift-voucher purchase (BLD-1540)
   | 'booking_intent_recovery'    // email a nudge to a funnel visitor who left their email but never booked
   | 'no_show_notice'             // email a warm rebooking note when an appointment is marked no-show
   | 'membership_renewal_nudge'   // email lapsing K Circle members to keep their tier
@@ -53,6 +54,7 @@ export const SETTING_DEFAULTS: Record<SettingKey, boolean> = {
   require_before_photo: true,
   abandoned_booking_recovery: true, // BLD-131: enabled (owner-approved revenue automation)
   abandoned_order_recovery: false, // BLD-1278: automation is built and reviewed (BLD-1204 already excluded POS/till sales and blank emails; copy matches the live abandoned_booking_recovery flow) — still ships off pending an explicit owner go-ahead, since flipping this sends live customer emails on the next daily cron with no way to recall them
+  abandoned_giftvoucher_recovery: false, // BLD-1540: mirrors abandoned_order_recovery/BLD-1278 — ships off pending an explicit owner go-ahead, since flipping this sends live customer emails on the next daily cron with no way to recall them
   booking_intent_recovery: true, // BLD-838: enabled (owner-approved revenue automation)
   no_show_notice: false,
   membership_renewal_nudge: true, // BLD-131: enabled (owner-approved revenue automation)
@@ -128,6 +130,10 @@ export const SETTING_META: Record<SettingKey, { label: string; description: stri
   abandoned_order_recovery: {
     label: 'Abandoned-order recovery emails',
     description: 'Email a gentle, one-time nudge to shoppers who reached checkout but never completed payment for their shop order (sent 2–72h later, once per order).',
+  },
+  abandoned_giftvoucher_recovery: {
+    label: 'Abandoned-gift-voucher recovery emails',
+    description: 'Email a gentle, one-time nudge to buyers who reached the Stripe payment step but never completed a gift-voucher purchase (sent 2–72h later, once per voucher). Off by default — turn on to recover incomplete voucher purchases.',
   },
   booking_intent_recovery: {
     label: 'Booking-funnel email recovery',

@@ -55,7 +55,7 @@ export function GiftVoucherManager({ vouchers, canManage = false }: { vouchers: 
             <button key={s} onClick={() => setFilter(s)} className={`rounded-full border px-3 py-1.5 text-xs transition-colors ${filter === s ? 'border-[var(--color-ink)] bg-[var(--color-ink)] text-[var(--color-porcelain)]' : 'border-[var(--color-line)] hover:border-[var(--color-stone-soft)]'}`}>{s[0] + s.slice(1).toLowerCase()}</button>
           ))}
         </div>
-        <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search code, name or email…" aria-label="Search gift vouchers" className="ml-auto w-full max-w-xs rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-3 py-1.5 text-sm outline-none focus:border-[var(--color-gold)] focus-visible:ring-2 focus-visible:ring-[var(--color-gold)]" />
+        <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search code, name or email…" aria-label="Search gift vouchers" className="ml-auto w-full max-w-xs rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-porcelain)] px-3 py-1.5 text-sm outline-none focus:border-[var(--color-gold)] focus-visible:ring-2 focus-visible:ring-[var(--color-gold)]" />
       </div>
 
       <div className="overflow-x-auto rounded-[var(--radius-lg)] border border-[var(--color-line)]">
@@ -146,7 +146,7 @@ function Row({ v, canManage }: { v: Voucher; canManage: boolean }) {
                   onChange={(e) => { setAmount(e.target.value); setError(null); }}
                   onKeyDown={(e) => { if (e.key === 'Enter') confirmRedeem(); if (e.key === 'Escape') cancelRedeem(); }}
                   placeholder={`£ up to ${money(v.balancePence)}`}
-                  className="w-28 rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-2 py-1 text-xs outline-none focus:border-[var(--color-gold)] focus-visible:ring-2 focus-visible:ring-[var(--color-gold)]"
+                  className="w-28 rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-porcelain)] px-2 py-1 text-xs outline-none focus:border-[var(--color-gold)] focus-visible:ring-2 focus-visible:ring-[var(--color-gold)]"
                 />
                 <button disabled={busy} onClick={confirmRedeem} className="text-[var(--color-gold-deep)] hover:underline disabled:opacity-50">Confirm</button>
                 <button disabled={busy} onClick={cancelRedeem} className="text-[var(--color-stone)] hover:underline disabled:opacity-50">Cancel</button>

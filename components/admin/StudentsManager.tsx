@@ -69,8 +69,8 @@ export function StudentsManager({ students }: { students: StudentRow[] }) {
           <p className="text-sm text-[var(--color-stone)]">{students.length} portal account{students.length === 1 ? '' : 's'}. Suspend access, add notes, and see each trainee’s progress.</p>
         </div>
         <div className="flex items-center gap-2">
-          <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search name, email…" aria-label="Search trainees" className="rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-3 py-1.5 text-sm" />
-          <select value={sort} onChange={(e) => setSort(e.target.value as 'recent' | 'xp')} className="rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-2.5 py-1.5 text-sm" title="Sort">
+          <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search name, email…" aria-label="Search trainees" className="rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-porcelain)] px-3 py-1.5 text-sm" />
+          <select value={sort} onChange={(e) => setSort(e.target.value as 'recent' | 'xp')} className="rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-porcelain)] px-2.5 py-1.5 text-sm" title="Sort">
             <option value="recent">Newest first</option>
             <option value="xp">Top XP (best performers)</option>
           </select>
@@ -148,7 +148,7 @@ function NoteEditor({ notes, onSave }: { notes: string | null; onSave: (notes: s
   return (
     <span className="mt-1 flex flex-col gap-1">
       <span className="flex items-center gap-1.5">
-        <input autoFocus value={val} onChange={(e) => setVal(e.target.value)} placeholder="Internal note" aria-label="Internal note" className="w-52 rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-2 py-1 text-xs" />
+        <input autoFocus value={val} onChange={(e) => setVal(e.target.value)} placeholder="Internal note" aria-label="Internal note" className="w-52 rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-porcelain)] px-2 py-1 text-xs" />
         <button
           disabled={busy}
           onClick={async () => {

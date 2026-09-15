@@ -40,10 +40,6 @@ const OPEN = ['TRIAGE', 'IN_PROGRESS', 'IN_REVIEW', 'BLOCKED'];
 async function makeDb() {
   const url = process.env.DATABASE_URL || process.env.POSTGRES_URL;
   if (!url) { console.error('No DATABASE_URL / POSTGRES_URL.'); process.exit(1); }
-  if (/^prisma(\+postgres)?:\/\//.test(url)) {
-    const { withAccelerate } = await import('@prisma/extension-accelerate');
-    return new PrismaClient({ accelerateUrl: url }).$extends(withAccelerate());
-  }
   const { Pool } = await import('pg');
   const { PrismaPg } = await import('@prisma/adapter-pg');
   return new PrismaClient({ adapter: new PrismaPg(new Pool({ connectionString: url })) });

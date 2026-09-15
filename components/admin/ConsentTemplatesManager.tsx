@@ -63,7 +63,7 @@ function AssignmentPicker({
         {open ? 'Hide' : 'Specific services'}{selSlugs.length ? ` · ${selSlugs.length} selected` : ''}
       </button>
       {open && (
-        <div className="mt-2 max-h-56 space-y-2 overflow-y-auto rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white p-2.5">
+        <div className="mt-2 max-h-56 space-y-2 overflow-y-auto rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-2.5">
           {groups.map((g) => (
             <div key={g}>
               <p className="px-1 text-[0.6rem] font-semibold uppercase tracking-wide text-[var(--color-stone)]">{g}</p>
@@ -85,7 +85,7 @@ function AssignmentPicker({
   );
 }
 
-const fieldCls = 'w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-3 py-2 text-sm outline-none transition-colors focus:border-[var(--color-gold)] focus-visible:ring-2 focus-visible:ring-[var(--color-gold)]';
+const fieldCls = 'w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-porcelain)] px-3 py-2 text-sm outline-none transition-colors focus:border-[var(--color-gold)] focus-visible:ring-2 focus-visible:ring-[var(--color-gold)]';
 
 function CreateForm({ services, groups, onDone }: { services: Service[]; groups: string[]; onDone: () => void }) {
   const router = useRouter();
@@ -174,7 +174,7 @@ function Card({ r, services, groups }: { r: TemplateRow; services: Service[]; gr
         </div>
         <div className="flex shrink-0 items-center gap-3">
           <label className="text-xs text-[var(--color-stone)]">Category
-            <select value={category} onChange={(e) => setCategory(e.target.value)} className="ml-1.5 rounded-[var(--radius-xs)] border border-[var(--color-line)] bg-white px-2 py-1 text-xs outline-none focus:border-[var(--color-gold)] focus-visible:ring-2 focus-visible:ring-[var(--color-gold)]">{Array.from(new Set([...CATEGORIES, category])).map((c) => <option key={c} value={c}>{c}</option>)}</select>
+            <select value={category} onChange={(e) => setCategory(e.target.value)} className="ml-1.5 rounded-[var(--radius-xs)] border border-[var(--color-line)] bg-[var(--color-porcelain)] px-2 py-1 text-xs outline-none focus:border-[var(--color-gold)] focus-visible:ring-2 focus-visible:ring-[var(--color-gold)]">{Array.from(new Set([...CATEGORIES, category])).map((c) => <option key={c} value={c}>{c}</option>)}</select>
           </label>
           <button onClick={() => setPreview((v) => !v)} className="text-xs text-[var(--color-gold-deep)] hover:underline">{preview ? 'Edit' : 'Preview'}</button>
           <button onClick={toggle} className="text-xs text-[var(--color-stone)] hover:underline">{r.active ? 'Disable' : 'Enable'}</button>
@@ -182,7 +182,7 @@ function Card({ r, services, groups }: { r: TemplateRow; services: Service[]; gr
       </div>
 
       {preview ? (
-        <div className="rounded-[var(--radius-md)] border border-[var(--color-line)] bg-white p-4 text-sm leading-relaxed [&_blockquote]:border-l-2 [&_blockquote]:border-[var(--color-gold)] [&_blockquote]:pl-3 [&_blockquote]:text-[var(--color-stone)] [&_h2]:font-[family-name:var(--font-display)] [&_h2]:text-lg [&_h3]:mt-3 [&_h3]:font-medium [&_li]:ml-5 [&_li]:list-disc [&_p]:mt-2" dangerouslySetInnerHTML={{ __html: consentMdToHtml(bodyMd) }} />
+        <div className="rounded-[var(--radius-md)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-4 text-sm leading-relaxed [&_blockquote]:border-l-2 [&_blockquote]:border-[var(--color-gold)] [&_blockquote]:pl-3 [&_blockquote]:text-[var(--color-stone)] [&_h2]:font-[family-name:var(--font-display)] [&_h2]:text-lg [&_h3]:mt-3 [&_h3]:font-medium [&_li]:ml-5 [&_li]:list-disc [&_p]:mt-2" dangerouslySetInnerHTML={{ __html: consentMdToHtml(bodyMd) }} />
       ) : (
         <textarea value={bodyMd} onChange={(e) => setBody(e.target.value)} rows={8} className={`${fieldCls} font-mono text-xs`} />
       )}

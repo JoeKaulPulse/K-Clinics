@@ -7,7 +7,7 @@ type CourseRef = { id: string; title: string };
 export type QView = { id: string; courseId: string | null; topic: string | null; difficulty: string; examBoard: string | null; prompt: string; type: string; options: string[]; correct: number[]; explanation: string | null; tip: string | null; active: boolean };
 export type PView = { id: string; courseId: string | null; title: string; examBoard: string | null; year: number | null; description: string | null; fileUrl: string | null; active: boolean; order: number };
 
-const field = 'w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-2.5 py-1.5 text-sm';
+const field = 'w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-porcelain)] px-2.5 py-1.5 text-sm';
 const lbl = 'block text-xs font-medium text-[var(--color-stone)]';
 const btnDark = 'rounded-full bg-[var(--color-ink)] px-4 py-1.5 text-xs font-medium text-[var(--color-porcelain)] disabled:opacity-50';
 
@@ -77,7 +77,7 @@ function ImportRow({ courses, busy, act }: { courses: CourseRef[]; busy: boolean
 function QuestionRow({ q, courses, courseTitle, busy, act }: { q: QView; courses: CourseRef[]; courseTitle: string | null; busy: boolean; act: Act }) {
   const [open, setOpen] = useState(false);
   return (
-    <div className={`rounded-[var(--radius-md)] border border-[var(--color-line)] bg-white ${q.active ? '' : 'opacity-60'}`}>
+    <div className={`rounded-[var(--radius-md)] border border-[var(--color-line)] bg-[var(--color-porcelain)] ${q.active ? '' : 'opacity-60'}`}>
       <div className="flex items-center gap-2 p-2.5">
         <button onClick={() => setOpen((v) => !v)} className="text-[var(--color-stone)]">{open ? '▾' : '▸'}</button>
         <span className="flex-1 text-sm">{q.prompt}</span>
@@ -148,7 +148,7 @@ function QuestionForm({ courses, existing, defaultCourseId, busy, act }: { cours
 function PaperRow({ p, courses, courseTitle, busy, act }: { p: PView; courses: CourseRef[]; courseTitle: string | null; busy: boolean; act: Act }) {
   const [open, setOpen] = useState(false);
   return (
-    <div className="rounded-[var(--radius-md)] border border-[var(--color-line)] bg-white">
+    <div className="rounded-[var(--radius-md)] border border-[var(--color-line)] bg-[var(--color-porcelain)]">
       <div className="flex items-center gap-2 p-2.5">
         <button onClick={() => setOpen((v) => !v)} className="text-[var(--color-stone)]">{open ? '▾' : '▸'}</button>
         <span className="flex-1 text-sm">{p.title}</span>

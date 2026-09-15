@@ -20,7 +20,7 @@ const STATUS_OPTIONS: { value: string; label: string }[] = [
   { value: 'UNAVAILABLE', label: 'Currently unavailable (enquiry only)' },
 ];
 
-const field = 'rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-2 py-1.5 text-sm';
+const field = 'rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-porcelain)] px-2 py-1.5 text-sm';
 const money = (p: number | null) => (p == null ? '—' : p === 0 ? 'On consult.' : `£${(p / 100).toLocaleString('en-GB', { minimumFractionDigits: p % 100 ? 2 : 0 })}`);
 const pounds = (p: number | null) => (p == null ? '' : (p / 100).toString());
 
@@ -108,14 +108,14 @@ function ImportPanel({ services, treatments }: { services: Service[]; treatments
               </select>
             </label>
           </div>
-          <textarea value={raw} onChange={(e) => setRaw(e.target.value)} rows={6} placeholder="Bikini line 1 session	27	0	1	15	25&#10;Bikini line 3 session	73	25	3	15	25" className="w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white p-3 font-mono text-xs" />
+          <textarea value={raw} onChange={(e) => setRaw(e.target.value)} rows={6} placeholder="Bikini line 1 session	27	0	1	15	25&#10;Bikini line 3 session	73	25	3	15	25" className="w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-3 font-mono text-xs" />
           <div className="flex items-center gap-2">
             <button onClick={doPreview} className="rounded-full border border-[var(--color-line)] px-4 py-1.5 text-sm hover:border-[var(--color-gold)]">Preview</button>
             <button onClick={doImport} disabled={busy || !preview?.length} className="rounded-full bg-[var(--color-ink)] px-4 py-1.5 text-sm text-[var(--color-porcelain)] disabled:opacity-50">{busy ? '…' : 'Import'}</button>
             {msg && <span className="text-sm text-[var(--color-stone)]">{msg}</span>}
           </div>
           {preview && preview.length > 0 && (
-            <div className="max-h-64 overflow-y-auto rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white">
+            <div className="max-h-64 overflow-y-auto rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-porcelain)]">
               <table className="w-full text-sm">
                 <thead><tr className="sticky top-0 bg-[var(--color-bone)] text-left text-xs uppercase text-[var(--color-stone)]"><th scope="col" className="p-2">Variant</th><th scope="col" className="p-2">Min</th><th scope="col" className="p-2">Price</th><th scope="col" className="p-2">Courses</th></tr></thead>
                 <tbody>
@@ -285,7 +285,7 @@ function VariantRow({ v }: { v: Variant }) {
       {showCourses && (
         <tr className="border-t border-[var(--color-line)] bg-[var(--color-bone)]/50">
           <td colSpan={8} className="px-2 py-3">
-            <div className="rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white p-3">
+            <div className="rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-3">
               <p className="mb-2 text-xs text-[var(--color-stone)]">
                 Course / package prices for <span className="font-medium">{v.name}</span> — set the number of sessions and the total package price. The single-session price above ({money(single)}) is used when no package is chosen.
               </p>

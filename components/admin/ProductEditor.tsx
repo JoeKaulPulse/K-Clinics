@@ -11,7 +11,7 @@ export type ProductData = {
   vatClass: string;
 };
 
-const field = 'mt-1 w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-3 py-2 text-sm';
+const field = 'mt-1 w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-porcelain)] px-3 py-2 text-sm';
 
 export function ProductEditor({ data }: { data: ProductData }) {
   const router = useRouter();
@@ -42,7 +42,7 @@ export function ProductEditor({ data }: { data: ProductData }) {
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div><Link href="/admin/products" className="text-xs text-[var(--color-stone)] hover:underline">← All products</Link><h1 className="font-[family-name:var(--font-display)] text-3xl">{f.name}</h1></div>
-        <select value={f.status} onChange={(e) => set('status', e.target.value)} className="rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-3 py-2 text-sm"><option value="DRAFT">Draft</option><option value="ACTIVE">Active</option><option value="ARCHIVED">Archived</option></select>
+        <select value={f.status} onChange={(e) => set('status', e.target.value)} className="rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-porcelain)] px-3 py-2 text-sm"><option value="DRAFT">Draft</option><option value="ACTIVE">Active</option><option value="ARCHIVED">Archived</option></select>
       </div>
 
       <div className="grid gap-6 lg:grid-cols-[1.3fr_0.7fr]">
@@ -88,7 +88,7 @@ export function ProductEditor({ data }: { data: ProductData }) {
               ))}
             </div>
             <div className="mt-3 flex gap-2">
-              <input value={img} onChange={(e) => setImg(e.target.value)} placeholder="Image URL (upload in Media first)" aria-label="Image URL" className="flex-1 rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-3 py-2 text-sm" />
+              <input value={img} onChange={(e) => setImg(e.target.value)} placeholder="Image URL (upload in Media first)" aria-label="Image URL" className="flex-1 rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-porcelain)] px-3 py-2 text-sm" />
               <button onClick={addImg} className="rounded-full border border-[var(--color-line)] px-4 py-2 text-sm hover:border-[var(--color-gold)]">Add</button>
             </div>
           </section>

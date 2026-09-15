@@ -7,7 +7,7 @@ import { useRouter } from 'next/navigation';
 export type BundleItem = { id: string; courseId: string; courseTitle: string };
 export type AdminBundle = { id: string; title: string; slug: string; summary: string | null; description: string | null; heroImage: string | null; pricePence: number | null; promoPrice: number | null; promoStartAt: string | null; promoEndAt: string | null; active: boolean; items: BundleItem[] };
 
-const field = 'w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-2.5 py-1.5 text-sm';
+const field = 'w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-porcelain)] px-2.5 py-1.5 text-sm';
 const label = 'block text-xs font-medium text-[var(--color-stone)]';
 const btnDark = 'rounded-full bg-[var(--color-ink)] px-4 py-1.5 text-xs font-medium text-[var(--color-porcelain)] disabled:opacity-50';
 const btnGhost = 'text-xs text-[var(--color-stone)] hover:text-[var(--color-ink)] disabled:opacity-40';
@@ -81,7 +81,7 @@ function BundleRow({ bundle, courses, busy, act }: { bundle: AdminBundle; course
             {bundle.items.length === 0 ? <p className="text-xs text-[var(--color-stone)]">None yet — add some below.</p> : (
               <ul className="space-y-1.5">
                 {bundle.items.map((it, i) => (
-                  <li key={it.id} className="flex items-center gap-2 rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-3 py-1.5 text-sm">
+                  <li key={it.id} className="flex items-center gap-2 rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-porcelain)] px-3 py-1.5 text-sm">
                     <span className="flex-1">{it.courseTitle}</span>
                     <button onClick={() => move(i, -1)} disabled={busy || i === 0} className={btnGhost}>↑</button>
                     <button onClick={() => move(i, 1)} disabled={busy || i === bundle.items.length - 1} className={btnGhost}>↓</button>

@@ -109,7 +109,7 @@ export function Composer({ channel, meId, onSent, replyTo, onCancelReply }: {
               {d.kind === 'VIDEO'
                 ? <video src={d.url} className="h-14 w-14 rounded-[var(--radius-sm)] border border-[var(--color-line)] object-cover" />
                 : d.kind === 'FILE'
-                  ? <span className="grid h-14 w-14 place-items-center rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white text-2xl">📄</span>
+                  ? <span className="grid h-14 w-14 place-items-center rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-porcelain)] text-2xl">📄</span>
                   : <img src={d.url} alt="" className="h-14 w-14 rounded-[var(--radius-sm)] border border-[var(--color-line)] object-cover" />}
               <button onClick={() => setDrafts((x) => x.filter((_, j) => j !== i))} className="absolute -right-1.5 -top-1.5 grid h-5 w-5 place-items-center rounded-full bg-[var(--color-ink)] text-[0.6rem] text-white" aria-label="Remove">✕</button>
             </div>
@@ -120,7 +120,7 @@ export function Composer({ channel, meId, onSent, replyTo, onCancelReply }: {
 
       {/* @-mention autocomplete */}
       {mention && mentionMatches.length > 0 && (
-        <div className="absolute bottom-[3.4rem] left-2 z-[60] w-56 overflow-hidden rounded-[var(--radius-md)] border border-[var(--color-line)] bg-white shadow-[var(--shadow-lift)]">
+        <div className="absolute bottom-[3.4rem] left-2 z-[60] w-56 overflow-hidden rounded-[var(--radius-md)] border border-[var(--color-line)] bg-[var(--color-porcelain)] shadow-[var(--shadow-lift)]">
           {mentionMatches.map((m, i) => (
             <button
               key={m.id} type="button" onMouseEnter={() => setMIdx(i)} onClick={() => chooseMention(m.id, m.name)}
@@ -153,7 +153,7 @@ export function Composer({ channel, meId, onSent, replyTo, onCancelReply }: {
           onChange={(e) => onChange(e.target.value)} onKeyDown={onKeyDown}
           placeholder="Message…"
           aria-label="Message"
-          className="max-h-28 min-h-[2.25rem] flex-1 resize-none rounded-[var(--radius-md)] border border-[var(--color-line)] bg-white px-3 py-2 text-sm outline-none focus:border-[var(--color-gold)] focus-visible:ring-2 focus-visible:ring-[var(--color-gold)]"
+          className="max-h-28 min-h-[2.25rem] flex-1 resize-none rounded-[var(--radius-md)] border border-[var(--color-line)] bg-[var(--color-porcelain)] px-3 py-2 text-sm outline-none focus:border-[var(--color-gold)] focus-visible:ring-2 focus-visible:ring-[var(--color-gold)]"
         />
         <button
           type="button" onClick={() => void send()} disabled={sending || (!text.trim() && drafts.length === 0)}

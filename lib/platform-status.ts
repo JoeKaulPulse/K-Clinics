@@ -31,8 +31,9 @@ export async function getPlatformStatus(): Promise<PlatformStatus> {
   // ── Database ───────────────────────────────────────────────────────────────
   {
     const items: StatusItem[] = [];
-    const pooled = [process.env.PRISMA_DATABASE_URL, process.env.ACCELERATE_URL, process.env.DATABASE_URL, process.env.POSTGRES_URL]
-      .find((u) => u && /^prisma(\+postgres)?:\/\//.test(u));
+    const direct = [process.env.POSTGRES_PRISMA_URL, process.env.POSTGRES_URL, process.env.POSTGRES_URL_NON_POOLING, process.env.DATABASE_URL]
+      .find((u) => u && /^postgres(ql)?:\/\//.test(u));
+    const pooled = Boolean(direct && (/-pooler\./i.test(direct) || /[?&]pgbouncer=true/i.test(direct)));
     let connected = false; let count = 0; let ms = 0;
     try { const t = Date.now(); count = await db.client.count(); ms = Date.now() - t; connected = true; } catch { connected = false; }
     items.push({
@@ -41,8 +42,8 @@ export async function getPlatformStatus(): Promise<PlatformStatus> {
     });
     items.push({
       id: 'db-mode', label: 'Connection mode', light: pooled ? 'green' : 'amber',
-      detail: pooled ? 'Pooled (Prisma Accelerate) — fleet shares a managed pool' : 'Direct postgres:// — per-instance pool capped (connection_limit=1)',
-      info: [pooled ? 'Recommended for serverless; designed out the connection-exhaustion failure mode.' : 'Set PRISMA_DATABASE_URL to a prisma+postgres:// pooled URL to remove the exhaustion risk entirely.'],
+      detail: pooled ? 'Pooled (Neon/PgBouncer) — fleet shares a managed pool' : 'Direct postgres:// — per-instance pool capped (connection_limit=1)',
+      info: [pooled ? 'Recommended for serverless; designed out the connection-exhaustion failure mode.' : 'Point DATABASE_URL/POSTGRES_PRISMA_URL at a pooled (-pooler / pgbouncer) endpoint to remove the exhaustion risk entirely. (Prisma Accelerate is not used/supported here.)'],
     });
     // Schema sync — probe the tables the ops suite depends on.
     const checks: { name: string; ok: boolean }[] = [];

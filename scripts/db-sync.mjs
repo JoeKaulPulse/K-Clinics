@@ -29,9 +29,8 @@
 //   locally and `prisma migrate deploy` in CI/CD.
 //
 // `prisma db push` needs a DIRECT postgres:// connection (not a pooled PgBouncer
-// URL, and NOT a Prisma Accelerate `prisma+postgres://` URL). Vercel's Postgres
-// integration exposes several env vars — we pick a direct one, preferring the
-// non-pooling variants.
+// URL). Vercel's Postgres integration exposes several env vars — we pick a
+// direct one, preferring the non-pooling variants.
 import { execSync } from 'node:child_process';
 import { Pool } from 'pg';
 
@@ -78,7 +77,7 @@ function pickDirectUrl() {
     process.env.DATABASE_URL,
     process.env.POSTGRES_URL,
   ].filter(Boolean);
-  // Only use real postgres connections (skip Prisma Accelerate prisma+postgres://).
+  // Only use real postgres:// connections (reject any other URL scheme).
   return candidates.find((u) => /^postgres(ql)?:\/\//.test(u)) || null;
 }
 

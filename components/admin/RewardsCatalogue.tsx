@@ -89,7 +89,7 @@ export function RewardsCatalogue({
           <h3 className="mb-3 text-sm font-medium text-[var(--color-stone)]">{L('My redemptions', 'Мої обміни')}</h3>
           <div className="space-y-2">
             {myRedemptions.map((m) => (
-              <div key={m.id} className="flex items-center justify-between gap-3 rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-4 py-2.5 text-sm">
+              <div key={m.id} className="flex items-center justify-between gap-3 rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-porcelain)] px-4 py-2.5 text-sm">
                 <span>{m.name}</span>
                 <span className="flex items-center gap-3">
                   <span className="text-[var(--color-stone)]">−{m.costPoints} {L('pts', 'балів')}</span>

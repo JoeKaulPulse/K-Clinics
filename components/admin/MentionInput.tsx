@@ -106,7 +106,7 @@ export function MentionInput({
     <div className="relative min-w-0 flex-1">
       {multiline ? <textarea rows={3} {...shared} /> : <input {...shared} />}
       {open && matches.length > 0 && (
-        <ul className="absolute bottom-full left-0 z-50 mb-1 w-64 overflow-hidden rounded-[var(--radius-md)] border border-[var(--color-line)] bg-white shadow-[var(--shadow-lift)]">
+        <ul className="absolute bottom-full left-0 z-50 mb-1 w-64 overflow-hidden rounded-[var(--radius-md)] border border-[var(--color-line)] bg-[var(--color-porcelain)] shadow-[var(--shadow-lift)]">
           {matches.map((p, i) => (
             <li key={p.handle}>
               <button

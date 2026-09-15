@@ -66,7 +66,7 @@ export function ConnectionsManager({ providers, flash }: { providers: Provider[]
             </div>
 
             {(open === p.id || (p.state === 'setup' && open === p.id)) && (
-              <div className="mt-4 rounded-[var(--radius-md)] border border-[var(--color-line)] bg-white p-4">
+              <div className="mt-4 rounded-[var(--radius-md)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-4">
                 <ol className="ml-4 list-decimal space-y-1.5 text-sm text-[var(--color-stone)]">
                   {p.setupSteps.map((s, i) => <li key={i}>{s}</li>)}
                 </ol>

@@ -386,7 +386,10 @@ function SayMicro({ step, onContinue, instant }: { step: SayStep; onContinue: ()
   const [ready, setReady] = useState(instant);
   return (
     <div className="flex flex-col items-center py-4 text-center">
-      <KSpeech text={step.text} mood={step.mood} onTyped={() => setReady(true)} />
+      {/* Screen readers otherwise get no announcement of the lesson narration. */}
+      <div aria-live="polite">
+        <KSpeech text={step.text} mood={step.mood} onTyped={() => setReady(true)} />
+      </div>
       <button onClick={onContinue} disabled={!ready} className="mt-9 rounded-full bg-[var(--color-gold)] px-8 py-3 text-sm font-semibold text-[var(--color-ink)] transition-all enabled:hover:scale-[1.02] disabled:opacity-0">Continue →</button>
     </div>
   );

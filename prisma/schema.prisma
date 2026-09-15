@@ -47,6 +47,7 @@ enum EmailKind {
   CHAT
   ABANDONED_BOOKING
   ABANDONED_ORDER // BLD-1204: abandoned shop-order recovery
+  ABANDONED_GIFTVOUCHER // BLD-1540: abandoned gift-voucher-purchase recovery
   NO_SHOW
   STAFF_DIGEST
   STAFF_NUDGE
@@ -195,6 +196,7 @@ enum AuditAction {
   CLIENT_ERASED
   STUDENT_ERASED // BLD-1124: distinct from CLIENT_ERASED — an academy trainee's data was erased (GDPR Art.17)
   CLIENT_EDITED
+  STUDENT_EDITED // BLD-1732: admin edited a trainee's first/last name (email stays locked; not learner-editable)
   DATA_EXPORTED
   DATA_IMPORTED // a data-migration step wrote records (e.g. WordPress import, BLD-187)
   SESSION_EDITED // a captured in-session answer was changed after first save (BLD-138)
@@ -204,6 +206,9 @@ enum AuditAction {
   ROOM_TURNOVER // a room was handed over for cleaning after a session (PRJ-63.11)
   INCIDENT_LOGGED // a staff-only internal incident (accident) report was logged (BLD-760)
   CLIENT_STATUS_CHANGED // a client's GREEN/YELLOW/RED status was set or cleared (BLD-1532)
+  CLIENT_DEBT_RECORDED // a staff member manually recorded an outstanding balance ("Mark as Debt") (BLD-1572)
+  CLIENT_DEBT_UPDATED // a staff member corrected the amount/reason on a recorded outstanding balance (BLD-1763)
+  CLIENT_DEBT_RESOLVED // a staff member cleared/waived a recorded outstanding balance (BLD-1763)
 }
 
 enum ReviewStatus {
@@ -427,6 +432,7 @@ model Client {
   academyStudents AcademyStudent[] // BLD-528: linked K Academy trainee account(s) (same person, by email)
   incidents      Incident[] // BLD-760: staff-only internal incident (accident) reports
   portfolioEntries PortfolioEntry[] @relation("ClientPortfolioEntries") // BLD-1291: academy cases photographing this client
+  debts          ClientDebt[] // BLD-1572: staff-recorded outstanding balance ("Mark as Debt")
 
   @@index([createdAt])
   @@index([dob])
@@ -598,6 +604,43 @@ model Incident {
 
   @@index([clientId])
   @@index([bookingId])
+}
+
+// ── Staff-recorded outstanding balance / "Mark as Debt" — BLD-1572 ──────────
+// A manual record that a client owes the clinic money — the card couldn't be
+// charged, the payment failed, or they left without paying. Distinct from the
+// automated late-cancel/no-show balance derived in lib/outstanding.ts (BLD-1066),
+// which is computed from Booking.chargedAt/lateCancel/status and clears itself
+// once charged or waived: this is a manual, staff-typed record with its own
+// amount and reason, so it needs a row to hold that free text and persists
+// until a staff member later clears it (resolvedAt — no "clear" UI yet, but the
+// field is here so a future one doesn't need a schema change). Same relation
+// shape as Incident above: SetNull on both FKs so the debt record — an
+// HMRC-relevant financial fact — outlives a client erasure or a deleted
+// booking, matching how Booking charge/refund rows are kept (pseudonymised)
+// rather than deleted (BLD-286).
+model ClientDebt {
+  id       String  @id @default(cuid())
+  client   Client? @relation(fields: [clientId], references: [id], onDelete: SetNull)
+  clientId String?
+
+  booking   Booking? @relation(fields: [bookingId], references: [id], onDelete: SetNull)
+  bookingId String?
+
+  amountPence Int
+  reason      String // why the payment is outstanding — free text, staff-entered
+
+  createdBy String // staff email who recorded the debt
+  createdAt DateTime @default(now())
+
+  // Not built as a UI action in this change, but present so a later "mark as
+  // paid/cleared" control needs no schema change.
+  resolvedAt DateTime?
+  resolvedBy String?
+
+  @@index([clientId])
+  @@index([bookingId])
+  @@index([clientId, resolvedAt])
 }
 
 model Appointment {
@@ -772,6 +815,15 @@ model Booking {
   // Best-effort — calendar sync never blocks the booking lifecycle.
   googleEventId String?
 
+  // PRJ-1191.4: last calendar-sync failure message (any provider) an admin can
+  // see, set by lib/hostinger-calendar.ts after fetchWithRetry exhausts its
+  // attempts and cleared on the next successful push/remove. Best-effort sync
+  // never blocks the booking lifecycle, so this is the only surfaced signal
+  // that a confirmed/cancelled booking may not actually be reflected on the
+  // shared clinic calendar.
+  calendarSyncError   String?
+  calendarSyncErrorAt DateTime?
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -798,6 +850,7 @@ model Booking {
   followUp    FollowUp? // post-treatment follow-up questionnaire
   liveSession AppointmentSession? // BLD-138 interactive in-clinic session
   incidents   Incident[] // BLD-760: internal incident reports linked to this appointment
+  debts       ClientDebt[] // BLD-1572: staff-recorded outstanding balance linked to this appointment
 
   @@index([startAt])
   @@index([status])
@@ -3057,6 +3110,31 @@ model Enrolment {
   @@index([studentId])
   @@index([studentId, status])
   @@index([cohortId, status]) // BLD-1142: cohortsWithRemaining() groupBy on every course-page ISR
+}
+
+// BLD-1731: the Learner (Training) Agreement's wording, versioned and editable
+// from the K Academy admin area instead of hardcoded in lib/learner-agreement.ts.
+// One row per published (or drafted) wording; the CURRENT agreement is the most
+// recent PUBLISHED row (ordered by publishedAt) — publishing never edits or
+// removes an older row, so an enrolment's stamped agreementVersion always still
+// resolves to the exact wording that learner signed. Global policy content
+// (like Post), not tenant-scoped.
+enum LearnerAgreementStatus {
+  DRAFT
+  PUBLISHED
+}
+
+model LearnerAgreementVersion {
+  id          String                 @id @default(cuid())
+  version     String // human-readable + monotonic, e.g. "2026-09-11" (see nextAgreementVersion)
+  sections    Json // AgreementSection[] — { heading, body }[]
+  status      LearnerAgreementStatus @default(DRAFT)
+  publishedAt DateTime? // set once, when this row is published; never re-published
+  createdBy   String? // admin email, or 'system' for the initial lazy seed
+  createdAt   DateTime               @default(now())
+  updatedAt   DateTime               @updatedAt
+
+  @@index([status, publishedAt])
 }
 
 // BLD-528: itemised academy payments. One row per payment OR scheduled instalment.

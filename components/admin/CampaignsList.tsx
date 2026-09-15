@@ -41,9 +41,9 @@ export function CampaignsList({ rows, canManage }: { rows: CampaignRow[]; canMan
         <section className="rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-5">
           <h2 className="mb-1 font-[family-name:var(--font-display)] text-lg">New campaign</h2>
           <div className="flex flex-wrap items-end gap-2">
-            <label className="text-xs text-[var(--color-stone)]">Name<br /><input value={name} onChange={(e) => setName(e.target.value)} placeholder="Valentine’s Day 2026" className="rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-3 py-2 text-sm w-64" /></label>
+            <label className="text-xs text-[var(--color-stone)]">Name<br /><input value={name} onChange={(e) => setName(e.target.value)} placeholder="Valentine’s Day 2026" className="rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-porcelain)] px-3 py-2 text-sm w-64" /></label>
             <label className="text-xs text-[var(--color-stone)]">Goal<br />
-              <select value={goal} onChange={(e) => setGoal(e.target.value)} className="rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-3 py-2 text-sm">
+              <select value={goal} onChange={(e) => setGoal(e.target.value)} className="rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-porcelain)] px-3 py-2 text-sm">
                 <option value="bookings">Bookings</option>
                 <option value="revenue">Revenue</option>
                 <option value="leads">Leads</option>

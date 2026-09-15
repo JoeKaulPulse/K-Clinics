@@ -204,6 +204,15 @@ async function sendVoucherEmails(voucherId: string, sendToRecipient: boolean, op
   const { sendEmail, tmplCustomGiftCard, tmplGiftVoucherReceipt } = await import('@/lib/email');
   const what = v.packageName || `gift card — ${money(v.amountPence)}`;
   const tasks: Promise<SendResult>[] = [];
+  // BLD-1680: deliberately NOT threading a vatBreakdown()/effectiveVatClass()
+  // call into tmplGiftVoucherReceipt, unlike the charge/order/academy receipts.
+  // A KClinics gift voucher/card is redeemable against any treatment (mixed
+  // EXEMPT dentistry + STANDARD aesthetics) — a "multi-purpose voucher" under UK
+  // VAT law (VATA 1994 Sch 10B). No supply happens at the point of sale, so no
+  // VAT is due and no net/VAT breakdown belongs on THIS receipt, regardless of
+  // vat_registered. VAT is correctly accounted for later, at redemption, by
+  // chargeBooking's existing vatBreakdown() call on the treatment actually
+  // booked (lib/booking-actions.ts) — that is the true tax point.
   if (opts.purchaserReceipt !== false) {
     tasks.push(sendEmail({ to: v.purchaserEmail, subject: `Your KClinics ${v.packageName ? 'gift' : 'gift card'} — ${v.packageName || money(v.amountPence)}`, html: tmplGiftVoucherReceipt({ purchaserName: v.purchaserName, amount: money(v.amountPence), code: v.code, recipientName: v.recipientName, scheduled: !sendToRecipient && !!v.deliverAt, deliverAt: v.deliverAt, designId: v.design, packageName: v.packageName }) }));
   }

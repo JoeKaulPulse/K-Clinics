@@ -12,7 +12,7 @@ function Check({ checked, onChange, label }: { checked: boolean; onChange: (v: b
   return (
     <label className="inline-flex cursor-pointer items-center justify-center">
       <input type="checkbox" className="peer sr-only" checked={checked} onChange={(e) => onChange(e.target.checked)} aria-label={label} />
-      <span className="grid h-5 w-5 place-items-center rounded border border-[var(--color-line)] bg-white text-transparent peer-checked:border-[var(--color-gold)] peer-checked:bg-[var(--color-gold-deep)] peer-checked:text-white">
+      <span className="grid h-5 w-5 place-items-center rounded border border-[var(--color-line)] bg-[var(--color-porcelain)] text-transparent peer-checked:border-[var(--color-gold)] peer-checked:bg-[var(--color-gold-deep)] peer-checked:text-white">
         <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M20 6 9 17l-5-5" /></svg>
       </span>
     </label>
@@ -130,9 +130,9 @@ export function NotificationPreferences() {
         <h2 className="font-[family-name:var(--font-display)] text-lg">Quiet hours</h2>
         <p className="mt-1 text-sm text-[var(--color-stone)]">During these hours, non-urgent email/push is held for your digest. In-app still appears. Urgent always comes through.</p>
         <div className="mt-3 flex items-center gap-2 text-sm">
-          <input type="time" value={prefs.quietHours?.start || ''} onChange={(e) => setPrefs((p) => ({ ...p, quietHours: { start: e.target.value, end: p.quietHours?.end || '08:00' } }))} className="rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-2 py-1.5" />
+          <input type="time" value={prefs.quietHours?.start || ''} onChange={(e) => setPrefs((p) => ({ ...p, quietHours: { start: e.target.value, end: p.quietHours?.end || '08:00' } }))} className="rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-porcelain)] px-2 py-1.5" />
           <span className="text-[var(--color-stone)]">to</span>
-          <input type="time" value={prefs.quietHours?.end || ''} onChange={(e) => setPrefs((p) => ({ ...p, quietHours: { start: p.quietHours?.start || '20:00', end: e.target.value } }))} className="rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-2 py-1.5" />
+          <input type="time" value={prefs.quietHours?.end || ''} onChange={(e) => setPrefs((p) => ({ ...p, quietHours: { start: p.quietHours?.start || '20:00', end: e.target.value } }))} className="rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-porcelain)] px-2 py-1.5" />
           {prefs.quietHours && <button onClick={() => setPrefs((p) => ({ ...p, quietHours: null }))} className="ml-2 text-xs text-[var(--color-stone)] hover:text-[var(--color-ink)]">Clear</button>}
         </div>
       </section>
@@ -142,7 +142,7 @@ export function NotificationPreferences() {
         <div className="mt-3 flex flex-wrap items-center gap-x-6 gap-y-3 text-sm">
           <label className="flex items-center gap-2">
             <span className="text-[var(--color-stone)]">Summary digest</span>
-            <select value={prefs.digest || 'weekly'} onChange={(e) => setPrefs((p) => ({ ...p, digest: e.target.value }))} className="rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-2 py-1.5">
+            <select value={prefs.digest || 'weekly'} onChange={(e) => setPrefs((p) => ({ ...p, digest: e.target.value }))} className="rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-porcelain)] px-2 py-1.5">
               <option value="off">Off</option><option value="daily">Daily</option><option value="weekly">Weekly</option>
             </select>
           </label>

@@ -3,6 +3,10 @@ import * as Sentry from '@sentry/nextjs';
 import { crmEnabled } from '@/lib/crm';
 
 export const runtime = 'nodejs';
+// BLD-1704: cash/card-machine sales finalise via finalizeOrder, which can
+// wait on Resend's rate gate (lib/email.ts) — same risk BLD-1692 fixed on
+// the other finalize-calling routes.
+export const maxDuration = 60;
 
 // In-store point of sale. Front desk sells products over the counter — no client
 // account needed. Card payments use a Stripe Checkout link (QR → pay on the

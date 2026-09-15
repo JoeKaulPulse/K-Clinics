@@ -19,6 +19,23 @@ function getRedis(): Redis | null {
 
 export type RateResult = { allowed: boolean; count: number; limit: number; retryAfterSec: number };
 
+// BLD-1677: the Upstash SDK has no per-call timeout/signal option (only a
+// fixed signal at client-construction time, unusable for a reused singleton
+// across many requests), and a degraded-but-not-erroring endpoint doesn't
+// reject on its own — it just hangs. Race every Redis call against this so a
+// stall falls through to the Postgres path below exactly like an outright
+// Redis error does, instead of stalling the request until the serverless
+// function's own maxDuration kills it.
+const REDIS_TIMEOUT_MS = 1500;
+function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
+  return Promise.race([
+    promise,
+    new Promise<T>((_, reject) => {
+      AbortSignal.timeout(ms).addEventListener('abort', () => reject(new Error(`[rate-limit] Redis call timed out after ${ms}ms`)), { once: true });
+    }),
+  ]);
+}
+
 /** Count one hit for `key` within a `windowSec` window and report whether the
  *  caller is within `limit`. By default fails open on store errors so a limiter
  *  outage never blocks legitimate traffic. Pass `failClosed: true` for
@@ -29,11 +46,11 @@ export async function rateLimit(key: string, limit: number, windowSec: number, o
   if (r) {
     try {
       const rkey = `rl:${key}`;
-      const count = await r.incr(rkey);
-      if (count === 1) await r.expire(rkey, windowSec);
+      const count = await withTimeout(r.incr(rkey), REDIS_TIMEOUT_MS);
+      if (count === 1) await withTimeout(r.expire(rkey, windowSec), REDIS_TIMEOUT_MS);
       return { allowed: count <= limit, count, limit, retryAfterSec: windowSec };
     } catch {
-      /* fall through to DB */
+      /* fall through to DB — covers both an outright Redis error and a timeout above */
     }
   }
   try {

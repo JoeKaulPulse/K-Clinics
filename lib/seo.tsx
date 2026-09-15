@@ -86,10 +86,14 @@ export async function pageMeta({
 
 // ── JSON-LD builders ─────────────────────────────────────────────────────────
 
-export function organizationLd() {
+// dentistryLive defaults to the static site.dentistryLive constant, but callers
+// that already have the real admin-toggleable value (getSiteConfig()) should
+// pass it through — otherwise this schema keeps advertising a skin-only clinic
+// after the owner flips dentistry on elsewhere. (BLD-1672)
+export function organizationLd(dentistryLive: boolean = site.dentistryLive) {
   return {
     '@context': 'https://schema.org',
-    '@type': ['MedicalClinic', ...(site.dentistryLive ? ['Dentist'] : []), 'HealthAndBeautyBusiness'],
+    '@type': ['MedicalClinic', ...(dentistryLive ? ['Dentist'] : []), 'HealthAndBeautyBusiness'],
     '@id': `${base}/#clinic`,
     name: site.name,
     legalName: site.legalName,
@@ -127,7 +131,7 @@ export function organizationLd() {
     areaServed: londonAreas(),
     currenciesAccepted: 'GBP',
     paymentAccepted: 'Cash, Credit Card, Debit Card, Apple Pay, Google Pay',
-    medicalSpecialty: ['Dermatology', ...(site.dentistryLive ? ['CosmeticDentistry'] : [])],
+    medicalSpecialty: ['Dermatology', ...(dentistryLive ? ['CosmeticDentistry'] : [])],
     // BLD-1039: generated from the real treatment catalogue (lib/treatments.ts)
     // instead of a hardcoded 4+3 shortlist, so schema.org / AI answer engines see
     // the full live service breadth. Dentistry services are advertised only once
@@ -135,7 +139,7 @@ export function organizationLd() {
     // dentistry pages.
     availableService: [
       ...aesthetics.map((t) => ({ '@type': 'MedicalProcedure', name: t.title })),
-      ...(site.dentistryLive ? dentistry.map((t) => ({ '@type': 'Dentistry', name: t.title })) : []),
+      ...(dentistryLive ? dentistry.map((t) => ({ '@type': 'Dentistry', name: t.title })) : []),
     ],
     knowsAbout: [
       'Aesthetic medicine',

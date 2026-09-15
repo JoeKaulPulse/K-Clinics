@@ -36,9 +36,15 @@ function imageToSrc(image?: string | null): string | null {
   }
 }
 
-const DESCRIPTOR = site.dentistryLive
-  ? 'Aesthetics · Dentistry — Islington, London'
-  : 'Aesthetics · Laser · Skin — Islington, London';
+// BLD-1683: dentistryLive defaults to the static site.dentistryLive constant —
+// needed by the three force-static callers (build-time, no DB access in a
+// static export) — but app/og/route.tsx renders per-request and already has
+// the real admin-toggleable value (getSiteConfig()), so it passes it through
+// instead, matching the organizationLd() pattern (lib/seo.tsx, BLD-1672).
+const descriptorFor = (dentistryLive: boolean) =>
+  dentistryLive
+    ? 'Aesthetics · Dentistry — Islington, London'
+    : 'Aesthetics · Laser · Skin — Islington, London';
 
 export function renderOg({
   eyebrow,
@@ -46,6 +52,7 @@ export function renderOg({
   accent,
   tag,
   image,
+  dentistryLive = site.dentistryLive,
 }: {
   eyebrow: string;
   title: string;
@@ -55,6 +62,8 @@ export function renderOg({
   tag?: string;
   /** Public-relative image path for the background photograph. */
   image?: string | null;
+  /** Live, admin-toggleable dentistry flag (getSiteConfig().dentistryLive); defaults to the static constant for build-time/force-static callers. */
+  dentistryLive?: boolean;
 }) {
   const fonts = [
     FRAUNCES && { name: 'Fraunces', data: FRAUNCES, weight: 600 as const, style: 'normal' as const },
@@ -124,7 +133,7 @@ export function renderOg({
             <div style={{ display: 'flex', marginTop: 24, fontFamily: 'Geist', fontSize: 24, color: 'rgba(248,241,236,0.74)', maxWidth: 860 }}>{tag}</div>
           )}
           <div style={{ display: 'flex', height: 6, width: 160, backgroundImage: 'linear-gradient(90deg,#a98a6d,#dcc4a8)', borderRadius: 999, marginTop: 30 }} />
-          <div style={{ display: 'flex', marginTop: 18, fontFamily: 'Geist', fontSize: 19, letterSpacing: 1, color: 'rgba(248,241,236,0.6)' }}>{DESCRIPTOR}</div>
+          <div style={{ display: 'flex', marginTop: 18, fontFamily: 'Geist', fontSize: 19, letterSpacing: 1, color: 'rgba(248,241,236,0.6)' }}>{descriptorFor(dentistryLive)}</div>
         </div>
       </div>
     ),

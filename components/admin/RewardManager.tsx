@@ -6,7 +6,7 @@ import type { CatalogueReward } from '@/components/admin/RewardsCatalogue';
 
 export type PendingRedemption = { id: string; staffName: string; rewardName: string; costPoints: number; createdAt: string };
 
-const field = 'w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-3 py-2 text-sm outline-none focus:border-[var(--color-gold)] focus-visible:ring-2 focus-visible:ring-[var(--color-gold)]';
+const field = 'w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-porcelain)] px-3 py-2 text-sm outline-none focus:border-[var(--color-gold)] focus-visible:ring-2 focus-visible:ring-[var(--color-gold)]';
 
 export function RewardManager({
   rewards,
@@ -62,7 +62,7 @@ export function RewardManager({
           <h2 className="mb-3 font-[family-name:var(--font-display)] text-lg">{L('Pending redemptions', 'Очікують обміну')} <span className="ml-1 rounded-full bg-[var(--color-gold-deep)] px-2 py-0.5 text-xs text-[var(--color-porcelain)]">{pending.length}</span></h2>
           <div className="space-y-2">
             {pending.map((p) => (
-              <div key={p.id} className="flex flex-wrap items-center justify-between gap-3 rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-4 py-2.5 text-sm">
+              <div key={p.id} className="flex flex-wrap items-center justify-between gap-3 rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-porcelain)] px-4 py-2.5 text-sm">
                 <span><span className="font-medium">{p.staffName}</span> — {p.rewardName} <span className="text-[var(--color-stone)]">({p.costPoints} {L('pts', 'балів')})</span></span>
                 <span className="flex gap-2">
                   <button onClick={() => decide(p.id, 'FULFILLED')} className="rounded-full bg-[var(--color-jade)] px-3 py-1 text-xs text-white hover:opacity-90">{L('Fulfil', 'Виконати')}</button>
@@ -82,7 +82,7 @@ export function RewardManager({
         </div>
 
         {open && (
-          <div className="mt-4 rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white p-4">
+          <div className="mt-4 rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-4">
             <div className="grid gap-3 sm:grid-cols-2">
               <label className="text-xs text-[var(--color-stone)]">{L('Name', 'Назва')}
                 <input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} className={field} placeholder={L('e.g. Extra day off', 'напр. Додатковий вихідний')} />
@@ -111,7 +111,7 @@ export function RewardManager({
         <div className="mt-4 space-y-2">
           {rewards.length === 0 && <p className="text-sm text-[var(--color-stone)]">{L('No rewards yet — add the first one.', 'Поки немає винагород — додайте першу.')}</p>}
           {rewards.map((r) => (
-            <div key={r.id} className={`flex flex-wrap items-center justify-between gap-3 rounded-[var(--radius-sm)] border border-[var(--color-line)] px-4 py-2.5 text-sm ${r.active ? 'bg-white' : 'bg-[var(--color-bone)] opacity-70'}`}>
+            <div key={r.id} className={`flex flex-wrap items-center justify-between gap-3 rounded-[var(--radius-sm)] border border-[var(--color-line)] px-4 py-2.5 text-sm ${r.active ? 'bg-[var(--color-porcelain)]' : 'bg-[var(--color-bone)] opacity-70'}`}>
               <span className="flex items-center gap-2">
                 <span aria-hidden>{r.emoji || '🎁'}</span>
                 <span className="font-medium">{r.name}</span>

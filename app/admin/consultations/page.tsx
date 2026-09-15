@@ -26,6 +26,8 @@ export default async function ConsultationsPage({ searchParams }: { searchParams
   // the tab and its data are gated the same way (clients.clinical.view).
   const clinical = sessionCan(session, 'clients.clinical.view');
   const showFlagged = status === FLAGGED && clinical;
+  // BLD-1711: same practitioner scoping as the client/booking lists (BLD-1693).
+  const practitionerId = session && session.role === 'PRACTITIONER' ? session.sub : undefined;
 
   const { listConsultations, listFlaggedAnalyses, countFlaggedAnalyses } = await import('@/lib/crm-data');
   // Guard: FLAGGED is a UI-only tab, not a ConsultStatus — never let it reach
@@ -33,7 +35,7 @@ export default async function ConsultationsPage({ searchParams }: { searchParams
   // ?status=FLAGGED directly, who falls back to the ALL view).
   const consultStatus = status === FLAGGED ? 'ALL' : status;
   const [rows, flaggedRows, flaggedCount] = await Promise.all([
-    showFlagged ? Promise.resolve([]) : listConsultations(consultStatus),
+    showFlagged ? Promise.resolve([]) : listConsultations(consultStatus, { practitionerId }),
     showFlagged ? listFlaggedAnalyses() : Promise.resolve([]),
     clinical ? countFlaggedAnalyses() : Promise.resolve(0),
   ]);

@@ -572,14 +572,26 @@ export function tmplFundingDecision(o: { name: string; status: string; courseTit
 }
 
 // Payment confirmation / receipt for a course payment.
-export function tmplAcademyPaymentReceipt(o: { firstName: string; courseTitle: string; amountPence: number; outstandingPence: number; portalUrl: string }) {
+export function tmplAcademyPaymentReceipt(o: {
+  firstName: string; courseTitle: string; amountPence: number; outstandingPence: number; portalUrl: string;
+  vat?: { netPence: number; vatPence: number; ratePct: number } | null;
+}) {
   const paid = `£${(o.amountPence / 100).toLocaleString('en-GB')}`;
   const owing = o.outstandingPence > 0 ? `£${(o.outstandingPence / 100).toLocaleString('en-GB')}` : null;
+  const muted = 'color:#91766e;';
+  const totalRow = (label: string, value: string, strong = false) => `
+        <tr><td style="padding:6px 0;${muted}">${label}</td><td align="right" style="padding:6px 0;${strong ? 'font-weight:700;color:#2a2420;' : 'color:#3d352f;'}white-space:nowrap;">${value}</td></tr>`;
+  const vatTable = o.vat ? `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="font-family:Helvetica,Arial,sans-serif;font-size:14px;margin:16px 0 0;">
+      ${totalRow('Net', fmtMoney(o.vat.netPence))}
+      ${totalRow(`VAT (${o.vat.ratePct}%)`, fmtMoney(o.vat.vatPence))}
+      ${totalRow('Total paid', paid, true)}
+    </table>` : '';
   return emailShell({
     preheader: `Payment received — ${o.courseTitle}`,
     body: `<h1 style="font-size:24px;margin:0 0 16px;">Thank you, ${escape(o.firstName)} — payment received.</h1>
     <p>We've received your payment of <strong>${paid}</strong> for <strong>${escape(o.courseTitle)}</strong>. Your place is secured and your online theory is now unlocked in your portal.</p>
-    ${owing ? `<p style="background:#efe3d7;padding:14px 16px;border-radius:10px;font-size:14px;">Outstanding balance: <strong>${owing}</strong>. We'll be in touch about the remaining payment${''}, or you can settle it any time from your portal.</p>` : ''}
+    ${vatTable}
+    ${owing ? `<p style="background:#efe3d7;padding:14px 16px;border-radius:10px;font-size:14px;${o.vat ? 'margin-top:16px;' : ''}">Outstanding balance: <strong>${owing}</strong>. We'll be in touch about the remaining payment${''}, or you can settle it any time from your portal.</p>` : ''}
     <p style="margin:28px 0;">${btn(o.portalUrl, 'Open my portal')}</p>
     <p style="margin-top:20px;">With warmth,<br>The K Academy team</p>`,
   });
@@ -995,6 +1007,20 @@ export function tmplAbandonedOrder(o: { firstName: string; resumeUrl: string }) 
     <h1 style="font-size:25px;margin:0 0 14px;">Pick up where you left off, ${escape(o.firstName)}.</h1>
     <p>You started an order with us but didn't quite finish checking out. Your bag is still waiting — it only takes a moment to complete it.</p>
     <p style="margin:26px 0;">${btn(o.resumeUrl, 'Finish my order')}</p>
+    <p style="font-size:14px;color:#91766e;">If you'd rather talk it through first, just reply to this email or call us — we're happy to help.</p>
+    <p style="margin-top:20px;">With warmth,<br>The KClinics team</p>`,
+  });
+}
+
+// BLD-1540: one-time nudge to a buyer who reached the Stripe payment step but
+// never completed a gift-voucher purchase. Mirrors tmplAbandonedOrder.
+export function tmplAbandonedGiftVoucher(o: { firstName: string; resumeUrl: string }) {
+  return emailShell({
+    preheader: `Your gift voucher is still waiting to be sent`,
+    body: `${heroBand('reminder')}
+    <h1 style="font-size:25px;margin:0 0 14px;">Pick up where you left off, ${escape(o.firstName)}.</h1>
+    <p>You started buying a gift voucher with us but didn't quite finish the payment. It only takes a moment to complete your gift voucher purchase.</p>
+    <p style="margin:26px 0;">${btn(o.resumeUrl, 'Finish my gift voucher purchase')}</p>
     <p style="font-size:14px;color:#91766e;">If you'd rather talk it through first, just reply to this email or call us — we're happy to help.</p>
     <p style="margin-top:20px;">With warmth,<br>The KClinics team</p>`,
   });

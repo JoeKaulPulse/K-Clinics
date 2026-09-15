@@ -4,6 +4,7 @@ import { db } from '@/lib/db';
 import { site } from '@/lib/site';
 import { getSecret } from '@/lib/secrets';
 import { encClinical, decClinical } from '@/lib/clinical-crypto';
+import { fetchWithRetry } from '@/lib/fetch-retry';
 
 // ── Live-chat AI agent ───────────────────────────────────────────────────────
 // A cheap Claude Haiku agent that answers most visitor chat messages, grounded
@@ -69,7 +70,12 @@ async function buildKnowledge(): Promise<string> {
   return lines.join('\n\n');
 }
 
-function systemPrompt(knowledge: string, open: boolean): string {
+// BLD-1683: dentistryLive is threaded in from the caller's getSiteConfig()
+// read (live, admin-toggleable) instead of the static site.dentistryLive
+// constant, matching the organizationLd() pattern (lib/seo.tsx, BLD-1672) —
+// otherwise the chat agent kept telling visitors dentistry wasn't bookable
+// after the owner flipped it on elsewhere.
+function systemPrompt(knowledge: string, open: boolean, dentistryLive: boolean): string {
   return `You are "K", the friendly virtual assistant for KClinics — an aesthetics & aesthetic-dentistry clinic in Clerkenwell, Islington, London. You answer visitor messages in a live chat on the website.
 
 ABOUT THE CLINIC
@@ -77,7 +83,7 @@ ABOUT THE CLINIC
 - Phone: ${site.phone}. Email: ${site.email}.
 - Opening hours: ${hoursText()} (London time).
 - Booking: visitors book online at ${site.booking.path} — they pick a treatment & time and save a card securely; nothing is charged until the treatment is delivered (or per the 24-hour cancellation policy). Consultations are complimentary.
-- Dentistry status: ${site.dentistryLive ? 'open and bookable.' : 'opening soon — dentistry is not bookable yet; invite interested visitors to register interest on the dentistry page.'}
+- Dentistry status: ${dentistryLive ? 'open and bookable.' : 'opening soon — dentistry is not bookable yet; invite interested visitors to register interest on the dentistry page.'}
 - The clinic is currently ${open ? 'OPEN — staff are available to take over.' : 'CLOSED — no staff are online right now.'}
 
 ${knowledge}
@@ -123,43 +129,42 @@ function toMessages(turns: ChatTurn[]): { role: 'user' | 'assistant'; content: s
 }
 
 async function callHaiku(key: string, system: string, messages: { role: 'user' | 'assistant'; content: string }[]): Promise<{ reply: string; escalate: boolean; reason: string } | null> {
-  // BLD-334: one bounded retry on a transient failure (network / timeout / 5xx).
-  // A 4xx is not retried (it won't succeed), and a failed call never produced a
+  // BLD-334 / BLD-1641: routed through the shared fetchWithRetry (lib/fetch-retry.ts,
+  // already used by the Calendar/Xero integrations) instead of a bare fetch() with
+  // its own retry loop -- attempts: 2 / 600ms backoff / 25s per-attempt timeout
+  // matches this call site's previous behaviour, and a 429 is now retried the
+  // same as a 5xx (the old `res.status >= 500` check didn't cover it, so a
+  // rate-limit used to fail the live-chat reply outright). A 4xx still returns
+  // immediately -- it won't succeed on retry, and a failed call never produced a
   // completion, so retrying can't double-bill.
-  for (let attempt = 0; attempt < 2; attempt++) {
-    try {
-      const res = await fetch('https://api.anthropic.com/v1/messages', {
-        method: 'POST',
-        headers: { 'content-type': 'application/json', 'x-api-key': key, 'anthropic-version': '2023-06-01' },
-        body: JSON.stringify({
-          model: HAIKU,
-          max_tokens: 400,
-          system: [{ type: 'text', text: system, cache_control: { type: 'ephemeral' } }],
-          messages,
-        }),
-        signal: AbortSignal.timeout(25_000),
-      });
-      if (!res.ok) {
-        if (res.status >= 500 && attempt === 0) { await new Promise((r) => setTimeout(r, 600)); continue; }
-        const body = await res.text().catch(() => '');
-        console.error('[chat-ai] anthropic', res.status, body);
-        Sentry.captureMessage('[chat-ai] anthropic call failed', { level: 'error', tags: { area: 'chat-ai', status: String(res.status) } });
-        return null;
-      }
-      const j = await res.json();
-      const text = j?.content?.find((c: { type: string }) => c.type === 'text')?.text ?? '';
-      const obj = JSON.parse(text.slice(text.indexOf('{'), text.lastIndexOf('}') + 1));
-      const reply = typeof obj.reply === 'string' ? obj.reply.trim().slice(0, 1200) : '';
-      if (!reply) return null;
-      return { reply, escalate: !!obj.escalate, reason: String(obj.reason || '').slice(0, 200) };
-    } catch (e) {
-      if (attempt === 0) { await new Promise((r) => setTimeout(r, 600)); continue; }
-      console.error('[chat-ai] call failed:', (e as Error)?.message);
-      Sentry.captureException(e, { tags: { area: 'chat-ai' } });
+  try {
+    const res = await fetchWithRetry('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', 'x-api-key': key, 'anthropic-version': '2023-06-01' },
+      body: JSON.stringify({
+        model: HAIKU,
+        max_tokens: 400,
+        system: [{ type: 'text', text: system, cache_control: { type: 'ephemeral' } }],
+        messages,
+      }),
+    }, { attempts: 2, baseDelayMs: 600, timeoutMs: 25_000, label: 'chat-ai' });
+    if (!res.ok) {
+      const body = await res.text().catch(() => '');
+      console.error('[chat-ai] anthropic', res.status, body);
+      Sentry.captureMessage('[chat-ai] anthropic call failed', { level: 'error', tags: { area: 'chat-ai', status: String(res.status) } });
       return null;
     }
+    const j = await res.json();
+    const text = j?.content?.find((c: { type: string }) => c.type === 'text')?.text ?? '';
+    const obj = JSON.parse(text.slice(text.indexOf('{'), text.lastIndexOf('}') + 1));
+    const reply = typeof obj.reply === 'string' ? obj.reply.trim().slice(0, 1200) : '';
+    if (!reply) return null;
+    return { reply, escalate: !!obj.escalate, reason: String(obj.reason || '').slice(0, 200) };
+  } catch (e) {
+    console.error('[chat-ai] call failed:', (e as Error)?.message);
+    Sentry.captureException(e, { tags: { area: 'chat-ai' } });
+    return null;
   }
-  return null;
 }
 
 // Hand the conversation to staff: flip to STAFF mode, post a hand-over note as
@@ -219,7 +224,9 @@ export async function maybeAutoReply(conversationId: string): Promise<void> {
     if (!messages.length) return;
 
     const knowledge = await buildKnowledge();
-    const result = await callHaiku(key, systemPrompt(knowledge, isOpenNow()), messages);
+    const { getSiteConfig } = await import('@/lib/site-config');
+    const { dentistryLive } = await getSiteConfig();
+    const result = await callHaiku(key, systemPrompt(knowledge, isOpenNow(), dentistryLive), messages);
 
     if (!result) { await handOver(conversationId, convo.visitorEmail, 'Thanks for your message!', 'assistant error'); return; }
 

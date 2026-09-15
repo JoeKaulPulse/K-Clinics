@@ -36,7 +36,7 @@ export function KioskThemeSelector({ current }: { current: KioskThemeKey }) {
             className={`rounded-full border px-4 py-2 text-sm transition-colors disabled:opacity-60 ${
               active === t.key
                 ? 'border-[var(--color-ink)] bg-[var(--color-ink)] text-[var(--color-porcelain)]'
-                : 'border-[var(--color-line)] bg-white text-[var(--color-ink)] hover:border-[var(--color-gold)]'
+                : 'border-[var(--color-line)] bg-[var(--color-porcelain)] text-[var(--color-ink)] hover:border-[var(--color-gold)]'
             }`}
             title={t.description}
           >

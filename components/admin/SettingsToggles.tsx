@@ -41,7 +41,7 @@ export function SettingsToggles({ initial, canManage }: { initial: Meta[]; canMa
             onClick={() => toggle(m.key, !m.value)}
             className={`mt-1 grid h-6 w-11 shrink-0 items-center rounded-full px-0.5 transition-colors disabled:opacity-50 ${m.value ? 'bg-[var(--color-gold)]' : 'bg-[var(--color-sand)]'}`}
           >
-            <span className={`h-5 w-5 rounded-full bg-white shadow transition-transform ${m.value ? 'translate-x-5' : ''}`} />
+            <span className={`h-5 w-5 rounded-full bg-[var(--color-porcelain)] shadow transition-transform ${m.value ? 'translate-x-5' : ''}`} />
           </button>
         </div>
       ))}

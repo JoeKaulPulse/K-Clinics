@@ -46,7 +46,7 @@ export function CoreQuestionEditor({ formKey, version, questions }: { formKey: s
       <p className="text-xs text-[var(--color-stone)]">Editing core questions (currently v{version}). Publishing creates a new version and updates the live form; <strong>previously completed forms keep their original wording</strong> for audit.</p>
       <ol className="mt-3 space-y-2">
         {list.map((q, i) => (
-          <li key={q.id} className="rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white p-3">
+          <li key={q.id} className="rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-3">
             <div className="flex items-start gap-2">
               <span className="mt-2 text-xs tabular-nums text-[var(--color-stone)]">{i + 1}</span>
               <div className="min-w-0 flex-1">

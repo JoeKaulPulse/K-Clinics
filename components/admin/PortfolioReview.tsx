@@ -58,7 +58,7 @@ function ClientLink({ entry: e, onChanged }: { entry: ReviewEntry; onChanged: ()
     <div className="rounded-[var(--radius-sm)] border border-dashed border-[var(--color-line)] p-2.5">
       <p className="text-xs text-[var(--color-blush-deep)]">Not linked to a client record — these photos won’t be found by an erasure or data-access request.</p>
       <div className="mt-1.5 flex flex-wrap items-center gap-2">
-        <input value={email} onChange={(ev) => setEmail(ev.target.value)} type="email" placeholder="Client’s email in the CRM" aria-label="Photographed client's email" className="w-64 rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-2.5 py-1.5 text-xs" />
+        <input value={email} onChange={(ev) => setEmail(ev.target.value)} type="email" placeholder="Client’s email in the CRM" aria-label="Photographed client's email" className="w-64 rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-porcelain)] px-2.5 py-1.5 text-xs" />
         <button onClick={() => email.trim() && act(email)} disabled={busy || !email.trim()} className="rounded-full border border-[var(--color-line)] px-3 py-1.5 text-xs hover:border-[var(--color-gold)] disabled:opacity-40">{busy ? 'Linking…' : 'Link client'}</button>
       </div>
       {error && <p role="alert" className="mt-1 text-xs text-[var(--color-blush-deep)]">{error}</p>}
@@ -79,7 +79,7 @@ function EntryRow({ entry: e, statusLabels, onChanged }: { entry: ReviewEntry; s
   }
 
   return (
-    <div className="rounded-[var(--radius-md)] border border-[var(--color-line)] bg-white">
+    <div className="rounded-[var(--radius-md)] border border-[var(--color-line)] bg-[var(--color-porcelain)]">
       <div className="flex flex-wrap items-center gap-2 p-3">
         <button onClick={() => setOpen((v) => !v)} className="text-[var(--color-stone)]">{open ? '▾' : '▸'}</button>
         <span className="flex-1 text-sm">
@@ -122,7 +122,7 @@ function EntryRow({ entry: e, statusLabels, onChanged }: { entry: ReviewEntry; s
           {e.photos.length > 0 && <ClientLink entry={e} onChanged={onChanged} />}
 
           <div>
-            <textarea value={feedback} onChange={(ev) => setFeedback(ev.target.value)} rows={2} placeholder="Feedback for the trainee (required to request changes)…" aria-label="Feedback for trainee" className="w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-3 py-2 text-sm" />
+            <textarea value={feedback} onChange={(ev) => setFeedback(ev.target.value)} rows={2} placeholder="Feedback for the trainee (required to request changes)…" aria-label="Feedback for trainee" className="w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-porcelain)] px-3 py-2 text-sm" />
             <div className="mt-2 flex flex-wrap gap-2">
               <button onClick={() => review('APPROVED')} disabled={busy} className="rounded-full bg-[var(--color-ink)] px-4 py-1.5 text-xs font-medium text-[var(--color-porcelain)] disabled:opacity-50">Approve</button>
               <button onClick={() => review('NEEDS_WORK')} disabled={busy} className="rounded-full border border-[var(--color-line)] px-4 py-1.5 text-xs hover:border-[var(--color-gold)] disabled:opacity-50">Request changes</button>

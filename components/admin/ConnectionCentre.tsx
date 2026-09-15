@@ -62,7 +62,7 @@ export function ConnectionCentre({ initial }: { initial: Centre }) {
 function Card({ c }: { c: ConnectionView }) {
   const l = LIGHT[c.light];
   return (
-    <div className="flex flex-col rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-white p-5">
+    <div className="flex flex-col rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-5">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <div className="flex items-center gap-2">
@@ -148,7 +148,7 @@ function KeyRow({ k }: { k: ConnectionKey }) {
           <input type="password" value={value} onChange={(e) => setValue(e.target.value)} autoComplete="off"
             placeholder={source === 'app' ? 'Enter to replace' : 'Paste value'}
             aria-label={k.label}
-            className="min-w-0 flex-1 rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-3 py-1.5 text-sm focus:border-[var(--color-gold)] focus-visible:ring-2 focus-visible:ring-[var(--color-gold)] focus:outline-none" />
+            className="min-w-0 flex-1 rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-porcelain)] px-3 py-1.5 text-sm focus:border-[var(--color-gold)] focus-visible:ring-2 focus-visible:ring-[var(--color-gold)] focus:outline-none" />
           <button onClick={save} disabled={busy || !value.trim()} className="rounded-full bg-[var(--color-ink)] px-4 py-1.5 text-sm font-medium text-[var(--color-porcelain)] hover:opacity-90 disabled:opacity-40">{busy ? '…' : 'Save'}</button>
           {source === 'app' && <button onClick={clear} disabled={busy} className="rounded-full border border-[var(--color-line)] px-3 py-1.5 text-sm text-[var(--color-stone)] hover:bg-[var(--color-bone)] disabled:opacity-40">Clear</button>}
           {msg && <span className="text-xs text-[var(--color-stone)]">{msg}</span>}

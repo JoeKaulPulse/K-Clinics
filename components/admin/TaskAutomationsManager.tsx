@@ -45,7 +45,7 @@ const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
 // ── Shared class strings ─────────────────────────────────────────────────────
 const field =
-  'w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-3 py-2 text-sm outline-none focus:border-[var(--color-gold)] focus-visible:ring-2 focus-visible:ring-[var(--color-gold)]';
+  'w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-porcelain)] px-3 py-2 text-sm outline-none focus:border-[var(--color-gold)] focus-visible:ring-2 focus-visible:ring-[var(--color-gold)]';
 const labelCls = 'mb-1 block text-xs font-medium uppercase tracking-[0.14em] text-[var(--color-stone)]';
 const primaryBtn =
   'rounded-full bg-[var(--color-gold-deep)] px-5 py-2 text-sm font-medium text-white hover:bg-[var(--color-ink)] disabled:opacity-50';
@@ -452,7 +452,7 @@ function AutomationCard({
             }`}
           >
             <span
-              className={`inline-block h-5 w-5 transform rounded-full bg-white shadow transition-transform ${
+              className={`inline-block h-5 w-5 transform rounded-full bg-[var(--color-porcelain)] shadow transition-transform ${
                 a.enabled ? 'translate-x-5' : 'translate-x-0.5'
               }`}
             />
@@ -544,7 +544,7 @@ function AutomationForm({
   const isSchedule = form.trigger === 'SCHEDULE';
 
   return (
-    <div className="rounded-[var(--radius-md)] border border-[var(--color-line)] bg-white p-6 shadow-[var(--shadow-lift)]">
+    <div className="rounded-[var(--radius-md)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-6 shadow-[var(--shadow-lift)]">
       <h2 className="mb-5 font-[family-name:var(--font-display)] text-2xl">
         {mode === 'create' ? 'New automation' : 'Edit automation'}
       </h2>
@@ -768,8 +768,8 @@ function AutomationForm({
                       key={s.id}
                       className={`flex cursor-pointer items-center gap-2 rounded-[var(--radius-sm)] border px-3 py-2 text-sm transition-colors ${
                         checked
-                          ? 'border-[var(--color-gold)] bg-white'
-                          : 'border-[var(--color-line)] bg-white hover:bg-[var(--color-bone)]'
+                          ? 'border-[var(--color-gold)] bg-[var(--color-porcelain)]'
+                          : 'border-[var(--color-line)] bg-[var(--color-porcelain)] hover:bg-[var(--color-bone)]'
                       }`}
                     >
                       <input

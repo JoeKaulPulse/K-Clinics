@@ -127,11 +127,11 @@ export function ChatWindow({ channelId, variant = 'docked', onRequestClose }: { 
           <p className="truncate text-sm font-medium">{channel.title}</p>
           <p className="truncate text-[0.65rem] text-[var(--color-gold-bright)]">{channel.kind === 'GROUP' ? `${channel.memberCount} members${channel.muted ? ' · muted' : ''}` : (channel.members.find((m) => m.id !== meId)?.title || 'Direct message')}</p>
         </div>
-        <button onClick={() => setMenu((v) => !v)} className="grid h-7 w-7 place-items-center rounded-full hover:bg-white/10" aria-label="Conversation options">⋯</button>
-        {docked && <button onClick={() => toggleMinimize(channelId)} className="grid h-7 w-7 place-items-center rounded-full hover:bg-white/10" aria-label="Minimize">—</button>}
-        <button onClick={() => (onRequestClose ? onRequestClose() : closeWindow(channelId))} className="grid h-7 w-7 place-items-center rounded-full hover:bg-white/10" aria-label="Close">✕</button>
+        <button onClick={() => setMenu((v) => !v)} className="grid h-7 w-7 place-items-center rounded-full hover:bg-[var(--color-porcelain)]/10" aria-label="Conversation options">⋯</button>
+        {docked && <button onClick={() => toggleMinimize(channelId)} className="grid h-7 w-7 place-items-center rounded-full hover:bg-[var(--color-porcelain)]/10" aria-label="Minimize">—</button>}
+        <button onClick={() => (onRequestClose ? onRequestClose() : closeWindow(channelId))} className="grid h-7 w-7 place-items-center rounded-full hover:bg-[var(--color-porcelain)]/10" aria-label="Close">✕</button>
         {menu && (
-          <div className="absolute right-2 top-11 z-[60] w-44 overflow-hidden rounded-[var(--radius-md)] border border-[var(--color-line)] bg-white text-[var(--color-ink)] shadow-[var(--shadow-lift)]">
+          <div className="absolute right-2 top-11 z-[60] w-44 overflow-hidden rounded-[var(--radius-md)] border border-[var(--color-line)] bg-[var(--color-porcelain)] text-[var(--color-ink)] shadow-[var(--shadow-lift)]">
             <button onClick={() => { void api({ op: 'mute', channelId, muted: !channel.muted }).then(refreshChannels); setMenu(false); }} className="block w-full px-3 py-2 text-left text-sm hover:bg-[var(--color-bone)]">{channel.muted ? 'Unmute' : 'Mute'} notifications</button>
             {channel.kind === 'GROUP' && <button onClick={() => { setManage('members'); setMenu(false); }} className="block w-full px-3 py-2 text-left text-sm hover:bg-[var(--color-bone)]">Members & add people</button>}
             {channel.kind === 'GROUP' && channel.myRole === 'OWNER' && <button onClick={() => { setManage('rename'); setMenu(false); }} className="block w-full px-3 py-2 text-left text-sm hover:bg-[var(--color-bone)]">Rename group</button>}
@@ -195,8 +195,8 @@ function MessageRow({ m, grouped, members, onReact, onReply, onDelete, onCreateT
         ) : (
           <>
             {m.body && (
-              <div className={`max-w-full whitespace-pre-wrap break-words rounded-[var(--radius-md)] px-3 py-1.5 text-left text-sm leading-snug ${mine ? 'bg-[var(--color-gold-deep)] text-white' : 'bg-white text-[var(--color-ink)]'}`}>
-                {parts.map((p, i) => p.mention ? <span key={i} className={`rounded px-0.5 font-medium ${mine ? 'bg-white/25' : 'bg-[var(--color-gold)]/20 text-[var(--color-gold-deep)]'}`}>{p.text}</span> : <span key={i}>{p.text}</span>)}
+              <div className={`max-w-full whitespace-pre-wrap break-words rounded-[var(--radius-md)] px-3 py-1.5 text-left text-sm leading-snug ${mine ? 'bg-[var(--color-gold-deep)] text-white' : 'bg-[var(--color-porcelain)] text-[var(--color-ink)]'}`}>
+                {parts.map((p, i) => p.mention ? <span key={i} className={`rounded px-0.5 font-medium ${mine ? 'bg-[var(--color-porcelain)]/25' : 'bg-[var(--color-gold)]/20 text-[var(--color-gold-deep)]'}`}>{p.text}</span> : <span key={i}>{p.text}</span>)}
               </div>
             )}
             {m.attachments.length > 0 && (
@@ -205,7 +205,7 @@ function MessageRow({ m, grouped, members, onReact, onReply, onDelete, onCreateT
                   a.kind === 'VIDEO'
                     ? <video key={a.id} src={a.url} controls className="max-h-48 max-w-[12rem] rounded-[var(--radius-md)] border border-[var(--color-line)]" />
                     : a.kind === 'FILE'
-                      ? <a key={a.id} href={a.url} target="_blank" rel="noreferrer" className="flex items-center gap-2 rounded-[var(--radius-md)] border border-[var(--color-line)] bg-white px-3 py-2 text-xs text-[var(--color-ink)] hover:border-[var(--color-gold)]">📄 <span className="max-w-[9rem] truncate">{a.name || 'File'}</span></a>
+                      ? <a key={a.id} href={a.url} target="_blank" rel="noreferrer" className="flex items-center gap-2 rounded-[var(--radius-md)] border border-[var(--color-line)] bg-[var(--color-porcelain)] px-3 py-2 text-xs text-[var(--color-ink)] hover:border-[var(--color-gold)]">📄 <span className="max-w-[9rem] truncate">{a.name || 'File'}</span></a>
                       : <a key={a.id} href={a.url} target="_blank" rel="noreferrer"><img src={a.url} alt={a.name || ''} className="max-h-48 max-w-[12rem] rounded-[var(--radius-md)] border border-[var(--color-line)] object-cover" /></a>
                 ))}
               </div>
@@ -215,7 +215,7 @@ function MessageRow({ m, grouped, members, onReact, onReply, onDelete, onCreateT
         {m.reactions.length > 0 && (
           <div className={`mt-1 flex flex-wrap gap-1 ${mine ? 'justify-end' : ''}`}>
             {m.reactions.map((r) => (
-              <button key={r.emoji} onClick={() => onReact(m.id, r.emoji)} className={`flex items-center gap-0.5 rounded-full border px-1.5 py-0.5 text-[0.7rem] ${r.mine ? 'border-[var(--color-gold)] bg-[var(--color-gold)]/15' : 'border-[var(--color-line)] bg-white'}`}>{r.emoji}<span className="text-[var(--color-stone)]">{r.count}</span></button>
+              <button key={r.emoji} onClick={() => onReact(m.id, r.emoji)} className={`flex items-center gap-0.5 rounded-full border px-1.5 py-0.5 text-[0.7rem] ${r.mine ? 'border-[var(--color-gold)] bg-[var(--color-gold)]/15' : 'border-[var(--color-line)] bg-[var(--color-porcelain)]'}`}>{r.emoji}<span className="text-[var(--color-stone)]">{r.count}</span></button>
             ))}
           </div>
         )}
@@ -229,7 +229,7 @@ function MessageRow({ m, grouped, members, onReact, onReply, onDelete, onCreateT
             the empty margin (mine→right, theirs→left) so it never spills past the
             window edge and triggers a horizontal scrollbar. */}
         {!m.deletedAt && (
-          <div className={`absolute -top-3 z-20 flex items-center gap-0.5 rounded-full border border-[var(--color-line)] bg-white px-1 py-0.5 opacity-0 shadow-[var(--shadow-lift)] transition-opacity group-hover:opacity-100 ${mine ? 'right-0' : 'left-0'}`}>
+          <div className={`absolute -top-3 z-20 flex items-center gap-0.5 rounded-full border border-[var(--color-line)] bg-[var(--color-porcelain)] px-1 py-0.5 opacity-0 shadow-[var(--shadow-lift)] transition-opacity group-hover:opacity-100 ${mine ? 'right-0' : 'left-0'}`}>
             {QUICK_REACTIONS.slice(0, 3).map((e) => <button key={e} onClick={() => onReact(m.id, e)} className="grid h-7 w-7 place-items-center rounded-full text-sm hover:bg-[var(--color-bone)]">{e}</button>)}
             <div className="relative">
               <button onClick={() => setPicker((v) => !v)} className={`${ACT} text-xs`} aria-label="More reactions">＋</button>
@@ -253,7 +253,7 @@ function ManagePanel({ mode, channelId, onDone, roster, memberIds, currentName }
   const [picked, setPicked] = useState<string[]>([]);
   const candidates = roster.filter((r) => !memberIds.includes(r.id));
   return (
-    <div className="border-b border-[var(--color-line)] bg-white px-3 py-2.5">
+    <div className="border-b border-[var(--color-line)] bg-[var(--color-porcelain)] px-3 py-2.5">
       {mode === 'rename' ? (
         <div className="flex items-center gap-2">
           <input value={name} onChange={(e) => setName(e.target.value)} className="flex-1 rounded-[var(--radius-sm)] border border-[var(--color-line)] px-2 py-1.5 text-sm outline-none focus:border-[var(--color-gold)] focus-visible:ring-2 focus-visible:ring-[var(--color-gold)]" />

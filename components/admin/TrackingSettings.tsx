@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 
-const field = 'mt-1 w-full max-w-xs rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-3 py-2 text-sm font-mono';
+const field = 'mt-1 w-full max-w-xs rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-porcelain)] px-3 py-2 text-sm font-mono';
 
 export function TrackingSettings({ initial, conversions }: { initial: { ga4Id: string; googleAdsId: string; metaPixelId: string }; conversions?: { ga4: boolean; meta: boolean } }) {
   const [ga4Id, setGa4] = useState(initial.ga4Id);

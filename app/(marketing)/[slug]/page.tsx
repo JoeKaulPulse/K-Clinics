@@ -104,7 +104,7 @@ export default async function TreatmentPage({ params }: { params: Promise<{ slug
         ) : (
           <ViewItemTracker id={t.slug} name={t.title} category={t.category} valuePence={fromPence ?? 0} />
         )}
-        <TreatmentTemplate t={t} />
+        <TreatmentTemplate t={t} dentistryLive={dentistryLive} />
       </>
     );
   }

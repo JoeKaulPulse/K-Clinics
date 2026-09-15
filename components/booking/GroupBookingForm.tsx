@@ -11,12 +11,25 @@ import { PhoneLink } from '@/components/marketing/PhoneLink';
 export function GroupBookingForm() {
   const [status, setStatus] = useState<'idle' | 'sent' | 'error'>('idle');
   const [busy, setBusy] = useState(false);
+  // BLD-1612: per-field validation errors, same pattern as BookingFlow.
+  const [errors, setErrors] = useState<Record<string, string>>({});
+  const clearErr = (k: string) => setErrors((prev) => (prev[k] ? { ...prev, [k]: '' } : prev));
 
   async function handleSubmit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
     const f = new FormData(e.currentTarget);
     const get = (k: string) => String(f.get(k) || '').trim();
     const name = get('name'); const company = get('company');
+
+    // BLD-1612: inline, per-field validation ahead of the API call.
+    const fieldErrors: Record<string, string> = {};
+    if (!name) fieldErrors.name = 'Please enter your name.';
+    if (!get('phone')) fieldErrors.phone = 'Please enter a phone number.';
+    if (!/\S+@\S+\.\S+/.test(get('email'))) fieldErrors.email = 'Enter a valid email address.';
+    if (get('message').length < 2) fieldErrors.message = 'Please tell us a little about your event.';
+    if (Object.keys(fieldErrors).length > 0) { setErrors(fieldErrors); return; }
+    setErrors({});
+
     setBusy(true);
     try {
       const [firstName, ...rest] = (name || 'Group enquiry').split(/\s+/);
@@ -57,9 +70,9 @@ export function GroupBookingForm() {
   return (
     <form onSubmit={handleSubmit} className="rounded-[var(--radius-xl)] border border-[var(--color-line)] bg-[var(--color-bone)] p-7 md:p-9">
       <div className="grid gap-5 sm:grid-cols-2">
-        <div><label htmlFor="gn" className={label}>Name *</label><input id="gn" name="name" required autoComplete="name" className={field} placeholder="Your name" /></div>
-        <div><label htmlFor="gp" className={label}>Phone *</label><input id="gp" name="phone" type="tel" required autoComplete="tel" className={field} placeholder="Best number" /></div>
-        <div className="sm:col-span-2"><label htmlFor="ge" className={label}>Email *</label><input id="ge" name="email" type="email" required autoComplete="email" className={field} placeholder="you@email.com" /></div>
+        <div><label htmlFor="gn" className={label}>Name *</label><input id="gn" name="name" autoComplete="name" aria-invalid={!!errors.name} aria-describedby={errors.name ? 'gn-err' : undefined} className={field} placeholder="Your name" onChange={() => clearErr('name')} />{errors.name && <p id="gn-err" role="alert" className="mt-1.5 text-xs text-[var(--color-blush-deep)]">{errors.name}</p>}</div>
+        <div><label htmlFor="gp" className={label}>Phone *</label><input id="gp" name="phone" type="tel" autoComplete="tel" aria-invalid={!!errors.phone} aria-describedby={errors.phone ? 'gp-err' : undefined} className={field} placeholder="Best number" onChange={() => clearErr('phone')} />{errors.phone && <p id="gp-err" role="alert" className="mt-1.5 text-xs text-[var(--color-blush-deep)]">{errors.phone}</p>}</div>
+        <div className="sm:col-span-2"><label htmlFor="ge" className={label}>Email *</label><input id="ge" name="email" type="email" autoComplete="email" aria-invalid={!!errors.email} aria-describedby={errors.email ? 'ge-err' : undefined} className={field} placeholder="you@email.com" onChange={() => clearErr('email')} />{errors.email && <p id="ge-err" role="alert" className="mt-1.5 text-xs text-[var(--color-blush-deep)]">{errors.email}</p>}</div>
         <div><label htmlFor="go" className={label}>Occasion</label>
           <select id="go" name="occasion" className={field} defaultValue="">
             <option value="">Select…</option>
@@ -70,7 +83,7 @@ export function GroupBookingForm() {
         <div><label htmlFor="gs" className={label}>Group size</label><input id="gs" name="size" inputMode="numeric" className={field} placeholder="e.g. 6" /></div>
         <div><label htmlFor="gd" className={label}>Preferred date</label><input id="gd" name="date" type="date" className={field} /></div>
         <div><label htmlFor="gt" className={label}>Treatments of interest</label><input id="gt" name="treatments" className={field} placeholder="e.g. facials, HydraGlow" /></div>
-        <div className="sm:col-span-2"><label htmlFor="gm" className={label}>Tell us about your event *</label><textarea id="gm" name="message" rows={4} required minLength={2} className={field} placeholder="What you have in mind — timings, any extras, refreshments…" /></div>
+        <div className="sm:col-span-2"><label htmlFor="gm" className={label}>Tell us about your event *</label><textarea id="gm" name="message" rows={4} aria-invalid={!!errors.message} aria-describedby={errors.message ? 'gm-err' : undefined} className={field} placeholder="What you have in mind — timings, any extras, refreshments…" onChange={() => clearErr('message')} />{errors.message && <p id="gm-err" role="alert" className="mt-1.5 text-xs text-[var(--color-blush-deep)]">{errors.message}</p>}</div>
       </div>
       <input type="text" name="company" tabIndex={-1} autoComplete="off" className="absolute -left-[9999px] h-0 w-0" aria-hidden />
       <div className="mt-6 flex flex-wrap items-center gap-4">
