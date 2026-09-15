@@ -9,7 +9,7 @@ async function post(payload: object) {
   return { ok: res.ok && json.ok !== false, json };
 }
 
-const field = 'w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-porcelain)] px-3 py-2 text-sm outline-none focus:border-[var(--color-gold)] focus-visible:ring-2 focus-visible:ring-[var(--color-gold)]';
+const field = 'w-full rounded-[var(--radius-sm)] border border-[var(--color-line-strong)] bg-[var(--color-porcelain)] px-3 py-2 text-sm outline-none focus:border-[var(--color-gold-deep)] focus-visible:ring-2 focus-visible:ring-[var(--color-gold-deep)]';
 
 export function ProfileEditor({ name: initialName, title: initialTitle, uk }: { name: string | null; title: string | null; uk: boolean }) {
   const router = useRouter();

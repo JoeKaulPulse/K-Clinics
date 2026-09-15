@@ -21,7 +21,7 @@ export function WaitlistCTA({ treatmentSlug, treatmentTitle, date, client }: { t
   const [busy, setBusy] = useState(false);
   const [done, setDone] = useState(false);
   const [err, setErr] = useState('');
-  const inp = 'min-w-0 flex-1 rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-3 py-2 text-sm focus:border-[var(--color-gold)] focus-visible:ring-2 focus-visible:ring-[var(--color-gold)]';
+  const inp = 'min-w-0 flex-1 rounded-[var(--radius-sm)] border border-[var(--color-line-strong)] bg-white px-3 py-2 text-sm focus:border-[var(--color-gold-deep)] focus-visible:ring-2 focus-visible:ring-[var(--color-gold-deep)]';
   const dayLabel = new Date(date).toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' });
 
   async function join() {

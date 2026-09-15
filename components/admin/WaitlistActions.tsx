@@ -4,7 +4,7 @@ import { useEffect, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { searchClientsForBooking } from '@/app/admin/bookings/create-action';
 
-const f = 'w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-3 py-2 text-sm outline-none focus:border-[var(--color-gold)] focus-visible:ring-2 focus-visible:ring-[var(--color-gold)]';
+const f = 'w-full rounded-[var(--radius-sm)] border border-[var(--color-line-strong)] bg-white px-3 py-2 text-sm outline-none focus:border-[var(--color-gold-deep)] focus-visible:ring-2 focus-visible:ring-[var(--color-gold-deep)]';
 
 // BLD-1646 — per-row actions on the waitlist admin page: notify the client a
 // slot's available (staff already agreed one by phone), or remove someone who

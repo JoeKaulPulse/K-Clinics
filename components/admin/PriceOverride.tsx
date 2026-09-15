@@ -57,7 +57,7 @@ export function PriceOverride({ bookingId, basePence, paid = false }: { bookingI
           onChange={(e) => setReason(e.target.value)}
           placeholder="Reason (required)"
           aria-label="Reason for the price change"
-          className="min-w-[10rem] flex-1 rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-porcelain)] px-2 py-1.5 outline-none focus:border-[var(--color-gold)] focus-visible:ring-2 focus-visible:ring-[var(--color-gold)]"
+          className="min-w-[10rem] flex-1 rounded-[var(--radius-sm)] border border-[var(--color-line-strong)] bg-[var(--color-porcelain)] px-2 py-1.5 outline-none focus:border-[var(--color-gold-deep)] focus-visible:ring-2 focus-visible:ring-[var(--color-gold-deep)]"
         />
         <button type="button" disabled={!valid || pending} onClick={save} className="rounded-full bg-[var(--color-ink)] px-3 py-1.5 text-xs font-medium text-[var(--color-porcelain)] disabled:opacity-40">
           {pending ? 'Saving…' : 'Apply'}

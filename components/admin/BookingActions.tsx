@@ -146,7 +146,7 @@ export function BookingActions({
           <div className="flex flex-wrap items-center gap-2">
             <span className="text-sm text-[var(--color-stone)]">£</span>
             <input value={amount} onChange={(e) => { setAmount(e.target.value); setConfirmCharge(false); }} inputMode="decimal"
-              className="w-28 rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-bone)] px-3 py-2 text-sm outline-none focus:border-[var(--color-gold)] focus-visible:ring-2 focus-visible:ring-[var(--color-gold)]" />
+              className="w-28 rounded-[var(--radius-sm)] border border-[var(--color-line-strong)] bg-[var(--color-bone)] px-3 py-2 text-sm outline-none focus:border-[var(--color-gold-deep)] focus-visible:ring-2 focus-visible:ring-[var(--color-gold-deep)]" />
             {!confirmCharge ? (
               <button disabled={pending || !(parseFloat(amount) > 0)} onClick={() => setConfirmCharge(true)}
                 className="rounded-full bg-[var(--color-gold-deep)] px-5 py-2 text-sm text-white disabled:opacity-60">Charge now…</button>
@@ -187,9 +187,9 @@ export function BookingActions({
               <div className="flex flex-wrap items-center gap-2">
                 <span className="text-sm text-[var(--color-stone)]">£</span>
                 <input value={refundAmt} onChange={(e) => { setRefundAmt(e.target.value); setConfirmRefund(false); }} inputMode="decimal" placeholder={(remainingRefund / 100).toFixed(2)} aria-label="Refund amount (£)"
-                  className="w-28 rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-bone)] px-3 py-2 text-sm outline-none focus:border-[var(--color-gold)] focus-visible:ring-2 focus-visible:ring-[var(--color-gold)]" />
+                  className="w-28 rounded-[var(--radius-sm)] border border-[var(--color-line-strong)] bg-[var(--color-bone)] px-3 py-2 text-sm outline-none focus:border-[var(--color-gold-deep)] focus-visible:ring-2 focus-visible:ring-[var(--color-gold-deep)]" />
                 <input value={refundReason} onChange={(e) => setRefundReason(e.target.value)} placeholder="Reason (optional)" aria-label="Refund reason"
-                  className="min-w-[8rem] flex-1 rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-bone)] px-3 py-2 text-sm outline-none focus:border-[var(--color-gold)] focus-visible:ring-2 focus-visible:ring-[var(--color-gold)]" />
+                  className="min-w-[8rem] flex-1 rounded-[var(--radius-sm)] border border-[var(--color-line-strong)] bg-[var(--color-bone)] px-3 py-2 text-sm outline-none focus:border-[var(--color-gold-deep)] focus-visible:ring-2 focus-visible:ring-[var(--color-gold-deep)]" />
               </div>
               {(() => { const pence = Math.round((parseFloat(refundAmt) || remainingRefund / 100) * 100); return (
                 !confirmRefund ? (
@@ -219,7 +219,7 @@ export function BookingActions({
           <p className="mb-2 text-sm font-medium">Reschedule (change date &amp; time)</p>
           <div className="flex flex-wrap items-center gap-2">
             <input type="datetime-local" value={newWhen} onChange={(e) => setNewWhen(e.target.value)}
-              className="rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-porcelain)] px-3 py-2 text-sm outline-none focus:border-[var(--color-gold)] focus-visible:ring-2 focus-visible:ring-[var(--color-gold)]" />
+              className="rounded-[var(--radius-sm)] border border-[var(--color-line-strong)] bg-[var(--color-porcelain)] px-3 py-2 text-sm outline-none focus:border-[var(--color-gold-deep)] focus-visible:ring-2 focus-visible:ring-[var(--color-gold-deep)]" />
             <button disabled={pending || !newWhen} onClick={() => start(async () => {
               // datetime-local gives "YYYY-MM-DDTHH:MM" — staff mean CLINIC wall-clock
               // time, so convert via Europe/London, not the device's ambient timezone.
@@ -246,7 +246,7 @@ export function BookingActions({
             <p className="mb-2 text-xs text-[var(--color-stone)]">Within 24h — but this course is pre-paid in full, so no late-cancellation fee will be taken.</p>
           )}
           <input value={reason} onChange={(e) => setReason(e.target.value)} placeholder="Reason (optional)" aria-label="Cancellation reason"
-            className="mb-2 w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-porcelain)] px-3 py-2 text-sm outline-none focus:border-[var(--color-gold)] focus-visible:ring-2 focus-visible:ring-[var(--color-gold)]" />
+            className="mb-2 w-full rounded-[var(--radius-sm)] border border-[var(--color-line-strong)] bg-[var(--color-porcelain)] px-3 py-2 text-sm outline-none focus:border-[var(--color-gold-deep)] focus-visible:ring-2 focus-visible:ring-[var(--color-gold-deep)]" />
           {/* BLD-1437: the waiver now needs the payment permission server-side,
               the same as the "No-show — waive fee" button above. Hide the tick
               from staff who can't use it rather than dead-ending them on an error. */}

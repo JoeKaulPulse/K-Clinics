@@ -7,7 +7,7 @@ import { Dialog } from '@/components/ui/Dialog';
 
 // BLD-1732 — admin-only edit of a trainee's first/last name. Email is never
 // shown here (it stays locked); saves write an admin-only audit entry.
-const f = 'w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-porcelain)] px-3 py-2 text-sm outline-none focus:border-[var(--color-gold)] focus-visible:ring-2 focus-visible:ring-[var(--color-gold)]';
+const f = 'w-full rounded-[var(--radius-sm)] border border-[var(--color-line-strong)] bg-[var(--color-porcelain)] px-3 py-2 text-sm outline-none focus:border-[var(--color-gold-deep)] focus-visible:ring-2 focus-visible:ring-[var(--color-gold-deep)]';
 
 export function EditStudentDetails({ studentId, firstName, lastName }: { studentId: string; firstName: string; lastName: string | null }) {
   const router = useRouter();

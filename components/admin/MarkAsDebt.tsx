@@ -9,7 +9,7 @@ import { Dialog } from '@/components/ui/Dialog';
 // left without paying. Saved permanently to the client's profile (ClientDebt)
 // and shown there as an "Outstanding balance" indicator until resolved.
 
-const field = 'w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-3 py-2 text-sm outline-none focus:border-[var(--color-gold)] focus-visible:ring-2 focus-visible:ring-[var(--color-gold)]';
+const field = 'w-full rounded-[var(--radius-sm)] border border-[var(--color-line-strong)] bg-white px-3 py-2 text-sm outline-none focus:border-[var(--color-gold-deep)] focus-visible:ring-2 focus-visible:ring-[var(--color-gold-deep)]';
 
 export function MarkAsDebt({ clientId, bookingId, clientName }: { clientId: string; bookingId?: string; clientName?: string }) {
   const router = useRouter();

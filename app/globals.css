@@ -52,6 +52,12 @@
   --color-muted: var(--color-stone);
   --color-accent: var(--color-gold);
   --color-line: color-mix(in oklab, var(--color-ink) 12%, transparent);
+  /* PRJ-1200.5: --color-line is 1.25:1 on porcelain — fine for a decorative
+     hairline/divider, but far under the WCAG 1.4.11 3:1 non-text-contrast
+     floor for a UI-component boundary like a form-field border. Inputs need
+     a visibly-stronger line without darkening every hairline/card divider
+     sitewide, hence a second token: 3.42:1 on porcelain, 3.99:1 on white. */
+  --color-line-strong: #867e78;
   /* Aliases some admin pages reference (previously undefined → always fell back
      to a light literal, which broke in dark mode). Now real tokens so they flip. */
   --color-surface-alt: #f9f5f0;                /* faint raised surface — table headers, chips */
@@ -134,6 +140,7 @@ html[data-theme='dark'] {
   --color-surface-alt: #241d17; /* raised surface (table headers, chips) on dark */
   /* --color-line derives from --color-ink (now light), so the hairline turns
      into a subtle light border on dark automatically. */
+  --color-line-strong: #706962; /* 3.26:1 on the dark porcelain surface */
   /* Shadows over near-black need real darkness to read as depth. */
   --shadow-soft: 0 2px 8px -2px rgb(0 0 0 / 0.4), 0 12px 32px -12px rgb(0 0 0 / 0.55);
   --shadow-lift: 0 8px 24px -8px rgb(0 0 0 / 0.5), 0 28px 64px -24px rgb(0 0 0 / 0.65);
