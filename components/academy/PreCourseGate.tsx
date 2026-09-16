@@ -73,7 +73,7 @@ export function PreCourseGate({ slug, title, level, content, agreement }: {
         <input
           type="text" value={signName} onChange={(e) => setSignName(e.target.value)}
           autoComplete="name" placeholder="Your full name" maxLength={120}
-          className="w-full rounded-[var(--radius-md)] border border-[var(--color-line)] bg-white px-3.5 py-2.5 font-[family-name:var(--font-display)] text-lg outline-none focus-visible:border-[var(--color-gold)] focus-visible:ring-2 focus-visible:ring-[var(--color-gold)]/35"
+          className="w-full rounded-[var(--radius-md)] border border-[var(--color-line)] bg-white px-3.5 py-2.5 font-[family-name:var(--font-display)] text-lg outline-none focus-visible:border-[var(--color-gold-deep)] focus-visible:ring-2 focus-visible:ring-[var(--color-gold-deep)]/35"
         />
       </label>
 

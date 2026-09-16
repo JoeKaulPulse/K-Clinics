@@ -108,7 +108,7 @@ function ThreadRow({ thread: t, label, busy, act }: { thread: ModThread; label: 
         <span className="flex-1 text-sm">
           <span className="font-medium text-[var(--color-ink)]">{t.title}</span>
           <span className="text-[var(--color-stone)]"> · {label(t.category)} · {t.authorName}{t.isStaff ? ' (tutor)' : ''} · {t.replyCount} repl{t.replyCount === 1 ? 'y' : 'ies'}</span>
-          {t.pinned && <span className="ml-1 text-[var(--color-gold)]">📌</span>}
+          {t.pinned && <span className="ml-1 text-[var(--color-gold-deep)]">📌</span>}
           {t.locked && <span className="ml-1">🔒</span>}
           {t.hidden && <span className="ml-1 rounded bg-[var(--color-line)] px-1.5 py-0.5 text-[0.6rem] uppercase text-[var(--color-stone)]">Hidden</span>}
         </span>
