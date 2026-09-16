@@ -21,7 +21,7 @@ type ClientInfo = { signedIn: boolean; firstName: string; email: string; gender:
 // (lib/package-sessions.ts). Only paid packages with sessions left are served.
 type Pkg = { purchaseBookingId: string; label: string; treatmentSlug: string; sessionsTotal: number; sessionsUsed: number; sessionsBooked: number; sessionsRemaining: number; paid: boolean };
 
-const field = 'w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-porcelain)] px-4 py-3 text-[var(--color-ink)] transition-colors placeholder:text-[var(--color-stone)] focus:border-[var(--color-gold)] focus-visible:ring-2 focus-visible:ring-[var(--color-gold)]';
+const field = 'w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-porcelain)] px-4 py-3 text-[var(--color-ink)] transition-colors placeholder:text-[var(--color-stone)] focus:border-[var(--color-gold-deep)] focus-visible:ring-2 focus-visible:ring-[var(--color-gold-deep)]';
 const label = 'mb-1.5 block text-xs uppercase tracking-[0.16em] text-[var(--color-stone)]';
 const money = (p: number) => (p <= 0 ? 'On consultation' : `£${(p / 100).toLocaleString('en-GB', { minimumFractionDigits: p % 100 ? 2 : 0 })}`);
 
@@ -960,7 +960,7 @@ function SaveProgress({ treatmentSlug, variantLabel }: { treatmentSlug: string; 
     <div className="mt-8 rounded-[var(--radius-md)] border border-[var(--color-line)] bg-[var(--color-bone)]/50 p-4">
       <label htmlFor="bintent" className={label}>Email me my selection so I can finish later (optional)</label>
       <div className="mt-1 flex flex-wrap items-center gap-2">
-        <input id="bintent" type="email" autoComplete="email" value={email} onChange={(e) => { setEmail(e.target.value); if (status === 'saved') setStatus(''); }} onBlur={save} placeholder="you@email.com" aria-label="Email me my selection" className="min-w-0 flex-1 rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-3 py-2 text-sm focus:border-[var(--color-gold)] focus-visible:ring-2 focus-visible:ring-[var(--color-gold)]" />
+        <input id="bintent" type="email" autoComplete="email" value={email} onChange={(e) => { setEmail(e.target.value); if (status === 'saved') setStatus(''); }} onBlur={save} placeholder="you@email.com" aria-label="Email me my selection" className="min-w-0 flex-1 rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-3 py-2 text-sm focus:border-[var(--color-gold-deep)] focus-visible:ring-2 focus-visible:ring-[var(--color-gold-deep)]" />
         <input type="text" tabIndex={-1} autoComplete="off" value={company} onChange={(e) => setCompany(e.target.value)} className="absolute -left-[9999px] h-0 w-0" aria-hidden />
         <button type="button" onClick={save} disabled={status === 'saving' || !valid} className="shrink-0 rounded-full border border-[var(--color-line)] px-4 py-2 text-sm font-medium hover:border-[var(--color-gold)] disabled:opacity-50">{status === 'saving' ? '…' : 'Save'}</button>
       </div>

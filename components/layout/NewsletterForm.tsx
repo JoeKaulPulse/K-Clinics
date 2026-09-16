@@ -37,7 +37,7 @@ export function NewsletterForm({ source = 'footer' }: { source?: string } = {}) 
           onChange={(e) => { setEmail(e.target.value); if (state === 'error') setState('idle'); }}
           placeholder="Your email address"
           aria-label="Your email address"
-          className="min-w-0 flex-1 bg-transparent px-4 py-3 text-sm text-[var(--color-porcelain)] outline-none placeholder:text-[color-mix(in_oklab,var(--color-porcelain)_45%,transparent)] focus-visible:ring-2 focus-visible:ring-[var(--color-gold)]"
+          className="min-w-0 flex-1 bg-transparent px-4 py-3 text-sm text-[var(--color-porcelain)] outline-none placeholder:text-[color-mix(in_oklab,var(--color-porcelain)_45%,transparent)] focus-visible:ring-2 focus-visible:ring-[var(--color-gold-deep)]"
         />
         <input type="text" tabIndex={-1} autoComplete="off" value={company} onChange={(e) => setCompany(e.target.value)} className="absolute -left-[9999px]" aria-hidden />
         <button type="submit" disabled={state === 'busy'} aria-label="Subscribe" className="grid w-12 shrink-0 place-items-center bg-[var(--color-gold-deep)] text-white transition-colors hover:bg-[var(--color-gold-soft)] hover:text-[var(--color-ink)] disabled:opacity-60">

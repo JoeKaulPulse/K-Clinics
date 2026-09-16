@@ -9,7 +9,7 @@ import { Dialog } from '@/components/ui/Dialog';
 // client profile so a mistaken or since-settled amount no longer needs a
 // database edit to correct.
 
-const field = 'w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-3 py-2 text-sm outline-none focus:border-[var(--color-gold)] focus-visible:ring-2 focus-visible:ring-[var(--color-gold)]';
+const field = 'w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-3 py-2 text-sm outline-none focus:border-[var(--color-gold-deep)] focus-visible:ring-2 focus-visible:ring-[var(--color-gold-deep)]';
 
 export function EditDebt({ clientId, debtId, amountPence, reason }: { clientId: string; debtId: string; amountPence: number; reason: string }) {
   const router = useRouter();
