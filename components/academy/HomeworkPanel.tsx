@@ -20,8 +20,13 @@ const fileName = (url: string) => { try { return decodeURIComponent(url.split('/
 // BLD-1695: light.notice sits on bg-[var(--color-bone)] (the `box` below), where
 // gold-deep only reaches 4.00:1 — an ink-family colour is required there (see
 // docs/projects/accessibility-aa.md S1).
+// BLD-1768 review: the gold focus-ring sweep is a LIGHT-surface fix — gold-deep
+// (#816748) clears 3:1 on porcelain/white but only reaches ~2.5:1 on this dark
+// tone's bg-white/5 fill, below the WCAG 1.4.11 floor and worse than the plain
+// gold (~4.1:1) it replaced. `dark` therefore keeps --color-gold throughout,
+// consistent with every other gold in that same tone object; only `light` moves.
 const TONES = {
-  dark: { notice: 'text-[var(--color-gold)]', box: 'border-white/10 bg-white/5', head: 'text-white/60', sub: 'border-white/10 bg-white/5', strong: 'text-white/90', soft: 'text-white/70', faint: 'text-white/60', fileLink: 'text-white/70 hover:text-[var(--color-gold)]', attach: 'border-white/15 text-white/80 hover:border-[var(--color-gold)]', fileRow: 'text-white/80', remove: 'text-white/60 hover:text-white/70', textarea: 'border-white/10 bg-white/5 text-white/90 placeholder:text-white/60 focus:border-[var(--color-gold-deep)] focus-visible:ring-2 focus-visible:ring-[var(--color-gold-deep)]' },
+  dark: { notice: 'text-[var(--color-gold)]', box: 'border-white/10 bg-white/5', head: 'text-white/60', sub: 'border-white/10 bg-white/5', strong: 'text-white/90', soft: 'text-white/70', faint: 'text-white/60', fileLink: 'text-white/70 hover:text-[var(--color-gold)]', attach: 'border-white/15 text-white/80 hover:border-[var(--color-gold)]', fileRow: 'text-white/80', remove: 'text-white/60 hover:text-white/70', textarea: 'border-white/10 bg-white/5 text-white/90 placeholder:text-white/60 focus:border-[var(--color-gold)] focus-visible:ring-2 focus-visible:ring-[var(--color-gold)]' },
   light: { notice: 'text-[var(--color-ink)]', box: 'border-[var(--color-line)] bg-[var(--color-bone)]', head: 'text-[var(--color-stone)]', sub: 'border-[var(--color-line)] bg-[var(--color-porcelain)]', strong: 'text-[var(--color-ink)]', soft: 'text-[var(--color-ink-soft)]', faint: 'text-[var(--color-stone)]', fileLink: 'text-[var(--color-ink-soft)] hover:text-[var(--color-gold-deep)]', attach: 'border-[var(--color-line)] text-[var(--color-ink-soft)] hover:border-[var(--color-gold)]', fileRow: 'text-[var(--color-ink-soft)]', remove: 'text-[var(--color-stone)] hover:text-[var(--color-ink)]', textarea: 'border-[var(--color-line)] bg-white text-[var(--color-ink)] placeholder:text-[var(--color-stone)] focus:border-[var(--color-gold-deep)] focus-visible:ring-2 focus-visible:ring-[var(--color-gold-deep)]' },
 } as const;
 

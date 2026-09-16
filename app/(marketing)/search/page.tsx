@@ -22,9 +22,15 @@ export default async function SearchPage({ searchParams }: { searchParams: Promi
     <>
       <PageHero eyebrow="Search" title={q ? `Results for “${q}”` : 'Search'} lede={q ? `${results.total} result${results.total === 1 ? '' : 's'}` : 'Find treatments, articles and pages.'}>
         <form action="/search" method="get" className="mx-auto mt-6 flex max-w-xl gap-2">
+          {/* PRJ-1200.5 review: this input sits INSIDE PageHero, whose surface is a
+              dark gradient (#2a2420→#4a3f37 under a dark overlay) — not porcelain.
+              gold-deep (#816748) is the AA token for LIGHT surfaces; against this
+              dark fill it measures 2.1–2.9:1, i.e. below the WCAG 1.4.11 3:1 floor
+              the gold sweep exists to clear, where plain gold (#a98a6d) measures
+              3.5–4.8:1. Dark surfaces keep --color-gold deliberately. */}
           <input
             name="q" defaultValue={q} autoFocus placeholder="Search treatments, articles…" aria-label="Search"
-            className="min-w-0 flex-1 rounded-full border border-white/20 bg-white/10 px-5 py-3 text-[var(--color-porcelain)] placeholder:text-[var(--color-porcelain)]/50 outline-none focus:border-[var(--color-gold-deep)] focus-visible:ring-2 focus-visible:ring-[var(--color-gold-deep)]"
+            className="min-w-0 flex-1 rounded-full border border-white/20 bg-white/10 px-5 py-3 text-[var(--color-porcelain)] placeholder:text-[var(--color-porcelain)]/50 outline-none focus:border-[var(--color-gold)] focus-visible:ring-2 focus-visible:ring-[var(--color-gold)]"
           />
           <button className="shrink-0 rounded-full bg-[var(--color-gold-deep)] px-6 py-3 text-sm font-medium text-white">Search</button>
         </form>
