@@ -56,6 +56,9 @@ export async function eraseClientData(clientId: string) {
         phone: null, dob: null, notes: null, allergies: null, medicalFlag: null, medicalFlagSetBy: null, medicalFlagAt: null,
         marketingOptIn: false, unsubscribed: true, portalActive: false, passwordHash: null,
         resetTokenHash: null, resetTokenExp: null,
+        // BLD-1797: the passwordless account-invite token now lives in its own
+        // columns (see lib/client-auth.ts) — clear it here too.
+        inviteTokenHash: null, inviteTokenExp: null,
         // BLD-1518: signupIp (personal data) and the patch-test outcome
         // (special-category health data) were left untouched by erasure.
         signupIp: null, patchTestResult: null, patchTestDate: null, patchTestSetBy: null,

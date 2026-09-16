@@ -283,6 +283,24 @@ export const PORTAL_DICT: Record<string, Entry> = {
   'status.CANCELLED': { en: 'Cancelled', uk: 'Скасовано' },
   'status.NO_SHOW': { en: 'Missed', uk: 'Пропущено' },
 
+  // Card on file (BLD-1797)
+  'card.title': { en: 'Card on file', uk: 'Картка на файлі' },
+  'card.intro': { en: 'Save a card for no-show and late-cancellation protection. No payment is taken now — your card is only charged if you miss an appointment or cancel within 24 hours.', uk: 'Збережіть картку для захисту від неявки та пізнього скасування. Зараз оплата не стягується — картку буде списано лише за пропущений візит або скасування менш ніж за 24 години.' },
+  'card.none': { en: 'No card on file', uk: 'Картки немає' },
+  'card.onFile': { en: 'Card on file', uk: 'Картка на файлі' },
+  'card.expires': { en: 'Expires {month}/{year}', uk: 'Дійсна до {month}/{year}' },
+  'card.add': { en: 'Add a card', uk: 'Додати картку' },
+  'card.update': { en: 'Update card', uk: 'Оновити картку' },
+  'card.cancel': { en: 'Cancel', uk: 'Скасувати' },
+  'card.save': { en: 'Save card securely', uk: 'Зберегти картку' },
+  'card.saving': { en: 'Saving…', uk: 'Збереження…' },
+  'card.saved': { en: 'Card saved ✓', uk: 'Картку збережено ✓' },
+  'card.appliedToBookings': { en: 'This now protects your upcoming appointments too.', uk: 'Тепер це також захищає ваші майбутні візити.' },
+  'card.loadError': { en: 'Could not load the card form. Please try again.', uk: 'Не вдалося завантажити форму картки. Спробуйте ще раз.' },
+  'card.saveError': { en: 'Your card could not be saved.', uk: 'Не вдалося зберегти картку.' },
+  'card.confirmError': { en: 'Saved with the bank, but we couldn’t confirm it. Please call us.', uk: 'Збережено банком, але ми не змогли це підтвердити. Будь ласка, зателефонуйте нам.' },
+  'card.unavailable': { en: 'Card management is temporarily unavailable — please call us to save a card.', uk: 'Керування карткою тимчасово недоступне — зателефонуйте нам, щоб зберегти картку.' },
+
   // Data & privacy
   'privacy.title': { en: 'Data & privacy', uk: 'Дані та конфіденційність' },
   'privacy.body': { en: 'Your data is encrypted and held securely. You can download a copy any time.', uk: 'Ваші дані зашифровані та зберігаються надійно. Ви можете завантажити копію будь-коли.' },

@@ -102,8 +102,8 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
   }
 
   // Strip secrets from the dump.
-  const { passwordHash, resetTokenHash, resetTokenExp, ...client } = c as Record<string, unknown> & { passwordHash?: unknown; resetTokenHash?: unknown; resetTokenExp?: unknown };
-  void passwordHash; void resetTokenHash; void resetTokenExp;
+  const { passwordHash, resetTokenHash, resetTokenExp, inviteTokenHash, inviteTokenExp, ...client } = c as Record<string, unknown> & { passwordHash?: unknown; resetTokenHash?: unknown; resetTokenExp?: unknown; inviteTokenHash?: unknown; inviteTokenExp?: unknown };
+  void passwordHash; void resetTokenHash; void resetTokenExp; void inviteTokenHash; void inviteTokenExp;
 
   // Fetch records not declared as reverse-FK relations on Client (no include path). (BLD-315)
   const [signedConsents, beforePhotos, chatConversations, shopOrders, consentRequests, promoRedemptions, giftVouchers, bookingIntents, newsletterSubscription] = await Promise.all([
