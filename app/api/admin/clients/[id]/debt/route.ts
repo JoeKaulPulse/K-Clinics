@@ -43,6 +43,14 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   const { db } = await import('@/lib/db');
   const client = await db.client.findUnique({ where: { id: clientId }, select: { id: true } });
   if (!client) return NextResponse.json({ ok: false, error: 'Client not found.' }, { status: 404 });
+  // PRJ-1200.1: mirror the practitionerId ownership check lib/crm-data.ts and
+  // the consultation-notes route already apply — a PRACTITIONER holding
+  // bookings.charge must not be able to record a debt on a client they've
+  // never actually had a booking with.
+  if (session!.role === 'PRACTITIONER') {
+    const own = await db.booking.findFirst({ where: { clientId, practitionerId: session!.sub }, select: { id: true } });
+    if (!own) return NextResponse.json({ ok: false, error: 'Client not found.' }, { status: 404 });
+  }
 
   // A supplied booking must belong to this same client, mirroring the same
   // guard on the incident-report route — never let a debt get mis-linked to

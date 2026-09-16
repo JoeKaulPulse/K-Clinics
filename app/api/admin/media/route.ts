@@ -38,7 +38,13 @@ export async function POST(req: Request) {
   const file = form?.get('file');
   if (!(file instanceof File)) return NextResponse.json({ ok: false, error: 'No file.' }, { status: 400 });
   if (file.size > MAX_BYTES) return NextResponse.json({ ok: false, error: 'Image is over 8 MB.' }, { status: 413 });
-  if (!file.type || !OK_MIME.test(file.type)) return NextResponse.json({ ok: false, error: 'Only image files are allowed.' }, { status: 415 });
+  // PRJ-1200.2: this route missed the PRJ-1191.11 magic-byte hardening rollout
+  // and still trusted the client-declared type alone — a mismatched or
+  // unsniffable (HTML/SVG/script) payload relabelled image/png sailed
+  // straight through, same bypass the sibling upload routes already closed.
+  const { verifiedFileMime } = await import('@/lib/security/file-type');
+  const mime = await verifiedFileMime(file);
+  if (!mime || !OK_MIME.test(mime)) return NextResponse.json({ ok: false, error: 'Only image files are allowed.' }, { status: 415 });
 
   const alt = String(form?.get('alt') || '');
   const width = Number(form?.get('width')) || null;
@@ -49,11 +55,11 @@ export async function POST(req: Request) {
 
   try {
     const { put } = await import('@vercel/blob');
-    const blob = await put(key, file, { access: 'public', addRandomSuffix: false, contentType: file.type || undefined });
+    const blob = await put(key, file, { access: 'public', addRandomSuffix: false, contentType: mime });
     const { db } = await import('@/lib/db');
     const { session } = g;
     const asset = await db.mediaAsset.create({
-      data: { url: blob.url, pathname: blob.pathname, filename: safe, alt: alt || null, mime: file.type || null, size: file.size, width, height, folder, createdBy: (session as { email?: string })?.email ?? null },
+      data: { url: blob.url, pathname: blob.pathname, filename: safe, alt: alt || null, mime, size: file.size, width, height, folder, createdBy: (session as { email?: string })?.email ?? null },
     });
     return NextResponse.json({ ok: true, asset });
   } catch (e) {

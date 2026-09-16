@@ -10,8 +10,16 @@ export const dynamic = 'force-dynamic';
 // financial write, not a routine profile edit.
 const MAX_DEBT_PENCE = 100_000_000; // mirrors the create-route bound (BLD-1572)
 
-async function loadDebt(clientId: string, debtId: string) {
+async function loadDebt(clientId: string, debtId: string, practitionerId?: string) {
   const { db } = await import('@/lib/db');
+  // PRJ-1200.1: mirror the practitionerId ownership check lib/crm-data.ts and
+  // the consultation-notes route already apply — a PRACTITIONER holding
+  // bookings.charge must not be able to edit/clear a debt on a client they've
+  // never actually had a booking with.
+  if (practitionerId) {
+    const own = await db.booking.findFirst({ where: { clientId, practitionerId }, select: { id: true } });
+    if (!own) return null;
+  }
   const debt = await db.clientDebt.findUnique({ where: { id: debtId }, select: { id: true, clientId: true, resolvedAt: true } });
   if (!debt || debt.clientId !== clientId) return null;
   return debt;
@@ -30,7 +38,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     return NextResponse.json({ ok: false, error: 'You don’t have permission to edit an outstanding balance.' }, { status: 403 });
   }
 
-  const existing = await loadDebt(clientId, debtId);
+  const existing = await loadDebt(clientId, debtId, session!.role === 'PRACTITIONER' ? session!.sub : undefined);
   if (!existing) return NextResponse.json({ ok: false, error: 'Not found.' }, { status: 404 });
   if (existing.resolvedAt) return NextResponse.json({ ok: false, error: 'This balance has already been cleared.' }, { status: 409 });
 
@@ -79,7 +87,7 @@ export async function DELETE(req: Request, { params }: { params: Promise<{ id: s
     return NextResponse.json({ ok: false, error: 'You don’t have permission to clear an outstanding balance.' }, { status: 403 });
   }
 
-  const existing = await loadDebt(clientId, debtId);
+  const existing = await loadDebt(clientId, debtId, session!.role === 'PRACTITIONER' ? session!.sub : undefined);
   if (!existing) return NextResponse.json({ ok: false, error: 'Not found.' }, { status: 404 });
   if (existing.resolvedAt) return NextResponse.json({ ok: true }); // already cleared — idempotent
 
