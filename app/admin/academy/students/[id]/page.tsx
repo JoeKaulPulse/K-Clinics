@@ -9,6 +9,7 @@ import { EditStudentDetails } from '@/components/admin/EditStudentDetails';
 import { GrantQuizAttempts } from '@/components/admin/GrantQuizAttempts';
 import { EnrolInCourse } from '@/components/admin/EnrolInCourse';
 import { BadgeIcon } from '@/components/academy/BadgeIcon';
+import { VtctRegistrationPanel } from '@/components/admin/VtctRegistrationPanel';
 import { getLocale } from '@/lib/locale';
 
 export const dynamic = 'force-dynamic';
@@ -40,7 +41,8 @@ export default async function AdminAcademyStudentPage({ params }: { params: Prom
   // BLD-528: linked clinic CRM client (same person), if any.
   const client = student.clientId ? await db.client.findUnique({ where: { id: student.clientId }, select: { id: true, firstName: true, lastName: true } }) : null;
 
-  const [enrolments, payments, lessonRows, quizRows, practiceRows, homeworkRows, badgeRows, passkeys, timeAgg, standing, allCourses] = await Promise.all([
+  const { adminGetRegistrationForStudent } = await import('@/lib/vtct-registration');
+  const [enrolments, payments, lessonRows, quizRows, practiceRows, homeworkRows, badgeRows, passkeys, timeAgg, standing, allCourses, vtctRegistration] = await Promise.all([
     db.enrolment.findMany({ where: { studentId: id }, orderBy: { createdAt: 'desc' }, include: { course: { select: { id: true, title: true, slug: true } }, cohort: { select: { startAt: true, name: true } } } }),
     db.enrolmentPayment.findMany({ where: { enrolment: { studentId: id } }, orderBy: [{ dueAt: 'asc' }, { createdAt: 'asc' }] }),
     db.lessonProgress.findMany({ where: { studentId: id }, orderBy: { completedAt: 'desc' }, take: 60, include: { lesson: { select: { title: true, module: { select: { course: { select: { title: true } } } } } } } }),
@@ -52,6 +54,7 @@ export default async function AdminAcademyStudentPage({ params }: { params: Prom
     db.lessonProgress.aggregate({ where: { studentId: id }, _sum: { secondsSpent: true } }),
     (await import('@/lib/academy-gamification')).studentStanding(id).catch(() => null),
     db.course.findMany({ where: { active: true }, orderBy: { order: 'asc' }, select: { id: true, title: true, level: true } }),
+    adminGetRegistrationForStudent(id),
   ]);
 
   // Courses this student can still be enrolled on (active, not already enrolled
@@ -217,6 +220,10 @@ export default async function AdminAcademyStudentPage({ params }: { params: Prom
               ))}
             </ul>
           )}
+        </Card>
+
+        <Card title="VTCT Registration Details">
+          <VtctRegistrationPanel registration={vtctRegistration} />
         </Card>
 
         <Card title="Security &amp; sign-in">

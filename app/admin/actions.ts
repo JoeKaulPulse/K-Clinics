@@ -382,6 +382,14 @@ export async function eraseStudentData(studentId: string) {
       console.error('[eraseStudentData] homework blob delete failed (continuing):', (e as Error)?.message);
     }
   }
+  // BLD-1794: VTCT registration details carry government identity documents
+  // (Photo ID, Proof of Address) — erase the row and its Blob files too, not
+  // just leave them behind once the student account itself is anonymised.
+  const { eraseVtctRegistrationForStudent } = await import('@/lib/vtct-registration');
+  const vtctErasure = await eraseVtctRegistrationForStudent(studentId);
+  if (vtctErasure.blobsFailed > 0) {
+    console.error(`[eraseStudentData] ${vtctErasure.blobsFailed} VTCT document blob(s) could not be deleted — the row is gone, files need manual cleanup`);
+  }
   await logAudit({ action: 'STUDENT_ERASED', actor: session.email, actorRole: session.role, summary: `Academy student ${student.email} data erased (GDPR Art.17)` });
   revalidatePath('/admin/academy');
   return { ok: true };

@@ -398,6 +398,19 @@ export async function GET(req: Request) {
     failures++; console.error('[cron] portfolio photo migration failed (continuing):', (e as Error)?.message);
   }
 
+  // BLD-1794: same self-heal as above, for VTCT registration documents (Photo
+  // ID / Proof of Address / prior qualification certs) — the client upload
+  // token can't pin the store's access level either, so this is the backstop
+  // that re-homes any that land in the public store.
+  let vtctMigration = { ran: false, migrated: 0, failed: 0, complete: false };
+  try {
+    const { migrateVtctDocumentsIfNeeded } = await import('@/lib/vtct-blob');
+    vtctMigration = await migrateVtctDocumentsIfNeeded();
+    if (vtctMigration.failed > 0) { failures++; console.error(`[cron] VTCT document migration: ${vtctMigration.failed} document(s) failed`); }
+  } catch (e) {
+    failures++; console.error('[cron] VTCT document migration failed (continuing):', (e as Error)?.message);
+  }
+
   // (ClinicOS Ring 0 academy-tenant backfill retired in Ring 1c — tenantId is now
   // NOT NULL, so no row can be tenant-less and there is nothing to backfill.)
 
@@ -574,7 +587,7 @@ export async function GET(req: Request) {
 
   // BLD-153: surface failure to the scheduler — non-200 when anything failed.
   return NextResponse.json(
-    { ok: failures === 0, failures, durationMs: cronDurationMs, ...result, loyalty, membership, gcal, gbiz, gbizPosts, retention, idMeta, pii, gdprSweep, scheduledEmail, adSpend, board, clinicalBackfill, consultBackfill, galleryEncrypt, courseLevels, staleOrders, portfolioMigration, examBank, gamification, authored, courseContent, communityDigest, instalmentDunning },
+    { ok: failures === 0, failures, durationMs: cronDurationMs, ...result, loyalty, membership, gcal, gbiz, gbizPosts, retention, idMeta, pii, gdprSweep, scheduledEmail, adSpend, board, clinicalBackfill, consultBackfill, galleryEncrypt, courseLevels, staleOrders, portfolioMigration, vtctMigration, examBank, gamification, authored, courseContent, communityDigest, instalmentDunning },
     { status: failures === 0 ? 200 : 500 },
   );
 }

@@ -2128,6 +2128,7 @@ model AcademyStudent {
   homeworkSubmissions HomeworkSubmission[]
   notifications       AcademyNotification[]
   fundingApplications FundingApplication[]
+  vtctRegistrations   VtctRegistration[] // BLD-1794: one per student, enforced in app code (see VtctRegistration)
 
   @@unique([tenantId, email]) // ClinicOS Ring 1 (BLD-301): per-tenant email — replaces the global @unique
   @@index([createdAt])
@@ -2153,6 +2154,109 @@ model StudentPasskey {
   lastUsedAt   DateTime?
 
   @@index([studentId])
+  @@index([tenantId])
+}
+
+// ── BLD-1794: VTCT registration details ──────────────────────────────────────
+// A trainee's personal details + identity documents required for registration
+// with the Academy's awarding body (VTCT Skills, via Linx2Online). Deliberately
+// a SEPARATE record from AcademyStudent — submitting/editing this never
+// overwrites the student's general account/profile fields.
+//
+// One row per student, enforced in app code (lib/vtct-registration.ts finds
+// the existing row before writing), not a DB @unique — the additive deploy
+// gate (`prisma db push` without --accept-data-loss) refuses new unique
+// constraints; see lib/task-refs.ts / HomeworkSubmission for the same pattern.
+//
+// Status lifecycle: SUBMITTED (awaiting admin review) -> CONFIRMED (admin has
+// checked the details against the documents) -> CHANGES_PENDING (the student
+// edited already-confirmed details; the edit saves immediately so nothing is
+// lost, but it flags for admin re-review rather than silently overwriting what
+// was confirmed) -> back to CONFIRMED once admin re-confirms. Chosen over
+// blocking edits outright, per the ticket's own steer to pick the simpler of
+// the two safe options.
+enum VtctRegistrationStatus {
+  SUBMITTED
+  CONFIRMED
+  CHANGES_PENDING
+}
+
+// Identity documents attached to a VtctRegistration. Stored in PRIVATE Vercel
+// Blob storage (mirrors BLD-798 kiosk selfies / BLD-740 portfolio clinical
+// photos) and only ever read through the authenticated relay
+// (lib/vtct-blob.ts, /api/academy/vtct-registration/document) — the trainee
+// who owns the registration, or signed-in staff (settings.manage). Never a
+// public/unauthenticated URL.
+enum VtctDocumentKind {
+  PHOTO_ID
+  PROOF_OF_ADDRESS
+  PRIOR_QUALIFICATION
+}
+
+model VtctRegistration {
+  id       String @id @default(cuid())
+  tenantId String // ClinicOS multi-tenant (Ring 0)
+
+  student   AcademyStudent @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  studentId String
+
+  title              String // Mr | Mrs | Miss | Ms | Other
+  firstName          String // legal first name
+  middleNames        String?
+  lastName           String // legal last name / surname
+  dob                DateTime
+  gender             Gender // reuses the existing inclusive Gender enum (see Client.gender)
+  genderSelfDescribe String? // free text when gender = OTHER
+  personalEmail      String
+  phone              String
+  addressLine1       String
+  addressLine2       String?
+  addressCity        String
+  addressPostcode    String
+  addressCountry     String @default("United Kingdom")
+
+  // "Have you previously completed or been registered for any VTCT Skills
+  // qualifications?" — priorLearnerCode is mandatory (validated in app code)
+  // only when previouslyRegistered is true.
+  previouslyRegistered Boolean @default(false)
+  priorLearnerCode     String?
+
+  // The Student Declaration, Accuracy of Information and Responsibility is
+  // agreed immediately before every submission/resubmission (see
+  // lib/vtct-registration.ts's DECLARATION_TEXT — the single source of truth
+  // the student-facing form renders verbatim).
+  declarationAgreedAt DateTime
+
+  status            VtctRegistrationStatus @default(SUBMITTED)
+  submittedAt       DateTime                @default(now()) // most recent submit/resubmit
+  confirmedAt       DateTime?
+  confirmedBy       String? // staff email
+  changeRequestedAt DateTime? // set when a CONFIRMED registration is edited again
+  adminNotes        String? // internal note (e.g. why a resubmission needs a closer look)
+
+  documents VtctRegistrationDocument[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([studentId])
+  @@index([tenantId])
+  @@index([status])
+}
+
+model VtctRegistrationDocument {
+  id             String           @id @default(cuid())
+  tenantId       String
+  registration   VtctRegistration @relation(fields: [registrationId], references: [id], onDelete: Cascade)
+  registrationId String
+  kind           VtctDocumentKind
+  filename       String
+  url            String // PRIVATE Vercel Blob URL — never sent to the browser directly
+  contentType    String?
+  sizeBytes      Int?
+  uploadedAt     DateTime @default(now())
+
+  @@index([registrationId])
   @@index([tenantId])
 }
 
