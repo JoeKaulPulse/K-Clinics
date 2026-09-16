@@ -5434,6 +5434,18 @@ export const BUILD_BACKLOG: BacklogItem[] = [
       'Verified: npx tsc --noEmit passes clean; npm run build passes clean (DB_SYNC_NONFATAL=true; sandbox cannot reach the production Postgres host).',
     ],
   },
+  {
+    title: 'Welcome discount could be double-redeemed by concurrent bookings; BNPL Klarna/Clearpay checkout leaked the literal treatment name',
+    type: 'ERROR', urgency: 'P1', status: 'SHIPPED', assignee: 'claude',
+    value: 8, effort: 3,
+    detail: 'BLD-1803: app/api/booking/start and app/api/booking/create read discountClaim.findFirst({status: ACTIVE}) then burned it with a plain update, not a CAS/updateMany guard like the promo-code path (lib/promo.ts redeemPromo) -- two concurrent bookings could both apply the 15 percent welcome discount off the same single-use claim. BLD-1807: app/api/admin/bookings/bnpl-link built the Stripe Checkout line item as product_data.name = booking.treatmentTitle with no generalisation, even though the same risk was already fixed for Meta/GA4 via adSensitiveTreatment() (BLD-1251) -- Klarna/Clearpay are independent data controllers, so a named health/aesthetic procedure (Dentures, Intimate Rejuvenation) was handed to a credit-decisioning third party outright, no consent gate involved.',
+    notes: [
+      'Fix (BLD-1803): both burn sites now use discountClaim.updateMany scoped to { id, status: ACTIVE } and check count === 1 before treating the claim as redeemed, mirroring redeemPromo Serializable-transaction CAS pattern. On a CAS loss (another request won the race) the booking is treated as never having had the welcome discount rather than as an error: price is adjusted back down to the pre-welcome baseline (the automatic offer discount it beat), and on booking/start the primary bookingItem discountPence is corrected too -- matching how the existing promo-code CAS-fail fallback already behaves on both routes.',
+      'Fix (BLD-1807): the BNPL route now looks up the booking treatment via getTreatment(booking.treatmentSlug) and, when adSensitiveTreatment() is true, generalises the Checkout line item name to the category label (Dentistry treatment / Aesthetics treatment) -- the same generalisation BLD-1251 already applies to Meta/GA4. The charged amount, the staff-facing interaction log, and non-sensitive treatments are all unaffected; only the string sent to Stripe Checkout, and onward to Klarna/Clearpay, changes for the sensitive subset.',
+      'Neither fix required a schema change.',
+      'Verified: npx tsc --noEmit and npm run build pass clean.',
+    ],
+  },
 ];
 
 // A content hash over every item's title + status + PR, so ANY change (a new

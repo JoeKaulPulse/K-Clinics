@@ -127,6 +127,10 @@ export async function POST(req: Request) {
   let primaryDiscount = primaryOffer?.discountPence ?? 0;
   let usedWelcome = false;
   const welcomeClaim = base > 0 ? await db.discountClaim.findFirst({ where: { clientId: client.id, status: 'ACTIVE' } }) : null;
+  // BLD-1803: remember the pre-welcome (automatic-offer-only) discount so a CAS
+  // failure on the burn below can fall back to it instead of leaving the welcome
+  // discount applied to a booking that never actually redeemed the claim.
+  const preWelcomeDiscount = primaryDiscount;
   if (welcomeClaim) {
     const w = Math.round((base * welcomeClaim.percent) / 100);
     if (w > primaryDiscount) { primaryDiscount = w; usedWelcome = true; }
@@ -311,9 +315,36 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: true, requested: true, bookingId: booking.id, manageToken: booking.manageToken });
   }
 
+  // BLD-1803: burn the welcome-discount claim with a CAS guard (updateMany
+  // scoped to status: 'ACTIVE'), mirroring lib/promo.ts's redeemPromo. A plain
+  // update let two concurrent bookings both read the same ACTIVE claim and both
+  // burn it, each getting 15% off. If the CAS loses (someone else redeemed it
+  // first), treat this booking as never having had the welcome discount —
+  // refund the difference — rather than erroring.
+  const burnWelcomeDiscount = async (currentDiscountPence: number): Promise<boolean> => {
+    const { count } = await db.discountClaim.updateMany({
+      where: { id: welcomeClaim!.id, status: 'ACTIVE' },
+      data: { status: 'REDEEMED', redeemedBookingId: booking.id },
+    });
+    if (count === 1) return true;
+    const restorePence = currentDiscountPence - preWelcomeDiscount;
+    if (restorePence > 0) {
+      await db.$transaction([
+        db.booking.update({ where: { id: booking.id }, data: { pricePence: { increment: restorePence } } }),
+        db.bookingItem.updateMany({ where: { bookingId: booking.id, isAddon: false }, data: { discountPence: preWelcomeDiscount } }),
+      ]).catch(() => {});
+      const { logAudit: logWelcomeAudit } = await import('@/lib/audit');
+      await logWelcomeAudit({
+        action: 'SESSION_EDITED', actor: 'system', clientId: client.id, bookingId: booking.id,
+        summary: `Welcome discount could not be redeemed (already used by a concurrent booking) — price adjusted by +£${(restorePence / 100).toFixed(2)}`,
+      }).catch(() => {});
+    }
+    return false;
+  };
+
   // Burn the welcome discount if it was the best offer used.
   if (usedWelcome && welcomeClaim) {
-    await db.discountClaim.update({ where: { id: welcomeClaim.id }, data: { status: 'REDEEMED', redeemedBookingId: booking.id } });
+    await burnWelcomeDiscount(primaryDiscount);
   }
   // Record the promo redemption (increments its usage counter).
   if (promo) {
@@ -331,7 +362,7 @@ export async function POST(req: Request) {
           db.bookingItem.updateMany({ where: { bookingId: booking.id, isAddon: false }, data: { discountPence: prePromoDiscount } }),
         ]).catch(() => {});
         if (prePromoUsedWelcome && welcomeClaim) {
-          await db.discountClaim.update({ where: { id: welcomeClaim.id }, data: { status: 'REDEEMED', redeemedBookingId: booking.id } }).catch(() => {});
+          await burnWelcomeDiscount(prePromoDiscount);
         }
         const { logAudit: logPromoAudit } = await import('@/lib/audit');
         await logPromoAudit({
