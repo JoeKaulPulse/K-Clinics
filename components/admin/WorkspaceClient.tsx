@@ -153,7 +153,7 @@ export function WorkspaceClient() {
     setCreatingGroup(false);
   }
 
-  const inputCls = 'border border-[var(--color-border)] rounded-lg px-3 py-2 text-sm bg-[var(--color-surface-alt)] focus:outline-none focus:ring-2 focus:ring-[var(--color-gold)]';
+  const inputCls = 'border border-[var(--color-border)] rounded-lg px-3 py-2 text-sm bg-[var(--color-surface-alt)] focus:outline-none focus:ring-2 focus:ring-[var(--color-gold-deep)]';
   const btnCls = 'px-4 py-2 rounded-lg text-sm font-medium transition-colors';
 
   return (

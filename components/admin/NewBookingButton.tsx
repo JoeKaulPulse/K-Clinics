@@ -14,7 +14,7 @@ type Treatment = { slug: string; title: string; group: string; variants?: Varian
 type Found = { id: string; firstName: string; lastName: string | null; email: string; phone: string | null; hasDob: boolean; hasCard: boolean; clientStatus?: 'GREEN' | 'YELLOW' | 'RED' | null; clientStatusReason?: string | null };
 type Result = { bookingId: string; manageToken?: string; hasCard?: boolean; clientFirstName?: string; clientEmail?: string; clientHasEmail?: boolean };
 
-const f = 'w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-porcelain)] px-3 py-2.5 text-sm outline-none focus:border-[var(--color-gold)] focus-visible:ring-2 focus-visible:ring-[var(--color-gold)]';
+const f = 'w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-porcelain)] px-3 py-2.5 text-sm outline-none focus:border-[var(--color-gold-deep)] focus-visible:ring-2 focus-visible:ring-[var(--color-gold-deep)]';
 const priceLabel = (p: number) => (p > 0 ? `£${(p / 100).toLocaleString('en-GB', { minimumFractionDigits: p % 100 ? 2 : 0 })}` : 'On consultation');
 
 export function NewBookingButton({ treatments, isAdmin = false }: { treatments: Treatment[]; isAdmin?: boolean }) {

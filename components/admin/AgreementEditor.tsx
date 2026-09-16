@@ -10,7 +10,7 @@ import type { AgreementSection } from '@/lib/learner-agreement';
 // version" creates a new, permanently traceable version and is what new
 // learners are shown from then on. The publish button only renders when the
 // page passed `isOwner` — the server action re-checks OWNER itself regardless.
-const f = 'w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-porcelain)] px-3 py-2 text-sm outline-none focus:border-[var(--color-gold)] focus-visible:ring-2 focus-visible:ring-[var(--color-gold)]';
+const f = 'w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-porcelain)] px-3 py-2 text-sm outline-none focus:border-[var(--color-gold-deep)] focus-visible:ring-2 focus-visible:ring-[var(--color-gold-deep)]';
 
 export function AgreementEditor({ initialSections, isOwner }: { initialSections: AgreementSection[]; isOwner: boolean }) {
   const router = useRouter();

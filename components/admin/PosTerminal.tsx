@@ -115,7 +115,7 @@ export function PosTerminal({ products }: { products: P[] }) {
     <div className="grid gap-6 lg:grid-cols-[1fr_360px]">
       {/* Products */}
       <div>
-        <input value={q} onChange={(e) => setQ(e.target.value)} onKeyDown={onScan} autoFocus placeholder="Scan a barcode, or search products…" aria-label="Scan barcode or search products" className="mb-4 w-full rounded-full border border-[var(--color-line)] bg-[var(--color-porcelain)] px-5 py-3 outline-none focus:border-[var(--color-gold)] focus-visible:ring-2 focus-visible:ring-[var(--color-gold)]" />
+        <input value={q} onChange={(e) => setQ(e.target.value)} onKeyDown={onScan} autoFocus placeholder="Scan a barcode, or search products…" aria-label="Scan barcode or search products" className="mb-4 w-full rounded-full border border-[var(--color-line)] bg-[var(--color-porcelain)] px-5 py-3 outline-none focus:border-[var(--color-gold-deep)] focus-visible:ring-2 focus-visible:ring-[var(--color-gold-deep)]" />
         {products.length === 0 ? (
           <p className="text-sm text-[var(--color-stone)]">No active products yet. Add them in Catalogue → Products.</p>
         ) : (
@@ -162,7 +162,7 @@ export function PosTerminal({ products }: { products: P[] }) {
         {/* Gift voucher (BLD-882) — checked here for a balance preview; the
             balance is only actually reserved when the sale completes. */}
         <div className="mt-3 flex items-center gap-2">
-          <input value={vcode} onChange={(e) => { setVcode(e.target.value); setVBalance(null); }} onKeyDown={(e) => e.key === 'Enter' && checkVoucher()} placeholder="Gift voucher code" aria-label="Gift voucher code" className="min-w-0 flex-1 rounded-full border border-[var(--color-line)] bg-[var(--color-porcelain)] px-4 py-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-gold)]" />
+          <input value={vcode} onChange={(e) => { setVcode(e.target.value); setVBalance(null); }} onKeyDown={(e) => e.key === 'Enter' && checkVoucher()} placeholder="Gift voucher code" aria-label="Gift voucher code" className="min-w-0 flex-1 rounded-full border border-[var(--color-line)] bg-[var(--color-porcelain)] px-4 py-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-gold-deep)]" />
           <button onClick={checkVoucher} disabled={busy || !vcode.trim()} className="rounded-full border border-[var(--color-line)] px-4 py-2 text-sm disabled:opacity-50">Check</button>
         </div>
         {vBalance != null && vcode.trim() && (() => {
