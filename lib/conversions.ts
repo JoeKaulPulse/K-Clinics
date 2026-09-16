@@ -1,7 +1,7 @@
 import 'server-only';
 import crypto from 'node:crypto';
 import { crmEnabled } from '@/lib/crm';
-import { uploadGoogleAdsConversion } from '@/lib/google-ads-conversions';
+import { uploadGoogleAdsConversion, googleAdsConversionsConfigured } from '@/lib/google-ads-conversions';
 
 // Server-side conversion events. When a booking is charged we report the sale to
 // GA4 (Measurement Protocol) and Meta (Conversions API) using server-held
@@ -21,10 +21,10 @@ async function readJson(key: string): Promise<Record<string, string>> {
   } catch { return {}; }
 }
 
-export async function conversionStatus(): Promise<{ ga4: boolean; meta: boolean }> {
-  if (!crmEnabled) return { ga4: false, meta: false };
-  const [ids, secrets] = await Promise.all([readJson(TRACKING_KEY), readJson(SECRETS_KEY)]);
-  return { ga4: Boolean(ids.ga4Id && secrets.ga4ApiSecret), meta: Boolean(ids.metaPixelId && secrets.metaCapiToken) };
+export async function conversionStatus(): Promise<{ ga4: boolean; meta: boolean; googleAds: boolean }> {
+  if (!crmEnabled) return { ga4: false, meta: false, googleAds: false };
+  const [ids, secrets, googleAds] = await Promise.all([readJson(TRACKING_KEY), readJson(SECRETS_KEY), googleAdsConversionsConfigured()]);
+  return { ga4: Boolean(ids.ga4Id && secrets.ga4ApiSecret), meta: Boolean(ids.metaPixelId && secrets.metaCapiToken), googleAds };
 }
 
 // GA4 is analytics-purpose, Meta is marketing-purpose (same split as the browser
