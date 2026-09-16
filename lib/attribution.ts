@@ -62,44 +62,67 @@ export function consentFromCookieHeader(cookieHeader?: string | null): { analyti
 // These two functions close that gap without touching consent gating itself:
 // they only decide what happens to attribution data that already arrived on the
 // URL, never whether tracking cookies get written without consent.
-const ATTRIB_PENDING_KEY = 'kc_attrib_pending';
+//
+// BLD-1804 (review fix): the pre-consent buffer is held IN MEMORY only, and the
+// cookie itself is still written by middleware, never by this module. Two
+// reasons, both of which a sessionStorage + document.cookie implementation got
+// wrong:
+//  1. PECR reg. 6 — the rule the middleware block above cites — covers "storing
+//     information, or gaining access to information stored, in the terminal
+//     equipment of a user". That is not cookie-specific: sessionStorage counts.
+//     An ad-click id (gclid/fbclid) is not strictly necessary for the service
+//     the visitor asked for, so it must not be written to browser storage
+//     before an affirmative marketing opt-in. An in-memory buffer stores
+//     nothing on the device and still covers the real window (the banner is
+//     answered on the landing page, or after client-side navigation, with this
+//     module still loaded).
+//  2. document.cookie cannot set httpOnly and cannot READ an httpOnly cookie.
+//     Writing ATTRIB_COOKIE from JS both downgraded it to script-readable and
+//     made the "first touch wins" check blind to the httpOnly cookie middleware
+//     had already set — so a returning visitor who re-saved their cookie
+//     preferences could silently overwrite their original attribution.
+let pendingAttribution: Attribution | null = null;
 
 /** Call on every page load, before any consent decision is known. Buffers any
- *  gclid/fbclid/UTM params present on the current URL into sessionStorage, so
- *  they survive further page loads within the same tab for as long as the
- *  consent decision is pending. No-ops server-side and swallows storage
- *  errors (private browsing, quota, disabled storage) — this is a
- *  best-effort improvement, never load-bearing for page render. */
+ *  gclid/fbclid/UTM params present on the current URL in memory (no browser
+ *  storage — see the note above), so they survive client-side navigation for
+ *  as long as the consent decision is pending. No-ops server-side; never
+ *  load-bearing for page render. */
 export function bufferAttributionFromLocation(): void {
   if (typeof window === 'undefined') return;
+  // First touch wins, same rule the cookie itself uses (middleware only writes
+  // ATTRIB_COOKIE when one isn't already present) — never let a later page view
+  // clobber the ad click that actually brought the visitor in.
+  if (pendingAttribution) return;
   try {
-    // First touch wins, same rule the cookie itself uses (middleware only
-    // writes ATTRIB_COOKIE when one isn't already present) — never let a
-    // later page view in the same session clobber the ad click that actually
-    // brought the visitor in.
-    if (window.sessionStorage.getItem(ATTRIB_PENDING_KEY)) return;
-    const attrib = attributionFromUrl(new URL(window.location.href));
-    if (attrib) window.sessionStorage.setItem(ATTRIB_PENDING_KEY, JSON.stringify(attrib));
-  } catch { /* sessionStorage unavailable — nothing to buffer */ }
+    pendingAttribution = attributionFromUrl(new URL(window.location.href));
+  } catch { /* malformed URL — nothing to buffer */ }
 }
 
 /** Call at the exact moment marketing consent is granted (the cookie-consent
  *  banner's accept action). If a pre-consent attribution was buffered by
- *  `bufferAttributionFromLocation`, writes ATTRIB_COOKIE retroactively —
- *  same JSON shape and max-age as middleware's own write — so code reading
- *  the cookie picks it up immediately, not just on a lucky next server
- *  request that still happens to carry the original ad-click params. Clears
- *  the buffer either way (it is single-use), and never overwrites a cookie
- *  that is already present. */
-export function writeBufferedAttributionCookie(): void {
+ *  `bufferAttributionFromLocation`, replays those ad-click params on one
+ *  same-origin request so MIDDLEWARE writes ATTRIB_COOKIE — httpOnly, gated on
+ *  the marketing-consent cookie the banner has just set, and first-touch
+ *  checked against the real cookie jar. The buffer is single-use and is
+ *  cleared either way. If the request fails, the attribution is simply lost —
+ *  the behaviour before this fix — never a weaker or ungated cookie. */
+export function promoteBufferedAttribution(): void {
   if (typeof window === 'undefined') return;
+  const attrib = pendingAttribution;
+  pendingAttribution = null;
+  if (!attrib) return;
   try {
-    const raw = window.sessionStorage.getItem(ATTRIB_PENDING_KEY);
-    window.sessionStorage.removeItem(ATTRIB_PENDING_KEY);
-    const attrib = parseAttribution(raw);
-    if (!attrib) return;
-    if (new RegExp(`(?:^|;\\s*)${ATTRIB_COOKIE}=`).test(document.cookie)) return; // already set — first touch wins
-    const secure = window.location.protocol === 'https:' ? '; Secure' : '';
-    document.cookie = `${ATTRIB_COOKIE}=${encodeURIComponent(JSON.stringify(attrib))}; path=/; max-age=${ATTRIB_MAX_AGE}; SameSite=Lax${secure}`;
-  } catch { /* document.cookie unavailable */ }
+    // Replay on the original landing path so middleware records the same
+    // `landing` value it would have. Only a plain absolute path is accepted:
+    // a protocol-relative pathname ("//evil.example") would otherwise resolve
+    // to a third-party origin and hand it the gclid.
+    const landing = attrib.landing && /^\/[^/\\]/.test(attrib.landing) ? attrib.landing : '/';
+    const u = new URL(landing, window.location.origin);
+    if (attrib.source) u.searchParams.set('utm_source', attrib.source);
+    if (attrib.medium) u.searchParams.set('utm_medium', attrib.medium);
+    if (attrib.campaign) u.searchParams.set('utm_campaign', attrib.campaign);
+    if (attrib.gclid) u.searchParams.set('gclid', attrib.gclid);
+    void fetch(u.toString(), { method: 'HEAD', credentials: 'same-origin', cache: 'no-store' }).catch(() => {});
+  } catch { /* best-effort */ }
 }

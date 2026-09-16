@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { AnimatePresence, motion } from 'motion/react';
-import { bufferAttributionFromLocation, writeBufferedAttributionCookie } from '@/lib/attribution';
+import { bufferAttributionFromLocation, promoteBufferedAttribution } from '@/lib/attribution';
 
 // UK GDPR / PECR-compliant cookie consent. Non-essential cookies (analytics,
 // marketing) are OFF until the visitor actively opts in — no pre-ticked boxes,
@@ -44,10 +44,13 @@ function save(v: ConsentValue) {
   mirrorConsentCookies(v);
   // BLD-1804: the moment marketing consent is granted, promote any pre-consent
   // ad-click attribution that was buffered (in bufferAttributionFromLocation
-  // below) into the real kc_attrib cookie — otherwise a brand-new visitor's
-  // first-touch gclid/UTM data is silently lost the instant they land, because
-  // middleware itself never writes that cookie ahead of consent.
-  if (v.marketing) writeBufferedAttributionCookie();
+  // below) — otherwise a brand-new visitor's first-touch gclid/UTM data is
+  // silently lost the instant they land, because middleware itself never
+  // writes kc_attrib ahead of consent. mirrorConsentCookies() above has
+  // already set kc_marketing_consent=1, so the replayed request middleware
+  // sees carries the affirmative opt-in; middleware, not this file, writes
+  // the cookie.
+  if (v.marketing) promoteBufferedAttribution();
   window.dispatchEvent(new CustomEvent('kc-consent', { detail: v }));
 }
 
@@ -69,9 +72,10 @@ export function CookieConsent() {
   useEffect(() => {
     // BLD-1804: stash any gclid/fbclid/UTM params on this landing URL before
     // the consent decision is known — first paint, regardless of whether the
-    // banner shows — so they survive across this session's page loads for the
-    // pre-consent window and can be written to kc_attrib the moment (if ever)
+    // banner shows — so they survive client-side navigation for the
+    // pre-consent window and can reach kc_attrib the moment (if ever)
     // marketing consent is granted, instead of being dropped on arrival.
+    // Held in memory only: nothing is written to the device pre-consent.
     bufferAttributionFromLocation();
     const stored = getConsent();
     if (!stored) setShow(true);
