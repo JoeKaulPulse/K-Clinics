@@ -26,7 +26,7 @@ export function RegisterInterest({ className = '' }: { className?: string }) {
 
   return (
     <form onSubmit={submit} noValidate className={className}>
-      <div className="flex max-w-md overflow-hidden rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-porcelain)] focus-within:border-[var(--color-gold)]">
+      <div className="flex max-w-md overflow-hidden rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-porcelain)] focus-within:border-[var(--color-gold-deep)]">
         <input
           type="email"
           autoComplete="email"
@@ -34,7 +34,7 @@ export function RegisterInterest({ className = '' }: { className?: string }) {
           onChange={(e) => { setEmail(e.target.value); if (state === 'error') setState('idle'); }}
           placeholder="Your email address"
           aria-label="Your email address"
-          className="min-w-0 flex-1 bg-transparent px-4 py-3 text-sm text-[var(--color-ink)] outline-none placeholder:text-[var(--color-stone)] focus-visible:ring-2 focus-visible:ring-[var(--color-gold)]"
+          className="min-w-0 flex-1 bg-transparent px-4 py-3 text-sm text-[var(--color-ink)] outline-none placeholder:text-[var(--color-stone)] focus-visible:ring-2 focus-visible:ring-[var(--color-gold-deep)]"
         />
         <input type="text" tabIndex={-1} autoComplete="off" value={company} onChange={(e) => setCompany(e.target.value)} className="absolute -left-[9999px]" aria-hidden />
         <button type="submit" disabled={state === 'busy'} className="shrink-0 bg-[var(--color-ink)] px-5 text-sm font-medium text-[var(--color-porcelain)] transition-colors hover:bg-[var(--color-gold-deep)] hover:text-white disabled:opacity-60">
