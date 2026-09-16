@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
+import Image from 'next/image';
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
 import { KMark } from '@/components/brand/marks';
 import { trackLead } from '@/lib/analytics-events';
@@ -37,7 +38,10 @@ const fmtDate = (iso: string) => new Date(iso).toLocaleDateString('en-GB', { day
 async function downscale(file: File): Promise<string> {
   const url = URL.createObjectURL(file);
   try {
-    const img = await new Promise<HTMLImageElement>((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = rej; i.src = url; });
+    // window.Image (not the `Image` identifier, which is next/image's component
+    // in this file) — the plain HTMLImageElement constructor, used only to read
+    // the uploaded file's natural size before downscaling it onto a canvas.
+    const img = await new Promise<HTMLImageElement>((res, rej) => { const i = new window.Image(); i.onload = () => res(i); i.onerror = rej; i.src = url; });
     const max = 768; const scale = Math.min(1, max / Math.max(img.width, img.height));
     const w = Math.round(img.width * scale), h = Math.round(img.height * scale);
     const canvas = document.createElement('canvas'); canvas.width = w; canvas.height = h;
@@ -166,8 +170,12 @@ export function KVision({ signedIn, firstName, enabled }: { signedIn: boolean; f
               <div className="mt-7 grid grid-cols-2 gap-3 sm:grid-cols-4">
                 {photos.map((p, idx) => (
                   <div key={p.id} className="group relative aspect-square overflow-hidden rounded-2xl border border-white/10">
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={p.dataUrl} alt={`Uploaded photo ${idx + 1}`} className="h-full w-full object-cover" />
+                    {/* PRJ-1191.7: p.dataUrl is a client-generated base64 data URI
+                        (downscale() above draws to a canvas) — next/image detects
+                        the data: prefix and skips its optimizer automatically, so
+                        `unoptimized` isn't required, but it's set explicitly here
+                        since there's nothing for the optimizer to fetch/resize. */}
+                    <Image src={p.dataUrl} alt={`Uploaded photo ${idx + 1}`} fill unoptimized sizes="(max-width: 640px) 45vw, 180px" className="object-cover" />
                     {/* BLD-1292: visible by default — this flow is touch-first
                         (kiosk / phones have no hover), so hover-only visibility
                         hid the control entirely. Desktop still gets the tidy
@@ -206,8 +214,7 @@ export function KVision({ signedIn, firstName, enabled }: { signedIn: boolean; f
           {stage === 'analysing' && (
             <motion.div key="analysing" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="mx-auto max-w-md text-center">
               <div className="relative mx-auto aspect-square w-72 overflow-hidden rounded-3xl border border-white/10">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                {photos[0] && <img src={photos[0].dataUrl} alt="Analysing your uploaded photo" className="h-full w-full object-cover opacity-90" />}
+                {photos[0] && <Image src={photos[0].dataUrl} alt="Analysing your uploaded photo" fill unoptimized sizes="288px" className="object-cover opacity-90" />}
                 <div className="absolute inset-0" style={{ background: 'linear-gradient(transparent, rgba(12,11,10,0.5))' }} />
                 <motion.div className="absolute inset-x-0 h-[2px]" style={{ background: `linear-gradient(90deg, transparent, ${gold}, transparent)`, boxShadow: `0 0 18px ${gold}` }} initial={{ top: '0%' }} animate={reduce ? { top: '50%' } : { top: ['0%', '100%', '0%'] }} transition={reduce ? { duration: 0 } : { duration: 2.4, repeat: Infinity, ease: 'easeInOut' }} />
                 {[[30, 35], [62, 44], [46, 62]].map(([x, y], i) => (
