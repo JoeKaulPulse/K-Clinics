@@ -10,8 +10,16 @@ export const dynamic = 'force-dynamic';
 // financial write, not a routine profile edit.
 const MAX_DEBT_PENCE = 100_000_000; // mirrors the create-route bound (BLD-1572)
 
-async function loadDebt(clientId: string, debtId: string) {
+// BLD-1693/BLD-1711 pattern (lib/crm-data.ts getClient): when practitionerId
+// is passed, the ownership check runs against the bookings table directly
+// before the debt is even loaded — a PRACTITIONER must not be able to edit or
+// clear a debt on another Specialist's client by guessing/typing the id.
+async function loadDebt(clientId: string, debtId: string, practitionerId?: string) {
   const { db } = await import('@/lib/db');
+  if (practitionerId) {
+    const own = await db.booking.findFirst({ where: { clientId, practitionerId }, select: { id: true } });
+    if (!own) return null;
+  }
   const debt = await db.clientDebt.findUnique({ where: { id: debtId }, select: { id: true, clientId: true, resolvedAt: true } });
   if (!debt || debt.clientId !== clientId) return null;
   return debt;
@@ -29,8 +37,9 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   if (!sessionCan(session, 'bookings.charge')) {
     return NextResponse.json({ ok: false, error: 'You don’t have permission to edit an outstanding balance.' }, { status: 403 });
   }
+  const practitionerId = session!.role === 'PRACTITIONER' ? session!.sub : undefined;
 
-  const existing = await loadDebt(clientId, debtId);
+  const existing = await loadDebt(clientId, debtId, practitionerId);
   if (!existing) return NextResponse.json({ ok: false, error: 'Not found.' }, { status: 404 });
   if (existing.resolvedAt) return NextResponse.json({ ok: false, error: 'This balance has already been cleared.' }, { status: 409 });
 
@@ -78,8 +87,9 @@ export async function DELETE(req: Request, { params }: { params: Promise<{ id: s
   if (!sessionCan(session, 'bookings.charge')) {
     return NextResponse.json({ ok: false, error: 'You don’t have permission to clear an outstanding balance.' }, { status: 403 });
   }
+  const practitionerId = session!.role === 'PRACTITIONER' ? session!.sub : undefined;
 
-  const existing = await loadDebt(clientId, debtId);
+  const existing = await loadDebt(clientId, debtId, practitionerId);
   if (!existing) return NextResponse.json({ ok: false, error: 'Not found.' }, { status: 404 });
   if (existing.resolvedAt) return NextResponse.json({ ok: true }); // already cleared — idempotent
 

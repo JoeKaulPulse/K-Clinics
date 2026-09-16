@@ -18,6 +18,9 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   if (!sessionCan(session, 'bookings.charge')) {
     return NextResponse.json({ ok: false, error: 'You don’t have permission to record an outstanding balance.' }, { status: 403 });
   }
+  // BLD-1693/BLD-1711 pattern (lib/crm-data.ts getClient): a PRACTITIONER
+  // session may only act on a client they actually have a booking with.
+  const practitionerId = session!.role === 'PRACTITIONER' ? session!.sub : undefined;
 
   const body = (await req.json().catch(() => ({}))) as Record<string, unknown>;
   const amountPence = Math.round(Number(body.amountPence));
@@ -43,6 +46,13 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   const { db } = await import('@/lib/db');
   const client = await db.client.findUnique({ where: { id: clientId }, select: { id: true } });
   if (!client) return NextResponse.json({ ok: false, error: 'Client not found.' }, { status: 404 });
+  // Ownership check runs against the bookings table directly, same as
+  // getClient (lib/crm-data.ts) — a PRACTITIONER must not be able to mark a
+  // debt on another Specialist's client by guessing/typing the id.
+  if (practitionerId) {
+    const own = await db.booking.findFirst({ where: { clientId, practitionerId }, select: { id: true } });
+    if (!own) return NextResponse.json({ ok: false, error: 'Client not found.' }, { status: 404 });
+  }
 
   // A supplied booking must belong to this same client, mirroring the same
   // guard on the incident-report route — never let a debt get mis-linked to
