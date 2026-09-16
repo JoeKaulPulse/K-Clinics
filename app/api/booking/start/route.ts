@@ -361,14 +361,20 @@ export async function POST(req: Request) {
           db.booking.update({ where: { id: booking.id }, data: { pricePence: { increment: restorePence } } }),
           db.bookingItem.updateMany({ where: { bookingId: booking.id, isAddon: false }, data: { discountPence: prePromoDiscount } }),
         ]).catch(() => {});
-        if (prePromoUsedWelcome && welcomeClaim) {
-          await burnWelcomeDiscount(prePromoDiscount);
-        }
         const { logAudit: logPromoAudit } = await import('@/lib/audit');
         await logPromoAudit({
           action: 'SESSION_EDITED', actor: 'system', clientId: client.id, bookingId: booking.id,
           summary: `Promo code could not be redeemed (limit reached by a concurrent booking) — price adjusted by +£${(restorePence / 100).toFixed(2)}`,
         }).catch(() => {});
+      }
+      // BLD-1803 (review fix): burn the welcome claim on EVERY rollback that
+      // lands back on it, not just when the price moved. A promo code wins on a
+      // tie (`r.discountPence >= primaryDiscount`), so restorePence can be 0 —
+      // and this burn used to sit inside the `restorePence > 0` branch, leaving
+      // the booking priced at the welcome discount with the single-use claim
+      // still ACTIVE and reusable on the next booking.
+      if (prePromoUsedWelcome && welcomeClaim) {
+        await burnWelcomeDiscount(prePromoDiscount);
       }
     }
   }
