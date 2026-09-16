@@ -21,9 +21,21 @@ async function readJson(key: string): Promise<Record<string, string>> {
   } catch { return {}; }
 }
 
+// Status-only, and every reader is a page render (/admin/seo), so this must not
+// be able to throw: readJson already swallows its own DB errors, and
+// googleAdsConversionsConfigured is caught here for the same reason. It reaches
+// the DB via getConnection -> db.externalConnection.findUnique, which is NOT
+// wrapped upstream (unlike getSecret, whose loadAll falls back to env on any DB
+// error), so an unreachable DB or a missing ExternalConnection table would
+// reject this Promise.all and take the whole SEO page down with it — a DB blip
+// must degrade the Google Ads line to "not configured", not 500 the page.
 export async function conversionStatus(): Promise<{ ga4: boolean; meta: boolean; googleAds: boolean }> {
   if (!crmEnabled) return { ga4: false, meta: false, googleAds: false };
-  const [ids, secrets, googleAds] = await Promise.all([readJson(TRACKING_KEY), readJson(SECRETS_KEY), googleAdsConversionsConfigured()]);
+  const [ids, secrets, googleAds] = await Promise.all([
+    readJson(TRACKING_KEY),
+    readJson(SECRETS_KEY),
+    googleAdsConversionsConfigured().catch(() => false),
+  ]);
   return { ga4: Boolean(ids.ga4Id && secrets.ga4ApiSecret), meta: Boolean(ids.metaPixelId && secrets.metaCapiToken), googleAds };
 }
 
