@@ -2,9 +2,8 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState, type Ref } from 'react';
 import Link from 'next/link';
+import dynamic from 'next/dynamic';
 import { AnimatePresence, motion } from 'motion/react';
-import { Elements, PaymentElement, useElements, useStripe } from '@stripe/react-stripe-js';
-import { getStripe } from '@/lib/stripe-client';
 import { isDemo } from '@/lib/booking-mode';
 import { Glyph } from '@/components/ui/Glyph';
 import { demoSlots } from '@/lib/availability-client';
@@ -25,6 +24,13 @@ type Pkg = { purchaseBookingId: string; label: string; treatmentSlug: string; se
 const field = 'w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-porcelain)] px-4 py-3 text-[var(--color-ink)] transition-colors placeholder:text-[var(--color-stone)] focus:border-[var(--color-gold-deep)] focus-visible:ring-2 focus-visible:ring-[var(--color-gold-deep)]';
 const label = 'mb-1.5 block text-xs uppercase tracking-[0.16em] text-[var(--color-stone)]';
 const money = (p: number) => (p <= 0 ? 'On consultation' : `£${(p / 100).toLocaleString('en-GB', { minimumFractionDigits: p % 100 ? 2 : 0 })}`);
+
+// PRJ-1200.12: the Stripe Elements JS (@stripe/react-stripe-js + @stripe/stripe-js)
+// is only needed once a visitor reaches the card step, which most of the funnel
+// never does — statically importing it here shipped it on every /book page load.
+// next/dynamic + ssr:false splits it into its own chunk, fetched only when this
+// component is actually rendered (stage === 'card'), not on BookingFlow mount.
+const StripeCardStep = dynamic(() => import('@/components/booking/StripeCardStep'), { ssr: false, loading: () => <CardStepLoading /> });
 
 const UPSELL_PCT = 20;
 
@@ -631,7 +637,7 @@ export function BookingFlow({ catalogue, client, preselect = null, preselectDate
               </div>
               <div className="mt-5">
                 {isDemo ? <DemoCard onDone={() => setStage('done')} onError={setError} />
-                  : <ElementsWrapper clientSecret={clientSecret}><CardStep bookingId={bookingId} clientSecret={clientSecret} onDone={() => setStage('done')} onError={setError} /></ElementsWrapper>}
+                  : <StripeCardStep bookingId={bookingId} clientSecret={clientSecret} onDone={() => setStage('done')} onError={setError} />}
               </div>
             </div>
           )}
@@ -918,44 +924,12 @@ function Done({ firstName, treatment, slot, orderTotal, variantId, category, boo
   );
 }
 
-function ElementsWrapper({ clientSecret, children }: { clientSecret: string; children: React.ReactNode }) {
-  return (
-    <Elements stripe={getStripe()} options={{ clientSecret, appearance: { theme: 'flat', variables: { colorPrimary: '#816748', fontFamily: 'system-ui, sans-serif', borderRadius: '10px', colorBackground: '#f6ece3' } } }}>
-      {children}
-    </Elements>
-  );
-}
-
-function CardStep({ bookingId, clientSecret, onDone, onError }: { bookingId: string; clientSecret: string; onDone: () => void; onError: (e: string) => void }) {
-  const stripe = useStripe();
-  const elements = useElements();
-  const [submitting, setSubmitting] = useState(false);
-  async function submit() {
-    if (!stripe || !elements) return;
-    setSubmitting(true); onError('');
-    const { error } = await stripe.confirmSetup({ elements, redirect: 'if_required' });
-    if (error) { onError(error.message || 'Card could not be saved.'); setSubmitting(false); return; }
-    // The card is saved now. Confirming is idempotent server-side (a repeat call
-    // returns the same success), so a transient failure here is safe to surface
-    // for retry without double-booking — and must not leave the button hung.
-    try {
-      // BLD-700: the client secret proves this browser ran the Elements flow.
-      const res = await fetch('/api/booking/confirm', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ bookingId, clientSecret }) });
-      const j = await res.json().catch(() => null);
-      if (j?.ok) { onDone(); return; }
-      onError(j?.error || 'Your card was saved, but we couldn’t finish confirming. Please tap Confirm again — you won’t be booked or charged twice.');
-      setSubmitting(false);
-    } catch {
-      onError('Your card was saved. If you don’t receive a confirmation email shortly, check “My appointments”, then tap Confirm again.');
-      setSubmitting(false);
-    }
-  }
-  return (
-    <div>
-      <PaymentElement />
-      <div className="mt-6 flex justify-end"><Button onClick={submit} disabled={submitting} variant="gold" size="lg">{submitting ? 'Confirming…' : 'Confirm booking'} <ArrowIcon /></Button></div>
-    </div>
-  );
+// PRJ-1200.12: brief placeholder shown while the dynamically-imported
+// StripeCardStep chunk loads (typically sub-second on a warm cache) — the
+// visitor already sees the "Secure your booking" heading and summary above
+// this, so a plain skeleton is enough, not a full spinner treatment.
+function CardStepLoading() {
+  return <div className="h-32 animate-pulse rounded-[var(--radius-md)] bg-[var(--color-porcelain)]" aria-hidden />;
 }
 
 // BLD-838 — optional "email me my selection" capture on the time step. Gives a

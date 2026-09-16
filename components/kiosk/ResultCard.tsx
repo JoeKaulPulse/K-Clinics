@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { Logo } from '@/components/brand/Logo';
 import { ScoreRing } from './ScoreRing';
 import { ShareButtons } from './ShareButtons';
@@ -169,13 +170,50 @@ export function ResultCard({
 // The annotated best photo: SVG boxes over the image (normalized 0–1 coords →
 // displayed rect) plus numbered, tappable labels beneath — tapping a label
 // highlights its box (and dims the rest) for easy reading on a phone.
+//
+// PRJ-1191.7: the kiosk captures the raw camera feed at whatever aspect ratio
+// the device reports (components/kiosk/capture/CameraCapture.tsx sizes the
+// canvas from the live video track, not a fixed crop), so — unlike a static
+// asset — there's no aspect ratio we can safely hard-code up front. The boxes
+// below are normalized (0–1) against the photo's own dimensions, so the SVG
+// overlay only lines up if the rendered box is EXACTLY the photo's aspect
+// ratio; guessing wrong and cropping (object-cover) would visibly misplace
+// the highlighted areas on a real face. So the container reserves a plausible
+// portrait box up front (most kiosk shots are upright) to avoid a layout
+// jump, and next/image's onLoad corrects it to the photo's true ratio the
+// moment it's known — one small, one-time reflow beats either a permanently
+// wrong overlay or no CLS protection at all.
+//
+// `unoptimized` is REQUIRED here, not an optimisation preference (BLD-798
+// review). `src` is the secret-gated relay /api/kiosk/sessions/[token]/photo-view,
+// which deliberately serves the face photo with `Cache-Control: private,
+// no-store` so it never lands in a shared cache. next/image's optimiser ignores
+// that: it fetches the image server-side and re-serves it from /_next/image
+// under `public, max-age=<minimumCacheTTL>` — 1 year in next.config.mjs — which
+// would put an optimised copy of a client's face in Vercel's shared image cache,
+// outliving the kiosk-cleanup retention purge (app/api/cron/kiosk-cleanup)
+// that nulls bestPhotoUrl and deletes the blob. `unoptimized` renders the URL
+// as-is, so the relay's no-store headers are the ones that reach the browser.
+// The layout/CLS work below is unaffected — that's the whole point of the change.
 function AnnotatedPhoto({ src, annotations }: { src: string; annotations: KioskAnnotation[] }) {
   const [active, setActive] = useState<number | null>(null);
+  const [ratio, setRatio] = useState(3 / 4);
 
   return (
     <div className="mt-5">
-      <div className="relative overflow-hidden rounded-[var(--radius-md)]">
-        <img src={src} alt="Your best shot, annotated" className="block w-full" />
+      <div className="relative overflow-hidden rounded-[var(--radius-md)] bg-[var(--color-bone)]" style={{ aspectRatio: ratio }}>
+        <Image
+          src={src}
+          alt="Your best shot, annotated"
+          fill
+          unoptimized
+          sizes="(max-width: 640px) 90vw, 28rem"
+          className="object-contain"
+          onLoad={(e) => {
+            const { naturalWidth: w, naturalHeight: h } = e.currentTarget;
+            if (w && h) setRatio(w / h);
+          }}
+        />
         <svg viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden className="absolute inset-0 h-full w-full">
           {annotations.map((a, i) => {
             const dim = active !== null && active !== i;
