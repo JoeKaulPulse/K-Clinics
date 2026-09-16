@@ -183,6 +183,18 @@ export function ResultCard({
 // jump, and next/image's onLoad corrects it to the photo's true ratio the
 // moment it's known — one small, one-time reflow beats either a permanently
 // wrong overlay or no CLS protection at all.
+//
+// `unoptimized` is REQUIRED here, not an optimisation preference (BLD-798
+// review). `src` is the secret-gated relay /api/kiosk/sessions/[token]/photo-view,
+// which deliberately serves the face photo with `Cache-Control: private,
+// no-store` so it never lands in a shared cache. next/image's optimiser ignores
+// that: it fetches the image server-side and re-serves it from /_next/image
+// under `public, max-age=<minimumCacheTTL>` — 1 year in next.config.mjs — which
+// would put an optimised copy of a client's face in Vercel's shared image cache,
+// outliving the kiosk-cleanup retention purge (app/api/cron/kiosk-cleanup)
+// that nulls bestPhotoUrl and deletes the blob. `unoptimized` renders the URL
+// as-is, so the relay's no-store headers are the ones that reach the browser.
+// The layout/CLS work below is unaffected — that's the whole point of the change.
 function AnnotatedPhoto({ src, annotations }: { src: string; annotations: KioskAnnotation[] }) {
   const [active, setActive] = useState<number | null>(null);
   const [ratio, setRatio] = useState(3 / 4);
@@ -194,6 +206,7 @@ function AnnotatedPhoto({ src, annotations }: { src: string; annotations: KioskA
           src={src}
           alt="Your best shot, annotated"
           fill
+          unoptimized
           sizes="(max-width: 640px) 90vw, 28rem"
           className="object-contain"
           onLoad={(e) => {

@@ -46,8 +46,16 @@ export default async function TasterLessonPage({ params }: { params: Promise<{ s
           // entirely, matching the previous plain <img>'s "any https URL works"
           // behaviour, while `fill` in a sized parent still reserves layout
           // space up front to prevent CLS.
-          <div className="relative mt-6 aspect-video w-full overflow-hidden rounded-[var(--radius-lg)] border border-[var(--color-line)]">
-            <Image src={lesson.imageUrl} alt={lesson.title} fill unoptimized sizes="(max-width: 768px) 100vw, 48rem" className="object-cover" />
+          // Review fix: object-contain, not object-cover. The previous plain <img
+          // className="w-full"> rendered the staff-set image at its own aspect
+          // ratio, so cropping it to 16:9 silently cut the top and bottom off
+          // anything portrait or square — and the enrolled-student view of the
+          // same image (components/academy/CoursePlayer.tsx) still renders it
+          // uncropped, so the taster would have disagreed with the real lesson.
+          // object-contain keeps the whole image inside the reserved box (on the
+          // bone surface, letterboxed) — same CLS protection, nothing cut off.
+          <div className="relative mt-6 aspect-video w-full overflow-hidden rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-bone)]">
+            <Image src={lesson.imageUrl} alt={lesson.title} fill unoptimized sizes="(max-width: 768px) 100vw, 48rem" className="object-contain" />
           </div>
         )}
         <div className="prose-lux mt-2"><Markdown text={lesson.body} /></div>
