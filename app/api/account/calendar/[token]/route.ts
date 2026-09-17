@@ -12,8 +12,12 @@ export const dynamic = 'force-dynamic';
 const fmt = (d: Date) => d.toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z';
 const esc = (s: string) => s.replace(/([,;\\])/g, '\\$1').replace(/\n/g, '\\n');
 
-export async function GET(_req: Request, { params }: { params: Promise<{ token: string }> }) {
+export async function GET(req: Request, { params }: { params: Promise<{ token: string }> }) {
   if (!crmEnabled) return NextResponse.json({ ok: false }, { status: 503 });
+  const { enforceRateLimit } = await import('@/lib/security/guard');
+  if (!(await enforceRateLimit(req, 'account-calendar', 20, 600))) {
+    return NextResponse.json({ ok: false, error: 'Too many attempts — wait a few minutes.' }, { status: 429 });
+  }
   const { token } = await params;
   const { db } = await import('@/lib/db');
   const b = await db.booking.findUnique({

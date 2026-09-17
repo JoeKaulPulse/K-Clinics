@@ -79,7 +79,7 @@ export function AccountMenu({ light }: { light: boolean }) {
     <div ref={ref} className="relative">
       <button ref={btnRef} onClick={() => setOpen((o) => !o)} aria-expanded={open} aria-haspopup="menu" className={linkCls}>
         <PersonIcon />
-        {state.firstName || 'Account'}
+        {state.firstName ? <span className="kc-mask">{state.firstName}</span> : 'Account'}
         <svg viewBox="0 0 24 24" className={`h-3.5 w-3.5 transition-transform ${open ? 'rotate-180' : ''}`} fill="none" aria-hidden>
           <path d="M6 9l6 6 6-6" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" />
         </svg>
@@ -87,7 +87,7 @@ export function AccountMenu({ light }: { light: boolean }) {
       {open && (
         <div role="menu" className="absolute right-0 z-50 mt-2 w-52 overflow-hidden rounded-[var(--radius-md)] border border-[var(--color-line)] bg-white py-1.5 text-[var(--color-ink)] shadow-[var(--shadow-soft)]">
           {state.firstName && (
-            <p className="border-b border-[var(--color-line)] px-4 pb-2 pt-1 text-xs text-[var(--color-stone)]">Signed in as <span className="font-medium text-[var(--color-ink)]">{state.firstName}</span></p>
+            <p className="border-b border-[var(--color-line)] px-4 pb-2 pt-1 text-xs text-[var(--color-stone)]">Signed in as <span className="kc-mask font-medium text-[var(--color-ink)]">{state.firstName}</span></p>
           )}
           {items.map((i) => (
             <Link key={i.href} href={i.href} role="menuitem" onClick={() => setOpen(false)} className="block px-4 py-2 text-sm hover:bg-[var(--color-bone)]">

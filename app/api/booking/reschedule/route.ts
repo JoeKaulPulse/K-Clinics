@@ -6,6 +6,10 @@ export const runtime = 'nodejs';
 
 export async function POST(req: Request) {
   if (!crmEnabled) return NextResponse.json({ ok: false, error: 'Service unavailable.' }, { status: 503 });
+  const { enforceRateLimit } = await import('@/lib/security/guard');
+  if (!(await enforceRateLimit(req, 'booking-reschedule', 10, 300))) {
+    return NextResponse.json({ ok: false, error: 'Too many attempts — wait a few minutes.' }, { status: 429 });
+  }
   try {
     const { token, newStartISO } = await req.json();
     if (!token || !newStartISO) return NextResponse.json({ ok: false, error: 'Missing token or new time.' }, { status: 400 });
