@@ -49,6 +49,11 @@ export async function GET(req: Request) {
       'Content-Type': blob.contentType,
       'Content-Disposition': `inline; filename="${safeName}"`,
       'Cache-Control': 'private, no-store',
+      // BLD-1794 (review fix): the served type is whatever the Blob store
+      // recorded at upload. The upload token restricts it to PDF/image, but
+      // this relay serves same-origin, so a type that ever slipped through and
+      // got sniffed as HTML would be stored XSS on the academy origin.
+      'X-Content-Type-Options': 'nosniff',
     },
   });
 }

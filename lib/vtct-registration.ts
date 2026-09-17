@@ -75,13 +75,20 @@ const parseDate = (v: unknown): Date | null => { const s = str(v); if (!s) retur
 
 /** Resolve a submitted document URL to its stored form (an https Vercel-Blob
  *  URL) — mirrors lib/portfolio.ts's storedPhotoUrl. Views render relay URLs,
- *  so an edit round-trips them back here. */
+ *  so an edit round-trips them back here.
+ *
+ *  BLD-1794 (review fix): also confine it to the `vtct/` blob namespace the
+ *  upload token is scoped to. Without that, any Vercel-Blob URL the student
+ *  happened to know — their own portfolio photo or homework file, say — could
+ *  be attached here, and removing it on a later edit would run `del()` on that
+ *  unrelated file. */
 function storedDocUrl(raw: string): string | null {
   let u: URL;
   try { u = new URL(raw, 'https://kclinics.co.uk'); } catch { return null; }
   if (u.pathname === VTCT_DOCUMENT_RELAY) {
     try { u = new URL(u.searchParams.get('u') || ''); } catch { return null; }
   }
+  if (!u.pathname.startsWith('/vtct/')) return null;
   return isVtctBlobUrl(u.toString()) ? u.toString() : null;
 }
 
@@ -196,6 +203,19 @@ export async function submitRegistration(studentId: string, input: RegistrationI
 
   if (input.declarationAgreed !== true) return { ok: false, error: VALIDATION_ERROR.declaration };
 
+  // BLD-1794 (review fix): the document URLs are client-supplied, and the
+  // upload token cannot bind a blob to the student who uploaded it (it only
+  // scopes the pathname to `vtct/`). Nothing above stopped a submission that
+  // names a document already attached to ANOTHER trainee's registration — and
+  // doing so would have handed that trainee's Photo ID to the submitter
+  // through the relay (which authorises on exactly this join), and let a later
+  // edit `del()` the original from Blob storage. Refuse those outright.
+  const foreign = await db.vtctRegistrationDocument.findFirst({
+    where: { url: { in: documents.map((d) => d.url) }, registration: { studentId: { not: studentId } } },
+    select: { id: true },
+  });
+  if (foreign) return { ok: false, error: 'One of those documents could not be attached. Please upload it again.' };
+
   const existing = await db.vtctRegistration.findFirst({ where: { studentId }, include: { documents: true } });
   const now = new Date();
   const tenantId = await currentTenantId();
@@ -238,6 +258,32 @@ export async function submitRegistration(studentId: string, input: RegistrationI
       data: { ...fields, status: nextStatus, changeRequestedAt, documents: { deleteMany: {}, create: documentsToCreate } },
     }),
   ]);
+
+  // BLD-1794 (review fix): the row is updated in place, so the values staff
+  // actually confirmed are gone once a trainee amends them — the status flag
+  // alone says THAT something changed, never WHAT. Record the field names on
+  // the immutable audit log at the moment of the flip, so a later awarding-body
+  // query can be answered. Names only, no values: this record is full of
+  // special-category personal data and the audit log is not covered by the
+  // student-erasure sweep.
+  if (existing.status === 'CONFIRMED') {
+    const before = existing as unknown as Record<string, unknown>;
+    const changed = Object.keys(fields).filter((k) => {
+      if (k === 'declarationAgreedAt' || k === 'submittedAt') return false;
+      const a = before[k];
+      const b = (fields as Record<string, unknown>)[k];
+      if (a instanceof Date && b instanceof Date) return a.getTime() !== b.getTime();
+      return a !== b;
+    });
+    const docsChanged = existing.documents.length !== documents.length
+      || existing.documents.some((d) => !keptUrls.has(d.url));
+    const { logAudit } = await import('@/lib/audit');
+    await logAudit({
+      action: 'NOTE_ADDED', actor: 'student',
+      summary: `VTCT registration amended after confirmation — now awaiting re-review (${[...changed, ...(docsChanged ? ['documents'] : [])].join(', ') || 'resubmitted unchanged'}) (BLD-1794)`,
+      meta: { studentId, vtctRegistrationId: existing.id, changedFields: changed, documentsChanged: docsChanged },
+    }).catch(() => {});
+  }
 
   if (removedUrls.length && process.env.BLOB_READ_WRITE_TOKEN) {
     try {
