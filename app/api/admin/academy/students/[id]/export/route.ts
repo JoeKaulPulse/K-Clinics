@@ -46,7 +46,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
     enrolments, fundingApplications, lessonProgress, lessonPlaybacks, lessonNotes,
     lessonComments, courseReviews, flashcardReviews, forumThreads, forumPosts,
     portfolioEntries, exerciseAttempts, demoAttempts, quizAttempts, quizAttemptGrants,
-    practiceAttempts, pointEvents, badges, dailyActivity, homeworkSubmissions,
+    practiceAttempts, pointEvents, badges, dailyActivity, homeworkSubmissions, vtctRegistration,
   ] = await Promise.all([
     // BLD-1499: matched by the FK (post-account enquiries) and, exactly as
     // eraseStudentData redacts them, by the original applicant email
@@ -83,6 +83,9 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
     db.studentBadge.findMany({ where: { studentId: id }, orderBy: { awardedAt: 'desc' } }),
     db.dailyActivity.findMany({ where: { studentId: id }, orderBy: { day: 'desc' } }),
     db.homeworkSubmission.findMany({ where: { studentId: id }, orderBy: { createdAt: 'desc' } }),
+    // BLD-1794: VTCT registration details (excludes raw document bytes/URLs —
+    // see exportVtctRegistrationForStudent).
+    (await import('@/lib/vtct-registration')).exportVtctRegistrationForStudent(id),
   ]);
 
   const out = {
@@ -109,6 +112,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
     badges,
     dailyActivity,
     homeworkSubmissions,
+    vtctRegistration,
   };
 
   const { logAudit } = await import('@/lib/audit');

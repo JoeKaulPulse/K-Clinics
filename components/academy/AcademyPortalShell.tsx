@@ -19,6 +19,7 @@ const nav = [
   { href: '/academy/exercises', label: 'Exercises' },
   { href: '/academy/community', label: 'Community' },
   { href: '/academy/portfolio', label: 'Portfolio' },
+  { href: '/academy/vtct-registration', label: 'VTCT Registration' },
   { href: '/academy/leaderboard', label: 'Progress' },
   { href: '/academy/settings', label: 'Settings' },
 ];
