@@ -343,7 +343,7 @@ export default async function ClientDetail({ params }: { params: Promise<{ id: s
                     </p>
                     {p.manualPaymentStatus && p.manualPaymentStatus !== 'NOT_PAID' && (
                       <p className="mt-1 text-xs text-[var(--color-stone)]">
-                        Recorded by staff{p.manualPaymentMethod ? ` — ${p.manualPaymentMethod}` : ''}{p.manualPaymentAmountPence ? `, £${(p.manualPaymentAmountPence / 100).toFixed(2)}` : ''}{p.manualPaymentAt ? ` on ${p.manualPaymentAt.toLocaleDateString('en-GB')}` : ''}
+                        Recorded by staff{p.manualPaymentMethod ? ` — ${p.manualPaymentMethod}` : ''}{p.manualPaymentAmountPence ? `, £${(p.manualPaymentAmountPence / 100).toFixed(2)}` : ''}{p.manualPaymentAt ? ` on ${fmtClinicDate(p.manualPaymentAt, { day: 'numeric', month: 'short', year: 'numeric' })}` : ''}
                       </p>
                     )}
                   </Link>

@@ -552,6 +552,41 @@ export async function markPackageSessionUsed(bookingId: string): Promise<{ ok: b
 // the appointment will occupy a slot — a session genuinely left, re-counted
 // inside a Serializable transaction against the same occupancy definition the
 // derived balance uses.
+
+// BLD-1824 review: what linking took off an appointment, recorded on the link's
+// own audit entry so unlinking can put exactly that back. (No schema change —
+// the deploy gate only takes additive columns, and AuditEvent.meta already
+// exists for precisely this kind of before/after record.)
+type PackageZeroing = { itemId: string; itemPricePence: number; itemDiscountPence: number; removedPence: number };
+// "Linked, but nothing was zeroed" — an empty itemId. Distinct from the null the
+// transaction returns for "the course is full", which is an error the caller
+// reports rather than a successful link.
+const NO_ZEROING = { itemId: '', itemPricePence: 0, itemDiscountPence: 0, removedPence: 0 } satisfies PackageZeroing;
+
+/** The pre-link amounts recorded on the most recent link of this booking to this
+ *  course, or null if there is no usable record (an older link, or a link that
+ *  zeroed nothing). Never throws. */
+async function priorPackageZeroing(bookingId: string, purchaseBookingId: string): Promise<PackageZeroing | null> {
+  const { db } = await import('@/lib/db');
+  const rows = await db.auditEvent.findMany({
+    where: { bookingId, action: 'SESSION_EDITED' },
+    orderBy: { createdAt: 'desc' },
+    take: 25,
+    select: { meta: true },
+  }).catch(() => [] as { meta: unknown }[]);
+  for (const r of rows) {
+    const m = r.meta as unknown as Record<string, unknown> | null;
+    if (!m || m.packageBookingId !== purchaseBookingId) continue;
+    const z = m.packagePriceZeroed as Partial<PackageZeroing> | undefined | null;
+    if (!z) continue;
+    if (typeof z.itemId === 'string' && z.itemId && typeof z.itemPricePence === 'number'
+      && typeof z.itemDiscountPence === 'number' && typeof z.removedPence === 'number') {
+      return { itemId: z.itemId, itemPricePence: z.itemPricePence, itemDiscountPence: z.itemDiscountPence, removedPence: z.removedPence };
+    }
+  }
+  return null;
+}
+
 export async function linkBookingToPackage(bookingId: string, purchaseBookingId: string): Promise<{ ok: boolean; error?: string }> {
   if (!crmEnabled) return { ok: false, error: 'CRM disabled' };
   const session = await getSession();
@@ -562,6 +597,7 @@ export async function linkBookingToPackage(bookingId: string, purchaseBookingId:
     where: { id: bookingId },
     select: {
       clientId: true, status: true, treatmentSlug: true, treatmentTitle: true, packageBookingId: true, chargedAt: true,
+      prepaidAt: true, giftVoucherPence: true, pointsRedeemed: true,
       items: { where: { isAddon: false }, orderBy: { createdAt: 'asc' }, take: 1, select: { sessions: true } },
     },
   });
@@ -572,6 +608,18 @@ export async function linkBookingToPackage(bookingId: string, purchaseBookingId:
   // it would spend a prepaid session AND keep the money, double-charging the
   // client. Refund the standalone charge first if it should come off the course.
   if (b.chargedAt) return { ok: false, error: 'This appointment was charged separately, so it can’t also use a prepaid package session. Refund that charge first if it should come off the course.' };
+  // BLD-1824 review: chargedAt alone is not "has this been paid". A BNPL
+  // settlement records the money on prepaidAt/prepaidPence and never touches
+  // chargedAt — the same trap BLD-1119/BLD-1200 fixed in the session route and
+  // outstandingBalance. Linking here now zeroes the price, so an unguarded
+  // prepaidAt would hand back a paid-for visit AND spend a prepaid session.
+  if (b.prepaidAt) return { ok: false, error: 'This appointment was pre-paid in full, so it can’t also use a prepaid package session. Refund that payment first if it should come off the course.' };
+  // A gift voucher applied to this appointment has already been debited off the
+  // voucher (lib/gift-vouchers reserveVoucher). Zeroing the price below would
+  // leave that balance spent against a £0 visit with nothing to return it.
+  if ((b.giftVoucherPence ?? 0) > 0) {
+    return { ok: false, error: 'A gift voucher is applied to this appointment. Remove it first (Remove voucher on the appointment’s payment panel puts the balance back on the card), then link it to the course.' };
+  }
 
   const { clientPackages, packageOccupancyWhere } = await import('@/lib/package-sessions');
   const pkg = (await clientPackages(b.clientId)).find((p) => p.purchaseBookingId === purchaseBookingId);
@@ -582,12 +630,13 @@ export async function linkBookingToPackage(bookingId: string, purchaseBookingId:
   // (that's the point, for retro-linking taken sessions); a cancelled/missed
   // one only counts if staff later mark it used, so no balance is needed yet.
   const occupies = !['CANCELLED', 'NO_SHOW'].includes(b.status);
+  let zeroed: PackageZeroing | null = null;
   try {
     const linked = await db.$transaction(async (tx) => {
       if (occupies) {
         const total = (await tx.bookingItem.findFirst({ where: { bookingId: purchaseBookingId, isAddon: false }, orderBy: { createdAt: 'asc' }, select: { sessions: true } }))?.sessions ?? 1;
         const occupied = await tx.booking.count({ where: packageOccupancyWhere(purchaseBookingId) });
-        if (occupied >= total) return false;
+        if (occupied >= total) return null;
       }
       // BLD-1824: a package session is covered by the purchase — it must not
       // also charge (or show as owing) its own individual treatment price. Zero
@@ -596,27 +645,60 @@ export async function linkBookingToPackage(bookingId: string, purchaseBookingId:
       // the package flow in the first place (base = 0 — BLD-1346, booking/start
       // and create-action). Any add-on booked in the same slot is untouched —
       // the package covers the primary treatment only.
-      const current = await tx.booking.findUnique({ where: { id: bookingId }, select: { pricePence: true } });
-      const primaryItem = await tx.bookingItem.findFirst({ where: { bookingId, isAddon: false }, orderBy: { createdAt: 'asc' } });
+      //
+      // Review fix: only for an appointment that actually takes a session
+      // (`occupies`). On a CANCELLED-late or NO_SHOW booking pricePence is not a
+      // price — it IS the unwaived late-cancel/no-show fee the client owes, which
+      // lib/outstanding.ts derives from `pricePence > 0`. Zeroing it there would
+      // write that debt off silently while leaving the session unspent: the link
+      // alone consumes nothing, staff still have to mark the session used, which
+      // is how BLD-1347 takes the fee out of the course instead.
+      const current = occupies ? await tx.booking.findUnique({ where: { id: bookingId }, select: { pricePence: true } }) : null;
+      const primaryItem = occupies
+        ? await tx.bookingItem.findFirst({ where: { bookingId, isAddon: false }, orderBy: { createdAt: 'asc' }, select: { id: true, pricePence: true, discountPence: true } })
+        : null;
       if (current && primaryItem) {
         const netPrimary = Math.max(0, primaryItem.pricePence - primaryItem.discountPence);
-        await tx.booking.update({ where: { id: bookingId }, data: { packageBookingId: purchaseBookingId, pricePence: Math.max(0, current.pricePence - netPrimary) } });
+        // Never below zero, and never take off more than the booking total holds
+        // (add-ons keep their own share of it).
+        const removedPence = Math.min(netPrimary, current.pricePence);
+        await tx.booking.update({ where: { id: bookingId }, data: { packageBookingId: purchaseBookingId, pricePence: current.pricePence - removedPence } });
         await tx.bookingItem.update({ where: { id: primaryItem.id }, data: { pricePence: 0, discountPence: 0 } });
-      } else {
-        await tx.booking.update({ where: { id: bookingId }, data: { packageBookingId: purchaseBookingId } });
+        return { itemId: primaryItem.id, itemPricePence: primaryItem.pricePence, itemDiscountPence: primaryItem.discountPence, removedPence };
       }
-      return true;
+      await tx.booking.update({ where: { id: bookingId }, data: { packageBookingId: purchaseBookingId } });
+      return NO_ZEROING;
     }, { isolationLevel: 'Serializable' });
     if (!linked) return { ok: false, error: 'That course has no sessions left — every session is already taken or booked.' };
+    zeroed = linked.itemId ? linked : null;
   } catch {
     return { ok: false, error: 'Could not link just now (another update was in flight). Please try again.' };
+  }
+
+  // Review fix: the treatment now costs nothing, so loyalty points the client
+  // spent on it go back to their balance — the same rule the cancellation and
+  // refund paths follow (lib/booking-actions.ts). Left burnt, the client would
+  // have paid points for a visit the course already covers.
+  let pointsReturned = 0;
+  if (zeroed && b.pointsRedeemed > 0) {
+    try {
+      const { refundBookingPoints } = await import('@/lib/client-loyalty');
+      await refundBookingPoints(bookingId);
+      pointsReturned = b.pointsRedeemed;
+    } catch (e) {
+      console.error('[linkBookingToPackage] loyalty points return failed (continuing):', (e as Error)?.message);
+    }
   }
 
   const { logAudit } = await import('@/lib/audit');
   await logAudit({
     action: 'SESSION_EDITED', actor: session.email, actorRole: session.role, bookingId, clientId: b.clientId,
-    summary: `Appointment (${b.treatmentTitle}, ${b.status.toLowerCase().replace('_', ' ')}) linked to package ${pkg.label} — now counts against the course balance`,
-    meta: { packageBookingId: purchaseBookingId },
+    summary: `Appointment (${b.treatmentTitle}, ${b.status.toLowerCase().replace('_', ' ')}) linked to package ${pkg.label} — now counts against the course balance`
+      + (zeroed ? `; its own price was zeroed (£${(zeroed.removedPence / 100).toFixed(2)} off this appointment) — the course purchase carries the money` : '')
+      + (pointsReturned ? `; ${pointsReturned} loyalty points returned to the client` : ''),
+    // packagePriceZeroed is what unlinkBookingFromPackage reads to put the money
+    // back, so it has to stay on the entry, not just in the summary text.
+    meta: { packageBookingId: purchaseBookingId, ...(zeroed ? { packagePriceZeroed: zeroed } : {}) },
   }).catch(() => {});
   revalidatePath(`/admin/bookings/${bookingId}`);
   revalidatePath(`/admin/bookings/${purchaseBookingId}`);
@@ -636,12 +718,36 @@ export async function unlinkBookingFromPackage(bookingId: string): Promise<{ ok:
   if (!b) return { ok: false, error: 'Booking not found.' };
   if (!b.packageBookingId) return { ok: true }; // idempotent
 
-  await db.booking.update({ where: { id: bookingId }, data: { packageBookingId: null, packageSessionUsedAt: null, packageSessionUsedBy: null } });
+  // BLD-1824 review fix: linking zeroes the appointment's own price (the course
+  // carries the money), so the undo has to put it back — otherwise an
+  // appointment linked by mistake stays free for ever, with nothing on screen
+  // saying so. The pre-link amounts are on the link's own audit entry.
+  const prior = await priorPackageZeroing(bookingId, b.packageBookingId);
+  let restoredPence = 0;
+  try {
+    restoredPence = await db.$transaction(async (tx) => {
+      await tx.booking.update({ where: { id: bookingId }, data: { packageBookingId: null, packageSessionUsedAt: null, packageSessionUsedBy: null } });
+      if (!prior) return 0;
+      const item = await tx.bookingItem.findUnique({ where: { id: prior.itemId }, select: { bookingId: true, pricePence: true, discountPence: true } });
+      const bk = await tx.booking.findUnique({ where: { id: bookingId }, select: { pricePence: true, chargedAt: true, prepaidAt: true } });
+      // Only restore a zeroing nobody has touched since. If staff have re-priced
+      // the appointment (overrideBookingPrice) or it has been paid, what they set
+      // is the truth and this must not overwrite it.
+      if (!item || !bk || item.bookingId !== bookingId || item.pricePence !== 0 || item.discountPence !== 0 || bk.chargedAt || bk.prepaidAt) return 0;
+      await tx.bookingItem.update({ where: { id: prior.itemId }, data: { pricePence: prior.itemPricePence, discountPence: prior.itemDiscountPence } });
+      await tx.booking.update({ where: { id: bookingId }, data: { pricePence: bk.pricePence + prior.removedPence } });
+      return prior.removedPence;
+    });
+  } catch {
+    return { ok: false, error: 'Could not unlink just now (another update was in flight). Please try again.' };
+  }
+
   const { logAudit } = await import('@/lib/audit');
   await logAudit({
     action: 'SESSION_EDITED', actor: session.email, actorRole: session.role, bookingId, clientId: b.clientId,
-    summary: `Appointment (${b.treatmentTitle}) unlinked from its package — no longer counts against the course balance`,
-    meta: { packageBookingId: b.packageBookingId },
+    summary: `Appointment (${b.treatmentTitle}) unlinked from its package — no longer counts against the course balance`
+      + (restoredPence ? `; its own price of £${(restoredPence / 100).toFixed(2)} was restored` : ''),
+    meta: { packageBookingId: b.packageBookingId, ...(restoredPence ? { packagePriceRestoredPence: restoredPence } : {}) },
   }).catch(() => {});
   revalidatePath(`/admin/bookings/${bookingId}`);
   revalidatePath(`/admin/bookings/${b.packageBookingId}`);
@@ -657,6 +763,7 @@ export async function unlinkBookingFromPackage(bookingId: string): Promise<{ ok:
 // to correct it. Gated on bookings.charge — the same permission that gates
 // every other "money has moved" action (chargeBookingAction, refunds).
 export type ManualPaymentStatus = 'PAID' | 'PARTIALLY_PAID' | 'NOT_PAID';
+const MANUAL_PAYMENT_STATUSES: readonly string[] = ['PAID', 'PARTIALLY_PAID', 'NOT_PAID'];
 
 export async function setPackageManualPayment(
   purchaseBookingId: string,
@@ -666,6 +773,12 @@ export async function setPackageManualPayment(
   if (!crmEnabled) return { ok: false, error: 'CRM disabled' };
   const session = await getSession();
   if (!session || !sessionCan(session, 'bookings.charge')) return { ok: false, error: 'You don’t have permission to record payments.' };
+  // A server action is a public POST endpoint and the ManualPaymentStatus type is
+  // erased at runtime, so validate rather than trusting the caller: an arbitrary
+  // string here lands in the column every downstream reader compares against
+  // 'PAID' / 'PARTIALLY_PAID' (lib/package-sessions.ts, the client-profile badge).
+  if (!MANUAL_PAYMENT_STATUSES.includes(status)) return { ok: false, error: 'Pick a payment status.' };
+  const method = typeof opts.method === 'string' ? opts.method.trim().slice(0, 60) : '';
   const { db } = await import('@/lib/db');
   const b = await db.booking.findUnique({
     where: { id: purchaseBookingId },
@@ -679,7 +792,7 @@ export async function setPackageManualPayment(
     where: { id: purchaseBookingId },
     data: {
       manualPaymentStatus: status,
-      manualPaymentMethod: cleared ? null : (opts.method?.trim().slice(0, 60) || null),
+      manualPaymentMethod: cleared ? null : (method || null),
       manualPaymentAmountPence: cleared ? null : (opts.amountPence != null && Number.isFinite(opts.amountPence) ? Math.max(0, Math.round(opts.amountPence)) : null),
       manualPaymentAt: cleared ? null : new Date(),
       manualPaymentBy: cleared ? null : session.email,
@@ -690,7 +803,7 @@ export async function setPackageManualPayment(
   const label = status === 'PAID' ? 'paid' : status === 'PARTIALLY_PAID' ? 'partially paid' : 'not paid';
   await logAudit({
     action: 'SESSION_EDITED', actor: session.email, actorRole: session.role, bookingId: purchaseBookingId, clientId: b.clientId,
-    summary: `Package payment status for "${b.treatmentTitle}" set to ${label}${!cleared && opts.method ? ` (${opts.method.trim().slice(0, 60)})` : ''}`,
+    summary: `Package payment status for "${b.treatmentTitle}" set to ${label}${!cleared && method ? ` (${method})` : ''}`,
   }).catch(() => {});
   revalidatePath(`/admin/bookings/${purchaseBookingId}`);
   revalidatePath('/admin/bookings');
