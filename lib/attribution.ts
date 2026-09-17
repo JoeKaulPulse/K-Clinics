@@ -6,7 +6,7 @@
 export const ATTRIB_COOKIE = 'kc_attrib';
 export const ATTRIB_MAX_AGE = 60 * 60 * 24 * 60; // 60 days
 
-export type Attribution = { source?: string; medium?: string; campaign?: string; landing?: string; gclid?: string; ts: number };
+export type Attribution = { source?: string; medium?: string; campaign?: string; landing?: string; gclid?: string; fbclid?: string; ts: number };
 
 const cut = (s: string | null | undefined, n: number) => (s ? s.slice(0, n) : undefined);
 
@@ -22,7 +22,10 @@ export function attributionFromUrl(url: URL): Attribution | null {
   if (!source && !medium && !campaign) return null;
   // Capture the raw gclid so a booking can be uploaded to Google Ads as an offline
   // conversion (value-based Smart Bidding). Campaign tags only — no personal data.
-  return { source: cut(source, 80), medium: cut(medium, 80), campaign: cut(campaign, 120), landing: cut(url.pathname, 200), gclid: cut(gclid, 200), ts: Date.now() };
+  // fbclid is captured the same way (PRJ-1200.4) so it survives to a later Meta
+  // CAPI send even when the visitor's browser never set the _fbc cookie itself
+  // (ad blocker, or the Pixel script not yet loaded on that first hit).
+  return { source: cut(source, 80), medium: cut(medium, 80), campaign: cut(campaign, 120), landing: cut(url.pathname, 200), gclid: cut(gclid, 200), fbclid: cut(p.get('fbclid'), 200), ts: Date.now() };
 }
 
 export function parseAttribution(raw?: string | null): Attribution | null {
@@ -51,6 +54,20 @@ export function consentFromCookieHeader(cookieHeader?: string | null): { analyti
     analyticsConsent: new RegExp(`(?:^|;\\s*)${ANALYTICS_CONSENT_COOKIE}=1(?:;|$)`).test(header),
     marketingConsent: new RegExp(`(?:^|;\\s*)${MARKETING_CONSENT_COOKIE}=1(?:;|$)`).test(header),
   };
+}
+
+/** Read Meta Pixel's own `_fbc`/`_fbp` cookies (set by fbevents.js once loaded
+ *  and consented) from a raw `Cookie` request header, for forwarding into a
+ *  server-side Meta CAPI event's `user_data` (PRJ-1200.4) — this is what lets
+ *  Meta match a CAPI event to the same browser its Pixel already saw, raising
+ *  Event Match Quality well beyond a hashed email alone. Missing = undefined,
+ *  never a guess. */
+export function metaCookiesFromHeader(cookieHeader?: string | null): { fbc?: string; fbp?: string } {
+  const header = cookieHeader || '';
+  const read = (name: string) => header.match(new RegExp(`(?:^|;\\s*)${name}=([^;]+)`))?.[1];
+  const fbc = read('_fbc');
+  const fbp = read('_fbp');
+  return { ...(fbc ? { fbc: decodeURIComponent(fbc) } : {}), ...(fbp ? { fbp: decodeURIComponent(fbp) } : {}) };
 }
 
 // ── Client-side pre-consent buffering (BLD-1804) ────────────────────────────
