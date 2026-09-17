@@ -324,7 +324,13 @@ const hashesEqual = (a: string, b: string) => {
 export async function requestPasswordReset(email: string): Promise<{ ok: true }> {
   const client = await db.client.findUnique({ where: { email: email.trim().toLowerCase() } });
   if (client) {
-    const base = process.env.NEXT_PUBLIC_SITE_URL || '';
+    // BLD-1797: this had no fallback to the canonical site.url (every other
+    // link-builder in the codebase falls back to it) — if NEXT_PUBLIC_SITE_URL
+    // were ever unset at runtime, both the reset and the passwordless-invite
+    // email below would go out with a bare relative link (e.g.
+    // "/account/reset?token=..."), which most mail clients can't resolve.
+    const { site } = await import('@/lib/site');
+    const base = process.env.NEXT_PUBLIC_SITE_URL || site.url;
     try {
       const { sendEmail, tmplPasswordReset, tmplPortalInvite } = await import('@/lib/email');
       if (client.passwordHash) {
@@ -393,8 +399,20 @@ export { notifyPasswordChanged };
 // A client whose booking was moved onto the new site has no password, so the
 // self-service reset above refuses them (it only emails accounts that already
 // have a password). These two helpers give such a client a way in: staff issue
-// a one-time activation link, and clicking it signs them in. We reuse the same
-// reset-token columns (no schema change → safe under the additive deploy gate).
+// a one-time activation link, and clicking it signs them in.
+//
+// BLD-1797: this used to reuse the password-reset columns (resetTokenHash /
+// resetTokenExp) to avoid a schema change. That meant issuing a NEW invite —
+// via a second admin-sent channel, a second booking, or the client's own
+// "Forgot password" — silently overwrote and invalidated any earlier,
+// unclicked invite/reset link for that client, with nothing logged anywhere.
+// That is the confirmed root cause of some clients' card-on-file links
+// appearing to "not arrive": an earlier link they hadn't opened yet was
+// quietly killed by a later, unrelated token issue for the same client. Now
+// on its own inviteTokenHash/inviteTokenExp pair (additive columns), so an
+// invite and a genuine password reset can't clobber each other. This does NOT
+// yet solve a second invite superseding an earlier still-unused invite (e.g.
+// "Email link" then "Text link" for the same client) — see BLD-1797 report.
 const INVITE_TTL_MS = 7 * 24 * 60 * 60 * 1000; // 7 days — covers a "next week" migration window
 
 /** Issue a passwordless activation token for a client (typically one migrated in
@@ -405,9 +423,15 @@ export async function createAccountInvite(clientId: string): Promise<string | nu
   const exists = await db.client.findUnique({ where: { id: clientId }, select: { id: true } });
   if (!exists) return null;
   const token = crypto.randomBytes(32).toString('hex');
+  // BLD-1797: a dedicated inviteTokenHash/inviteTokenExp pair (not
+  // resetTokenHash) — that shared column meant a genuine "Forgot password"
+  // request (or a staff resend of the card-on-file link via a second
+  // channel) silently killed whichever passwordless invite/reset link was
+  // issued first, so a client who had already received a working link could
+  // click it and land on "link expired" with no error anywhere in the logs.
   await db.client.update({
     where: { id: clientId },
-    data: { resetTokenHash: sha256(token), resetTokenExp: new Date(Date.now() + INVITE_TTL_MS) },
+    data: { inviteTokenHash: sha256(token), inviteTokenExp: new Date(Date.now() + INVITE_TTL_MS) },
   });
   return token;
 }
@@ -415,8 +439,8 @@ export async function createAccountInvite(clientId: string): Promise<string | nu
 /** Consume an activation magic link: validate the token and mark the portal active.
  *  Does NOT require or set a password (it stays optional — they can add one later
  *  from their profile). The token remains valid until expiry so a click on a second
- *  device still works; setting a password (self-service reset / profile) clears it.
- *  Returns the minimal client identity so the caller can open a portal session. */
+ *  device still works. Returns the minimal client identity so the caller can open
+ *  a portal session. */
 export async function activateAccount(
   clientId: string,
   token: string,
@@ -424,10 +448,33 @@ export async function activateAccount(
   if (!clientId || !token) return { ok: false };
   const client = await db.client.findUnique({
     where: { id: clientId },
-    select: { id: true, email: true, firstName: true, sessionEpoch: true, resetTokenHash: true, resetTokenExp: true },
+    select: {
+      id: true, email: true, firstName: true, sessionEpoch: true,
+      inviteTokenHash: true, inviteTokenExp: true,
+      resetTokenHash: true, resetTokenExp: true,
+    },
   });
-  if (!client?.resetTokenHash || !client.resetTokenExp || client.resetTokenExp < new Date()) return { ok: false };
-  if (!hashesEqual(sha256(token), client.resetTokenHash)) return { ok: false };
+  if (!client) return { ok: false };
+  const now = new Date();
+  const hash = sha256(token);
+  const matches = (storedHash: string | null, exp: Date | null) =>
+    !!storedHash && !!exp && exp >= now && hashesEqual(hash, storedHash);
+
+  // BLD-1797 (review fix): TRANSITIONAL fallback to the legacy shared column.
+  // Every invite issued before this deploy was minted into resetTokenHash/
+  // resetTokenExp; reading only the new columns would have invalidated every
+  // in-flight card-on-file and portal-invite link the moment this shipped —
+  // exactly the population the ticket is about. Accepted only when the client
+  // has no invite token of its own, and only until the old 7-day TTLs have
+  // run out, after which this branch can be deleted. It grants nothing new:
+  // before this branch these two tokens WERE the same column, and a reset
+  // token is already sign-in equivalent (it can set the account password).
+  const ok = matches(client.inviteTokenHash, client.inviteTokenExp)
+    || (!client.inviteTokenHash && matches(client.resetTokenHash, client.resetTokenExp));
+  if (!ok) return { ok: false };
+  // Intentionally NOT cleared here (unlike a password reset) — the token
+  // stays valid until expiry so a second click, e.g. from another device,
+  // still works. Matches the original resetTokenHash-backed behaviour.
   await db.client.update({ where: { id: client.id }, data: { portalActive: true } });
   return { ok: true, client: { id: client.id, email: client.email, firstName: client.firstName, sessionEpoch: client.sessionEpoch } };
 }

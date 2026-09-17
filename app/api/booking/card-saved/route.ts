@@ -32,6 +32,11 @@ export async function POST(req: Request) {
     await stripe().customers.update(booking.stripeCustomerId, { invoice_settings: { default_payment_method: pmId } }).catch(() => {});
   }
   await db.booking.update({ where: { id: booking.id }, data: { stripePaymentMethodId: pmId } });
+  // BLD-1797: keep the client-level card-on-file status (shown in their
+  // account) in sync with a card saved via this booking-scoped link too, so
+  // the self-service section reflects it without the client having to re-add
+  // it. Best-effort — the booking is already protected either way.
+  await db.client.update({ where: { id: booking.clientId }, data: { stripeDefaultPaymentMethodId: pmId } }).catch(() => {});
   await db.interaction.create({ data: { clientId: booking.clientId, type: 'APPOINTMENT', summary: `Card saved to booking for ${booking.treatmentTitle} (no-show protection active)`, author: 'client' } }).catch(() => {});
 
   return NextResponse.json({ ok: true });

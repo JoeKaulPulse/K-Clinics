@@ -333,6 +333,12 @@ model Client {
   unsubToken              String    @unique @default(cuid())
   lastVisitAt             DateTime?
   stripeCustomerId        String?   @unique
+  // BLD-1797: self-service card on file for no-show/cancellation protection —
+  // set from the account "Card on file" section (or by the existing
+  // admin-sent secure-link flow, which now mirrors it here too). Distinct
+  // from Booking.stripePaymentMethodId, which stays the source of truth for
+  // whether a given appointment is protected. Additive, nullable.
+  stripeDefaultPaymentMethodId String?
 
   // ── Membership (K Circle) — cached from rolling 12-month spend ──
   membershipTier      String? // current tier key (e.g. silver/gold/platinum); null = base member
@@ -349,6 +355,15 @@ model Client {
   // Password reset (hashed token + expiry).
   resetTokenHash String?
   resetTokenExp  DateTime?
+  // BLD-1797: passwordless account-activation ("save a card"/migration magic
+  // link) token — kept separate from resetTokenHash above. Both used to share
+  // that one column: a client using "Forgot password" (or staff resending a
+  // card-on-file link via a second channel) silently invalidated whichever
+  // link — reset or invite — was issued first, which is why some clients'
+  // card-on-file links stopped working before they clicked them. Additive,
+  // nullable; swept alongside resetTokenHash in the daily cron.
+  inviteTokenHash String?
+  inviteTokenExp  DateTime?
 
   // ── First-visit discount (one-time, guardrailed) ─────────────────────────
   firstDiscountClaimed Boolean @default(false)
