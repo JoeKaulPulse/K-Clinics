@@ -240,13 +240,27 @@ export const pricingByTreatment = cache(async (): Promise<Map<string, TreatmentP
       // sibling status regardless of order, so fixing one Service's status in the
       // admin left the public page stuck on the other's. Only when every variant
       // is non-bookable does the headline fall back to whichever of the two shows.
-      const serviceStatus: ServiceStatus = variants.some((v) => v.status === 'NORMAL' || v.status === 'CONSULTATION')
+      //
+      // CONSULTATION keeps its own rung rather than collapsing into NORMAL:
+      // it is bookable (isBookableStatus), but it drives distinct behaviour that
+      // a bare NORMAL loses — the "On consultation" badge on the treatment card,
+      // the "Free consultation" CTA on the treatment page (BookingButtons
+      // `consult`), and the £0 card-on-file hold in /api/booking/create. A
+      // genuinely NORMAL sibling still outranks it, which is the case this fix
+      // is about.
+      const serviceStatus: ServiceStatus = variants.some((v) => v.status === 'NORMAL')
         ? 'NORMAL'
-        : variants.some((v) => v.status === 'COMING_SOON')
-          ? 'COMING_SOON'
-          : variants.some((v) => v.status === 'UNAVAILABLE')
-            ? 'UNAVAILABLE'
-            : 'NORMAL';
+        : variants.some((v) => v.status === 'CONSULTATION')
+          ? 'CONSULTATION'
+          : variants.some((v) => v.status === 'COMING_SOON')
+            ? 'COMING_SOON'
+            : variants.some((v) => v.status === 'UNAVAILABLE')
+              ? 'UNAVAILABLE'
+              // No active variants at all (a Service row created but not yet given
+              // its variants): there is nothing to derive from, so keep the
+              // pre-BLD-1826 Service-level reading. Defaulting to NORMAL here would
+              // publish a half-configured COMING_SOON treatment as bookable.
+              : (svcList.find((s) => s.status !== 'NORMAL')?.status ?? 'NORMAL');
       map.set(slug, {
         status: serviceStatus,
         fromPence,
