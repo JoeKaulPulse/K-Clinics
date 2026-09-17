@@ -12,6 +12,10 @@ export const maxDuration = 60;
 
 export async function GET(req: Request, { params }: { params: Promise<{ token: string }> }) {
   if (!crmEnabled) return new Response('disabled', { status: 503 });
+  const { enforceRateLimit } = await import('@/lib/security/guard');
+  if (!(await enforceRateLimit(req, 'booking-live-stream', 20, 600))) {
+    return new Response('too many attempts', { status: 429 });
+  }
   const { token } = await params;
   const { db } = await import('@/lib/db');
   const b = await db.booking.findUnique({ where: { manageToken: token }, select: { id: true } });

@@ -5497,6 +5497,18 @@ export const BUILD_BACKLOG: BacklogItem[] = [
       'Verified: npx tsc --noEmit and npm run build pass clean.',
     ],
   },
+  {
+    title: 'Booking manage-token routes had no rate limit; marketing-site session replay leaked signed-in client names; a failed kiosk analysis save could strand a session with no alert',
+    type: 'TASK', urgency: 'P2', status: 'SHIPPED', assignee: 'claude',
+    value: 7, effort: 3,
+    detail: 'BLD-1802: app/api/booking/cancel, reschedule, card-saved, live/[token] (+ its /stream SSE route) and app/api/account/calendar/[token] authenticate solely via Booking.manageToken with no enforceRateLimit call, unlike sibling app/api/booking/create|confirm|start|intent|guest routes -- a leaked or guessed token could be brute-forced with no lockout. PRJ-1200.9: components/marketing/BehaviorRecorder.tsx already wires rrweb with maskTextClass: \'kc-mask\', but no component actually carried that class, so components/layout/AccountMenu.tsx rendering the signed-in client\'s first name (both the header button and the "Signed in as" dropdown line) on marketing pages -- not just /account -- was captured verbatim by session replay, contradicting the recorder\'s own no-personal-data claim. BLD-1810: lib/kiosk.ts runKioskAnalysis only console.error\'d if the DB write after a successful analyzeKioskPhoto call threw, leaving the session at KioskStatus.PHOTO_TAKEN forever with no Sentry alert; app/api/cron/kiosk-cleanup\'s stuck-session sweep only matched stage: \'analyzing\' (a v2-only field the v1 route never sets), so this case fell outside every existing safety net.',
+    notes: [
+      'Fix (BLD-1802): added enforceRateLimit calls to all six routes, mirroring the sibling booking routes\' key/limit style (scope name + clientIp, via lib/security/guard.ts): booking-cancel, booking-reschedule and booking-card-saved at 10/300s (matching booking-confirm); booking-live, booking-live-stream and account-calendar at 20/600s (matching the existing consent-read token-read pattern in app/api/consent/[token]/route.ts). Each now returns 429 with a "too many attempts" message on the limit hit.',
+      'Fix (PRJ-1200.9): tagged both name displays in components/layout/AccountMenu.tsx with className="kc-mask" (the button label and the "Signed in as" span) so BehaviorRecorder.tsx\'s existing maskTextClass option actually redacts them; no change needed to the recorder itself since the masking wiring was already correct, just unused. Portal, booking, academy and admin pages that also show firstName are unaffected -- they are already excluded from recording via lib/no-record-paths.ts.',
+      'Fix (BLD-1810): lib/kiosk.ts runKioskAnalysis\'s catch branch now sets the session to status: \'ANALYSIS_FAILED\' and calls Sentry.captureException (tags: { area: \'kiosk-analysis-v1\' }), matching the existing v2 pattern in runKioskAnalysisV2. app/api/cron/kiosk-cleanup/route.ts gained a fourth pass that sweeps any KioskSession still at status PHOTO_TAKEN with updatedAt older than the same 10-minute stuckCutoff already used for the stage: \'analyzing\' sweep, flipping it to ANALYSIS_FAILED.',
+      'Verified: npx tsc --noEmit passes clean; npm run build passes clean (DB_SYNC_NONFATAL=true; sandbox cannot reach the production Postgres host).',
+    ],
+  },
 ];
 
 // A content hash over every item's title + status + PR, so ANY change (a new

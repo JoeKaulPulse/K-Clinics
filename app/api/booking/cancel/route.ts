@@ -10,6 +10,10 @@ const schema = z.object({ token: z.string().min(1), reason: z.string().max(500).
 
 export async function POST(req: Request) {
   if (!crmEnabled) return NextResponse.json({ ok: false }, { status: 503 });
+  const { enforceRateLimit } = await import('@/lib/security/guard');
+  if (!(await enforceRateLimit(req, 'booking-cancel', 10, 300))) {
+    return NextResponse.json({ ok: false, error: 'Too many attempts — wait a few minutes.' }, { status: 429 });
+  }
   const parsed = schema.safeParse(await req.json().catch(() => ({})));
   if (!parsed.success) return NextResponse.json({ ok: false, error: 'Invalid request' }, { status: 422 });
 

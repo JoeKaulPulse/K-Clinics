@@ -7,8 +7,12 @@ export const dynamic = 'force-dynamic';
 // BLD-138 v2 — client live view (poll fallback for the phone companion page).
 // Authenticated by the booking's unguessable manageToken; the payload is the
 // sanitised client view only (no emails, no clinical or gate detail).
-export async function GET(_req: Request, { params }: { params: Promise<{ token: string }> }) {
+export async function GET(req: Request, { params }: { params: Promise<{ token: string }> }) {
   if (!crmEnabled) return NextResponse.json({ ok: false }, { status: 503 });
+  const { enforceRateLimit } = await import('@/lib/security/guard');
+  if (!(await enforceRateLimit(req, 'booking-live', 20, 600))) {
+    return NextResponse.json({ ok: false, error: 'Too many attempts — wait a few minutes.' }, { status: 429, headers: { 'cache-control': 'no-store' } });
+  }
   const { token } = await params;
   try {
     const { db } = await import('@/lib/db');
