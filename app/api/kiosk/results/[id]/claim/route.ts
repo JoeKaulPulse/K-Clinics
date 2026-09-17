@@ -40,9 +40,10 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     eventId = leadEventId;
     try {
       const { sendLead } = await import('@/lib/conversions');
-      const { consentFromCookieHeader } = await import('@/lib/attribution');
+      const { consentFromCookieHeader, metaCookiesFromHeader } = await import('@/lib/attribution');
+      const { clientIp } = await import('@/lib/security/guard');
       const { analyticsConsent, marketingConsent } = consentFromCookieHeader(req.headers.get('cookie'));
-      await sendLead({ eventId: leadEventId, clientId: r.clientId ?? null, email: marketingOptIn ? email : null, sourceUrl: req.headers.get('referer'), analyticsConsent, marketingConsent });
+      await sendLead({ eventId: leadEventId, clientId: r.clientId ?? null, email: marketingOptIn ? email : null, sourceUrl: req.headers.get('referer'), analyticsConsent, marketingConsent, ...metaCookiesFromHeader(req.headers.get('cookie')), clientIp: clientIp(req), userAgent: req.headers.get('user-agent') });
     } catch { /* best-effort */ }
   }
 
