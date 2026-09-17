@@ -86,6 +86,21 @@ export async function POST(req: Request) {
   const base = (process.env.NEXT_PUBLIC_SITE_URL || (await import('@/lib/site')).site.url).replace(/\/$/, '');
   const name = course.sessions > 1 ? `Course of ${course.sessions} × ${booking.treatmentTitle}` : booking.treatmentTitle;
 
+  // BLD-1807: Klarna/Clearpay are independent data controllers, not an ad
+  // platform under the site's consent banner — handing them a named health/
+  // aesthetic procedure (e.g. "Dentures", "Intimate Rejuvenation") in the
+  // Checkout line item leaks it to a credit-decisioning third party outright,
+  // no consent gate involved. Generalise the same way BLD-1251 already does
+  // for Meta/GA4 (adSensitiveTreatment): sensitive categories get the
+  // category-level label; the price and staff-facing records are unaffected.
+  const { getTreatment, adSensitiveTreatment } = await import('@/lib/treatments');
+  const treatment = getTreatment(booking.treatmentSlug);
+  const lineItemName = treatment && adSensitiveTreatment(treatment)
+    ? (course.sessions > 1
+        ? `Course of ${course.sessions} × ${treatment.category === 'dentistry' ? 'Dentistry treatment' : 'Aesthetics treatment'}`
+        : (treatment.category === 'dentistry' ? 'Dentistry treatment' : 'Aesthetics treatment'))
+    : name;
+
   try {
     const { stripe, ensureCustomer } = await import('@/lib/stripe');
     // Attach to the client's Stripe customer so the payment shows on their record.
@@ -93,7 +108,7 @@ export async function POST(req: Request) {
     const checkout = await stripe().checkout.sessions.create({
       mode: 'payment',
       customer: customerId,
-      line_items: [{ quantity: 1, price_data: { currency: 'gbp', unit_amount: course.pence, product_data: { name } } }],
+      line_items: [{ quantity: 1, price_data: { currency: 'gbp', unit_amount: course.pence, product_data: { name: lineItemName } } }],
       // Klarna/Clearpay (and card) are surfaced automatically by hosted Checkout
       // for whatever methods are enabled in the Stripe Dashboard — it decides
       // eligibility per client/amount. (Checkout Sessions have no
