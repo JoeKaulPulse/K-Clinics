@@ -247,11 +247,24 @@ export async function POST(req: Request) {
 
   // Burn the welcome discount so it can only ever be used once — only when it
   // actually won (beat the offer discount and wasn't itself replaced by promo).
+  // BLD-1803: CAS-guard the burn (updateMany scoped to status: 'ACTIVE'),
+  // mirroring lib/promo.ts's redeemPromo — a plain update let two concurrent
+  // bookings both read the same ACTIVE claim and both burn it. If the CAS loses
+  // (someone else redeemed it first), treat gracefully as no welcome discount
+  // and re-price to the offer discount it beat, rather than erroring.
   if (claim && usedWelcome) {
-    await db.discountClaim.update({
-      where: { id: claim.id },
+    const { count } = await db.discountClaim.updateMany({
+      where: { id: claim.id, status: 'ACTIVE' },
       data: { status: 'REDEEMED', redeemedBookingId: booking.id },
     });
+    if (count !== 1) {
+      const fallbackPrice = Math.max(0, basePrice - offerDiscountPence);
+      await db.booking.update({ where: { id: booking.id }, data: { pricePence: fallbackPrice } }).catch(() => {});
+      await logAudit({
+        action: 'SESSION_EDITED', actor: 'system', clientId: client.id, bookingId: booking.id,
+        summary: `Welcome discount could not be redeemed (already used by a concurrent booking) — price restored to £${(fallbackPrice / 100).toFixed(2)}`,
+      }).catch(() => {});
+    }
   }
 
   // SetupIntent — saves the card off-session, no charge. The booking is already
