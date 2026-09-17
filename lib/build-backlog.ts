@@ -5446,6 +5446,16 @@ export const BUILD_BACKLOG: BacklogItem[] = [
     ],
   },
   {
+    title: 'CMS hero images missing priority prop; skip-to-content links did not move keyboard focus; public site search had no keyboard navigation; admin chat panel overflowed the viewport on mobile',
+    type: 'TASK', urgency: 'P2', status: 'SHIPPED', assignee: 'claude',
+    value: 5, effort: 2,
+    detail: 'BLD-1798: components/cms/SectionRenderer.tsx rendered the split-image (imageText) hero section without priority, so /about, /contact, /membership, /finance, /clinics and every admin-built [slug] page discovered its LCP image late. BLD-1799: the <main> landmarks in app/(marketing)/layout.tsx, app/account/layout.tsx and components/admin/AdminShell.tsx lacked tabIndex={-1}, so activating "Skip to content" scrolled the page but never moved keyboard focus past the header nav (WCAG 2.4.1), unlike components/portal/PortalShell.tsx. BLD-1800: components/layout/SiteSearch.tsx marked its results role=listbox/option but had no arrow-key handling or aria-activedescendant, so keyboard-only users could not select a suggestion (WCAG 2.1.1), unlike components/admin/GlobalSearch.tsx. BLD-1801: components/admin/teamchat/ChatLauncher.tsx\'s panel was fixed w-[22rem] with no max-w-[92vw] clamp, unlike the adjacent NotificationBell.tsx, so it ran off-screen under ~375px width.',
+    notes: [
+      'Fix: SectionRenderer.tsx now passes priority={index === 0} from SectionRenderer through SectionView to the imageText case\'s <Image>. tabIndex={-1} added to the three <main> landmarks (app/(marketing)/layout.tsx, app/account/layout.tsx, components/admin/AdminShell.tsx), matching PortalShell.tsx\'s existing pattern. SiteSearch.tsx ported GlobalSearch\'s arrow-key/active-option pattern (adapted to its own flat hits + "See all results" option, since it has no result groups): ArrowUp/ArrowDown move an active index, Enter opens the active hit (or falls through to the existing submit for "See all results"), and aria-activedescendant/aria-selected/id track the active option. ChatLauncher.tsx\'s panel gained max-w-[92vw], matching NotificationBell.tsx.',
+      'Verified: npx tsc --noEmit passes clean; npm run build passes clean (DB_SYNC_NONFATAL=true; sandbox cannot reach the production Postgres host).',
+    ],
+  },
+  {
     title: 'Welcome discount could be double-redeemed by concurrent bookings; BNPL Klarna/Clearpay checkout leaked the literal treatment name',
     type: 'ERROR', urgency: 'P1', status: 'SHIPPED', assignee: 'claude',
     value: 8, effort: 3,

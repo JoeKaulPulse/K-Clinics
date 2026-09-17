@@ -30,7 +30,7 @@ export default function AccountLayout({ children }: { children: React.ReactNode 
         >
           Skip to content
         </a>
-        <main id="main">{children}</main>
+        <main id="main" tabIndex={-1}>{children}</main>
       </div>
     </MotionProvider>
   );
