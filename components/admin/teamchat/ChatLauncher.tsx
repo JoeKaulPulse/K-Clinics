@@ -52,7 +52,7 @@ export function ChatLauncher() {
       </button>
 
       {open && (
-        <div role="menu" className="kc-pop absolute right-0 z-40 mt-2 flex max-h-[70vh] w-[22rem] flex-col overflow-hidden rounded-[var(--radius-md)] border border-[var(--color-line)] bg-[var(--color-porcelain)] shadow-[var(--shadow-lift)]">
+        <div role="menu" className="kc-pop absolute right-0 z-40 mt-2 flex max-h-[70vh] w-[22rem] max-w-[92vw] flex-col overflow-hidden rounded-[var(--radius-md)] border border-[var(--color-line)] bg-[var(--color-porcelain)] shadow-[var(--shadow-lift)]">
           <div className="flex items-center justify-between border-b border-[var(--color-line)] px-4 py-3">
             <h3 className="font-[family-name:var(--font-display)] text-lg text-[var(--color-ink)]">Messages</h3>
             <button onClick={() => { setShowNew(true); setOpen(false); }} className="rounded-full bg-[var(--color-gold-deep)] px-3 py-1 text-xs font-medium text-white hover:bg-[var(--color-ink)]">New</button>
