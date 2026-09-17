@@ -419,8 +419,17 @@ export async function refundBooking(
     await sendEmail({ to: booking.client.email, subject: `Refund processed — ${booking.treatmentTitle}`, html: tmplRefund({ firstName: booking.client.firstName, treatment: booking.treatmentTitle, amountPence: amount, fully }) });
   } catch { /* email best-effort */ }
 
-  // Net the refund out of ad/analytics ROAS (GA4 refund event), best-effort.
-  try { const { sendRefund } = await import('@/lib/conversions'); await sendRefund({ bookingId: booking.id, valuePence: amount, clientId: booking.clientId, analyticsConsent: booking.analyticsConsent }); } catch { /* non-fatal */ }
+  // Net the refund out of ad/analytics ROAS (GA4 refund event) and, when a
+  // GCLID was captured, adjust the original Google Ads offline conversion down
+  // to the booking's remaining net value — 0 on a full refund (PRJ-1200.3).
+  try {
+    const { sendRefund } = await import('@/lib/conversions');
+    await sendRefund({
+      bookingId: booking.id, valuePence: amount, clientId: booking.clientId,
+      analyticsConsent: booking.analyticsConsent, marketingConsent: booking.marketingConsent,
+      gclid: booking.gclid, adjustedValuePence: Math.max(0, (booking.chargedPence ?? 0) - totalRefunded),
+    });
+  } catch { /* non-fatal */ }
 
   // Books: raise the matching Xero credit note (+ cash refund), best-effort.
   try { const { pushBookingRefundToXero } = await import('@/lib/xero'); await pushBookingRefundToXero(booking.id, amount, opts.reason); } catch { /* non-fatal */ }
