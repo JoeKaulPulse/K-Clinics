@@ -59,6 +59,8 @@ export const ACADEMY_TENANT_MODELS: ReadonlySet<string> = new Set<string>([
   'fundingApplication',
   'vacancy',
   'jobApplication',
+  'vtctRegistration', // BLD-1794
+  'vtctRegistrationDocument', // BLD-1794
 ]);
 
 /** Prisma passes model names capitalised (e.g. "AcademyStudent"); the delegate
