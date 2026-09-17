@@ -5497,6 +5497,16 @@ export const BUILD_BACKLOG: BacklogItem[] = [
       'Verified: npx tsc --noEmit and npm run build pass clean.',
     ],
   },
+  {
+    title: 'Academy portfolio case review never notified the student',
+    type: 'TASK', urgency: 'P2', status: 'SHIPPED', assignee: 'claude',
+    value: 6, effort: 2,
+    detail: 'BLD-1809: lib/portfolio.ts reviewEntry() set a case to APPROVED or NEEDS_WORK with tutor feedback but sent no email, unlike the sibling homework-grading flow (notifyHomeworkGraded, BLD-1296) and lesson-question replies (notifyStudentReply). A trainee only learned their case was reviewed by reopening the portfolio tab.',
+    notes: [
+      'Fix: added notifyPortfolioReviewed(studentId, entryId) to lib/portfolio.ts, structurally identical to notifyHomeworkGraded -- same student lookup shape, same emailShell template built inline, same fire-and-forget call convention (notifyPortfolioReviewed(e.studentId, id).catch(() => {})) called right after the status update inside reviewEntry() so an email failure never blocks the review action. Distinguishes APPROVED / NEEDS_WORK with outcome-specific subject and copy and includes the tutor\'s feedback text when present.',
+      'Verified: npx tsc --noEmit passes clean; npm run build passes clean (DB_SYNC_NONFATAL=true; sandbox cannot reach the production Postgres host).',
+    ],
+  },
 ];
 
 // A content hash over every item's title + status + PR, so ANY change (a new
