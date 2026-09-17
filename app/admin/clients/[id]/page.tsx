@@ -36,6 +36,7 @@ import { ClientStatusBadge } from '@/components/admin/ClientStatusBadge';
 import { ClientTasks } from '@/components/admin/ClientTasks';
 import { LogIncident } from '@/components/admin/LogIncident';
 import { EditDebt } from '@/components/admin/EditDebt';
+import { PackagePaymentControl } from '@/components/admin/PackagePaymentControl';
 import { DataPrivacy } from '@/components/admin/DataPrivacy';
 import { sessionCan } from '@/lib/auth';
 import { fmtClinicTime, fmtClinicDate } from '@/lib/clinic-time';
@@ -314,19 +315,40 @@ export default async function ClientDetail({ params }: { params: Promise<{ id: s
             <p className="rounded-[var(--radius-md)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-3.5 text-sm text-[var(--color-stone)]">No active package.</p>
           ) : (
             <div className="space-y-2">
-              {packages.map((p) => (
-                <Link key={p.purchaseBookingId} href={`/admin/bookings/${p.purchaseBookingId}`} className="block rounded-[var(--radius-md)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-3.5 transition-colors hover:border-[var(--color-gold)]">
-                  <div className="flex flex-wrap items-baseline justify-between gap-2">
-                    <span className="font-medium">{p.label}</span>
-                    {/* BLD-1380: a fully refunded course is not "Not yet paid" —
-                        staff must not chase money the clinic has given back. */}
-                    <span className={`rounded-full px-2.5 py-0.5 text-xs ${p.paid ? 'bg-[var(--color-jade)]/15 text-[var(--color-jade)]' : p.refunded ? 'bg-[var(--color-line)] text-[var(--color-stone)]' : 'bg-[var(--color-blush)]/20 text-[var(--color-blush-deep)]'}`}>{p.paid ? 'Paid' : p.refunded ? 'Refunded' : 'Not yet paid'}</span>
-                  </div>
-                  <p className="mt-1 text-sm text-[var(--color-stone)]">
-                    Course of {p.sessionsTotal} · {p.sessionsUsed} used · {p.sessionsBooked} booked · <span className="font-medium text-[var(--color-ink)]">{p.sessionsRemaining} remaining</span>
-                  </p>
-                </Link>
-              ))}
+              {packages.map((p) => {
+                // BLD-1824: a manual "Partially paid" override has no equivalent in
+                // the Stripe-derived paid/refunded pair above — surface it as its
+                // own badge state rather than folding it into "Not yet paid".
+                const partial = !p.paid && !p.refunded && p.manualPaymentStatus === 'PARTIALLY_PAID';
+                const badgeLabel = p.paid ? 'Paid' : p.refunded ? 'Refunded' : partial ? 'Partially paid' : 'Not yet paid';
+                const badgeClass = p.paid ? 'bg-[var(--color-jade)]/15 text-[var(--color-jade)]' : p.refunded ? 'bg-[var(--color-line)] text-[var(--color-stone)]' : partial ? 'bg-[var(--color-gold)]/20 text-[var(--color-gold-deep)]' : 'bg-[var(--color-blush)]/20 text-[var(--color-blush-deep)]';
+                return (
+                  <Link key={p.purchaseBookingId} href={`/admin/bookings/${p.purchaseBookingId}`} className="block rounded-[var(--radius-md)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-3.5 transition-colors hover:border-[var(--color-gold)]">
+                    <div className="flex flex-wrap items-baseline justify-between gap-2">
+                      <span className="font-medium">{p.label}</span>
+                      <span className="flex items-center gap-2">
+                        {/* BLD-1380: a fully refunded course is not "Not yet paid" —
+                            staff must not chase money the clinic has given back. */}
+                        <span className={`rounded-full px-2.5 py-0.5 text-xs ${badgeClass}`}>{badgeLabel}</span>
+                        {sessionCan(session, 'bookings.charge') && !p.refunded && (
+                          <PackagePaymentControl
+                            purchaseBookingId={p.purchaseBookingId}
+                            manual={{ status: p.manualPaymentStatus, method: p.manualPaymentMethod, amountPence: p.manualPaymentAmountPence, at: p.manualPaymentAt ? p.manualPaymentAt.toISOString() : null }}
+                          />
+                        )}
+                      </span>
+                    </div>
+                    <p className="mt-1 text-sm text-[var(--color-stone)]">
+                      Course of {p.sessionsTotal} · {p.sessionsUsed} used · {p.sessionsBooked} booked · <span className="font-medium text-[var(--color-ink)]">{p.sessionsRemaining} remaining</span>
+                    </p>
+                    {p.manualPaymentStatus && p.manualPaymentStatus !== 'NOT_PAID' && (
+                      <p className="mt-1 text-xs text-[var(--color-stone)]">
+                        Recorded by staff{p.manualPaymentMethod ? ` — ${p.manualPaymentMethod}` : ''}{p.manualPaymentAmountPence ? `, £${(p.manualPaymentAmountPence / 100).toFixed(2)}` : ''}{p.manualPaymentAt ? ` on ${p.manualPaymentAt.toLocaleDateString('en-GB')}` : ''}
+                      </p>
+                    )}
+                  </Link>
+                );
+              })}
             </div>
           )}
         </section>

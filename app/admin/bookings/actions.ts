@@ -589,7 +589,22 @@ export async function linkBookingToPackage(bookingId: string, purchaseBookingId:
         const occupied = await tx.booking.count({ where: packageOccupancyWhere(purchaseBookingId) });
         if (occupied >= total) return false;
       }
-      await tx.booking.update({ where: { id: bookingId }, data: { packageBookingId: purchaseBookingId } });
+      // BLD-1824: a package session is covered by the purchase — it must not
+      // also charge (or show as owing) its own individual treatment price. Zero
+      // the primary line item's price/discount and net that out of the booking
+      // total, mirroring how a package session is priced when booked THROUGH
+      // the package flow in the first place (base = 0 — BLD-1346, booking/start
+      // and create-action). Any add-on booked in the same slot is untouched —
+      // the package covers the primary treatment only.
+      const current = await tx.booking.findUnique({ where: { id: bookingId }, select: { pricePence: true } });
+      const primaryItem = await tx.bookingItem.findFirst({ where: { bookingId, isAddon: false }, orderBy: { createdAt: 'asc' } });
+      if (current && primaryItem) {
+        const netPrimary = Math.max(0, primaryItem.pricePence - primaryItem.discountPence);
+        await tx.booking.update({ where: { id: bookingId }, data: { packageBookingId: purchaseBookingId, pricePence: Math.max(0, current.pricePence - netPrimary) } });
+        await tx.bookingItem.update({ where: { id: primaryItem.id }, data: { pricePence: 0, discountPence: 0 } });
+      } else {
+        await tx.booking.update({ where: { id: bookingId }, data: { packageBookingId: purchaseBookingId } });
+      }
       return true;
     }, { isolationLevel: 'Serializable' });
     if (!linked) return { ok: false, error: 'That course has no sessions left — every session is already taken or booked.' };
@@ -630,6 +645,54 @@ export async function unlinkBookingFromPackage(bookingId: string): Promise<{ ok:
   }).catch(() => {});
   revalidatePath(`/admin/bookings/${bookingId}`);
   revalidatePath(`/admin/bookings/${b.packageBookingId}`);
+  revalidatePath('/admin/bookings');
+  revalidatePath(`/admin/clients/${b.clientId}`);
+  return { ok: true };
+}
+
+// BLD-1824 — record how a package/course purchase was actually paid when it
+// happened outside the online booking flow (bank transfer, in-clinic terminal,
+// cash): chargedAt/prepaidAt only ever get set by Stripe, so a package settled
+// any other way stayed "Not yet paid" forever with nothing in the admin able
+// to correct it. Gated on bookings.charge — the same permission that gates
+// every other "money has moved" action (chargeBookingAction, refunds).
+export type ManualPaymentStatus = 'PAID' | 'PARTIALLY_PAID' | 'NOT_PAID';
+
+export async function setPackageManualPayment(
+  purchaseBookingId: string,
+  status: ManualPaymentStatus,
+  opts: { method?: string; amountPence?: number } = {},
+): Promise<{ ok: boolean; error?: string }> {
+  if (!crmEnabled) return { ok: false, error: 'CRM disabled' };
+  const session = await getSession();
+  if (!session || !sessionCan(session, 'bookings.charge')) return { ok: false, error: 'You don’t have permission to record payments.' };
+  const { db } = await import('@/lib/db');
+  const b = await db.booking.findUnique({
+    where: { id: purchaseBookingId },
+    select: { clientId: true, treatmentTitle: true, items: { where: { isAddon: false }, orderBy: { createdAt: 'asc' }, take: 1, select: { sessions: true } } },
+  });
+  if (!b) return { ok: false, error: 'Booking not found.' };
+  if ((b.items[0]?.sessions ?? 1) <= 1) return { ok: false, error: 'This appointment isn’t a package/course purchase.' };
+
+  const cleared = status === 'NOT_PAID';
+  await db.booking.update({
+    where: { id: purchaseBookingId },
+    data: {
+      manualPaymentStatus: status,
+      manualPaymentMethod: cleared ? null : (opts.method?.trim().slice(0, 60) || null),
+      manualPaymentAmountPence: cleared ? null : (opts.amountPence != null && Number.isFinite(opts.amountPence) ? Math.max(0, Math.round(opts.amountPence)) : null),
+      manualPaymentAt: cleared ? null : new Date(),
+      manualPaymentBy: cleared ? null : session.email,
+    },
+  });
+
+  const { logAudit } = await import('@/lib/audit');
+  const label = status === 'PAID' ? 'paid' : status === 'PARTIALLY_PAID' ? 'partially paid' : 'not paid';
+  await logAudit({
+    action: 'SESSION_EDITED', actor: session.email, actorRole: session.role, bookingId: purchaseBookingId, clientId: b.clientId,
+    summary: `Package payment status for "${b.treatmentTitle}" set to ${label}${!cleared && opts.method ? ` (${opts.method.trim().slice(0, 60)})` : ''}`,
+  }).catch(() => {});
+  revalidatePath(`/admin/bookings/${purchaseBookingId}`);
   revalidatePath('/admin/bookings');
   revalidatePath(`/admin/clients/${b.clientId}`);
   return { ok: true };

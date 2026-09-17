@@ -781,6 +781,19 @@ model Booking {
   packageSessionUsedAt DateTime?
   packageSessionUsedBy String?
 
+  // BLD-1824: staff-recorded payment status for a package/course purchase paid
+  // outside the online booking flow (bank transfer, in-clinic card terminal,
+  // cash) — chargedAt/prepaidAt only ever get set by Stripe, so a package paid
+  // by any other method stayed "Not yet paid" forever with no way to correct
+  // it. 'PAID' | 'PARTIALLY_PAID' | 'NOT_PAID'; only 'PAID' makes the package
+  // spendable (lib/package-sessions.ts clientPackages()) — mirrors the existing
+  // paid-via-Stripe bar rather than loosening it. Additive, nullable.
+  manualPaymentStatus      String?
+  manualPaymentMethod      String?
+  manualPaymentAmountPence Int?
+  manualPaymentAt          DateTime?
+  manualPaymentBy          String?
+
   // BLD-882: gift-voucher redemption at front-desk checkout. The voucher
   // balance is reserved atomically (lib/gift-vouchers reserveVoucher) when
   // applied; a partial application reduces the amount then collected by any
