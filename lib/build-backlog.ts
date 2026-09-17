@@ -5435,6 +5435,17 @@ export const BUILD_BACKLOG: BacklogItem[] = [
     ],
   },
   {
+    title: 'Paid-ad attribution (gclid/fbclid/utm) was dropped for nearly all new visitors',
+    type: 'ERROR', urgency: 'P1', status: 'SHIPPED', assignee: 'claude',
+    value: 8, effort: 3,
+    detail: 'BLD-1804: middleware.ts only wrote the kc_attrib cookie when MARKETING_CONSENT_COOKIE was already \'1\' -- a brand-new visitor arriving from a Google/Meta ad has no consent cookie yet, so the gclid/fbclid/UTM params on that very click were captured then discarded with no client-side fallback. Since almost every first-touch ad click is a brand-new visitor, this silently lost first-touch attribution for nearly all paid traffic, breaking Google Ads offline-conversion uploads and Meta CAPI sends (both read kc_attrib).',
+    notes: [
+      'Fix: lib/attribution.ts gained two client-safe helpers, bufferAttributionFromLocation() and writeBufferedAttributionCookie(), reusing the existing attributionFromUrl()/parseAttribution() parsing so the captured shape and rules (first-touch-wins) stay identical to middleware\'s own write. components/legal/CookieConsent.tsx calls bufferAttributionFromLocation() on every page mount (before any consent decision is known) to stash gclid/fbclid/utm_* params into sessionStorage, and calls writeBufferedAttributionCookie() inside save() the moment marketing consent is granted -- writing kc_attrib client-side with the same JSON shape and 60-day max-age middleware uses, so downstream code reading the cookie picks it up immediately rather than waiting on a lucky next server request that still happens to carry the original ad-click params. Consent gating itself is untouched: nothing is written to kc_attrib, and no tracking pixel fires, without an affirmative marketing accept.',
+      'Judgment call: middleware writes kc_attrib httpOnly; a client-set cookie cannot carry httpOnly (a browser API limitation, not a choice made here), so the retroactively-written cookie is readable by page JS until it next gets rewritten server-side. Accepted because kc_attrib only ever holds campaign tags (source/medium/campaign/landing path/gclid) -- explicitly no personal data per the existing code comments -- so this does not weaken what the cookie protects.',
+      'Verified: npx tsc --noEmit passes clean; npm run build passes clean (DB_SYNC_NONFATAL=true; sandbox cannot reach the production Postgres host).',
+    ],
+  },
+  {
     title: 'CMS hero images missing priority prop; skip-to-content links did not move keyboard focus; public site search had no keyboard navigation; admin chat panel overflowed the viewport on mobile',
     type: 'TASK', urgency: 'P2', status: 'SHIPPED', assignee: 'claude',
     value: 5, effort: 2,
