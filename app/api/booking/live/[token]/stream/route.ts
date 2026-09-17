@@ -12,6 +12,16 @@ export const maxDuration = 60;
 
 export async function GET(req: Request, { params }: { params: Promise<{ token: string }> }) {
   if (!crmEnabled) return new Response('disabled', { status: 503 });
+  // BLD-1802: per-IP cap on NEW stream connections. sseSnapshotStream ends each
+  // one at lifetimeMs (55s) and EventSource immediately reconnects, so a single
+  // phone legitimately opens ~11 connections per 10 minutes — two devices on one
+  // NAT already exceeded the original 20/600s and were dropped onto the poll
+  // fallback, which then hit its own limit. A 60s window keyed on IP still caps
+  // a connection flood without punishing normal reconnects.
+  const { enforceRateLimit } = await import('@/lib/security/guard');
+  if (!(await enforceRateLimit(req, 'booking-live-stream', 20, 60))) {
+    return new Response('too many attempts', { status: 429 });
+  }
   const { token } = await params;
   const { db } = await import('@/lib/db');
   const b = await db.booking.findUnique({ where: { manageToken: token }, select: { id: true } });

@@ -71,3 +71,51 @@ export async function uploadGoogleAdsConversion(input: { gclid: string; valuePen
     console.error('[google-ads] offline conversion failed:', (e as Error)?.message);
   }
 }
+
+// PRJ-1200.3: a refund on a booking that was already uploaded above must tell
+// Google Ads the conversion's value changed, or Smart Bidding keeps optimising
+// toward the full original value forever. A RESTATEMENT sets the conversion to
+// its new net value (a partial refund); a RETRACTION (adjustedValuePence <= 0,
+// i.e. fully refunded) voids it entirely. Matched back to the original upload
+// by `orderId` (the bookingId, exactly as set on the original conversion above)
+// rather than gclid + the original conversionDateTime, which the refund path
+// doesn't have to hand.
+export async function uploadGoogleAdsConversionAdjustment(input: { gclid: string; bookingId: string; adjustedValuePence: number; occurredAt?: Date }): Promise<void> {
+  try {
+    if (!input.gclid || input.adjustedValuePence < 0) return;
+    const devToken = await getSecret('GOOGLE_ADS_DEVELOPER_TOKEN');
+    const conn = await getConnection('google');
+    const customerId = (conn?.accountRef || (await getSecret('GOOGLE_ADS_CUSTOMER_ID')) || '').replace(/-/g, '');
+    const conversionActionId = ((await getSecret('GOOGLE_ADS_CONVERSION_ACTION_ID')) || '').replace(/\D/g, '');
+    if (!devToken || !conn?.tokens.access || !customerId || !conversionActionId) return; // not configured → no-op
+
+    const accessToken = await googleAccessToken();
+    if (!accessToken) return;
+    const loginCustomerId = await getSecret('GOOGLE_ADS_LOGIN_CUSTOMER_ID');
+
+    const isRetraction = input.adjustedValuePence <= 0;
+    const body = {
+      conversionAdjustments: [{
+        conversionAction: `customers/${customerId}/conversionActions/${conversionActionId}`,
+        adjustmentType: isRetraction ? 'RETRACTION' : 'RESTATEMENT',
+        orderId: input.bookingId,
+        adjustmentDateTime: fmtDateTime(input.occurredAt ?? new Date()),
+        ...(isRetraction ? {} : { restatementValue: { adjustedValue: input.adjustedValuePence / 100, currencyCode: 'GBP' } }),
+      }],
+      partialFailure: true,
+    };
+    await fetch(`${GOOGLE_ADS_API}/customers/${customerId}:uploadConversionAdjustments`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        'developer-token': devToken,
+        ...(loginCustomerId ? { 'login-customer-id': loginCustomerId.replace(/-/g, '') } : {}),
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(body),
+      signal: AbortSignal.timeout(10_000),
+    });
+  } catch (e) {
+    console.error('[google-ads] conversion adjustment failed:', (e as Error)?.message);
+  }
+}

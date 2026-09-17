@@ -133,6 +133,18 @@ export async function GET(req: Request) {
       }
     }
 
+    // ── Pass 4: sweep v1 sessions wedged in 'PHOTO_TAKEN' ────────────────────
+    // BLD-1810: the v1 flow (lib/kiosk.ts runKioskAnalysis) has no 'analyzing'
+    // stage — it goes straight from PHOTO_TAKEN to ANALYZED/ANALYSIS_FAILED —
+    // so a session whose post-analysis DB write dies never trips pass 3 above
+    // and would otherwise sit at PHOTO_TAKEN forever. Same staleness bound as
+    // pass 3.
+    const stuckPhotoTaken = await db.kioskSession.updateMany({
+      where: { status: 'PHOTO_TAKEN', updatedAt: { lt: stuckCutoff } },
+      data: { status: 'ANALYSIS_FAILED' },
+    });
+    const photoTakenSwept = stuckPhotoTaken.count;
+
     // BLD-1272: record the run so a silently-unfiring GDPR purge is caught by
     // the same staleness check as the other crons (getCronStaleness in
     // lib/api-health.ts), rather than going undetected — same pattern as
@@ -141,7 +153,7 @@ export async function GET(req: Request) {
       await db.setting.upsert({ where: { key: 'cron_kiosk_cleanup_last' }, update: { value: new Date().toISOString() }, create: { key: 'cron_kiosk_cleanup_last', value: new Date().toISOString() } });
     } catch { /* non-fatal */ }
 
-    return NextResponse.json({ ok: true, deleted, mediaPurged, stuckSwept, stuckRecovered });
+    return NextResponse.json({ ok: true, deleted, mediaPurged, stuckSwept, stuckRecovered, photoTakenSwept });
   } catch (e) {
     const message = (e as Error)?.message || 'unknown error';
     console.error('[cron/kiosk-cleanup] failed:', e);
