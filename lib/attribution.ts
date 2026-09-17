@@ -65,9 +65,16 @@ export function consentFromCookieHeader(cookieHeader?: string | null): { analyti
 export function metaCookiesFromHeader(cookieHeader?: string | null): { fbc?: string; fbp?: string } {
   const header = cookieHeader || '';
   const read = (name: string) => header.match(new RegExp(`(?:^|;\\s*)${name}=([^;]+)`))?.[1];
+  // decodeURIComponent THROWS (URIError) on a malformed escape such as "%zz",
+  // and a cookie value is attacker/junk-controllable. Most call sites wrap this
+  // in a best-effort try/catch, but app/api/gift-vouchers/confirm does not — an
+  // uncaught throw there would 500 a voucher confirmation the customer has
+  // ALREADY paid for. Meta's own _fbc/_fbp values are never percent-encoded, so
+  // falling back to the raw value loses nothing.
+  const decode = (v: string) => { try { return decodeURIComponent(v); } catch { return v; } };
   const fbc = read('_fbc');
   const fbp = read('_fbp');
-  return { ...(fbc ? { fbc: decodeURIComponent(fbc) } : {}), ...(fbp ? { fbp: decodeURIComponent(fbp) } : {}) };
+  return { ...(fbc ? { fbc: decode(fbc) } : {}), ...(fbp ? { fbp: decode(fbp) } : {}) };
 }
 
 // ── Client-side pre-consent buffering (BLD-1804) ────────────────────────────
@@ -140,6 +147,11 @@ export function promoteBufferedAttribution(): void {
     if (attrib.medium) u.searchParams.set('utm_medium', attrib.medium);
     if (attrib.campaign) u.searchParams.set('utm_campaign', attrib.campaign);
     if (attrib.gclid) u.searchParams.set('gclid', attrib.gclid);
+    // PRJ-1200.4: fbclid too, or the newly-captured Meta click id is dropped on
+    // exactly the journey it was added for — a first-time visitor arriving from
+    // a Meta ad, who by definition has no marketing-consent cookie yet and so
+    // reaches ATTRIB_COOKIE only through this replay.
+    if (attrib.fbclid) u.searchParams.set('fbclid', attrib.fbclid);
     void fetch(u.toString(), { method: 'HEAD', credentials: 'same-origin', cache: 'no-store' }).catch(() => {});
   } catch { /* best-effort */ }
 }

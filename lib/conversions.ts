@@ -133,7 +133,11 @@ async function metaEvent(pixelId: string, token: string, eventName: string, even
   if (opts.email) user_data.em = [sha256(opts.email)];
   if (opts.fbc) user_data.fbc = opts.fbc;
   if (opts.fbp) user_data.fbp = opts.fbp;
-  if (opts.clientIp) user_data.client_ip_address = opts.clientIp;
+  // clientIp comes from lib/security/guard's clientIp(), which returns the
+  // literal sentinel 'unknown' when no forwarding header is present. That is not
+  // an IP address — send it and Meta is being handed a junk match signal (and
+  // can reject the parameter), so drop it rather than guess.
+  if (opts.clientIp && opts.clientIp !== 'unknown') user_data.client_ip_address = opts.clientIp;
   if (opts.userAgent) user_data.client_user_agent = opts.userAgent;
   const body = {
     data: [{
