@@ -5540,6 +5540,17 @@ export const BUILD_BACKLOG: BacklogItem[] = [
       'Verified: npx tsc --noEmit passes clean; npm run build passes clean (DB_SYNC_NONFATAL=true; sandbox cannot reach the production Postgres host).',
     ],
   },
+  {
+    title: 'Treatment public status could stay stuck on Coming soon after admin set it to Bookable',
+    type: 'ERROR', urgency: 'P1', status: 'SHIPPED', assignee: 'claude',
+    value: 8, effort: 3,
+    detail: 'BLD-1826 (part 2 of 2 -- the treatment-images half of this report is a content task for the owner, not code, and is left open): lib/services.ts pricingByTreatment() grouped Service rows by treatmentSlug and picked the headline status as "the first non-NORMAL sibling status, else NORMAL" (a treatment can have more than one Service row under the same slug -- e.g. "Botox -- Forehead" and "Botox -- Full Face" -- since Service.treatmentSlug has no unique constraint and components/admin/ServicesManager.tsx deliberately supports several Service cards per treatment). An admin who opened one Service card, switched its status to NORMAL ("Bookable -- show price") and saved had genuinely fixed that record, but the public /[slug] page and treatment cards (both read this same pricing.status) kept showing Coming soon because Array.find() picked up whichever sibling Service happened to still be COMING_SOON/UNAVAILABLE, independent of which one the admin had actually touched.',
+    notes: [
+      'Fix: the headline status is now derived from the already-computed per-variant effective statuses instead of a bare Service-status scan -- NORMAL (bookable) if ANY variant under the treatmentSlug is NORMAL or CONSULTATION, else COMING_SOON if any variant is COMING_SOON, else UNAVAILABLE if any is UNAVAILABLE, else NORMAL. This means a treatment reads as bookable the moment ANY of its Service rows is, matching what an admin who fixed one of them would expect, while a treatment where every Service row is still non-bookable keeps showing Coming soon/Unavailable as before.',
+      'Left open (owner action needed, not code): BLD-1826 part 1, adding real photography for treatments with a placeholder background -- that needs licensed/premium images uploaded via the CMS, not something this fix can generate.',
+      'No schema change. Verified: npx tsc --noEmit passes clean; npm run build passes clean (DB_SYNC_NONFATAL=true; sandbox cannot reach the production Postgres host).',
+    ],
+  },
 ];
 
 // A content hash over every item's title + status + PR, so ANY change (a new

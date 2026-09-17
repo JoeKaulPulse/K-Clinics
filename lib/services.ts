@@ -206,8 +206,6 @@ export const pricingByTreatment = cache(async (): Promise<Map<string, TreatmentP
     }
     for (const [slug, svcList] of byTreatment) {
       const variants: PricedVariant[] = [];
-      // Headline status: the first non-NORMAL service status, else NORMAL.
-      const serviceStatus = svcList.find((s) => s.status !== 'NORMAL')?.status ?? 'NORMAL';
       for (const s of svcList) {
         for (const v of s.variants) {
           const status = effectiveStatus(s.status, v.status);
@@ -234,6 +232,21 @@ export const pricingByTreatment = cache(async (): Promise<Map<string, TreatmentP
         if (fromOfferPence == null || payable < fromOfferPence) { fromOfferPence = payable; offerName = v.offerName; }
       }
       const discounted = fromOfferPence != null && fromPence != null && fromOfferPence < fromPence;
+      // BLD-1826: headline status is bookable (NORMAL) if ANY variant under this
+      // treatmentSlug is bookable — a treatment split across multiple Service rows
+      // (e.g. "Botox — Forehead" / "Botox — Full Face" both slug 'botox') must not
+      // read as wholesale Coming Soon just because a sibling Service is still
+      // COMING_SOON/UNAVAILABLE. Previously this picked the *first* non-NORMAL
+      // sibling status regardless of order, so fixing one Service's status in the
+      // admin left the public page stuck on the other's. Only when every variant
+      // is non-bookable does the headline fall back to whichever of the two shows.
+      const serviceStatus: ServiceStatus = variants.some((v) => v.status === 'NORMAL' || v.status === 'CONSULTATION')
+        ? 'NORMAL'
+        : variants.some((v) => v.status === 'COMING_SOON')
+          ? 'COMING_SOON'
+          : variants.some((v) => v.status === 'UNAVAILABLE')
+            ? 'UNAVAILABLE'
+            : 'NORMAL';
       map.set(slug, {
         status: serviceStatus,
         fromPence,
