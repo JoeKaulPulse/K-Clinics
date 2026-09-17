@@ -249,12 +249,18 @@ export async function GET(req: Request) {
     } catch (e) {
       console.error('[cron] job-application CV shortlist failed (continuing):', (e as Error)?.message);
     }
-    const [jobs, , academyTokens] = await Promise.all([
+    const [jobs, , , academyTokens] = await Promise.all([
       db.jobApplication.deleteMany({ where: jobPurgeWhere }),
       // Client portal: clear expired reset tokens (no personal data beyond email FK).
       db.client.updateMany({
         where: { resetTokenExp: { lt: tokenExpiredCutoff }, resetTokenHash: { not: null } },
         data: { resetTokenHash: null, resetTokenExp: null },
+      }),
+      // BLD-1797: same sweep for the (now separate) passwordless account-invite
+      // token — see lib/client-auth.ts.
+      db.client.updateMany({
+        where: { inviteTokenExp: { lt: tokenExpiredCutoff }, inviteTokenHash: { not: null } },
+        data: { inviteTokenHash: null, inviteTokenExp: null },
       }),
       // Academy portal: clear expired reset tokens.
       db.academyStudent.updateMany({
