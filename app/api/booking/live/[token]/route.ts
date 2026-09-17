@@ -9,9 +9,16 @@ export const dynamic = 'force-dynamic';
 // sanitised client view only (no emails, no clinical or gate detail).
 export async function GET(req: Request, { params }: { params: Promise<{ token: string }> }) {
   if (!crmEnabled) return NextResponse.json({ ok: false }, { status: 503 });
+  // BLD-1802: per-IP abuse cap. Sized for the REAL traffic this endpoint takes —
+  // LiveCompanion.tsx polls it every 4s (POLL_MS) whenever SSE is unavailable,
+  // i.e. 15 req/min per device, and the limit is keyed on IP, so several phones
+  // on one clinic/household NAT share the bucket. The 60/60s shape mirrors the
+  // existing 'chat-poll' limit (app/api/chat/route.ts) for the same reason: a
+  // short window self-heals within a minute instead of locking a legitimate
+  // client out of their own appointment view for ten.
   const { enforceRateLimit } = await import('@/lib/security/guard');
-  if (!(await enforceRateLimit(req, 'booking-live', 20, 600))) {
-    return NextResponse.json({ ok: false, error: 'Too many attempts — wait a few minutes.' }, { status: 429, headers: { 'cache-control': 'no-store' } });
+  if (!(await enforceRateLimit(req, 'booking-live', 60, 60))) {
+    return NextResponse.json({ ok: false, error: 'Too many attempts — wait a moment.' }, { status: 429, headers: { 'cache-control': 'no-store' } });
   }
   const { token } = await params;
   try {
