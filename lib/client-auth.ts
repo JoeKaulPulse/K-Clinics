@@ -448,10 +448,30 @@ export async function activateAccount(
   if (!clientId || !token) return { ok: false };
   const client = await db.client.findUnique({
     where: { id: clientId },
-    select: { id: true, email: true, firstName: true, sessionEpoch: true, inviteTokenHash: true, inviteTokenExp: true },
+    select: {
+      id: true, email: true, firstName: true, sessionEpoch: true,
+      inviteTokenHash: true, inviteTokenExp: true,
+      resetTokenHash: true, resetTokenExp: true,
+    },
   });
-  if (!client?.inviteTokenHash || !client.inviteTokenExp || client.inviteTokenExp < new Date()) return { ok: false };
-  if (!hashesEqual(sha256(token), client.inviteTokenHash)) return { ok: false };
+  if (!client) return { ok: false };
+  const now = new Date();
+  const hash = sha256(token);
+  const matches = (storedHash: string | null, exp: Date | null) =>
+    !!storedHash && !!exp && exp >= now && hashesEqual(hash, storedHash);
+
+  // BLD-1797 (review fix): TRANSITIONAL fallback to the legacy shared column.
+  // Every invite issued before this deploy was minted into resetTokenHash/
+  // resetTokenExp; reading only the new columns would have invalidated every
+  // in-flight card-on-file and portal-invite link the moment this shipped —
+  // exactly the population the ticket is about. Accepted only when the client
+  // has no invite token of its own, and only until the old 7-day TTLs have
+  // run out, after which this branch can be deleted. It grants nothing new:
+  // before this branch these two tokens WERE the same column, and a reset
+  // token is already sign-in equivalent (it can set the account password).
+  const ok = matches(client.inviteTokenHash, client.inviteTokenExp)
+    || (!client.inviteTokenHash && matches(client.resetTokenHash, client.resetTokenExp));
+  if (!ok) return { ok: false };
   // Intentionally NOT cleared here (unlike a password reset) — the token
   // stays valid until expiry so a second click, e.g. from another device,
   // still works. Matches the original resetTokenHash-backed behaviour.

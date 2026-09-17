@@ -32,7 +32,17 @@ export async function POST(req: Request) {
   // already held that), so it isn't a secret in itself — ownership is what
   // matters, checked here against the signed-in client's Stripe customer
   // before anything is trusted or written.
-  if (!si || si.customer !== client.stripeCustomerId) {
+  //
+  // BLD-1797 (review fix): compare two resolved, non-null customer ids.
+  // `si.customer !== client.stripeCustomerId` alone had two holes:
+  //   - a client with no Stripe customer yet (null) matched a SetupIntent
+  //     created with no customer (also null), since null !== null is false;
+  //   - si.customer is `string | Customer | DeletedCustomer | null`, so an
+  //     expanded object would never equal the stored id.
+  // Nothing may be written unless the client HAS a customer id and the
+  // SetupIntent is attached to exactly that customer.
+  const siCustomerId = typeof si?.customer === 'string' ? si.customer : si?.customer?.id ?? null;
+  if (!si || !client.stripeCustomerId || siCustomerId !== client.stripeCustomerId) {
     return NextResponse.json({ ok: false, error: 'Card request not found.' }, { status: 404 });
   }
   if (si.status !== 'succeeded' || !si.payment_method) {
