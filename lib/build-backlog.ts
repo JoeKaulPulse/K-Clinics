@@ -5497,6 +5497,16 @@ export const BUILD_BACKLOG: BacklogItem[] = [
       'Verified: npx tsc --noEmit and npm run build pass clean.',
     ],
   },
+  {
+    title: 'Loyalty points redemption did not net off an already-applied gift voucher',
+    type: 'ERROR', urgency: 'P2', status: 'SHIPPED', assignee: 'claude',
+    value: 6, effort: 2,
+    detail: 'PRJ-1200.8: redeemPointsOnBooking (lib/client-loyalty.ts ~line 336) capped points redemption at 50% of booking.pricePence alone, never checking booking.giftVoucherPence. Staff\'s own voucher-application path (app/api/admin/bookings/session/route.ts ~line 294) already nets against redeemed points, but the reverse never happened -- a client could redeem points via the portal up to 50% of the full price on top of an already-applied voucher, burning points for value beyond what was actually owed.',
+    notes: [
+      'Fix: capPoints is now computed against pricePence minus giftVoucherPence (clamped to 0 so a voucher covering the full price leaves nothing redeemable), mirroring the netting the voucher path already applies in the other direction.',
+      'Verified: npx tsc --noEmit passes clean; npm run build passes clean (DB_SYNC_NONFATAL=true; sandbox cannot reach the production Postgres host).',
+    ],
+  },
 ];
 
 // A content hash over every item's title + status + PR, so ANY change (a new
