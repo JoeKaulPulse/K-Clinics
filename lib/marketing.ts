@@ -32,7 +32,7 @@ export async function resolveCampaignId(attrib: Attribution | null): Promise<str
  *  explicit answer to check, even with no attribution cookie present. */
 export async function bookingAttribution(): Promise<{
   attribSource?: string | null; attribMedium?: string | null; attribCampaign?: string | null;
-  attribLanding?: string | null; gclid?: string | null; marketingCampaignId?: string | null;
+  attribLanding?: string | null; gclid?: string | null; fbclid?: string | null; marketingCampaignId?: string | null;
   analyticsConsent: boolean; marketingConsent: boolean;
 }> {
   // Everything here stays inside the try: cookies() throws outside a request
@@ -54,6 +54,7 @@ export async function bookingAttribution(): Promise<{
       attribCampaign: attrib.campaign ?? null,
       attribLanding: attrib.landing ?? null,
       gclid: attrib.gclid ?? null,
+      fbclid: attrib.fbclid ?? null,
       marketingCampaignId: await resolveCampaignId(attrib),
       analyticsConsent, marketingConsent,
     };

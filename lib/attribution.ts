@@ -6,7 +6,7 @@
 export const ATTRIB_COOKIE = 'kc_attrib';
 export const ATTRIB_MAX_AGE = 60 * 60 * 24 * 60; // 60 days
 
-export type Attribution = { source?: string; medium?: string; campaign?: string; landing?: string; gclid?: string; ts: number };
+export type Attribution = { source?: string; medium?: string; campaign?: string; landing?: string; gclid?: string; fbclid?: string; ts: number };
 
 const cut = (s: string | null | undefined, n: number) => (s ? s.slice(0, n) : undefined);
 
@@ -22,7 +22,10 @@ export function attributionFromUrl(url: URL): Attribution | null {
   if (!source && !medium && !campaign) return null;
   // Capture the raw gclid so a booking can be uploaded to Google Ads as an offline
   // conversion (value-based Smart Bidding). Campaign tags only — no personal data.
-  return { source: cut(source, 80), medium: cut(medium, 80), campaign: cut(campaign, 120), landing: cut(url.pathname, 200), gclid: cut(gclid, 200), ts: Date.now() };
+  // fbclid is captured the same way (PRJ-1200.4) so it survives to a later Meta
+  // CAPI send even when the visitor's browser never set the _fbc cookie itself
+  // (ad blocker, or the Pixel script not yet loaded on that first hit).
+  return { source: cut(source, 80), medium: cut(medium, 80), campaign: cut(campaign, 120), landing: cut(url.pathname, 200), gclid: cut(gclid, 200), fbclid: cut(p.get('fbclid'), 200), ts: Date.now() };
 }
 
 export function parseAttribution(raw?: string | null): Attribution | null {
@@ -51,6 +54,27 @@ export function consentFromCookieHeader(cookieHeader?: string | null): { analyti
     analyticsConsent: new RegExp(`(?:^|;\\s*)${ANALYTICS_CONSENT_COOKIE}=1(?:;|$)`).test(header),
     marketingConsent: new RegExp(`(?:^|;\\s*)${MARKETING_CONSENT_COOKIE}=1(?:;|$)`).test(header),
   };
+}
+
+/** Read Meta Pixel's own `_fbc`/`_fbp` cookies (set by fbevents.js once loaded
+ *  and consented) from a raw `Cookie` request header, for forwarding into a
+ *  server-side Meta CAPI event's `user_data` (PRJ-1200.4) — this is what lets
+ *  Meta match a CAPI event to the same browser its Pixel already saw, raising
+ *  Event Match Quality well beyond a hashed email alone. Missing = undefined,
+ *  never a guess. */
+export function metaCookiesFromHeader(cookieHeader?: string | null): { fbc?: string; fbp?: string } {
+  const header = cookieHeader || '';
+  const read = (name: string) => header.match(new RegExp(`(?:^|;\\s*)${name}=([^;]+)`))?.[1];
+  // decodeURIComponent THROWS (URIError) on a malformed escape such as "%zz",
+  // and a cookie value is attacker/junk-controllable. Most call sites wrap this
+  // in a best-effort try/catch, but app/api/gift-vouchers/confirm does not — an
+  // uncaught throw there would 500 a voucher confirmation the customer has
+  // ALREADY paid for. Meta's own _fbc/_fbp values are never percent-encoded, so
+  // falling back to the raw value loses nothing.
+  const decode = (v: string) => { try { return decodeURIComponent(v); } catch { return v; } };
+  const fbc = read('_fbc');
+  const fbp = read('_fbp');
+  return { ...(fbc ? { fbc: decode(fbc) } : {}), ...(fbp ? { fbp: decode(fbp) } : {}) };
 }
 
 // ── Client-side pre-consent buffering (BLD-1804) ────────────────────────────
@@ -123,6 +147,11 @@ export function promoteBufferedAttribution(): void {
     if (attrib.medium) u.searchParams.set('utm_medium', attrib.medium);
     if (attrib.campaign) u.searchParams.set('utm_campaign', attrib.campaign);
     if (attrib.gclid) u.searchParams.set('gclid', attrib.gclid);
+    // PRJ-1200.4: fbclid too, or the newly-captured Meta click id is dropped on
+    // exactly the journey it was added for — a first-time visitor arriving from
+    // a Meta ad, who by definition has no marketing-consent cookie yet and so
+    // reaches ATTRIB_COOKIE only through this replay.
+    if (attrib.fbclid) u.searchParams.set('fbclid', attrib.fbclid);
     void fetch(u.toString(), { method: 'HEAD', credentials: 'same-origin', cache: 'no-store' }).catch(() => {});
   } catch { /* best-effort */ }
 }
