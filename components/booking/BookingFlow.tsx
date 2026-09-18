@@ -57,10 +57,11 @@ export function BookingFlow({ catalogue, client, preselect = null, preselectDate
   const [welcome, setWelcome] = useState(client.welcomeEligible);
   const [smsPref, setSmsPref] = useState(client.smsReminders);
 
-  // BLD-1833: /book is now ISR-cached, so `client` above is always the
-  // signed-out default at render time — the real signed-in state (name,
-  // welcome-discount eligibility, SMS pref) is fetched here once mounted,
-  // same split as the packages effect below.
+  // BLD-1833: /book no longer reads the session cookie when it renders, so
+  // `client` above is always the signed-out default — the real signed-in state
+  // (name, welcome-discount eligibility, SMS pref) is fetched here once
+  // mounted, same split as the packages effect below. Everything that depends
+  // on it must therefore read the state below, never the `client` prop.
   useEffect(() => {
     if (isDemo) return;
     let live = true;
@@ -253,6 +254,23 @@ export function BookingFlow({ catalogue, client, preselect = null, preselectDate
   useEffect(() => {
     try { (window as Window & { gtag?: (...a: unknown[]) => void }).gtag?.('event', 'booking_stage', { stage }); } catch { /* analytics best-effort */ }
   }, [stage]);
+
+  // BLD-1833: the signed-in state now arrives AFTER mount (the client-info
+  // fetch above), so `authed` can flip to true while the visitor is already
+  // sitting on the account step — they pressed Continue at `upsell` before the
+  // fetch came back and were routed to sign up. The account step's signed-in
+  // branch renders only the "Securing your booking…" panel, and the Back /
+  // Continue bar is hidden for it, so without this the funnel dead-ends there
+  // with no way forward or back. Submitting is exactly what AccountStep's
+  // onAuthed does once it has an identity, so do that instead. Ref-guarded, so
+  // it can fire at most once and can never double-book.
+  const recoveredAccountStage = useRef(false);
+  useEffect(() => {
+    if (stage !== 'account' || !authed || submitting || error) return;
+    if (recoveredAccountStage.current) return;
+    recoveredAccountStage.current = true;
+    submitBooking();
+  }, [stage, authed, submitting, error]);
 
   // BLD-1515: each stage swaps the whole panel via AnimatePresence, but nothing
   // ever moved keyboard/screen-reader focus — it stayed parked on "Continue"

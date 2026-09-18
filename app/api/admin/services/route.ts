@@ -93,6 +93,14 @@ export async function POST(req: Request) {
         return db.serviceVariant.update({ where: { id: v.id }, data: { pricePence: bump(v.pricePence), courses: courses ?? undefined } });
       }));
       await logAudit({ action: 'SERVICE_PRICES_BULK', actor: session.email, actorRole: session.role, summary: `Bulk price change ${pct > 0 ? '+' : ''}${pct}% on ${variants.length} variant(s)${body.serviceId ? ' (one service)' : ' (all services)'}` });
+      // This branch rewrote every variant's price but refreshed nothing — the
+      // one mutation here that didn't. It mattered less while /book read the
+      // catalogue live on every request; now that it's cached (BLD-1833) a bulk
+      // rise would keep being quoted at the old price for up to an hour while
+      // /api/booking/start charged the new one, so refresh both surfaces the
+      // same way ok() does.
+      revalidatePath('/', 'layout');
+      revalidateTag(BOOK_CATALOGUE_TAG, {});
       return NextResponse.json({ ok: true, updated: variants.length });
     }
 

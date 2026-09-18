@@ -22,8 +22,14 @@ export const generateMetadata = (): Promise<Metadata> => pageMeta({
 // catalogue and review aggregate that the homepage already caches. Only the
 // signed-in personalisation genuinely needs live cookies, and that's now
 // fetched client-side (see /api/booking/client-info and BookingFlow's mount
-// effect) so the page shell itself can use the same hourly ISR as the
-// homepage.
+// effect).
+// NB this does NOT make the page itself cacheable: awaiting searchParams below
+// (treatment/date/wl) keeps it dynamically rendered, and it still responds
+// `private, no-store` — verified on the built output, where /book is ƒ while
+// the homepage is ○. The actual saving is that the catalogue and offers are now
+// read through the hourly, tag-revalidated wrappers in lib/services.ts instead
+// of querying the DB on every request. This value only sets the default
+// revalidation window for cache reads made while rendering.
 export const revalidate = 3600;
 
 export default async function BookPage({ searchParams }: { searchParams: Promise<{ treatment?: string; date?: string; wl?: string }> }) {
