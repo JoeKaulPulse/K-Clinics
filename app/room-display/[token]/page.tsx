@@ -80,7 +80,9 @@ export default async function RoomDisplay({ params }: { params: Promise<{ token:
         {next && (
           <div className="mt-[8vmin] border-t border-white/10 pt-[4vmin]">
             <p className="text-[2.4vmin] uppercase tracking-[0.25em] text-[var(--color-night-faint)]">Next</p>
-            <p className="mt-[1.5vmin] text-[4vmin]">{fmt(next.startAt)} · {who(next.client?.firstName)} <span className="text-[var(--color-night-faint)]">— {next.treatmentTitle}</span></p>
+            {/* PRJ-1229.3: before check-in, the next patient hasn't consented to being
+                identified on this unauthenticated corridor screen — show only the time. */}
+            <p className="mt-[1.5vmin] text-[4vmin]">{fmt(next.startAt)}</p>
           </div>
         )}
       </div>
