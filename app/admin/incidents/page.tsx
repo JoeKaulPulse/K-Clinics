@@ -22,7 +22,7 @@ export default async function IncidentsPage() {
   const session = await getSession();
   if (!sessionCan(session, 'clients.clinical.view')) redirect('/admin');
 
-  const rows = await listIncidentRegister();
+  const { rows, total } = await listIncidentRegister();
 
   if (session?.email) {
     try {
@@ -31,7 +31,7 @@ export default async function IncidentsPage() {
         action: 'ASSESSMENT_VIEWED',
         actor: session.email,
         actorRole: session.role,
-        summary: `Clinic-wide incidents register viewed (${rows.length} record${rows.length === 1 ? '' : 's'})`,
+        summary: `Clinic-wide incidents register viewed (${rows.length} record${rows.length === 1 ? '' : 's'}${total > rows.length ? ` of ${total}` : ''})`,
       });
     } catch { /* audit is best-effort */ }
   }
@@ -50,7 +50,7 @@ export default async function IncidentsPage() {
           </p>
         </div>
       </div>
-      <IncidentRegister rows={rows} />
+      <IncidentRegister rows={rows} total={total} />
     </AdminShell>
   );
 }

@@ -42,13 +42,19 @@ export async function GET(req: Request) {
   if (!clientId && !all) return NextResponse.json({ ok: false, error: 'Bad request' }, { status: 400 });
 
   let incidents;
+  // Total matching the filter, ignoring the register's row cap. Only meaningful
+  // in ?all=1 mode; null on the per-client path so that response is unchanged
+  // apart from the two fields already added below.
+  let total: number | null = null;
   if (all) {
     const { listIncidentRegister } = await import('@/lib/incidents');
     const severity = url.searchParams.get('severity');
-    incidents = await listIncidentRegister({
+    const res = await listIncidentRegister({
       severity: severity && SEVERITIES.includes(severity) ? severity : undefined,
       riddorOnly: url.searchParams.get('riddor') === '1',
     });
+    incidents = res.rows;
+    total = res.total;
   } else {
     const { db } = await import('@/lib/db');
     const { decClinical } = await import('@/lib/clinical-crypto');
@@ -89,12 +95,12 @@ export async function GET(req: Request) {
           action: 'ASSESSMENT_VIEWED',
           actor: session.email,
           actorRole: session.role,
-          summary: `Clinic-wide incidents register viewed (${incidents.length} record${incidents.length === 1 ? '' : 's'})`,
+          summary: `Clinic-wide incidents register viewed (${incidents.length} record${incidents.length === 1 ? '' : 's'}${total !== null && total > incidents.length ? ` of ${total}` : ''})`,
         });
       } catch { /* audit is best-effort */ }
     }
   }
-  return NextResponse.json({ ok: true, incidents });
+  return NextResponse.json({ ok: true, incidents, ...(total !== null ? { total } : {}) });
 }
 
 // POST — log a new incident against a client (and optionally a booking).

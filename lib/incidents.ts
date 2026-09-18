@@ -28,40 +28,78 @@ export type IncidentRegisterRow = {
   injury: string;
   actionTaken: string;
   witnesses: string;
+  // Why the four detail fields above are blank, when they are. Blank detail has
+  // two very different meanings on a safety register and they must not look the
+  // same to the person reading it:
+  //   redacted      — the narrative was deliberately overwritten when the client
+  //                   was erased or deleted (app/admin/actions.ts writes
+  //                   { redacted: 'client-erased' | 'client-deleted' }). The
+  //                   record is intact and complete as retained.
+  //   decryptFailed — the ciphertext did not decrypt (wrong/rotated clinical
+  //                   key, corrupt row). The record is NOT intact and someone
+  //                   needs to know.
+  redacted: string | null;
+  decryptFailed: boolean;
+};
+
+/** Most incidents we will read in one go. A safety register that silently stops
+ *  at a round number is worse than one that says it stopped, so the caller is
+ *  told the true total and can say so (see `total` on the result). */
+export const INCIDENT_REGISTER_LIMIT = 500;
+
+export type IncidentRegisterResult = {
+  rows: IncidentRegisterRow[];
+  /** Total matching the filter, ignoring the limit. `total > rows.length` means
+   *  the register is showing only the most recent INCIDENT_REGISTER_LIMIT. */
+  total: number;
 };
 
 /** Every incident in the clinic, newest first — including erasure-retained
  *  (clientId: null) rows. Optionally narrowed by severity and/or RIDDOR flag. */
-export async function listIncidentRegister(filter?: { severity?: string; riddorOnly?: boolean }): Promise<IncidentRegisterRow[]> {
+export async function listIncidentRegister(filter?: { severity?: string; riddorOnly?: boolean }): Promise<IncidentRegisterResult> {
   const where: { severity?: string; riddorReportable?: boolean } = {};
   if (filter?.severity) where.severity = filter.severity;
   if (filter?.riddorOnly) where.riddorReportable = true;
 
-  const rows = await db.incident.findMany({
-    where,
-    orderBy: { createdAt: 'desc' },
-    take: 500,
-    include: { client: { select: { id: true, firstName: true, lastName: true } } },
-  });
+  const [rows, total] = await Promise.all([
+    db.incident.findMany({
+      where,
+      orderBy: { createdAt: 'desc' },
+      take: INCIDENT_REGISTER_LIMIT,
+      include: { client: { select: { id: true, firstName: true, lastName: true } } },
+    }),
+    db.incident.count({ where }),
+  ]);
 
-  return rows.map((r) => {
-    let detail: { description?: string; injury?: string; actionTaken?: string; witnesses?: string } = {};
-    try { detail = JSON.parse(decClinical(r.descriptionEnc) || '{}'); } catch { /* leave blank if undecryptable */ }
-    return {
-      id: r.id,
-      bookingId: r.bookingId,
-      clientId: r.clientId,
-      clientName: r.client ? [r.client.firstName, r.client.lastName].filter(Boolean).join(' ') : null,
-      category: r.category,
-      severity: r.severity,
-      location: r.location,
-      riddorReportable: r.riddorReportable,
-      loggedBy: r.loggedBy,
-      createdAt: r.createdAt.toISOString(),
-      description: detail.description || '',
-      injury: detail.injury || '',
-      actionTaken: detail.actionTaken || '',
-      witnesses: detail.witnesses || '',
-    };
-  });
+  return {
+    total,
+    rows: rows.map((r) => {
+      let detail: { description?: string; injury?: string; actionTaken?: string; witnesses?: string; redacted?: string } = {};
+      let decryptFailed = false;
+      try {
+        detail = JSON.parse(decClinical(r.descriptionEnc) || '{}');
+      } catch {
+        // Leave the detail blank, but remember WHY — see the type above.
+        decryptFailed = true;
+      }
+      return {
+        id: r.id,
+        bookingId: r.bookingId,
+        clientId: r.clientId,
+        clientName: r.client ? [r.client.firstName, r.client.lastName].filter(Boolean).join(' ') : null,
+        category: r.category,
+        severity: r.severity,
+        location: r.location,
+        riddorReportable: r.riddorReportable,
+        loggedBy: r.loggedBy,
+        createdAt: r.createdAt.toISOString(),
+        description: detail.description || '',
+        injury: detail.injury || '',
+        actionTaken: detail.actionTaken || '',
+        witnesses: detail.witnesses || '',
+        redacted: typeof detail.redacted === 'string' ? detail.redacted : null,
+        decryptFailed,
+      };
+    }),
+  };
 }
