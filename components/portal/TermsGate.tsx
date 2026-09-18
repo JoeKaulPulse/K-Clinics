@@ -63,6 +63,12 @@ export function TermsGate({ accepted }: { accepted: boolean }) {
   return (
     // Intentionally no onClick-to-dismiss on the backdrop, no close button, and
     // no Escape handling — acceptance is mandatory before the portal is usable.
+    // BLD-1845 (review fix): the dialog below is height-capped and scrolls its
+    // OWN content. It was `overflow-hidden` inside this fixed, non-scrolling
+    // backdrop, so on a short viewport (small phone with browser chrome) the
+    // checkbox and the Accept button were clipped with no way to reach them —
+    // and since the gate can't be dismissed, that locked the client out of
+    // their own account entirely.
     <div className="fixed inset-0 z-[220] flex items-center justify-center bg-[var(--color-ink)]/80 p-4 backdrop-blur-sm">
       <div
         ref={dialogRef}
@@ -70,7 +76,7 @@ export function TermsGate({ accepted }: { accepted: boolean }) {
         aria-modal="true"
         aria-labelledby="terms-gate-title"
         tabIndex={-1}
-        className="relative w-full max-w-lg overflow-hidden rounded-[var(--radius-2xl)] border border-[var(--color-line)] bg-[var(--color-porcelain)] shadow-[var(--shadow-lift)] outline-none"
+        className="relative max-h-[85vh] w-full max-w-lg overflow-y-auto rounded-[var(--radius-2xl)] border border-[var(--color-line)] bg-[var(--color-porcelain)] shadow-[var(--shadow-lift)] outline-none"
       >
         <div className="p-7 md:p-9">
           <p className="text-[0.65rem] uppercase tracking-[0.18em] text-[var(--color-stone)]">Before you continue</p>
