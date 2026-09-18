@@ -13,8 +13,11 @@ export const metadata: Metadata = {
 };
 
 // BLD-225 — the screen mounted outside a treatment room (e.g. iiyama TW1023ASC).
-// Token-secured + public (no login); shows that room's current + next
-// appointment with minimal client identity (first name only). Auto-refreshes.
+// Token-secured + public (no login). The IN-SESSION patient is shown with
+// minimal identity (first name + treatment) — they have checked in and are in
+// the room. The NEXT appointment shows the time only: before check-in that
+// patient has not consented to being named on a corridor screen (PRJ-1229.3).
+// Auto-refreshes.
 const fmt = (d: Date) => d.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/London' });
 
 export default async function RoomDisplay({ params }: { params: Promise<{ token: string }> }) {

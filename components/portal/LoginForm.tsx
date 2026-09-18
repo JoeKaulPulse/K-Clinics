@@ -70,6 +70,13 @@ function Inner() {
   }
 
   return (
+    // PRJ-1229.2: `method="post"` and the inputs' `name` attributes go together
+    // and must stay together. The names exist so a pre-hydration native submit
+    // (password-manager autosubmit before onSubmit attaches) fails visibly
+    // instead of silently reloading with blank fields. Without method="post" a
+    // form with no action defaults to GET, which would put the password in the
+    // URL query string — and therefore in access logs, history and referrers.
+    // Never drop method="post" while the name attributes are present.
     <form onSubmit={submit} method="post" className="space-y-5">
       <div>
         <label className={authLabel} htmlFor="email">{t('field.email')}</label>

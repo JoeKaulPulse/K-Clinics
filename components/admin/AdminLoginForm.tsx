@@ -85,6 +85,13 @@ function Inner({ ssoEnabled }: { ssoEnabled: boolean }) {
   }
 
   return (
+    // PRJ-1229.2: `method="post"` and the inputs' `name` attributes go together
+    // and must stay together. The names exist so a pre-hydration native submit
+    // (password-manager autosubmit before onSubmit attaches) fails visibly
+    // instead of silently reloading with blank fields. Without method="post" a
+    // form with no action defaults to GET, which would put the password and the
+    // 2FA code in the URL query string — and therefore in access logs, history
+    // and referrers. Never drop method="post" while the names are present.
     <form onSubmit={submit} method="post" className="space-y-5">
       {ssoNotice && (
         <p className={`rounded-[var(--radius-sm)] px-4 py-2.5 text-sm ${ssoNotice.tone === 'info' ? 'bg-[var(--color-bone)] text-[var(--color-ink)]' : 'bg-[var(--color-blush)]/25 text-[var(--color-ink)]'}`}>
