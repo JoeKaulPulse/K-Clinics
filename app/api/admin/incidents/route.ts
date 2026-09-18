@@ -19,7 +19,14 @@ export const runtime = 'nodejs';
 const CATEGORIES = ['slip_trip', 'adverse_reaction', 'equipment', 'other'];
 const SEVERITIES = ['minor', 'moderate', 'serious'];
 
-// GET — list incidents for a client (?clientId=...), newest first.
+// GET — either:
+//   ?clientId=...        per-client incidents (unchanged existing behaviour)
+//   ?all=1                clinic-wide register (PRJ-1229.4), optionally
+//                          narrowed with &severity=... and/or &riddor=1.
+// The register mode is what makes an erasure-retained incident (clientId set
+// to null by eraseClientData's SetNull relation, kept for its Art. 17(3)(b)
+// legal-retention basis) reachable at all — the per-client path can never
+// surface it once clientId is gone. Newest first either way.
 export async function GET(req: Request) {
   if (!crmEnabled) return NextResponse.json({ ok: false }, { status: 503 });
 
@@ -29,33 +36,63 @@ export async function GET(req: Request) {
     return NextResponse.json({ ok: false, error: 'Not permitted.' }, { status: 403 });
   }
 
-  const clientId = new URL(req.url).searchParams.get('clientId');
-  if (!clientId) return NextResponse.json({ ok: false, error: 'Bad request' }, { status: 400 });
+  const url = new URL(req.url);
+  const clientId = url.searchParams.get('clientId');
+  const all = url.searchParams.get('all') === '1';
+  if (!clientId && !all) return NextResponse.json({ ok: false, error: 'Bad request' }, { status: 400 });
 
-  const { db } = await import('@/lib/db');
-  const { decClinical } = await import('@/lib/clinical-crypto');
-  const rows = await db.incident.findMany({ where: { clientId }, orderBy: { createdAt: 'desc' }, take: 100 });
-  const incidents = rows.map((r) => {
-    let detail: { description?: string; injury?: string; actionTaken?: string; witnesses?: string } = {};
-    try { detail = JSON.parse(decClinical(r.descriptionEnc) || '{}'); } catch { /* leave blank if undecryptable */ }
-    return {
-      id: r.id,
-      bookingId: r.bookingId,
-      category: r.category,
-      severity: r.severity,
-      location: r.location,
-      riddorReportable: r.riddorReportable,
-      loggedBy: r.loggedBy,
-      createdAt: r.createdAt.toISOString(),
-      description: detail.description || '',
-      injury: detail.injury || '',
-      actionTaken: detail.actionTaken || '',
-      witnesses: detail.witnesses || '',
-    };
-  });
+  let incidents;
+  if (all) {
+    const { listIncidentRegister } = await import('@/lib/incidents');
+    const severity = url.searchParams.get('severity');
+    incidents = await listIncidentRegister({
+      severity: severity && SEVERITIES.includes(severity) ? severity : undefined,
+      riddorOnly: url.searchParams.get('riddor') === '1',
+    });
+  } else {
+    const { db } = await import('@/lib/db');
+    const { decClinical } = await import('@/lib/clinical-crypto');
+    const rows = await db.incident.findMany({ where: { clientId }, orderBy: { createdAt: 'desc' }, take: 100 });
+    incidents = rows.map((r) => {
+      let detail: { description?: string; injury?: string; actionTaken?: string; witnesses?: string } = {};
+      try { detail = JSON.parse(decClinical(r.descriptionEnc) || '{}'); } catch { /* leave blank if undecryptable */ }
+      return {
+        id: r.id,
+        bookingId: r.bookingId,
+        clientId: r.clientId,
+        clientName: null as string | null,
+        category: r.category,
+        severity: r.severity,
+        location: r.location,
+        riddorReportable: r.riddorReportable,
+        loggedBy: r.loggedBy,
+        createdAt: r.createdAt.toISOString(),
+        description: detail.description || '',
+        injury: detail.injury || '',
+        actionTaken: detail.actionTaken || '',
+        witnesses: detail.witnesses || '',
+      };
+    });
+  }
   if (session?.email) {
-    const { auditClinicalView } = await import('@/lib/clinical-view-audit');
-    auditClinicalView({ actor: session.email, actorRole: session.role, clientId, surface: 'incidents' });
+    if (clientId) {
+      const { auditClinicalView } = await import('@/lib/clinical-view-audit');
+      auditClinicalView({ actor: session.email, actorRole: session.role, clientId, surface: 'incidents' });
+    } else {
+      // Register view spans many clients (and erasure-retained rows with no
+      // client at all), so it can't go through the single-clientId helper
+      // above — logged directly instead. Best-effort, matches other audit
+      // writes on this route.
+      try {
+        const { logAudit } = await import('@/lib/audit');
+        await logAudit({
+          action: 'ASSESSMENT_VIEWED',
+          actor: session.email,
+          actorRole: session.role,
+          summary: `Clinic-wide incidents register viewed (${incidents.length} record${incidents.length === 1 ? '' : 's'})`,
+        });
+      } catch { /* audit is best-effort */ }
+    }
   }
   return NextResponse.json({ ok: true, incidents });
 }
