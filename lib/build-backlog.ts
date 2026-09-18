@@ -5566,6 +5566,26 @@ export const BUILD_BACKLOG: BacklogItem[] = [
       "Verified: npx tsc --noEmit and npm run build pass clean. Not independently verified in this pass: actual response cache-control headers and admin-save-to-live-page latency against a real deployment (no route to the production DB from the sandbox).",
     ],
   },
+  {
+    title: "Staff booking against an existing package skips the balance re-check added elsewhere",
+    type: 'ERROR', urgency: 'P2', status: 'SHIPPED', assignee: 'claude', pr: PR(1982),
+    value: 6, effort: 2,
+    detail: "BLD-1834: app/admin/bookings/create-action.ts (book-against-package flow) read sessionsRemaining before the transaction and never called packageOccupancyWhere() inside it, unlike app/api/booking/start/route.ts and the link-existing-appointment flow in app/admin/bookings/actions.ts, which both added that exact re-check for the same race. Two staff booking the last session of a course concurrently could both succeed, overdrawing the package.",
+    notes: [
+      "Fix: recounts occupancy via the shared packageOccupancyWhere() predicate inside the same Serializable transaction that holds the slot, returning a distinct 'PACKAGE_FULL' sentinel (not conflated with the existing slot-clash null) so the staff-facing error names the real cause, matching the pattern already used in app/api/booking/start/route.ts.",
+      "Verified: npx tsc --noEmit and npm run build pass clean.",
+    ],
+  },
+  {
+    title: "Shop checkout inputs trigger iOS auto-zoom on focus",
+    type: 'ERROR', urgency: 'P2', status: 'SHIPPED', assignee: 'claude', pr: PR(1982),
+    value: 4, effort: 1,
+    detail: "BLD-1840: components/shop/CheckoutForm.tsx set its shared field class at text-sm (14px) for every checkout input (name, email, phone, address, postcode, gift-card code), unlike every comparable public form (BookingFlow, ConsultForm, EnquiryForm, GroupBookingForm, FranchiseEnquiryForm), which use the 16px default that avoids iOS Safari's auto-zoom-on-focus -- an isolated regression on the highest-friction, payment-adjacent form on the site.",
+    notes: [
+      "Fix: dropped the text-sm utility from the shared field class so it falls back to the same 16px default the other forms already use.",
+      "Verified: npx tsc --noEmit and npm run build pass clean.",
+    ],
+  },
 ];
 
 // A content hash over every item's title + status + PR, so ANY change (a new
