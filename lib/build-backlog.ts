@@ -5552,6 +5552,17 @@ export const BUILD_BACKLOG: BacklogItem[] = [
       'No schema change. Verified: npx tsc --noEmit passes clean; npm run build passes clean (DB_SYNC_NONFATAL=true; sandbox cannot reach the production Postgres host).',
     ],
   },
+  {
+    title: "/book page is fully uncached despite serving mostly-cacheable content",
+    type: 'TASK', urgency: 'P1', status: 'SHIPPED', assignee: 'claude', pr: PR(1982),
+    value: 8, effort: 5,
+    detail: "BLD-1833: app/(marketing)/book/page.tsx set force-dynamic, so every hit re-fetched the treatment catalogue and review aggregate that the homepage already caches (revalidate=3600). Response headers confirmed it: / served cache-control public + x-vercel-cache HIT, /book served private no-store. Only the signed-in client info was genuinely per-user.",
+    notes: [
+      "Fix: the page still reads treatment/date/wl query params server-side, so it stays dynamically rendered (unlike the homepage) -- but the two things actually making it slow were separable. lib/services.ts gained getBookingCatalogue()/getPromotedOffers(), unstable_cache wrappers around bookingCatalogue()/liveOffers(true) (hourly, tagged BOOK_CATALOGUE_TAG), mirroring lib/site-config.ts's getSiteConfig() pattern exactly. app/api/admin/services/route.ts and import-xlsx/route.ts now call revalidateTag(BOOK_CATALOGUE_TAG) alongside their existing revalidatePath('/', 'layout') so a price/offer/status change still shows immediately rather than waiting out the hour. Every other caller of bookingCatalogue()/liveOffers() (booking/start pricing, the admin catalogue editor, OffersStrip) is untouched and still reads live, uncached data.",
+      "Signed-in personalisation (name, welcome-discount eligibility, SMS pref) no longer runs server-side at render time -- it's fetched by BookingFlow once mounted via a new GET /api/booking/client-info, the same authed-gated-effect pattern the component already uses for its packages fetch. The page passes a signed-out default; BookingFlow's mount effect fills in the real state a moment later.",
+      "Verified: npx tsc --noEmit and npm run build pass clean. Not independently verified in this pass: actual response cache-control headers and admin-save-to-live-page latency against a real deployment (no route to the production DB from the sandbox).",
+    ],
+  },
 ];
 
 // A content hash over every item's title + status + PR, so ANY change (a new
