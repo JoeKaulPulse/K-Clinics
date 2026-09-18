@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
-import { revalidatePath } from 'next/cache';
+import { revalidatePath, revalidateTag } from 'next/cache';
 import { crmEnabled } from '@/lib/crm';
+import { BOOK_CATALOGUE_TAG } from '@/lib/services';
 
 export const runtime = 'nodejs';
 
@@ -123,6 +124,7 @@ export async function POST(req: Request) {
       });
       await logAudit({ action: 'SERVICE_PRICES_BULK', actor: session.email, actorRole: session.role, summary: `Imported ${variants.length} variant(s) into a service (${mode === 'replace' ? 'replaced' : 'appended'})` });
       revalidatePath('/', 'layout');
+      revalidateTag(BOOK_CATALOGUE_TAG, {});
       return NextResponse.json({ ok: true, imported: variants.length, serviceId: svcId });
     }
 
@@ -159,7 +161,8 @@ export async function POST(req: Request) {
   return NextResponse.json({ ok: false, error: 'Unknown op' }, { status: 400 });
 }
 
-// Refresh the public price surfaces (cards, treatment pages, /pricing) so admin
-// price/offer changes show without waiting for the hourly ISR window.
-const ok = () => { revalidatePath('/', 'layout'); return NextResponse.json({ ok: true }); };
+// Refresh the public price surfaces (cards, treatment pages, /pricing, /book —
+// BLD-1833's book-catalogue cache) so admin price/offer changes show without
+// waiting for the hourly ISR window.
+const ok = () => { revalidatePath('/', 'layout'); revalidateTag(BOOK_CATALOGUE_TAG, {}); return NextResponse.json({ ok: true }); };
 const bad = () => NextResponse.json({ ok: false, error: 'Bad request' }, { status: 400 });

@@ -52,9 +52,32 @@ type Stage = 'account' | 'service' | 'variant' | 'time' | 'upsell' | 'card' | 'd
 export function BookingFlow({ catalogue, client, preselect = null, preselectDate = '', waitlistToken = '' }: { catalogue: Service[]; client: ClientInfo; preselect?: string | null; preselectDate?: string; waitlistToken?: string }) {
   const [authed, setAuthed] = useState(client.signedIn);
   const [firstName, setFirstName] = useState(client.firstName);
+  const [email, setEmail] = useState(client.email);
   const [gender, setGender] = useState<string | null>(client.gender);
   const [welcome, setWelcome] = useState(client.welcomeEligible);
   const [smsPref, setSmsPref] = useState(client.smsReminders);
+
+  // BLD-1833: /book is now ISR-cached, so `client` above is always the
+  // signed-out default at render time — the real signed-in state (name,
+  // welcome-discount eligibility, SMS pref) is fetched here once mounted,
+  // same split as the packages effect below.
+  useEffect(() => {
+    if (isDemo) return;
+    let live = true;
+    fetch('/api/booking/client-info')
+      .then((r) => r.json())
+      .then((j) => {
+        if (!live) return;
+        setAuthed(j.signedIn);
+        setFirstName(j.firstName);
+        setEmail(j.email);
+        setGender(j.gender);
+        setWelcome(j.welcomeEligible);
+        setSmsPref(j.smsReminders);
+      })
+      .catch(() => { /* stay on the signed-out default — client can still book as a guest */ });
+    return () => { live = false; };
+  }, []);
 
   // Deep-link preselect (e.g. from K Vision "Book →"): jump straight to the
   // variant step for that service when the client is already signed in.
@@ -519,7 +542,7 @@ export function BookingFlow({ catalogue, client, preselect = null, preselectDate
               )}
               {/* BLD-838: optional email capture — anonymous visitors only (signed-in
                   clients are already recoverable). Never blocks progress. */}
-              {!client.email && <SaveProgress treatmentSlug={service.treatmentSlug} variantLabel={variant.name} />}
+              {!email && <SaveProgress treatmentSlug={service.treatmentSlug} variantLabel={variant.name} />}
             </div>
           )}
 
