@@ -174,6 +174,7 @@ export async function createManualBooking(input: {
   // ownership/treatment/balance, then create at £0 linked to the purchase —
   // the money already lives on the purchase booking.
   let packageBookingId: string | null = null;
+  let packageSessionsTotal = 0;
   if (input.usePackageBookingId) {
     if (consultBooking) return { ok: false, error: 'A consultation can’t use a package session.' };
     if (sessions > 1) return { ok: false, error: 'A package session books one visit at a time.' };
@@ -183,6 +184,7 @@ export async function createManualBooking(input: {
     if (pkg.treatmentSlug !== input.treatmentSlug) return { ok: false, error: `That package is for a different treatment (${pkg.label}).` };
     if (pkg.sessionsRemaining < 1) return { ok: false, error: 'No sessions left on that package — every remaining session is already booked or used.' };
     packageBookingId = pkg.purchaseBookingId;
+    packageSessionsTotal = pkg.sessionsTotal;
     totalPence = 0;
     priceOverridden = false;
   }
@@ -194,9 +196,19 @@ export async function createManualBooking(input: {
   // input.override is a deliberate staff bypass ("book anyway") — the pre-check
   // above already skips isSlotFree for it, so skip the re-check here too.
   const endBuffered = new Date(end.getTime() + (bufferMin ?? 0) * 60_000);
-  let booking: { id: string; manageToken: string } | null = null;
+  let booking: { id: string; manageToken: string } | null | 'PACKAGE_FULL' = null;
   try {
     booking = await db.$transaction(async (tx) => {
+      // BLD-1834: re-check the package balance INSIDE the transaction, same as
+      // app/api/booking/start and app/admin/bookings/actions.ts's link flow —
+      // the pre-check above reads a derived balance outside it, so two staff
+      // booking the last session at once could each see it free and both spend
+      // it. Serializable isolation makes this recount authoritative.
+      if (packageBookingId) {
+        const { packageOccupancyWhere } = await import('@/lib/package-sessions');
+        const occupied = await tx.booking.count({ where: packageOccupancyWhere(packageBookingId) });
+        if (occupied >= packageSessionsTotal) return 'PACKAGE_FULL' as const;
+      }
       if (!input.override) {
         const overlapping = await tx.booking.findMany({
           where: { status: { in: ['PENDING', 'CONFIRMED'] }, startAt: { lt: endBuffered }, endAt: { gt: start } },
@@ -234,6 +246,9 @@ export async function createManualBooking(input: {
       return { ok: false, error: 'That slot clashes with an existing appointment, closure, or has no free room/clinician. Tick “book anyway” to override.', clash: true };
     }
     throw e;
+  }
+  if (booking === 'PACKAGE_FULL') {
+    return { ok: false, error: 'No sessions left on that package — every remaining session is already booked or used.' };
   }
   if (!booking) {
     return { ok: false, error: 'That slot clashes with an existing appointment, closure, or has no free room/clinician. Tick “book anyway” to override.', clash: true };
