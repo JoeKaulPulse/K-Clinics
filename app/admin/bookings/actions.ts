@@ -565,13 +565,22 @@ const NO_ZEROING = { itemId: '', itemPricePence: 0, itemDiscountPence: 0, remove
 
 /** The pre-link amounts recorded on the most recent link of this booking to this
  *  course, or null if there is no usable record (an older link, or a link that
- *  zeroed nothing). Never throws. */
+ *  zeroed nothing). Never throws.
+ *
+ *  Review fix: the window was the 25 most recent SESSION_EDITED rows for this
+ *  booking, and SESSION_EDITED is a busy action on a booking — add-on added,
+ *  add-on removed, session notes saved, price overridden, marked/unmarked as a
+ *  used package session, plus the system row written at creation. Once enough of
+ *  those land after the link, the link's own entry falls out of the window, the
+ *  unlink below finds no prior amounts and silently restores nothing: the
+ *  appointment stays at GBP 0 for ever with nothing on screen saying so. 200 is
+ *  far beyond any realistic per-booking edit count and the rows are tiny. */
 async function priorPackageZeroing(bookingId: string, purchaseBookingId: string): Promise<PackageZeroing | null> {
   const { db } = await import('@/lib/db');
   const rows = await db.auditEvent.findMany({
     where: { bookingId, action: 'SESSION_EDITED' },
     orderBy: { createdAt: 'desc' },
-    take: 25,
+    take: 200,
     select: { meta: true },
   }).catch(() => [] as { meta: unknown }[]);
   for (const r of rows) {
