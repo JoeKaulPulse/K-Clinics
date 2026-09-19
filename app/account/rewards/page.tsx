@@ -49,7 +49,7 @@ export default async function RewardsPage() {
   const referralQr = await qrSvg(link, { dark: '#1a1a1a' });
 
   return (
-    <PortalShell firstName={client.firstName} locale={locale}>
+    <PortalShell firstName={client.firstName} locale={locale} termsAccepted={!!client.termsAcceptedAt}>
       <PortalPageHeader eyebrow={t('nav.rewards')} title={t('rw.title')} subtitle={t('rw.sub')} />
 
       {/* K Circle membership status */}

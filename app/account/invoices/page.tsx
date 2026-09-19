@@ -22,7 +22,7 @@ export default async function InvoicesPage() {
   const total = invoices.reduce((s, inv) => s + inv.amountPence, 0);
 
   return (
-    <PortalShell firstName={client.firstName} locale={locale}>
+    <PortalShell firstName={client.firstName} locale={locale} termsAccepted={!!client.termsAcceptedAt}>
       <PortalPageHeader
         eyebrow={t('inv.eyebrow')}
         title={t('inv.title')}

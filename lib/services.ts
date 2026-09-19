@@ -1,5 +1,6 @@
 import 'server-only';
 import { cache } from 'react';
+import { unstable_cache } from 'next/cache';
 import { db } from '@/lib/db';
 import { crmEnabled } from '@/lib/crm';
 import { bookableTreatments } from '@/lib/treatments';
@@ -335,3 +336,15 @@ export async function bookingCatalogue(): Promise<BookingService[]> {
     }))
     .filter((s) => s.variants.length > 0);
 }
+
+// BLD-1833: the public /book page hit these on every request with no cache, so
+// it couldn't use the same hourly ISR as the homepage's featured pricing. Tag
+// matches SITE_CONFIG_TAG's pattern (lib/site-config.ts) — admin catalogue/offer
+// writes call revalidateTag(BOOK_CATALOGUE_TAG) (app/api/admin/services/route.ts)
+// so a price/offer/status change still shows immediately rather than waiting out
+// the window. Only /book uses these cached wrappers; every other caller
+// (booking/start pricing, admin catalogue editor, OffersStrip) still calls
+// bookingCatalogue()/liveOffers() directly and must stay uncached.
+export const BOOK_CATALOGUE_TAG = 'book-catalogue';
+export const getBookingCatalogue = unstable_cache(bookingCatalogue, ['book-catalogue-v1'], { tags: [BOOK_CATALOGUE_TAG], revalidate: 3600 });
+export const getPromotedOffers = unstable_cache(() => liveOffers(true), ['book-promoted-offers-v1'], { tags: [BOOK_CATALOGUE_TAG], revalidate: 3600 });

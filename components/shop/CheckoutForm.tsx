@@ -9,7 +9,10 @@ import { Button, ArrowIcon } from '@/components/ui/Button';
 import { trackPurchase } from '@/lib/analytics-events';
 
 const money = (p: number) => `£${(p / 100).toLocaleString('en-GB', { minimumFractionDigits: p % 100 ? 2 : 0 })}`;
-const field = 'mt-1 w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-3 py-2.5 text-sm';
+// BLD-1840: was text-sm (14px) -- iOS Safari auto-zooms on focusing any input
+// under 16px. Every comparable public form (BookingFlow, ConsultForm, etc.)
+// already uses the 16px default; dropping the size utility here matches them.
+const field = 'mt-1 w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-3 py-2.5';
 
 export function CheckoutForm() {
   const { items, subtotalPence, clear } = useCart();

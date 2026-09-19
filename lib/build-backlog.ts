@@ -5565,6 +5565,40 @@ export const BUILD_BACKLOG: BacklogItem[] = [
       'No schema change. Verified: npx tsc --noEmit passes clean; npm run build passes clean (DB_SYNC_NONFATAL=true; sandbox cannot reach the production Postgres host).',
     ],
   },
+  {
+    title: "/book page is fully uncached despite serving mostly-cacheable content",
+    type: 'TASK', urgency: 'P1', status: 'SHIPPED', assignee: 'claude', pr: PR(1982),
+    value: 8, effort: 5,
+    detail: "BLD-1833: app/(marketing)/book/page.tsx set force-dynamic, so every hit re-fetched the treatment catalogue and review aggregate that the homepage already caches (revalidate=3600). Response headers confirmed it: / served cache-control public + x-vercel-cache HIT, /book served private no-store. Only the signed-in client info was genuinely per-user.",
+    notes: [
+      "Fix: the page still reads treatment/date/wl query params server-side, so it stays dynamically rendered (unlike the homepage) -- but the two things actually making it slow were separable. lib/services.ts gained getBookingCatalogue()/getPromotedOffers(), unstable_cache wrappers around bookingCatalogue()/liveOffers(true) (hourly, tagged BOOK_CATALOGUE_TAG), mirroring lib/site-config.ts's getSiteConfig() pattern exactly. app/api/admin/services/route.ts and import-xlsx/route.ts now call revalidateTag(BOOK_CATALOGUE_TAG) alongside their existing revalidatePath('/', 'layout') so a price/offer/status change still shows immediately rather than waiting out the hour. Every other caller of bookingCatalogue()/liveOffers() (booking/start pricing, the admin catalogue editor, OffersStrip) is untouched and still reads live, uncached data.",
+      "Signed-in personalisation (name, welcome-discount eligibility, SMS pref) no longer runs server-side at render time -- it's fetched by BookingFlow once mounted via a new GET /api/booking/client-info, the same authed-gated-effect pattern the component already uses for its packages fetch. The page passes a signed-out default; BookingFlow's mount effect fills in the real state a moment later.",
+      "Pre-merge review found and fixed three things in the same PR. (1) BookingFlow could dead-end: because authed now arrives after mount, it could flip to true while the visitor was already on the account step, whose signed-in branch renders only the 'Securing your booking...' panel with the Back/Continue bar hidden -- no way forward or back. A ref-guarded effect now submits the booking in that case, which is what AccountStep's onAuthed would have done. (2) The bulkPrice branch of app/api/admin/services/route.ts rewrote every variant price and refreshed nothing (the one mutation there that never called revalidatePath); harmless while /book read live, but with the catalogue cached it would quote the old price for up to an hour while booking/start charged the new one. It now calls revalidatePath + revalidateTag like ok() does. (3) GET /api/booking/client-info returned the caller's name/email/gender with no Cache-Control and no Vary: cookie -- inline in /book it had inherited that page's private, no-store. Now force-dynamic + Cache-Control: no-store, matching /api/account/packages.",
+      "Measured on the built output, not assumed: /book is still ƒ (Dynamic) and still serves cache-control private, no-cache, no-store, because awaiting searchParams keeps it dynamic. The page-level `revalidate = 3600` therefore has no effect on the HTTP cache -- the whole win is the two unstable_cache wrappers cutting the per-request catalogue and offers queries. /api/booking/client-info is not prerendered (absent from prerender-manifest.json), so there was never a risk of a static signed-out payload.",
+      "Accepted trade-off, not fixed: an offer whose startAt/endAt window opens or closes mid-hour is a time-driven change no admin write can invalidate, so /book can show an expired or not-yet-live offer price for up to an hour. /api/booking/start re-resolves the variant, status and offers live before pricing, so the client is always charged correctly -- the exposure is a display/charge mismatch on the /book panel, not a mispriced booking. Lower the 3600 if that is not acceptable.",
+      "Verified: npx tsc --noEmit and npm run build pass clean. Not independently verified in this pass: actual response cache-control headers and admin-save-to-live-page latency against a real deployment (no route to the production DB from the sandbox).",
+    ],
+  },
+  {
+    title: "Staff booking against an existing package skips the balance re-check added elsewhere",
+    type: 'ERROR', urgency: 'P2', status: 'SHIPPED', assignee: 'claude', pr: PR(1982),
+    value: 6, effort: 2,
+    detail: "BLD-1834: app/admin/bookings/create-action.ts (book-against-package flow) read sessionsRemaining before the transaction and never called packageOccupancyWhere() inside it, unlike app/api/booking/start/route.ts and the link-existing-appointment flow in app/admin/bookings/actions.ts, which both added that exact re-check for the same race. Two staff booking the last session of a course concurrently could both succeed, overdrawing the package.",
+    notes: [
+      "Fix: recounts occupancy via the shared packageOccupancyWhere() predicate inside the same Serializable transaction that holds the slot, returning a distinct 'PACKAGE_FULL' sentinel (not conflated with the existing slot-clash null) so the staff-facing error names the real cause, matching the pattern already used in app/api/booking/start/route.ts.",
+      "Verified: npx tsc --noEmit and npm run build pass clean.",
+    ],
+  },
+  {
+    title: "Shop checkout inputs trigger iOS auto-zoom on focus",
+    type: 'ERROR', urgency: 'P2', status: 'SHIPPED', assignee: 'claude', pr: PR(1982),
+    value: 4, effort: 1,
+    detail: "BLD-1840: components/shop/CheckoutForm.tsx set its shared field class at text-sm (14px) for every checkout input (name, email, phone, address, postcode, gift-card code), unlike every comparable public form (BookingFlow, ConsultForm, EnquiryForm, GroupBookingForm, FranchiseEnquiryForm), which use the 16px default that avoids iOS Safari's auto-zoom-on-focus -- an isolated regression on the highest-friction, payment-adjacent form on the site.",
+    notes: [
+      "Fix: dropped the text-sm utility from the shared field class so it falls back to the same 16px default the other forms already use.",
+      "Verified: npx tsc --noEmit and npm run build pass clean.",
+    ],
+  },
 ];
 
 // A content hash over every item's title + status + PR, so ANY change (a new
