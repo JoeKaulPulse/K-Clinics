@@ -5542,7 +5542,7 @@ export const BUILD_BACKLOG: BacklogItem[] = [
   },
   {
     title: 'Package sessions retro-linked to a course still showed the individual treatment price; no way to record a package paid outside Stripe',
-    type: 'ERROR', urgency: 'P1', status: 'SHIPPED', assignee: 'claude',
+    type: 'ERROR', urgency: 'P1', status: 'SHIPPED', assignee: 'claude', pr: PR(1981),
     value: 8, effort: 5,
     detail: 'BLD-1824, owner report, three related asks. (1) An appointment retro-linked to an existing package via linkBookingToPackage (app/admin/bookings/actions.ts, BLD-1375) only ever set packageBookingId -- unlike a session booked THROUGH the package flow (app/api/booking/start, create-action.ts), which prices the primary item at 0 up front (BLD-1346), the retro-link path never zeroed the appointment\'s own pricePence/discountPence. The stale price then leaked through every "Not charged / outstanding" surface (app/admin/bookings/[id]/page.tsx, app/admin/clients/[id]/page.tsx, app/admin/bookings/page.tsx), which is very likely what the owner experienced as "allocation doesn\'t work" (ask 3) -- staff used "Apply to package", it linked, but the appointment still showed a charge. (2) lib/package-sessions.ts clientPackages() derives a package\'s paid/"Not yet paid" badge purely from Booking.chargedAt/prepaidAt -- both Stripe-only fields -- so a course paid by bank transfer, in-clinic terminal or cash had no way to ever read as paid, and the admin had no control to say otherwise. (3) The manual "Apply to package" picker (PackageLinkControl / linkBookingToPackage) already exists (BLD-1375) and correctly restricts to the same treatment, refuses a package with no sessions left and refuses an appointment already charged separately -- reviewed and left as intentional, well-reasoned guardrails rather than bugs; no change made there.',
     notes: [
@@ -5603,7 +5603,7 @@ export const BUILD_BACKLOG: BacklogItem[] = [
   },
   {
     title: "Campaign send now batches with a resume path instead of dying silently on large lists (BLD-1832)",
-    type: 'ERROR', urgency: 'P1', status: 'SHIPPED', assignee: 'claude',
+    type: 'ERROR', urgency: 'P1', status: 'SHIPPED', assignee: 'claude', pr: PR(1986),
     value: 7, effort: 4,
     detail: "app/admin/campaigns/actions.ts sendCampaign() (the simple/legacy broadcast composer) emailed every recipient inside a single serial for-loop in the server action, with no batching and no maxDuration override, while Resend throttling caps sends to ~4.5/sec (lib/email.ts). A list over roughly 250-300 clients could outrun the invocation's time budget mid-send, and because the campaign row was created with no explicit status (defaulting to 'SENT' per the schema), an interrupted send left campaign.sentAt/recipients unset with no visible sign anything was wrong and no way to finish mailing the rest -- unlike the richer block-based composer (lib/email-campaigns.ts), which already had a SENDING status, per-recipient EmailEvent dedupe and a cron resume sweep for exactly this failure mode (BLD-1307).",
     notes: [
@@ -5614,6 +5614,31 @@ export const BUILD_BACKLOG: BacklogItem[] = [
       "Pre-merge review fix (security, pre-existing gap in the code this touches): sendCampaign() checked only that a staff session existed, never a permission. A Server Action is a public POST endpoint, so the campaigns.view redirect on the page did not gate it -- any signed-in account, including DEVELOPER and CONTRACTOR (which are given no client access at all), could broadcast arbitrary content to every marketable client. It now requires campaigns.send, matching the rich composer's route; previewCampaignAudience() requires campaigns.view for the same reason. No role that could legitimately send loses the ability to: OWNER and ADMIN, the only roles with campaigns.view by default, both hold campaigns.send.",
       "Pre-merge review fix (schema): added the missing prisma/migrations entry for the four new Campaign columns (20260918120000_campaign_plain_send_batching), with ADD COLUMN IF NOT EXISTS to match the convention every recent migration follows -- deploys currently run prisma db push, so the columns can already exist by the time a migrate deploy ever runs.",
       "Verified: npx tsc --noEmit and npm run build pass clean (npm run build with DB_SYNC_NONFATAL=true -- this sandbox cannot reach the production Postgres host to run prisma db push, which is expected here and not a real failure).",
+    ],
+  },
+  {
+    title: "Three independent PRJ-1229 audit findings: unlabeled mark-done button, next-patient identity on room display, login-form credential drop",
+    type: 'ERROR', urgency: 'P1', status: 'SHIPPED', assignee: 'claude', pr: PR(1984),
+    value: 7, effort: 2,
+    detail: "PRJ-1229.5: components/admin/ClientTasks.tsx's icon-only mark-done button had only a title attribute (unreliable for touch/mobile screen readers), no aria-label -- a WCAG 4.1.2 failure on a primary action in every client's task list. PRJ-1229.3: app/room-display/[token]/page.tsx, an unauthenticated token-only corridor screen, showed the next patient's first name AND treatment title before they'd checked in -- a privacy leak for dentistry/intimate/aesthetic treatments visible to anyone passing by. PRJ-1229.2: components/admin/AdminLoginForm.tsx and components/portal/LoginForm.tsx had inputs with no name attribute and no explicit form method -- a pre-hydration native submit (password-manager autofill+autosubmit, or a fast Enter on a slow connection, reproduced live 3/4 tries) fell back to a silent blank GET reload with credentials lost and no error shown.",
+    notes: [
+      "Fix (PRJ-1229.5): added aria-label=\"Mark done\", matching the convention already used everywhere else in the codebase.",
+      "Fix (PRJ-1229.3): the room-display 'Next' line now shows only the time slot; the in-session 'current' block (already consented, patient checked in) is untouched.",
+      "Fix (PRJ-1229.2): added method=\"post\" and name attributes to both login forms as defense-in-depth. Both forms' existing onSubmit/fetch flow (which calls preventDefault() first) is unaffected when JS runs; without method=\"post\" a form with name'd inputs and no method defaults to GET, which would put the password (and 2FA code) in the URL query string.",
+      "Opus max-effort pre-merge review (separate run): confirmed the room-display JSX stays balanced and the current block is genuinely untouched, and that name + method=\"post\" together (never just one) is the safe pairing. No changes needed.",
+      "Verified: npx tsc --noEmit and npm run build pass clean.",
+    ],
+  },
+  {
+    title: "No clinic-wide register for RIDDOR-reportable incidents; erasure makes retained records unreachable",
+    type: 'ERROR', urgency: 'P1', status: 'SHIPPED', assignee: 'claude', pr: PR(1985),
+    value: 7, effort: 4,
+    detail: "PRJ-1229.4: Incident (accident/adverse-reaction reports with a riddorReportable flag, a UK H&S legal-reporting requirement) could only be viewed per-client via GET /api/admin/incidents?clientId=... -- there was no /admin/incidents list. Incident.clientId uses onDelete: SetNull specifically so the record survives a client's GDPR erasure for its Art. 17(3)(b) legal-retention basis, but once clientId became null the per-client-only read path could never surface that record again -- defeating the reason it was kept.",
+    notes: [
+      "Fix: new lib/incidents.ts listIncidentRegister() (every incident newest-first, including clientId: null rows), a ?all=1 (+ &severity=, &riddor=1) mode on the existing route gated behind the same clients.clinical.view check as the rest of the route before any branching, and a new /admin/incidents page + IncidentRegister component with a distinct RIDDOR badge and a clear \"Erased client -- record retained\" state. Nav entry added under Operations, same permission gate.",
+      "Opus max-effort pre-merge review (separate run, focused on the auth boundary given this aggregates many clients' decrypted data on one screen): confirmed the permission gate has no bypass path, and that a failed decryption is visually distinguishable from a legitimately-redacted erased record. Found and fixed a real bug: the ?all=1 register read audited itself through the single-client auditClinicalView helper (throttled to one row per actor/client/surface/hour), so a repeat full-register read could leave zero audit trail. Audit now branches on `all` the same way the read does.",
+      "Residual (noted, not blocking, owner decision): the register is visible to every clients.clinical.view holder, which by default includes PRACTITIONER -- the owner should confirm that's the intended blast radius for an aggregated multi-client view versus a per-client one.",
+      "Verified: npx tsc --noEmit and npm run build pass clean.",
     ],
   },
 ];
