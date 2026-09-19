@@ -85,7 +85,14 @@ function Inner({ ssoEnabled }: { ssoEnabled: boolean }) {
   }
 
   return (
-    <form onSubmit={submit} className="space-y-5">
+    // PRJ-1229.2: `method="post"` and the inputs' `name` attributes go together
+    // and must stay together. The names exist so a pre-hydration native submit
+    // (password-manager autosubmit before onSubmit attaches) fails visibly
+    // instead of silently reloading with blank fields. Without method="post" a
+    // form with no action defaults to GET, which would put the password and the
+    // 2FA code in the URL query string — and therefore in access logs, history
+    // and referrers. Never drop method="post" while the names are present.
+    <form onSubmit={submit} method="post" className="space-y-5">
       {ssoNotice && (
         <p className={`rounded-[var(--radius-sm)] px-4 py-2.5 text-sm ${ssoNotice.tone === 'info' ? 'bg-[var(--color-bone)] text-[var(--color-ink)]' : 'bg-[var(--color-blush)]/25 text-[var(--color-ink)]'}`}>
           {ssoNotice.text}
@@ -93,17 +100,17 @@ function Inner({ ssoEnabled }: { ssoEnabled: boolean }) {
       )}
       <div>
         <label className={authLabel} htmlFor="email">Email</label>
-        <input id="email" type="email" autoComplete="email" required disabled={twoFactor} className={authField} value={email} onChange={(e) => setEmail(e.target.value)} />
+        <input id="email" name="email" type="email" autoComplete="email" required disabled={twoFactor} className={authField} value={email} onChange={(e) => setEmail(e.target.value)} />
       </div>
       <div>
         <label className={authLabel} htmlFor="password">Password</label>
-        <input id="password" type="password" autoComplete="current-password" required disabled={twoFactor} className={authField} value={password} onChange={(e) => setPassword(e.target.value)} />
+        <input id="password" name="password" type="password" autoComplete="current-password" required disabled={twoFactor} className={authField} value={password} onChange={(e) => setPassword(e.target.value)} />
       </div>
 
       {twoFactor && (
         <div>
           <label className={authLabel} htmlFor="code">Authentication code</label>
-          <input id="code" inputMode="numeric" autoComplete="one-time-code" autoFocus placeholder="6-digit code or recovery code" className={authField} value={code} onChange={(e) => setCode(e.target.value)} />
+          <input id="code" name="code" inputMode="numeric" autoComplete="one-time-code" autoFocus placeholder="6-digit code or recovery code" className={authField} value={code} onChange={(e) => setCode(e.target.value)} />
           <p className="mt-1.5 text-xs text-[var(--color-stone)]">Enter the code from your authenticator app, or a recovery code.</p>
         </div>
       )}
