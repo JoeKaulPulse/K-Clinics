@@ -2,7 +2,7 @@
 
 import { revalidatePath } from 'next/cache';
 import { crmEnabled } from '@/lib/crm';
-import { getSession } from '@/lib/auth';
+import { getSession, sessionCan } from '@/lib/auth';
 
 // Live recipient count for the send-confirmation dialog (BLD-1352) — mirrors
 // the same lawful-basis filtering `sendCampaign` below uses, so the number
@@ -12,7 +12,12 @@ import { getSession } from '@/lib/auth';
 export async function previewCampaignAudience(tag: string): Promise<number> {
   if (!crmEnabled) return 0;
   const session = await getSession();
-  if (!session) return 0;
+  // Pre-merge review fix: a Server Action is a public POST endpoint, so the
+  // `campaigns.view` redirect on app/admin/campaigns/page.tsx does not gate it.
+  // Without this, any signed-in staff session — including DEVELOPER and
+  // CONTRACTOR, which are given no client access at all (lib/permissions.ts) —
+  // could read the size of the marketable client list.
+  if (!sessionCan(session, 'campaigns.view')) return 0;
   const { countAudience } = await import('@/lib/email-campaigns');
   const t = tag.trim();
   return countAudience(t ? { type: 'tag', value: t } : { type: 'all' });
@@ -22,7 +27,15 @@ export async function previewCampaignAudience(tag: string): Promise<number> {
 export async function sendCampaign(formData: FormData) {
   if (!crmEnabled) return { ok: false, error: 'CRM disabled' };
   const session = await getSession();
-  if (!session) return { ok: false, error: 'Unauthorised' };
+  // Pre-merge review fix, same reasoning as previewCampaignAudience above but
+  // with far more at stake: this action checked only that SOME staff session
+  // existed, so any signed-in account could broadcast arbitrary content to
+  // every marketable client. The rich composer's route has always required
+  // `campaigns.send` (app/api/admin/marketing/email/send/route.ts); this legacy
+  // one never did. Every role that can reach the page (OWNER, ADMIN) already
+  // holds `campaigns.send` by default, so nobody who could legitimately send
+  // loses the ability to.
+  if (!sessionCan(session, 'campaigns.send')) return { ok: false, error: 'You don’t have permission to send campaigns.' };
 
   const name = String(formData.get('name') || '').trim();
   const subject = String(formData.get('subject') || '').trim();
