@@ -81,13 +81,16 @@ export async function GET(req: Request) {
     });
   }
   if (session?.email) {
-    if (clientId) {
-      const { auditClinicalView } = await import('@/lib/clinical-view-audit');
-      auditClinicalView({ actor: session.email, actorRole: session.role, clientId, surface: 'incidents' });
-    } else {
+    // Review fix: this branches on `all`, exactly like the read above it, NOT on
+    // whether a clientId happened to be supplied. `?clientId=X&all=1` returns the
+    // whole clinic register (the `all` branch wins), so keying the audit off
+    // clientId would have recorded a single-client view for a read of every
+    // client's incident detail — a special-category read under-stated in the very
+    // trail that exists to catch it.
+    if (all) {
       // Register view spans many clients (and erasure-retained rows with no
       // client at all), so it can't go through the single-clientId helper
-      // above — logged directly instead. Best-effort, matches other audit
+      // below — logged directly instead. Best-effort, matches other audit
       // writes on this route.
       try {
         const { logAudit } = await import('@/lib/audit');
@@ -98,6 +101,9 @@ export async function GET(req: Request) {
           summary: `Clinic-wide incidents register viewed (${incidents.length} record${incidents.length === 1 ? '' : 's'}${total !== null && total > incidents.length ? ` of ${total}` : ''})`,
         });
       } catch { /* audit is best-effort */ }
+    } else if (clientId) {
+      const { auditClinicalView } = await import('@/lib/clinical-view-audit');
+      auditClinicalView({ actor: session.email, actorRole: session.role, clientId, surface: 'incidents' });
     }
   }
   return NextResponse.json({ ok: true, incidents, ...(total !== null ? { total } : {}) });
