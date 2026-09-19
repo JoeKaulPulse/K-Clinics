@@ -1121,6 +1121,19 @@ model Campaign {
   abWinner      String?
   sentAt        DateTime?
   recipients    Int       @default(0)
+  // BLD-1832: distinguishes the simple/legacy plain-text broadcast composer
+  // (app/admin/campaigns/actions.ts, body is raw text with {firstName}/
+  // {discountCode} tokens) from the rich block-based one (audienceType always
+  // set, body is JSON EmailBlock[]) so the cron resume sweep renders each
+  // stuck SENDING campaign with the right template instead of guessing from
+  // content. Null for every existing row and every rich-composer send.
+  format        String?
+  // Per-recipient discount config for the plain composer, captured at send
+  // time so a resumed/continued send (cron sweep, no form data available)
+  // mints codes with the same terms as the original attempt (BLD-1832).
+  discountType    String?
+  discountValue   Int?
+  discountExpiresAt DateTime?
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @default(now()) @updatedAt
 

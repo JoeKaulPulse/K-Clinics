@@ -40,36 +40,32 @@ export async function sendCampaign(formData: FormData) {
   if (discountOn && !/\{discountCode\}/.test(body)) return { ok: false, error: 'Add {discountCode} to the message so each recipient gets their code.' };
 
   const { db } = await import('@/lib/db');
-  const { sendEmail, tmplManual } = await import('@/lib/email');
-  const { marketableClientWhere } = await import('@/lib/consent');
 
-  // BLD-242: only clients with recorded marketing-consent evidence (UK GDPR Art.7).
-  const recipients = await db.client.findMany({
-    where: { ...marketableClientWhere(), ...(tag ? { tags: { has: tag } } : {}) },
+  // BLD-1832: previously this created the campaign with no explicit status
+  // (defaulting to 'SENT' per the schema) and then emailed every recipient
+  // in a single serial loop with no batching. A list large enough to outrun
+  // this action's time budget left the loop dead mid-send with campaign.sentAt
+  // still null and no record that anything was in flight — a silent partial
+  // send. It now starts SENDING (visible in the History list as "sending…"
+  // until it finishes) and hands the actual delivery to deliverPlainCampaign,
+  // which batches with bounded concurrency and records an EmailEvent per
+  // recipient immediately. Discount terms are persisted on the row (not just
+  // held in this function's closure) so resumeStuckPlainCampaigns — the cron
+  // sweep in lib/email-campaigns.ts that finishes any campaign still SENDING
+  // after 30 minutes — can mint the remaining codes with the same terms.
+  const campaign = await db.campaign.create({
+    data: {
+      name, subject, body, segment: tag || null, status: 'SENDING', format: 'text',
+      discountType: discountOn ? discountType : null,
+      discountValue: discountOn ? discountValue : null,
+      discountExpiresAt: discountOn ? new Date(Date.now() + discountDays * 864e5) : null,
+    },
   });
 
-  const campaign = await db.campaign.create({ data: { name, subject, body, segment: tag || null } });
-  const { createPersonalCode } = discountOn ? await import('@/lib/promo') : { createPersonalCode: null };
-  const codeExpiry = discountOn ? new Date(Date.now() + discountDays * 864e5) : null;
+  const { deliverPlainCampaign } = await import('@/lib/email-campaigns');
+  const { sent, failed } = await deliverPlainCampaign(campaign);
 
-  let sent = 0;
-  for (const c of recipients) {
-    const unsubUrl = `${process.env.NEXT_PUBLIC_SITE_URL || ''}/api/unsubscribe?t=${c.unsubToken}`;
-    let greeting = body.replace(/\{firstName\}/g, c.firstName);
-    if (discountOn && createPersonalCode) {
-      try {
-        const code = await createPersonalCode({ campaignId: campaign.id, email: c.email, discountType, percent: discountType === 'PERCENT' ? discountValue : undefined, amountPence: discountType === 'FIXED' ? discountValue * 100 : undefined, expiresAt: codeExpiry, label: name });
-        greeting = greeting.replace(/\{discountCode\}/g, code);
-      } catch { greeting = greeting.replace(/\{discountCode\}/g, ''); }
-    }
-    const res = await sendEmail({ to: c.email, subject, html: tmplManual(greeting.replace(/\n/g, '<br>'), unsubUrl) });
-    await db.emailEvent.create({
-      data: { clientId: c.id, kind: 'CAMPAIGN', to: c.email, subject, status: res.ok ? 'SENT' : 'FAILED', providerId: res.id, error: res.error, campaignId: campaign.id },
-    });
-    if (res.ok) sent++;
-  }
-
-  await db.campaign.update({ where: { id: campaign.id }, data: { sentAt: new Date(), recipients: sent } });
+  await db.campaign.update({ where: { id: campaign.id }, data: { status: 'SENT', sentAt: new Date(), recipients: sent } });
   revalidatePath('/admin/campaigns');
-  return { ok: true, sent, total: recipients.length };
+  return { ok: true, sent, total: sent + failed };
 }
