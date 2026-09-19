@@ -40,6 +40,13 @@ export type PackageView = {
   // latter reads as a demand for money the client has already had returned.
   refunded: boolean;
   purchasedAt: Date;
+  // BLD-1824: staff override for a package paid outside Stripe. null when no
+  // override has ever been recorded (the badge falls back to the Stripe-derived
+  // `paid` above).
+  manualPaymentStatus: 'PAID' | 'PARTIALLY_PAID' | 'NOT_PAID' | null;
+  manualPaymentMethod: string | null;
+  manualPaymentAmountPence: number | null;
+  manualPaymentAt: Date | null;
 };
 
 const LIVE = ['PENDING', 'CONFIRMED'] as const;
@@ -102,6 +109,7 @@ export async function clientPackages(clientId: string): Promise<PackageView[]> {
       id: true, treatmentSlug: true, treatmentTitle: true, status: true,
       chargedAt: true, prepaidAt: true, createdAt: true,
       chargedPence: true, refundedPence: true,
+      manualPaymentStatus: true, manualPaymentMethod: true, manualPaymentAmountPence: true, manualPaymentAt: true,
       items: { where: { isAddon: false }, orderBy: { createdAt: 'asc' }, take: 1, select: { sessions: true, label: true } },
       packageSessions: { where: SESSION_INCLUDED, select: { status: true, packageSessionUsedAt: true } },
     },
@@ -123,9 +131,16 @@ export async function clientPackages(clientId: string): Promise<PackageView[]> {
       sessionsUsed: used,
       sessionsBooked: booked,
       sessionsRemaining: Math.max(0, total - used - booked),
-      paid: Boolean(p.chargedAt || p.prepaidAt) && !fullyRefunded,
+      // BLD-1824: a 'PAID' staff override makes the package spendable exactly
+      // like a Stripe charge would — 'PARTIALLY_PAID' does not (mirrors the
+      // existing bar: online client booking already requires `paid` in full).
+      paid: (Boolean(p.chargedAt || p.prepaidAt) || p.manualPaymentStatus === 'PAID') && !fullyRefunded,
       refunded: fullyRefunded,
       purchasedAt: p.createdAt,
+      manualPaymentStatus: (p.manualPaymentStatus as PackageView['manualPaymentStatus']) ?? null,
+      manualPaymentMethod: p.manualPaymentMethod ?? null,
+      manualPaymentAmountPence: p.manualPaymentAmountPence ?? null,
+      manualPaymentAt: p.manualPaymentAt ?? null,
     };
   });
 }
