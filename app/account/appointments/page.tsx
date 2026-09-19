@@ -44,7 +44,7 @@ export default async function AppointmentsPage() {
   };
 
   return (
-    <PortalShell firstName={client.firstName} locale={locale}>
+    <PortalShell firstName={client.firstName} locale={locale} termsAccepted={!!client.termsAcceptedAt}>
       <PortalPageHeader
         eyebrow={t('nav.appointments')}
         title={t('appt.title')}

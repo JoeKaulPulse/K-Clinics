@@ -2,6 +2,7 @@ export const dynamic = 'force-dynamic';
 
 import { notFound, redirect } from 'next/navigation';
 import { AssessmentRunner } from '@/components/portal/AssessmentRunner';
+import { TermsGate } from '@/components/portal/TermsGate';
 import { getEffectiveQuestionnaire } from '@/lib/questionnaire-versions';
 import { localizeQuestionnaire } from '@/lib/questionnaires-uk';
 import { crmEnabled } from '@/lib/crm';
@@ -24,5 +25,15 @@ export default async function AssessmentPage({ params }: { params: Promise<{ key
 
   // Show the form in the client's language; stored answer values stay canonical.
   const locale = client.locale === 'uk' ? 'uk' : 'en';
-  return <AssessmentRunner q={localizeQuestionnaire(merged, locale)} locale={locale} />;
+  // BLD-1845 (review fix): this is the one authenticated /account page that does
+  // NOT render inside PortalShell, so the mandatory T&Cs gate mounted there did
+  // not cover it — a client with no recorded acceptance could still open an
+  // assessment directly (bookmark, emailed link) and submit health data. Mount
+  // the same gate here so the portal is covered end to end.
+  return (
+    <>
+      <AssessmentRunner q={localizeQuestionnaire(merged, locale)} locale={locale} />
+      <TermsGate accepted={!!client.termsAcceptedAt} />
+    </>
+  );
 }

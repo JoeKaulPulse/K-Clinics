@@ -37,7 +37,7 @@ export default async function ProfilePage() {
   }
 
   return (
-    <PortalShell firstName={client.firstName} locale={locale}>
+    <PortalShell firstName={client.firstName} locale={locale} termsAccepted={!!client.termsAcceptedAt}>
       <PortalPageHeader eyebrow={pt(locale, 'nav.profile')} title={pt(locale, 'profile.title')} />
       <ProfileForm
         locale={locale}
@@ -55,6 +55,35 @@ export default async function ProfilePage() {
       />
 
       {stripeEnabled && <CardOnFileSection locale={locale} initial={cardStatus} />}
+
+      {/* BLD-1845: always-visible acceptance status, so a client can check it
+          any time rather than only meeting it as a one-off blocking prompt. */}
+      <section className="mt-12 max-w-lg rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-6">
+        <h2 className="eyebrow mb-2">Terms &amp; Conditions</h2>
+        {client.termsAcceptedAt ? (
+          <div className="mt-4 flex items-center justify-between gap-4 rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-4 py-3">
+            <div className="text-sm">
+              <p className="flex items-center gap-2 font-medium text-[var(--color-ink)]">
+                <span className="grid h-5 w-5 shrink-0 place-items-center rounded-full bg-[var(--color-jade)]/15 text-[var(--color-jade)]">
+                  <svg viewBox="0 0 24 24" className="h-3 w-3" fill="none"><path d="M5 13l4 4L19 7" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" /></svg>
+                </span>
+                Accepted {client.termsAcceptedAt.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })}
+              </p>
+              <p className="mt-0.5 text-xs text-[var(--color-stone)]">Version {client.termsVersion ?? '—'}</p>
+            </div>
+            <Link href="/info/terms-conditions" className="shrink-0 rounded-full border border-[var(--color-line)] px-4 py-2 text-sm font-medium hover:border-[var(--color-gold)] hover:text-[var(--color-gold-deep)]">
+              Review
+            </Link>
+          </div>
+        ) : (
+          <div className="mt-4 flex items-center justify-between gap-4 rounded-[var(--radius-sm)] border border-dashed border-[var(--color-line)] bg-white px-4 py-3">
+            <p className="text-sm font-medium text-[var(--color-ink)]">Not yet accepted</p>
+            <Link href="/info/terms-conditions" className="shrink-0 rounded-full bg-[var(--color-ink)] px-4 py-2 text-sm font-medium text-[var(--color-porcelain)] hover:bg-[var(--color-gold-deep)]">
+              Review &amp; accept
+            </Link>
+          </div>
+        )}
+      </section>
 
       {/* Data & privacy (GDPR self-service) */}
       <section className="mt-12 max-w-lg rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-6">
