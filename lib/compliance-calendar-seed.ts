@@ -1,8 +1,11 @@
 // BLD-1830 — statutory/regulatory filing calendar for the two K-Clinics legal
 // entities, seeded onto the existing Compliance & Renewals board (BLD-587)
 // rather than a new page. Plain data only: lib/renewals.ts's
-// ensureComplianceCalendarSeeded() upserts these idempotently on page load, the
-// same self-healing/backfill pattern lib/task-refs.ts uses for board refs.
+// ensureComplianceCalendarSeeded() inserts any that are missing on page load,
+// the same self-healing/backfill pattern lib/task-refs.ts uses for board refs.
+// It is insert-only: once a row exists, staff own its date (they roll it
+// forward with the board's "Renew" action), so editing a date here afterwards
+// does NOT overwrite the live row — correct it on the board instead.
 //
 // The model tracks one upcoming `renewalAt` at a time (rolled forward by staff
 // via the existing "Renew" action when a deadline is met) — there is no
@@ -24,6 +27,19 @@ export type ComplianceCalendarSeedItem = {
 
 export const KCLINICS_GROUP = 'KClinics Group Limited';
 export const KCLINICS_SKIN_AND_LASER = 'KClinics Skin & Laser Limited';
+
+/** Stable primary key for a seeded row, derived from company + name.
+ *
+ *  ComplianceItem.id is a plain String @id, so writing a deterministic id makes
+ *  the backfill genuinely race-safe: a second concurrent page load's insert
+ *  collides on the primary key and is skipped, where a find-then-create would
+ *  have produced a duplicate. It also means a staff rename no longer resurrects
+ *  the original row. No `@unique` is added — the deploy gate refuses those on
+ *  an existing table (see CLAUDE.md / lib/task-refs.ts). */
+export function complianceSeedId(item: { company: string; name: string }): string {
+  const slug = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+  return `ccal-${slug(item.company)}-${slug(item.name)}`;
+}
 
 export const COMPLIANCE_CALENDAR_SEED: ComplianceCalendarSeedItem[] = [
   // ── KClinics Group Limited (14985949) — VAT-registered, ARD 31 July,
@@ -72,9 +88,9 @@ export const COMPLIANCE_CALENDAR_SEED: ComplianceCalendarSeedItem[] = [
     name: 'VAT return (quarterly, stagger group 1)',
     category: 'VAT',
     company: KCLINICS_GROUP,
-    renewalAt: '2027-01-07',
+    renewalAt: '2026-10-07',
     reference: '14985949',
-    notes: 'Stagger group 1: quarters end Feb/May/Aug/Nov. Deadline is 1 month and 7 days after the end of each quarter. This row holds the next upcoming due date (quarter to 30 Nov 2026) — renew it once filed to roll to the following quarter.',
+    notes: 'Stagger group 1: quarters end Feb/May/Aug/Nov. Deadline is 1 month and 7 days after the end of each quarter. This row holds the next upcoming due date (quarter to 31 Aug 2026, due 7 Oct 2026) — renew it once filed to roll to the following quarter (quarter to 30 Nov 2026, due 7 Jan 2027).',
   },
 
   // ── KClinics Skin & Laser Limited (17101088) — trading entity, employer,
@@ -150,8 +166,8 @@ export const COMPLIANCE_CALENDAR_SEED: ComplianceCalendarSeedItem[] = [
     name: 'PAYE - monthly payment',
     category: 'PAYE',
     company: KCLINICS_SKIN_AND_LASER,
-    renewalAt: '2026-10-31',
-    notes: 'Due by the last day of each tax month.',
+    renewalAt: '2026-09-30',
+    notes: 'Due by the last date of each month, per the ticket. Confirm against HMRC\'s own PAYE deadline (the 22nd of the following tax month when paying electronically, the 19th by post) before relying on this reminder.',
   },
   {
     name: 'Pension auto-enrolment',

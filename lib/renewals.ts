@@ -1,7 +1,7 @@
 import 'server-only';
 import { db } from '@/lib/db';
 import { renewalStatus, type RenewalStatus } from '@/lib/renewals-shared';
-import { COMPLIANCE_CALENDAR_SEED } from '@/lib/compliance-calendar-seed';
+import { COMPLIANCE_CALENDAR_SEED, complianceSeedId } from '@/lib/compliance-calendar-seed';
 
 // Business compliance & renewals (BLD-587) — server data layer. Tracks recurring
 // deadlines (insurance, licences, PAT/EICR, servicing, waste contracts) and
@@ -39,32 +39,46 @@ export async function renewalsSummary() {
 
 let complianceCalendarSeeded = false;
 /** BLD-1830 — idempotently seed the statutory filing calendar for the two
- *  K-Clinics legal entities onto the existing compliance board. Dedupe is
- *  structural (find-then-create on name+company), not a DB constraint — the
- *  deploy gate refuses new @unique columns on an existing table (see
- *  lib/task-refs.ts for the same pattern) — so a repeat visit never creates a
- *  duplicate row. Idempotent + memoised per warm process; call once per page
- *  load, mirroring ensureTaskRefs/ensureBuildRefs. */
+ *  K-Clinics legal entities onto the existing compliance board. Called once per
+ *  page load, mirroring ensureTaskRefs/ensureBuildRefs.
+ *
+ *  Uniqueness is structural, not a DB constraint — the deploy gate refuses new
+ *  @unique columns on an existing table (see CLAUDE.md / lib/task-refs.ts):
+ *   • each seeded row gets a deterministic primary key (complianceSeedId), so
+ *     two concurrent page loads racing the same insert collide on the PK and
+ *     the loser is skipped rather than creating a duplicate;
+ *   • rows are also matched on name+company, so a row seeded before the stable
+ *     ids existed (or re-created by hand) is recognised instead of duplicated;
+ *   • one read and one write, not two queries per item. */
 export async function ensureComplianceCalendarSeeded(): Promise<void> {
   if (complianceCalendarSeeded) return;
   try {
-    for (const item of COMPLIANCE_CALENDAR_SEED) {
-      const existing = await db.complianceItem.findFirst({
-        where: { name: item.name, company: item.company },
-        select: { id: true },
-      });
-      if (existing) continue;
-      await db.complianceItem.create({
-        data: {
+    const companies = [...new Set(COMPLIANCE_CALENDAR_SEED.map((i) => i.company))];
+    const seedIds = COMPLIANCE_CALENDAR_SEED.map(complianceSeedId);
+    const existing = await db.complianceItem.findMany({
+      where: { OR: [{ id: { in: seedIds } }, { company: { in: companies } }] },
+      select: { id: true, name: true, company: true },
+    });
+    const byId = new Set(existing.map((r) => r.id));
+    const byNameCompany = new Set(existing.map((r) => `${r.company}\u0000${r.name}`));
+
+    const missing = COMPLIANCE_CALENDAR_SEED.filter(
+      (i) => !byId.has(complianceSeedId(i)) && !byNameCompany.has(`${i.company}\u0000${i.name}`),
+    );
+    if (missing.length) {
+      await db.complianceItem.createMany({
+        data: missing.map((item) => ({
+          id: complianceSeedId(item),
           name: item.name,
           category: item.category,
           company: item.company,
-          renewalAt: new Date(item.renewalAt),
+          renewalAt: new Date(`${item.renewalAt}T12:00:00.000Z`),
           notes: item.notes ?? null,
           reference: item.reference ?? null,
           createdBy: 'system:compliance-calendar-seed',
-        },
-      }).catch(() => {});
+        })),
+        skipDuplicates: true,
+      });
     }
     complianceCalendarSeeded = true;
   } catch (e) {
