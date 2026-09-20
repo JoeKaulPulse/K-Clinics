@@ -30,6 +30,7 @@ export async function POST(req: Request) {
         const data = {
           name,
           category: CATS.has(str(b.category)) ? str(b.category) : 'Other',
+          company: str(b.company, 120) || null,
           provider: str(b.provider, 120) || null,
           reference: str(b.reference, 120) || null,
           renewalAt,
