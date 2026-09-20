@@ -405,13 +405,19 @@ model Client {
   clientStatusAt     DateTime?
   clientStatusReason String? // optional free-text note staff can attach (yellow/red context)
 
-  // ── Patch test status (BLD-844) ──────────────────────────────────────────
+  // ── Patch test status (BLD-844, BLD-1846) ────────────────────────────────
   // Staff-recorded PASSED/FAILED result so front desk can see at a glance
   // whether a client is eligible for patch-test-gated treatments (laser etc.)
   // without searching through appointments/notes.
-  patchTestResult String? // 'PASSED' | 'FAILED'
-  patchTestDate   DateTime?
-  patchTestSetBy  String?
+  // patchTestDate is the actual (possibly historical) date the test was
+  // performed, staff-selectable on save (BLD-1846) — many clients were
+  // patch-tested before this feature existed. patchTestRecordedAt is the
+  // separate, always-server-set audit timestamp of when the entry was made,
+  // paired with patchTestSetBy (who made it).
+  patchTestResult     String? // 'PASSED' | 'FAILED'
+  patchTestDate       DateTime?
+  patchTestSetBy      String?
+  patchTestRecordedAt DateTime?
 
   // ── Public loyalty leaderboard (PRJ-1.11) ────────────────────────────────
   // Only clients who explicitly opt in appear on the public leaderboard.
