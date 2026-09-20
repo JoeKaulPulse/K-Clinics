@@ -49,7 +49,10 @@ export async function POST(req: Request) {
     // in any timezone the record is later read in (midnight UTC would render
     // as the previous day for anyone behind Greenwich).
     chosenDate = new Date(`${testDate}T12:00:00.000Z`);
-    if (Number.isNaN(chosenDate.getTime())) {
+    // Reject a date that does not exist rather than letting it roll over:
+    // "2026-02-30" parses to 2 March, which would silently store a date the
+    // caller never chose.
+    if (Number.isNaN(chosenDate.getTime()) || chosenDate.toISOString().slice(0, 10) !== testDate) {
       return NextResponse.json({ ok: false, error: 'Enter the test date as a valid date.' }, { status: 400 });
     }
   }
