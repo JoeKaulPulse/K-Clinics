@@ -4,14 +4,17 @@ import { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 
 function todayIso() {
-  // Local-date ISO (YYYY-MM-DD) for the <input type="date"> value/max — using
-  // toISOString() directly would shift to UTC and can show tomorrow's date
-  // for evening users west of Greenwich.
-  const d = new Date();
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, '0');
-  const day = String(d.getDate()).padStart(2, '0');
-  return `${y}-${m}-${day}`;
+  // Today's London calendar date (YYYY-MM-DD) for the <input type="date">
+  // value/max. Pinned to Europe/London rather than the machine's timezone so
+  // this renders identically during SSR (server runs in UTC) and after
+  // hydration, and so it agrees with the same check on the server route.
+  return new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/London' }).format(new Date());
+}
+
+/** Clinic-local (UK) rendering of a stored instant, pinned so the server-rendered
+ *  HTML and the hydrated client agree. */
+function fmtDate(iso: string) {
+  return new Date(iso).toLocaleDateString('en-GB', { timeZone: 'Europe/London' });
 }
 
 export function PatchTestEditor({
@@ -34,6 +37,9 @@ export function PatchTestEditor({
 
   function save(value: 'PASSED' | 'FAILED' | null) {
     setErr('');
+    // An emptied date box would otherwise fall back to today on the server and
+    // silently record the wrong date — the exact problem BLD-1846 fixes.
+    if (value && !testDate) { setErr('Choose the test date.'); return; }
     start(async () => {
       const res = await fetch('/api/admin/patch-test', {
         method: 'POST',
@@ -65,11 +71,11 @@ export function PatchTestEditor({
           <>
             <p className="text-sm font-medium text-[var(--color-ink)]">
               {passed ? 'Patch test completed' : 'Patch test failed'}
-              {setAt ? ` — ${new Date(setAt).toLocaleDateString('en-GB')}` : ''}
+              {setAt ? ` — ${fmtDate(setAt)}` : ''}
             </p>
             {(setBy || recordedAt) && (
               <p className="mt-1 text-xs text-[var(--color-stone)]">
-                Recorded by {setBy || 'unknown'}{recordedAt ? ` on ${new Date(recordedAt).toLocaleDateString('en-GB')}` : ''}
+                Recorded by {setBy || 'unknown'}{recordedAt ? ` on ${fmtDate(recordedAt)}` : ''}
               </p>
             )}
           </>
