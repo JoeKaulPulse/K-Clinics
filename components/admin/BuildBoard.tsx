@@ -604,7 +604,7 @@ function TaskModal({ item, allItems, projects, canManage, isAdmin, gh, staff, on
 
         {item.detail && <p className="mt-3 whitespace-pre-wrap text-sm text-[var(--color-ink-soft)]">{item.detail}</p>}
         {item.screenshots.length > 0 && (
-          <div className="mt-3 flex flex-wrap gap-2">{item.screenshots.map((s) => <a key={s} href={s} target="_blank" rel="noreferrer"><img src={s} alt="" className="h-24 w-auto rounded border border-[var(--color-line)]" /></a>)}</div>
+          <div className="mt-3 flex flex-wrap gap-2">{item.screenshots.map((s, i) => <a key={s} href={s} target="_blank" rel="noreferrer" aria-label={`Open screenshot ${i + 1}`}><img src={s} alt="" className="h-24 w-auto rounded border border-[var(--color-line)]" /></a>)}</div>
         )}
 
         {/* Attachments — photos & videos (works from iPhone) */}
@@ -619,11 +619,11 @@ function TaskModal({ item, allItems, projects, canManage, isAdmin, gh, staff, on
           {upErr && <p className="mt-2 text-xs text-[var(--color-blush-deep)]">{upErr}</p>}
           {item.attachments.length > 0 ? (
             <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-3">
-              {item.attachments.map((u) => (
+              {item.attachments.map((u, i) => (
                 <div key={u} className="group relative overflow-hidden rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-black/5">
                   {isVideo(u)
                     ? <video src={u} controls playsInline className="h-28 w-full object-cover" />
-                    : <a href={u} target="_blank" rel="noreferrer"><img src={u} alt="" className="h-28 w-full object-cover" /></a>}
+                    : <a href={u} target="_blank" rel="noreferrer" aria-label={`Open attachment ${i + 1}`}><img src={u} alt="" className="h-28 w-full object-cover" /></a>}
                   {canManage && <button onClick={() => removeAttachment(u)} title="Remove" className="absolute right-1 top-1 rounded-full bg-black/60 px-1.5 text-xs text-white opacity-0 group-hover:opacity-100">✕</button>}
                 </div>
               ))}
