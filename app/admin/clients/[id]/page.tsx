@@ -633,6 +633,7 @@ export default async function ClientDetail({ params }: { params: Promise<{ id: s
               result={c.patchTestResult}
               setBy={c.patchTestSetBy}
               setAt={c.patchTestDate ? c.patchTestDate.toISOString() : null}
+              recordedAt={c.patchTestRecordedAt ? c.patchTestRecordedAt.toISOString() : null}
             />
           )}
 

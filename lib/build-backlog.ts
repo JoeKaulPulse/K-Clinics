@@ -5656,6 +5656,18 @@ export const BUILD_BACKLOG: BacklogItem[] = [
       "Verified: npx tsc --noEmit passes clean; npm run build passes clean (DB_SYNC_NONFATAL=true -- this sandbox cannot reach the production Postgres host over raw Postgres, network policy only proxies HTTPS).",
     ],
   },
+  {
+    title: 'Allow manual patch test date selection (BLD-1846)',
+    type: 'TASK', urgency: 'P2', status: 'SHIPPED', assignee: 'claude', pr: PR(1989),
+    value: 5, effort: 2,
+    detail: "components/admin/PatchTestEditor.tsx / app/api/admin/patch-test/route.ts always stamped patchTestDate with new Date() (today) when staff recorded a PASSED/FAILED result, with no way to enter the actual date the test was performed. Many existing clients were patch-tested before this feature existed, so their on-record date was silently wrong (today, not the real historical date), which matters for anyone later checking whether a patch test is still within its validity window.",
+    notes: [
+      "Fix: added Client.patchTestRecordedAt (additive, nullable DateTime -- new migration 20260920140000_patch_test_recorded_at) as a dedicated, always-server-set audit timestamp for when the entry was made. patchTestDate is repurposed to mean the actual (possibly historical) test date; patchTestSetBy is unchanged (who entered it). POST /api/admin/patch-test now accepts an optional testDate (ISO date string): parsed and used when valid and not in the future, otherwise it 400s on a future date or falls back to today on anything unparseable. patchTestRecordedAt and patchTestSetBy are always server-set to now/session.email on every save, never client-supplied. Clearing a record (result: null) now nulls all four fields.",
+      "PatchTestEditor.tsx gained an inline <input type=\"date\"> (defaults to today, max=today so staff cannot pick a future date) sent as testDate alongside the existing Record passed/Record failed buttons -- no modal, matching the component's existing minimal pill/text-xs style. The display block now reads as two lines: \"Patch test completed -- {date}\" (or failed) and \"Recorded by {setBy} on {recordedAt}\", both en-GB formatted, replacing the old single combined setAt line.",
+      "app/admin/clients/[id]/page.tsx passes the new patchTestRecordedAt field through as a new recordedAt prop (ISO string, alongside the existing setAt/setBy), and app/admin/actions.ts eraseClientData now also nulls patchTestRecordedAt so a client erasure clears the new audit field too, matching the existing patchTestResult/patchTestDate/patchTestSetBy null-outs (BLD-1518).",
+      "Verified: npx tsc --noEmit and DB_SYNC_NONFATAL=true npm run build both pass clean (this sandbox cannot reach the production Postgres host over raw Postgres, so the prebuild db-sync step is expected to fail here -- DB_SYNC_NONFATAL is the existing opt-in for exactly that, used for local verification only, not set anywhere in committed config).",
+    ],
+  },
 ];
 
 // A content hash over every item's title + status + PR, so ANY change (a new
