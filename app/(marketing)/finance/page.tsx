@@ -116,7 +116,10 @@ export default async function FinancePage() {
                 Klarna and Clearpay are independent payment providers, not KClinics. Eligibility, payment schedules and approval are determined entirely by the provider — we can’t guarantee approval or specific terms. Please review the provider’s own terms before you commit.
               </p>
               <div className="mt-7 flex justify-center">
-                <Button href="/pricing" variant="outline">See eligible treatments & courses</Button>
+                {/* Label deliberately does not promise an eligibility list: /pricing
+                    does not mark which treatments or courses are financeable, and
+                    eligibility is the provider's decision, not ours. */}
+                <Button href="/pricing" variant="outline">See treatments & prices</Button>
               </div>
             </div>
           </Reveal>
