@@ -4972,7 +4972,8 @@ model TaskAutomationRun {
 model ComplianceItem {
   id               String    @id @default(cuid())
   name             String
-  category         String    @default("Other") // Insurance | Licence | Certification | Equipment servicing | Waste contract | PAT testing | EICR | Other
+  category         String    @default("Other") // Insurance | Licence | Certification | Equipment servicing | Waste contract | PAT testing | EICR | Companies House | Corporation Tax | VAT | PAYE | Pension | Other
+  company          String? // legal entity this deadline belongs to (BLD-1830); null for practice-wide items (insurance, licences, PAT testing…)
   provider         String?
   reference        String? // policy / certificate / contract number
   renewalAt        DateTime // expiry / next renewal date

@@ -1,6 +1,7 @@
 import 'server-only';
 import { db } from '@/lib/db';
 import { renewalStatus, type RenewalStatus } from '@/lib/renewals-shared';
+import { COMPLIANCE_CALENDAR_SEED } from '@/lib/compliance-calendar-seed';
 
 // Business compliance & renewals (BLD-587) — server data layer. Tracks recurring
 // deadlines (insurance, licences, PAT/EICR, servicing, waste contracts) and
@@ -34,6 +35,41 @@ export async function renewalsSummary() {
   }
   attention.sort((a, b) => a.days - b.days);
   return { total: rows.length, expired, due, soon, needAttention: expired + due + soon, next: attention.slice(0, 5) };
+}
+
+let complianceCalendarSeeded = false;
+/** BLD-1830 — idempotently seed the statutory filing calendar for the two
+ *  K-Clinics legal entities onto the existing compliance board. Dedupe is
+ *  structural (find-then-create on name+company), not a DB constraint — the
+ *  deploy gate refuses new @unique columns on an existing table (see
+ *  lib/task-refs.ts for the same pattern) — so a repeat visit never creates a
+ *  duplicate row. Idempotent + memoised per warm process; call once per page
+ *  load, mirroring ensureTaskRefs/ensureBuildRefs. */
+export async function ensureComplianceCalendarSeeded(): Promise<void> {
+  if (complianceCalendarSeeded) return;
+  try {
+    for (const item of COMPLIANCE_CALENDAR_SEED) {
+      const existing = await db.complianceItem.findFirst({
+        where: { name: item.name, company: item.company },
+        select: { id: true },
+      });
+      if (existing) continue;
+      await db.complianceItem.create({
+        data: {
+          name: item.name,
+          category: item.category,
+          company: item.company,
+          renewalAt: new Date(item.renewalAt),
+          notes: item.notes ?? null,
+          reference: item.reference ?? null,
+          createdBy: 'system:compliance-calendar-seed',
+        },
+      }).catch(() => {});
+    }
+    complianceCalendarSeeded = true;
+  } catch (e) {
+    console.error('[renewals] compliance calendar seed failed', e);
+  }
 }
 
 /** Daily cron: alert staff when an item crosses a reminder threshold it hasn't

@@ -5641,6 +5641,21 @@ export const BUILD_BACKLOG: BacklogItem[] = [
       "Verified: npx tsc --noEmit and npm run build pass clean.",
     ],
   },
+  {
+    title: "Compliance calendar for KClinics Group + Skin & Laser statutory deadlines (BLD-1830)",
+    type: 'TASK', urgency: 'P2', status: 'SHIPPED', assignee: 'claude',
+    value: 6, effort: 3,
+    detail: "BLD-1830: the owner wanted a calendar of Companies House / HMRC filing deadlines for the two legal entities (KClinics Group Limited, 14985949; KClinics Skin & Laser Limited, 17101088) -- confirmation statements, annual accounts, CT600/CT payment, VAT, PAYE (P60, P11D/P11D(b), Class 1A NIC, EPS/payment) and pension auto-enrolment.",
+    notes: [
+      "Built on the existing Compliance & Renewals feature (BLD-587) instead of a new page or calendar widget: added one additive, nullable ComplianceItem.company column (no @unique, per CLAUDE.md's ban on adding unique constraints to an existing table) so items can be grouped/filtered by legal entity, while every existing practice-wide item (insurance, licences, PAT testing, EICR...) keeps working unfiltered with company left null.",
+      "New lib/compliance-calendar-seed.ts holds the ~17 hardcoded statutory deadlines as plain data (name/category/company/renewalAt/notes/reference). Recurring items (confirmation statement, VAT quarters, PAYE EPS/payment) are seeded with only the next concrete due date, computed from the rule the ticket gave (VAT stagger group 1 = quarter end + 1 month 7 days; PAYE EPS by the 19th; PAYE payment by month end) -- the model tracks one upcoming renewalAt at a time, rolled forward by staff via the existing Renew action, by design; no recurrence engine was added.",
+      "Extended RENEWAL_CATEGORIES additively (Companies House, Corporation Tax, VAT, PAYE, Pension) alongside the existing categories, which keep working unchanged.",
+      "Wired in with the self-healing/backfill pattern lib/task-refs.ts documents: ensureComplianceCalendarSeeded() (lib/renewals.ts) find-then-creates each row, deduped structurally on name+company (no unique constraint), and is called once at the top of the CompliancePage server component before listRenewals() -- mirroring the ensureTaskRefs/ensureBuildRefs call sites. The two companies' calendars appear automatically on first admin visit after deploy; repeat visits never create duplicates.",
+      "components/admin/ComplianceManager.tsx gained a company filter pill row (All companies / each company present / No company) and a Company column in the list, plus a Company <select> (the two known entities or '-') in the create/edit form. app/api/admin/compliance/route.ts now reads/persists the field. No restructuring of the existing list UI.",
+      "Added prisma/migrations/20260920000000_compliance_item_company (ADD COLUMN IF NOT EXISTS, matching the convention every recent migration follows since deploys run prisma db push).",
+      "Verified: npx tsc --noEmit passes clean; npm run build passes clean (DB_SYNC_NONFATAL=true -- this sandbox cannot reach the production Postgres host over raw Postgres, network policy only proxies HTTPS).",
+    ],
+  },
 ];
 
 // A content hash over every item's title + status + PR, so ANY change (a new
