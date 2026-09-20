@@ -61,7 +61,9 @@ export async function eraseClientData(clientId: string) {
         inviteTokenHash: null, inviteTokenExp: null,
         // BLD-1518: signupIp (personal data) and the patch-test outcome
         // (special-category health data) were left untouched by erasure.
-        signupIp: null, patchTestResult: null, patchTestDate: null, patchTestSetBy: null,
+        // BLD-1846 added patchTestRecordedAt (the audit-entry timestamp,
+        // separate from the test date) — cleared here too.
+        signupIp: null, patchTestResult: null, patchTestDate: null, patchTestSetBy: null, patchTestRecordedAt: null,
         // BLD-912: leaderboardOptIn:true clients are queried onto the public
         // /membership leaderboard by photo+name, and concerns/genderSelfDescribe
         // are free-text special-category-adjacent fields — none had a retention
