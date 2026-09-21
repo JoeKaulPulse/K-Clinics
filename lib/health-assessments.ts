@@ -193,22 +193,33 @@ export async function formatAssessment(id: string, audit?: { actor: string; acto
     const { translateToEnglish, localeName, translationConfigured } = await import('@/lib/translate');
     const freeIdx = items.map((it, i) => (it.freeText ? i : -1)).filter((i) => i >= 0);
     if (freeIdx.length > 0) {
-      const sourceValues = freeIdx.map((i) => items[i].value);
-      let translated = await getCachedTranslation(id, sourceValues);
-      let ok = translated !== null;
-      if (!translated) {
-        const res = await translateToEnglish(sourceValues);
-        ok = res.ok;
-        translated = res.translated;
-        if (ok) await cacheTranslation(id, sourceValues, translated);
-      }
-      if (ok && translated) {
-        freeIdx.forEach((i, k) => { items[i].original = items[i].value; items[i].value = translated![k]; });
-        translatedNote = `Translated from ${localeName(sourceLocale)}`;
+      // BLD-1836: medical-history's Privacy Notice tick only discloses Google
+      // Translate from v3 onward (lib/questionnaires.ts `agreed_privacy`). A
+      // submission captured under an older version, or with that tick left
+      // 'no', never told the client their free-text answers might be sent to
+      // a third-party translator — so leave it untranslated rather than doing
+      // this special-category processing without informed consent.
+      const translateConsented = key !== 'medical-history' || (capturedVersion >= 3 && answers['agreed_privacy'] === 'yes');
+      if (!translateConsented) {
+        translatedNote = `Filled in ${localeName(sourceLocale)} — translation needs the client's updated Privacy Notice consent (ask them to re-submit medical history)`;
       } else {
-        translatedNote = (await translationConfigured())
-          ? `Filled in ${localeName(sourceLocale)} — translation temporarily unavailable`
-          : `Filled in ${localeName(sourceLocale)} — translation not configured`;
+        const sourceValues = freeIdx.map((i) => items[i].value);
+        let translated = await getCachedTranslation(id, sourceValues);
+        let ok = translated !== null;
+        if (!translated) {
+          const res = await translateToEnglish(sourceValues);
+          ok = res.ok;
+          translated = res.translated;
+          if (ok) await cacheTranslation(id, sourceValues, translated);
+        }
+        if (ok && translated) {
+          freeIdx.forEach((i, k) => { items[i].original = items[i].value; items[i].value = translated![k]; });
+          translatedNote = `Translated from ${localeName(sourceLocale)}`;
+        } else {
+          translatedNote = (await translationConfigured())
+            ? `Filled in ${localeName(sourceLocale)} — translation temporarily unavailable`
+            : `Filled in ${localeName(sourceLocale)} — translation not configured`;
+        }
       }
     }
   }
