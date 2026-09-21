@@ -322,7 +322,7 @@ export default async function HomePage() {
             <dl className="mt-9 grid max-w-md grid-cols-2 gap-x-12 gap-y-5 text-[var(--color-ink-soft)]">
               <div className="col-span-2">
                 <dt className="eyebrow mb-1.5">Address</dt>
-                <dd>{site.address.street}, {site.address.locality}, {site.address.region} {site.address.postalCode}</dd>
+                <dd>{site.address.street}, {site.address.district}, {site.address.region} {site.address.postalCode}</dd>
               </div>
               <div>
                 <dt className="eyebrow mb-1.5">Call</dt>

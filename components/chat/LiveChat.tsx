@@ -22,6 +22,7 @@ export function LiveChat() {
   const [showAiNotice, setShowAiNotice] = useState(false);
   const lastAt = useRef<string | null>(null);
   const scroller = useRef<HTMLDivElement>(null);
+  const messageInput = useRef<HTMLInputElement>(null);
   const atFooter = useHideAtFooter();
 
   useEffect(() => { setToken(localStorage.getItem(TOKEN_KEY)); }, []);
@@ -64,6 +65,10 @@ export function LiveChat() {
   }, [open, token, poll]);
 
   useEffect(() => { scroller.current?.scrollTo({ top: scroller.current.scrollHeight, behavior: 'smooth' }); }, [msgs, open]);
+
+  // PRJ-1229.12: every other overlay moves focus in on open (useDialogBehaviours);
+  // this panel is non-modal (no trap needed), so just focus the message input.
+  useEffect(() => { if (open) messageInput.current?.focus(); }, [open]);
 
   async function send() {
     const body = draft.trim();
@@ -147,6 +152,7 @@ export function LiveChat() {
               )}
               <div className="flex gap-2">
                 <input
+                  ref={messageInput}
                   value={draft}
                   onChange={(e) => setDraft(e.target.value)}
                   onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); } }}

@@ -79,7 +79,7 @@ function systemPrompt(knowledge: string, open: boolean, dentistryLive: boolean):
   return `You are "K", the friendly virtual assistant for KClinics — an aesthetics & aesthetic-dentistry clinic in Clerkenwell, Islington, London. You answer visitor messages in a live chat on the website.
 
 ABOUT THE CLINIC
-- Address: ${site.address.street}, ${site.address.locality}, ${site.address.region} ${site.address.postalCode} (near Farringdon & Barbican).
+- Address: ${site.address.street}, ${site.address.district}, ${site.address.region} ${site.address.postalCode} (near Farringdon & Barbican).
 - Phone: ${site.phone}. Email: ${site.email}.
 - Opening hours: ${hoursText()} (London time).
 - Booking: visitors book online at ${site.booking.path} — they pick a treatment & time and save a card securely; nothing is charged until the treatment is delivered (or per the 24-hour cancellation policy). Consultations are complimentary.

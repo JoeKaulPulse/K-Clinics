@@ -235,7 +235,7 @@ export function emailShell(opts: { preheader?: string; body: string; unsubUrl?: 
           <table role="presentation" align="center" cellpadding="0" cellspacing="0" border="0" style="margin:0 auto 14px;"><tr>
             <td width="38" height="38" align="center" valign="middle" style="width:38px;height:38px;border:1px solid #c2a589;border-radius:50%;font-family:Georgia,'Times New Roman',serif;font-size:19px;color:#a98a6d;line-height:38px;mso-line-height-rule:exactly;">K</td>
           </tr></table>
-          <div style="color:#5b4f47;">${site.address.street}, ${site.address.locality}, ${site.address.region} ${site.address.postalCode}</div>
+          <div style="color:#5b4f47;">${site.address.street}, ${site.address.district}, ${site.address.region} ${site.address.postalCode}</div>
           <div style="margin-top:5px;">
             <a href="${site.phoneHref}" style="color:#8a6e54;text-decoration:none;">${site.phone}</a>
             &nbsp;&middot;&nbsp;
@@ -750,7 +750,7 @@ export function tmplBookingConfirmation(o: {
   const timeStr = o.start.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', ...tz });
   const end = o.end || new Date(o.start.getTime() + 60 * 60000);
   const price = o.pricePence > 0 ? fmtMoney(o.pricePence) : 'Assessed at your visit';
-  const addr = o.locationAddress || `${site.address.street}, ${site.address.locality}, ${site.address.postalCode}`;
+  const addr = o.locationAddress || `${site.address.street}, ${site.address.district}, ${site.address.postalCode}`;
   const place = o.locationName ? `${o.locationName} — ${addr}` : addr;
   const mapsUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`KClinics ${addr}`)}`;
   const gcal = gcalUrl({ title: `${o.treatment} · KClinics`, start: o.start, end, details: `Your ${o.treatment} at KClinics. Manage or cancel: ${o.manageUrl}`, location: addr });
@@ -813,7 +813,7 @@ export function bookingIcs(o: { id: string; treatment: string; start: Date; end?
   const end = o.end || new Date(o.start.getTime() + 60 * 60000);
   const f = (d: Date) => d.toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, '');
   const fold = (s: string) => s.replace(/([,;\\])/g, '\\$1').replace(/\n/g, '\\n');
-  const loc = o.locationAddress || `${site.address.street}, ${site.address.locality}, ${site.address.postalCode}`;
+  const loc = o.locationAddress || `${site.address.street}, ${site.address.district}, ${site.address.postalCode}`;
   return [
     'BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//KClinics//Booking//EN', 'CALSCALE:GREGORIAN', 'METHOD:PUBLISH',
     'BEGIN:VEVENT', `UID:booking-${o.id}@kclinics.co.uk`, `DTSTAMP:${f(new Date())}`,

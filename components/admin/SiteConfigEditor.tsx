@@ -126,7 +126,8 @@ export function SiteConfigEditor({ initial, revisions }: { initial: SiteConfig; 
             <h2 className="mb-4 font-[family-name:var(--font-display)] text-xl">Address &amp; map</h2>
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="sm:col-span-2"><label className={label}>Street</label><input className={field} value={c.address.street} onChange={(e) => nest('address', { street: e.target.value })} /></div>
-              <div><label className={label}>Locality</label><input className={field} value={c.address.locality} onChange={(e) => nest('address', { locality: e.target.value })} /></div>
+              <div><label className={label}>Locality <span className="normal-case text-[var(--color-stone)]">(Royal Mail post town — used in structured data)</span></label><input className={field} value={c.address.locality} onChange={(e) => nest('address', { locality: e.target.value })} /></div>
+              <div><label className={label}>District <span className="normal-case text-[var(--color-stone)]">(shown on-page, e.g. "Clerkenwell, Islington")</span></label><input className={field} value={c.address.district} onChange={(e) => nest('address', { district: e.target.value })} /></div>
               <div><label className={label}>Region</label><input className={field} value={c.address.region} onChange={(e) => nest('address', { region: e.target.value })} /></div>
               <div><label className={label}>Postcode</label><input className={field} value={c.address.postalCode} onChange={(e) => nest('address', { postalCode: e.target.value })} /></div>
               <div><label className={label}>Country</label><input className={field} value={c.address.countryName} onChange={(e) => nest('address', { countryName: e.target.value })} /></div>

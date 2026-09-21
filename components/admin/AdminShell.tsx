@@ -71,7 +71,7 @@ export function AdminShell({
     .filter((g) => g.items.length > 0);
   // Which clinic the user is viewing. Defaults to the primary site (derived from
   // the clinic locality); pass `location` to override per page in multi-site use.
-  const locationLabel = location || site.address.locality.split(',').pop()?.trim() || site.address.region;
+  const locationLabel = location || site.address.district.split(',').pop()?.trim() || site.address.region;
 
   // Locale: server-provided prop wins (no flash); otherwise read the cookie.
   const [locale, setLocale] = useState<Locale>(localeProp ?? DEFAULT_LOCALE);
