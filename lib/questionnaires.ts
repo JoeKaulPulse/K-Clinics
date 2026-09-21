@@ -41,7 +41,7 @@ const YESNO = [
 
 export const medicalHistory: Questionnaire = {
   key: 'medical-history',
-  version: 2,
+  version: 3,
   type: 'MEDICAL_HISTORY',
   title: 'Medical history',
   intro:
@@ -158,7 +158,11 @@ export const medicalHistory: Questionnaire = {
       id: 'agreed_privacy',
       type: 'boolean',
       prompt: 'Have you read and understood how we use and protect your health information?',
-      help: 'See our Privacy Notice. Your answers are special-category data — encrypted and processed only to provide your care.',
+      // BLD-1836: v3 adds the Google Translate disclosure so this tick is the
+      // "explicit consent flag" that gates auto-translation in
+      // formatAssessment() (lib/health-assessments.ts) — a submission captured
+      // under an older version never saw this line, so it's never auto-translated.
+      help: 'See our Privacy Notice. Your answers are special-category data — encrypted and processed only to provide your care. If you answer in a language other than English, our clinical team may use Google Translate to read your answer.',
       required: true,
       options: [
         { value: 'no', label: 'Not yet' },
