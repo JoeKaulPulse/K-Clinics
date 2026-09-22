@@ -172,6 +172,10 @@ export default async function BookingDetail({ params }: { params: Promise<{ id: 
   const addOnItems = await db.bookingItem.findMany({ where: { bookingId: id, isAddon: true }, orderBy: { createdAt: 'asc' }, select: { id: true, label: true, pricePence: true } }).catch(() => []);
   const addOnTotal = addOnItems.reduce((s, it) => s + it.pricePence, 0);
   const basePence = Math.max(0, b.pricePence - addOnTotal);
+  // BLD-1869: staff set this appointment's price themselves (reason recorded), so
+  // GBP 0 here is a real price, not the "priced at consultation" default. Show the
+  // literal amount rather than "On consultation".
+  const priceSetByStaff = !!b.priceOverriddenAt;
   // Surface the booked course/session count. Clients can book a Course of 3/6/10,
   // but after booking only the treatment name + total showed — staff couldn't tell
   // how many sessions were paid for. The primary (non-add-on) line item holds it.
@@ -321,7 +325,7 @@ export default async function BookingDetail({ params }: { params: Promise<{ id: 
           {courseSessions > 1 ? (
             <p className="mt-2 inline-flex items-center gap-2 rounded-full bg-[color-mix(in_oklab,var(--color-gold)_16%,transparent)] px-3 py-1 text-sm font-medium text-[var(--color-ink)]">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden><rect x="3" y="4" width="18" height="16" rx="2" /><path d="M3 9h18M8 3v3M16 3v3" /></svg>
-              Course of {courseSessions} sessions{perSessionPence > 0 ? ` · ${money(perSessionPence)} per session` : ''}
+              Course of {courseSessions} sessions{priceSetByStaff || perSessionPence > 0 ? ` · ${money(perSessionPence)} per session` : ''}
               {pkgSession ? ` · session ${pkgSession.session} taken/booked so far` : ''}
             </p>
           ) : pkgSession ? (
@@ -337,7 +341,7 @@ export default async function BookingDetail({ params }: { params: Promise<{ id: 
           )}
         </div>
         <div className="text-right">
-          <p className="font-[family-name:var(--font-display)] text-2xl">{b.pricePence > 0 ? money(b.pricePence) : 'On consultation'}</p>
+          <p className="font-[family-name:var(--font-display)] text-2xl">{priceSetByStaff || b.pricePence > 0 ? money(b.pricePence) : 'On consultation'}</p>
           {b.chargedAt && <p className="text-xs text-[var(--color-jade)]">Charged {money(b.chargedPence || 0)}</p>}
           {b.lateCancel && <p className="text-xs text-[var(--color-stone)]">Cancelled within 24h{b.feeWaived ? ' · fee waived' : ''}</p>}
         </div>
@@ -438,7 +442,7 @@ export default async function BookingDetail({ params }: { params: Promise<{ id: 
               <div className="space-y-1.5 text-sm">
                 <div className="flex items-baseline justify-between gap-3">
                   <span className="min-w-0 break-words">{b.treatmentTitle}{courseSessions > 1 ? ` · course of ${courseSessions}` : ''}</span>
-                  <span className="shrink-0 tabular-nums text-[var(--color-stone)]">{basePence > 0 ? money(basePence) : 'On consultation'}</span>
+                  <span className="shrink-0 tabular-nums text-[var(--color-stone)]">{priceSetByStaff || basePence > 0 ? money(basePence) : 'On consultation'}</span>
                 </div>
                 {/* BLD-1149: adjust the agreed price for this appointment (pre-payment),
                     restoring the override staff previously had on this page. Same gate

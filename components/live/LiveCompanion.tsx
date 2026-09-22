@@ -18,7 +18,11 @@ const POLL_MS = 4000;
 
 const gold = '#a98a6d'; // PRJ-1032.35: matches --color-gold exactly; kept as a literal (not var()) because it's concatenated with a raw hex alpha suffix below (${gold}66), which only works on a literal hex string.
 const STAGE_ORDER = SESSION_STEPS.map((s) => s.key);
-const money = (p: number) => (p <= 0 ? 'On consultation' : `£${(p / 100).toLocaleString('en-GB', { minimumFractionDigits: p % 100 ? 2 : 0 })}`);
+// BLD-1869: `priced` is set once staff have put a price on this appointment
+// themselves, and then £0 is the real amount rather than the on-consultation
+// default. Without it, 0 still means the treatment is priced at the visit.
+const money = (p: number, priced = false) =>
+  p <= 0 && !priced ? 'On consultation' : `£${(p / 100).toLocaleString('en-GB', { minimumFractionDigits: p % 100 ? 2 : 0 })}`;
 
 export function LiveCompanion({ token, firstName, treatmentTitle, startAt, durationMin, practitionerName, initial }: {
   token: string; firstName: string; treatmentTitle: string; startAt: string; durationMin: number;
@@ -305,7 +309,9 @@ function ConsentSheet({ token, onClose }: { token: string; onClose: () => void }
 // each at the price their card will actually be charged. Shows the live total
 // while the card is on file, then the amount paid once it's taken at checkout.
 function PriceCard({ pricing }: { pricing: ClientLiveView['pricing'] }) {
-  if (!pricing.items.length && pricing.totalPence <= 0) return null;
+  // Nothing priced and nothing itemised — no card. A staff-set price (BLD-1869)
+  // always has something to say, even when it is £0.
+  if (!pricing.items.length && pricing.totalPence <= 0 && !pricing.priceOverridden) return null;
   const charged = pricing.chargedPence != null;
   return (
     <div className="mt-4 rounded-2xl border border-white/10 bg-white/[0.03] p-4 backdrop-blur">
@@ -317,13 +323,13 @@ function PriceCard({ pricing }: { pricing: ClientLiveView['pricing'] }) {
               {it.label}{it.sessions > 1 ? ` · course of ${it.sessions}` : ''}
               {it.isAddon && <span className="ml-2 inline-block rounded-full border border-[var(--color-gold)]/40 px-1.5 py-px text-[10px] uppercase tracking-wider text-[var(--color-gold)]">Add-on</span>}
             </span>
-            <span className="shrink-0 tabular-nums text-[var(--color-night-ink)]">{money(it.pricePence)}</span>
+            <span className="shrink-0 tabular-nums text-[var(--color-night-ink)]">{money(it.pricePence, pricing.priceOverridden)}</span>
           </li>
         ))}
       </ul>
       <div className="mt-3 flex items-baseline justify-between border-t border-white/10 pt-3">
         <span className="text-sm text-[var(--color-night-muted)]">{charged ? 'Paid today' : 'Total'}</span>
-        <span className="font-[family-name:var(--font-display)] text-lg" style={{ color: gold }}>{money(charged ? pricing.chargedPence! : pricing.totalPence)}</span>
+        <span className="font-[family-name:var(--font-display)] text-lg" style={{ color: gold }}>{money(charged ? pricing.chargedPence! : pricing.totalPence, pricing.priceOverridden)}</span>
       </div>
       <p className="mt-2 text-[11px] leading-relaxed text-[var(--color-night-faint)]">
         {charged ? 'Thank you — your card has been charged for today’s visit.' : 'Saved securely to your card — only taken after your treatment.'}

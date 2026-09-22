@@ -46,6 +46,9 @@ export type SessionSnapshot = {
     chargedPence: number | null;
     chargedAt: string | null;
     pricePence: number;
+    // BLD-1869: staff set this appointment's price themselves, so pricePence 0
+    // is a real £0 and not the "on consultation" default.
+    priceOverridden: boolean;
     items: { label: string; pricePence: number; discountPence: number; isAddon: boolean; sessions: number }[];
   };
   consentSigned: boolean;
@@ -62,7 +65,7 @@ export async function sessionSnapshot(bookingId: string): Promise<SessionSnapsho
       where: { id: bookingId },
       select: {
         status: true, startedAt: true, finishedAt: true, actualMinutes: true, aftercareAckAt: true,
-        sopAcknowledgedAt: true, medicalFlagReviewedAt: true, chargedPence: true, chargedAt: true, pricePence: true,
+        sopAcknowledgedAt: true, medicalFlagReviewedAt: true, chargedPence: true, chargedAt: true, pricePence: true, priceOverriddenAt: true,
         items: { orderBy: { createdAt: 'asc' }, select: { label: true, pricePence: true, discountPence: true, isAddon: true, sessions: true } },
       },
     }),
@@ -101,6 +104,7 @@ export async function sessionSnapshot(bookingId: string): Promise<SessionSnapsho
       chargedPence: b.chargedPence,
       chargedAt: b.chargedAt?.toISOString() ?? null,
       pricePence: b.pricePence,
+      priceOverridden: !!b.priceOverriddenAt,
       items: b.items,
     },
     consentSigned: signed.some((x) => x.kind === 'treatment'),
@@ -144,6 +148,9 @@ export type ClientLiveView = {
     items: { label: string; pricePence: number; isAddon: boolean; sessions: number }[];
     totalPence: number;
     chargedPence: number | null;
+    // BLD-1869: the price was set by staff on this appointment, so £0 is what the
+    // client owes — the phone must show £0, not "On consultation".
+    priceOverridden: boolean;
   };
   // Consent forms for this booking the client can read/tick/sign on their phone.
   // Pending entries carry the signing token; signed entries carry when it was done.
@@ -166,6 +173,7 @@ export function clientView(snap: SessionSnapshot): ClientLiveView {
       items: snap.booking.items.map((it) => ({ label: it.label, pricePence: Math.max(0, it.pricePence - it.discountPence), isAddon: it.isAddon, sessions: it.sessions })),
       totalPence: snap.booking.pricePence,
       chargedPence: snap.booking.chargedPence,
+      priceOverridden: snap.booking.priceOverridden,
     },
     forms: {
       // Pending (actionable) first, then the ones already signed.

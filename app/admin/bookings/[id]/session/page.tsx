@@ -146,6 +146,7 @@ export default async function AppointmentSessionPage({ params }: { params: Promi
           startAt: b.startAt.toISOString(),
           durationMin: b.durationMin,
           pricePence: b.pricePence,
+          priceOverridden: !!b.priceOverriddenAt,
           chargedAt: b.chargedAt?.toISOString() ?? null,
           giftVoucherCode: b.giftVoucherCode,
           giftVoucherPence: b.giftVoucherPence,

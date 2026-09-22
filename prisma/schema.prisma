@@ -691,7 +691,15 @@ model Booking {
   // Turnaround/cleanup minutes blocked AFTER the appointment (not client-facing,
   // not charged). The effective busy window is [startAt, endAt + bufferMin].
   bufferMin      Int      @default(0)
-  pricePence     Int // 0 = on-consultation (amount set at charge time)
+  // pricePence 0 means "on consultation" (amount set at charge time) UNLESS
+  // priceOverriddenAt is set. BLD-1869: staff can deliberately price a single
+  // appointment at GBP 0 via overrideBookingPrice() (reason required), and 0 on
+  // its own could not be told apart from "never priced". priceOverriddenAt is
+  // stamped on every successful staff override, so every display can show a
+  // literal GBP 0 instead of "On consultation". It is per-appointment only and
+  // never touches the treatment's catalogue price.
+  pricePence        Int
+  priceOverriddenAt DateTime?
 
   status BookingStatus @default(PENDING)
   notes  String?

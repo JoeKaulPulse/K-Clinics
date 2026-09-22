@@ -154,8 +154,14 @@ export async function overrideBookingPrice(bookingId: string, newBasePence: numb
   // get the item's real price; leaving the old discountPence in place would make
   // all of those silently undercut the price staff just typed in.
   const primary = await db.bookingItem.findFirst({ where: { bookingId, isAddon: false }, orderBy: { createdAt: 'asc' }, select: { id: true } }).catch(() => null);
+  // BLD-1869: stamp the override. pricePence 0 otherwise means "on consultation"
+  // (priced at charge time), so a deliberate GBP 0 set here — a goodwill visit, a
+  // complimentary review, a price already settled elsewhere — displayed as
+  // "On consultation" instead of GBP 0. This timestamp marks THIS appointment's
+  // price as staff-set, so every display renders the literal amount. The
+  // catalogue price is untouched, as before.
   await db.$transaction([
-    db.booking.update({ where: { id: bookingId }, data: { pricePence: newTotal } }),
+    db.booking.update({ where: { id: bookingId }, data: { pricePence: newTotal, priceOverriddenAt: new Date() } }),
     ...(primary ? [db.bookingItem.update({ where: { id: primary.id }, data: { pricePence: pence, discountPence: 0 } })] : []),
   ]);
   await logAudit({

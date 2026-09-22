@@ -742,6 +742,9 @@ const fmtMoney = (pence: number) => `£${(pence / 100).toLocaleString('en-GB', {
 
 export function tmplBookingConfirmation(o: {
   firstName: string; treatment: string; start: Date; pricePence: number; manageUrl: string;
+  // BLD-1869: true when staff set this appointment's price themselves, so
+  // pricePence 0 is the agreed price rather than "we'll assess it at your visit".
+  priceOverridden?: boolean;
   formsUrl?: string; arriveEarly?: boolean; lines?: { label: string; price: string }[]; nextNote?: string;
   end?: Date; clinicianName?: string; locationName?: string; locationAddress?: string;
 }) {
@@ -749,7 +752,7 @@ export function tmplBookingConfirmation(o: {
   const dateStr = o.start.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', ...tz });
   const timeStr = o.start.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', ...tz });
   const end = o.end || new Date(o.start.getTime() + 60 * 60000);
-  const price = o.pricePence > 0 ? fmtMoney(o.pricePence) : 'Assessed at your visit';
+  const price = o.priceOverridden || o.pricePence > 0 ? fmtMoney(o.pricePence) : 'Assessed at your visit';
   const addr = o.locationAddress || `${site.address.street}, ${site.address.locality}, ${site.address.postalCode}`;
   const place = o.locationName ? `${o.locationName} — ${addr}` : addr;
   const mapsUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`KClinics ${addr}`)}`;
@@ -826,7 +829,9 @@ export function bookingIcs(o: { id: string; treatment: string; start: Date; end?
   ].join('\r\n');
 }
 
-export function tmplBookingNotify(o: { name: string; email: string; phone?: string; treatment: string; start: Date; pricePence: number }) {
+// `priceOverridden` (BLD-1869) marks a price staff set on this appointment, so a
+// deliberate £0 prints as £0 instead of the "On consultation" default.
+export function tmplBookingNotify(o: { name: string; email: string; phone?: string; treatment: string; start: Date; pricePence: number; priceOverridden?: boolean }) {
   return emailShell({
     preheader: `New booking: ${o.name} — ${o.treatment}`,
     body: `<h1 style="font-size:22px;margin:0 0 16px;">New booking</h1>
@@ -836,7 +841,7 @@ export function tmplBookingNotify(o: { name: string; email: string; phone?: stri
       <tr><td style="color:#91766e;padding-right:16px;">Phone</td><td>${escape(o.phone || '—')}</td></tr>
       <tr><td style="color:#91766e;padding-right:16px;">Treatment</td><td>${escape(o.treatment)}</td></tr>
       <tr><td style="color:#91766e;padding-right:16px;">When</td><td>${fmtWhen(o.start)}</td></tr>
-      <tr><td style="color:#91766e;padding-right:16px;">Price</td><td>${o.pricePence > 0 ? fmtMoney(o.pricePence) : 'On consultation'}</td></tr>
+      <tr><td style="color:#91766e;padding-right:16px;">Price</td><td>${o.priceOverridden || o.pricePence > 0 ? fmtMoney(o.pricePence) : 'On consultation'}</td></tr>
     </table>
     <p style="margin:24px 0 0;">${btn(site.url + '/admin/bookings', 'Open in CRM')}</p>`,
   });

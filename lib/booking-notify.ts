@@ -6,7 +6,12 @@ import { escapeHtml } from '@/lib/sanitize';
 
 const clinicEmail = () => process.env.CLINIC_NOTIFY_EMAIL || 'support@kclinics.co.uk';
 const baseUrl = () => process.env.NEXT_PUBLIC_SITE_URL || site.url;
-const money = (p: number) => (p > 0 ? `£${(p / 100).toLocaleString('en-GB', { minimumFractionDigits: p % 100 ? 2 : 0 })}` : 'On consultation');
+// BLD-1869: `priced` is true once staff have set this appointment's price
+// themselves (Booking.priceOverriddenAt). Without it, pricePence 0 means the
+// treatment is priced at the visit; with it, 0 is the agreed price and must
+// print as £0.
+const money = (p: number, priced = false) =>
+  priced || p > 0 ? `£${(p / 100).toLocaleString('en-GB', { minimumFractionDigits: p % 100 ? 2 : 0 })}` : 'On consultation';
 
 /**
  * BLD-151: email the client their aftercare guide. Sent when aftercare is
@@ -91,12 +96,16 @@ async function sendBookingConfirmation(bookingId: string): Promise<void> {
   });
   const firstVisit = priorCount === 0;
 
+  // BLD-1869: staff priced this appointment themselves, so print every amount as
+  // typed — a deliberate £0 is a price, not "priced at your visit".
+  const pricedByStaff = !!booking.priceOverriddenAt;
+
   const lines = booking.items.length
     ? booking.items.map((it) => ({
         label: it.label + (it.sessions > 1 ? ` — course of ${it.sessions}` : '') + (it.isAddon ? ' (add-on)' : ''),
-        price: money(Math.max(0, it.pricePence - it.discountPence)),
+        price: money(Math.max(0, it.pricePence - it.discountPence), pricedByStaff),
       }))
-    : [{ label: booking.treatmentTitle, price: money(booking.pricePence) }];
+    : [{ label: booking.treatmentTitle, price: money(booking.pricePence, pricedByStaff) }];
 
   const manageUrl = `${baseUrl()}/booking/manage?t=${booking.manageToken}`;
   const formsUrl = `${baseUrl()}/account/assessments`;
@@ -123,7 +132,7 @@ async function sendBookingConfirmation(bookingId: string): Promise<void> {
   const clientRes = await sendEmail({
     to: c.email,
     subject: `Your booking is confirmed — ${booking.treatmentTitle}`,
-    html: tmplBookingConfirmation({ firstName, treatment: booking.treatmentTitle, start: booking.startAt, end: booking.endAt, pricePence: booking.pricePence, manageUrl, formsUrl, arriveEarly: firstVisit, lines, nextNote, clinicianName, locationName, locationAddress }),
+    html: tmplBookingConfirmation({ firstName, treatment: booking.treatmentTitle, start: booking.startAt, end: booking.endAt, pricePence: booking.pricePence, priceOverridden: pricedByStaff, manageUrl, formsUrl, arriveEarly: firstVisit, lines, nextNote, clinicianName, locationName, locationAddress }),
     attachments: [{ filename: 'appointment.ics', content: ics, contentType: 'text/calendar' }],
   });
   if (!clientRes.ok) {
@@ -138,7 +147,7 @@ async function sendBookingConfirmation(bookingId: string): Promise<void> {
     sendEmail({
       to: clinicEmail(),
       subject: `New booking — ${name}`,
-      html: tmplBookingNotify({ name, email: c.email, phone: c.phone || undefined, treatment: booking.treatmentTitle, start: booking.startAt, pricePence: booking.pricePence }),
+      html: tmplBookingNotify({ name, email: c.email, phone: c.phone || undefined, treatment: booking.treatmentTitle, start: booking.startAt, pricePence: booking.pricePence, priceOverridden: pricedByStaff }),
     }),
   ];
   const taskLabels = ['clinic-notify email'];
