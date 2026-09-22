@@ -36,8 +36,24 @@ export async function saveVtctDeclaration(input: { title: string; body: string; 
   const checkboxLabel = clean(input.checkboxLabel, MAX_CHECKBOX_LABEL);
   if (!checkboxLabel) return { ok: false, error: 'Please enter the checkbox wording.' };
 
-  const { DECLARATION_TITLE_KEY, DECLARATION_BODY_KEY, DECLARATION_CHECKBOX_KEY } = await import('@/lib/vtct-registration');
-  const { setStringSetting } = await import('@/lib/settings');
+  const {
+    DECLARATION_TITLE_KEY, DECLARATION_BODY_KEY, DECLARATION_CHECKBOX_KEY,
+    DECLARATION_TITLE, DECLARATION_TEXT, DECLARATION_CHECKBOX_LABEL,
+  } = await import('@/lib/vtct-registration');
+  const { getStringSetting, setStringSetting } = await import('@/lib/settings');
+
+  // Review fix (BLD-1867): read the outgoing wording BEFORE overwriting it.
+  // A learner's registration stores only declarationAgreedAt, not the text
+  // they agreed to — while the wording was a source constant, git history was
+  // the record of what was in force on a given date. Now that it is editable
+  // at runtime, the audit event is that record, so it carries the full
+  // before/after rather than just "updated".
+  const [prevTitle, prevBody, prevCheckboxLabel] = await Promise.all([
+    getStringSetting(DECLARATION_TITLE_KEY, DECLARATION_TITLE),
+    getStringSetting(DECLARATION_BODY_KEY, DECLARATION_TEXT),
+    getStringSetting(DECLARATION_CHECKBOX_KEY, DECLARATION_CHECKBOX_LABEL),
+  ]);
+
   await Promise.all([
     setStringSetting(DECLARATION_TITLE_KEY, title, session.email),
     setStringSetting(DECLARATION_BODY_KEY, body, session.email),
@@ -50,6 +66,10 @@ export async function saveVtctDeclaration(input: { title: string; body: string; 
     actor: session.email,
     actorRole: session.role,
     summary: 'VTCT Registration Student Declaration updated (BLD-1867)',
+    meta: {
+      previous: { title: prevTitle, body: prevBody, checkboxLabel: prevCheckboxLabel },
+      next: { title, body, checkboxLabel },
+    },
   }).catch(() => {});
 
   revalidatePath('/academy/vtct-registration');
