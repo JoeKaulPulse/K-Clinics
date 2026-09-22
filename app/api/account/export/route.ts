@@ -49,11 +49,16 @@ export async function GET(req: Request) {
   if (!c) return NextResponse.json({ ok: false, error: 'Not found.' }, { status: 404 });
 
   // Shop orders relate to the client by clientId, not a named relation.
-  // BLD-1879: guest checkouts leave clientId null with only the order's own
-  // email column set, so also match by email — mirrors the GiftVoucher
-  // purchaserEmail fallback below (BLD-1715).
+  // BLD-1879: guest (POS) orders with clientId null are deliberately NOT
+  // matched by email here. A brand-new portal signup gets a session without
+  // proving it owns the address (lib/client-auth.ts signupClient), and POS
+  // sales never create a Client row that would block that, so an email match
+  // would hand a stranger's in-clinic purchase history to whoever registers
+  // their address first. Those orders are included in the staff-run SAR
+  // (app/api/admin/clients/[id]/export) and in erasure, where identity is
+  // checked.
   const orders = await db.order.findMany({
-    where: { OR: [{ clientId: c.id }, { email: c.email }] },
+    where: { clientId: c.id },
     orderBy: { createdAt: 'desc' },
     select: { number: true, status: true, totalPence: true, createdAt: true, paidAt: true, items: { select: { name: true, qty: true, unitPence: true } } },
   });
