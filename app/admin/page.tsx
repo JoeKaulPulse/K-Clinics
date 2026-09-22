@@ -311,27 +311,14 @@ export default async function AdminOverview() {
     canManageRoom: canRoomsPrep,
     drinks: nextBk.refreshments ?? [],
     // clients.clinical.view gated — same redaction as ReceptionistView (front-of-house never sees clinical data).
-    allergies: canClinical ? decClinical(nextBk.client.allergies) ?? null : null,
-    medicalFlag: canClinical ? decClinical(nextBk.client.medicalFlag) ?? null : null,
+    // BLD-1872: only a presence flag is sent. The allergy/medical-flag text is
+    // fetched by an explicit "Show" tap (app/admin/arrival-actions.ts), which is
+    // where the clinical-view audit row is written. Before this, every /admin
+    // render decrypted the text for whichever booking was next clinic-wide and
+    // logged "Clinical data viewed (admin-dashboard)" for staff who had only
+    // opened the dashboard.
+    clinicalOnFile: canClinical && !!(decClinical(nextBk.client.allergies)?.trim() || decClinical(nextBk.client.medicalFlag)?.trim()),
   } : null;
-
-  // BLD-1872: BLD-1419 added an auditClinicalView() call here, on the theory
-  // that decrypting allergies/medicalFlag for the next-arrival card is a
-  // medical-record view like any other. It isn't gated on a real user action —
-  // it ran on every render of this force-dynamic page (every /admin load,
-  // every tab reopen, every router.refresh() triggered by something unrelated
-  // like the clock-in button or a language switch), for whichever booking
-  // happens to be the single next arrival clinic-wide, regardless of whether
-  // the viewer has any relationship to it. That produced "Clinical data
-  // viewed (admin-dashboard)" rows — including inside that booking's own
-  // activity log — attributed to staff who never opened the client's or the
-  // booking's record, with timestamps tracking page loads instead of actual
-  // review. ArrivalPrep still shows the allergy/medical-flag chip (it's
-  // useful front-of-house information); this dashboard summary render just no
-  // longer counts as an audited "view" of that client's clinical record.
-  // Genuine views stay audited where a user explicitly opens a specific
-  // client, booking, consultation or session-runner record — see the other
-  // auditClinicalView() call sites, which this fix does not touch.
 
   return (
     <AdminShell user={session?.email} can={can} locale={locale}>
