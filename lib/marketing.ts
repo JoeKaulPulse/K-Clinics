@@ -29,7 +29,13 @@ export async function resolveCampaignId(attrib: Attribution | null): Promise<str
  *  choice, and shape it for a Booking.create — resolving the matching
  *  campaign. The consent flags are always returned (default false — no cookie
  *  banner interaction yet) so a later deferred conversion send always has an
- *  explicit answer to check, even with no attribution cookie present. */
+ *  explicit answer to check, even with no attribution cookie present.
+ *
+ *  BLD-1880: deferred Purchase/Refund sends must keep reading this stored
+ *  snapshot, not re-read cookies() at send time. Those sends run from Stripe
+ *  webhooks (no cookies) and staff sessions (POS, terminal, admin charge and
+ *  refund), where cookies() returns the staff member's own consent, so a live
+ *  read would send conversions for clients who never consented. */
 export async function bookingAttribution(): Promise<{
   attribSource?: string | null; attribMedium?: string | null; attribCampaign?: string | null;
   attribLanding?: string | null; gclid?: string | null; fbclid?: string | null; marketingCampaignId?: string | null;
@@ -60,34 +66,6 @@ export async function bookingAttribution(): Promise<{
     };
   } catch {
     return { analyticsConsent, marketingConsent };
-  }
-}
-
-/** BLD-1880: live read of the analytics/marketing consent cookies, for a
- *  DEFERRED charge/refund conversion send (Purchase/Refund to GA4/Meta CAPI/
- *  Google Ads) — never the frozen analyticsConsent/marketingConsent snapshot
- *  columns bookingAttribution() wrote onto the Booking/Order/Enrolment row at
- *  creation time. A visitor who withdraws consent via the cookie banner
- *  between booking and charge must have that respected at send time, matching
- *  the live-cookie-read pattern app/api/finder-lead/route.ts already uses via
- *  consentFromCookieHeader() — here via cookies() (next/headers) since these
- *  call sites (webhook handlers, server actions) run in a request scope but
- *  don't carry a Request object through to thread a header. Same fail-closed
- *  default and the same try/catch as bookingAttribution(): cookies() throws
- *  outside a request scope, and a charge/refund must still complete even if
- *  the consent read fails — it only ever gates whether the conversion event
- *  fires, never the money movement itself. */
-export async function liveConsent(): Promise<{ analyticsConsent: boolean; marketingConsent: boolean }> {
-  try {
-    const { cookies } = await import('next/headers');
-    const { ANALYTICS_CONSENT_COOKIE, MARKETING_CONSENT_COOKIE } = await import('@/lib/attribution');
-    const jar = await cookies();
-    return {
-      analyticsConsent: jar.get(ANALYTICS_CONSENT_COOKIE)?.value === '1',
-      marketingConsent: jar.get(MARKETING_CONSENT_COOKIE)?.value === '1',
-    };
-  } catch {
-    return { analyticsConsent: false, marketingConsent: false };
   }
 }
 

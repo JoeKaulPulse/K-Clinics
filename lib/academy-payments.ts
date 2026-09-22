@@ -344,21 +344,12 @@ export async function finalizeEnrolmentPayment(piId: string, amountReceivedPence
  *  the tx.claimed branch above, so it fires exactly once per payment regardless
  *  of whether the webhook or the synchronous confirm endpoint claims it.
  *
- *  BLD-1203: analyticsConsent/marketingConsent were originally read back off
- *  the enrolment (captured in startEnrolmentPayment, at the request that
- *  began this purchase) and threaded into sendPurchase() — previously omitted
- *  entirely, so sendPurchase's fail-closed default silently skipped every
- *  academy sale.
- *
- *  BLD-1880: that enrolment snapshot is frozen at the moment the purchase
- *  began, so a learner who withdrew consent via the cookie banner before this
- *  deferred conversion actually fires (webhook/confirm-endpoint delay) would
- *  still have it sent. The consent gate is now re-derived live at send time
- *  (liveConsent()) instead — same live-cookie-read pattern as
- *  app/api/finder-lead/route.ts. The enrolment's stored value is no longer
- *  read for this. */
+ *  BLD-1203: analyticsConsent/marketingConsent are read back off the enrolment
+ *  (captured in startEnrolmentPayment, at the request that began this
+ *  purchase) and threaded into sendPurchase() — previously omitted entirely,
+ *  so sendPurchase's fail-closed default silently skipped every academy sale. */
 async function sendEnrolmentPurchaseConversion(paymentId: string, enrolmentId: string, amountPence: number): Promise<void> {
-  const e = await db.enrolment.findUnique({ where: { id: enrolmentId }, select: { applicantEmail: true, student: { select: { clientId: true } } } });
+  const e = await db.enrolment.findUnique({ where: { id: enrolmentId }, select: { applicantEmail: true, analyticsConsent: true, marketingConsent: true, student: { select: { clientId: true } } } });
   let consentedEmail: string | null = null;
   const clientId = e?.student?.clientId ?? null;
   if (clientId) {
@@ -366,11 +357,9 @@ async function sendEnrolmentPurchaseConversion(paymentId: string, enrolmentId: s
     if (buyer?.marketingOptIn && !buyer.unsubscribed) consentedEmail = e?.applicantEmail ?? null;
   }
   const { sendPurchase } = await import('@/lib/conversions');
-  const { liveConsent } = await import('@/lib/marketing');
-  const { analyticsConsent, marketingConsent } = await liveConsent();
   await sendPurchase({
     bookingId: paymentId, valuePence: amountPence, clientId, email: consentedEmail,
-    analyticsConsent, marketingConsent,
+    analyticsConsent: e?.analyticsConsent ?? undefined, marketingConsent: e?.marketingConsent ?? undefined,
   });
 }
 

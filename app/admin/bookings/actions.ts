@@ -109,13 +109,9 @@ export async function chargeBookingAction(bookingId: string, amountPence: number
       console.error('[bookings] staff revenue points failed:', (e as Error)?.message);
     }
     // Report the sale to GA4 + Meta server-side (best-effort; hashed email only).
-    // BLD-1880: analyticsConsent/marketingConsent re-derived live (liveConsent()),
-    // not reused from the frozen snapshot captured on the booking at creation.
     try {
       const { sendPurchase } = await import('@/lib/conversions');
-      const { liveConsent } = await import('@/lib/marketing');
-      const { analyticsConsent, marketingConsent } = await liveConsent();
-      await sendPurchase({ bookingId, valuePence: amountPence, clientId: booking.clientId, email: booking.client?.marketingOptIn ? (booking.client?.email ?? null) : null, campaign: booking.attribCampaign, gclid: booking.gclid, analyticsConsent, marketingConsent });
+      await sendPurchase({ bookingId, valuePence: amountPence, clientId: booking.clientId, email: booking.client?.marketingOptIn ? (booking.client?.email ?? null) : null, campaign: booking.attribCampaign, gclid: booking.gclid, analyticsConsent: booking.analyticsConsent, marketingConsent: booking.marketingConsent });
     } catch (e) {
       console.error('[bookings] conversion send failed:', (e as Error)?.message);
     }
