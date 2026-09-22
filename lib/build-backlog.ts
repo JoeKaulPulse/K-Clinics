@@ -5668,6 +5668,18 @@ export const BUILD_BACKLOG: BacklogItem[] = [
       "Verified: npx tsc --noEmit and DB_SYNC_NONFATAL=true npm run build both pass clean (this sandbox cannot reach the production Postgres host over raw Postgres, so the prebuild db-sync step is expected to fail here -- DB_SYNC_NONFATAL is the existing opt-in for exactly that, used for local verification only, not set anywhere in committed config).",
     ],
   },
+  {
+    title: "Make VTCT Registration Declaration editable (BLD-1867)",
+    type: 'TASK', urgency: 'P2', status: 'IN_REVIEW', assignee: 'claude',
+    value: 4, effort: 2,
+    detail: "The Student Declaration shown on the public VTCT Registration page (lib/vtct-registration.ts DECLARATION_TEXT, plus a hardcoded title and checkbox label in components/academy/VtctRegistrationForm.tsx) was a source constant with no admin edit path -- any wording change needed a code deploy.",
+    notes: [
+      "Fix: added three owner-editable Setting rows (vtct_declaration_title, vtct_declaration_body, vtct_declaration_checkbox_label) via the existing getStringSetting/setStringSetting helpers in lib/settings.ts. The original hardcoded strings are kept, unchanged, as DECLARATION_TITLE/DECLARATION_TEXT/DECLARATION_CHECKBOX_LABEL fallback constants in lib/vtct-registration.ts, so a Setting row that has never been written still renders today's exact wording. app/(marketing)/academy/vtct-registration/page.tsx now reads the three live settings and passes them into VtctRegistrationForm as title/declarationText/checkboxLabel props in place of the old hardcoded JSX.",
+      "Added an owner-only editor (three fields + one Save button, no draft/publish/versioning -- this ticket only asks for the current live text to be editable) to /admin/academy/vtct-registrations, mirroring the auth pattern of the Learner Agreement feature (BLD-1731, app/admin/academy/agreement/): session.role === 'OWNER' gates both the UI (page hides the editor from non-owners) and, critically, the new server action itself (app/admin/academy/vtct-registrations/actions.ts saveVtctDeclaration), independent of the UI-level hiding. sessionIsAdmin()'s wider ADMIN_ROLES (OWNER + ADMIN) was deliberately not used here -- the ticket asked for the account owner specifically.",
+      "The action validates all three fields are non-empty after trim (with max lengths: 200 chars title, 300 checkbox label, 8000 body), logs a SETTINGS_UPDATED audit event, and revalidates both the public VTCT Registration page and this admin page. No schema change -- the Setting table already exists.",
+      "Verified: npx tsc --noEmit and npm run build pass clean.",
+    ],
+  },
 ];
 
 // A content hash over every item's title + status + PR, so ANY change (a new
