@@ -115,7 +115,11 @@ function Modal({ treatments, isAdmin, onClose }: { treatments: Treatment[]; isAd
   function submit(override = false) {
     setError('');
     if (tab === 'existing' && !selected) return setError('Find and select the client, or switch to “New client”.');
-    if (tab === 'new' && (!d.firstName.trim() || !/\S+@\S+\.\S+/.test(d.email))) return setError('New client needs a first name and a valid email.');
+    // BLD-1870: a new client account cannot be created without all five fields —
+    // matches the server-side check in createManualBooking below.
+    if (tab === 'new' && (!d.firstName.trim() || !d.lastName.trim() || !/\S+@\S+\.\S+/.test(d.email) || (d.phone.match(/\d/g) || []).length < 7 || !d.dob)) {
+      return setError('First name, last name, date of birth, phone and email are required for a new client.');
+    }
     if (!d.date) return setError('Choose a date.');
     if (isAdmin && d.overridePrice && (d.overridePriceValue.trim() === '' || Number(d.overridePriceValue) < 0 || !Number.isFinite(Number(d.overridePriceValue)))) {
       return setError('Enter a valid override price.');
