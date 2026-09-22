@@ -304,9 +304,14 @@ html[data-theme='dark'] .text-black { color: var(--color-ink); }
     font-weight: 560;
     letter-spacing: 0.28em;
     text-transform: uppercase;
-    /* Deeper gold so small uppercase eyebrows clear WCAG AA (≈4.7:1) on our
-       light surfaces. Dark-surface eyebrows override to --color-gold-soft. */
-    color: var(--color-gold-deep);
+    /* BLD-1877: driven by a custom property, not hardcoded, so a dark-surface
+       instance can set --eyebrow-color inline and actually win the cascade —
+       a Tailwind text-color utility class on the same element has identical
+       specificity to this rule and was silently losing (measured 2.89:1).
+       Default is the deeper gold that clears WCAG AA (~4.7:1) on our light
+       surfaces; dark-surface eyebrows set --eyebrow-color: var(--color-gold-soft)
+       (~6.6:1 on --color-ink). */
+    color: var(--eyebrow-color, var(--color-gold-deep));
   }
 
   /* Hairline divider */

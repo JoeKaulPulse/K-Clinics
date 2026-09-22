@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState, type CSSProperties } from 'react';
 import Link from 'next/link';
 import { Button, ArrowIcon } from '@/components/ui/Button';
 import { Stars } from '@/components/ui/Stars';
@@ -174,7 +174,9 @@ export function HeroSlider({
 
         <div className="container-lux relative z-10 py-32">
           <div className="max-w-2xl">
-            <p className="rise eyebrow mb-6 inline-flex items-center gap-2.5 text-[var(--color-gold-soft)]" style={{ animationDelay: '0.05s' }}>
+            {/* BLD-1877: --eyebrow-color (not a text-color utility class) is what
+                actually wins the cascade against .eyebrow's own color rule. */}
+            <p className="rise eyebrow mb-6 inline-flex items-center gap-2.5" style={{ animationDelay: '0.05s', '--eyebrow-color': 'var(--color-gold-soft)' } as CSSProperties}>
               <span className="h-px w-8 bg-[var(--color-gold-soft)]/70" />
               Islington · London — Established {site.founded}
             </p>
@@ -227,7 +229,8 @@ export function HeroSlider({
 
         <div className="container-lux relative z-10 py-32">
           <div className="max-w-2xl">
-            <p className="eyebrow mb-6 inline-flex items-center gap-2.5 text-[var(--color-gold-soft)]">
+            {/* BLD-1877: see slide 1's note on --eyebrow-color. */}
+            <p className="eyebrow mb-6 inline-flex items-center gap-2.5" style={{ '--eyebrow-color': 'var(--color-gold-soft)' } as CSSProperties}>
               <span className="h-px w-8 bg-[var(--color-gold-soft)]/70" />
               Limited-time offer
             </p>
@@ -262,7 +265,8 @@ export function HeroSlider({
 
         <div className="container-lux relative z-10 py-32">
           <div className="max-w-2xl">
-            <p className="eyebrow mb-6 inline-flex items-center gap-2.5 text-[var(--color-gold-soft)]">
+            {/* BLD-1877: see slide 1's note on --eyebrow-color. */}
+            <p className="eyebrow mb-6 inline-flex items-center gap-2.5" style={{ '--eyebrow-color': 'var(--color-gold-soft)' } as CSSProperties}>
               <span className="h-px w-8 bg-[var(--color-gold-soft)]/70" />
               K Academy — Level 2 to Level 7
             </p>
@@ -315,7 +319,8 @@ export function HeroSlider({
 
         <div className="container-lux relative z-10 py-32">
           <div className="max-w-2xl">
-            <p className="eyebrow mb-6 inline-flex items-center gap-2.5 text-[var(--color-gold-soft)]">
+            {/* BLD-1877: see slide 1's note on --eyebrow-color. */}
+            <p className="eyebrow mb-6 inline-flex items-center gap-2.5" style={{ '--eyebrow-color': 'var(--color-gold-soft)' } as CSSProperties}>
               <span className="h-px w-8 bg-[var(--color-gold-soft)]/70" />
               Inside KClinics
             </p>
