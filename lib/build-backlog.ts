@@ -5668,6 +5668,17 @@ export const BUILD_BACKLOG: BacklogItem[] = [
       "Verified: npx tsc --noEmit and DB_SYNC_NONFATAL=true npm run build both pass clean (this sandbox cannot reach the production Postgres host over raw Postgres, so the prebuild db-sync step is expected to fail here -- DB_SYNC_NONFATAL is the existing opt-in for exactly that, used for local verification only, not set anywhere in committed config).",
     ],
   },
+  {
+    title: 'There is an issue with the Activity Log',
+    type: 'ERROR', urgency: 'P0', status: 'IN_REVIEW', assignee: 'claude',
+    value: 8, effort: 2,
+    detail: "BLD-1872: an admin reported the Activity Log showing 'Clinical data viewed' entries they never performed, confirmed by timestamps that did not match their real usage -- both on the global Activity Log and inside individual appointments' own history (example: 'Clinical data viewed (admin-dashboard) -- assessment viewed'). Root cause: app/admin/page.tsx's next-arrival card (the 'up next' widget shown at the top of every admin dashboard load) decrypts and renders the allergy/medical-flag text for whichever booking is the single next arrival clinic-wide, unconditionally -- no click, no expand, nothing gated on an explicit 'view this client's record' action -- then called auditClinicalView() every time. Because /admin is force-dynamic and is the default landing page for OWNER/ADMIN/STAFF, that render (and the audit call with it) fired on every dashboard load or reload, including reloads triggered by something unrelated on the same page (the clock-in button, a language switch), for whichever client happened to be next system-wide -- regardless of whether the viewing admin had any relationship to that appointment. That produced 'Clinical data viewed (admin-dashboard)' rows -- including inside that booking's own activity log -- attributed to staff who never opened the client's or the booking's record, timestamped to page loads rather than to any deliberate review.",
+    notes: [
+      "Fix: removed the auditClinicalView() call from app/admin/page.tsx's next-arrival block. The allergy/medical-flag chip still renders in the ArrivalPrep card (useful front-of-house information) -- it just no longer counts as an audited clinical-record 'view', since the render isn't a user-initiated action. The shared auditClinicalView() helper (lib/clinical-view-audit.ts) and every genuine explicit-view call site are untouched: client-detail, booking-detail, consultation-detail, session-runner, admin-search, admin-chat-thread and incidents all still log ASSESSMENT_VIEWED exactly as before, each reached only when a user explicitly opens that specific record.",
+      "Related finding, not fixed here (separate follow-up): app/admin/tasks/page.tsx's shape() mapper calls auditClinicalView() for every clinical task rendered on the board (surface 'tasks-board'), the same ambient-list-render pattern as the dashboard bug -- worth the same review, tracked separately so this P0 fix stays scoped to the reported symptom.",
+      "Verified: npx tsc --noEmit and DB_SYNC_NONFATAL=true npm run build both pass clean (this sandbox cannot reach the production Postgres host over raw Postgres, so the prebuild db-sync step is expected to fail here -- DB_SYNC_NONFATAL is the existing opt-in for exactly that, used for local verification only, not set anywhere in committed config).",
+    ],
+  },
 ];
 
 // A content hash over every item's title + status + PR, so ANY change (a new

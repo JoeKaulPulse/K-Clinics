@@ -315,12 +315,23 @@ export default async function AdminOverview() {
     medicalFlag: canClinical ? decClinical(nextBk.client.medicalFlag) ?? null : null,
   } : null;
 
-  // BLD-1419: decrypting allergies/medicalFlag for the next-arrival card is a
-  // medical-record view — audit it (throttled per viewer/client/hour).
-  if (nextArrival && canClinical && session?.email) {
-    const { auditClinicalView } = await import('@/lib/clinical-view-audit');
-    auditClinicalView({ actor: session.email, actorRole: session.role, clientId: nextArrival.clientId, surface: 'admin-dashboard', bookingId: nextArrival.id });
-  }
+  // BLD-1872: BLD-1419 added an auditClinicalView() call here, on the theory
+  // that decrypting allergies/medicalFlag for the next-arrival card is a
+  // medical-record view like any other. It isn't gated on a real user action —
+  // it ran on every render of this force-dynamic page (every /admin load,
+  // every tab reopen, every router.refresh() triggered by something unrelated
+  // like the clock-in button or a language switch), for whichever booking
+  // happens to be the single next arrival clinic-wide, regardless of whether
+  // the viewer has any relationship to it. That produced "Clinical data
+  // viewed (admin-dashboard)" rows — including inside that booking's own
+  // activity log — attributed to staff who never opened the client's or the
+  // booking's record, with timestamps tracking page loads instead of actual
+  // review. ArrivalPrep still shows the allergy/medical-flag chip (it's
+  // useful front-of-house information); this dashboard summary render just no
+  // longer counts as an audited "view" of that client's clinical record.
+  // Genuine views stay audited where a user explicitly opens a specific
+  // client, booking, consultation or session-runner record — see the other
+  // auditClinicalView() call sites, which this fix does not touch.
 
   return (
     <AdminShell user={session?.email} can={can} locale={locale}>
