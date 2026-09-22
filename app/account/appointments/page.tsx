@@ -38,6 +38,16 @@ export default async function AppointmentsPage() {
   const t = (k: string, v?: Record<string, string | number>) => pt(locale, k, v);
   const lc = locale === 'uk' ? 'uk-UA' : 'en-GB';
   const dayCount = (d: Date) => Math.ceil((d.getTime() - Date.now()) / 864e5);
+  // BLD-1878: the cancel confirmation dialog states the real late-cancellation
+  // fee, not a vague "may apply" — mirror the exact formula
+  // lib/booking-actions.ts's cancelBooking uses (24h window; price net of any
+  // already-applied points/voucher) so what the client is shown matches what
+  // they'd actually be charged.
+  const CANCEL_WINDOW_MS = 24 * 60 * 60 * 1000;
+  const lateFeePence = (b: { startAt: Date; pricePence: number; pointsRedeemedPence: number | null; giftVoucherPence: number | null }) =>
+    b.startAt.getTime() - Date.now() < CANCEL_WINDOW_MS
+      ? Math.max(0, b.pricePence - (b.pointsRedeemedPence ?? 0) - (b.giftVoucherPence ?? 0))
+      : 0;
   const redeemLabels = {
     use: t('rw.applyPoints'), title: t('rw.applyTitle'), hint: t('rw.applyHint'),
     applied: t('rw.applied'), apply: t('rw.apply'), remove: t('rw.remove'), cancel: t('rw.cancel'),
@@ -87,7 +97,11 @@ export default async function AppointmentsPage() {
                   <CancelButton
                     token={b.manageToken}
                     treatmentTitle={b.treatmentTitle}
-                    labels={{ cancel: t('appt.cancel'), cancelled: t('appt.cancelled'), confirm: t('appt.cancelConfirm'), lateFee: t('appt.cancelLateFee'), error: t('appt.cancelError') }}
+                    feePence={lateFeePence(b)}
+                    labels={{
+                      cancel: t('appt.cancel'), cancelled: t('appt.cancelled'), confirm: t('appt.cancelConfirm'), lateFee: t('appt.cancelLateFee'), error: t('appt.cancelError'),
+                      title: t('appt.cancelTitle'), confirmFee: t('appt.cancelConfirmFee'), confirmFree: t('appt.cancelConfirmFree'), keep: t('appt.cancelKeep'), confirmNow: t('appt.cancelNow'),
+                    }}
                   />
                   {b.pricePence > 0 && (
                     <RedeemPoints
