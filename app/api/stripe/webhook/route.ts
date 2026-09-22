@@ -581,7 +581,7 @@ export async function POST(req: Request) {
                   priority: 'high',
                   title: 'Partial refund needs reconciling',
                   body: partialSummary,
-                  href: `/admin/shop/orders`,
+                  href: `/admin/orders?q=${encodeURIComponent(order.number)}`,
                 });
               } catch (e) { console.error('[webhook] partial-refund staff notification failed:', (e as Error)?.message); }
             } else {

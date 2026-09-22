@@ -281,6 +281,7 @@ export const PORTAL_DICT: Record<string, Entry> = {
   // client ever confirms.
   'appt.cancelTitle': { en: 'Cancel appointment?', uk: 'Скасувати запис?' },
   'appt.cancelConfirmFee': { en: 'This appointment is within 24 hours, so cancelling now will charge a late-cancellation fee of {fee}.', uk: 'До цього запису залишилося менше 24 годин, тому скасування зараз призведе до стягнення плати за пізнє скасування у розмірі {fee}.' },
+  'appt.cancelConfirmSession': { en: 'This appointment is within 24 hours, so cancelling now will use one prepaid session from your course.', uk: 'До цього запису залишилося менше 24 годин, тому скасування зараз спише одне передоплачене заняття з вашого курсу.' },
   'appt.cancelConfirmFree': { en: 'Are you sure you want to cancel this appointment? No fee applies.', uk: 'Ви впевнені, що хочете скасувати цей запис? Плата не стягується.' },
   'appt.cancelKeep': { en: 'Keep appointment', uk: 'Залишити запис' },
   'appt.cancelNow': { en: 'Yes, cancel', uk: 'Так, скасувати' },

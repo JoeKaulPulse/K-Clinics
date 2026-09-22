@@ -50,6 +50,27 @@ export function isWithin24h(b: Pick<Booking, 'startAt'>): boolean {
   return b.startAt.getTime() - Date.now() < CANCEL_WINDOW_MS;
 }
 
+/** Late-cancellation fee in pence: the price net of redeemed points (BLD-733)
+ *  and an applied gift voucher (BLD-1236). cancelBooking charges exactly this,
+ *  and the portal cancel dialog shows it (BLD-1878), so both read one formula. */
+export function lateCancelFeePence(b: Pick<Booking, 'pricePence' | 'pointsRedeemedPence' | 'giftVoucherPence'>): number {
+  return Math.max(0, b.pricePence - (b.pointsRedeemedPence ?? 0) - (b.giftVoucherPence ?? 0));
+}
+
+/** What a client-initiated cancellation inside 24h would do, following
+ *  cancelBooking's branches (no waiver on the client path). 'unclear' covers
+ *  the cases where no card charge is taken but value is still kept (already
+ *  paid, or a fee fully covered by points/voucher); the dialog uses the
+ *  general policy wording for those rather than stating an amount. */
+export type LateCancelOutcome = { kind: 'fee'; pence: number } | { kind: 'session' } | { kind: 'none' } | { kind: 'unclear' };
+export function lateCancelOutcome(b: Pick<Booking, 'pricePence' | 'pointsRedeemedPence' | 'giftVoucherPence' | 'packageBookingId' | 'chargedAt' | 'prepaidAt'>): LateCancelOutcome {
+  if (b.packageBookingId) return b.pricePence > 0 ? { kind: 'unclear' } : { kind: 'session' };
+  if (b.pricePence <= 0) return { kind: 'none' };
+  if (b.chargedAt || b.prepaidAt) return { kind: 'unclear' };
+  const pence = lateCancelFeePence(b);
+  return pence > 0 ? { kind: 'fee', pence } : { kind: 'unclear' };
+}
+
 /**
  * Full price of a course booking, in pence — the single source of truth for the
  * BNPL pre-payment amount (BLD-399) and its webhook validation. The primary
@@ -581,7 +602,7 @@ export async function cancelBooking(
   // BLD-1236: net an applied gift voucher the same way, matching the staff
   // charge action. A fee that actually lands then CONSUMES the voucher value
   // (the BLD-882 return below is skipped when charged > 0), exactly like points.
-  const chargeablePence = Math.max(0, booking.pricePence - (booking.pointsRedeemedPence ?? 0) - (booking.giftVoucherPence ?? 0));
+  const chargeablePence = lateCancelFeePence(booking);
   let charged = 0;
   let requiresAction = false;
   let feeFailed = false;

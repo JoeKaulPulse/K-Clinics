@@ -115,9 +115,12 @@ export function LiveChat() {
     } catch { setEmailStatus('Sorry, that didn’t send.'); }
   }
 
+  // Light client-side shape check so a typo keeps the dialog open; the server
+  // (/api/chat emailTranscript) still validates authoritatively.
+  const emailPromptValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailPromptValue.trim());
   function submitEmailPrompt() {
     const addr = emailPromptValue.trim();
-    if (!addr) return;
+    if (!emailPromptValid) return;
     setEmailPromptOpen(false);
     sendTranscript(addr);
   }
@@ -214,7 +217,7 @@ export function LiveChat() {
           />
           <div className="mt-4 flex justify-end gap-3">
             <button onClick={() => setEmailPromptOpen(false)} className="px-4 py-2 text-sm text-[var(--color-stone)]">Cancel</button>
-            <button onClick={submitEmailPrompt} disabled={!emailPromptValue.trim()} className="rounded-full bg-[var(--color-gold-deep)] px-5 py-2 text-sm font-medium text-white disabled:opacity-50">Send</button>
+            <button onClick={submitEmailPrompt} disabled={!emailPromptValid} className="rounded-full bg-[var(--color-gold-deep)] px-5 py-2 text-sm font-medium text-white disabled:opacity-50">Send</button>
           </div>
         </div>
       </Dialog>

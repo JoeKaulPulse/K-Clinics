@@ -12,20 +12,36 @@ import { Dialog } from '@/components/ui/Dialog';
  *  native dialog can't show the actual fee amount, and it silently no-ops
  *  (returns null immediately, cancelling nothing but confirming nothing
  *  either) inside an in-app/webview browser such as an email or SMS app's
- *  built-in viewer. `feePence` is computed server-side (same 24h-window
- *  formula as lib/booking-actions.ts's cancelBooking) so the dialog states
- *  the real amount, not a vague "a fee may apply". */
-export function CancelButton({ token, treatmentTitle, feePence, labels }: {
+ *  built-in viewer. `late` comes from lateCancelOutcome() in
+ *  lib/booking-actions.ts (cancelBooking's own formula and branches), so the
+ *  dialog states the real outcome, not a vague "a fee may apply". Whether the
+ *  booking is inside the 24h window is checked when the dialog opens. */
+const CANCEL_WINDOW_MS = 24 * 60 * 60 * 1000;
+
+export function CancelButton({ token, treatmentTitle, startIso, late, labels }: {
   token: string;
   treatmentTitle: string;
-  feePence: number;
+  startIso: string;
+  late: { kind: 'fee'; pence: number } | { kind: 'session' } | { kind: 'none' } | { kind: 'unclear' };
   labels: {
     cancel: string; cancelled: string; confirm: string; lateFee: string; error: string;
-    title: string; confirmFee: string; confirmFree: string; keep: string; confirmNow: string;
+    title: string; confirmFee: string; confirmSession: string; confirmFree: string; keep: string; confirmNow: string;
   };
 }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
+  const [message, setMessage] = useState('');
+
+  function openDialog() {
+    const within24h = new Date(startIso).getTime() - Date.now() < CANCEL_WINDOW_MS;
+    setMessage(
+      !within24h || late.kind === 'none' ? labels.confirmFree
+        : late.kind === 'fee' ? labels.confirmFee.replace('{fee}', `£${(late.pence / 100).toFixed(2)}`)
+        : late.kind === 'session' ? labels.confirmSession
+        : labels.confirm,
+    );
+    setOpen(true);
+  }
   const [busy, setBusy] = useState(false);
   const [done, setDone] = useState('');
   const [err, setErr] = useState('');
@@ -62,7 +78,7 @@ export function CancelButton({ token, treatmentTitle, feePence, labels }: {
   return (
     <div className="flex flex-col items-end gap-1">
       <button
-        onClick={() => setOpen(true)}
+        onClick={openDialog}
         disabled={busy}
         className="rounded-full border border-[var(--color-blush-deep)]/40 px-4 py-2 text-sm font-medium text-[var(--color-blush-deep)] transition-colors hover:border-[var(--color-blush-deep)] hover:bg-[var(--color-blush-deep)]/10 disabled:opacity-50"
       >
@@ -78,7 +94,7 @@ export function CancelButton({ token, treatmentTitle, feePence, labels }: {
           </div>
           <p className="mb-1 text-sm text-[var(--color-stone)]">{treatmentTitle}</p>
           <p className="mb-4 text-sm text-[var(--color-ink)]">
-            {feePence > 0 ? labels.confirmFee.replace('{fee}', `£${(feePence / 100).toFixed(2)}`) : labels.confirmFree}
+            {message}
           </p>
           <div className="flex justify-end gap-3">
             <button onClick={() => setOpen(false)} className="px-4 py-2 text-sm text-[var(--color-stone)]">{labels.keep}</button>
