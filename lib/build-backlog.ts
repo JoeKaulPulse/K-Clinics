@@ -1820,6 +1820,20 @@ export const BUILD_BACKLOG: BacklogItem[] = [
   },
   {
     // Title matches the live board card exactly so seedBacklog dedupes onto it.
+    title: 'Dentistry waitlist signup fires no analytics/lead event', type: 'TASK', urgency: 'P1', status: 'IN_REVIEW', assignee: 'claude',
+    value: 5, effort: 1,
+    detail: 'components/dentistry/RegisterInterest.tsx (the "notify me" form on /dentistry) posted to app/api/dentistry-interest/route.ts with no trackLead() call on success, on either client or server -- unlike every sibling capture form (NewsletterForm, ConsultForm, TreatmentFinder, contact/franchise forms). The signup was recorded in the CRM but never counted as a lead in GA4/Meta, so the waitlist was invisible to marketing reporting and ad optimisation. Found via marketing/analytics review (BLD-1876).',
+    notes: ['Fix: RegisterInterest.tsx now calls trackLead({ detail: { source: \'dentistry-waitlist\' } }) after a confirmed-successful submission (same lifecycle point as NewsletterForm.tsx\'s BLD-1130 call, not fired optimistically). lib/analytics-events.ts\'s trackLead() is unchanged -- this only adds the missing call site. (BLD-1876)'],
+  },
+  {
+    // Title matches the live board card exactly so seedBacklog dedupes onto it.
+    title: 'Server-side ad-conversion sends use a stale consent snapshot instead of live consent', type: 'ERROR', urgency: 'P1', status: 'IN_REVIEW', assignee: 'claude',
+    value: 8, effort: 3,
+    detail: 'bookingAttribution() (lib/marketing.ts) reads the analytics/marketing consent cookies once at booking/order/enrolment creation time and stores that snapshot on the row. The deferred charge/refund sends in lib/booking-actions.ts (finalizeBookingCharge, refundBooking), app/admin/bookings/actions.ts (chargeBookingAction), lib/shop.ts (finalizeOrder) and lib/academy-payments.ts (sendEnrolmentPurchaseConversion) all reused that frozen value to decide whether to send hashed-PII Purchase/Refund events to Meta CAPI, GA4 and Google Ads -- even if the visitor withdrew consent via the cookie banner in the meantime. docs/data-protection/subject-rights.md claims pixels "stop firing live" on consent withdrawal, which this contradicted for every server-side send. Found via marketing/analytics review (BLD-1880).',
+    notes: ['Fix: added liveConsent() to lib/marketing.ts, which re-reads the kc_analytics_consent/kc_marketing_consent cookies at send time via cookies() (next/headers), wrapped in the same try/catch + fail-closed-to-false pattern as bookingAttribution() -- mirroring the live-cookie-read approach app/api/finder-lead/route.ts already used via consentFromCookieHeader(). All 5 charge/refund conversion-send call sites across the 4 files now call liveConsent() for the analyticsConsent/marketingConsent gate instead of reading the stored Booking/Order/Enrolment column. The stored columns are left in place and still written at creation time -- they remain the record of consent-at-purchase-intent and are used elsewhere (attribution reporting, admin client actions); only the send-time consent GATE changed. (BLD-1880)'],
+  },
+  {
+    // Title matches the live board card exactly so seedBacklog dedupes onto it.
     title: 'Shop gift-card balance can be fully restored twice via a declined-then-retried card payment', type: 'ERROR', urgency: 'P0', status: 'IN_REVIEW', assignee: 'claude',
     value: 6, effort: 2,
     detail: 'app/api/stripe/webhook/route.ts:160-171 credits back the full giftCardPence on payment_intent.payment_failed and cancels the order, but finalizeOrder\'s claim guard (status notIn [\'PAID\',\'FULFILLED\'], lib/shop.ts:96-106) still allows a later payment_intent.succeeded on a retried PaymentIntent to flip that CANCELLED order back to PAID. A customer whose first card attempt is declined keeps the full gift-card credit AND gets the order fulfilled once the retry succeeds. Found in End-of-Day audit (finance/commerce discipline).',

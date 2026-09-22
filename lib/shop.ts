@@ -222,12 +222,16 @@ export async function finalizeOrder(orderId: string): Promise<{ ok: boolean; num
   // deduped by order id against the browser pixel.
   try {
     const { sendPurchase } = await import('@/lib/conversions');
+    // BLD-1880: consent gate re-derived live (liveConsent()) at send time,
+    // not reused from the frozen snapshot captured on the order at creation.
+    const { liveConsent } = await import('@/lib/marketing');
     let consentedEmail: string | null = null;
     if (order.clientId) {
       const buyer = await db.client.findUnique({ where: { id: order.clientId }, select: { marketingOptIn: true, unsubscribed: true } });
       if (buyer?.marketingOptIn && !buyer.unsubscribed) consentedEmail = order.email;
     }
-    await sendPurchase({ bookingId: order.id, valuePence: order.totalPence, clientId: order.clientId, email: consentedEmail, analyticsConsent: order.analyticsConsent, marketingConsent: order.marketingConsent });
+    const { analyticsConsent, marketingConsent } = await liveConsent();
+    await sendPurchase({ bookingId: order.id, valuePence: order.totalPence, clientId: order.clientId, email: consentedEmail, analyticsConsent, marketingConsent });
   } catch (e) { console.error('[shop] conversion send failed:', (e as Error)?.message); }
 
   return { ok: true, number: order.number };

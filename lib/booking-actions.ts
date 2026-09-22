@@ -424,9 +424,13 @@ export async function refundBooking(
   // to the booking's remaining net value — 0 on a full refund (PRJ-1200.3).
   try {
     const { sendRefund } = await import('@/lib/conversions');
+    // BLD-1880: consent gate re-derived live at send time (below), not the
+    // frozen snapshot captured on the booking at creation — see liveConsent().
+    const { liveConsent } = await import('@/lib/marketing');
+    const { analyticsConsent, marketingConsent } = await liveConsent();
     await sendRefund({
       bookingId: booking.id, valuePence: amount, clientId: booking.clientId,
-      analyticsConsent: booking.analyticsConsent, marketingConsent: booking.marketingConsent,
+      analyticsConsent, marketingConsent,
       gclid: booking.gclid, adjustedValuePence: Math.max(0, (booking.chargedPence ?? 0) - totalRefunded),
     });
   } catch { /* non-fatal */ }
@@ -518,7 +522,10 @@ export async function finalizeBookingCharge(
   }
   try { const { pushBookingSaleToXero } = await import('@/lib/xero'); await pushBookingSaleToXero(bookingId); } catch (e) { console.error('[charge] xero push failed:', (e as Error)?.message); const Sentry = await import('@sentry/nextjs'); Sentry.captureException(e, { tags: { area: 'xero', sub: 'sale-push' } }); }
   // BLD-455: only send hashed email to Meta CAPI if the client has opted in to marketing.
-  try { const { sendPurchase } = await import('./conversions'); await sendPurchase({ bookingId, valuePence: amountReceivedPence, clientId: booking.clientId, email: booking.client?.marketingOptIn ? booking.client.email : null, campaign: booking.attribCampaign, gclid: booking.gclid, analyticsConsent: booking.analyticsConsent, marketingConsent: booking.marketingConsent }); } catch (e) { console.error('[charge] conversion failed:', (e as Error)?.message); }
+  // BLD-1880: analyticsConsent/marketingConsent re-derived live (liveConsent()) at
+  // send time rather than reused from the frozen snapshot captured at booking
+  // creation — a visitor who has since withdrawn consent must be honoured here.
+  try { const { sendPurchase } = await import('./conversions'); const { liveConsent } = await import('@/lib/marketing'); const { analyticsConsent, marketingConsent } = await liveConsent(); await sendPurchase({ bookingId, valuePence: amountReceivedPence, clientId: booking.clientId, email: booking.client?.marketingOptIn ? booking.client.email : null, campaign: booking.attribCampaign, gclid: booking.gclid, analyticsConsent, marketingConsent }); } catch (e) { console.error('[charge] conversion failed:', (e as Error)?.message); }
   try { await logAudit({ action: 'PAYMENT_CHARGED', actor: 'system', summary: `Charge completed (£${(amountReceivedPence / 100).toFixed(2)})`, bookingId, clientId: booking.clientId }); } catch { /* non-fatal */ }
   return true;
 }
