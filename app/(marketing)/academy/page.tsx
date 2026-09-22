@@ -190,7 +190,7 @@ export default async function AcademyPage() {
       <section className="container-lux section">
         <Reveal>
           <div className="rounded-[var(--radius-2xl)] border border-[var(--color-line)] bg-[var(--color-ink)] p-10 text-[var(--color-porcelain)] md:p-14">
-            <p className="eyebrow mb-3 text-[var(--color-gold-soft)]">After you qualify</p>
+            <p className="eyebrow eyebrow-on-dark mb-3">After you qualify</p>
             <h2 className="font-[family-name:var(--font-display)] text-3xl">Launch your practice — equipment leasing for graduates.</h2>
             <p className="mt-4 max-w-2xl text-[var(--color-porcelain)]/80">Qualifying with K Academy is the beginning. Eligible graduates can lease clinic-grade laser and aesthetic devices on flexible terms, so you can start treating clients without the upfront capital.</p>
             <div className="mt-6"><Button href="/academy/portal" variant="gold">Ask about leasing <ArrowIcon /></Button></div>
