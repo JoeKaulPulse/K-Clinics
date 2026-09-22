@@ -111,7 +111,10 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
     // Metadata only here; the decrypted image is added under the clinical gate below (BLD-367).
     db.beforePhoto.findMany({ where: { clientId: id }, select: { id: true, bookingId: true, area: true, capturedBy: true, attestation: true, createdAt: true } }),
     db.chatConversation.findMany({ where: { clientId: id }, include: { messages: true } }),
-    db.order.findMany({ where: { clientId: id }, include: { items: true }, orderBy: { createdAt: 'desc' } }),
+    // BLD-1879: Order.clientId is nullable (guest checkouts leave it null with
+    // only the order's own email column set), so also match by the client's
+    // email — mirrors the GiftVoucher purchaserEmail fallback below (BLD-1715).
+    db.order.findMany({ where: { OR: [{ clientId: id }, { email: c.email }] }, include: { items: true }, orderBy: { createdAt: 'desc' } }),
     db.consentRequest.findMany({ where: { clientId: id }, orderBy: { createdAt: 'desc' } }),
     db.promoRedemption.findMany({ where: { clientId: id }, orderBy: { createdAt: 'desc' } }),
     // BLD-1715: GiftVoucher has no FK relation to Client (claimedByClientId/

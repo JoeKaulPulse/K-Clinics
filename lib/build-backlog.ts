@@ -5668,6 +5668,17 @@ export const BUILD_BACKLOG: BacklogItem[] = [
       "Verified: npx tsc --noEmit and DB_SYNC_NONFATAL=true npm run build both pass clean (this sandbox cannot reach the production Postgres host over raw Postgres, so the prebuild db-sync step is expected to fail here -- DB_SYNC_NONFATAL is the existing opt-in for exactly that, used for local verification only, not set anywhere in committed config).",
     ],
   },
+  {
+    title: "Guest checkout shop orders are invisible to both erasure and the client's own data export",
+    type: 'ERROR', urgency: 'P1', status: 'IN_REVIEW', assignee: 'claude',
+    value: 7, effort: 2,
+    detail: "BLD-1879: Order.clientId is a nullable String set at checkout with no formal FK relation -- a guest checkout (no account, email-only) leaves it null with only the order's own email column set. Three places matched Order rows on { clientId } alone, so a guest's shop orders never surfaced: eraseClientData in app/admin/actions.ts (Art. 17 erasure), the staff SAR export (app/api/admin/clients/[id]/export/route.ts), and the client's own self-service export (app/api/account/export/route.ts). A person who placed a guest order under their email, then later created an account or requested erasure/export under that same email, had that order silently excluded from all three -- an erasure that did not erase it and an export that did not disclose it.",
+    notes: [
+      "Fix: mirrored the GiftVoucher purchaserEmail fallback BLD-1715 already established for exactly this shape (a plain email column, no Client FK) in these same three files -- matched Order by OR: [{ clientId }, { email: client.email }] (actions.ts) / { clientId: id }, { email: c.email } (staff export) / { clientId: c.id }, { email: c.email } (self export), same exact-match semantics as the GiftVoucher purchaserEmail check (no case-insensitive mode), so a guest order is only pulled in once its email is confirmed to match the account holder's own email -- never someone else's order.",
+      "Order's data shape differs from GiftVoucher's in one relevant way: GiftVoucher plays two distinct roles per row (claimedByClientId recipient vs purchaserEmail purchaser) with different fields stripped for each, so BLD-1715's erasure fix used two separate updateMany calls; Order has a single role (the person who placed it) and the same fields are stripped either way clientId matched or email matched, so a single updateMany with the OR clause is the correct, equivalent form here.",
+      "Verified: npx tsc --noEmit and npm run build both pass clean.",
+    ],
+  },
 ];
 
 // A content hash over every item's title + status + PR, so ANY change (a new

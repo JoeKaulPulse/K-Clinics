@@ -49,8 +49,11 @@ export async function GET(req: Request) {
   if (!c) return NextResponse.json({ ok: false, error: 'Not found.' }, { status: 404 });
 
   // Shop orders relate to the client by clientId, not a named relation.
+  // BLD-1879: guest checkouts leave clientId null with only the order's own
+  // email column set, so also match by email — mirrors the GiftVoucher
+  // purchaserEmail fallback below (BLD-1715).
   const orders = await db.order.findMany({
-    where: { clientId: c.id },
+    where: { OR: [{ clientId: c.id }, { email: c.email }] },
     orderBy: { createdAt: 'desc' },
     select: { number: true, status: true, totalPence: true, createdAt: true, paidAt: true, items: { select: { name: true, qty: true, unitPence: true } } },
   });
