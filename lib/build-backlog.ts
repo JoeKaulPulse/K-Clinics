@@ -5668,6 +5668,20 @@ export const BUILD_BACKLOG: BacklogItem[] = [
       "Verified: npx tsc --noEmit and DB_SYNC_NONFATAL=true npm run build both pass clean (this sandbox cannot reach the production Postgres host over raw Postgres, so the prebuild db-sync step is expected to fail here -- DB_SYNC_NONFATAL is the existing opt-in for exactly that, used for local verification only, not set anywhere in committed config).",
     ],
   },
+  {
+    title: "Practitioner role can read/write other clinicians' clinical records (BOLA) via 5 admin API routes",
+    type: 'ERROR', urgency: 'P1', status: 'IN_REVIEW', assignee: 'claude',
+    value: 8, effort: 3,
+    detail: "BLD-1882: five admin API routes trusted a caller-supplied clientId/photo id with no ownership check, gated only on clients.clinical.view / clients.photos -- permissions every PRACTITIONER holds by default -- letting one clinician read or write another clinician's patients' clinical records: app/api/admin/incidents/route.ts (both the per-client GET and the clinic-wide ?all=1 register, plus the POST that logs a new incident), app/api/admin/patch-test/route.ts, app/api/admin/medical-flag/route.ts, app/api/admin/client-status/route.ts, and app/api/admin/bookings/before-photo/[id]/route.ts. Same bug class as BLD-1693/1711/1720, just not yet applied to these five. The residual note left on the PRJ-1229.4 register entry above (PR #1985) flagged exactly this for the incidents route.",
+    notes: [
+      "Fix: mirrored the existing practitionerId-scoping pattern verbatim (lib/crm-data.ts getClient/getBooking/getConsultation, BLD-1693/1711/1720; same shape repeated in the debt and SAR-export routes) -- 'const practitionerId = session.role === 'PRACTITIONER' ? session.sub : undefined', then, when set, 'db.booking.findFirst({ where: { clientId, practitionerId } })' before any read or write; a miss returns 404/empty exactly as the existing scoped routes do, never a 403, so a guessed id can't be distinguished from one that doesn't exist. OWNER/ADMIN/other elevated roles are unaffected -- practitionerId stays undefined for them, matching every existing scoped call site.",
+      "app/api/admin/incidents/route.ts: GET now runs the ownership check before the per-client query (empty incidents list on a mismatch, not an error, matching the shape of a client with none) and before the POST write (404 'Client not found', matching the debt/incident-client-lookup convention already on this route). The ?all=1 clinic-wide register additionally now requires the elevated compliance.manage permission (OWNER always passes sessionCan regardless) instead of clients.clinical.view alone, per the ticket -- PRACTITIONER has no default grant of compliance.manage so ?all=1 now 403s for that role while staying open to ADMIN/OWNER.",
+      "app/api/admin/patch-test/route.ts, medical-flag/route.ts, client-status/route.ts: identical ownership check inserted right after the db/logAudit imports, before any client.update.",
+      "app/api/admin/bookings/before-photo/[id]/route.ts: no clientId in the request at all (only the photo id) -- loads the photo's own clientId (BeforePhoto.clientId, a required non-null column) and checks that against the caller's bookings before decrypting/serving the image.",
+      "Out of scope, flagged not fixed: app/admin/incidents/page.tsx (and its clients.clinical.view-gated nav entry) renders the same clinic-wide register server-side via listIncidentRegister() directly, bypassing the API route entirely -- so a PRACTITIONER can still reach the full clinic-wide incident list through the UI even after this fix. The ticket named the API route's ?all=1 specifically; this page is the same exposure through a different code path and should get the same compliance.manage gate as a fast follow.",
+      "Verified: npx tsc --noEmit passes clean; npm run build passes clean.",
+    ],
+  },
 ];
 
 // A content hash over every item's title + status + PR, so ANY change (a new

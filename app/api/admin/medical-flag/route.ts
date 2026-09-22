@@ -22,6 +22,16 @@ export async function POST(req: Request) {
   const { db } = await import('@/lib/db');
   const { logAudit } = await import('@/lib/audit');
 
+  // BLD-1882/BLD-1693 pattern (lib/crm-data.ts getClient): a PRACTITIONER
+  // session may only set/clear the medical flag for a client they actually
+  // have a booking with — ownership check runs against the bookings table
+  // directly, same as getClient.
+  const practitionerId = session!.role === 'PRACTITIONER' ? session!.sub : undefined;
+  if (practitionerId) {
+    const own = await db.booking.findFirst({ where: { clientId, practitionerId }, select: { id: true } });
+    if (!own) return NextResponse.json({ ok: false, error: 'Client not found.' }, { status: 404 });
+  }
+
   await db.client.update({
     where: { id: clientId },
     data: {
