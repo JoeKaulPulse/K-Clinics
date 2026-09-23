@@ -170,17 +170,22 @@ function Approvals({ pending }: { pending: Pending[] }) {
   const router = useRouter();
   const t = useT();
   const [busyId, setBusyId] = useState('');
+  // BLD-1886: approving over an existing booking comes back as a warning
+  // (code: 'BOOKING_CONFLICT'), not a hard error — offer "Approve anyway"
+  // for that one request instead of just alerting the message away.
+  const [conflict, setConflict] = useState<{ id: string; message: string } | null>(null);
 
-  async function decide(id: string, op: 'approve' | 'decline') {
+  async function decide(id: string, op: 'approve' | 'decline', force = false) {
     let note: string | undefined;
     if (op === 'decline') {
       note = window.prompt('Reason for declining (optional, shown to the staff member):') || undefined;
     }
     setBusyId(id);
-    const { ok, json } = await postTimeOff({ op, id, note });
+    const { ok, json } = await postTimeOff({ op, id, note, force });
     setBusyId('');
-    if (ok) router.refresh();
-    else alert(json?.error || 'Could not update this request.');
+    if (ok) { setConflict(null); router.refresh(); }
+    else if (json?.code === 'BOOKING_CONFLICT') setConflict({ id, message: json.error || 'That staff member already has appointments in this window.' });
+    else { setConflict(null); alert(json?.error || 'Could not update this request.'); }
   }
 
   return (
@@ -203,6 +208,15 @@ function Approvals({ pending }: { pending: Pending[] }) {
               <button onClick={() => decide(item.id, 'approve')} disabled={busyId === item.id} className="rounded-full bg-[var(--color-ink)] px-4 py-1.5 text-xs text-[var(--color-porcelain)] disabled:opacity-50">{t('timeoff.approve')}</button>
               <button onClick={() => decide(item.id, 'decline')} disabled={busyId === item.id} className="rounded-full border border-[var(--color-line)] px-4 py-1.5 text-xs hover:border-[var(--color-blush)] hover:text-[var(--color-blush-deep)] disabled:opacity-50">{t('timeoff.decline')}</button>
             </div>
+            {conflict?.id === item.id && (
+              <div className="mt-2 rounded-[var(--radius-sm)] border border-[var(--color-gold)] bg-[var(--color-gold)]/10 p-2">
+                <p className="text-xs text-[var(--color-ink)]">{conflict.message}</p>
+                <div className="mt-1.5 flex items-center gap-2">
+                  <button onClick={() => decide(item.id, 'approve', true)} disabled={busyId === item.id} className="rounded-full bg-[var(--color-gold-deep)] px-3 py-1 text-xs font-medium text-white disabled:opacity-60">{busyId === item.id ? '…' : 'Approve anyway'}</button>
+                  <button onClick={() => setConflict(null)} className="text-xs text-[var(--color-stone)]">Cancel</button>
+                </div>
+              </div>
+            )}
           </li>
         ))}
       </ul>
