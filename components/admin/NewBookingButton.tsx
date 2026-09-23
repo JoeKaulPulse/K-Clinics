@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { AnimatePresence, motion } from 'motion/react';
 import { createManualBooking, searchClientsForBooking, logCallNote, resendBookingConfirmation } from '@/app/admin/bookings/create-action';
 import { clinicLocalToUTC, CLINIC_TZ } from '@/lib/clinic-time';
+import { eligiblePackagesFor } from '@/lib/package-match';
 import { useDialogBehaviours } from '@/components/ui/Dialog';
 import { ClientStatusBadge } from '@/components/admin/ClientStatusBadge';
 
@@ -59,7 +60,7 @@ function Modal({ treatments, isAdmin, onClose }: { treatments: Treatment[]; isAd
   // session (no charge; the purchase already carries the money).
   // BLD-1380: `refunded` — a fully refunded course reads as !paid, but staff
   // must see "refunded", not "NOT yet paid", before booking against it.
-  type Pkg = { purchaseBookingId: string; label: string; treatmentSlug: string; sessionsTotal: number; sessionsUsed: number; sessionsBooked: number; sessionsRemaining: number; paid: boolean; refunded: boolean };
+  type Pkg = { purchaseBookingId: string; label: string; treatmentSlug: string; variantId: string | null; sessionsTotal: number; sessionsUsed: number; sessionsBooked: number; sessionsRemaining: number; paid: boolean; refunded: boolean };
   const [packages, setPackages] = useState<Pkg[]>([]);
   const [usePackageId, setUsePackageId] = useState<string | null>(null);
   // The standalone "Consultation" category is already a consultation; the toggle
@@ -101,9 +102,16 @@ function Modal({ treatments, isAdmin, onClose }: { treatments: Treatment[]; isAd
       .catch(() => {});
     return () => { live = false; };
   }, [selected]);
-  const matchingPackage = packages.find((p) => p.treatmentSlug === d.treatmentSlug && p.sessionsRemaining > 0);
-  // A changed treatment invalidates a ticked package from another treatment.
-  useEffect(() => { if (usePackageId && matchingPackage?.purchaseBookingId !== usePackageId) setUsePackageId(null); }, [d.treatmentSlug, usePackageId, matchingPackage]);
+  // BLD-1890: treatmentSlug is the marketing category only (e.g.
+  // "laser-hair-removal") — a category can have several service variants/
+  // areas (Chin, Lower Leg…) sharing that one slug, so matching on it alone
+  // could offer (and silently pick) another area's package for this booking.
+  // eligiblePackagesFor also matches the chosen variant/area; every eligible
+  // package is listed, never just the first one found.
+  const matchingPackages = eligiblePackagesFor(packages, d.treatmentSlug, d.variantId || null).filter((p) => p.sessionsRemaining > 0);
+  const chosenPackage = matchingPackages.find((p) => p.purchaseBookingId === usePackageId) ?? null;
+  // A changed treatment/area invalidates a ticked package that's no longer eligible.
+  useEffect(() => { if (usePackageId && !chosenPackage && usePackageId !== '') setUsePackageId(null); }, [d.treatmentSlug, d.variantId, usePackageId, chosenPackage]);
 
   const baseTitle = treatments.find((t) => t.slug === d.treatmentSlug)?.title || 'your treatment';
   const variantName = variants.find((v) => v.id === d.variantId)?.name;
@@ -120,6 +128,9 @@ function Modal({ treatments, isAdmin, onClose }: { treatments: Treatment[]; isAd
     if (isAdmin && d.overridePrice && (d.overridePriceValue.trim() === '' || Number(d.overridePriceValue) < 0 || !Number.isFinite(Number(d.overridePriceValue)))) {
       return setError('Enter a valid override price.');
     }
+    // BLD-1890: "Use package session" is ticked but staff haven't yet picked
+    // which of several eligible packages — never guess, make them choose.
+    if (usePackageId === '') return setError('Choose which course package to use.');
     const startISO = clinicLocalToUTC(d.date, d.time).toISOString();
     const overridePricePence = isAdmin && d.overridePrice ? Math.round(Number(d.overridePriceValue) * 100) : undefined;
     start(async () => {
@@ -131,7 +142,7 @@ function Modal({ treatments, isAdmin, onClose }: { treatments: Treatment[]; isAd
         phone: selected?.phone || d.phone,
         dob: selected ? undefined : (d.dob || undefined),
         treatmentSlug: d.treatmentSlug, variantId: d.asConsultation ? undefined : (d.variantId || undefined), asConsultation: d.asConsultation, sessions: usePackageId ? 1 : d.sessions, startISO, notes: d.notes, override, overridePricePence: usePackageId ? undefined : overridePricePence,
-        usePackageBookingId: usePackageId ?? undefined,
+        usePackageBookingId: usePackageId || undefined,
       });
       if (r.ok) setResult(r as Result);
       else { setError(r.error || 'Could not create booking.'); setClash(Boolean(r.clash)); }
@@ -229,23 +240,44 @@ function Modal({ treatments, isAdmin, onClose }: { treatments: Treatment[]; isAd
               </label>
             )}
             {/* BLD-1014: the client already paid for this treatment — book the
-                visit as a package session (£0) instead of charging again. */}
-            {!isConsultationCat && !d.asConsultation && matchingPackage && (
-              <label className="flex items-start gap-2 rounded-[var(--radius-sm)] border border-[var(--color-gold)]/50 bg-[var(--color-gold)]/8 p-3 text-sm">
-                <input
-                  type="checkbox"
-                  checked={usePackageId === matchingPackage.purchaseBookingId}
-                  onChange={(e) => setUsePackageId(e.target.checked ? matchingPackage.purchaseBookingId : null)}
-                  className="mt-0.5 h-4 w-4 accent-[var(--color-gold)]"
-                />
-                <span>
+                visit as a package session (£0) instead of charging again.
+                BLD-1890: a client can hold more than one package for the same
+                treatment category (different areas, or repeat purchases) — list
+                every eligible one and make staff pick, rather than silently
+                using whichever came first. */}
+            {!isConsultationCat && !d.asConsultation && matchingPackages.length > 0 && (
+              <div className="rounded-[var(--radius-sm)] border border-[var(--color-gold)]/50 bg-[var(--color-gold)]/8 p-3 text-sm">
+                <label className="flex items-start gap-2">
+                  <input
+                    type="checkbox"
+                    checked={usePackageId !== null}
+                    onChange={(e) => setUsePackageId(e.target.checked ? (matchingPackages.length === 1 ? matchingPackages[0].purchaseBookingId : '') : null)}
+                    className="mt-0.5 h-4 w-4 accent-[var(--color-gold)]"
+                  />
                   <span className="block font-medium">Use package session — nothing to charge</span>
-                  <span className="text-xs text-[var(--color-stone)]">
-                    {matchingPackage.label}: {matchingPackage.sessionsUsed} used · {matchingPackage.sessionsBooked} booked · {matchingPackage.sessionsRemaining} left of {matchingPackage.sessionsTotal}
-                    {matchingPackage.paid ? ' · paid' : matchingPackage.refunded ? ' · REFUNDED' : ' · NOT yet paid'}
+                </label>
+                {usePackageId !== null && matchingPackages.length > 1 && (
+                  <select
+                    className={f + ' mt-2'}
+                    aria-label="Which course package"
+                    value={usePackageId}
+                    onChange={(e) => setUsePackageId(e.target.value)}
+                  >
+                    <option value="">Choose which course…</option>
+                    {matchingPackages.map((p) => (
+                      <option key={p.purchaseBookingId} value={p.purchaseBookingId}>
+                        {p.label} — {p.sessionsRemaining} of {p.sessionsTotal} left{p.paid ? '' : p.refunded ? ' (refunded)' : ' (unpaid)'}
+                      </option>
+                    ))}
+                  </select>
+                )}
+                {chosenPackage && (
+                  <span className="mt-1.5 block text-xs text-[var(--color-stone)]">
+                    {chosenPackage.label}: {chosenPackage.sessionsUsed} used · {chosenPackage.sessionsBooked} booked · {chosenPackage.sessionsRemaining} left of {chosenPackage.sessionsTotal}
+                    {chosenPackage.paid ? ' · paid' : chosenPackage.refunded ? ' · REFUNDED' : ' · NOT yet paid'}
                   </span>
-                </span>
-              </label>
+                )}
+              </div>
             )}
             {/* BLD-1268: when the chosen variant has configured package/course
                 tiers, offer the same "Single or a course?" picker the public

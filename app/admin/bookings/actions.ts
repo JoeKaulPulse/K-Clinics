@@ -642,7 +642,7 @@ export async function linkBookingToPackage(bookingId: string, purchaseBookingId:
     select: {
       clientId: true, status: true, treatmentSlug: true, treatmentTitle: true, packageBookingId: true, chargedAt: true,
       prepaidAt: true, giftVoucherPence: true, pointsRedeemed: true,
-      items: { where: { isAddon: false }, orderBy: { createdAt: 'asc' }, take: 1, select: { sessions: true } },
+      items: { where: { isAddon: false }, orderBy: { createdAt: 'asc' }, take: 1, select: { sessions: true, variantId: true } },
     },
   });
   if (!b) return { ok: false, error: 'Booking not found.' };
@@ -666,9 +666,16 @@ export async function linkBookingToPackage(bookingId: string, purchaseBookingId:
   }
 
   const { clientPackages, packageOccupancyWhere } = await import('@/lib/package-sessions');
+  const { eligiblePackagesFor } = await import('@/lib/package-match');
   const pkg = (await clientPackages(b.clientId)).find((p) => p.purchaseBookingId === purchaseBookingId);
   if (!pkg) return { ok: false, error: 'That course isn’t on this client’s account.' };
-  if (pkg.treatmentSlug !== b.treatmentSlug) return { ok: false, error: `That course is for a different treatment (${pkg.label}).` };
+  // BLD-1890: treatmentSlug alone is the marketing category, not the specific
+  // service/area (e.g. Chin vs Lower Leg share one "laser-hair-removal" slug)
+  // — also require the package's own variant (when recorded) to match this
+  // appointment's, so a session is never deducted off the wrong area's package.
+  if (!eligiblePackagesFor([pkg], b.treatmentSlug, b.items[0]?.variantId ?? null).length) {
+    return { ok: false, error: `That course is for a different treatment or area (${pkg.label}).` };
+  }
 
   // A live or completed appointment occupies a slot the moment it's linked
   // (that's the point, for retro-linking taken sessions); a cancelled/missed

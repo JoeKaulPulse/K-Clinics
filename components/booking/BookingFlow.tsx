@@ -12,6 +12,7 @@ import { Button, ArrowIcon } from '@/components/ui/Button';
 import { REFRESHMENTS } from '@/lib/hospitality';
 import { trackPurchase } from '@/lib/analytics-events';
 import { WaitlistCTA } from '@/components/booking/WaitlistCTA';
+import { eligiblePackagesFor } from '@/lib/package-match';
 
 type Course = { sessions: number; totalPence: number };
 type Variant = { id: string; name: string; durationMin: number; displayDurationMin?: number | null; pricePence: number; offerPence: number | null; offerName: string | null; courses: Course[] };
@@ -19,7 +20,7 @@ type Service = { id: string; slug: string; treatmentSlug: string; name: string; 
 type ClientInfo = { signedIn: boolean; firstName: string; email: string; gender: string | null; smsReminders: boolean; hasPhone: boolean; welcomeEligible: boolean };
 // BLD-1346: a course the client has bought, with its derived session balance
 // (lib/package-sessions.ts). Only paid packages with sessions left are served.
-type Pkg = { purchaseBookingId: string; label: string; treatmentSlug: string; sessionsTotal: number; sessionsUsed: number; sessionsBooked: number; sessionsRemaining: number; paid: boolean };
+type Pkg = { purchaseBookingId: string; label: string; treatmentSlug: string; variantId: string | null; sessionsTotal: number; sessionsUsed: number; sessionsBooked: number; sessionsRemaining: number; paid: boolean };
 
 const field = 'w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-porcelain)] px-4 py-3 text-[var(--color-ink)] transition-colors placeholder:text-[var(--color-stone)] focus:border-[var(--color-gold-deep)] focus-visible:ring-2 focus-visible:ring-[var(--color-gold-deep)]';
 const label = 'mb-1.5 block text-xs uppercase tracking-[0.16em] text-[var(--color-stone)]';
@@ -168,17 +169,21 @@ export function BookingFlow({ catalogue, client, preselect = null, preselectDate
     return () => { live = false; };
   }, [authed]);
 
-  // The one package that covers the treatment being booked, if any.
-  const matchingPackage = useMemo(
-    () => (service ? packages.find((p) => p.treatmentSlug === service.treatmentSlug && p.sessionsRemaining > 0) : undefined),
-    [packages, service],
+  // BLD-1890: the treatment/area being booked may have more than one eligible
+  // package (a repeat purchase, or a category with several areas sharing one
+  // treatmentSlug) — list every one and let the client choose, rather than
+  // silently spending whichever package happened to match first.
+  const matchingPackages = useMemo(
+    () => (service ? eligiblePackagesFor(packages, service.treatmentSlug, variant?.id ?? null).filter((p) => p.sessionsRemaining > 0) : []),
+    [packages, service, variant],
   );
-  // Changing treatment (or switching to a course purchase) invalidates a
-  // selected package from a different treatment — clear it rather than letting
+  const chosenPackage = matchingPackages.find((p) => p.purchaseBookingId === usePackageId) ?? null;
+  // Changing treatment/area (or switching to a course purchase) invalidates a
+  // selected package that's no longer eligible — clear it rather than letting
   // a stale id reach the server and get rejected at the last step.
   useEffect(() => {
-    if (usePackageId && (matchingPackage?.purchaseBookingId !== usePackageId || sessions > 1)) setUsePackageId(null);
-  }, [matchingPackage, usePackageId, sessions]);
+    if (usePackageId && usePackageId !== '' && (!chosenPackage || sessions > 1)) setUsePackageId(null);
+  }, [chosenPackage, usePackageId, sessions]);
 
   // Live availability from the admin engine (works without Stripe).
   useEffect(() => {
@@ -319,6 +324,9 @@ export function BookingFlow({ catalogue, client, preselect = null, preselectDate
   const totalLabel = usePackageId && orderTotal <= 0 ? 'Nothing to pay — prepaid session' : money(orderTotal);
 
   async function submitBooking() {
+    // BLD-1890: "Use package session" is ticked but the client hasn't yet
+    // picked which of several eligible packages — never guess, make them choose.
+    if (usePackageId === '') { setError('Choose which course package to use.'); return; }
     setSubmitting(true); setError('');
     if (isDemo) { setSubmitting(false); setStage('card'); return; }
     try {
@@ -451,27 +459,44 @@ export function BookingFlow({ catalogue, client, preselect = null, preselectDate
               </div>
               {/* BLD-1346: this client already paid for a course of this
                   treatment and has sessions left — let them spend one instead
-                  of being quoted the full price again. */}
-              {variant && matchingPackage && (
+                  of being quoted the full price again. BLD-1890: they may hold
+                  more than one eligible package (a repeat purchase) — list every
+                  one and make them pick, never guess which to spend. */}
+              {variant && matchingPackages.length > 0 && (
                 <div className="mt-5 rounded-[var(--radius-md)] border border-[var(--color-gold)] bg-[color-mix(in_oklab,var(--color-gold)_8%,transparent)] p-4">
                   <label className="flex cursor-pointer items-start gap-3">
                     <input
                       type="checkbox"
                       className="mt-1 size-4 accent-[var(--color-gold-deep)]"
-                      checked={usePackageId === matchingPackage.purchaseBookingId}
+                      checked={usePackageId !== null}
                       onChange={(e) => {
-                        setUsePackageId(e.target.checked ? matchingPackage.purchaseBookingId : null);
+                        setUsePackageId(e.target.checked ? (matchingPackages.length === 1 ? matchingPackages[0].purchaseBookingId : '') : null);
                         if (e.target.checked) setSessions(1); // a package books one visit at a time
                       }}
                     />
-                    <span className="text-sm">
-                      <span className="block font-medium">Use one of your prepaid sessions — nothing to pay</span>
-                      <span className="mt-0.5 block text-[var(--color-stone)]">
-                        {matchingPackage.label}: {matchingPackage.sessionsRemaining} of {matchingPackage.sessionsTotal} left
-                        {matchingPackage.sessionsBooked > 0 ? ` · ${matchingPackage.sessionsBooked} already booked` : ''}
-                      </span>
-                    </span>
+                    <span className="block text-sm font-medium">Use one of your prepaid sessions — nothing to pay</span>
                   </label>
+                  {usePackageId !== null && matchingPackages.length > 1 && (
+                    <select
+                      className={field + ' mt-3'}
+                      aria-label="Which course"
+                      value={usePackageId}
+                      onChange={(e) => setUsePackageId(e.target.value)}
+                    >
+                      <option value="">Choose which course…</option>
+                      {matchingPackages.map((p) => (
+                        <option key={p.purchaseBookingId} value={p.purchaseBookingId}>
+                          {p.label} — {p.sessionsRemaining} of {p.sessionsTotal} left
+                        </option>
+                      ))}
+                    </select>
+                  )}
+                  {chosenPackage && (
+                    <span className="mt-2 block text-sm text-[var(--color-stone)]">
+                      {chosenPackage.label}: {chosenPackage.sessionsRemaining} of {chosenPackage.sessionsTotal} left
+                      {chosenPackage.sessionsBooked > 0 ? ` · ${chosenPackage.sessionsBooked} already booked` : ''}
+                    </span>
+                  )}
                 </div>
               )}
 
@@ -634,9 +659,9 @@ export function BookingFlow({ catalogue, client, preselect = null, preselectDate
                 <div className="flex justify-between"><span className="text-[var(--color-stone)]">Due today</span><span className="font-medium text-[var(--color-stone)]">Nothing charged until after your visit</span></div>
                 <div className="flex justify-between"><span className="text-[var(--color-stone)]">Total at your visit</span><span className="font-medium text-[var(--color-ink)]">{totalLabel}</span></div>
                 {promo?.ok && !usePackageId && <div className="mt-1 flex justify-between text-[var(--color-jade,#3f7a5a)]"><span>Promo {promo.code}</span><span>−{money(promo.discountPence || 0)} applied</span></div>}
-                {usePackageId && matchingPackage && (
+                {usePackageId && chosenPackage && (
                   <div className="mt-1 flex justify-between text-[var(--color-gold-deep)]">
-                    <span>{matchingPackage.label}</span>
+                    <span>{chosenPackage.label}</span>
                     <span>1 prepaid session used</span>
                   </div>
                 )}
