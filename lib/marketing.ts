@@ -29,7 +29,13 @@ export async function resolveCampaignId(attrib: Attribution | null): Promise<str
  *  choice, and shape it for a Booking.create — resolving the matching
  *  campaign. The consent flags are always returned (default false — no cookie
  *  banner interaction yet) so a later deferred conversion send always has an
- *  explicit answer to check, even with no attribution cookie present. */
+ *  explicit answer to check, even with no attribution cookie present.
+ *
+ *  BLD-1880: deferred Purchase/Refund sends must keep reading this stored
+ *  snapshot, not re-read cookies() at send time. Those sends run from Stripe
+ *  webhooks (no cookies) and staff sessions (POS, terminal, admin charge and
+ *  refund), where cookies() returns the staff member's own consent, so a live
+ *  read would send conversions for clients who never consented. */
 export async function bookingAttribution(): Promise<{
   attribSource?: string | null; attribMedium?: string | null; attribCampaign?: string | null;
   attribLanding?: string | null; gclid?: string | null; fbclid?: string | null; marketingCampaignId?: string | null;
