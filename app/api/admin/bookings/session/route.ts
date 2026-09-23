@@ -25,19 +25,22 @@ export async function POST(req: Request) {
   const session = await requirePermissionAny(['bookings.manage', 'liveAppointments.manage']);
   if (!session) return bad('Not permitted.', 403);
 
-  // BLD-1899: this route is hit repeatedly through a real live session
-  // (step transitions, autosave, checkout) by design, so the cap is generous
-  // — it only needs to blunt scripted abuse, matching the other staff-mutation
-  // routes' enforceRateLimit calling convention (lib/security/guard.ts).
-  const { enforceRateLimit } = await import('@/lib/security/guard');
-  if (!(await enforceRateLimit(req, 'admin-booking-session', 120, 60, 'admin'))) {
-    return bad('Too many requests — wait a moment.', 429);
-  }
-
   const body = await req.json().catch(() => ({}));
   const op = String(body.op || '');
   const bookingId = String(body.bookingId || '');
   if (!bookingId) return bad();
+
+  // BLD-1899: blunt scripted abuse of the write ops. Keyed per staff account,
+  // not per IP: every clinic device (front desk, host iPad, clinician,
+  // checkout) shares the clinic's public IP, so a per-IP bucket would throttle
+  // live checkouts. 'status' is exempt: it is the read-only poll fallback
+  // (useSessionChannel, every 2s per device when SSE drops).
+  if (op !== 'status') {
+    const { enforceAccountRateLimit } = await import('@/lib/security/guard');
+    if (!(await enforceAccountRateLimit(req, session.sub, 'admin-booking-session', 120, 60, 'admin'))) {
+      return bad('Too many requests — wait a moment.', 429);
+    }
+  }
 
   const { db } = await import('@/lib/db');
   const { isSessionStep, normalizeStepKey, normalizeTimings, advanceTimings, closeTimings } = await import('@/lib/appointment-session');
