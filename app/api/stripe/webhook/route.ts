@@ -103,9 +103,11 @@ export async function POST(req: Request) {
             const { finalizeBookingCharge } = await import('@/lib/booking-actions');
             // BLD-1874: a staff-sent payment link (the 'paylink' case in
             // app/api/admin/bookings/session/route.ts) is the only caller that
-            // stamps kind: 'booking_balance' — everything else on this generic
+            // stamps kind: 'booking_balance'. A BNPL course checkout link
+            // (kind: 'course_prepaid') also carries bookingId and passes through
+            // here before its own handler below. Everything else on this generic
             // succeeded handler is the saved-card/SCA-recovery rail ('card').
-            const method = pi.metadata?.kind === 'booking_balance' ? 'payment_link' : 'card';
+            const method = pi.metadata?.kind === 'booking_balance' || pi.metadata?.kind === 'course_prepaid' ? 'payment_link' : 'card';
             await finalizeBookingCharge(bookingId, pi.id, receivedPence, { late: pi.metadata?.late === 'true', method });
           }
         }

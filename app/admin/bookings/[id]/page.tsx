@@ -344,6 +344,7 @@ export default async function BookingDetail({ params }: { params: Promise<{ id: 
         <div className="text-right">
           <p className="font-[family-name:var(--font-display)] text-2xl">{b.pricePence > 0 ? money(b.pricePence) : 'On consultation'}</p>
           {b.chargedAt && <p className="text-xs text-[var(--color-jade)]">Charged {money(b.chargedPence || 0)}{b.paymentMethod ? ` · ${paymentMethodLabel(b.paymentMethod)}` : ''}</p>}
+          {!b.chargedAt && b.prepaidAt && b.paymentMethod && <p className="text-xs text-[var(--color-jade)]">Pre-paid · {paymentMethodLabel(b.paymentMethod)}</p>}
           {/* BLD-1874: correct how this booking was actually paid — never
               affects the amount, charge date or Stripe reference above. */}
           {canEditPaymentMethod && <div className="mt-0.5"><PaymentMethodEditor bookingId={b.id} method={b.paymentMethod} /></div>}

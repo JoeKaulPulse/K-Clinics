@@ -424,6 +424,10 @@ export default async function ClientDetail({ params }: { params: Promise<{ id: s
                       // BLD-1874: show how a charged booking was paid, right next to the badge.
                       <span className={`rounded-full px-2 py-0.5 ${b.chargedAt ? 'bg-[var(--color-bone)] text-[var(--color-stone)]' : 'bg-amber-100 text-amber-800'}`}>{b.chargedAt ? `Charged${b.paymentMethod ? ` · ${paymentMethodLabel(b.paymentMethod)}` : ''}` : 'Not charged'}</span>
                     )}
+                    {/* BLD-1874: payments taken before completion (payment link, BNPL pre-pay, late-cancel fee). */}
+                    {b.status !== 'COMPLETED' && (b.chargedAt || b.prepaidAt) && b.paymentMethod && (
+                      <span className="rounded-full bg-[var(--color-bone)] px-2 py-0.5 text-[var(--color-stone)]">Paid · {paymentMethodLabel(b.paymentMethod)}</span>
+                    )}
                     {/* BLD-1096: cancelled, but the prepaid package still absorbed the session. */}
                     {b.status === 'CANCELLED' && b.packageSessionUsedAt && (
                       <span className="rounded-full bg-[color-mix(in_oklab,var(--color-gold)_18%,transparent)] px-2 py-0.5 font-medium text-[var(--color-gold-deep)]">Package session used</span>
