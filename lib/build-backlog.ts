@@ -5815,6 +5815,21 @@ export const BUILD_BACKLOG: BacklogItem[] = [
       "Verified: npx tsc --noEmit and npm run build both pass clean.",
     ],
   },
+  {
+    title: "Practitioner role can claim/edit/complete another clinician's live appointment session (BOLA)",
+    type: 'ERROR', urgency: 'P1', status: 'IN_REVIEW', assignee: 'claude', pr: PR(2007),
+    value: 8, effort: 2,
+    detail: "BLD-1899: app/api/admin/bookings/session/route.ts and app/api/admin/bookings/session/stream/route.ts gated only on the bookings.manage / liveAppointments.manage permission -- both granted to PRACTITIONER by default -- with no check that a PRACTITIONER caller is actually the assigned practitioner on the caller-supplied bookingId. Any practitioner who knew (or guessed/enumerated) a colleague's bookingId could claim that live session, edit its captured non-clinical answers, mark it complete (firing loyalty award, review-invite email and room-turnover), create a follow-on booking for that client, or read its full SSE snapshot stream -- all for a client they were never assigned to. Same bug class as BLD-1882/BLD-1693/1711/1720, just not yet applied to these two routes; BLD-1882's same-day commit (6068cdf) fixed the five sibling routes (incidents, patch-test, medical-flag, client-status, before-photo) but missed these. Payment-taking ops in the same route (paylink/terminal/external/voucher/voucher-remove, plus the saved-card 'charge' op via chargeBookingAction) were already separately gated behind bookings.charge and are unaffected -- only the clinical/scheduling surface was exposed.",
+    notes: [
+      "Fix: mirrored the existing practitionerId-scoping pattern verbatim (lib/crm-data.ts getClient/getBooking/getConsultation, BLD-1693/1711/1720/1882) -- 'const practitionerId = session.role === 'PRACTITIONER' ? session.sub : undefined', then compared it against the target booking's own practitionerId before any read or write; a mismatch returns 404 'Booking not found' (session/route.ts) or a plain 404 (stream/route.ts), never a 403, so a guessed bookingId can't be distinguished from one that doesn't exist. OWNER/ADMIN/RECEPTION are unaffected -- practitionerId stays undefined for them.",
+      "app/api/admin/bookings/session/route.ts: every op in the POST handler (start, claim, enter, save, aftercare, charge, paylink, terminal, external, voucher, voucher-remove, rebook, complete, status) branches off the single booking already loaded once near the top of the handler for the cancelled-booking check and the voucher/points netting -- added practitionerId to that same findUnique's select and check ownership right there, once, rather than re-querying per case; functionally identical to putting the check at the top of every op since they all key off the same bookingId/booking within one request.",
+      "app/api/admin/bookings/session/stream/route.ts (SSE): added the same practitionerId check as a findFirst({ where: { id: bookingId, practitionerId } }) right after the permission check and before opening the snapshot stream, since this route doesn't otherwise load the booking row itself.",
+      "Also added a rate limit to the POST handler in session/route.ts -- 120 requests / 60s under scope 'admin-booking-session', portal 'admin'. Review pass: switched from per-IP enforceRateLimit to per-account enforceAccountRateLimit (keyed on session.sub), because every clinic device shares the clinic's public IP and a shared per-IP bucket would throttle live checkouts; the read-only 'status' op (the 2s SSE poll fallback in useSessionChannel) is exempt.",
+      "Review pass: app/admin/bookings/[id]/session/page.tsx (the live session page itself) loaded any booking by id with no practitioner scoping and, for clinical-access staff, decrypted the allergy note, medical flag and clinical note and rendered the client's /live/<manageToken> link. It now returns notFound() for a PRACTITIONER who is not the booking's assigned practitioner, matching the booking detail page (BLD-1693).",
+      "No Prisma schema change.",
+      "Verified: npx tsc --noEmit and npm run build both pass clean.",
+    ],
+  },
 ];
 
 // A content hash over every item's title + status + PR, so ANY change (a new

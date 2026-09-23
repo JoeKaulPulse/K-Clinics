@@ -27,6 +27,12 @@ export default async function AppointmentSessionPage({ params }: { params: Promi
     },
   });
   if (!b) notFound();
+  // BLD-1899: a PRACTITIONER may only open the live session for a booking
+  // assigned to them. Same 404 as an unknown id (matches the booking detail
+  // page, BLD-1693). This page decrypts allergy/medical/clinical notes and
+  // renders the client's /live/<manageToken> link, so it must be scoped as
+  // well as the session API and stream.
+  if (session.role === 'PRACTITIONER' && b.practitionerId !== session.sub) notFound();
   if (b.status === 'CANCELLED' || b.status === 'NO_SHOW') redirect(`/admin/bookings/${id}`);
 
   const { getSop, parseSopSteps } = await import('@/lib/sops');

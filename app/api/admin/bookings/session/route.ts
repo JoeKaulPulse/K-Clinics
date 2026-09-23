@@ -30,6 +30,18 @@ export async function POST(req: Request) {
   const bookingId = String(body.bookingId || '');
   if (!bookingId) return bad();
 
+  // BLD-1899: blunt scripted abuse of the write ops. Keyed per staff account,
+  // not per IP: every clinic device (front desk, host iPad, clinician,
+  // checkout) shares the clinic's public IP, so a per-IP bucket would throttle
+  // live checkouts. 'status' is exempt: it is the read-only poll fallback
+  // (useSessionChannel, every 2s per device when SSE drops).
+  if (op !== 'status') {
+    const { enforceAccountRateLimit } = await import('@/lib/security/guard');
+    if (!(await enforceAccountRateLimit(req, session.sub, 'admin-booking-session', 120, 60, 'admin'))) {
+      return bad('Too many requests — wait a moment.', 429);
+    }
+  }
+
   const { db } = await import('@/lib/db');
   const { isSessionStep, normalizeStepKey, normalizeTimings, advanceTimings, closeTimings } = await import('@/lib/appointment-session');
   const { getStaffProfile, touchpointAppend } = await import('@/lib/appointment-session-server');
@@ -37,8 +49,15 @@ export async function POST(req: Request) {
   type Data = import('@/lib/appointment-session').SessionData;
   type Touchpoints = import('@/lib/appointment-session').Touchpoint[];
 
-  const booking = await db.booking.findUnique({ where: { id: bookingId }, select: { id: true, clientId: true, status: true, finishedAt: true, chargedAt: true, prepaidAt: true, giftVoucherCode: true, giftVoucherPence: true, pointsRedeemedPence: true } });
+  const booking = await db.booking.findUnique({ where: { id: bookingId }, select: { id: true, clientId: true, practitionerId: true, status: true, finishedAt: true, chargedAt: true, prepaidAt: true, giftVoucherCode: true, giftVoucherPence: true, pointsRedeemedPence: true } });
   if (!booking) return bad('Booking not found.', 404);
+  // BLD-1899/BLD-1882 pattern (lib/crm-data.ts getClient; BLD-1693/1711/1720):
+  // a PRACTITIONER session may only act on a live appointment session for a
+  // booking assigned to them. Every op below (claim, edit captured answers,
+  // mark complete, create a follow-up booking, checkout...) keys off this
+  // same `booking`, so the ownership check runs once here for all of them.
+  const practitionerId = session.role === 'PRACTITIONER' ? session.sub : undefined;
+  if (practitionerId && booking.practitionerId !== practitionerId) return bad('Booking not found.', 404);
   // BLD-336: never run appointment-session actions against a cancelled booking.
   if (booking.status === 'CANCELLED') return bad('This booking was cancelled — no session actions are allowed.', 409);
 
