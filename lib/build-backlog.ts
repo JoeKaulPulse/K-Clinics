@@ -5816,6 +5816,21 @@ export const BUILD_BACKLOG: BacklogItem[] = [
     ],
   },
   {
+    title: 'A client with two treatment packages could have the wrong one linked and deducted (BLD-1890)',
+    type: 'ERROR', urgency: 'P0', status: 'IN_REVIEW', assignee: 'claude', pr: PR(2008),
+    value: 8, effort: 4,
+    detail: "Owner-reported (BLD-1890): a client with both a Lower Leg and a Chin laser-hair-removal package -- managing or rescheduling the Chin appointment only offered the Lower Leg package to link/spend a session against. Root cause: Booking.treatmentSlug / PackageView.treatmentSlug (lib/package-sessions.ts) identify only the marketing category (e.g. 'laser-hair-removal'), shared by every service variant/area in it -- Chin and Lower Leg are separate ServiceVariant rows under that one Service/treatmentSlug. Every package-matching call site keyed off treatmentSlug alone, so a package bought for one area matched an appointment for a different one: components/admin/NewBookingButton.tsx and components/booking/BookingFlow.tsx each used packages.find(p => p.treatmentSlug === ...) -- a single silent auto-pick with no way to choose otherwise -- and the three server-side validators (app/admin/bookings/create-action.ts, app/api/booking/start/route.ts, app/admin/bookings/actions.ts's linkBookingToPackage) accepted whatever purchaseBookingId the client sent as long as its treatmentSlug matched, so even a correct UI pick elsewhere couldn't be enforced server-side.",
+    notes: [
+      "Fix: PackageView (lib/package-sessions.ts) now also carries variantId (from the purchase's primary BookingItem.variantId, null for a variant-less category or older data). New lib/package-match.ts exports eligiblePackagesFor(packages, treatmentSlug, variantId) -- one shared matcher (no 'server-only', so both client components and server actions import the same function): same treatmentSlug is required always; when a variantId is known, only packages recorded against that exact variant match, falling back to a variant-less (legacy) package only when no exact match exists. A package tied to a specific DIFFERENT variant is never returned.",
+      "components/admin/NewBookingButton.tsx and components/booking/BookingFlow.tsx: replaced the single .find() auto-pick with a full matchingPackages list from eligiblePackagesFor. A checkbox still ticks 'use a package session', but when more than one package is eligible a required <select> lists every one (label + sessions remaining) and the booking is blocked with an explicit error until staff/the client actually choose -- never a silent default.",
+      "app/admin/bookings/[id]/page.tsx's linkablePackages (the retro-link picker, PackageLinkControl) now also filters through eligiblePackagesFor using the appointment's own primary item's variantId, so staff are never offered another area's package to link an appointment to.",
+      "Server-side defense in depth: app/admin/bookings/create-action.ts, app/api/booking/start/route.ts and linkBookingToPackage (app/admin/bookings/actions.ts) all re-validate the chosen package through eligiblePackagesFor against the booking's own variant, not just its treatmentSlug, before creating/linking anything -- a mismatched purchaseBookingId is now rejected server-side regardless of what the client sent.",
+      "Session-balance deduction itself (lib/package-sessions.ts consumePackageSession, packageOccupancyWhere) was not changed -- it already derives strictly from Booking.packageBookingId, so fixing which package that field gets set to (this fix) is sufficient to guarantee a session is never deducted from the wrong package.",
+      "No Prisma schema change: variantId already existed on BookingItem; this only selects and surfaces it.",
+      "Verified: npx tsc --noEmit and npm run build both pass clean.",
+    ],
+  },
+  {
     title: "Practitioner role can claim/edit/complete another clinician's live appointment session (BOLA)",
     type: 'ERROR', urgency: 'P1', status: 'IN_REVIEW', assignee: 'claude', pr: PR(2007),
     value: 8, effort: 2,

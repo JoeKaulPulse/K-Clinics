@@ -177,7 +177,7 @@ export default async function BookingDetail({ params }: { params: Promise<{ id: 
   // Surface the booked course/session count. Clients can book a Course of 3/6/10,
   // but after booking only the treatment name + total showed — staff couldn't tell
   // how many sessions were paid for. The primary (non-add-on) line item holds it.
-  const primaryItem = await db.bookingItem.findFirst({ where: { bookingId: id, isAddon: false }, orderBy: { createdAt: 'asc' }, select: { sessions: true } }).catch(() => null);
+  const primaryItem = await db.bookingItem.findFirst({ where: { bookingId: id, isAddon: false }, orderBy: { createdAt: 'asc' }, select: { sessions: true, variantId: true } }).catch(() => null);
   const courseSessions = primaryItem?.sessions ?? 1;
   // BLD-1014: "Session X of N" when this booking is part of a package (the
   // course purchase itself or a session linked to one).
@@ -202,10 +202,18 @@ export default async function BookingDetail({ params }: { params: Promise<{ id: 
   let linkablePackages: LinkablePackage[] = [];
   if (canManageBk && !b.packageBookingId && courseSessions === 1 && !b.chargedAt) {
     const { clientPackages } = await import('@/lib/package-sessions');
+    const { eligiblePackagesFor } = await import('@/lib/package-match');
     const occupies = !['CANCELLED', 'NO_SHOW'].includes(b.status);
-    linkablePackages = (await clientPackages(b.clientId).catch(() => []))
-      .filter((p) => p.treatmentSlug === b.treatmentSlug && p.purchaseBookingId !== b.id && (!occupies || p.sessionsRemaining > 0))
-      .map(({ purchaseBookingId, label, sessionsTotal, sessionsRemaining, paid, refunded }) => ({ purchaseBookingId, label, sessionsTotal, sessionsRemaining, paid, refunded }));
+    // BLD-1890: treatmentSlug alone is the marketing category, not the
+    // specific service/area (e.g. Chin vs Lower Leg share one
+    // "laser-hair-removal" slug) — eligiblePackagesFor also matches this
+    // appointment's own variant, so staff are never offered another area's
+    // package to link this one to.
+    linkablePackages = eligiblePackagesFor(
+      (await clientPackages(b.clientId).catch(() => [])).filter((p) => p.purchaseBookingId !== b.id && (!occupies || p.sessionsRemaining > 0)),
+      b.treatmentSlug,
+      primaryItem?.variantId ?? null,
+    ).map(({ purchaseBookingId, label, sessionsTotal, sessionsRemaining, paid, refunded }) => ({ purchaseBookingId, label, sessionsTotal, sessionsRemaining, paid, refunded }));
   }
   // BLD-1066: surface the client's unpaid late-cancel/no-show balance on every
   // one of their appointments, so it's seen the moment a booking is opened.
