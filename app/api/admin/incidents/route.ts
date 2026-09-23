@@ -41,6 +41,22 @@ export async function GET(req: Request) {
   const all = url.searchParams.get('all') === '1';
   if (!clientId && !all) return NextResponse.json({ ok: false, error: 'Bad request' }, { status: 400 });
 
+  // BLD-1882: `clients.clinical.view` alone is every PRACTITIONER's default
+  // grant, so it let any Specialist read another clinician's patient's
+  // incident detail by passing that client's id — mirrors the
+  // getClient/getConsultation practitionerId guard (lib/crm-data.ts,
+  // BLD-1693/1711 pattern).
+  const practitionerId = session!.role === 'PRACTITIONER' ? session!.sub : undefined;
+
+  // BLD-1882: the clinic-wide register (?all=1) spans every client — including
+  // erasure-retained rows with none — so per-client ownership scoping can't
+  // apply to it; it needs a stronger gate of its own. Require the elevated
+  // compliance.manage permission (OWNER always passes sessionCan) instead of
+  // the clinical-view permission every PRACTITIONER already holds.
+  if (all && !sessionCan(session, 'compliance.manage')) {
+    return NextResponse.json({ ok: false, error: 'Not permitted.' }, { status: 403 });
+  }
+
   let incidents;
   // Total matching the filter, ignoring the register's row cap. Only meaningful
   // in ?all=1 mode; null on the per-client path so that response is unchanged
@@ -58,6 +74,17 @@ export async function GET(req: Request) {
   } else {
     const { db } = await import('@/lib/db');
     const { decClinical } = await import('@/lib/clinical-crypto');
+    // BLD-1882: ownership check runs against the bookings table directly,
+    // same as getClient (lib/crm-data.ts) — a PRACTITIONER must not be able
+    // to read another Specialist's client's incidents by guessing/typing the
+    // id. Returns the same shape as a client with no incidents, rather than
+    // an error, so this never confirms whether the id exists.
+    if (practitionerId) {
+      // clientId is non-null here — the `!clientId && !all` guard above and the
+      // `!all` branch we're in together guarantee it.
+      const own = await db.booking.findFirst({ where: { clientId: clientId!, practitionerId }, select: { id: true } });
+      if (!own) return NextResponse.json({ ok: true, incidents: [] });
+    }
     const rows = await db.incident.findMany({ where: { clientId }, orderBy: { createdAt: 'desc' }, take: 100 });
     incidents = rows.map((r) => {
       let detail: { description?: string; injury?: string; actionTaken?: string; witnesses?: string } = {};
@@ -143,6 +170,14 @@ export async function POST(req: Request) {
   // (so an incident can't be mis-linked to another client's appointment).
   const client = await db.client.findUnique({ where: { id: clientId }, select: { id: true } });
   if (!client) return NextResponse.json({ ok: false, error: 'Client not found.' }, { status: 404 });
+  // BLD-1882: same practitioner-ownership guard as the GET handler above — a
+  // PRACTITIONER must not be able to log an incident against another
+  // Specialist's client by guessing/typing the id.
+  const practitionerId = session!.role === 'PRACTITIONER' ? session!.sub : undefined;
+  if (practitionerId) {
+    const own = await db.booking.findFirst({ where: { clientId, practitionerId }, select: { id: true } });
+    if (!own) return NextResponse.json({ ok: false, error: 'Client not found.' }, { status: 404 });
+  }
   let bookingId: string | null = null;
   if (bookingIdIn) {
     const bk = await db.booking.findUnique({ where: { id: bookingIdIn }, select: { clientId: true } });
