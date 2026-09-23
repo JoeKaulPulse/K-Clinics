@@ -116,7 +116,10 @@ export async function POST(req: Request) {
     if (body.op === 'approve') {
       const { overlapsBookingWindow } = await import('@/lib/booking-actions');
       const candidates = await db.booking.findMany({
-        where: { status: { in: ['PENDING', 'CONFIRMED'] }, practitionerId: row.staffId },
+        where: {
+          status: { in: ['PENDING', 'CONFIRMED'] }, practitionerId: row.staffId,
+          startAt: { gte: new Date(row.startAt.getTime() - 24 * 60 * 60 * 1000), lt: row.endAt },
+        },
         select: { id: true, startAt: true, endAt: true, bufferMin: true },
       });
       conflicts = candidates.filter((b) => overlapsBookingWindow(row.startAt, row.endAt, b));

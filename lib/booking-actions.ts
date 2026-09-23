@@ -954,6 +954,9 @@ export async function rescheduleBooking(
   // own clinician or room(s); for client self-service we keep the strict gate.
   const resourceIds = booking.resources.map((r) => r.id);
   const newBusyEndMs = newEnd.getTime() + booking.bufferMin * 60_000;
+  // BLD-1873: the resource-conflict override is staff-only; client
+  // self-service never gets it, even if a caller passes force.
+  const allowResourceOverride = Boolean(opts.admin && opts.force);
   if (opts.admin) {
     // Nothing exclusive to clash on (no clinician, no room/equipment) → any future
     // time is fine (this is the consultation case BLD-502 was about).
@@ -977,7 +980,7 @@ export async function rescheduleBooking(
       }
       // BLD-1873: a room/equipment-only clash is a warning, not a hard block —
       // authorised staff can proceed once they've confirmed (opts.force).
-      if (kind === 'RESOURCE' && !opts.force) {
+      if (kind === 'RESOURCE' && !allowResourceOverride) {
         return { ok: false, code: 'RESOURCE_CONFLICT', error: 'That time clashes with another appointment using the same room or equipment — it may already be in use. Reschedule anyway if you’ve checked it’s free.' };
       }
     }
@@ -1025,7 +1028,7 @@ export async function rescheduleBooking(
         // on top of a genuinely new practitioner clash that appeared since the
         // pre-check (BLD-1873).
         if (kind === 'PRACTITIONER') return { outcome: 'PRACTITIONER' };
-        if (kind === 'RESOURCE' && !opts.force) return { outcome: 'RESOURCE' };
+        if (kind === 'RESOURCE' && !allowResourceOverride) return { outcome: 'RESOURCE' };
       }
       const row = await tx.booking.update({
         where: { id: booking.id },
@@ -1041,7 +1044,10 @@ export async function rescheduleBooking(
     }
     throw e;
   }
-  if (txResult.outcome === 'PRACTITIONER') {
+  // A client self-service move keeps the pre-BLD-1873 behaviour: any clash is
+  // SLOT_TAKEN (the manage page re-fetches slots on that code). Only staff see
+  // the overridable RESOURCE_CONFLICT warning.
+  if (txResult.outcome === 'PRACTITIONER' || (txResult.outcome === 'RESOURCE' && !opts.admin)) {
     return { ok: false, code: 'SLOT_TAKEN', error: 'That time is no longer available. Please choose another slot.' };
   }
   if (txResult.outcome === 'RESOURCE') {

@@ -482,11 +482,17 @@ export async function reassignPractitioner(
     // overlapping this one's time window — check before writing, not after.
     if (!opts?.force) {
       const { overlapsBookingWindow } = await import('@/lib/booking-actions');
+      // Busy window includes this booking's own buffer, matching the
+      // rescheduleBooking clash rule (newBusyEnd = end + bufferMin).
+      const busyEnd = new Date(booking.endAt.getTime() + booking.bufferMin * 60_000);
       const others = await db.booking.findMany({
-        where: { id: { not: bookingId }, status: { in: ['PENDING', 'CONFIRMED'] }, practitionerId },
+        where: {
+          id: { not: bookingId }, status: { in: ['PENDING', 'CONFIRMED'] }, practitionerId,
+          startAt: { gte: new Date(booking.startAt.getTime() - 24 * 60 * 60 * 1000), lte: busyEnd },
+        },
         select: { startAt: true, endAt: true, bufferMin: true },
       });
-      const clash = others.find((o) => overlapsBookingWindow(booking.startAt, booking.endAt, o));
+      const clash = others.find((o) => overlapsBookingWindow(booking.startAt, busyEnd, o));
       if (clash) {
         const when = clash.startAt.toLocaleString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
         return { ok: false, code: 'PRACTITIONER_CONFLICT', error: `${label} already has another appointment at ${when} that overlaps this time. You can still reassign if you’ve confirmed they can cover both.` };
