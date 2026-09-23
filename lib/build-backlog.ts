@@ -5726,8 +5726,32 @@ export const BUILD_BACKLOG: BacklogItem[] = [
     ],
   },
   {
-    title: "Partial Stripe-dashboard refund on a shop/POS order is silently dropped with no staff alert",
+    title: "Homepage hero 'eyebrow' text fails WCAG AA contrast on every slide",
     type: 'ERROR', urgency: 'P1', status: 'IN_REVIEW', assignee: 'claude',
+    value: 5, effort: 1,
+    detail: "BLD-1877: app/globals.css's .eyebrow utility hardcoded color: var(--color-gold-deep) (tuned for light surfaces, per its own comment). components/home/HeroSlider.tsx's four dark hero slides added a text-[var(--color-gold-soft)] override on the eyebrow <p>, but that Tailwind utility class has identical specificity to .eyebrow's own rule and loses the cascade -- measured live contrast was 2.89:1 (gold-deep #816748 on ink #2a2420), below the 4.5:1 WCAG AA floor for normal text.",
+    notes: [
+      "Fix: .eyebrow now reads color: var(--eyebrow-color, var(--color-gold-deep)) instead of hardcoding the light-surface gold, so a per-instance custom property -- not a same-specificity class -- decides the color. HeroSlider.tsx's four dark-slide eyebrow <p> elements set --eyebrow-color: var(--color-gold-soft) inline (via style, cast as CSSProperties) and dropped the now-redundant text-[var(--color-gold-soft)] class. --color-gold-soft (#c2a589) on --color-ink (#2a2420) computes to ~6.59:1, clearing AA with margin -- reused the existing @theme token per the ticket, no new color invented.",
+      "Review follow-up (same ticket): the same losing text-[var(--color-gold-soft)] class sat on 10 more dark-surface eyebrows, including PageHero (every interior marketing page), TreatmentTemplate (every treatment page) and NewsletterCapture (site-wide). Added one modifier, .eyebrow-on-dark in app/globals.css, which sets --eyebrow-color: var(--color-gold-soft), and applied it to all 14 dark eyebrows: HeroSlider (4, replacing the inline style casts), PageHero, TreatmentTemplate, NewsletterCapture, PinnedExperience, AcademyBanner, DashboardHero, the homepage card eyebrow, academy page, not-found and marketing error page. Each surface was checked as dark (ink, surface-ink, dark GenerativeArt or an ink overlay under porcelain text). Contrast re-computed: gold-soft #c2a589 on ink #2a2420 is 6.59:1; under the hero's gold glow at the eyebrow's position (about 20% gold mix at most) it is at least 4.9:1.",
+      "Verified: npx tsc --noEmit and npm run build both pass clean.",
+    ],
+  },
+  {
+    title: 'Most top-level marketing pages have no <h1> element',
+    type: 'ERROR', urgency: 'P1', status: 'SHIPPED', assignee: 'claude',
+    value: 5, effort: 2,
+    detail: "BLD-1884. Ticket's premise: the homepage and the 11 top-level marketing pages (pricing, treatments, team, about, membership, faq, offers, reviews, dentistry, gallery, contact) render zero <h1> elements, violating WCAG 1.3.1/2.4.6 and losing the page-title landmark on the highest-traffic pages.",
+    notes: [
+      "Investigated each of the 11 named routes plus the homepage individually (source read + live fetch of the deployed HTML at BASE_URL, repeated to rule out a network fluke). Every one of the 12 pages already renders exactly one semantic <h1>: the homepage's first hero slide has always had one directly in components/home/HeroSlider.tsx, and all 11 named routes share components/ui/PageHero.tsx, whose WordReveal sub-component already renders the page title as <h1 aria-label={title}> by default -- confirmed one <h1> per page against production for all 12 (pricing and about briefly read as 0 on a single truncated fetch of a large response; 4/4 repeat fetches each confirmed exactly 1).",
+      "No source change made: promoting an existing heading to <h1> where one is already correctly rendered would create a duplicate <h1> and make the hierarchy worse, not better. Ticket appears stale -- likely written against an earlier state of PageHero.tsx / HeroSlider.tsx, or an audit tool that scanned page.tsx source text directly without following the imported hero component where the <h1> actually lives.",
+      "Two routes (about, contact) and membership have an admin-CMS override branch (getPublishedPage()) that bypasses PageHero entirely when a CMS page is published for that path -- SectionRenderer's own heading output wasn't audited here (a live DB read, not a source-code question) and is worth a follow-up if those routes are later found missing an h1 in production with a CMS page active.",
+      "Marked SHIPPED as verified already fixed, no code change (same convention as the 2026-08-09 audit re-check entry). Review re-derived it from source rather than live HTML: components/ui/PageHero.tsx always renders WordReveal with as=\"h1\" and takes no prop to change it; all 11 routes render PageHero on their default path; the homepage's HeroSlider slide 1 is the only <h1> (slides 2-4 use <h2>). The CMS-branch caveat above stands: a published CMS page for about/contact/membership gets an <h1> only if it includes a hero section (SectionRenderer renders that through PageHero).",
+      "Verified: npx tsc --noEmit and npm run build both pass clean.",
+    ],
+  },
+  {
+    title: "Partial Stripe-dashboard refund on a shop/POS order is silently dropped with no staff alert",
+    type: 'ERROR', urgency: 'P1', status: 'SHIPPED', assignee: 'claude', pr: PR(2003),
     value: 7, effort: 2,
     detail: "BLD-1881: app/api/stripe/webhook/route.ts's charge.refunded handler reconciles a dashboard refund against a shop order, but when the refund is less than the order total (a partial refund) the branch only did console.error() -- unlike every other reconciliation branch in the same file (disputes, chargebacks), it never called Sentry.captureMessage or notified staff. Stock was not restored, any gift-card portion was not re-credited, and the order stayed PAID/FULFILLED with no operator-visible trace.",
     notes: [
@@ -5739,7 +5763,7 @@ export const BUILD_BACKLOG: BacklogItem[] = [
   },
   {
     title: "Several notification/handoff side effects bypass the codebase's own after() serverless-freeze fix",
-    type: 'ERROR', urgency: 'P1', status: 'IN_REVIEW', assignee: 'claude',
+    type: 'ERROR', urgency: 'P1', status: 'SHIPPED', assignee: 'claude', pr: PR(2003),
     value: 6, effort: 3,
     detail: "BLD-1885: several routes fired a bare async side-effect call (a floating .then()/.catch(() => {}) with no await) and returned before it resolved -- app/api/admin/academy/route.ts (live-class create/reschedule/cancel student notifications, IndexNow pings), app/api/admin/academy/homework/route.ts (homework-graded notification), app/api/admin/bookings/session/route.ts (room-turnover handoff to reception/cleaners), app/api/admin/staff/route.ts (team-page IndexNow ping) and app/api/gift-vouchers/confirm/route.ts (conversions ping). The codebase already diagnosed and fixed this exact bug class elsewhere with after() from next/server (lib/ai-consultation.ts, lib/clinical-view-audit.ts, app/api/admin/posts/route.ts, the kiosk photo/analyze routes -- BLD-1137/1166/1418/491): once the response is sent, the serverless runtime can freeze the function mid-flight and a pending fire-and-forget promise dies with it, silently dropping the notification.",
     notes: [
@@ -5750,7 +5774,7 @@ export const BUILD_BACKLOG: BacklogItem[] = [
   },
   {
     title: "Native browser confirm()/prompt() gate a paid cancellation and live-chat lead capture",
-    type: 'ERROR', urgency: 'P1', status: 'IN_REVIEW', assignee: 'claude',
+    type: 'ERROR', urgency: 'P1', status: 'SHIPPED', assignee: 'claude', pr: PR(2003),
     value: 6, effort: 3,
     detail: "BLD-1878: components/portal/CancelButton.tsx used window.confirm() to confirm a client-portal appointment cancellation (which can trigger a late fee) with no way to show the actual fee amount, and components/chat/LiveChat.tsx used window.prompt() to capture a lead's email in the public chat widget. Both are unbranded OS dialogs that silently no-op (return null immediately, confirming/capturing nothing) inside in-app/webview browsers such as an email or SMS app's built-in viewer.",
     notes: [
