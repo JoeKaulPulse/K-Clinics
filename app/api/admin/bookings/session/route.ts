@@ -1,4 +1,4 @@
-import { NextResponse } from 'next/server';
+import { NextResponse, after } from 'next/server';
 import { crmEnabled } from '@/lib/crm';
 import { CLINIC_TZ } from '@/lib/clinic-time';
 
@@ -460,7 +460,14 @@ export async function POST(req: Request) {
         data: { status: 'COMPLETED', completedAt: new Date(), steps: closeTimings(normalizeTimings((row.steps ?? {}) as Record<string, Timings[keyof Timings]>)) as object },
       });
       // PRJ-63.11: clinician finished — hand the room over to reception/cleaners.
-      import('@/lib/cross-role').then((m) => m.handleSessionTurnover(bookingId, session.email)).catch(() => {});
+      // BLD-1885: after(), not a bare floating promise — the response below can
+      // be sent before this resolves, and the runtime can freeze the function
+      // mid-flight (same fix as the kiosk analyze/photo routes /
+      // lib/ai-consultation.ts, BLD-1137/1166/1418/491).
+      after(async () => {
+        const { handleSessionTurnover } = await import('@/lib/cross-role');
+        await handleSessionTurnover(bookingId, session.email).catch(() => {});
+      });
       return ok();
     }
 

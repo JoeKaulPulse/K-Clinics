@@ -5749,6 +5749,43 @@ export const BUILD_BACKLOG: BacklogItem[] = [
       "Verified: npx tsc --noEmit and npm run build both pass clean.",
     ],
   },
+  {
+    title: "Partial Stripe-dashboard refund on a shop/POS order is silently dropped with no staff alert",
+    type: 'ERROR', urgency: 'P1', status: 'SHIPPED', assignee: 'claude', pr: PR(2003),
+    value: 7, effort: 2,
+    detail: "BLD-1881: app/api/stripe/webhook/route.ts's charge.refunded handler reconciles a dashboard refund against a shop order, but when the refund is less than the order total (a partial refund) the branch only did console.error() -- unlike every other reconciliation branch in the same file (disputes, chargebacks), it never called Sentry.captureMessage or notified staff. Stock was not restored, any gift-card portion was not re-credited, and the order stayed PAID/FULFILLED with no operator-visible trace.",
+    notes: [
+      "Fix: the partial-refund branch now mirrors the dispute-created/dispute-closed handlers in the same file -- Sentry.captureMessage (level: warning, tags area: stripe-webhook, sub: order-partial-refund) plus notifyStaffByPermission('finance.manage', ...) with a status notification (priority high) linking to /admin/shop/orders, alongside the existing console.error. The order is still surfaced for staff to complete via 'Mark refunded' in Orders -- this fix only makes that need visible instead of silent.",
+      "Review follow-up: the staff notification linked to /admin/shop/orders, which does not exist; it now links to /admin/orders?q=<order number>. Boundary checked: Order.totalPence is net of any gift-card portion (it equals the card charge), so the alert fires only when amount_refunded < totalPence, never on a full refund, and only for dashboard-originated refunds; redelivered events are deduped by the processedStripeEvent ledger.",
+      "No change to the fully-refunded path (restock + gift-card credit + audit log), which already worked correctly.",
+      "Verified: npx tsc --noEmit and npm run build both pass clean.",
+    ],
+  },
+  {
+    title: "Several notification/handoff side effects bypass the codebase's own after() serverless-freeze fix",
+    type: 'ERROR', urgency: 'P1', status: 'SHIPPED', assignee: 'claude', pr: PR(2003),
+    value: 6, effort: 3,
+    detail: "BLD-1885: several routes fired a bare async side-effect call (a floating .then()/.catch(() => {}) with no await) and returned before it resolved -- app/api/admin/academy/route.ts (live-class create/reschedule/cancel student notifications, IndexNow pings), app/api/admin/academy/homework/route.ts (homework-graded notification), app/api/admin/bookings/session/route.ts (room-turnover handoff to reception/cleaners), app/api/admin/staff/route.ts (team-page IndexNow ping) and app/api/gift-vouchers/confirm/route.ts (conversions ping). The codebase already diagnosed and fixed this exact bug class elsewhere with after() from next/server (lib/ai-consultation.ts, lib/clinical-view-audit.ts, app/api/admin/posts/route.ts, the kiosk photo/analyze routes -- BLD-1137/1166/1418/491): once the response is sent, the serverless runtime can freeze the function mid-flight and a pending fire-and-forget promise dies with it, silently dropping the notification.",
+    notes: [
+      "Fix: every bare fire-and-forget call site in the five routes above is now wrapped in after(async () => { ... }), matching the established pattern exactly (import { NextResponse, after } from 'next/server'; the original .catch(() => {}) kept inside the after() callback rather than a new error-handling shape).",
+      "No change to any of the wrapped functions themselves (notifyLiveClassChange, indexNow, notifyHomeworkGraded, handleSessionTurnover, sendPurchase) -- they already have their own internal try/catch, matching the existing after()-wrapped call sites this fix copies from.",
+      "Verified: npx tsc --noEmit and npm run build both pass clean.",
+    ],
+  },
+  {
+    title: "Native browser confirm()/prompt() gate a paid cancellation and live-chat lead capture",
+    type: 'ERROR', urgency: 'P1', status: 'SHIPPED', assignee: 'claude', pr: PR(2003),
+    value: 6, effort: 3,
+    detail: "BLD-1878: components/portal/CancelButton.tsx used window.confirm() to confirm a client-portal appointment cancellation (which can trigger a late fee) with no way to show the actual fee amount, and components/chat/LiveChat.tsx used window.prompt() to capture a lead's email in the public chat widget. Both are unbranded OS dialogs that silently no-op (return null immediately, confirming/capturing nothing) inside in-app/webview browsers such as an email or SMS app's built-in viewer.",
+    notes: [
+      "Fix: both replaced with the existing components/ui/Dialog primitive already used across the admin (per BLD-1559) and now, for the first time, on the client-facing portal/chat -- same focus-trap, Escape-to-close and scroll-lock behaviour for free.",
+      "CancelButton: the confirm dialog now states the real late-cancellation fee (e.g. '...a late-cancellation fee of £45.00') instead of a vague 'a fee may apply'. app/account/appointments/page.tsx computes the fee server-side using the exact same formula as lib/booking-actions.ts's cancelBooking (24h window; price net of any already-applied loyalty points / gift voucher) and passes it down as a feePence prop, so what the client is shown matches what they would actually be charged.",
+      "LiveChat: 'Email me this chat' now opens an inline Dialog with an email input instead of window.prompt(); the send-result alert() that immediately followed it (same class of bug -- also silently dropped in a webview) was replaced with an inline status message next to the button instead.",
+      "Review follow-up: the dialog showed 'No fee applies' in cases where cancelBooking still takes value: a prepaid course session inside 24h (price 0, one session deducted), an already-paid booking (chargedAt/prepaidAt, no new charge), and a fee fully covered by points/voucher (value consumed). The fee formula now lives in lib/booking-actions.ts as lateCancelFeePence(), which cancelBooking itself uses, and lateCancelOutcome() mirrors cancelBooking's branches; the dialog states the fee, the session deduction, or falls back to the general policy wording. The 24h check now runs when the dialog opens, so a page left open across the boundary cannot show the wrong outcome. New string appt.cancelConfirmSession (en/uk).",
+      "Review follow-up: LiveChat's email dialog keeps Send disabled until the address has a basic user@domain.tld shape, so a typo keeps the dialog open; /api/chat still validates authoritatively.",
+      "Verified: npx tsc --noEmit and npm run build both pass clean.",
+    ],
+  },
 ];
 
 // A content hash over every item's title + status + PR, so ANY change (a new
