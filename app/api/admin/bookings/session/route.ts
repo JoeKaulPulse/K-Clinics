@@ -25,6 +25,15 @@ export async function POST(req: Request) {
   const session = await requirePermissionAny(['bookings.manage', 'liveAppointments.manage']);
   if (!session) return bad('Not permitted.', 403);
 
+  // BLD-1899: this route is hit repeatedly through a real live session
+  // (step transitions, autosave, checkout) by design, so the cap is generous
+  // — it only needs to blunt scripted abuse, matching the other staff-mutation
+  // routes' enforceRateLimit calling convention (lib/security/guard.ts).
+  const { enforceRateLimit } = await import('@/lib/security/guard');
+  if (!(await enforceRateLimit(req, 'admin-booking-session', 120, 60, 'admin'))) {
+    return bad('Too many requests — wait a moment.', 429);
+  }
+
   const body = await req.json().catch(() => ({}));
   const op = String(body.op || '');
   const bookingId = String(body.bookingId || '');
@@ -37,8 +46,15 @@ export async function POST(req: Request) {
   type Data = import('@/lib/appointment-session').SessionData;
   type Touchpoints = import('@/lib/appointment-session').Touchpoint[];
 
-  const booking = await db.booking.findUnique({ where: { id: bookingId }, select: { id: true, clientId: true, status: true, finishedAt: true, chargedAt: true, prepaidAt: true, giftVoucherCode: true, giftVoucherPence: true, pointsRedeemedPence: true } });
+  const booking = await db.booking.findUnique({ where: { id: bookingId }, select: { id: true, clientId: true, practitionerId: true, status: true, finishedAt: true, chargedAt: true, prepaidAt: true, giftVoucherCode: true, giftVoucherPence: true, pointsRedeemedPence: true } });
   if (!booking) return bad('Booking not found.', 404);
+  // BLD-1899/BLD-1882 pattern (lib/crm-data.ts getClient; BLD-1693/1711/1720):
+  // a PRACTITIONER session may only act on a live appointment session for a
+  // booking assigned to them. Every op below (claim, edit captured answers,
+  // mark complete, create a follow-up booking, checkout...) keys off this
+  // same `booking`, so the ownership check runs once here for all of them.
+  const practitionerId = session.role === 'PRACTITIONER' ? session.sub : undefined;
+  if (practitionerId && booking.practitionerId !== practitionerId) return bad('Booking not found.', 404);
   // BLD-336: never run appointment-session actions against a cancelled booking.
   if (booking.status === 'CANCELLED') return bad('This booking was cancelled — no session actions are allowed.', 409);
 
