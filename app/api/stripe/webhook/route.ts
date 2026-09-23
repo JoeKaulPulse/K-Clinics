@@ -564,7 +564,26 @@ export async function POST(req: Request) {
           if (order) {
             const fullyRefunded = (charge.amount_refunded ?? 0) >= order.totalPence;
             if (!fullyRefunded) {
-              console.error(`[webhook] partial dashboard refund on order ${order.number} (${charge.amount_refunded}/${order.totalPence}p) — not auto-reconciled; complete it via Mark refunded in Orders.`);
+              // BLD-1881: unlike every other reconciliation branch in this file
+              // (disputes, chargebacks), a partial dashboard refund only ever
+              // logged to console — stock isn't restored, any gift-card portion
+              // isn't re-credited, and the order stays PAID/FULFILLED with no
+              // operator-visible trace. Surface it the same way disputes do:
+              // Sentry + a staff notification linking to the order.
+              const partialSummary = `Partial refund issued in the Stripe dashboard on order ${order.number} (£${((charge.amount_refunded ?? 0) / 100).toFixed(2)} of £${(order.totalPence / 100).toFixed(2)}) — not auto-reconciled; complete it via Mark refunded in Orders.`;
+              console.error(`[webhook] ${partialSummary}`);
+              Sentry.captureMessage(`[stripe] ${partialSummary}`, { level: 'warning', tags: { area: 'stripe-webhook', sub: 'order-partial-refund' } });
+              try {
+                const { notifyStaffByPermission } = await import('@/lib/notifications');
+                await notifyStaffByPermission('finance.manage', {
+                  kind: 'status',
+                  category: 'finance',
+                  priority: 'high',
+                  title: 'Partial refund needs reconciling',
+                  body: partialSummary,
+                  href: `/admin/orders?q=${encodeURIComponent(order.number)}`,
+                });
+              } catch (e) { console.error('[webhook] partial-refund staff notification failed:', (e as Error)?.message); }
             } else {
               // creditVoucher caps at the card's face value (BLD-646) but is not
               // per-call idempotent, and charge.refunded redelivers — so claim the
