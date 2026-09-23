@@ -20,8 +20,13 @@ export async function POST(req: Request) {
   if (!dataUrl.startsWith('data:image/') || dataUrl.length > 4_000_000) return NextResponse.json({ ok: false, error: 'Invalid image.' }, { status: 400 });
 
   const { db } = await import('@/lib/db');
-  const booking = await db.booking.findUnique({ where: { id: body.bookingId }, select: { id: true, clientId: true } });
+  const booking = await db.booking.findUnique({ where: { id: body.bookingId }, select: { id: true, clientId: true, practitionerId: true } });
   if (!booking) return NextResponse.json({ ok: false, error: 'Booking not found.' }, { status: 404 });
+  // BLD-1882: a PRACTITIONER may only attach a photo to their own booking,
+  // same rule as getBooking() (lib/crm-data.ts); 404 so the id isn't confirmed.
+  if (session.role === 'PRACTITIONER' && booking.practitionerId !== session.sub) {
+    return NextResponse.json({ ok: false, error: 'Booking not found.' }, { status: 404 });
+  }
 
   const { encryptJson } = await import('@/lib/crypto');
   const photo = await db.beforePhoto.create({
@@ -46,6 +51,12 @@ export async function DELETE(req: Request) {
   if (!id) return NextResponse.json({ ok: false }, { status: 400 });
   const { db } = await import('@/lib/db');
   const p = await db.beforePhoto.findUnique({ where: { id }, select: { bookingId: true, clientId: true } });
+  // BLD-1882: same ownership rule as GET before-photo/[id] — a PRACTITIONER
+  // may only delete a photo of a client they have a booking with.
+  if (p && session.role === 'PRACTITIONER') {
+    const own = await db.booking.findFirst({ where: { clientId: p.clientId, practitionerId: session.sub }, select: { id: true } });
+    if (!own) return NextResponse.json({ ok: false, error: 'Not found.' }, { status: 404 });
+  }
   await db.beforePhoto.delete({ where: { id } }).catch(() => {});
   if (p) {
     const { logAudit } = await import('@/lib/audit');
