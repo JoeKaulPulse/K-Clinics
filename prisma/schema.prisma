@@ -756,6 +756,12 @@ model Booking {
   chargePaymentIntentId String?
   chargedPence          Int?
   chargedAt             DateTime?
+  // BLD-1874: how this treatment charge was actually taken (card on file,
+  // payment link, cash, card terminal, Treatwell, ClassPass, ...) — a
+  // descriptive label only, shown/corrected in the admin. Never read by any
+  // Stripe/Xero logic; correcting it never touches chargePaymentIntentId/
+  // chargedPence/chargedAt. Additive, nullable — historical rows show none.
+  paymentMethod         String?
   // BNPL course pre-payment (BLD-399; BLD-409 course context). BNPL methods
   // (Klarna/Clearpay) can't be saved off-session, so for a course the client
   // pays the full price upfront via a Stripe Checkout link. Set when the

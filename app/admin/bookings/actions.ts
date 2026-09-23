@@ -842,3 +842,40 @@ export async function unmarkPackageSessionUsed(bookingId: string): Promise<{ ok:
   revalidatePath(`/admin/clients/${booking.clientId}`);
   return { ok: true };
 }
+
+// BLD-1874 — correct the payment method recorded against a charged booking
+// (e.g. staff picked "Cash" by mistake when it was actually paid on a card
+// terminal). Gated on bookings.charge — the same permission that gates every
+// other "money has moved" action (chargeBookingAction, refunds,
+// setPackageManualPayment above). Updates ONLY paymentMethod: the amount,
+// Stripe payment-intent reference and charge timestamp are never touched.
+export async function updateBookingPaymentMethod(bookingId: string, newMethod: string): Promise<{ ok: boolean; error?: string }> {
+  if (!crmEnabled) return { ok: false, error: 'CRM disabled' };
+  const session = await getSession();
+  if (!session || !sessionCan(session, 'bookings.charge')) return { ok: false, error: 'You don’t have permission to correct payments.' };
+  // A server action is a public POST endpoint — validate against the shared
+  // vocabulary rather than trusting the caller (mirrors setPackageManualPayment).
+  const { isPaymentMethod, paymentMethodLabel } = await import('@/lib/payment-methods');
+  if (!isPaymentMethod(newMethod)) return { ok: false, error: 'Pick a valid payment method.' };
+
+  const { db } = await import('@/lib/db');
+  const booking = await db.booking.findUnique({ where: { id: bookingId }, select: { clientId: true, chargedAt: true, prepaidAt: true, paymentMethod: true } });
+  if (!booking) return { ok: false, error: 'Booking not found.' };
+  // Only a booking that has actually been paid has a payment method worth correcting.
+  if (!booking.chargedAt && !booking.prepaidAt) return { ok: false, error: 'This booking hasn’t been charged yet.' };
+  if (booking.paymentMethod === newMethod) return { ok: true }; // no-op
+
+  const oldLabel = paymentMethodLabel(booking.paymentMethod) || 'none recorded';
+  const newLabel = paymentMethodLabel(newMethod);
+  await db.booking.update({ where: { id: bookingId }, data: { paymentMethod: newMethod } });
+
+  const { logAudit } = await import('@/lib/audit');
+  await logAudit({
+    action: 'SESSION_EDITED', actor: session.email, actorRole: session.role, bookingId, clientId: booking.clientId,
+    summary: `Payment method corrected: ${oldLabel} → ${newLabel}`,
+    meta: { oldMethod: booking.paymentMethod, newMethod },
+  }).catch(() => {});
+  revalidatePath(`/admin/bookings/${bookingId}`);
+  revalidatePath(`/admin/clients/${booking.clientId}`);
+  return { ok: true };
+}

@@ -222,7 +222,10 @@ export async function chargeBooking(
     if (pi.status === 'succeeded') {
       await db.booking.update({
         where: { id: booking.id },
-        data: { chargePaymentIntentId: pi.id, chargedPence: pi.amount_received ?? amountPence, chargedAt: new Date() },
+        // BLD-1874: this is always the saved-card off-session path (chargeBooking
+        // never runs for a payment link/terminal/external channel — those settle
+        // through finalizeBookingCharge or the 'external' route.ts case instead).
+        data: { chargePaymentIntentId: pi.id, chargedPence: pi.amount_received ?? amountPence, chargedAt: new Date(), paymentMethod: 'card' },
       });
       // VAT breakdown on the receipt once the clinic is VAT-registered (dormant otherwise).
       let vat: { netPence: number; vatPence: number; ratePct: number } | null = null;
@@ -473,14 +476,18 @@ export async function finalizeBookingCharge(
   bookingId: string,
   piId: string,
   amountReceivedPence: number,
-  opts: { late?: boolean } = {},
+  // BLD-1874: `method` labels HOW this was paid (defaults to 'card' — the
+  // saved-card/SCA-recovery webhook path); callers on a different rail pass
+  // their own (e.g. 'card_terminal', or 'payment_link' for a staff-sent
+  // Stripe Checkout link). Purely descriptive — never affects the charge.
+  opts: { late?: boolean; method?: import('@/lib/payment-methods').PaymentMethod } = {},
 ): Promise<boolean> {
   // BLD-1119: also refuse to finalise against a booking pre-paid in full via
   // BNPL (prepaidAt) — the authoritative guard for the webhook/SCA-recovery/
   // terminal-capture paths, mirroring chargeBooking()'s own idempotency check.
   const updated = await db.booking.updateMany({
     where: { id: bookingId, chargedAt: null, prepaidAt: null },
-    data: { chargePaymentIntentId: piId, chargedPence: amountReceivedPence, chargedAt: new Date() },
+    data: { chargePaymentIntentId: piId, chargedPence: amountReceivedPence, chargedAt: new Date(), paymentMethod: opts.method ?? 'card' },
   });
   if (updated.count === 0) {
     // Normally this is the ordinary no-op: another caller (webhook redelivery, SCA

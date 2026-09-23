@@ -101,7 +101,12 @@ export async function POST(req: Request) {
             console.error('[webhook] payment_intent.succeeded with no amount_received — not finalising:', { bookingId, piId: pi.id });
           } else {
             const { finalizeBookingCharge } = await import('@/lib/booking-actions');
-            await finalizeBookingCharge(bookingId, pi.id, receivedPence, { late: pi.metadata?.late === 'true' });
+            // BLD-1874: a staff-sent payment link (the 'paylink' case in
+            // app/api/admin/bookings/session/route.ts) is the only caller that
+            // stamps kind: 'booking_balance' — everything else on this generic
+            // succeeded handler is the saved-card/SCA-recovery rail ('card').
+            const method = pi.metadata?.kind === 'booking_balance' ? 'payment_link' : 'card';
+            await finalizeBookingCharge(bookingId, pi.id, receivedPence, { late: pi.metadata?.late === 'true', method });
           }
         }
         // Finalise retail orders server-side so they complete even if the customer
@@ -175,7 +180,10 @@ export async function POST(req: Request) {
               // runs the side-effects, guarding webhook redeliveries.
               const claimed = await db.booking.updateMany({
                 where: { id: courseBookingId, prepaidVia: null },
-                data: { prepaidVia: method, prepaidPence: received, prepaidAt: new Date(), prepaidCheckoutId: pi.metadata.checkoutId || undefined, status: 'CONFIRMED' },
+                // BLD-1874: this is a BNPL course pre-payment taken via a Stripe
+                // Checkout link — 'payment_link' in the shared vocabulary
+                // (prepaidVia keeps its own finer klarna/clearpay/bnpl label).
+                data: { prepaidVia: method, prepaidPence: received, prepaidAt: new Date(), prepaidCheckoutId: pi.metadata.checkoutId || undefined, status: 'CONFIRMED', paymentMethod: 'payment_link' },
               });
               if (claimed.count > 0) {
                 try {

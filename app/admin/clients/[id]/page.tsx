@@ -9,6 +9,7 @@ import { EditClientDetails } from '@/components/admin/EditClientDetails';
 import { LeaderboardCard } from '@/components/admin/LeaderboardCard';
 import { DiscountAction } from '@/components/admin/DiscountActions';
 import { AdjustClientPoints } from '@/components/admin/AdjustClientPoints';
+import { paymentMethodLabel } from '@/lib/payment-methods';
 
 // Visual styling per interaction type for the client timeline.
 const NOTE_STYLE: Record<string, { label: string; dot: string; badge: string }> = {
@@ -420,7 +421,8 @@ export default async function ClientDetail({ params }: { params: Promise<{ id: s
                       <span className="rounded-full bg-[var(--color-bone)] px-2 py-0.5 text-[var(--color-stone)]">{b.actualMinutes}m actual{b.durationMin ? ` · ${b.durationMin}m booked` : ''}</span>
                     )}
                     {b.status === 'COMPLETED' && b.pricePence > 0 && (
-                      <span className={`rounded-full px-2 py-0.5 ${b.chargedAt ? 'bg-[var(--color-bone)] text-[var(--color-stone)]' : 'bg-amber-100 text-amber-800'}`}>{b.chargedAt ? 'Charged' : 'Not charged'}</span>
+                      // BLD-1874: show how a charged booking was paid, right next to the badge.
+                      <span className={`rounded-full px-2 py-0.5 ${b.chargedAt ? 'bg-[var(--color-bone)] text-[var(--color-stone)]' : 'bg-amber-100 text-amber-800'}`}>{b.chargedAt ? `Charged${b.paymentMethod ? ` · ${paymentMethodLabel(b.paymentMethod)}` : ''}` : 'Not charged'}</span>
                     )}
                     {/* BLD-1096: cancelled, but the prepaid package still absorbed the session. */}
                     {b.status === 'CANCELLED' && b.packageSessionUsedAt && (
