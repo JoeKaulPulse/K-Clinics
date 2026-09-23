@@ -5698,8 +5698,21 @@ export const BUILD_BACKLOG: BacklogItem[] = [
     ],
   },
   {
-    title: "Practitioner role can read/write other clinicians' clinical records (BOLA) via 5 admin API routes",
+    title: "Guest checkout shop orders are invisible to both erasure and the client's own data export",
     type: 'ERROR', urgency: 'P1', status: 'IN_REVIEW', assignee: 'claude',
+    value: 7, effort: 2,
+    detail: "BLD-1879: Order.clientId is a nullable String set at checkout with no formal FK relation -- a guest checkout (no account, email-only) leaves it null with only the order's own email column set. Three places matched Order rows on { clientId } alone, so a guest's shop orders never surfaced: eraseClientData in app/admin/actions.ts (Art. 17 erasure), the staff SAR export (app/api/admin/clients/[id]/export/route.ts), and the client's own self-service export (app/api/account/export/route.ts). A person who placed a guest order under their email, then later created an account or requested erasure/export under that same email, had that order silently excluded from all three -- an erasure that did not erase it and an export that did not disclose it.",
+    notes: [
+      "Fix: mirrored the GiftVoucher purchaserEmail fallback BLD-1715 already established for exactly this shape (a plain email column, no Client FK) in these same three files -- matched Order by OR: [{ clientId }, { email: client.email }] (actions.ts) / { clientId: id }, { email: c.email } (staff export) / { clientId: c.id }, { email: c.email } (self export), same exact-match semantics as the GiftVoucher purchaserEmail check (no case-insensitive mode), so a guest order is only pulled in once its email is confirmed to match the account holder's own email -- never someone else's order.",
+      "Order's data shape differs from GiftVoucher's in one relevant way: GiftVoucher plays two distinct roles per row (claimedByClientId recipient vs purchaserEmail purchaser) with different fields stripped for each, so BLD-1715's erasure fix used two separate updateMany calls; Order has a single role (the person who placed it) and the same fields are stripped either way clientId matched or email matched, so a single updateMany with the OR clause is the correct, equivalent form here.",
+      "Review follow-up (same ticket): the self-service export change is reverted to clientId-only. A brand-new portal signup gets a session without proving it owns the email (lib/client-auth.ts signupClient), and POS sales (the real source of clientId-null orders) never create a Client row that would block that signup, so an email match there let anyone who registered a stranger's address download that person's in-clinic purchase history. The GiftVoucher pattern it mirrored is safe only because voucher purchase upserts a purchaser Client row first. Guest orders stay covered by the staff-run SAR and erasure, where identity is checked.",
+      "Review follow-up (same ticket): erasure and staff SAR now match guest orders only ({ clientId: null, email }), so an order linked to a different account is never erased or exported, and case-insensitively, because POS stores customerEmail as typed while Client.email is usually lower-case; an exact match would have missed mixed-case POS orders.",
+      "Verified: npx tsc --noEmit and npm run build both pass clean.",
+    ],
+  },
+  {
+    title: "Practitioner role can read/write other clinicians' clinical records (BOLA) via 5 admin API routes",
+    type: 'ERROR', urgency: 'P1', status: 'SHIPPED', assignee: 'claude', pr: PR(2000),
     value: 8, effort: 3,
     detail: "BLD-1882: five admin API routes trusted a caller-supplied clientId/photo id with no ownership check, gated only on clients.clinical.view / clients.photos -- permissions every PRACTITIONER holds by default -- letting one clinician read or write another clinician's patients' clinical records: app/api/admin/incidents/route.ts (both the per-client GET and the clinic-wide ?all=1 register, plus the POST that logs a new incident), app/api/admin/patch-test/route.ts, app/api/admin/medical-flag/route.ts, app/api/admin/client-status/route.ts, and app/api/admin/bookings/before-photo/[id]/route.ts. Same bug class as BLD-1693/1711/1720, just not yet applied to these five. The residual note left on the PRJ-1229.4 register entry above (PR #1985) flagged exactly this for the incidents route.",
     notes: [
