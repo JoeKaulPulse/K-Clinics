@@ -5817,7 +5817,7 @@ export const BUILD_BACKLOG: BacklogItem[] = [
   },
   {
     title: 'A client with two treatment packages could have the wrong one linked and deducted (BLD-1890)',
-    type: 'ERROR', urgency: 'P0', status: 'IN_REVIEW', assignee: 'claude',
+    type: 'ERROR', urgency: 'P0', status: 'IN_REVIEW', assignee: 'claude', pr: PR(2008),
     value: 8, effort: 4,
     detail: "Owner-reported (BLD-1890): a client with both a Lower Leg and a Chin laser-hair-removal package -- managing or rescheduling the Chin appointment only offered the Lower Leg package to link/spend a session against. Root cause: Booking.treatmentSlug / PackageView.treatmentSlug (lib/package-sessions.ts) identify only the marketing category (e.g. 'laser-hair-removal'), shared by every service variant/area in it -- Chin and Lower Leg are separate ServiceVariant rows under that one Service/treatmentSlug. Every package-matching call site keyed off treatmentSlug alone, so a package bought for one area matched an appointment for a different one: components/admin/NewBookingButton.tsx and components/booking/BookingFlow.tsx each used packages.find(p => p.treatmentSlug === ...) -- a single silent auto-pick with no way to choose otherwise -- and the three server-side validators (app/admin/bookings/create-action.ts, app/api/booking/start/route.ts, app/admin/bookings/actions.ts's linkBookingToPackage) accepted whatever purchaseBookingId the client sent as long as its treatmentSlug matched, so even a correct UI pick elsewhere couldn't be enforced server-side.",
     notes: [
