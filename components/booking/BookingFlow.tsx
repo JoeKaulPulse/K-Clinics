@@ -181,9 +181,20 @@ export function BookingFlow({ catalogue, client, preselect = null, preselectDate
   // Changing treatment/area (or switching to a course purchase) invalidates a
   // selected package that's no longer eligible — clear it rather than letting
   // a stale id reach the server and get rejected at the last step.
+  // '' = ticked but not yet chosen. If the eligible list narrows to one or none
+  // (or the picker is hidden) while pending, resolve it — the dropdown only
+  // renders for >1, so otherwise submit is blocked with nothing on screen to fix.
+  const onlyPackageId = matchingPackages.length === 1 ? matchingPackages[0].purchaseBookingId : null;
   useEffect(() => {
-    if (usePackageId && usePackageId !== '' && (!chosenPackage || sessions > 1)) setUsePackageId(null);
-  }, [chosenPackage, usePackageId, sessions]);
+    if (usePackageId === null) return;
+    if (sessions > 1) { setUsePackageId(null); return; }
+    if (usePackageId === '') {
+      if (!variant) setUsePackageId(null);
+      else if (matchingPackages.length <= 1) setUsePackageId(onlyPackageId);
+      return;
+    }
+    if (!chosenPackage) setUsePackageId(null);
+  }, [chosenPackage, usePackageId, sessions, variant, matchingPackages.length, onlyPackageId]);
 
   // Live availability from the admin engine (works without Stripe).
   useEffect(() => {

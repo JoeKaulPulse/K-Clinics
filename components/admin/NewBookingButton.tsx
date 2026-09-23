@@ -111,7 +111,15 @@ function Modal({ treatments, isAdmin, onClose }: { treatments: Treatment[]; isAd
   const matchingPackages = eligiblePackagesFor(packages, d.treatmentSlug, d.variantId || null).filter((p) => p.sessionsRemaining > 0);
   const chosenPackage = matchingPackages.find((p) => p.purchaseBookingId === usePackageId) ?? null;
   // A changed treatment/area invalidates a ticked package that's no longer eligible.
-  useEffect(() => { if (usePackageId && !chosenPackage && usePackageId !== '') setUsePackageId(null); }, [d.treatmentSlug, d.variantId, usePackageId, chosenPackage]);
+  // '' = ticked but not yet chosen. If the eligible list narrows to one or none
+  // while pending, resolve it (the dropdown only renders for >1), otherwise
+  // submit would be blocked with no control left on screen to fix it.
+  const onlyPackageId = matchingPackages.length === 1 ? matchingPackages[0].purchaseBookingId : null;
+  useEffect(() => {
+    if (usePackageId === null) return;
+    if (usePackageId === '') { if (matchingPackages.length <= 1) setUsePackageId(onlyPackageId); return; }
+    if (!chosenPackage) setUsePackageId(null);
+  }, [d.treatmentSlug, d.variantId, usePackageId, chosenPackage, matchingPackages.length, onlyPackageId]);
 
   const baseTitle = treatments.find((t) => t.slug === d.treatmentSlug)?.title || 'your treatment';
   const variantName = variants.find((v) => v.id === d.variantId)?.name;
@@ -130,7 +138,8 @@ function Modal({ treatments, isAdmin, onClose }: { treatments: Treatment[]; isAd
     }
     // BLD-1890: "Use package session" is ticked but staff haven't yet picked
     // which of several eligible packages — never guess, make them choose.
-    if (usePackageId === '') return setError('Choose which course package to use.');
+    // Only while the package picker is actually on screen (hidden for consultations).
+    if (usePackageId === '' && !isConsultationCat && !d.asConsultation) return setError('Choose which course package to use.');
     const startISO = clinicLocalToUTC(d.date, d.time).toISOString();
     const overridePricePence = isAdmin && d.overridePrice ? Math.round(Number(d.overridePriceValue) * 100) : undefined;
     start(async () => {
