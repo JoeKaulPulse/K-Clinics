@@ -5817,7 +5817,7 @@ export const BUILD_BACKLOG: BacklogItem[] = [
   },
   {
     title: "Practitioner role can claim/edit/complete another clinician's live appointment session (BOLA)",
-    type: 'ERROR', urgency: 'P1', status: 'IN_REVIEW', assignee: 'claude',
+    type: 'ERROR', urgency: 'P1', status: 'IN_REVIEW', assignee: 'claude', pr: PR(2007),
     value: 8, effort: 2,
     detail: "BLD-1899: app/api/admin/bookings/session/route.ts and app/api/admin/bookings/session/stream/route.ts gated only on the bookings.manage / liveAppointments.manage permission -- both granted to PRACTITIONER by default -- with no check that a PRACTITIONER caller is actually the assigned practitioner on the caller-supplied bookingId. Any practitioner who knew (or guessed/enumerated) a colleague's bookingId could claim that live session, edit its captured non-clinical answers, mark it complete (firing loyalty award, review-invite email and room-turnover), create a follow-on booking for that client, or read its full SSE snapshot stream -- all for a client they were never assigned to. Same bug class as BLD-1882/BLD-1693/1711/1720, just not yet applied to these two routes; BLD-1882's same-day commit (6068cdf) fixed the five sibling routes (incidents, patch-test, medical-flag, client-status, before-photo) but missed these. Payment-taking ops in the same route (paylink/terminal/external/voucher/voucher-remove, plus the saved-card 'charge' op via chargeBookingAction) were already separately gated behind bookings.charge and are unaffected -- only the clinical/scheduling surface was exposed.",
     notes: [
