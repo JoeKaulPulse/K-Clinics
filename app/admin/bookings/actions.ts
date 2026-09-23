@@ -445,12 +445,19 @@ export async function cancelBookingAction(bookingId: string, opts: { reason?: st
 
 // BLD-211 — reassign the practitioner/specialist on a booking. Admins/managers
 // only; the new clinician must be bookable and competent for the treatment.
-export async function reassignPractitioner(bookingId: string, practitionerId: string | null): Promise<{ ok: boolean; error?: string }> {
+// BLD-1886: also checks the target clinician isn't already booked over this
+// appointment's time — a warning the caller can override with force: true,
+// mirroring the resource-conflict UX built for reschedule (BLD-1873).
+export async function reassignPractitioner(
+  bookingId: string,
+  practitionerId: string | null,
+  opts?: { force?: boolean },
+): Promise<{ ok: boolean; error?: string; code?: 'PRACTITIONER_CONFLICT' }> {
   if (!crmEnabled) return { ok: false, error: 'CRM disabled' };
   const session = await getSession();
   if (!session || !sessionCan(session, 'bookings.manage')) return { ok: false, error: 'You don’t have permission to reassign appointments.' };
   const { db } = await import('@/lib/db');
-  const booking = await db.booking.findUnique({ where: { id: bookingId }, select: { treatmentSlug: true } });
+  const booking = await db.booking.findUnique({ where: { id: bookingId }, select: { treatmentSlug: true, startAt: true, endAt: true, bufferMin: true } });
   if (!booking) return { ok: false, error: 'Booking not found.' };
 
   let label = 'unassigned';
@@ -470,6 +477,21 @@ export async function reassignPractitioner(bookingId: string, practitionerId: st
       return { ok: false, error: 'That clinician isn’t set up to perform this treatment.' };
     }
     label = clin.name || clin.email;
+
+    // BLD-1886: the target clinician might already have another live booking
+    // overlapping this one's time window — check before writing, not after.
+    if (!opts?.force) {
+      const { overlapsBookingWindow } = await import('@/lib/booking-actions');
+      const others = await db.booking.findMany({
+        where: { id: { not: bookingId }, status: { in: ['PENDING', 'CONFIRMED'] }, practitionerId },
+        select: { startAt: true, endAt: true, bufferMin: true },
+      });
+      const clash = others.find((o) => overlapsBookingWindow(booking.startAt, booking.endAt, o));
+      if (clash) {
+        const when = clash.startAt.toLocaleString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+        return { ok: false, code: 'PRACTITIONER_CONFLICT', error: `${label} already has another appointment at ${when} that overlaps this time. You can still reassign if you’ve confirmed they can cover both.` };
+      }
+    }
   }
 
   await db.booking.update({ where: { id: bookingId }, data: { practitionerId: practitionerId || null } });
@@ -486,14 +508,21 @@ export async function reassignPractitioner(bookingId: string, practitionerId: st
 // cancel-and-rebook. Reuses rescheduleBooking with the admin override (no 48h
 // notice / window / fee rules), but keeps the slot-availability + future-time
 // guards, the client confirmation email, calendar re-push and audit.
-export async function rescheduleBookingAction(bookingId: string, newStartISO: string): Promise<{ ok: boolean; error?: string }> {
+// BLD-1873: `force` lets staff proceed past a room/equipment-only conflict
+// once they've seen the warning (`code: 'RESOURCE_CONFLICT'`); a practitioner
+// clash still can't be forced.
+export async function rescheduleBookingAction(
+  bookingId: string,
+  newStartISO: string,
+  opts?: { force?: boolean },
+): Promise<{ ok: boolean; error?: string; code?: 'SLOT_TAKEN' | 'RESOURCE_CONFLICT' }> {
   if (!crmEnabled) return { ok: false, error: 'CRM disabled' };
   const session = await getSession();
   if (!session || !sessionCan(session, 'bookings.manage')) return { ok: false, error: 'You don’t have permission to reschedule appointments.' };
   if (!newStartISO) return { ok: false, error: 'Pick a new date and time.' };
   const { rescheduleBooking } = await import('@/lib/booking-actions');
-  const r = await rescheduleBooking(bookingId, newStartISO, { by: session.email, admin: true });
-  return r.ok ? { ok: true } : { ok: false, error: r.error || 'Could not reschedule.' };
+  const r = await rescheduleBooking(bookingId, newStartISO, { by: session.email, admin: true, force: opts?.force });
+  return r.ok ? { ok: true } : { ok: false, error: r.error || 'Could not reschedule.', code: r.code === 'RESOURCE_CONFLICT' ? 'RESOURCE_CONFLICT' : r.code === 'SLOT_TAKEN' ? 'SLOT_TAKEN' : undefined };
 }
 
 // BLD-1096 — owner request: sometimes a client cancels with enough notice that

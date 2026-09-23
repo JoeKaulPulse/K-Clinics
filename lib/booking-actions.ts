@@ -870,18 +870,59 @@ export function isWithin48h(b: Pick<Booking, 'startAt'>): boolean {
   return b.startAt.getTime() - Date.now() < RESCHEDULE_WINDOW_MS;
 }
 
+// BLD-1873/BLD-1886: shared overlap predicate for a proposed [newStart, newEnd]
+// window against another live booking, honouring that other booking's own
+// buffer. Used by reassignPractitioner and the time-off approve route
+// (app/admin/bookings/actions.ts, app/api/admin/time-off/route.ts) so the
+// "does this window clash with an existing appointment" math is the same
+// clash rule rescheduleBooking already applies below, not a second
+// reimplementation of it.
+export function overlapsBookingWindow(
+  newStart: Date,
+  newEnd: Date,
+  other: { startAt: Date; endAt: Date; bufferMin: number },
+): boolean {
+  return newStart.getTime() < other.endAt.getTime() + other.bufferMin * 60_000 && newEnd.getTime() > other.startAt.getTime();
+}
+
+type RescheduleClashCandidate = { startAt: Date; endAt: Date; bufferMin: number; practitionerId: string | null; resources: { id: string }[] };
+
+// BLD-1873: classify a set of clashing candidates for a staff/admin reschedule.
+// A clash against the SAME practitioner is always a hard block (a clinician
+// cannot be in two places). A clash that is only against a shared room/piece
+// of equipment (no practitioner overlap) is a soft, overridable conflict.
+function classifyRescheduleClash(
+  candidates: RescheduleClashCandidate[],
+  newStart: Date,
+  newBusyEndMs: number,
+  practitionerId: string | null,
+  resourceIds: string[],
+): 'PRACTITIONER' | 'RESOURCE' | null {
+  let resourceClash = false;
+  for (const b of candidates) {
+    const overlaps = newStart.getTime() < b.endAt.getTime() + b.bufferMin * 60_000 && newBusyEndMs > b.startAt.getTime();
+    if (!overlaps) continue;
+    if (practitionerId && b.practitionerId === practitionerId) return 'PRACTITIONER';
+    if (resourceIds.length && b.resources.some((r) => resourceIds.includes(r.id))) resourceClash = true;
+  }
+  return resourceClash ? 'RESOURCE' : null;
+}
+
 /**
  * Reschedule a booking to a new start time.
  * Rules:
  * - Must give >=48h notice from the CURRENT appointment time
  * - First 3 reschedules are free; 4th+ charges the full booking price
  * - New startAt must be at least 48h in the future
+ * - Staff/admin (opts.admin): a clash against the SAME practitioner is always
+ *   a hard block; a clash against only a room/equipment resource is a
+ *   warning the caller can override with opts.force (BLD-1873).
  */
 export async function rescheduleBooking(
   bookingId: string,
   newStartISO: string,
-  opts: { by: string; reason?: string; admin?: boolean },
-): Promise<{ ok: boolean; charged?: number; requiresAction?: boolean; error?: string; code?: 'SLOT_TAKEN' }> {
+  opts: { by: string; reason?: string; admin?: boolean; force?: boolean },
+): Promise<{ ok: boolean; charged?: number; requiresAction?: boolean; error?: string; code?: 'SLOT_TAKEN' | 'RESOURCE_CONFLICT' }> {
   const booking = await db.booking.findUnique({ where: { id: bookingId }, include: { client: true, resources: { select: { id: true } } } });
   if (!booking) return { ok: false, error: 'Booking not found.' };
   if (['CANCELLED', 'COMPLETED', 'NO_SHOW'].includes(booking.status)) {
@@ -928,10 +969,17 @@ export async function rescheduleBooking(
             ...(resourceIds.length ? [{ resources: { some: { id: { in: resourceIds } } } }] : []),
           ],
         },
-        select: { startAt: true, endAt: true, bufferMin: true },
+        select: { startAt: true, endAt: true, bufferMin: true, practitionerId: true, resources: { select: { id: true } } },
       });
-      const clash = candidates.some((b) => newStart.getTime() < b.endAt.getTime() + b.bufferMin * 60_000 && newBusyEndMs > b.startAt.getTime());
-      if (clash) return { ok: false, code: 'SLOT_TAKEN', error: 'That time clashes with another appointment for the same clinician, room or equipment. Please choose another slot.' };
+      const kind = classifyRescheduleClash(candidates, newStart, newBusyEndMs, booking.practitionerId, resourceIds);
+      if (kind === 'PRACTITIONER') {
+        return { ok: false, code: 'SLOT_TAKEN', error: 'That time clashes with another appointment for the same clinician. Please choose another slot.' };
+      }
+      // BLD-1873: a room/equipment-only clash is a warning, not a hard block —
+      // authorised staff can proceed once they've confirmed (opts.force).
+      if (kind === 'RESOURCE' && !opts.force) {
+        return { ok: false, code: 'RESOURCE_CONFLICT', error: 'That time clashes with another appointment using the same room or equipment — it may already be in use. Reschedule anyway if you’ve checked it’s free.' };
+      }
     }
   } else {
     // Client self-service: the chosen time must be a genuinely free, in-hours slot
@@ -952,9 +1000,10 @@ export async function rescheduleBooking(
   // app/api/booking/create + app/api/booking/start: a Serializable transaction
   // re-reads overlapping bookings on THIS booking's own clinician/room(s) and
   // aborts the write if another booking has since claimed the slot.
-  let rescheduled: { id: string } | null = null;
+  type TxResult = { outcome: 'ok'; row: { id: string } } | { outcome: 'PRACTITIONER' | 'RESOURCE' };
+  let txResult: TxResult | null = null;
   try {
-    rescheduled = await db.$transaction(async (tx) => {
+    txResult = await db.$transaction(async (tx) => {
       if (booking.practitionerId || resourceIds.length) {
         const windowStart = new Date(newStart.getTime() - 24 * 60 * 60 * 1000);
         const candidates = await tx.booking.findMany({
@@ -967,16 +1016,23 @@ export async function rescheduleBooking(
               ...(resourceIds.length ? [{ resources: { some: { id: { in: resourceIds } } } }] : []),
             ],
           },
-          select: { startAt: true, endAt: true, bufferMin: true },
+          select: { startAt: true, endAt: true, bufferMin: true, practitionerId: true, resources: { select: { id: true } } },
         });
-        const clash = candidates.some((b) => newStart.getTime() < b.endAt.getTime() + b.bufferMin * 60_000 && newBusyEndMs > b.startAt.getTime());
-        if (clash) return null;
+        const kind = classifyRescheduleClash(candidates, newStart, newBusyEndMs, booking.practitionerId, resourceIds);
+        // A practitioner clash always aborts. A resource-only clash aborts too,
+        // UNLESS the caller already confirmed (opts.force) — honoured
+        // atomically, right here, so the confirmed override still can't land
+        // on top of a genuinely new practitioner clash that appeared since the
+        // pre-check (BLD-1873).
+        if (kind === 'PRACTITIONER') return { outcome: 'PRACTITIONER' };
+        if (kind === 'RESOURCE' && !opts.force) return { outcome: 'RESOURCE' };
       }
-      return tx.booking.update({
+      const row = await tx.booking.update({
         where: { id: booking.id },
         data: { startAt: newStart, endAt: newEnd, rescheduleCount: { increment: 1 } },
         select: { id: true },
       });
+      return { outcome: 'ok', row };
     }, { isolationLevel: 'Serializable' });
   } catch (e) {
     const err = e as { code?: string; message?: string };
@@ -985,8 +1041,11 @@ export async function rescheduleBooking(
     }
     throw e;
   }
-  if (!rescheduled) {
+  if (txResult.outcome === 'PRACTITIONER') {
     return { ok: false, code: 'SLOT_TAKEN', error: 'That time is no longer available. Please choose another slot.' };
+  }
+  if (txResult.outcome === 'RESOURCE') {
+    return { ok: false, code: 'RESOURCE_CONFLICT', error: 'That time clashes with another appointment using the same room or equipment — it may already be in use. Reschedule anyway if you’ve checked it’s free.' };
   }
 
   // 4th+ reschedule incurs the full booking price — client self-service only;
