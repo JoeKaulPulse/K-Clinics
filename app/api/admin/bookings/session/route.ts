@@ -236,7 +236,7 @@ export async function POST(req: Request) {
       if (!res.ok) return bad(res.message || 'Terminal payment is unavailable.');
       // Live capture succeeded (only once a terminal provider is wired) — record it.
       const { finalizeBookingCharge } = await import('@/lib/booking-actions');
-      await finalizeBookingCharge(bookingId, res.reference || `terminal_${Date.now()}`, amountPence);
+      await finalizeBookingCharge(bookingId, res.reference || `terminal_${Date.now()}`, amountPence, { method: 'card_terminal' });
       return ok();
     }
 
@@ -255,15 +255,20 @@ export async function POST(req: Request) {
       const amountPence = grossPence - voucherOffPence - pointsOffPence;
       if (amountPence <= 0) return bad(VOUCHER_COVERS);
       const channel = String(body.channel || 'external').toLowerCase().replace(/[^a-z0-9_-]/g, '').slice(0, 24) || 'external';
+      // BLD-1874: normalise the free-form channel into the shared payment-method
+      // vocabulary so it can be displayed/corrected later — chargePaymentIntentId
+      // keeps the raw channel (ext_<channel>) for reconciliation/traceability.
+      const { normalizeExternalChannel, paymentMethodLabel } = await import('@/lib/payment-methods');
+      const paymentMethod = normalizeExternalChannel(channel);
       const updated = await db.booking.updateMany({
         where: { id: bookingId, chargedAt: null, prepaidAt: null },
-        data: { chargedPence: amountPence, chargedAt: new Date(), chargePaymentIntentId: `ext_${channel}` },
+        data: { chargedPence: amountPence, chargedAt: new Date(), chargePaymentIntentId: `ext_${channel}`, paymentMethod },
       });
       if (updated.count === 0) return bad('This booking is already paid.');
       try { const { awardClientSpend } = await import('@/lib/client-loyalty'); await awardClientSpend(bookingId); } catch { /* non-fatal */ }
       try {
         const { logAudit } = await import('@/lib/audit');
-        const label = channel === 'treatwell' ? 'Treatwell' : channel === 'classpass' ? 'ClassPass' : channel === 'cash' ? 'cash' : channel === 'card-terminal' ? 'card terminal' : channel;
+        const label = paymentMethod === 'other' ? channel : paymentMethodLabel(paymentMethod);
         // BLD-207: record any ad-hoc price adjustment + reason.
         const dr = body.discountReason ? String(body.discountReason).slice(0, 120) : '';
         const op = body.originalPence ? Math.round(Number(body.originalPence)) : 0;
@@ -305,9 +310,10 @@ export async function POST(req: Request) {
       const dr = body.discountReason ? String(body.discountReason).slice(0, 120) : '';
       if (reservedPence >= amountPence) {
         // Fully covered — settle now, mirroring the 'external' channel.
+        // BLD-1874: 'gift_voucher' in the shared vocabulary.
         const updated = await db.booking.updateMany({
           where: { id: bookingId, chargedAt: null, prepaidAt: null, giftVoucherPence: 0 },
-          data: { chargedPence: amountPence, chargedAt: new Date(), chargePaymentIntentId: 'ext_gift-voucher', giftVoucherCode: code, giftVoucherPence: amountPence },
+          data: { chargedPence: amountPence, chargedAt: new Date(), chargePaymentIntentId: 'ext_gift-voucher', giftVoucherCode: code, giftVoucherPence: amountPence, paymentMethod: 'gift_voucher' },
         });
         if (updated.count === 0) { await undoVoucherReservation(code, reservedPence); return bad('This booking was just paid on another screen.'); }
         try { const { awardClientSpend } = await import('@/lib/client-loyalty'); await awardClientSpend(bookingId); } catch { /* non-fatal */ }

@@ -18,6 +18,7 @@ import { BeforePhotoCapture } from '@/components/admin/BeforePhotoCapture';
 import { ReadinessPanel } from '@/components/admin/ReadinessPanel';
 import { AddTreatment } from '@/components/admin/AddTreatment';
 import { PriceOverride } from '@/components/admin/PriceOverride';
+import { PaymentMethodEditor } from '@/components/admin/PaymentMethodEditor';
 import { MarkAsDebt } from '@/components/admin/MarkAsDebt';
 import { ScheduleFollowUp } from '@/components/admin/ScheduleFollowUp';
 import { BnplPaymentButton } from '@/components/admin/BnplPaymentButton';
@@ -28,6 +29,7 @@ import { ClientStatusEditor } from '@/components/admin/ClientStatusEditor';
 import { ClientStatusBadge } from '@/components/admin/ClientStatusBadge';
 import { sessionCan, sessionIsAdmin } from '@/lib/auth';
 import { site } from '@/lib/site';
+import { paymentMethodLabel } from '@/lib/payment-methods';
 
 export const dynamic = 'force-dynamic';
 
@@ -224,6 +226,9 @@ export default async function BookingDetail({ params }: { params: Promise<{ id: 
   // of an already-paid appointment — the audit trail records it; no money moves.
   const canPriceOverride = sessionCan(session, 'bookings.charge') && !b.prepaidAt && !['CANCELLED', 'NO_SHOW'].includes(b.status)
     && (!b.chargedAt || sessionIsAdmin(session));
+  // BLD-1874: correcting the payment method only makes sense once something has
+  // actually been paid — same permission as every other "money has moved" edit.
+  const canEditPaymentMethod = sessionCan(session, 'bookings.charge') && Boolean(b.chargedAt || b.prepaidAt);
   // BLD-1165: BNPL (Klarna/Clearpay) pre-payment is only for courses — a single
   // session has nothing left to defer past this visit — same lifecycle gate as
   // the add-on picker plus the "already a course" check the API itself enforces.
@@ -338,7 +343,11 @@ export default async function BookingDetail({ params }: { params: Promise<{ id: 
         </div>
         <div className="text-right">
           <p className="font-[family-name:var(--font-display)] text-2xl">{b.pricePence > 0 ? money(b.pricePence) : 'On consultation'}</p>
-          {b.chargedAt && <p className="text-xs text-[var(--color-jade)]">Charged {money(b.chargedPence || 0)}</p>}
+          {b.chargedAt && <p className="text-xs text-[var(--color-jade)]">Charged {money(b.chargedPence || 0)}{b.paymentMethod ? ` · ${paymentMethodLabel(b.paymentMethod)}` : ''}</p>}
+          {!b.chargedAt && b.prepaidAt && b.paymentMethod && <p className="text-xs text-[var(--color-jade)]">Pre-paid · {paymentMethodLabel(b.paymentMethod)}</p>}
+          {/* BLD-1874: correct how this booking was actually paid — never
+              affects the amount, charge date or Stripe reference above. */}
+          {canEditPaymentMethod && <div className="mt-0.5"><PaymentMethodEditor bookingId={b.id} method={b.paymentMethod} /></div>}
           {b.lateCancel && <p className="text-xs text-[var(--color-stone)]">Cancelled within 24h{b.feeWaived ? ' · fee waived' : ''}</p>}
         </div>
       </div>
