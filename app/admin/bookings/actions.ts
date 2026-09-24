@@ -142,6 +142,61 @@ export async function refundBookingAction(bookingId: string, amountPence: number
   return res;
 }
 
+// BLD-1893: completely remove an incorrectly-generated outstanding payment
+// (a late-cancel or no-show fee that was never charged) — distinct from
+// charging it or waiting for it to be waived at cancel/no-show time. Reuses
+// the same feeWaived field lib/outstanding.ts already derives the balance
+// and the online-booking block from (BLD-1066/applyNoShowFee's waive branch),
+// so clearing it here lifts both automatically — no new column needed.
+export async function removeOutstandingPayment(bookingId: string, reason: string) {
+  if (!crmEnabled) return { ok: false, error: 'CRM disabled' };
+  const session = await getSession();
+  if (!session) return { ok: false, error: 'Unauthorised' };
+  if (!sessionCan(session, 'bookings.charge')) return { ok: false, error: 'You don’t have permission to remove an outstanding payment.' };
+  const cleanReason = (reason || '').trim().slice(0, 2000);
+  if (!cleanReason) return { ok: false, error: 'Add a reason explaining why this payment is being removed.' };
+
+  const { db } = await import('@/lib/db');
+  const b = await db.booking.findUnique({
+    where: { id: bookingId },
+    select: { clientId: true, treatmentTitle: true, status: true, lateCancel: true, chargedAt: true, prepaidAt: true, feeWaived: true, pricePence: true },
+  });
+  if (!b) return { ok: false, error: 'Booking not found.' };
+  // Same shape lib/outstanding.ts's query uses — only ever act on a booking
+  // that is actually contributing to the derived balance right now.
+  const isOutstanding = !b.chargedAt && !b.prepaidAt && !b.feeWaived && b.pricePence > 0
+    && ((b.status === 'CANCELLED' && b.lateCancel) || b.status === 'NO_SHOW');
+  if (!isOutstanding) return { ok: false, error: 'This appointment has no outstanding payment to remove.' };
+
+  await db.booking.update({ where: { id: bookingId }, data: { feeWaived: true } });
+  // BLD-1443 parity with applyNoShowFee/cancelBooking's own waive branches:
+  // the fee was never actually taken, so any loyalty points the client
+  // redeemed as money off it are returned rather than staying spent.
+  try {
+    const { refundBookingPoints } = await import('@/lib/client-loyalty');
+    await refundBookingPoints(bookingId);
+  } catch (e) {
+    console.error('[removeOutstandingPayment] points refund failed (continuing):', (e as Error)?.message);
+  }
+
+  const kind = b.status === 'NO_SHOW' ? 'no-show' : 'late-cancellation';
+  const summary = `Outstanding payment removed — ${b.treatmentTitle} (${kind} fee, £${(b.pricePence / 100).toFixed(2)}) — ${cleanReason}`;
+  const { logAudit } = await import('@/lib/audit');
+  await logAudit({
+    action: b.status === 'NO_SHOW' ? 'BOOKING_NO_SHOW' : 'BOOKING_CANCELLED',
+    actor: session.email, actorRole: session.role, bookingId, clientId: b.clientId,
+    summary, meta: { outstandingPaymentRemoved: true, pricePence: b.pricePence, reason: cleanReason },
+  }).catch(() => {});
+  // BLD-1893: "record the removal in the client's activity timeline, including
+  // who removed it and when" — Interaction stamps author + createdAt itself.
+  await db.interaction.create({ data: { clientId: b.clientId, type: 'APPOINTMENT', summary, author: session.email } }).catch(() => {});
+
+  revalidatePath(`/admin/bookings/${bookingId}`);
+  revalidatePath('/admin/bookings');
+  revalidatePath(`/admin/clients/${b.clientId}`);
+  return { ok: true };
+}
+
 // Approve a same-day appointment request: re-checks availability (the slot may have
 // been taken since the request came in), confirms the booking and notifies the
 // client. Staff only. Decline uses the normal cancelBookingAction.

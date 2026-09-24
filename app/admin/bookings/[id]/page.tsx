@@ -19,6 +19,7 @@ import { ReadinessPanel } from '@/components/admin/ReadinessPanel';
 import { AddTreatment } from '@/components/admin/AddTreatment';
 import { PriceOverride } from '@/components/admin/PriceOverride';
 import { PaymentMethodEditor } from '@/components/admin/PaymentMethodEditor';
+import { RemoveOutstandingPayment } from '@/components/admin/RemoveOutstandingPayment';
 import { MarkAsDebt } from '@/components/admin/MarkAsDebt';
 import { ScheduleFollowUp } from '@/components/admin/ScheduleFollowUp';
 import { BnplPaymentButton } from '@/components/admin/BnplPaymentButton';
@@ -357,6 +358,12 @@ export default async function BookingDetail({ params }: { params: Promise<{ id: 
               affects the amount, charge date or Stripe reference above. */}
           {canEditPaymentMethod && <div className="mt-0.5"><PaymentMethodEditor bookingId={b.id} method={b.paymentMethod} /></div>}
           {b.lateCancel && <p className="text-xs text-[var(--color-stone)]">Cancelled within 24h{b.feeWaived ? ' · fee waived' : ''}</p>}
+          {/* BLD-1893: an outstanding late-cancel/no-show fee can be removed
+              outright, not just charged or waived at cancel/no-show time. */}
+          {sessionCan(session, 'bookings.charge') && !b.chargedAt && !b.prepaidAt && !b.feeWaived && b.pricePence > 0
+            && ((b.status === 'CANCELLED' && b.lateCancel) || b.status === 'NO_SHOW') && (
+            <div className="mt-1"><RemoveOutstandingPayment bookingId={b.id} treatmentTitle={b.treatmentTitle} pricePence={b.pricePence} /></div>
+          )}
         </div>
       </div>
 

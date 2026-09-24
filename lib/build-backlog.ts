@@ -5845,6 +5845,21 @@ export const BUILD_BACKLOG: BacklogItem[] = [
       "Verified: npx tsc --noEmit and npm run build both pass clean.",
     ],
   },
+  {
+    title: 'Add Option to Remove Outstanding Payments (BLD-1893)',
+    type: 'ERROR', urgency: 'P1', status: 'IN_REVIEW', assignee: 'claude',
+    value: 6, effort: 2,
+    detail: "Admin/Owner could edit or clear a staff-recorded debt (Mark as Debt, BLD-1572/1763), but the automated late-cancel/no-show outstanding fee (lib/outstanding.ts, BLD-1066) had no removal path at all -- only charging it or waiving it at the moment of cancel/no-show cleared it. An incorrectly-generated fee (e.g. a cancellation later confirmed to be outside the 24h window) stayed on the client's balance and kept blocking their online booking forever, with no way to clear it after the fact.",
+    notes: [
+      "Fix: new server action removeOutstandingPayment(bookingId, reason) in app/admin/bookings/actions.ts, gated on bookings.charge (same permission as charging/refunding/Mark-as-Debt). Validates the booking is currently contributing to outstandingBalance() (the exact same shape lib/outstanding.ts's query uses: chargedAt/prepaidAt/feeWaived null-or-false, pricePence > 0, and CANCELLED+lateCancel or NO_SHOW) before touching anything, and requires a reason.",
+      "Reuses the existing Booking.feeWaived field rather than adding a new column -- lib/outstanding.ts already excludes feeWaived:true rows from the derived balance, and app/api/booking/create+start already read that same balance to block online booking, so setting feeWaived:true clears the balance AND lifts the booking restriction in one write, with nothing else to reset. Same mechanism applyNoShowFee's and cancelBooking's own 'waive' branches already use at cancel/no-show time -- this just makes it reachable afterward too.",
+      "Any loyalty points the client redeemed as money off the fee are returned via refundBookingPoints, matching the parity applyNoShowFee/cancelBooking already keep (BLD-1443) between their waive branches.",
+      "Audit: logs BOOKING_NO_SHOW or BOOKING_CANCELLED (matching whichever the booking's own status already used for the fee, rather than adding a new AuditAction enum value/migration) with meta.outstandingPaymentRemoved:true, plus a db.interaction.create on the client's activity timeline (author + createdAt satisfy 'who and when' automatically) -- both requested explicitly by the ticket.",
+      "UI: new components/admin/RemoveOutstandingPayment.tsx -- a 'Remove' link opening a Dialog (not window.confirm/alert, per the existing BLD-1559 accessibility fix) with a required reason field. Wired next to each item in the client profile's BLD-1066 outstanding-payment list (app/admin/clients/[id]/page.tsx, alongside the existing EditDebt control on the separate Mark-as-Debt list) and on the booking detail page itself (app/admin/bookings/[id]/page.tsx, next to the existing 'Cancelled within 24h / fee waived' text), both gated on the same isOutstanding shape as the server action and on bookings.charge.",
+      "No Prisma schema change -- feeWaived, the audit actions and the interaction/timeline write all already existed.",
+      "Verified: npx tsc --noEmit and npm run build both pass clean.",
+    ],
+  },
 ];
 
 // A content hash over every item's title + status + PR, so ANY change (a new
