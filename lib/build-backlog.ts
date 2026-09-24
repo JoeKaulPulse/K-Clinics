@@ -5847,7 +5847,7 @@ export const BUILD_BACKLOG: BacklogItem[] = [
   },
   {
     title: 'Add Option to Remove Outstanding Payments (BLD-1893)',
-    type: 'ERROR', urgency: 'P1', status: 'IN_REVIEW', assignee: 'claude',
+    type: 'ERROR', urgency: 'P1', status: 'IN_REVIEW', assignee: 'claude', pr: PR(2010),
     value: 6, effort: 2,
     detail: "Admin/Owner could edit or clear a staff-recorded debt (Mark as Debt, BLD-1572/1763), but the automated late-cancel/no-show outstanding fee (lib/outstanding.ts, BLD-1066) had no removal path at all -- only charging it or waiving it at the moment of cancel/no-show cleared it. An incorrectly-generated fee (e.g. a cancellation later confirmed to be outside the 24h window) stayed on the client's balance and kept blocking their online booking forever, with no way to clear it after the fact.",
     notes: [
