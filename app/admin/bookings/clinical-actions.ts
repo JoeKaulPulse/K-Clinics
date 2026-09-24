@@ -14,6 +14,12 @@ export async function saveClinicalNote(bookingId: string, note: string) {
   const { db } = await import('@/lib/db');
   const { encryptJson } = await import('@/lib/crypto');
   const { logAudit } = await import('@/lib/audit');
+  // BLD-1930: a PRACTITIONER may only write a clinical note on their own
+  // booking, same guard as the debt route (app/api/admin/clients/[id]/debt).
+  const existing = await db.booking.findUnique({ where: { id: bookingId }, select: { practitionerId: true } });
+  if (!existing) return { ok: false, error: 'Booking not found.' };
+  const practitionerId = session.role === 'PRACTITIONER' ? session.sub : undefined;
+  if (practitionerId && existing.practitionerId !== practitionerId) return { ok: false, error: 'Booking not found.' };
   const trimmed = note.trim();
   const b = await db.booking.update({
     where: { id: bookingId },
@@ -44,8 +50,11 @@ export async function addTreatmentToBooking(bookingId: string, variantId: string
   const { db } = await import('@/lib/db');
   const { logAudit } = await import('@/lib/audit');
 
-  const booking = await db.booking.findUnique({ where: { id: bookingId }, select: { status: true, chargedAt: true, chargedPence: true, prepaidAt: true, clientId: true, pricePence: true } });
+  const booking = await db.booking.findUnique({ where: { id: bookingId }, select: { status: true, chargedAt: true, chargedPence: true, prepaidAt: true, clientId: true, pricePence: true, practitionerId: true } });
   if (!booking) return { ok: false, error: 'Booking not found.' };
+  // BLD-1930: a PRACTITIONER may only add a treatment to their own booking.
+  const practitionerId = session.role === 'PRACTITIONER' ? session.sub : undefined;
+  if (practitionerId && booking.practitionerId !== practitionerId) return { ok: false, error: 'Booking not found.' };
   const paidCorrection = Boolean(booking.chargedAt);
   if (paidCorrection) {
     // Review fix: also bookings.charge, like every other money correction
@@ -105,8 +114,11 @@ export async function removeAddonTreatment(bookingId: string, itemId: string) {
   const { db } = await import('@/lib/db');
   const { logAudit } = await import('@/lib/audit');
 
-  const booking = await db.booking.findUnique({ where: { id: bookingId }, select: { chargedAt: true, chargedPence: true, prepaidAt: true, prepaidPence: true, clientId: true, status: true } });
+  const booking = await db.booking.findUnique({ where: { id: bookingId }, select: { chargedAt: true, chargedPence: true, prepaidAt: true, prepaidPence: true, clientId: true, status: true, practitionerId: true } });
   if (!booking) return { ok: false, error: 'Booking not found.' };
+  // BLD-1930: a PRACTITIONER may only remove an add-on from their own booking.
+  const practitionerId = session.role === 'PRACTITIONER' ? session.sub : undefined;
+  if (practitionerId && booking.practitionerId !== practitionerId) return { ok: false, error: 'Booking not found.' };
   // Review fix: a BNPL pre-paid course (prepaidAt, no chargedAt) is paid too —
   // removing an add-on there lowers the agreed price of settled money, so it
   // takes the same admin + bookings.charge gate as a charged booking.
@@ -167,8 +179,11 @@ export async function overrideBookingPrice(bookingId: string, newBasePence: numb
   const { db } = await import('@/lib/db');
   const { logAudit } = await import('@/lib/audit');
 
-  const booking = await db.booking.findUnique({ where: { id: bookingId }, select: { status: true, chargedAt: true, chargedPence: true, prepaidAt: true, clientId: true, pricePence: true } });
+  const booking = await db.booking.findUnique({ where: { id: bookingId }, select: { status: true, chargedAt: true, chargedPence: true, prepaidAt: true, clientId: true, pricePence: true, practitionerId: true } });
   if (!booking) return { ok: false, error: 'Booking not found.' };
+  // BLD-1930: a PRACTITIONER may only override the price of their own booking.
+  const practitionerId = session.role === 'PRACTITIONER' ? session.sub : undefined;
+  if (practitionerId && booking.practitionerId !== practitionerId) return { ok: false, error: 'Booking not found.' };
   // BLD-1094 (owner decision 5 Aug: record-only): admins may correct the price
   // of an ALREADY-PAID appointment. The correction changes the recorded agreed
   // price and the audit trail only — chargedPence stays what the card actually
