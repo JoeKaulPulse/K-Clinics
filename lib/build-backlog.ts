@@ -5847,7 +5847,7 @@ export const BUILD_BACKLOG: BacklogItem[] = [
   },
   {
     title: 'Package sessions still showed an individual treatment price, and an already-paid visit could not be linked into a package (BLD-1891, BLD-1892)',
-    type: 'ERROR', urgency: 'P1', status: 'IN_REVIEW', assignee: 'claude',
+    type: 'ERROR', urgency: 'P1', status: 'IN_REVIEW', assignee: 'claude', pr: PR(2009),
     value: 7, effort: 3,
     detail: "BLD-1891: an appointment linked to a prepaid course (Booking.packageBookingId set) still showed its own individual treatment price on the client profile, the booking detail page's Treatments & billing card, and the bookings list, even though the course had already been paid for -- misleading staff and clients into thinking a covered session cost extra. BLD-1892: linkBookingToPackage() hard-refused to link any appointment that had already been charged or pre-paid, so an already-completed, already-paid visit (e.g. a treatment taken before a client bought a follow-up course) could never be retro-added to that course's session count -- the exact case the owner hit trying to include a 16 September visit in a newly purchased 3-session package.",
     notes: [
