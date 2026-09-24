@@ -660,6 +660,9 @@ export async function linkBookingToPackage(bookingId: string, purchaseBookingId:
   // A gift voucher applied to this appointment has already been debited off the
   // voucher (lib/gift-vouchers reserveVoucher). Zeroing the price below would
   // leave that balance spent against a £0 visit with nothing to return it.
+  // BLD-1892: an already-settled visit is never zeroed, so its voucher stays
+  // spent against the real price it paid towards — nothing is stranded, and
+  // there is no "Remove voucher" on a paid booking to unblock it anyway.
   if (!alreadySettled && (b.giftVoucherPence ?? 0) > 0) {
     return { ok: false, error: 'A gift voucher is applied to this appointment. Remove it first (Remove voucher on the appointment’s payment panel puts the balance back on the card), then link it to the course.' };
   }
@@ -683,6 +686,14 @@ export async function linkBookingToPackage(bookingId: string, purchaseBookingId:
   let zeroed: PackageZeroing | null = null;
   try {
     const linked = await db.$transaction(async (tx) => {
+      // BLD-1892 review fix: `alreadySettled` decides whether the price is
+      // zeroed, but it came from a read taken before this transaction. A charge
+      // (or voucher, or another link) landing in between would otherwise zero a
+      // just-paid booking. Re-read inside the Serializable transaction and bail
+      // if any of it moved, so the decision and the write see the same row.
+      const fresh = await tx.booking.findUnique({ where: { id: bookingId }, select: { pricePence: true, packageBookingId: true, chargedAt: true, prepaidAt: true, giftVoucherPence: true } });
+      if (!fresh || fresh.packageBookingId || Boolean(fresh.chargedAt || fresh.prepaidAt) !== alreadySettled
+        || (!alreadySettled && (fresh.giftVoucherPence ?? 0) > 0)) return 'CHANGED' as const;
       if (occupies) {
         const total = (await tx.bookingItem.findFirst({ where: { bookingId: purchaseBookingId, isAddon: false }, orderBy: { createdAt: 'asc' }, select: { sessions: true } }))?.sessions ?? 1;
         const occupied = await tx.booking.count({ where: packageOccupancyWhere(purchaseBookingId) });
@@ -706,7 +717,7 @@ export async function linkBookingToPackage(bookingId: string, purchaseBookingId:
       // BLD-1892: nor for an already-settled appointment — its price is real,
       // already-collected money, not a quote to net against the course.
       const zeroPrice = occupies && !alreadySettled;
-      const current = zeroPrice ? await tx.booking.findUnique({ where: { id: bookingId }, select: { pricePence: true } }) : null;
+      const current = zeroPrice ? fresh : null;
       const primaryItem = zeroPrice
         ? await tx.bookingItem.findFirst({ where: { bookingId, isAddon: false }, orderBy: { createdAt: 'asc' }, select: { id: true, pricePence: true, discountPence: true } })
         : null;
@@ -723,6 +734,7 @@ export async function linkBookingToPackage(bookingId: string, purchaseBookingId:
       return NO_ZEROING;
     }, { isolationLevel: 'Serializable' });
     if (!linked) return { ok: false, error: 'That course has no sessions left — every session is already taken or booked.' };
+    if (linked === 'CHANGED') return { ok: false, error: 'This appointment changed while linking (it was paid, linked or had a voucher applied). Refresh the page and try again.' };
     zeroed = linked.itemId ? linked : null;
   } catch {
     return { ok: false, error: 'Could not link just now (another update was in flight). Please try again.' };

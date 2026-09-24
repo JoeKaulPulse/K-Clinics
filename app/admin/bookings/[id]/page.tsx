@@ -466,13 +466,33 @@ export default async function BookingDetail({ params }: { params: Promise<{ id: 
           {!['CANCELLED', 'NO_SHOW'].includes(b.status) && (canManageBk || addOnItems.length > 0) && (
             <div className="rounded-[var(--radius-md)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-5">
               <p className="eyebrow mb-3 text-[var(--color-stone)]">Treatments &amp; billing</p>
-              {b.packageBookingId && pkgSession ? (
+              {b.packageBookingId ? (
                 // BLD-1891: a linked package session shows its position in the
                 // course, never an individual price — the full package price and
                 // payment status live on the purchase booking (linked above).
-                <p className="text-sm">
-                  {b.treatmentTitle} · Package session {pkgSession.session} of {pkgSession.total}
-                </p>
+                // Review fix: add-ons are NOT covered by the package (the link
+                // only zeroes the primary item) and stay chargeable here, so they
+                // keep their own lines and, while unpaid, their own total.
+                <div className="space-y-1.5 text-sm">
+                  <p className="min-w-0 break-words">
+                    {b.treatmentTitle} · Package session{pkgSession ? ` ${pkgSession.session} of ${pkgSession.total}` : ''}
+                  </p>
+                  {addOnItems.map((it) => (
+                    <div key={it.id} className="flex items-baseline justify-between gap-3">
+                      <span className="min-w-0 break-words text-[var(--color-stone)]">+ {it.label}</span>
+                      <span className="shrink-0 tabular-nums text-[var(--color-stone)]">{money(it.pricePence)}</span>
+                    </div>
+                  ))}
+                  {/* What the charge flow would actually take (booking.pricePence,
+                      which the link netted down to the add-ons). Shown only while
+                      something is still owed, so staff never charge blind. */}
+                  {b.pricePence > 0 && !b.chargedAt && !b.prepaidAt && (
+                    <div className="flex items-baseline justify-between gap-3 border-t border-[var(--color-line)] pt-2 font-medium">
+                      <span>Total to charge</span>
+                      <span className="tabular-nums">{money(b.pricePence)}</span>
+                    </div>
+                  )}
+                </div>
               ) : (
                 <div className="space-y-1.5 text-sm">
                   <div className="flex items-baseline justify-between gap-3">
