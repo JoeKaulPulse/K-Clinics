@@ -20,6 +20,7 @@ import { AddTreatment } from '@/components/admin/AddTreatment';
 import { PriceOverride } from '@/components/admin/PriceOverride';
 import { PaymentMethodEditor } from '@/components/admin/PaymentMethodEditor';
 import { RemoveOutstandingPayment } from '@/components/admin/RemoveOutstandingPayment';
+import { RemoveAddonButton } from '@/components/admin/RemoveAddonButton';
 import { MarkAsDebt } from '@/components/admin/MarkAsDebt';
 import { ScheduleFollowUp } from '@/components/admin/ScheduleFollowUp';
 import { BnplPaymentButton } from '@/components/admin/BnplPaymentButton';
@@ -229,10 +230,18 @@ export default async function BookingDetail({ params }: { params: Promise<{ id: 
   const { clientDebtBalance } = await import('@/lib/client-debt');
   const debtHere = await clientDebtBalance(b.clientId);
   const perSessionPence = courseSessions > 1 && basePence > 0 ? Math.round(basePence / courseSessions) : basePence;
-  // BLD-1119: !b.prepaidAt as well as !b.chargedAt — an add-on on a BNPL pre-paid
-  // course can never be collected (every charge surface refuses a pre-paid
-  // booking), so don't offer the picker; extras go on a new booking.
-  const canAddTreatment = canManageBk && !b.chargedAt && !b.prepaidAt && !['CANCELLED', 'NO_SHOW'].includes(b.status);
+  // BLD-1119: !b.prepaidAt — an add-on on a BNPL pre-paid course can never be
+  // collected (every charge surface refuses a pre-paid booking), so don't
+  // offer the picker; extras go on a new booking.
+  // BLD-1895: an already-charged booking is now allowed too, admin-only —
+  // same record-only pattern as canPriceOverride below.
+  const canAddTreatment = canManageBk && !b.prepaidAt && !['CANCELLED', 'NO_SHOW'].includes(b.status)
+    && (!b.chargedAt || sessionIsAdmin(session));
+  // BLD-1895: remove an add-on — canManageBk/liveAppointments.manage as before,
+  // now also allowed after charge for an admin (removeAddonTreatment enforces
+  // the same gate server-side; never touches chargedPence/chargedAt).
+  const canRemoveAddon = (canManageBk || sessionCan(session, 'liveAppointments.manage')) && !['CANCELLED', 'NO_SHOW'].includes(b.status)
+    && (!b.chargedAt || sessionIsAdmin(session));
   // BLD-1149: price override — same lifecycle gate, but keyed on bookings.charge
   // (the permission that already lets the holder adjust the amount at checkout).
   // BLD-1094 (owner decision: record-only): admins may also correct the price
@@ -487,7 +496,10 @@ export default async function BookingDetail({ params }: { params: Promise<{ id: 
                   {addOnItems.map((it) => (
                     <div key={it.id} className="flex items-baseline justify-between gap-3">
                       <span className="min-w-0 break-words text-[var(--color-stone)]">+ {it.label}</span>
-                      <span className="shrink-0 tabular-nums text-[var(--color-stone)]">{money(it.pricePence)}</span>
+                      <span className="flex shrink-0 items-baseline gap-2 tabular-nums text-[var(--color-stone)]">
+                        {money(it.pricePence)}
+                        {canRemoveAddon && <RemoveAddonButton bookingId={b.id} itemId={it.id} />}
+                      </span>
                     </div>
                   ))}
                   {/* What the charge flow would actually take (booking.pricePence,
@@ -513,7 +525,10 @@ export default async function BookingDetail({ params }: { params: Promise<{ id: 
                   {addOnItems.map((it) => (
                     <div key={it.id} className="flex items-baseline justify-between gap-3">
                       <span className="min-w-0 break-words text-[var(--color-stone)]">+ {it.label}</span>
-                      <span className="shrink-0 tabular-nums text-[var(--color-stone)]">{money(it.pricePence)}</span>
+                      <span className="flex shrink-0 items-baseline gap-2 tabular-nums text-[var(--color-stone)]">
+                        {money(it.pricePence)}
+                        {canRemoveAddon && <RemoveAddonButton bookingId={b.id} itemId={it.id} />}
+                      </span>
                     </div>
                   ))}
                   <div className="flex items-baseline justify-between gap-3 border-t border-[var(--color-line)] pt-2 font-medium">

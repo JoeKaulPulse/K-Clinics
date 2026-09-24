@@ -5876,6 +5876,20 @@ export const BUILD_BACKLOG: BacklogItem[] = [
       "Review fix (pre-merge): (1) added the BLD-1693/1711 PRACTITIONER client-level scope that the sibling Mark-as-Debt/EditDebt routes already apply, so a practitioner granted bookings.charge can't remove a fee on another clinician's client by id. (2) A fee that hit SCA leaves a live PaymentIntent and an emailed /booking/pay link; removal now cancels that PaymentIntent first (and refuses if it already succeeded/is processing or can't be cancelled), otherwise the client could still pay a removed fee. (3) The feeWaived write is now a conditional updateMany on the same outstanding shape, so concurrent removals (or a removal racing a charge) can't both run the points refund/audit/timeline.",
     ],
   },
+  {
+    title: 'Allow Adding and Removing Additional Treatments (BLD-1895)',
+    type: 'ERROR', urgency: 'P1', status: 'IN_REVIEW', assignee: 'claude',
+    value: 6, effort: 2,
+    detail: "app/admin/bookings/clinical-actions.ts's addTreatmentToBooking()/removeAddonTreatment() only ever worked before an appointment was charged -- an add-on could be added mid-session but never removed once wrong, and neither action was reachable at all once the booking was paid, so a mistaken extra treatment (or its price) stuck around for the life of the booking with no way to correct it. removeAddonTreatment already existed (BLD-480) but was only ever wired into the live session runner, never onto the booking detail page.",
+    notes: [
+      "Fix: both actions now also work on an already-charged booking, gated admin-only (sessionIsAdmin) -- the exact same record-only pattern overrideBookingPrice (BLD-1094) already uses for a post-payment price correction: the agreed pricePence (and, for an add, durationMin) changes; chargedPence/chargedAt never do. The audit summary spells out the card's actual charge is unchanged and that a top-up charge or refund is a separate manual step.",
+      "UI: new components/admin/RemoveAddonButton.tsx -- an inline 'Remove' link with a two-step Yes/No confirm (not window.confirm, per the existing BLD-1559 accessibility fix), wired next to every add-on line in the booking detail page's Treatments & billing card (both the normal and the package-linked-session layout, since add-ons are never covered by a package). canAddTreatment/new canRemoveAddon in app/admin/bookings/[id]/page.tsx both now read (!b.chargedAt || sessionIsAdmin(session)) instead of a hard !b.chargedAt block, mirroring canPriceOverride.",
+      "Removing/adding a charged add-on never moves money by itself -- staff use the existing partial-refund control (already supports an arbitrary amount, not just full-booking) or the existing charge control to collect a top-up, as two deliberate, separately-audited steps, matching how BLD-1892/BLD-1893 in this same run keep a payment-affecting correction and the correction's own money-movement decoupled.",
+      "BNPL pre-paid courses (prepaidAt) are unchanged -- extras still can't be collected on them (BLD-1119), so add stays refused there; that block never applied to remove and still doesn't.",
+      "No Prisma schema change.",
+      "Verified: npx tsc --noEmit and npm run build both pass clean.",
+    ],
+  },
 ];
 
 // A content hash over every item's title + status + PR, so ANY change (a new
