@@ -399,7 +399,11 @@ export default async function ClientDetail({ params }: { params: Promise<{ id: s
               const isPackagePurchase = packageByPurchaseId.has(b.id);
               const pkg = isPackagePurchase ? packageByPurchaseId.get(b.id) : b.packageBookingId ? packageByPurchaseId.get(b.packageBookingId) : undefined;
               const sessionNumber = pkg ? (sessionsByPurchaseId.get(pkg.purchaseBookingId)?.findIndex((x) => x.id === b.id) ?? -1) + 1 : 0;
-              const isLinkedSession = !isPackagePurchase && !!pkg;
+              // BLD-1891 review fix: keyed on the booking's own link, not on the
+              // package still being in clientPackages() — otherwise a session
+              // linked to a course that has since dropped out of that list fell
+              // through to the plain-price branch below.
+              const isLinkedSession = !isPackagePurchase && Boolean(b.packageBookingId);
               return (
                 <Link href={`/admin/bookings/${b.id}`} className="block rounded-[var(--radius-md)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-3.5 transition-colors hover:border-[var(--color-gold)]">
                   <div className="flex items-start justify-between gap-3">
@@ -407,8 +411,10 @@ export default async function ClientDetail({ params }: { params: Promise<{ id: s
                       <p className="text-sm font-medium">{b.treatmentTitle}</p>
                       <p className="mt-0.5 text-xs text-[var(--color-stone)]">
                         {fmtClinicDate(b.startAt, { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' })} · {fmtClinicTime(b.startAt)}
-                        {isLinkedSession && pkg
-                          ? ` · Package session${sessionNumber > 0 ? ` ${sessionNumber} of ${pkg.sessionsTotal}` : ''}${b.pricePence > 0 ? ` · ${fmtPence(b.pricePence)}` : ''}`
+                        {isLinkedSession
+                          ? // BLD-1891: a linked session is part of an already-paid course — never show
+                            // its own treatment price here, only its position in the package.
+                            ` · Package session${pkg && sessionNumber > 0 ? ` ${sessionNumber} of ${pkg.sessionsTotal}` : ''}`
                           : isPackagePurchase && pkg
                             ? ` · Package purchase — Course of ${pkg.sessionsTotal}${b.pricePence > 0 ? ` · ${fmtPence(b.pricePence)}` : ''}`
                             : b.pricePence > 0 ? ` · ${fmtPence(b.pricePence)}` : ''}
@@ -426,12 +432,15 @@ export default async function ClientDetail({ params }: { params: Promise<{ id: s
                     {b.status === 'COMPLETED' && b.actualMinutes != null && (
                       <span className="rounded-full bg-[var(--color-bone)] px-2 py-0.5 text-[var(--color-stone)]">{b.actualMinutes}m actual{b.durationMin ? ` · ${b.durationMin}m booked` : ''}</span>
                     )}
-                    {b.status === 'COMPLETED' && b.pricePence > 0 && (
+                    {/* BLD-1891 review fix: a linked session's payment status lives on the
+                        package purchase, so no "Charged"/"Paid" badge here. "Not charged"
+                        still shows — that is money genuinely owed (e.g. add-ons). */}
+                    {b.status === 'COMPLETED' && b.pricePence > 0 && !(isLinkedSession && (b.chargedAt || b.prepaidAt)) && (
                       // BLD-1874: show how a charged booking was paid, right next to the badge.
                       <span className={`rounded-full px-2 py-0.5 ${b.chargedAt ? 'bg-[var(--color-bone)] text-[var(--color-stone)]' : 'bg-amber-100 text-amber-800'}`}>{b.chargedAt ? `Charged${b.paymentMethod ? ` · ${paymentMethodLabel(b.paymentMethod)}` : ''}` : 'Not charged'}</span>
                     )}
                     {/* BLD-1874: payments taken before completion (payment link, BNPL pre-pay, late-cancel fee). */}
-                    {b.status !== 'COMPLETED' && (b.chargedAt || b.prepaidAt) && b.paymentMethod && (
+                    {!isLinkedSession && b.status !== 'COMPLETED' && (b.chargedAt || b.prepaidAt) && b.paymentMethod && (
                       <span className="rounded-full bg-[var(--color-bone)] px-2 py-0.5 text-[var(--color-stone)]">Paid · {paymentMethodLabel(b.paymentMethod)}</span>
                     )}
                     {/* BLD-1096: cancelled, but the prepaid package still absorbed the session. */}

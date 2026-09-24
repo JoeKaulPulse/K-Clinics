@@ -741,20 +741,22 @@ export async function linkBookingToPackage(bookingId: string, purchaseBookingId:
   if (!b) return { ok: false, error: 'Booking not found.' };
   if (b.packageBookingId) return { ok: false, error: 'This appointment is already linked to a package. Unlink it first if it belongs to a different course.' };
   if ((b.items[0]?.sessions ?? 1) > 1) return { ok: false, error: 'This appointment IS a course purchase — it can’t also be a session of another package.' };
-  // An appointment paid on its own card charge isn't a package session — linking
-  // it would spend a prepaid session AND keep the money, double-charging the
-  // client. Refund the standalone charge first if it should come off the course.
-  if (b.chargedAt) return { ok: false, error: 'This appointment was charged separately, so it can’t also use a prepaid package session. Refund that charge first if it should come off the course.' };
-  // BLD-1824 review: chargedAt alone is not "has this been paid". A BNPL
-  // settlement records the money on prepaidAt/prepaidPence and never touches
-  // chargedAt — the same trap BLD-1119/BLD-1200 fixed in the session route and
-  // outstandingBalance. Linking here now zeroes the price, so an unguarded
-  // prepaidAt would hand back a paid-for visit AND spend a prepaid session.
-  if (b.prepaidAt) return { ok: false, error: 'This appointment was pre-paid in full, so it can’t also use a prepaid package session. Refund that payment first if it should come off the course.' };
+  // BLD-1892: an already-charged/pre-paid appointment (e.g. a completed visit
+  // from before the client bought the course) can still be retro-linked so it
+  // counts toward the course balance — its existing payment record is left
+  // exactly as-is (no zeroing, no refund) rather than blocked outright, which
+  // would otherwise make it impossible to ever add a past treatment to a
+  // package. `alreadySettled` below skips the price-zeroing step for it, so
+  // there is no double-charge: the course consumes a session, the prior
+  // payment stays the money of record and nothing new is charged.
+  const alreadySettled = Boolean(b.chargedAt || b.prepaidAt);
   // A gift voucher applied to this appointment has already been debited off the
   // voucher (lib/gift-vouchers reserveVoucher). Zeroing the price below would
   // leave that balance spent against a £0 visit with nothing to return it.
-  if ((b.giftVoucherPence ?? 0) > 0) {
+  // BLD-1892: an already-settled visit is never zeroed, so its voucher stays
+  // spent against the real price it paid towards — nothing is stranded, and
+  // there is no "Remove voucher" on a paid booking to unblock it anyway.
+  if (!alreadySettled && (b.giftVoucherPence ?? 0) > 0) {
     return { ok: false, error: 'A gift voucher is applied to this appointment. Remove it first (Remove voucher on the appointment’s payment panel puts the balance back on the card), then link it to the course.' };
   }
 
@@ -777,6 +779,14 @@ export async function linkBookingToPackage(bookingId: string, purchaseBookingId:
   let zeroed: PackageZeroing | null = null;
   try {
     const linked = await db.$transaction(async (tx) => {
+      // BLD-1892 review fix: `alreadySettled` decides whether the price is
+      // zeroed, but it came from a read taken before this transaction. A charge
+      // (or voucher, or another link) landing in between would otherwise zero a
+      // just-paid booking. Re-read inside the Serializable transaction and bail
+      // if any of it moved, so the decision and the write see the same row.
+      const fresh = await tx.booking.findUnique({ where: { id: bookingId }, select: { pricePence: true, packageBookingId: true, chargedAt: true, prepaidAt: true, giftVoucherPence: true } });
+      if (!fresh || fresh.packageBookingId || Boolean(fresh.chargedAt || fresh.prepaidAt) !== alreadySettled
+        || (!alreadySettled && (fresh.giftVoucherPence ?? 0) > 0)) return 'CHANGED' as const;
       if (occupies) {
         const total = (await tx.bookingItem.findFirst({ where: { bookingId: purchaseBookingId, isAddon: false }, orderBy: { createdAt: 'asc' }, select: { sessions: true } }))?.sessions ?? 1;
         const occupied = await tx.booking.count({ where: packageOccupancyWhere(purchaseBookingId) });
@@ -797,8 +807,11 @@ export async function linkBookingToPackage(bookingId: string, purchaseBookingId:
       // write that debt off silently while leaving the session unspent: the link
       // alone consumes nothing, staff still have to mark the session used, which
       // is how BLD-1347 takes the fee out of the course instead.
-      const current = occupies ? await tx.booking.findUnique({ where: { id: bookingId }, select: { pricePence: true } }) : null;
-      const primaryItem = occupies
+      // BLD-1892: nor for an already-settled appointment — its price is real,
+      // already-collected money, not a quote to net against the course.
+      const zeroPrice = occupies && !alreadySettled;
+      const current = zeroPrice ? fresh : null;
+      const primaryItem = zeroPrice
         ? await tx.bookingItem.findFirst({ where: { bookingId, isAddon: false }, orderBy: { createdAt: 'asc' }, select: { id: true, pricePence: true, discountPence: true } })
         : null;
       if (current && primaryItem) {
@@ -814,6 +827,7 @@ export async function linkBookingToPackage(bookingId: string, purchaseBookingId:
       return NO_ZEROING;
     }, { isolationLevel: 'Serializable' });
     if (!linked) return { ok: false, error: 'That course has no sessions left — every session is already taken or booked.' };
+    if (linked === 'CHANGED') return { ok: false, error: 'This appointment changed while linking (it was paid, linked or had a voucher applied). Refresh the page and try again.' };
     zeroed = linked.itemId ? linked : null;
   } catch {
     return { ok: false, error: 'Could not link just now (another update was in flight). Please try again.' };
@@ -839,10 +853,11 @@ export async function linkBookingToPackage(bookingId: string, purchaseBookingId:
     action: 'SESSION_EDITED', actor: session.email, actorRole: session.role, bookingId, clientId: b.clientId,
     summary: `Appointment (${b.treatmentTitle}, ${b.status.toLowerCase().replace('_', ' ')}) linked to package ${pkg.label} — now counts against the course balance`
       + (zeroed ? `; its own price was zeroed (£${(zeroed.removedPence / 100).toFixed(2)} off this appointment) — the course purchase carries the money` : '')
+      + (alreadySettled ? `; this visit was already charged/pre-paid — that payment record was left untouched, no refund or new charge made` : '')
       + (pointsReturned ? `; ${pointsReturned} loyalty points returned to the client` : ''),
     // packagePriceZeroed is what unlinkBookingFromPackage reads to put the money
     // back, so it has to stay on the entry, not just in the summary text.
-    meta: { packageBookingId: purchaseBookingId, ...(zeroed ? { packagePriceZeroed: zeroed } : {}) },
+    meta: { packageBookingId: purchaseBookingId, ...(zeroed ? { packagePriceZeroed: zeroed } : {}), ...(alreadySettled ? { alreadyCharged: true } : {}) },
   }).catch(() => {});
   revalidatePath(`/admin/bookings/${bookingId}`);
   revalidatePath(`/admin/bookings/${purchaseBookingId}`);
