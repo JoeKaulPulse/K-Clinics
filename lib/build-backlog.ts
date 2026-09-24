@@ -5878,7 +5878,7 @@ export const BUILD_BACKLOG: BacklogItem[] = [
   },
   {
     title: 'Allow Adding and Removing Additional Treatments (BLD-1895)',
-    type: 'ERROR', urgency: 'P1', status: 'IN_REVIEW', assignee: 'claude',
+    type: 'ERROR', urgency: 'P1', status: 'IN_REVIEW', assignee: 'claude', pr: PR(2011),
     value: 6, effort: 2,
     detail: "app/admin/bookings/clinical-actions.ts's addTreatmentToBooking()/removeAddonTreatment() only ever worked before an appointment was charged -- an add-on could be added mid-session but never removed once wrong, and neither action was reachable at all once the booking was paid, so a mistaken extra treatment (or its price) stuck around for the life of the booking with no way to correct it. removeAddonTreatment already existed (BLD-480) but was only ever wired into the live session runner, never onto the booking detail page.",
     notes: [
