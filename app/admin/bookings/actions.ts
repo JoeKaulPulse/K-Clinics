@@ -159,16 +159,54 @@ export async function removeOutstandingPayment(bookingId: string, reason: string
   const { db } = await import('@/lib/db');
   const b = await db.booking.findUnique({
     where: { id: bookingId },
-    select: { clientId: true, treatmentTitle: true, status: true, lateCancel: true, chargedAt: true, prepaidAt: true, feeWaived: true, pricePence: true },
+    select: { clientId: true, treatmentTitle: true, status: true, lateCancel: true, chargedAt: true, prepaidAt: true, feeWaived: true, pricePence: true, chargePaymentIntentId: true },
   });
   if (!b) return { ok: false, error: 'Booking not found.' };
+  // BLD-1693/BLD-1711 pattern, same client-level scope as the sibling
+  // Mark-as-Debt/EditDebt routes (app/api/admin/clients/[id]/debt/...): a
+  // PRACTITIONER holding bookings.charge may only act on a client they have a
+  // booking with. 'Not found' so a guessed id can't be told apart.
+  if (session.role === 'PRACTITIONER') {
+    const own = await db.booking.findFirst({ where: { clientId: b.clientId, practitionerId: session.sub }, select: { id: true } });
+    if (!own) return { ok: false, error: 'Booking not found.' };
+  }
   // Same shape lib/outstanding.ts's query uses — only ever act on a booking
   // that is actually contributing to the derived balance right now.
   const isOutstanding = !b.chargedAt && !b.prepaidAt && !b.feeWaived && b.pricePence > 0
     && ((b.status === 'CANCELLED' && b.lateCancel) || b.status === 'NO_SHOW');
   if (!isOutstanding) return { ok: false, error: 'This appointment has no outstanding payment to remove.' };
 
-  await db.booking.update({ where: { id: bookingId }, data: { feeWaived: true } });
+  // A fee that hit SCA (chargeBooking's authentication_required branch) left a
+  // live PaymentIntent on chargePaymentIntentId and emailed the client a
+  // /booking/pay link. Cancel it first, or the client can still pay the fee
+  // after it was removed (the webhook/pay-confirm would then set chargedAt).
+  // If it already succeeded/is processing, or Stripe can't cancel it, refuse.
+  const piId = b.chargePaymentIntentId;
+  if (piId && piId.startsWith('pi_')) {
+    try {
+      const { stripe } = await import('@/lib/stripe');
+      const pi = await stripe().paymentIntents.retrieve(piId);
+      if (pi.status === 'succeeded' || pi.status === 'processing') {
+        return { ok: false, error: 'The client has already paid (or is paying) this fee online. Refresh the page — it may need a refund instead.' };
+      }
+      if (pi.status !== 'canceled') await stripe().paymentIntents.cancel(piId);
+    } catch (e) {
+      console.error('[removeOutstandingPayment] could not cancel pending payment:', (e as Error)?.message);
+      return { ok: false, error: 'Could not cancel the payment link already sent to the client for this fee. Nothing was removed — try again.' };
+    }
+  }
+
+  // Conditional write on the same outstanding shape, so two concurrent removals
+  // (or a removal racing a charge landing) can't both proceed — only the one
+  // that actually flips the row runs the points refund / audit / timeline.
+  const flipped = await db.booking.updateMany({
+    where: {
+      id: bookingId, chargedAt: null, prepaidAt: null, feeWaived: false, pricePence: { gt: 0 },
+      OR: [{ status: 'CANCELLED', lateCancel: true }, { status: 'NO_SHOW' }],
+    },
+    data: { feeWaived: true },
+  });
+  if (flipped.count === 0) return { ok: false, error: 'This appointment has no outstanding payment to remove.' };
   // BLD-1443 parity with applyNoShowFee/cancelBooking's own waive branches:
   // the fee was never actually taken, so any loyalty points the client
   // redeemed as money off it are returned rather than staying spent.

@@ -5858,6 +5858,7 @@ export const BUILD_BACKLOG: BacklogItem[] = [
       "UI: new components/admin/RemoveOutstandingPayment.tsx -- a 'Remove' link opening a Dialog (not window.confirm/alert, per the existing BLD-1559 accessibility fix) with a required reason field. Wired next to each item in the client profile's BLD-1066 outstanding-payment list (app/admin/clients/[id]/page.tsx, alongside the existing EditDebt control on the separate Mark-as-Debt list) and on the booking detail page itself (app/admin/bookings/[id]/page.tsx, next to the existing 'Cancelled within 24h / fee waived' text), both gated on the same isOutstanding shape as the server action and on bookings.charge.",
       "No Prisma schema change -- feeWaived, the audit actions and the interaction/timeline write all already existed.",
       "Verified: npx tsc --noEmit and npm run build both pass clean.",
+      "Review fix (pre-merge): (1) added the BLD-1693/1711 PRACTITIONER client-level scope that the sibling Mark-as-Debt/EditDebt routes already apply, so a practitioner granted bookings.charge can't remove a fee on another clinician's client by id. (2) A fee that hit SCA leaves a live PaymentIntent and an emailed /booking/pay link; removal now cancels that PaymentIntent first (and refuses if it already succeeded/is processing or can't be cancelled), otherwise the client could still pay a removed fee. (3) The feeWaived write is now a conditional updateMany on the same outstanding shape, so concurrent removals (or a removal racing a charge) can't both run the points refund/audit/timeline.",
     ],
   },
 ];
