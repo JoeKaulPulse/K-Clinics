@@ -402,7 +402,9 @@ export default async function ClientDetail({ params }: { params: Promise<{ id: s
                       <p className="mt-0.5 text-xs text-[var(--color-stone)]">
                         {fmtClinicDate(b.startAt, { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' })} · {fmtClinicTime(b.startAt)}
                         {isLinkedSession && pkg
-                          ? ` · Package session${sessionNumber > 0 ? ` ${sessionNumber} of ${pkg.sessionsTotal}` : ''}${b.pricePence > 0 ? ` · ${fmtPence(b.pricePence)}` : ''}`
+                          ? // BLD-1891: a linked session is part of an already-paid course — never show
+                            // its own treatment price here, only its position in the package.
+                            ` · Package session${sessionNumber > 0 ? ` ${sessionNumber} of ${pkg.sessionsTotal}` : ''}`
                           : isPackagePurchase && pkg
                             ? ` · Package purchase — Course of ${pkg.sessionsTotal}${b.pricePence > 0 ? ` · ${fmtPence(b.pricePence)}` : ''}`
                             : b.pricePence > 0 ? ` · ${fmtPence(b.pricePence)}` : ''}

@@ -5788,7 +5788,7 @@ export const BUILD_BACKLOG: BacklogItem[] = [
   },
   {
     title: 'BLD-1874: show and allow correcting a booking payment method',
-    type: 'TASK', urgency: 'P1', status: 'IN_REVIEW', assignee: 'claude',
+    type: 'TASK', urgency: 'P1', status: 'SHIPPED', assignee: 'claude', pr: PR(2006),
     value: 6, effort: 3,
     detail: 'A treatment charge recorded no queryable "how was this paid" field: chargePaymentIntentId only carried a real Stripe pi_... id (card on file, terminal capture) or an ext_<channel> string for Treatwell/ClassPass/cash/card-terminal recorded manually -- the human label for the external channel was built inline for the audit-log summary only and never persisted, so it could not be shown on the client profile or corrected once picked wrong. Booking.manualPaymentMethod (BLD-1824) is a separate field for package/course purchases paid outside Stripe and was left untouched.',
     notes: [
@@ -5803,7 +5803,7 @@ export const BUILD_BACKLOG: BacklogItem[] = [
   },
   {
     title: 'Reschedule/reassign/time-off resource conflicts hard-blocked instead of warning (BLD-1873, BLD-1886)',
-    type: 'TASK', urgency: 'P1', status: 'IN_REVIEW', assignee: 'claude',
+    type: 'TASK', urgency: 'P1', status: 'SHIPPED', assignee: 'claude', pr: PR(2005),
     value: 6, effort: 3,
     detail: "BLD-1873: rescheduleBooking() in lib/booking-actions.ts (staff/admin path) ran one clash query OR-ing the booking's own practitionerId and room/equipment resourceIds together, so ANY match -- a clinician clash or a mere room/equipment clash -- hard-refused the reschedule with SLOT_TAKEN, with no way for staff to proceed even when they knew the room/equipment overlap was fine. BLD-1886: reassignPractitioner() (app/admin/bookings/actions.ts) only checked the target clinician was active/competent, never whether they already had another live booking overlapping the time window, so staff could silently double-book a practitioner; the time-off approve op (app/api/admin/time-off/route.ts) approved leave unconditionally with no lookup of existing bookings for that staff member at all, so leave could be approved over confirmed appointments with nobody notified.",
     notes: [
@@ -5842,6 +5842,19 @@ export const BUILD_BACKLOG: BacklogItem[] = [
       "Also added a rate limit to the POST handler in session/route.ts -- 120 requests / 60s under scope 'admin-booking-session', portal 'admin'. Review pass: switched from per-IP enforceRateLimit to per-account enforceAccountRateLimit (keyed on session.sub), because every clinic device shares the clinic's public IP and a shared per-IP bucket would throttle live checkouts; the read-only 'status' op (the 2s SSE poll fallback in useSessionChannel) is exempt.",
       "Review pass: app/admin/bookings/[id]/session/page.tsx (the live session page itself) loaded any booking by id with no practitioner scoping and, for clinical-access staff, decrypted the allergy note, medical flag and clinical note and rendered the client's /live/<manageToken> link. It now returns notFound() for a PRACTITIONER who is not the booking's assigned practitioner, matching the booking detail page (BLD-1693).",
       "No Prisma schema change.",
+      "Verified: npx tsc --noEmit and npm run build both pass clean.",
+    ],
+  },
+  {
+    title: 'Package sessions still showed an individual treatment price, and an already-paid visit could not be linked into a package (BLD-1891, BLD-1892)',
+    type: 'ERROR', urgency: 'P1', status: 'IN_REVIEW', assignee: 'claude',
+    value: 7, effort: 3,
+    detail: "BLD-1891: an appointment linked to a prepaid course (Booking.packageBookingId set) still showed its own individual treatment price on the client profile, the booking detail page's Treatments & billing card, and the bookings list, even though the course had already been paid for -- misleading staff and clients into thinking a covered session cost extra. BLD-1892: linkBookingToPackage() hard-refused to link any appointment that had already been charged or pre-paid, so an already-completed, already-paid visit (e.g. a treatment taken before a client bought a follow-up course) could never be retro-added to that course's session count -- the exact case the owner hit trying to include a 16 September visit in a newly purchased 3-session package.",
+    notes: [
+      "Fix (BLD-1891): every place an individual price rendered for a package-linked booking now shows its position in the course instead ('Package session N of M') and nothing else -- app/admin/clients/[id]/page.tsx's appointment row (dropped the trailing price clause for a linked session, kept it for the purchase booking itself, which legitimately carries the full course price), app/admin/bookings/[id]/page.tsx (the top-right price/charged block now reads 'Covered by package -- see price & payment ->' linking to the purchase booking, and the Treatments & billing card shows only the session label, no PriceOverride/basePence/charged total, when b.packageBookingId is set), and app/admin/bookings/page.tsx's list row ('Package session' in place of a price). The purchase booking's own price and payment status are untouched everywhere -- that's where the ticket says they belong.",
+      "Fix (BLD-1892): linkBookingToPackage() (app/admin/bookings/actions.ts) no longer refuses an already-charged/pre-paid booking outright. A new alreadySettled flag (chargedAt || prepaidAt) skips only the price-zeroing step of the transaction -- the booking still gets packageBookingId set and still occupies a session slot (capacity is still checked the same way), but its pricePence/chargedPence/chargedAt are left completely untouched, so the prior payment record is preserved exactly and nothing is refunded or re-charged. The UI picker (app/admin/bookings/[id]/page.tsx's linkablePackages) dropped its !b.chargedAt gate so an already-paid visit is offered at all, and components/admin/PackageLinkControl.tsx shows an explicit note on an alreadySettled appointment ('This visit was already paid for -- linking it won't refund or charge anything...') so staff aren't surprised nothing moves on the payment side. unlinkBookingFromPackage() needed no change: it already no-ops on price restoration when nothing was zeroed (zeroed stays null for this path).",
+      "Audit: linkBookingToPackage's existing SESSION_EDITED entry now also notes when a link was of this already-settled kind (meta.alreadyCharged: true) so the trail explains why no price/points change accompanied that particular link.",
+      "No Prisma schema change -- this is display logic plus relaxing one existing guard on an existing action.",
       "Verified: npx tsc --noEmit and npm run build both pass clean.",
     ],
   },
