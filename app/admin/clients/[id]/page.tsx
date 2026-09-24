@@ -37,6 +37,7 @@ import { ClientStatusBadge } from '@/components/admin/ClientStatusBadge';
 import { ClientTasks } from '@/components/admin/ClientTasks';
 import { LogIncident } from '@/components/admin/LogIncident';
 import { EditDebt } from '@/components/admin/EditDebt';
+import { RemoveOutstandingPayment } from '@/components/admin/RemoveOutstandingPayment';
 import { PackagePaymentControl } from '@/components/admin/PackagePaymentControl';
 import { DataPrivacy } from '@/components/admin/DataPrivacy';
 import { sessionCan } from '@/lib/auth';
@@ -266,14 +267,19 @@ export default async function ClientDetail({ params }: { params: Promise<{ id: s
           <p className="font-medium text-[var(--color-blush-deep)]">Outstanding payment — £{(owed.totalPence / 100).toFixed(2)}</p>
           <ul className="mt-1 space-y-0.5 text-sm text-[var(--color-ink)]">
             {owed.items.map((i) => (
-              <li key={i.bookingId}>
+              <li key={i.bookingId} className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
                 <Link href={`/admin/bookings/${i.bookingId}`} className="underline-offset-2 hover:underline">
                   {i.treatmentTitle} · {new Date(i.startAt).toLocaleDateString('en-GB')} · {i.kind === 'no-show' ? 'no-show' : 'late cancellation'} · £{(i.pricePence / 100).toFixed(2)}
                 </Link>
+                {/* BLD-1893: completely remove an incorrectly-generated fee,
+                    rather than only charge it or wait for it to be waived. */}
+                {sessionCan(session, 'bookings.charge') && (
+                  <RemoveOutstandingPayment bookingId={i.bookingId} treatmentTitle={i.treatmentTitle} pricePence={i.pricePence} />
+                )}
               </li>
             ))}
           </ul>
-          <p className="mt-2 text-xs text-[var(--color-stone)]">Online booking is blocked for this client until the balance is charged (open the appointment → charge the card) or the fee is waived on the appointment. Either clears this warning automatically.</p>
+          <p className="mt-2 text-xs text-[var(--color-stone)]">Online booking is blocked for this client until the balance is charged (open the appointment → charge the card), the fee is waived on the appointment, or the payment is removed here. Any of the three clears this warning automatically.</p>
         </div>
       )}
 

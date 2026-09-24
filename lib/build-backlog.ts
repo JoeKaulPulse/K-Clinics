@@ -5847,7 +5847,7 @@ export const BUILD_BACKLOG: BacklogItem[] = [
   },
   {
     title: 'Package sessions still showed an individual treatment price, and an already-paid visit could not be linked into a package (BLD-1891, BLD-1892)',
-    type: 'ERROR', urgency: 'P1', status: 'IN_REVIEW', assignee: 'claude', pr: PR(2009),
+    type: 'ERROR', urgency: 'P1', status: 'SHIPPED', assignee: 'claude', pr: PR(2009),
     value: 7, effort: 3,
     detail: "BLD-1891: an appointment linked to a prepaid course (Booking.packageBookingId set) still showed its own individual treatment price on the client profile, the booking detail page's Treatments & billing card, and the bookings list, even though the course had already been paid for -- misleading staff and clients into thinking a covered session cost extra. BLD-1892: linkBookingToPackage() hard-refused to link any appointment that had already been charged or pre-paid, so an already-completed, already-paid visit (e.g. a treatment taken before a client bought a follow-up course) could never be retro-added to that course's session count -- the exact case the owner hit trying to include a 16 September visit in a newly purchased 3-session package.",
     notes: [
@@ -5857,6 +5857,23 @@ export const BUILD_BACKLOG: BacklogItem[] = [
       "No Prisma schema change -- this is display logic plus relaxing one existing guard on an existing action.",
       "Review fixes: (1) linkBookingToPackage now re-reads chargedAt/prepaidAt/giftVoucherPence/packageBookingId inside its Serializable transaction and aborts if any changed since the pre-check, so a charge landing mid-link can never get its price zeroed. (2) The booking detail Treatments & billing card for a linked session no longer hid add-ons: add-on lines (not covered by the package) and, while unpaid, the Total to charge stay visible; the card also no longer falls back to the full price view when the session number can't be resolved. (3) The client profile keys 'Package session' on the booking's own packageBookingId (not on the course still being listed) and hides the Charged/Paid badges on linked sessions; 'Not charged' still shows for money genuinely owed. The gift-voucher guard relaxation for already-settled visits was reviewed and kept: no zeroing happens on that path, so the voucher stays spent against the real price it paid.",
       "Verified: npx tsc --noEmit and npm run build both pass clean.",
+      "Merged: PR #2009 (squash b52a2cb1).",
+    ],
+  },
+  {
+    title: 'Add Option to Remove Outstanding Payments (BLD-1893)',
+    type: 'ERROR', urgency: 'P1', status: 'IN_REVIEW', assignee: 'claude', pr: PR(2010),
+    value: 6, effort: 2,
+    detail: "Admin/Owner could edit or clear a staff-recorded debt (Mark as Debt, BLD-1572/1763), but the automated late-cancel/no-show outstanding fee (lib/outstanding.ts, BLD-1066) had no removal path at all -- only charging it or waiving it at the moment of cancel/no-show cleared it. An incorrectly-generated fee (e.g. a cancellation later confirmed to be outside the 24h window) stayed on the client's balance and kept blocking their online booking forever, with no way to clear it after the fact.",
+    notes: [
+      "Fix: new server action removeOutstandingPayment(bookingId, reason) in app/admin/bookings/actions.ts, gated on bookings.charge (same permission as charging/refunding/Mark-as-Debt). Validates the booking is currently contributing to outstandingBalance() (the exact same shape lib/outstanding.ts's query uses: chargedAt/prepaidAt/feeWaived null-or-false, pricePence > 0, and CANCELLED+lateCancel or NO_SHOW) before touching anything, and requires a reason.",
+      "Reuses the existing Booking.feeWaived field rather than adding a new column -- lib/outstanding.ts already excludes feeWaived:true rows from the derived balance, and app/api/booking/create+start already read that same balance to block online booking, so setting feeWaived:true clears the balance AND lifts the booking restriction in one write, with nothing else to reset. Same mechanism applyNoShowFee's and cancelBooking's own 'waive' branches already use at cancel/no-show time -- this just makes it reachable afterward too.",
+      "Any loyalty points the client redeemed as money off the fee are returned via refundBookingPoints, matching the parity applyNoShowFee/cancelBooking already keep (BLD-1443) between their waive branches.",
+      "Audit: logs BOOKING_NO_SHOW or BOOKING_CANCELLED (matching whichever the booking's own status already used for the fee, rather than adding a new AuditAction enum value/migration) with meta.outstandingPaymentRemoved:true, plus a db.interaction.create on the client's activity timeline (author + createdAt satisfy 'who and when' automatically) -- both requested explicitly by the ticket.",
+      "UI: new components/admin/RemoveOutstandingPayment.tsx -- a 'Remove' link opening a Dialog (not window.confirm/alert, per the existing BLD-1559 accessibility fix) with a required reason field. Wired next to each item in the client profile's BLD-1066 outstanding-payment list (app/admin/clients/[id]/page.tsx, alongside the existing EditDebt control on the separate Mark-as-Debt list) and on the booking detail page itself (app/admin/bookings/[id]/page.tsx, next to the existing 'Cancelled within 24h / fee waived' text), both gated on the same isOutstanding shape as the server action and on bookings.charge.",
+      "No Prisma schema change -- feeWaived, the audit actions and the interaction/timeline write all already existed.",
+      "Verified: npx tsc --noEmit and npm run build both pass clean.",
+      "Review fix (pre-merge): (1) added the BLD-1693/1711 PRACTITIONER client-level scope that the sibling Mark-as-Debt/EditDebt routes already apply, so a practitioner granted bookings.charge can't remove a fee on another clinician's client by id. (2) A fee that hit SCA leaves a live PaymentIntent and an emailed /booking/pay link; removal now cancels that PaymentIntent first (and refuses if it already succeeded/is processing or can't be cancelled), otherwise the client could still pay a removed fee. (3) The feeWaived write is now a conditional updateMany on the same outstanding shape, so concurrent removals (or a removal racing a charge) can't both run the points refund/audit/timeline.",
     ],
   },
 ];
