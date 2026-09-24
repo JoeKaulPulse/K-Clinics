@@ -19,7 +19,11 @@ export function RemoveAddonButton({ bookingId, itemId }: { bookingId: string; it
     start(async () => {
       const res = await removeAddonTreatment(bookingId, itemId);
       if (res.ok) router.refresh();
-      else setError(res.error || 'Could not remove.');
+      else {
+        // Leave the confirm state so the error (rendered below) is visible.
+        setConfirming(false);
+        setError(res.error || 'Could not remove.');
+      }
     });
   }
 

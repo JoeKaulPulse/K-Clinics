@@ -48,8 +48,11 @@ export async function addTreatmentToBooking(bookingId: string, variantId: string
   if (!booking) return { ok: false, error: 'Booking not found.' };
   const paidCorrection = Boolean(booking.chargedAt);
   if (paidCorrection) {
+    // Review fix: also bookings.charge, like every other money correction
+    // (overrideBookingPrice, removeOutstandingPayment, PaymentMethodEditor) — an
+    // admin with "Take payments" revoked must not re-price a paid booking.
     const { sessionIsAdmin } = await import('@/lib/auth');
-    if (!sessionIsAdmin(session)) return { ok: false, error: 'Only an admin can add a treatment to an already-paid appointment.' };
+    if (!sessionIsAdmin(session) || !sessionCan(session, 'bookings.charge')) return { ok: false, error: 'Only an admin who can take payments can add a treatment to an already-paid appointment.' };
   }
   // BLD-1119: a BNPL course pre-payment covers the course total only, and every
   // charge surface refuses a pre-paid booking (no card can be billed twice) — so an
@@ -63,7 +66,7 @@ export async function addTreatmentToBooking(bookingId: string, variantId: string
   const label = `${v.service.name} — ${v.variant.name}`;
 
   // Line item + roll the price/duration into the booking in one transaction.
-  await db.$transaction([
+  const [, updated] = await db.$transaction([
     db.bookingItem.create({
       data: {
         bookingId, variantId, treatmentSlug: v.service.treatmentSlug, label,
@@ -73,12 +76,13 @@ export async function addTreatmentToBooking(bookingId: string, variantId: string
     db.booking.update({
       where: { id: bookingId },
       data: { pricePence: { increment: v.variant.pricePence }, durationMin: { increment: v.variant.durationMin } },
+      select: { pricePence: true },
     }),
   ]);
   await logAudit({
     action: 'SESSION_EDITED', actor: session.email, actorRole: session.role, bookingId, clientId: booking.clientId,
     summary: paidCorrection
-      ? `Added ${label} (+£${(v.variant.pricePence / 100).toFixed(2)}) AFTER payment (record only): total now £${((booking.pricePence + v.variant.pricePence) / 100).toFixed(2)} — card actually charged £${((booking.chargedPence ?? 0) / 100).toFixed(2)}, unchanged. Take a top-up payment or adjust manually if the client owes it.`
+      ? `Added ${label} (+£${(v.variant.pricePence / 100).toFixed(2)}) AFTER payment (record only): total now £${(updated.pricePence / 100).toFixed(2)} — card actually charged £${((booking.chargedPence ?? 0) / 100).toFixed(2)}, unchanged. Take a top-up payment or adjust manually if the client owes it.`
       : `Added ${label} (+£${(v.variant.pricePence / 100).toFixed(2)})`,
   });
   revalidatePath(`/admin/bookings/${bookingId}`);
@@ -101,32 +105,45 @@ export async function removeAddonTreatment(bookingId: string, itemId: string) {
   const { db } = await import('@/lib/db');
   const { logAudit } = await import('@/lib/audit');
 
-  const booking = await db.booking.findUnique({ where: { id: bookingId }, select: { chargedAt: true, chargedPence: true, clientId: true, status: true, pricePence: true } });
+  const booking = await db.booking.findUnique({ where: { id: bookingId }, select: { chargedAt: true, chargedPence: true, prepaidAt: true, prepaidPence: true, clientId: true, status: true } });
   if (!booking) return { ok: false, error: 'Booking not found.' };
-  const paidCorrection = Boolean(booking.chargedAt);
+  // Review fix: a BNPL pre-paid course (prepaidAt, no chargedAt) is paid too —
+  // removing an add-on there lowers the agreed price of settled money, so it
+  // takes the same admin + bookings.charge gate as a charged booking.
+  const paidCorrection = Boolean(booking.chargedAt || booking.prepaidAt);
   if (paidCorrection) {
     const { sessionIsAdmin } = await import('@/lib/auth');
-    if (!sessionIsAdmin(session)) return { ok: false, error: 'Only an admin can remove an add-on from an already-paid appointment.' };
+    if (!sessionIsAdmin(session) || !sessionCan(session, 'bookings.charge')) return { ok: false, error: 'Only an admin who can take payments can remove an add-on from an already-paid appointment.' };
   }
   if (booking.status === 'CANCELLED' || booking.status === 'NO_SHOW') return { ok: false, error: 'This appointment is cancelled.' };
 
-  const item = await db.bookingItem.findUnique({ where: { id: itemId }, select: { isAddon: true, label: true, pricePence: true, durationMin: true, bookingId: true } });
+  const item = await db.bookingItem.findUnique({ where: { id: itemId }, select: { isAddon: true, label: true, pricePence: true, discountPence: true, durationMin: true, bookingId: true } });
   if (!item) return { ok: false, error: 'Item not found.' };
   if (item.bookingId !== bookingId) return { ok: false, error: 'Item does not belong to this booking.' };
   if (!item.isAddon) return { ok: false, error: 'Only add-on treatments can be removed.' };
+  // Review fix: booking.pricePence holds each item NET of its discount (online
+  // add-ons carry a 20% upsell discountPence — app/api/booking/start), so take
+  // off the net amount, not the list price, or the total drops too far.
+  const netPence = Math.max(0, item.pricePence - item.discountPence);
 
-  await db.$transaction([
-    db.bookingItem.delete({ where: { id: itemId } }),
-    db.booking.update({
+  // The delete re-asserts booking + add-on in its WHERE, so a concurrent removal
+  // (or anything that changed the row since the read) can't double-decrement.
+  const updated = await db.$transaction(async (tx) => {
+    const del = await tx.bookingItem.deleteMany({ where: { id: itemId, bookingId, isAddon: true } });
+    if (del.count !== 1) return null;
+    return tx.booking.update({
       where: { id: bookingId },
-      data: { pricePence: { decrement: item.pricePence }, durationMin: { decrement: item.durationMin } },
-    }),
-  ]);
+      data: { pricePence: { decrement: netPence }, durationMin: { decrement: item.durationMin } },
+      select: { pricePence: true },
+    });
+  });
+  if (!updated) return { ok: false, error: 'That add-on was already removed.' };
+  const paidPence = booking.chargedAt ? (booking.chargedPence ?? 0) : (booking.prepaidPence ?? 0);
   await logAudit({
     action: 'SESSION_EDITED', actor: session.email, actorRole: session.role, bookingId, clientId: booking.clientId,
     summary: paidCorrection
-      ? `Removed add-on ${item.label} (-£${(item.pricePence / 100).toFixed(2)}) AFTER payment (record only): total now £${((booking.pricePence - item.pricePence) / 100).toFixed(2)} — card actually charged £${((booking.chargedPence ?? 0) / 100).toFixed(2)}, unchanged. Refund the difference manually if the client is owed it.`
-      : `Removed add-on ${item.label} (-£${(item.pricePence / 100).toFixed(2)})`,
+      ? `Removed add-on ${item.label} (-£${(netPence / 100).toFixed(2)}) AFTER payment (record only): total now £${(updated.pricePence / 100).toFixed(2)} — client actually paid £${(paidPence / 100).toFixed(2)}, unchanged. Refund the difference manually if the client is owed it.`
+      : `Removed add-on ${item.label} (-£${(netPence / 100).toFixed(2)})`,
   });
   revalidatePath(`/admin/bookings/${bookingId}`);
   revalidatePath(`/admin/bookings/${bookingId}/session`);

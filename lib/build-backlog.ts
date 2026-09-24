@@ -5888,6 +5888,7 @@ export const BUILD_BACKLOG: BacklogItem[] = [
       "BNPL pre-paid courses (prepaidAt) are unchanged -- extras still can't be collected on them (BLD-1119), so add stays refused there; that block never applied to remove and still doesn't.",
       "No Prisma schema change.",
       "Verified: npx tsc --noEmit and npm run build both pass clean.",
+      "Review fix (pre-merge): (1) the paid-correction path now also requires bookings.charge (server + page gates), matching overrideBookingPrice/removeOutstandingPayment/PaymentMethodEditor, so an admin with Take payments revoked can't re-price a paid booking. (2) removeAddonTreatment treats a BNPL pre-paid course (prepaidAt, no chargedAt) as paid too, so a practitioner can't lower a paid-in-full course's price from the new button. (3) Removal took the add-on's list price off booking.pricePence, but online add-ons carry a 20% upsell discountPence and the booking total holds the net, so the total dropped too far; it now subtracts pricePence - discountPence. (4) The delete re-asserts bookingId + isAddon in a conditional deleteMany inside an interactive transaction, so a double-click or concurrent removal can't decrement twice; the audit 'total now' figure comes from the post-update row, not the pre-read. (5) The 'Already charged - add further treatments to a new booking' note is hidden when the add picker is shown, and RemoveAddonButton now shows its error instead of leaving it hidden behind the Yes/No confirm.",
     ],
   },
 ];

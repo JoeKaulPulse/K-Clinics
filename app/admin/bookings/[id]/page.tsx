@@ -235,13 +235,16 @@ export default async function BookingDetail({ params }: { params: Promise<{ id: 
   // offer the picker; extras go on a new booking.
   // BLD-1895: an already-charged booking is now allowed too, admin-only —
   // same record-only pattern as canPriceOverride below.
+  // Review fix: the paid path also needs bookings.charge (matches the server).
+  const canPaidCorrect = sessionIsAdmin(session) && sessionCan(session, 'bookings.charge');
   const canAddTreatment = canManageBk && !b.prepaidAt && !['CANCELLED', 'NO_SHOW'].includes(b.status)
-    && (!b.chargedAt || sessionIsAdmin(session));
+    && (!b.chargedAt || canPaidCorrect);
   // BLD-1895: remove an add-on — canManageBk/liveAppointments.manage as before,
-  // now also allowed after charge for an admin (removeAddonTreatment enforces
-  // the same gate server-side; never touches chargedPence/chargedAt).
+  // now also allowed once paid (charged OR BNPL pre-paid) for an admin with
+  // bookings.charge (removeAddonTreatment enforces the same gate server-side;
+  // never touches chargedPence/chargedAt/prepaidPence).
   const canRemoveAddon = (canManageBk || sessionCan(session, 'liveAppointments.manage')) && !['CANCELLED', 'NO_SHOW'].includes(b.status)
-    && (!b.chargedAt || sessionIsAdmin(session));
+    && (!(b.chargedAt || b.prepaidAt) || canPaidCorrect);
   // BLD-1149: price override — same lifecycle gate, but keyed on bookings.charge
   // (the permission that already lets the holder adjust the amount at checkout).
   // BLD-1094 (owner decision: record-only): admins may also correct the price
@@ -538,7 +541,7 @@ export default async function BookingDetail({ params }: { params: Promise<{ id: 
                 </div>
               )}
               {canAddTreatment && <div className="mt-4"><AddTreatment bookingId={b.id} variants={variantOptions} /></div>}
-              {b.chargedAt && addOnItems.length > 0 && <p className="mt-3 text-xs text-[var(--color-stone)]">Already charged — add further treatments to a new booking.</p>}
+              {b.chargedAt && addOnItems.length > 0 && !canAddTreatment && <p className="mt-3 text-xs text-[var(--color-stone)]">Already charged — add further treatments to a new booking.</p>}
               {canBnpl && <BnplPaymentButton bookingId={b.id} />}
             </div>
           )}
