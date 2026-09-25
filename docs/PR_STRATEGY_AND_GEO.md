@@ -12,7 +12,7 @@ Where the platform stands on 25 September 2026, what changed today, and the orde
 - **Then the shop.** The shop already switches itself on the moment a product goes live; it now also announces its catalogue to search and AI engines. The remaining work is the owner adding products.
 - **Dental last, step by step.** Nothing changes until a GDC-registered dentist is in post. The site keeps saying "opening soon" everywhere, including to AI assistants.
 - **Ads after, not before.** Yes: get the academy policies and copy approved before paying for academy traffic. Clinic treatment ads can start earlier because booking, pricing and conversion tracking are already live.
-- **Pull requests.** Of 35 open pull requests, none could be merged as they stood. By the end of the day 11 were merged and one closed as already shipped, leaving 24 open: one resolved and waiting for a push, seven to re-cut on current main, two Dependabot majors, and the drafts that need an owner decision. Each is listed with the exact decision or rework it needs.
+- **Pull requests.** Of 35 open pull requests, none could be merged as they stood. By the end of the day 12 were merged and one closed as already shipped, leaving 23 open: seven to re-cut on current main, two Dependabot majors, and the drafts that need an owner decision. Each is listed with the exact decision or rework it needs.
 
 ### Done today
 
@@ -20,7 +20,7 @@ Where the platform stands on 25 September 2026, what changed today, and the orde
 - **Funding copy corrected.** Every page, FAQ and AI-facing file now says the same thing: Advanced Learner Loans and the Adult Skills Fund are not available through K Academy and are not expected before 2028; monthly finance and employer funding are.
 - **Centre policies hub.** Ten draft policies at kclinics.co.uk/academy/policies, each editable in Admin → Pages. Version 1.0, marked for owner review.
 - **Board updated.** Project PRJ-1291 on the Build board holds the nine tasks from the owner's message, with who does what and what "done" looks like.
-- **Pull requests merged.** 12 pull requests shipped to production and one closed as already shipped (list in section 3). Open security advisories on main fell from 9 to 1.
+- **Pull requests merged.** 13 pull requests shipped to production and one closed as already shipped (list in section 3). Open security advisories on main fell from 9 to 1.
 
 > **Owner actions:** Two things only the owner can do this week: (1) read and approve the ten centre policies before the EQA visit, and (2) send the list of new programmes (title, level, awarding body, fee, duration, first cohort) so they can be added in Admin → Academy.
 
@@ -74,14 +74,11 @@ How the 35 open pull requests were triaged, what shipped, what needs the owner, 
 | #1997 | fix(clients): mandatory client registration fields (BLD-1870) — conflict resolved and merged later the same day |
 | #1994 | feat(academy): editable VTCT registration declaration (BLD-1867) — conflict resolved and merged later the same day |
 | #1996 | feat(payments): Klarna & Clearpay claims where BNPL is real (BLD-1827) — conflict resolved and merged later the same day |
+| #1995 | fix(bookings): deliberate £0 appointment price (BLD-1869) — conflict resolved and merged later the same day |
 
-### Resolved locally, one push away
+### Small conflicts, resolved the same day
 
-Four non-draft PRs conflicted only on the backlog file (and, in two cases, one small content file). The merges from main were prepared and checked in this session; pushing onto another session's branch was stopped by the sandbox safety check, so the pushes were handed over as a task. Three of the four (#1997, #1994, #1996) were then pushed and merged the same afternoon. One remains:
-
-| PR | Topic | Conflict | Resolution |
-| --- | --- | --- | --- |
-| #1995 | Deliberate £0 appointment price (BLD-1869) | Backlog file + two admin booking pages | Keep both sides of lib/build-backlog.ts; take main's package-session layout in the two admin booking pages and add the "price set by staff" guard in the three price expressions (priceSetByStaff \|\| … > 0). Push, wait for typecheck, squash-merge. |
+Four non-draft PRs (#1997, #1994, #1996, #1995) conflicted only on the backlog file and, in two cases, one small content file. The merges from main were prepared and checked in the session, handed over as a task because the sandbox would not push onto another session's branch, and all four were pushed and merged the same afternoon.
 
 ### Waiting on an owner decision
 
@@ -253,7 +250,7 @@ The full triage table as of 25 September 2026.
 | 1998 | Dependabot codeql-action | no | merged today |
 | 1997 | Mandatory client registration fields (BLD-1870) | no | merged today (after conflict resolution) |
 | 1996 | Klarna/Clearpay copy (BLD-1827) | no | merged today (after conflict resolution) |
-| 1995 | £0 appointment price (BLD-1869) | no | resolution prepared; push + merge |
+| 1995 | £0 appointment price (BLD-1869) | no | merged today (after conflict resolution) |
 | 1994 | Editable VTCT declaration (BLD-1867) | no | merged today (after conflict resolution) |
 | 1992 | Schema post town, OG truncation, chat focus | no | merged today |
 | 1964 | Dependabot production deps (21) | no | typecheck fails — fix forward or split |
