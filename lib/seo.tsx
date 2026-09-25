@@ -305,6 +305,42 @@ export function reviewLd(r: { author: string; rating: number; body: string; date
   };
 }
 
+/** K Academy as its own EducationalOrganization node, linked to the clinic
+ *  (parentOrganization) and referenced by @id from every Course, so search
+ *  and AI answer engines resolve one consistent training-centre entity. */
+export function academyLd() {
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'EducationalOrganization',
+    '@id': `${base}/#academy`,
+    name: 'K Academy',
+    alternateName: 'KClinics Academy',
+    url: `${base}/academy`,
+    description: 'Aesthetics training centre inside KClinics, Islington: Ofqual-regulated, VTCT-awarded qualifications (Levels 2–4), CPD-accredited short courses and advanced Level 5–7 programmes, delivered as online theory plus practical days in a working clinic.',
+    parentOrganization: { '@id': `${base}/#clinic` },
+    telephone: site.phone,
+    email: site.email,
+    address: {
+      '@type': 'PostalAddress',
+      streetAddress: site.address.street,
+      addressLocality: site.address.locality,
+      addressRegion: site.address.region,
+      postalCode: site.address.postalCode,
+      addressCountry: site.address.country,
+    },
+    areaServed: londonAreas(),
+    hasCredential: [
+      { '@type': 'EducationalOccupationalCredential', name: 'VTCT approved centre', recognizedBy: { '@type': 'Organization', name: 'VTCT' } },
+      { '@type': 'EducationalOccupationalCredential', name: 'Ofqual-regulated qualifications (Levels 2–4)', recognizedBy: { '@type': 'Organization', name: 'Ofqual' } },
+      { '@type': 'EducationalOccupationalCredential', name: 'CPD-accredited short courses' },
+    ],
+    knowsAbout: ['Aesthetic medicine training', 'Laser and skin therapies', 'Injectable treatments', 'Clinical governance'],
+    sameAs: Object.values(site.social),
+  };
+}
+
+const ACADEMY_PROVIDER = () => ({ '@type': 'EducationalOrganization', '@id': `${base}/#academy`, name: 'K Academy', url: `${base}/academy` });
+
 /** Course schema for K Academy training pages (rich-result eligible). */
 export function courseLd(c: {
   title: string;
@@ -323,7 +359,7 @@ export function courseLd(c: {
     name: c.title,
     description: c.description,
     url: `${base}${c.path}`,
-    provider: { '@type': 'Organization', name: 'K Academy', sameAs: base },
+    provider: ACADEMY_PROVIDER(),
     hasCourseInstance: [{
       '@type': 'CourseInstance',
       courseMode: 'Blended',

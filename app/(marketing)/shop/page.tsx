@@ -6,7 +6,7 @@ import { Reveal } from '@/components/motion/Reveal';
 import { CartLink } from '@/components/shop/CartLink';
 import { activeProducts, formatPence } from '@/lib/shop';
 import { crmEnabled } from '@/lib/crm';
-import { pageMeta } from '@/lib/seo';
+import { pageMeta, JsonLd, itemListLd } from '@/lib/seo';
 import { getVatNote } from '@/lib/vat';
 
 export const revalidate = 3600;
@@ -32,6 +32,9 @@ export default async function ShopPage() {
 
   return (
     <>
+      {/* Product list as ItemList so search/AI engines see the catalogue from
+          the hub, not only from each product page's Product node (GEO). */}
+      {products.length > 0 && <JsonLd data={itemListLd('KClinics shop', products.map((p) => ({ name: p.name, path: `/shop/${p.slug}` })))} />}
       <PageHero eyebrow="Shop" title="Clinic-grade products" lede="Curated skincare and essentials — delivered to your door or collect in clinic.">
         {/* Only show the cart pill when the shop is actually live — otherwise it's
             an empty placeholder over the "coming soon" state (BLD-557). */}
