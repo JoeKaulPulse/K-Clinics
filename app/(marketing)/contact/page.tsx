@@ -45,7 +45,7 @@ export default async function ContactPage() {
               <p className="font-[family-name:var(--font-display)] text-2xl leading-snug">
                 {site.address.street}
                 <br />
-                {site.address.locality}
+                {site.address.district}
                 <br />
                 {site.address.region} {site.address.postalCode}
               </p>

@@ -27,7 +27,14 @@ export const site = {
   emailHref: 'mailto:support@kclinics.co.uk',
   address: {
     street: '4 Charterhouse Buildings, Goswell Road',
-    locality: 'Clerkenwell, Islington',
+    // Royal Mail post town for the postcode below (BLD-1841) — this is what
+    // schema.org PostalAddress.addressLocality and NAP-matching services expect.
+    // For on-page display copy, use `district` instead.
+    locality: 'London',
+    // Neighbourhood/district name for display copy only — never put this in a
+    // schema.org address field (the /clinics page already hedges with
+    // "Islington/City of London border", so keep it descriptive, not postal).
+    district: 'Clerkenwell, Islington',
     region: 'London',
     postalCode: 'EC1M 7AN',
     country: 'GB',

@@ -40,7 +40,7 @@ export type SiteConfig = {
   whatsapp: string;
   email: string;
   emailHref: string;
-  address: { street: string; locality: string; region: string; postalCode: string; country: string; countryName: string };
+  address: { street: string; locality: string; district: string; region: string; postalCode: string; country: string; countryName: string };
   geo: { latitude: number; longitude: number };
   mapEmbed: string;
   mapLink: string;
