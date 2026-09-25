@@ -648,12 +648,12 @@ export function tmplCustomGiftCard(o: { recipientName: string; fromName: string;
     preheader: `${o.fromName} sent you a KClinics ${o.packageName || `${o.amount} gift card`}`,
     body: `${heroBand('voucher')}
     <h1 style="font-size:26px;margin:0 0 12px;">A gift for you, ${escape(o.recipientName)}.</h1>
-    <p><strong>${escape(o.fromName)}</strong> has sent you ${o.packageName ? `the <strong>${escape(o.packageName)}</strong> at KClinics` : 'a KClinics gift card to spend on any of our treatments'}.</p>
+    <p><strong>${escape(o.fromName)}</strong> has sent you ${o.packageName ? `the <strong>${escape(o.packageName)}</strong> at KClinics` : 'a KClinics gift card to spend on our treatments'}.</p>
     ${o.packageName ? `<p style="font-size:14px;color:#91766e;">Worth ${o.amount}, redeemable towards this package in clinic.</p>` : ''}
     ${voucherCard(o.amount, o.code, { designId: o.designId, recipientName: o.recipientName, message: o.message })}
     <p style="margin:22px 0 10px;">${btn(o.viewUrl, 'View &amp; share your card')}</p>
     <p style="margin:0 0 22px;">${btnOutline(o.claimUrl, 'Add to your account &amp; claim')}</p>
-    <p style="font-size:14px;">Valid for 12 months; partial use is fine — any balance stays on your card. (Treatments are for ages 18+.)</p>
+    <p style="font-size:14px;">Valid for 12 months; partial use is fine — any balance stays on your card. Not valid for injectable treatments or CO2 laser treatments. (Treatments are for ages 18+.)</p>
     <p>With warmth,<br>The KClinics team</p>`,
   });
 }
@@ -663,10 +663,10 @@ export function tmplGiftVoucher(o: { recipientName: string; fromName: string; am
     preheader: `${o.fromName} sent you a ${o.amount} KClinics gift voucher`,
     body: `${heroBand('voucher')}
     <h1 style="font-size:26px;margin:0 0 12px;">A gift for you, ${escape(o.recipientName)}.</h1>
-    <p><strong>${escape(o.fromName)}</strong> has sent you a KClinics gift voucher to spend on any of our treatments.</p>
+    <p><strong>${escape(o.fromName)}</strong> has sent you a KClinics gift voucher to spend on our treatments.</p>
     ${o.message ? `<p style="background:#efe3d7;padding:14px 16px;border-radius:10px;font-style:italic;">“${escape(o.message)}”</p>` : ''}
     ${voucherCard(o.amount, o.code)}
-    <p style="font-size:14px;">Create your free account to add this gift card to your profile and use it against any treatment. Valid for 12 months; partial use is fine — any balance stays on your card. (Treatments are for ages 18+.)</p>
+    <p style="font-size:14px;">Create your free account to add this gift card to your profile and use it against your treatment. Valid for 12 months; partial use is fine — any balance stays on your card. Not valid for injectable treatments or CO2 laser treatments. (Treatments are for ages 18+.)</p>
     <p style="margin:24px 0;">${btn(o.bookUrl, 'Create your account &amp; claim')}</p>
     <p>With warmth,<br>The KClinics team</p>`,
   });
@@ -681,7 +681,7 @@ export function tmplGiftVoucherReceipt(o: { purchaserName: string; amount: strin
     <p>Your ${o.packageName ? `<strong>${escape(o.packageName)}</strong> gift (worth ${o.amount})` : `${o.amount} gift card`} is ready${o.recipientName ? ` for <strong>${escape(o.recipientName)}</strong>` : ''}.</p>
     ${o.scheduled ? `<p>We’ll deliver it to them on <strong>${when}</strong>.</p>` : `<p>${o.recipientName ? 'We’ve sent it to them too.' : 'Here it is to share however you like.'}</p>`}
     ${voucherCard(o.amount, o.code, { designId: o.designId })}
-    <p style="font-size:14px;">Valid for 12 months. Redeemable against any treatment; partial use keeps the balance on the code.</p>
+    <p style="font-size:14px;">Valid for 12 months; partial use keeps the balance on the code. Not valid for injectable treatments or CO2 laser treatments.</p>
     <p>With warmth,<br>The KClinics team</p>`,
   });
 }
