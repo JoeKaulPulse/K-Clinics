@@ -12,7 +12,7 @@ import { linkBookingToPackage, unlinkBookingFromPackage } from '@/app/admin/book
 // from one never paid for — both are !paid, but they need different labels.
 export type LinkablePackage = { purchaseBookingId: string; label: string; sessionsTotal: number; sessionsRemaining: number; paid: boolean; refunded: boolean };
 
-export function PackageLinkControl({ bookingId, linked, options }: { bookingId: string; linked: boolean; options: LinkablePackage[] }) {
+export function PackageLinkControl({ bookingId, linked, options, alreadySettled }: { bookingId: string; linked: boolean; options: LinkablePackage[]; alreadySettled?: boolean }) {
   const [pending, start] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const [choice, setChoice] = useState(options.length === 1 ? options[0].purchaseBookingId : '');
@@ -46,6 +46,11 @@ export function PackageLinkControl({ bookingId, linked, options }: { bookingId: 
       <p className="mt-1 text-xs text-[var(--color-stone)]">
         This client has a prepaid course for this treatment. Link the appointment so it counts as one of the course’s sessions instead of a separate visit.
       </p>
+      {alreadySettled && (
+        // BLD-1892: this visit was already charged/pre-paid on its own — say so
+        // up front so staff aren't surprised by nothing changing on the payment side.
+        <p className="mt-1 text-xs text-[var(--color-stone)]">This visit was already paid for — linking it won’t refund or charge anything, it will just count it as a session of the course.</p>
+      )}
       {error && <p role="alert" aria-live="assertive" className="mt-2 text-xs text-[var(--color-blush-deep)]">{error}</p>}
       <div className="mt-3 flex flex-wrap items-center gap-3">
         {options.length > 1 ? (

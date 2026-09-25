@@ -70,17 +70,24 @@ function Inner() {
   }
 
   return (
-    <form onSubmit={submit} className="space-y-5">
+    // PRJ-1229.2: `method="post"` and the inputs' `name` attributes go together
+    // and must stay together. The names exist so a pre-hydration native submit
+    // (password-manager autosubmit before onSubmit attaches) fails visibly
+    // instead of silently reloading with blank fields. Without method="post" a
+    // form with no action defaults to GET, which would put the password in the
+    // URL query string — and therefore in access logs, history and referrers.
+    // Never drop method="post" while the name attributes are present.
+    <form onSubmit={submit} method="post" className="space-y-5">
       <div>
         <label className={authLabel} htmlFor="email">{t('field.email')}</label>
-        <input id="email" type="email" autoComplete="email" required className={authField} value={email} onChange={(e) => setEmail(e.target.value)} />
+        <input id="email" name="email" type="email" autoComplete="email" required className={authField} value={email} onChange={(e) => setEmail(e.target.value)} />
       </div>
       <div>
         <div className="flex items-baseline justify-between">
           <label className={authLabel} htmlFor="password">{t('login.password')}</label>
           <Link href="/account/forgot-password" className="text-xs font-medium text-[var(--color-gold-deep)]">{t('login.forgot')}</Link>
         </div>
-        <input id="password" type="password" autoComplete="current-password" required className={authField} value={password} onChange={(e) => setPassword(e.target.value)} />
+        <input id="password" name="password" type="password" autoComplete="current-password" required className={authField} value={password} onChange={(e) => setPassword(e.target.value)} />
       </div>
       {captchaSiteKey && <Turnstile siteKey={captchaSiteKey} onToken={setCaptchaToken} />}
       {error && <p role="alert" aria-live="assertive" className="rounded-[var(--radius-sm)] bg-[var(--color-blush)]/25 px-4 py-2.5 text-sm text-[var(--color-ink)]">{error}</p>}

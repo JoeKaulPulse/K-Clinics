@@ -86,14 +86,37 @@ export async function POST(req: Request) {
       if (r.ok) sent.push('email');
       else sendErrors.push(`email: ${r.error || 'unknown error'}`);
     }
-    if ((want === 'sms' || want === 'both') && booking.client.smsReminders !== false) {
-      const { sendSms } = await import('@/lib/sms');
-      const msg = noAccount
-        ? `KClinics: welcome to our new site — open your account and save a card to confirm your appointment (no payment now): ${actionUrl}`
-        : `KClinics: please save a card to confirm your appointment (no payment taken now): ${cardUrl}`;
-      const r = await sendSms(booking.client.phone, msg);
-      if (r.ok) sent.push('sms');
-      else sendErrors.push(`sms: ${r.error || 'unknown error'}`);
+    if (want === 'sms' || want === 'both') {
+      if (booking.client.smsReminders === false) {
+        // BLD-1797: previously fell straight through to the generic "check the
+        // client has an email/phone" message with no mention of the real
+        // reason — staff had no way to tell an opt-out apart from a delivery
+        // failure. Say so explicitly.
+        sendErrors.push('sms: this client has opted out of SMS (Text messages are off in their profile)');
+      } else {
+        const { sendSms } = await import('@/lib/sms');
+        const msg = noAccount
+          ? `KClinics: welcome to our new site — open your account and save a card to confirm your appointment (no payment now): ${actionUrl}`
+          : `KClinics: please save a card to confirm your appointment (no payment taken now): ${cardUrl}`;
+        const r = await sendSms(booking.client.phone, msg);
+        // BLD-1797 (root cause): sendSms() returns { ok: true, dummy: true }
+        // when Twilio isn't configured — a deliberate "don't break callers"
+        // fallback (BLD-583), but this route treated `ok` alone as "sent",
+        // so staff saw "Sent by sms ✓" and believed the client had it while
+        // NOTHING was actually transmitted, and nothing was ever logged. That
+        // false-positive is the confirmed root cause of clients not receiving
+        // the card-on-file link over SMS. Dummy sends must not count as sent,
+        // and — unlike the generic sms-test dummy case — this specific flow is
+        // client-facing and P0, so surface it to Sentry as well as the UI.
+        if (r.ok && !r.dummy) {
+          sent.push('sms');
+        } else if (r.dummy) {
+          sendErrors.push('sms: SMS is not configured (Twilio credentials missing) — add them in Settings → Integrations, or use the email link');
+          Sentry.captureMessage('[request-card] SMS requested but Twilio is not configured — link NOT sent', { level: 'warning', tags: { area: 'admin/bookings/request-card' } });
+        } else {
+          sendErrors.push(`sms: ${r.error || 'unknown error'}`);
+        }
+      }
     }
 
     if (sent.length === 0) {
@@ -104,7 +127,11 @@ export async function POST(req: Request) {
     const logLabel = noAccount ? 'Account invite + card link sent' : 'Card-on-file link sent';
     await db.interaction.create({ data: { clientId: booking.clientId, type: 'APPOINTMENT', summary: `${logLabel} (${sent.join(', ')}) for ${booking.treatmentTitle}`, author: session.email } }).catch(() => {});
 
-    return NextResponse.json({ ok: true, sent, url: actionUrl, invited: noAccount });
+    // BLD-1797: a "both" request that half-fails (e.g. email sends, SMS is
+    // dummy/errors) used to report unqualified success — staff saw "Sent by
+    // email ✓" with no sign the SMS half never went out. Surface the partial
+    // failure alongside the success so it isn't silent.
+    return NextResponse.json({ ok: true, sent, warnings: sendErrors.length ? sendErrors : undefined, url: actionUrl, invited: noAccount });
   } catch (e) {
     console.error('[request-card] unexpected failure:', (e as Error)?.message);
     Sentry.captureException(e, { tags: { area: 'admin/bookings/request-card' } });

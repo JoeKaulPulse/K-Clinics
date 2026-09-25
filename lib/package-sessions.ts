@@ -29,6 +29,14 @@ export type PackageView = {
   purchaseBookingId: string;
   label: string; // e.g. "Laser Hair Removal — Full Body"
   treatmentSlug: string;
+  // BLD-1890: treatmentSlug identifies the marketing category only (e.g.
+  // "laser-hair-removal") — a category can have several service variants/areas
+  // (Chin, Lower Leg, Underarms…) that all share the same slug. variantId is
+  // the specific area purchased, so callers can tell those packages apart
+  // instead of treating every package in the category as interchangeable.
+  // Null when the purchase was made without a specific variant on record
+  // (e.g. a variant-less category, or older data from before this was tracked).
+  variantId: string | null;
   sessionsTotal: number;
   sessionsUsed: number; // completed sessions (incl. the purchase visit itself)
   sessionsBooked: number; // pending/confirmed, not yet taken
@@ -40,6 +48,13 @@ export type PackageView = {
   // latter reads as a demand for money the client has already had returned.
   refunded: boolean;
   purchasedAt: Date;
+  // BLD-1824: staff override for a package paid outside Stripe. null when no
+  // override has ever been recorded (the badge falls back to the Stripe-derived
+  // `paid` above).
+  manualPaymentStatus: 'PAID' | 'PARTIALLY_PAID' | 'NOT_PAID' | null;
+  manualPaymentMethod: string | null;
+  manualPaymentAmountPence: number | null;
+  manualPaymentAt: Date | null;
 };
 
 const LIVE = ['PENDING', 'CONFIRMED'] as const;
@@ -102,7 +117,8 @@ export async function clientPackages(clientId: string): Promise<PackageView[]> {
       id: true, treatmentSlug: true, treatmentTitle: true, status: true,
       chargedAt: true, prepaidAt: true, createdAt: true,
       chargedPence: true, refundedPence: true,
-      items: { where: { isAddon: false }, orderBy: { createdAt: 'asc' }, take: 1, select: { sessions: true, label: true } },
+      manualPaymentStatus: true, manualPaymentMethod: true, manualPaymentAmountPence: true, manualPaymentAt: true,
+      items: { where: { isAddon: false }, orderBy: { createdAt: 'asc' }, take: 1, select: { sessions: true, label: true, variantId: true } },
       packageSessions: { where: SESSION_INCLUDED, select: { status: true, packageSessionUsedAt: true } },
     },
   }).catch(() => []);
@@ -119,13 +135,21 @@ export async function clientPackages(clientId: string): Promise<PackageView[]> {
       purchaseBookingId: p.id,
       label: p.items[0]?.label || p.treatmentTitle,
       treatmentSlug: p.treatmentSlug,
+      variantId: p.items[0]?.variantId ?? null,
       sessionsTotal: total,
       sessionsUsed: used,
       sessionsBooked: booked,
       sessionsRemaining: Math.max(0, total - used - booked),
-      paid: Boolean(p.chargedAt || p.prepaidAt) && !fullyRefunded,
+      // BLD-1824: a 'PAID' staff override makes the package spendable exactly
+      // like a Stripe charge would — 'PARTIALLY_PAID' does not (mirrors the
+      // existing bar: online client booking already requires `paid` in full).
+      paid: (Boolean(p.chargedAt || p.prepaidAt) || p.manualPaymentStatus === 'PAID') && !fullyRefunded,
       refunded: fullyRefunded,
       purchasedAt: p.createdAt,
+      manualPaymentStatus: (p.manualPaymentStatus as PackageView['manualPaymentStatus']) ?? null,
+      manualPaymentMethod: p.manualPaymentMethod ?? null,
+      manualPaymentAmountPence: p.manualPaymentAmountPence ?? null,
+      manualPaymentAt: p.manualPaymentAt ?? null,
     };
   });
 }

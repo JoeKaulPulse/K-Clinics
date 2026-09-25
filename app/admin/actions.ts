@@ -56,9 +56,14 @@ export async function eraseClientData(clientId: string) {
         phone: null, dob: null, notes: null, allergies: null, medicalFlag: null, medicalFlagSetBy: null, medicalFlagAt: null,
         marketingOptIn: false, unsubscribed: true, portalActive: false, passwordHash: null,
         resetTokenHash: null, resetTokenExp: null,
+        // BLD-1797: the passwordless account-invite token now lives in its own
+        // columns (see lib/client-auth.ts) — clear it here too.
+        inviteTokenHash: null, inviteTokenExp: null,
         // BLD-1518: signupIp (personal data) and the patch-test outcome
         // (special-category health data) were left untouched by erasure.
-        signupIp: null, patchTestResult: null, patchTestDate: null, patchTestSetBy: null,
+        // BLD-1846 added patchTestRecordedAt (the audit-entry timestamp,
+        // separate from the test date) — cleared here too.
+        signupIp: null, patchTestResult: null, patchTestDate: null, patchTestSetBy: null, patchTestRecordedAt: null,
         // BLD-912: leaderboardOptIn:true clients are queried onto the public
         // /membership leaderboard by photo+name, and concerns/genderSelfDescribe
         // are free-text special-category-adjacent fields — none had a retention
@@ -131,8 +136,13 @@ export async function eraseClientData(clientId: string) {
     db.discountClaim.updateMany({ where: { clientId }, data: { emailNorm: 'erased', phoneNorm: null, nameDobKey: null, ip: null } }),
     // Strip PII from retail Orders (email/name/phone/address) — keep order number
     // and amounts for Xero/HMRC basis. Order.clientId is a nullable String set at
-    // checkout (no formal FK relation), so we match on it directly.
-    db.order.updateMany({ where: { clientId }, data: { name: 'Erased', email: erasedEmail, phone: null, shipName: null, shipLine1: null, shipLine2: null, shipCity: null, shipPostcode: null } }),
+    // checkout (no formal FK relation), so we match on it directly. BLD-1879:
+    // guest orders (POS sales, which never create a Client row) leave clientId
+    // null with only the order's own email set, so also match those by this
+    // client's stored address. Guest rows only (clientId: null), so an order
+    // linked to a different account is never touched; case-insensitive because
+    // POS saves the email as typed (same as the chat/bookingIntent matches here).
+    db.order.updateMany({ where: { OR: [{ clientId }, { clientId: null, email: { equals: client.email, mode: 'insensitive' } }] }, data: { name: 'Erased', email: erasedEmail, phone: null, shipName: null, shipLine1: null, shipLine2: null, shipCity: null, shipPostcode: null } }),
     // GiftVouchers claimed by this client — strip purchaser + recipient PII.
     db.giftVoucher.updateMany({ where: { claimedByClientId: clientId }, data: { purchaserName: 'Erased', purchaserEmail: erasedEmail, recipientName: null, recipientEmail: null, message: null, shipName: null, shipLine1: null, shipLine2: null, shipCity: null, shipPostcode: null } }),
     // GiftVouchers purchased by this client (email-matched; no purchaserClientId FK).
@@ -154,6 +164,13 @@ export async function eraseClientData(clientId: string) {
     // location nulled, leaving only the anonymised safety fact (category, severity,
     // RIDDOR flag, date). Documented in docs/data-protection/retention-schedule.md.
     db.incident.updateMany({ where: { clientId }, data: { descriptionEnc: encClinical(JSON.stringify({ redacted: 'client-erased' })), location: null } }),
+    // BLD-1572: staff-recorded debts (ClientDebt) are RETAINED — an amount owed
+    // is a financial fact with the same HMRC basis as the bookings above, and
+    // the relation is SetNull so the row outlives the client either way. But
+    // `reason` is staff-typed free text that routinely names the person or what
+    // they were treated for, so it gets the Incident treatment: keep the
+    // amount/date, strip the narrative.
+    db.clientDebt.updateMany({ where: { clientId }, data: { reason: 'Redacted — client erased' } }),
     // PRJ-1032.17: BookingIntent (abandoned-checkout funnel) captures the person's
     // email for the finish-your-booking nudge. Guest rows aren't reached by any FK
     // and have no retention basis once erased — delete by email (mirrors the
@@ -256,6 +273,10 @@ export async function deleteClient(clientId: string, confirm: string) {
   // wipes them outright. Redact the encrypted narrative first, the same way
   // eraseClientData() already does, so the anonymised safety fact survives.
   await db.incident.updateMany({ where: { clientId }, data: { descriptionEnc: encClinical(JSON.stringify({ redacted: 'client-deleted' })), location: null } });
+  // BLD-1572: same for staff-recorded debts — ClientDebt.clientId is SetNull, so
+  // the row (and its staff-typed free-text reason) would otherwise survive the
+  // hard delete as an orphan no clientId lookup can ever reach again.
+  await db.clientDebt.updateMany({ where: { clientId }, data: { reason: 'Redacted — client deleted' } });
 
   try {
     // Cascades to the client's bookings, assessments, points, reviews, etc.
@@ -370,6 +391,14 @@ export async function eraseStudentData(studentId: string) {
     } catch (e) {
       console.error('[eraseStudentData] homework blob delete failed (continuing):', (e as Error)?.message);
     }
+  }
+  // BLD-1794: VTCT registration details carry government identity documents
+  // (Photo ID, Proof of Address) — erase the row and its Blob files too, not
+  // just leave them behind once the student account itself is anonymised.
+  const { eraseVtctRegistrationForStudent } = await import('@/lib/vtct-registration');
+  const vtctErasure = await eraseVtctRegistrationForStudent(studentId);
+  if (vtctErasure.blobsFailed > 0) {
+    console.error(`[eraseStudentData] ${vtctErasure.blobsFailed} VTCT document blob(s) could not be deleted — the row is gone, files need manual cleanup`);
   }
   await logAudit({ action: 'STUDENT_ERASED', actor: session.email, actorRole: session.role, summary: `Academy student ${student.email} data erased (GDPR Art.17)` });
   revalidatePath('/admin/academy');

@@ -80,9 +80,12 @@ export async function POST(req: Request) {
   }
   await logAudit({ action: 'SERVICE_PRICES_BULK', actor: session.email, actorRole: session.role, summary: `Bulk price-list import: ${variantCount} variants across ${body.sections.length} section(s)` }).catch(() => {});
 
-  // Refresh the public price surfaces so the new "from" prices show immediately.
-  const { revalidatePath } = await import('next/cache');
+  // Refresh the public price surfaces so the new "from" prices show immediately,
+  // including /book's BLD-1833 catalogue cache.
+  const { revalidatePath, revalidateTag } = await import('next/cache');
+  const { BOOK_CATALOGUE_TAG } = await import('@/lib/services');
   revalidatePath('/', 'layout');
+  revalidateTag(BOOK_CATALOGUE_TAG, {});
 
   return NextResponse.json({ ok: true, services, variants: variantCount, skipped });
 }

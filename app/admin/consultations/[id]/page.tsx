@@ -27,7 +27,9 @@ export default async function ConsultationDetail({ params }: { params: Promise<{
   const session = await getSession();
   if (!sessionCan(session, 'consultations.view')) redirect('/admin');
 
-  const consult = await getConsultation(id);
+  // BLD-1711: same practitioner scoping as the client/booking detail pages (BLD-1693).
+  const practitionerId = session && session.role === 'PRACTITIONER' ? session.sub : undefined;
+  const consult = await getConsultation(id, { practitionerId });
   if (!consult) notFound();
 
   const clinical = sessionCan(session, 'clients.clinical.view');

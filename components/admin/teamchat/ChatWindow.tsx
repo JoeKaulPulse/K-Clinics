@@ -256,7 +256,7 @@ function ManagePanel({ mode, channelId, onDone, roster, memberIds, currentName }
     <div className="border-b border-[var(--color-line)] bg-[var(--color-porcelain)] px-3 py-2.5">
       {mode === 'rename' ? (
         <div className="flex items-center gap-2">
-          <input value={name} onChange={(e) => setName(e.target.value)} className="flex-1 rounded-[var(--radius-sm)] border border-[var(--color-line)] px-2 py-1.5 text-sm outline-none focus:border-[var(--color-gold)] focus-visible:ring-2 focus-visible:ring-[var(--color-gold)]" />
+          <input value={name} onChange={(e) => setName(e.target.value)} className="flex-1 rounded-[var(--radius-sm)] border border-[var(--color-line)] px-2 py-1.5 text-sm outline-none focus:border-[var(--color-gold-deep)] focus-visible:ring-2 focus-visible:ring-[var(--color-gold-deep)]" />
           <button onClick={() => void api({ op: 'rename', channelId, name }).then(onDone)} className="rounded-full bg-[var(--color-gold-deep)] px-3 py-1.5 text-xs font-medium text-white">Save</button>
           <button onClick={onDone} className="text-xs text-[var(--color-stone)]">Cancel</button>
         </div>

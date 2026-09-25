@@ -55,6 +55,17 @@ export type Treatment = {
    *  mentions surgery/implants/injections/needles/fillers, so text overrides a
    *  missing classification rather than the other way round. */
   invasiveness?: 'noninvasive' | 'percutaneous' | 'surgical';
+  /** BLD-1918: gift cards cannot be purchased against, or redeemed towards,
+   *  this treatment — the clinic's injectable and CO2 laser treatments. Set
+   *  explicitly on the specific treatments this applies to (needle-injected
+   *  substances — anti-wrinkle, dermal filler, fat-dissolving, PRP — and the
+   *  two CO2-laser treatments); left unset (falsy) for everything else,
+   *  including needle-based but non-injection treatments (microneedling, BB
+   *  Glow) which are not what "injectable treatments" means clinically or to
+   *  clients. Read by lib/gift-vouchers.ts (server-side redemption block) and
+   *  the client-facing purchase/redemption notices — a single source of truth
+   *  so the two can never disagree. */
+  giftCardExcluded?: boolean;
 };
 
 /** Audiences to hide from a client's *recommendations* given their gender.
@@ -83,7 +94,7 @@ export const treatments: Treatment[] = [
     tagline: 'The end of the endless routine. Skin, simplified.',
     metaTitle: 'Laser Hair Removal in London (Islington) | KClinics',
     metaDescription:
-      'Professional laser hair removal in Islington, London. Permanent hair reduction for face & body, all skin tones, with expert clinicians at KClinics. Free consultation.',
+      'Professional laser hair removal in Islington, London. Permanent hair reduction for face & body, all skin tones, with expert clinicians. Free consultation.',
     keywords: ['laser hair removal London', 'laser hair removal Islington', 'permanent hair reduction', 'diode laser'],
     eyebrow: 'Laser & Skin',
     intro:
@@ -121,7 +132,7 @@ export const treatments: Treatment[] = [
     tagline: 'Light that lifts away the years — clearer, brighter, even.',
     metaTitle: 'IPL Photorejuvenation in London (Islington) | KClinics',
     metaDescription:
-      'IPL photorejuvenation in Islington, London — clears sun damage and pigmentation, calms redness and rosacea, and brightens dull skin. Expert clinicians at KClinics. Free consultation.',
+      'IPL photorejuvenation in Islington, London — clears sun damage, pigmentation and redness, and brightens dull skin. Expert clinicians. Free consultation.',
     keywords: ['IPL London', 'photorejuvenation London', 'IPL rosacea treatment', 'pigmentation removal Islington', 'sun damage treatment London'],
     eyebrow: 'Laser & Skin',
     intro:
@@ -157,10 +168,10 @@ export const treatments: Treatment[] = [
     title: 'Laser Hair Removal for Men',
     menuTitle: 'Laser Hair Removal — Men',
     audience: 'male',
-    tagline: 'Groomed, effortless, permanent. Engineered for him.',
-    metaTitle: "Men's Laser Hair Removal London | Back, Chest & Beard | KClinics",
+    tagline: 'Groomed, effortless, permanent hair reduction. Engineered for him.',
+    metaTitle: "Men's Laser Hair Removal | Back, Chest & Beard | KClinics",
     metaDescription:
-      "Men's laser hair removal in Islington, London. Back, chest, shoulders, beard-line shaping and more with professional lasers at KClinics. Discreet, powerful, lasting.",
+      "Men's laser hair removal in Islington, London. Back, chest, shoulders and beard-line shaping with professional lasers. Discreet, powerful, lasting.",
     keywords: ['mens laser hair removal London', 'back hair removal', 'beard line laser', 'male grooming London'],
     eyebrow: 'Laser & Skin',
     intro:
@@ -168,13 +179,13 @@ export const treatments: Treatment[] = [
     benefits: [
       { title: 'Built for coarse hair', text: 'Higher-energy protocols tuned to dense, stubborn male hair growth.' },
       { title: 'Beard-line sculpting', text: 'Precision shaping for a crisp, defined neckline that never needs trimming.' },
-      { title: 'End ingrowns', text: 'Permanently reduce razor bumps and ingrown hairs on the neck and body.' },
+      { title: 'End ingrowns', text: 'Permanent hair reduction on the neck and body means fewer razor bumps and ingrown hairs.' },
       { title: 'Discreet & fast', text: 'A private clinic experience; large areas handled in a single appointment.' },
     ],
     process: [
       { title: 'Assessment & patch test', text: 'We assess density and skin response, then build your tailored course.' },
       { title: 'Targeted sessions', text: 'Spaced with the growth cycle for the cleanest possible clearance.' },
-      { title: 'Maintenance-free', text: 'Enjoy smooth, defined results with only occasional top-ups.' },
+      { title: 'Low-maintenance results', text: 'Enjoy smooth, defined results with only occasional top-up sessions.' },
     ],
     faqs: [
       { q: 'Can you shape my beard line without removing the beard?', a: 'Absolutely — we define the neck and cheek lines precisely while preserving the beard you want to keep.' },
@@ -354,9 +365,9 @@ export const treatments: Treatment[] = [
     // Built around microneedling & PRP injection, alongside non-needle peels (BLD-1588).
     invasiveness: 'percutaneous',
     tagline: 'A bespoke, results-driven facial — peels, microneedling & PRP, curated to your skin.',
-    metaTitle: 'Signature Facials, Chemical Peels & Microneedling London | KClinics',
+    metaTitle: 'Signature Facials, Peels & Microneedling London | KClinics',
     metaDescription:
-      'The KClinics Signature Facial in Islington, London — a bespoke clinical facial combining chemical peels, microneedling, PRP and skin resurfacing for acne, pigmentation, scarring and tone.',
+      'The KClinics Signature Facial in Islington, London — chemical peels, microneedling, PRP and skin resurfacing for acne, pigmentation, scarring and tone.',
     keywords: ['signature facial London', 'chemical peel London', 'microneedling London', 'PRP facial', 'skin resurfacing Islington'],
     eyebrow: 'Face & Lifting',
     intro:
@@ -430,10 +441,12 @@ export const treatments: Treatment[] = [
     menuTitle: 'Cosmetic Injections',
     // Needle-based: anti-wrinkle injections, dermal filler and fat-dissolving (BLD-1588).
     invasiveness: 'percutaneous',
+    // BLD-1918: injectable treatment — gift cards cannot be used for it.
+    giftCardExcluded: true,
     tagline: 'Refined, never reinvented. The art of looking like you.',
     metaTitle: 'Anti-Wrinkle & Dermal Filler Injections London | KClinics',
     metaDescription:
-      'Expert cosmetic injectables in Islington, London — anti-wrinkle treatment, dermal filler and fat-dissolving — delivered with a natural, refined aesthetic at KClinics.',
+      'Expert cosmetic injectables in Islington, London — anti-wrinkle treatment, dermal filler and fat-dissolving, delivered with a natural, refined aesthetic.',
     keywords: ['anti-wrinkle injections London', 'dermal filler London', 'anti-wrinkle injections Islington', 'lip filler London'],
     eyebrow: 'Body & Injectables',
     intro:
@@ -467,11 +480,13 @@ export const treatments: Treatment[] = [
     category: 'aesthetics',
     group: 'Body & Injectables',
     title: 'Intimate Rejuvenation',
+    // BLD-1918: CO2 laser treatment — gift cards cannot be used for it.
+    giftCardExcluded: true,
     audience: 'female',
     tagline: 'Confidence, restored — with discretion and care.',
     metaTitle: 'Intimate Rejuvenation & Whitening London | KClinics',
     metaDescription:
-      'Advanced intimate rejuvenation in Islington, London — CO2 laser tightening and intimate whitening, delivered with absolute discretion and expert care at KClinics.',
+      'Advanced intimate rejuvenation in Islington, London — CO2 laser tightening and whitening, delivered with absolute discretion and expert care.',
     keywords: ['intimate rejuvenation London', 'CO2 laser intimate', 'intimate whitening London', 'feminine wellness'],
     eyebrow: 'Body & Injectables',
     intro:
@@ -621,7 +636,7 @@ export const treatments: Treatment[] = [
     tagline: 'Where dental health and beauty become one.',
     metaTitle: 'Aesthetic & Cosmetic Dentistry London | KClinics',
     metaDescription:
-      'Aesthetic dentistry in Islington, London. Smile design uniting veneers, whitening, bonding, straightening and implants for a healthy, beautiful smile at KClinics.',
+      'Aesthetic dentistry in Islington, London. Smile design uniting veneers, whitening, bonding and implants for a healthy, beautiful smile.',
     keywords: ['aesthetic dentistry London', 'cosmetic dentistry Islington', 'smile makeover London', 'smile design'],
     eyebrow: 'Aesthetic Dentistry',
     intro:
@@ -869,6 +884,18 @@ export const formatPrice = (pence: number | null | undefined) =>
 // ── Helpers ──────────────────────────────────────────────────────────────────
 export const getTreatment = (slug: string) => treatments.find((t) => t.slug === slug);
 export const treatmentSlugs = treatments.map((t) => t.slug);
+
+/** BLD-1918: is this treatment excluded from gift-card purchase/redemption
+ *  (injectables and CO2 laser)? Shared by the server-side redemption block
+ *  (lib/gift-vouchers.ts) and every client-facing gift-card notice, so the
+ *  policy is defined once and can't drift between them. An unrecognised slug
+ *  is never excluded — the caller's own validation handles a missing treatment.
+ *  POM-brand slugs (e.g. 'botox') are filtered out of `treatments` above, so
+ *  getTreatment() can't see them, but the live CRM catalogue still books
+ *  anti-wrinkle services under treatmentSlug 'botox'. They are injectables by
+ *  definition, so they are excluded explicitly. */
+export const isGiftCardExcludedTreatment = (slug: string): boolean =>
+  POM_BRAND_SLUGS.has(slug) || !!getTreatment(slug)?.giftCardExcluded;
 
 // BLD-1251: which treatment pages are HEALTH data in an ad platform's hands.
 // Sending "Dentures" or "Intimate Rejuvenation" as the item label to Meta/GA4

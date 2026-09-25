@@ -13,8 +13,11 @@ export const metadata: Metadata = {
 };
 
 // BLD-225 — the screen mounted outside a treatment room (e.g. iiyama TW1023ASC).
-// Token-secured + public (no login); shows that room's current + next
-// appointment with minimal client identity (first name only). Auto-refreshes.
+// Token-secured + public (no login). The IN-SESSION patient is shown with
+// minimal identity (first name + treatment) — they have checked in and are in
+// the room. The NEXT appointment shows the time only: before check-in that
+// patient has not consented to being named on a corridor screen (PRJ-1229.3).
+// Auto-refreshes.
 const fmt = (d: Date) => d.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/London' });
 
 export default async function RoomDisplay({ params }: { params: Promise<{ token: string }> }) {
@@ -80,7 +83,9 @@ export default async function RoomDisplay({ params }: { params: Promise<{ token:
         {next && (
           <div className="mt-[8vmin] border-t border-white/10 pt-[4vmin]">
             <p className="text-[2.4vmin] uppercase tracking-[0.25em] text-[var(--color-night-faint)]">Next</p>
-            <p className="mt-[1.5vmin] text-[4vmin]">{fmt(next.startAt)} · {who(next.client?.firstName)} <span className="text-[var(--color-night-faint)]">— {next.treatmentTitle}</span></p>
+            {/* PRJ-1229.3: before check-in, the next patient hasn't consented to being
+                identified on this unauthenticated corridor screen — show only the time. */}
+            <p className="mt-[1.5vmin] text-[4vmin]">{fmt(next.startAt)}</p>
           </div>
         )}
       </div>

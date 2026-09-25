@@ -108,7 +108,7 @@ export function IpActivity({ rows, blocked }: { rows: IpRow[]; blocked: BlockedR
           <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Filter IP, email or device…" aria-label="Filter activity" className="w-64 rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-porcelain)] px-3 py-1.5 text-sm" />
         </div>
         {filtered.length === 0 ? (
-          <p className="text-sm text-[var(--color-stone)]">No IP activity recorded in this window.</p>
+          <p className="text-sm text-[var(--color-stone)]">{q.trim() ? `No matches for "${q.trim()}".` : 'No IP activity recorded in this window.'}</p>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full min-w-[640px] text-sm">

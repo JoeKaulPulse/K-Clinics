@@ -1,4 +1,4 @@
-import { NextResponse } from 'next/server';
+import { NextResponse, after } from 'next/server';
 import { crmEnabled } from '@/lib/crm';
 import { PERMISSION_KEYS, effectivePermissions, roleDefaults } from '@/lib/permissions';
 
@@ -105,7 +105,14 @@ export async function POST(req: Request) {
     });
     const { revalidatePath } = await import('next/cache');
     revalidatePath('/team');
-    import('@/lib/indexnow').then((m) => m.indexNow(['/team'])).catch(() => {});
+    // BLD-1885: after(), not a bare floating promise — the response below can
+    // be sent before this ping resolves, and the runtime can freeze the
+    // function mid-flight (same fix as the kiosk analyze/photo routes /
+    // lib/ai-consultation.ts / app/api/admin/posts/route.ts, BLD-1137/1166/1418/491).
+    after(async () => {
+      const { indexNow } = await import('@/lib/indexnow');
+      await indexNow(['/team']).catch(() => {});
+    });
     return NextResponse.json({ ok: true, id });
   }
 

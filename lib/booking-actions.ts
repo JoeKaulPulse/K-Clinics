@@ -11,10 +11,15 @@ import {
 } from './email';
 import { logAudit } from './audit';
 import { CLINIC_TZ } from './clinic-time';
+import { isWithinSelfServiceWindow, SELF_SERVICE_WINDOW_MS, SELF_SERVICE_CLOSED_MESSAGE } from './cancellation-policy';
 import type { Booking, Client } from '@prisma/client';
 
 const CANCEL_WINDOW_MS = 24 * 60 * 60 * 1000;
-const RESCHEDULE_WINDOW_MS = 48 * 60 * 60 * 1000;
+// BLD-1920: the self-service cancel/reschedule window now lives in
+// lib/cancellation-policy.ts (a plain module, shared with client components).
+// Kept as a local alias so the rest of this file — and RESCHEDULE_WINDOW_MS's
+// existing call sites below — don't need to change.
+const RESCHEDULE_WINDOW_MS = SELF_SERVICE_WINDOW_MS;
 const MAX_FREE_RESCHEDULES = 3;
 // PRJ-1043.3: a PENDING booking holds its slot from creation until the client
 // finishes card setup (see app/api/booking/create). If they close the tab
@@ -48,6 +53,27 @@ async function bestEffort(p: Promise<unknown>, ms = 10_000): Promise<void> {
 
 export function isWithin24h(b: Pick<Booking, 'startAt'>): boolean {
   return b.startAt.getTime() - Date.now() < CANCEL_WINDOW_MS;
+}
+
+/** Late-cancellation fee in pence: the price net of redeemed points (BLD-733)
+ *  and an applied gift voucher (BLD-1236). cancelBooking charges exactly this,
+ *  and the portal cancel dialog shows it (BLD-1878), so both read one formula. */
+export function lateCancelFeePence(b: Pick<Booking, 'pricePence' | 'pointsRedeemedPence' | 'giftVoucherPence'>): number {
+  return Math.max(0, b.pricePence - (b.pointsRedeemedPence ?? 0) - (b.giftVoucherPence ?? 0));
+}
+
+/** What a client-initiated cancellation inside 24h would do, following
+ *  cancelBooking's branches (no waiver on the client path). 'unclear' covers
+ *  the cases where no card charge is taken but value is still kept (already
+ *  paid, or a fee fully covered by points/voucher); the dialog uses the
+ *  general policy wording for those rather than stating an amount. */
+export type LateCancelOutcome = { kind: 'fee'; pence: number } | { kind: 'session' } | { kind: 'none' } | { kind: 'unclear' };
+export function lateCancelOutcome(b: Pick<Booking, 'pricePence' | 'pointsRedeemedPence' | 'giftVoucherPence' | 'packageBookingId' | 'chargedAt' | 'prepaidAt'>): LateCancelOutcome {
+  if (b.packageBookingId) return b.pricePence > 0 ? { kind: 'unclear' } : { kind: 'session' };
+  if (b.pricePence <= 0) return { kind: 'none' };
+  if (b.chargedAt || b.prepaidAt) return { kind: 'unclear' };
+  const pence = lateCancelFeePence(b);
+  return pence > 0 ? { kind: 'fee', pence } : { kind: 'unclear' };
 }
 
 /**
@@ -201,7 +227,10 @@ export async function chargeBooking(
     if (pi.status === 'succeeded') {
       await db.booking.update({
         where: { id: booking.id },
-        data: { chargePaymentIntentId: pi.id, chargedPence: pi.amount_received ?? amountPence, chargedAt: new Date() },
+        // BLD-1874: this is always the saved-card off-session path (chargeBooking
+        // never runs for a payment link/terminal/external channel — those settle
+        // through finalizeBookingCharge or the 'external' route.ts case instead).
+        data: { chargePaymentIntentId: pi.id, chargedPence: pi.amount_received ?? amountPence, chargedAt: new Date(), paymentMethod: 'card' },
       });
       // VAT breakdown on the receipt once the clinic is VAT-registered (dormant otherwise).
       let vat: { netPence: number; vatPence: number; ratePct: number } | null = null;
@@ -419,8 +448,17 @@ export async function refundBooking(
     await sendEmail({ to: booking.client.email, subject: `Refund processed — ${booking.treatmentTitle}`, html: tmplRefund({ firstName: booking.client.firstName, treatment: booking.treatmentTitle, amountPence: amount, fully }) });
   } catch { /* email best-effort */ }
 
-  // Net the refund out of ad/analytics ROAS (GA4 refund event), best-effort.
-  try { const { sendRefund } = await import('@/lib/conversions'); await sendRefund({ bookingId: booking.id, valuePence: amount, clientId: booking.clientId, analyticsConsent: booking.analyticsConsent }); } catch { /* non-fatal */ }
+  // Net the refund out of ad/analytics ROAS (GA4 refund event) and, when a
+  // GCLID was captured, adjust the original Google Ads offline conversion down
+  // to the booking's remaining net value — 0 on a full refund (PRJ-1200.3).
+  try {
+    const { sendRefund } = await import('@/lib/conversions');
+    await sendRefund({
+      bookingId: booking.id, valuePence: amount, clientId: booking.clientId,
+      analyticsConsent: booking.analyticsConsent, marketingConsent: booking.marketingConsent,
+      gclid: booking.gclid, adjustedValuePence: Math.max(0, (booking.chargedPence ?? 0) - totalRefunded),
+    });
+  } catch { /* non-fatal */ }
 
   // Books: raise the matching Xero credit note (+ cash refund), best-effort.
   try { const { pushBookingRefundToXero } = await import('@/lib/xero'); await pushBookingRefundToXero(booking.id, amount, opts.reason); } catch { /* non-fatal */ }
@@ -443,14 +481,18 @@ export async function finalizeBookingCharge(
   bookingId: string,
   piId: string,
   amountReceivedPence: number,
-  opts: { late?: boolean } = {},
+  // BLD-1874: `method` labels HOW this was paid (defaults to 'card' — the
+  // saved-card/SCA-recovery webhook path); callers on a different rail pass
+  // their own (e.g. 'card_terminal', or 'payment_link' for a staff-sent
+  // Stripe Checkout link). Purely descriptive — never affects the charge.
+  opts: { late?: boolean; method?: import('@/lib/payment-methods').PaymentMethod } = {},
 ): Promise<boolean> {
   // BLD-1119: also refuse to finalise against a booking pre-paid in full via
   // BNPL (prepaidAt) — the authoritative guard for the webhook/SCA-recovery/
   // terminal-capture paths, mirroring chargeBooking()'s own idempotency check.
   const updated = await db.booking.updateMany({
     where: { id: bookingId, chargedAt: null, prepaidAt: null },
-    data: { chargePaymentIntentId: piId, chargedPence: amountReceivedPence, chargedAt: new Date() },
+    data: { chargePaymentIntentId: piId, chargedPence: amountReceivedPence, chargedAt: new Date(), paymentMethod: opts.method ?? 'card' },
   });
   if (updated.count === 0) {
     // Normally this is the ordinary no-op: another caller (webhook redelivery, SCA
@@ -543,18 +585,34 @@ export async function recordChargeFailure(bookingId: string, reason: string): Pr
 }
 
 /**
- * Cancel a booking, applying the 24-hour policy.
- * - >24h before: free.
- * - <24h before: charge 100% (the late fee), unless `waiveFee` is set.
+ * Cancel a booking.
+ * - BLD-1920: a CLIENT self-service cancellation (opts.admin not set) needs
+ *   >=48h notice at all — inside that window it is blocked outright, with the
+ *   client pointed at our Cancellation & Rescheduling Policy, rather than
+ *   silently proceeding. This is a separate, stricter gate from the fee rule
+ *   below; staff/admin cancellations (opts.admin: true) are never subject to
+ *   it and can cancel at any notice, exactly as before.
+ * - The pre-existing 24-hour late-cancellation FEE policy is unchanged by the
+ *   above and still applies whenever cancelBooking actually runs (staff at
+ *   any notice, or a client at >=48h — which by definition is never inside
+ *   the 24h fee window, so a client self-service cancellation can no longer
+ *   incur this fee; it now only ever fires on a staff-assisted cancel):
+ *   - >24h before: free.
+ *   - <24h before: charge 100% (the late fee), unless `waiveFee` is set.
  */
 export async function cancelBooking(
   bookingId: string,
-  opts: { by: string; reason?: string; waiveFee?: boolean },
-): Promise<{ ok: boolean; charged?: number; requiresAction?: boolean; feeFailed?: boolean; error?: string }> {
+  opts: { by: string; reason?: string; waiveFee?: boolean; admin?: boolean },
+): Promise<{ ok: boolean; charged?: number; requiresAction?: boolean; feeFailed?: boolean; error?: string; code?: 'SELF_SERVICE_WINDOW_CLOSED' }> {
   const booking = await db.booking.findUnique({ where: { id: bookingId }, include: { client: true } });
   if (!booking) return { ok: false, error: 'Booking not found' };
   if (['CANCELLED', 'COMPLETED', 'NO_SHOW'].includes(booking.status)) {
     return { ok: false, error: 'This booking can no longer be cancelled.' };
+  }
+  // BLD-1920: client self-service must give >=48h notice — checked before any
+  // of the existing 24h fee logic below, and skipped entirely for staff/admin.
+  if (!opts.admin && isWithin48h(booking)) {
+    return { ok: false, code: 'SELF_SERVICE_WINDOW_CLOSED', error: SELF_SERVICE_CLOSED_MESSAGE };
   }
 
   const late = isWithin24h(booking);
@@ -572,7 +630,7 @@ export async function cancelBooking(
   // BLD-1236: net an applied gift voucher the same way, matching the staff
   // charge action. A fee that actually lands then CONSUMES the voucher value
   // (the BLD-882 return below is skipped when charged > 0), exactly like points.
-  const chargeablePence = Math.max(0, booking.pricePence - (booking.pointsRedeemedPence ?? 0) - (booking.giftVoucherPence ?? 0));
+  const chargeablePence = lateCancelFeePence(booking);
   let charged = 0;
   let requiresAction = false;
   let feeFailed = false;
@@ -836,8 +894,48 @@ export async function applyNoShowFee(
   return { ...nil, feeFailed: true };
 }
 
+// BLD-1920: now a thin wrapper over the shared lib/cancellation-policy helper
+// (same 48h window), used by both cancelBooking and rescheduleBooking below.
 export function isWithin48h(b: Pick<Booking, 'startAt'>): boolean {
-  return b.startAt.getTime() - Date.now() < RESCHEDULE_WINDOW_MS;
+  return isWithinSelfServiceWindow(b.startAt);
+}
+
+// BLD-1873/BLD-1886: shared overlap predicate for a proposed [newStart, newEnd]
+// window against another live booking, honouring that other booking's own
+// buffer. Used by reassignPractitioner and the time-off approve route
+// (app/admin/bookings/actions.ts, app/api/admin/time-off/route.ts) so the
+// "does this window clash with an existing appointment" math is the same
+// clash rule rescheduleBooking already applies below, not a second
+// reimplementation of it.
+export function overlapsBookingWindow(
+  newStart: Date,
+  newEnd: Date,
+  other: { startAt: Date; endAt: Date; bufferMin: number },
+): boolean {
+  return newStart.getTime() < other.endAt.getTime() + other.bufferMin * 60_000 && newEnd.getTime() > other.startAt.getTime();
+}
+
+type RescheduleClashCandidate = { startAt: Date; endAt: Date; bufferMin: number; practitionerId: string | null; resources: { id: string }[] };
+
+// BLD-1873: classify a set of clashing candidates for a staff/admin reschedule.
+// A clash against the SAME practitioner is always a hard block (a clinician
+// cannot be in two places). A clash that is only against a shared room/piece
+// of equipment (no practitioner overlap) is a soft, overridable conflict.
+function classifyRescheduleClash(
+  candidates: RescheduleClashCandidate[],
+  newStart: Date,
+  newBusyEndMs: number,
+  practitionerId: string | null,
+  resourceIds: string[],
+): 'PRACTITIONER' | 'RESOURCE' | null {
+  let resourceClash = false;
+  for (const b of candidates) {
+    const overlaps = newStart.getTime() < b.endAt.getTime() + b.bufferMin * 60_000 && newBusyEndMs > b.startAt.getTime();
+    if (!overlaps) continue;
+    if (practitionerId && b.practitionerId === practitionerId) return 'PRACTITIONER';
+    if (resourceIds.length && b.resources.some((r) => resourceIds.includes(r.id))) resourceClash = true;
+  }
+  return resourceClash ? 'RESOURCE' : null;
 }
 
 /**
@@ -846,20 +944,24 @@ export function isWithin48h(b: Pick<Booking, 'startAt'>): boolean {
  * - Must give >=48h notice from the CURRENT appointment time
  * - First 3 reschedules are free; 4th+ charges the full booking price
  * - New startAt must be at least 48h in the future
+ * - Staff/admin (opts.admin): a clash against the SAME practitioner is always
+ *   a hard block; a clash against only a room/equipment resource is a
+ *   warning the caller can override with opts.force (BLD-1873).
  */
 export async function rescheduleBooking(
   bookingId: string,
   newStartISO: string,
-  opts: { by: string; reason?: string; admin?: boolean },
-): Promise<{ ok: boolean; charged?: number; requiresAction?: boolean; error?: string; code?: 'SLOT_TAKEN' }> {
+  opts: { by: string; reason?: string; admin?: boolean; force?: boolean },
+): Promise<{ ok: boolean; charged?: number; requiresAction?: boolean; error?: string; code?: 'SLOT_TAKEN' | 'RESOURCE_CONFLICT' | 'SELF_SERVICE_WINDOW_CLOSED' }> {
   const booking = await db.booking.findUnique({ where: { id: bookingId }, include: { client: true, resources: { select: { id: true } } } });
   if (!booking) return { ok: false, error: 'Booking not found.' };
   if (['CANCELLED', 'COMPLETED', 'NO_SHOW'].includes(booking.status)) {
     return { ok: false, error: 'This booking can no longer be rescheduled.' };
   }
   // Client self-service must give >=48h notice; staff (admin) can move any time.
+  // BLD-1920: same window, code and wording as cancelBooking's self-service gate.
   if (!opts.admin && isWithin48h(booking)) {
-    return { ok: false, error: "Reschedules require at least 48 hours' notice. Please call us on 020 8050 0750 if you need to make a late change." };
+    return { ok: false, code: 'SELF_SERVICE_WINDOW_CLOSED', error: SELF_SERVICE_CLOSED_MESSAGE };
   }
 
   const newStart = new Date(newStartISO);
@@ -883,6 +985,9 @@ export async function rescheduleBooking(
   // own clinician or room(s); for client self-service we keep the strict gate.
   const resourceIds = booking.resources.map((r) => r.id);
   const newBusyEndMs = newEnd.getTime() + booking.bufferMin * 60_000;
+  // BLD-1873: the resource-conflict override is staff-only; client
+  // self-service never gets it, even if a caller passes force.
+  const allowResourceOverride = Boolean(opts.admin && opts.force);
   if (opts.admin) {
     // Nothing exclusive to clash on (no clinician, no room/equipment) → any future
     // time is fine (this is the consultation case BLD-502 was about).
@@ -898,10 +1003,17 @@ export async function rescheduleBooking(
             ...(resourceIds.length ? [{ resources: { some: { id: { in: resourceIds } } } }] : []),
           ],
         },
-        select: { startAt: true, endAt: true, bufferMin: true },
+        select: { startAt: true, endAt: true, bufferMin: true, practitionerId: true, resources: { select: { id: true } } },
       });
-      const clash = candidates.some((b) => newStart.getTime() < b.endAt.getTime() + b.bufferMin * 60_000 && newBusyEndMs > b.startAt.getTime());
-      if (clash) return { ok: false, code: 'SLOT_TAKEN', error: 'That time clashes with another appointment for the same clinician, room or equipment. Please choose another slot.' };
+      const kind = classifyRescheduleClash(candidates, newStart, newBusyEndMs, booking.practitionerId, resourceIds);
+      if (kind === 'PRACTITIONER') {
+        return { ok: false, code: 'SLOT_TAKEN', error: 'That time clashes with another appointment for the same clinician. Please choose another slot.' };
+      }
+      // BLD-1873: a room/equipment-only clash is a warning, not a hard block —
+      // authorised staff can proceed once they've confirmed (opts.force).
+      if (kind === 'RESOURCE' && !allowResourceOverride) {
+        return { ok: false, code: 'RESOURCE_CONFLICT', error: 'That time clashes with another appointment using the same room or equipment — it may already be in use. Reschedule anyway if you’ve checked it’s free.' };
+      }
     }
   } else {
     // Client self-service: the chosen time must be a genuinely free, in-hours slot
@@ -922,9 +1034,10 @@ export async function rescheduleBooking(
   // app/api/booking/create + app/api/booking/start: a Serializable transaction
   // re-reads overlapping bookings on THIS booking's own clinician/room(s) and
   // aborts the write if another booking has since claimed the slot.
-  let rescheduled: { id: string } | null = null;
+  type TxResult = { outcome: 'ok'; row: { id: string } } | { outcome: 'PRACTITIONER' | 'RESOURCE' };
+  let txResult: TxResult | null = null;
   try {
-    rescheduled = await db.$transaction(async (tx) => {
+    txResult = await db.$transaction(async (tx) => {
       if (booking.practitionerId || resourceIds.length) {
         const windowStart = new Date(newStart.getTime() - 24 * 60 * 60 * 1000);
         const candidates = await tx.booking.findMany({
@@ -937,16 +1050,23 @@ export async function rescheduleBooking(
               ...(resourceIds.length ? [{ resources: { some: { id: { in: resourceIds } } } }] : []),
             ],
           },
-          select: { startAt: true, endAt: true, bufferMin: true },
+          select: { startAt: true, endAt: true, bufferMin: true, practitionerId: true, resources: { select: { id: true } } },
         });
-        const clash = candidates.some((b) => newStart.getTime() < b.endAt.getTime() + b.bufferMin * 60_000 && newBusyEndMs > b.startAt.getTime());
-        if (clash) return null;
+        const kind = classifyRescheduleClash(candidates, newStart, newBusyEndMs, booking.practitionerId, resourceIds);
+        // A practitioner clash always aborts. A resource-only clash aborts too,
+        // UNLESS the caller already confirmed (opts.force) — honoured
+        // atomically, right here, so the confirmed override still can't land
+        // on top of a genuinely new practitioner clash that appeared since the
+        // pre-check (BLD-1873).
+        if (kind === 'PRACTITIONER') return { outcome: 'PRACTITIONER' };
+        if (kind === 'RESOURCE' && !allowResourceOverride) return { outcome: 'RESOURCE' };
       }
-      return tx.booking.update({
+      const row = await tx.booking.update({
         where: { id: booking.id },
         data: { startAt: newStart, endAt: newEnd, rescheduleCount: { increment: 1 } },
         select: { id: true },
       });
+      return { outcome: 'ok', row };
     }, { isolationLevel: 'Serializable' });
   } catch (e) {
     const err = e as { code?: string; message?: string };
@@ -955,8 +1075,14 @@ export async function rescheduleBooking(
     }
     throw e;
   }
-  if (!rescheduled) {
+  // A client self-service move keeps the pre-BLD-1873 behaviour: any clash is
+  // SLOT_TAKEN (the manage page re-fetches slots on that code). Only staff see
+  // the overridable RESOURCE_CONFLICT warning.
+  if (txResult.outcome === 'PRACTITIONER' || (txResult.outcome === 'RESOURCE' && !opts.admin)) {
     return { ok: false, code: 'SLOT_TAKEN', error: 'That time is no longer available. Please choose another slot.' };
+  }
+  if (txResult.outcome === 'RESOURCE') {
+    return { ok: false, code: 'RESOURCE_CONFLICT', error: 'That time clashes with another appointment using the same room or equipment — it may already be in use. Reschedule anyway if you’ve checked it’s free.' };
   }
 
   // 4th+ reschedule incurs the full booking price — client self-service only;

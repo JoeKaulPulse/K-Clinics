@@ -1,7 +1,7 @@
 import 'server-only';
 import { db } from '@/lib/db';
 import { site } from '@/lib/site';
-import { sendEmail, emailShell } from '@/lib/email';
+import { sendEmail, emailShell, tmplManual } from '@/lib/email';
 import { emailBlocksToHtml, applyMergeTags, type EmailBlock } from '@/lib/email-builder';
 
 const SITE = (process.env.NEXT_PUBLIC_SITE_URL || site.url).replace(/\/$/, '');
@@ -105,6 +105,112 @@ export async function deliverToRecipients(recipients: Recipient[], opts: Deliver
 export async function deliverCampaign(opts: DeliverOpts & { audience: Audience }): Promise<{ sent: number; failed: number }> {
   const recipients = await audienceRecipients(opts.audience, { excludeCampaignId: opts.campaignId });
   return deliverToRecipients(recipients, opts);
+}
+
+// ── Simple/legacy plain-text broadcast composer (app/admin/campaigns/actions.ts) ──
+// This composer predates the block-based builder above and stores its message as
+// raw text with {firstName}/{discountCode} tokens rather than EmailBlock[] JSON,
+// so it can't go through deliverCampaign's emailBlocksToHtml/applyMergeTags
+// pipeline. BLD-1832: it used to email every recipient in a single serial
+// `for` loop inside the server action, with no batching and no SENDING status
+// recorded — a list large enough to outrun the action's time limit left
+// campaign.sentAt/recipients unset (silently indistinguishable from "never
+// sent") and the remainder permanently unmailed. The functions below give it
+// the same shape as the block-based path: bounded-concurrency delivery,
+// an EmailEvent written per recipient before moving on (so re-running is a
+// resume, not a re-send), and a periodic stuck-SENDING sweep.
+export type PlainCampaign = {
+  id: string; subject: string; body: string; segment: string | null;
+  discountType: string | null; discountValue: number | null; discountExpiresAt: Date | null;
+};
+
+async function plainCampaignRecipients(segment: string | null, excludeCampaignId?: string): Promise<Recipient[]> {
+  const { marketableClientWhere } = await import('@/lib/consent');
+  const where = { ...marketableClientWhere(), ...(segment ? { tags: { has: segment } } : {}) };
+  const exclude = excludeCampaignId
+    ? new Set((await db.emailEvent.findMany({ where: { campaignId: excludeCampaignId }, select: { to: true } })).map((e) => e.to.toLowerCase()))
+    : null;
+  const out: Recipient[] = [];
+  const PAGE = 1000;
+  let cursor: string | undefined;
+  for (;;) {
+    const page = await db.client.findMany({
+      where, select: RECIPIENT_SELECT, orderBy: { id: 'asc' }, take: PAGE,
+      ...(cursor ? { cursor: { id: cursor }, skip: 1 } : {}),
+    });
+    if (!page.length) break;
+    cursor = page[page.length - 1].id;
+    for (const r of page) if (!exclude || !exclude.has(r.email.toLowerCase())) out.push(r);
+    if (page.length < PAGE) break;
+  }
+  return out;
+}
+
+/** Deliver (or resume — `excludeAlreadyEmailed`) the plain-text composer's
+ *  campaign. Concurrency is bounded the same way as deliverToRecipients; the
+ *  shared Resend rate gate in lib/email.ts still serialises the actual
+ *  network calls, so raising this doesn't risk the provider's cap. */
+export async function deliverPlainCampaign(c: PlainCampaign, opts?: { excludeAlreadyEmailed?: boolean }): Promise<{ sent: number; failed: number }> {
+  const recipients = await plainCampaignRecipients(c.segment, opts?.excludeAlreadyEmailed ? c.id : undefined);
+  const { createPersonalCode } = c.discountValue ? await import('@/lib/promo') : { createPersonalCode: null };
+
+  let sent = 0, failed = 0;
+  const CONCURRENCY = 8;
+  async function one(cl: Recipient) {
+    const unsubUrl = `${SITE}/api/unsubscribe?t=${cl.unsubToken}`;
+    let greeting = c.body.replace(/\{firstName\}/g, cl.firstName || '');
+    if (c.discountValue && createPersonalCode) {
+      try {
+        const discountType = c.discountType === 'FIXED' ? 'FIXED' as const : 'PERCENT' as const;
+        const code = await createPersonalCode({
+          campaignId: c.id, email: cl.email, discountType,
+          percent: discountType === 'PERCENT' ? c.discountValue : undefined,
+          amountPence: discountType === 'FIXED' ? c.discountValue * 100 : undefined,
+          expiresAt: c.discountExpiresAt, label: c.subject,
+        });
+        greeting = greeting.replace(/\{discountCode\}/g, code);
+      } catch { greeting = greeting.replace(/\{discountCode\}/g, ''); }
+    }
+    let res: { ok: boolean; id?: string; error?: string };
+    try {
+      res = await sendEmail({ to: cl.email, subject: c.subject, html: tmplManual(greeting.replace(/\n/g, '<br>'), unsubUrl) });
+    } catch (e) {
+      res = { ok: false, error: (e as Error)?.message?.slice(0, 200) || 'Send failed.' };
+    }
+    res.ok ? sent++ : failed++;
+    await db.emailEvent.create({ data: { clientId: cl.id, kind: 'CAMPAIGN', to: cl.email, subject: c.subject, status: res.ok ? 'SENT' : 'FAILED', providerId: res.id, error: res.error, campaignId: c.id } }).catch(() => {});
+  }
+  for (let i = 0; i < recipients.length; i += CONCURRENCY) {
+    await Promise.all(recipients.slice(i, i + CONCURRENCY).map(one));
+    // Persist progress after every batch (not just at the end) — this is the
+    // "visible, not silent" half of BLD-1832: if this invocation gets killed
+    // before the caller's final update, campaign.recipients already shows how
+    // far it got instead of sitting at 0 while the row is stuck in SENDING.
+    await db.campaign.update({ where: { id: c.id }, data: { recipients: sent } }).catch(() => {});
+  }
+  return { sent, failed };
+}
+
+/** Cron-driven resume for plain-text campaigns interrupted mid-send (the
+ *  action's invocation was killed before it could mark the campaign SENT).
+ *  Mirrors the stuck-SENDING sweep in dispatchDueCampaigns below, but scoped
+ *  to `format: 'text'` rows so it never touches a block-based campaign (BLD-1832). */
+export async function resumeStuckPlainCampaigns(): Promise<{ resumed: number; sent: number }> {
+  const stuckCutoff = new Date(Date.now() - 30 * 60_000);
+  const stuck = await db.campaign.findMany({ where: { status: 'SENDING', format: 'text', updatedAt: { lt: stuckCutoff } }, take: 5 });
+  let resumed = 0, sent = 0;
+  for (const s of stuck) {
+    try {
+      const r = await deliverPlainCampaign(s, { excludeAlreadyEmailed: true });
+      // Recount from EmailEvent so the recorded figure spans the original
+      // attempt + this resume, not just the recipients mailed just now.
+      const sentTotal = await db.emailEvent.count({ where: { campaignId: s.id, status: 'SENT' } });
+      await db.campaign.update({ where: { id: s.id }, data: { status: 'SENT', sentAt: s.sentAt ?? new Date(), recipients: sentTotal } });
+      sent += r.sent; resumed++;
+      console.warn('[email-cron] resumed interrupted plain campaign', s.id, `— ${r.sent} remaining recipient(s) mailed, ${sentTotal} total`);
+    } catch (e) { console.error('[email-cron] resume of plain campaign', s.id, 'failed:', (e as Error)?.message); }
+  }
+  return { resumed, sent };
 }
 
 /** Send an already-persisted campaign now (draft or scheduled → SENT). Guards
@@ -227,7 +333,13 @@ export async function dispatchDueCampaigns(): Promise<{ processed: number; sent:
   // blasted to the whole audience, so it's logged for a human instead.
   let resumed = 0;
   const stuckCutoff = new Date(now.getTime() - 30 * 60_000);
-  const stuck = await db.campaign.findMany({ where: { status: 'SENDING', updatedAt: { lt: stuckCutoff } }, take: 5 });
+  // BLD-1832: `format: 'text'` rows belong to the separate plain-composer
+  // pipeline (resumeStuckPlainCampaigns, called from cron/dispatch alongside
+  // this) — their body isn't EmailBlock[] JSON, so JSON.parse below would
+  // silently fall back to an empty-content send against the wrong audience.
+  // Rich-composer rows always set audienceType at creation, so this filter
+  // (rather than the inverse) also protects any legacy row this doesn't know about.
+  const stuck = await db.campaign.findMany({ where: { status: 'SENDING', updatedAt: { lt: stuckCutoff }, audienceType: { not: null } }, take: 5 });
   for (const s of stuck) {
     if (s.subjectB && !s.abWinner) { console.error('[email-cron] campaign', s.id, 'stuck in SENDING mid A/B test — needs a human decision, not auto-resume'); continue; }
     try {
@@ -247,5 +359,9 @@ export async function dispatchDueCampaigns(): Promise<{ processed: number; sent:
       console.warn('[email-cron] resumed interrupted campaign', s.id, `— ${r.sent} remaining recipient(s) mailed, ${sentTotal} total`);
     } catch (e) { console.error('[email-cron] resume of campaign', s.id, 'failed:', (e as Error)?.message); }
   }
+
+  const plain = await resumeStuckPlainCampaigns();
+  resumed += plain.resumed; sent += plain.sent;
+
   return { processed: due.length, sent, abDecided, resumed };
 }

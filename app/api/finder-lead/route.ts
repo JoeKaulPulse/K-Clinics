@@ -74,7 +74,8 @@ export async function POST(req: Request) {
   // opt-in gate, which is absent here.
   try {
     const { sendLead } = await import('@/lib/conversions');
-    const { consentFromCookieHeader } = await import('@/lib/attribution');
+    const { consentFromCookieHeader, metaCookiesFromHeader } = await import('@/lib/attribution');
+    const { clientIp } = await import('@/lib/security/guard');
     const { analyticsConsent, marketingConsent } = consentFromCookieHeader(req.headers.get('cookie'));
     await sendLead({
       eventId,
@@ -82,6 +83,8 @@ export async function POST(req: Request) {
       email: null,
       sourceUrl: req.headers.get('referer'),
       analyticsConsent, marketingConsent,
+      ...metaCookiesFromHeader(req.headers.get('cookie')),
+      clientIp: clientIp(req), userAgent: req.headers.get('user-agent'),
     });
   } catch { /* best-effort */ }
 

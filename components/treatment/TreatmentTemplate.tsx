@@ -10,6 +10,7 @@ import { TreatmentCard } from '@/components/ui/TreatmentCard';
 import { FaqAccordion } from '@/components/ui/FaqAccordion';
 import { Button, ArrowIcon } from '@/components/ui/Button';
 import { BookingButtons } from '@/components/booking/BookingButtons';
+import { MobileStickyBookBar } from '@/components/treatment/MobileStickyBookBar';
 import { PhoneButton } from '@/components/marketing/PhoneLink';
 import { site } from '@/lib/site';
 import { pricingForTreatment, formatPence, statusLabel, type ServiceStatus } from '@/lib/services';
@@ -121,6 +122,19 @@ export async function TreatmentTemplate({ t, dentistryLive = site.dentistryLive 
 
   return (
     <article>
+      {/* BLD-1609: slim sticky Book Now bar for mobile, visible mid-scroll once
+          the hero's own booking CTA has scrolled out of view (hidden again near
+          the pricing table's CTA — no duplicate/overlapping CTAs). Only for
+          treatments that are actually bookable online. */}
+      {!comingSoon && !enquiryOnly && (
+        <MobileStickyBookBar
+          treatmentSlug={t.slug}
+          // Keep the "From" qualifier the hero and pricing table both carry: the
+          // figure is the lowest variant price, so a bare "£120" on the sticky
+          // bar would read as the price of the treatment.
+          priceLabel={(fromOfferPence ?? fromPence) ? `From ${formatPence(fromOfferPence ?? fromPence)}` : formatPence(null)}
+        />
+      )}
       {/* Hero */}
       <section className="surface-ink grain relative overflow-hidden pt-[calc(var(--header-h,5.25rem)+1rem)]">
         <span
@@ -140,7 +154,7 @@ export async function TreatmentTemplate({ t, dentistryLive = site.dentistryLive 
               </nav>
             </Reveal>
             <Reveal delay={0.05}>
-              <p className="eyebrow mb-4 flex flex-wrap items-center gap-3 text-[var(--color-gold-soft)]">
+              <p className="eyebrow eyebrow-on-dark mb-4 flex flex-wrap items-center gap-3">
                 {t.eyebrow}
                 {comingSoon && <span className="rounded-full bg-[var(--color-gold-soft)] px-3 py-1 text-[0.6rem] font-semibold uppercase tracking-[0.14em] text-[var(--color-ink)]">Opening soon</span>}
               </p>

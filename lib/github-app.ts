@@ -22,11 +22,26 @@ export function githubAppConfigured(): boolean {
   return Boolean(process.env.GITHUB_APP_ID && process.env.GITHUB_APP_PRIVATE_KEY && process.env.GITHUB_APP_INSTALLATION_ID);
 }
 
+// BLD-1667: env UIs mangle a pasted PEM in more ways than a plain literal-\n
+// escape — a wrapping pair of quotes (copy/paste from a JSON-ish source), a
+// literal \r\n escape, or a real \r\n (Windows clipboard) all produce a string
+// createPrivateKey() rejects with "DECODER routines::unsupported" because the
+// "-----BEGIN...-----" delimiter no longer matches exactly. Normalise all of
+// them; a value that was already a clean PEM is unchanged by this (idempotent).
+function normalizePem(raw: string): string {
+  let pem = raw.trim();
+  if ((pem.startsWith('"') && pem.endsWith('"')) || (pem.startsWith("'") && pem.endsWith("'"))) {
+    pem = pem.slice(1, -1).trim();
+  }
+  pem = pem.replace(/\\r\\n/g, '\n').replace(/\\n/g, '\n').replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+  return pem.trim() + '\n';
+}
+
 /** Short-lived App JWT (GitHub caps validity at 10 minutes). */
 async function appJwt(): Promise<string> {
   // Env UIs often store the PEM with literal "\n" — restore real newlines.
   // node:crypto accepts both PKCS#1 (GitHub's download format) and PKCS#8.
-  const pem = process.env.GITHUB_APP_PRIVATE_KEY!.replace(/\\n/g, '\n');
+  const pem = normalizePem(process.env.GITHUB_APP_PRIVATE_KEY!);
   const key = createPrivateKey(pem);
   const now = Math.floor(Date.now() / 1000);
   return new SignJWT({})

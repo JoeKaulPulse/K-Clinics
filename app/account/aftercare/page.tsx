@@ -45,7 +45,7 @@ export default async function AftercarePage() {
     .map((b) => ({ slug: b.treatmentSlug, title: b.treatmentTitle, tr: getTreatment(b.treatmentSlug) }));
 
   return (
-    <PortalShell firstName={client.firstName} locale={locale}>
+    <PortalShell firstName={client.firstName} locale={locale} termsAccepted={!!client.termsAcceptedAt}>
       <PortalPageHeader eyebrow={t('after.eyebrow')} title={t('after.title')} subtitle={t('after.intro')} />
 
       {treatments.length === 0 ? (

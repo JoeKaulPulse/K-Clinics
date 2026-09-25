@@ -39,7 +39,7 @@ export default async function MarketingLayout({ children }: { children: React.Re
         <AnnouncementBar a={config.announcement} active={announcementActive(config.announcement)} />
         <Header config={config} />
       </HideOnAcademyPortal>
-      <main id="main" className="pt-[var(--ann-h,0px)]">
+      <main id="main" tabIndex={-1} className="pt-[var(--ann-h,0px)]">
         <PageTransition>{children}</PageTransition>
       </main>
       <HideOnAcademyPortal>

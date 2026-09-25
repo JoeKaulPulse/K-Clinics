@@ -144,7 +144,12 @@ function makeClient(): PrismaClient {
   const onServerless = Boolean(process.env.VERCEL) || process.env.NODE_ENV === 'production';
   const pool = new Pool({
     ...(direct ? { connectionString: direct } : {}),
-    ...(onServerless ? { max: 1, connectionTimeoutMillis: 10_000, idleTimeoutMillis: 15_000 } : {}),
+    // BLD-1642: with max:1 per serverless instance, one genuinely stuck query
+    // (a lock wait, a runaway scan) would hold that instance's only connection
+    // forever — every subsequent request on it queues behind a query that will
+    // never finish. statement_timeout aborts it server-side; query_timeout is
+    // the client-side backstop if the server itself is unresponsive.
+    ...(onServerless ? { max: 1, connectionTimeoutMillis: 10_000, idleTimeoutMillis: 15_000, statement_timeout: 25_000, query_timeout: 30_000 } : {}),
   });
   const adapter = new PrismaPg(pool);
   const base = new PrismaClient({ adapter, log: [...log] }) as unknown as Extendable;

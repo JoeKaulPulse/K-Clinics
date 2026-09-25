@@ -4,6 +4,7 @@ import { PageHero } from '@/components/ui/PageHero';
 import { Reveal } from '@/components/motion/Reveal';
 import { ConsultForm } from '@/components/consult/ConsultForm';
 import { PhoneLink } from '@/components/marketing/PhoneLink';
+import { TrustStrip } from '@/components/home/TrustStrip';
 import { getSiteConfig } from '@/lib/site-config';
 import { pageMeta, JsonLd, breadcrumbLd } from '@/lib/seo';
 
@@ -60,6 +61,11 @@ export default async function ConsultationPage() {
           <ConsultForm />
         </Reveal>
       </section>
+
+      {/* BLD-1606: social proof beside the site's primary lead-gen form — same
+          real aggregate (Google + verified internal reviews) TrustStrip already
+          surfaces on the homepage and treatment pages. */}
+      <TrustStrip />
 
       {/* Dental consultations anchor */}
       <section id="dental" className="container-lux section scroll-mt-28">

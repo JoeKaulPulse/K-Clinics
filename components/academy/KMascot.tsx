@@ -45,22 +45,32 @@ export function KMascot({ variant = 'idle', size = 88, className = '', tone = 'd
 export function KSpeech({ text, mood = 'happy', size = 76, onTyped, onTick, className = '' }: { text: string; mood?: 'happy' | 'think' | 'cheer'; size?: number; onTyped?: () => void; onTick?: () => void; className?: string }) {
   const [shown, setShown] = useState('');
   const [typing, setTyping] = useState(true);
+  // BLD-1681: callers (ExplainerPlayer, ImmersiveCourse's SayMicro) wrap this
+  // component in an aria-live="polite" region so the narration gets announced
+  // at all — but that means every character-by-character `shown` update was
+  // its own DOM mutation, so screen readers read the line out letter by
+  // letter. The visible typed text below is aria-hidden (invisible to that
+  // live-region ancestor either way), and this separate visually-hidden node
+  // holds the full sentence and is set only once, on completion, so it's
+  // announced as one whole utterance regardless of whether the caller also
+  // wraps us in its own aria-live region.
+  const [announce, setAnnounce] = useState('');
   const onTypedRef = useRef(onTyped);
   const onTickRef = useRef(onTick);
   onTypedRef.current = onTyped;
   onTickRef.current = onTick;
 
   useEffect(() => {
-    setShown(''); setTyping(true);
+    setShown(''); setTyping(true); setAnnounce('');
     const reduce = typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches;
-    if (reduce) { setShown(text); setTyping(false); onTypedRef.current?.(); return; }
+    if (reduce) { setShown(text); setTyping(false); setAnnounce(text); onTypedRef.current?.(); return; }
     let i = 0;
     const id = setInterval(() => {
       i += 1;
       setShown(text.slice(0, i));
       const ch = text[i - 1];
       if (ch && ch !== ' ') { onTickRef.current?.(); if (i % 3 === 0) mascotBlip(mood); }
-      if (i >= text.length) { clearInterval(id); setTyping(false); onTypedRef.current?.(); }
+      if (i >= text.length) { clearInterval(id); setTyping(false); setAnnounce(text); onTypedRef.current?.(); }
     }, 26);
     return () => clearInterval(id);
   }, [text]);
@@ -70,13 +80,17 @@ export function KSpeech({ text, mood = 'happy', size = 76, onTyped, onTick, clas
 
   return (
     <div className={`flex w-full flex-col items-center ${className}`}>
-      {/* Words — clean, structured area, no bubble. Min-height keeps layout steady. */}
+      {/* Words — clean, structured area, no bubble. Min-height keeps layout steady.
+          aria-hidden: the letter-by-letter reveal below is a visual flourish
+          only — the sr-only region beneath announces the finished sentence
+          once, instead of every keystroke of this animation. */}
       <div className="flex min-h-[4.5rem] max-w-md items-end justify-center px-3 sm:min-h-[5rem]">
-        <p className="text-center text-xl font-medium leading-snug text-[var(--color-porcelain)] sm:text-[1.7rem]">
+        <p aria-hidden="true" className="text-center text-xl font-medium leading-snug text-[var(--color-porcelain)] sm:text-[1.7rem]">
           {shown}
           {typing && <motion.span aria-hidden className="ml-0.5 inline-block h-[0.95em] w-[3px] translate-y-[2px] rounded-full bg-[var(--color-gold)] align-middle" animate={{ opacity: [1, 0.15, 1] }} transition={{ duration: 0.7, repeat: Infinity }} />}
         </p>
       </div>
+      <span className="sr-only" role="status" aria-live="polite">{announce}</span>
 
       {/* The K, anchored centre-stage, ringed by expanding "voice" pulses while talking. */}
       <div className="relative mt-7 grid place-items-center" style={{ width: H, height: H }}>

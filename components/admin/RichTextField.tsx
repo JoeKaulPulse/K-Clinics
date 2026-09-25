@@ -63,10 +63,10 @@ export function RichTextField({ value, onChange, className, placeholder, ariaLab
         onBlur={() => { setFocused(false); emit(); }}
         onFocus={() => setFocused(true)}
         onKeyDown={onKeyDown}
-        className={`rt-field outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-gold)] ${className || ''}`}
+        className={`rt-field outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-gold-deep)] ${className || ''}`}
       />
       <style>{`.rt-field:empty:before{content:attr(data-placeholder);color:var(--color-stone);}
-.rt-field a{color:var(--color-gold);text-decoration:underline;}
+.rt-field a{color:var(--color-gold-deep);text-decoration:underline;}
 .rt-field{white-space:pre-wrap;word-break:break-word;}`}</style>
     </div>
   );

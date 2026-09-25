@@ -47,6 +47,7 @@ enum EmailKind {
   CHAT
   ABANDONED_BOOKING
   ABANDONED_ORDER // BLD-1204: abandoned shop-order recovery
+  ABANDONED_GIFTVOUCHER // BLD-1540: abandoned gift-voucher-purchase recovery
   NO_SHOW
   STAFF_DIGEST
   STAFF_NUDGE
@@ -195,6 +196,7 @@ enum AuditAction {
   CLIENT_ERASED
   STUDENT_ERASED // BLD-1124: distinct from CLIENT_ERASED — an academy trainee's data was erased (GDPR Art.17)
   CLIENT_EDITED
+  STUDENT_EDITED // BLD-1732: admin edited a trainee's first/last name (email stays locked; not learner-editable)
   DATA_EXPORTED
   DATA_IMPORTED // a data-migration step wrote records (e.g. WordPress import, BLD-187)
   SESSION_EDITED // a captured in-session answer was changed after first save (BLD-138)
@@ -204,6 +206,9 @@ enum AuditAction {
   ROOM_TURNOVER // a room was handed over for cleaning after a session (PRJ-63.11)
   INCIDENT_LOGGED // a staff-only internal incident (accident) report was logged (BLD-760)
   CLIENT_STATUS_CHANGED // a client's GREEN/YELLOW/RED status was set or cleared (BLD-1532)
+  CLIENT_DEBT_RECORDED // a staff member manually recorded an outstanding balance ("Mark as Debt") (BLD-1572)
+  CLIENT_DEBT_UPDATED // a staff member corrected the amount/reason on a recorded outstanding balance (BLD-1763)
+  CLIENT_DEBT_RESOLVED // a staff member cleared/waived a recorded outstanding balance (BLD-1763)
 }
 
 enum ReviewStatus {
@@ -328,6 +333,12 @@ model Client {
   unsubToken              String    @unique @default(cuid())
   lastVisitAt             DateTime?
   stripeCustomerId        String?   @unique
+  // BLD-1797: self-service card on file for no-show/cancellation protection —
+  // set from the account "Card on file" section (or by the existing
+  // admin-sent secure-link flow, which now mirrors it here too). Distinct
+  // from Booking.stripePaymentMethodId, which stays the source of truth for
+  // whether a given appointment is protected. Additive, nullable.
+  stripeDefaultPaymentMethodId String?
 
   // ── Membership (K Circle) — cached from rolling 12-month spend ──
   membershipTier      String? // current tier key (e.g. silver/gold/platinum); null = base member
@@ -344,6 +355,15 @@ model Client {
   // Password reset (hashed token + expiry).
   resetTokenHash String?
   resetTokenExp  DateTime?
+  // BLD-1797: passwordless account-activation ("save a card"/migration magic
+  // link) token — kept separate from resetTokenHash above. Both used to share
+  // that one column: a client using "Forgot password" (or staff resending a
+  // card-on-file link via a second channel) silently invalidated whichever
+  // link — reset or invite — was issued first, which is why some clients'
+  // card-on-file links stopped working before they clicked them. Additive,
+  // nullable; swept alongside resetTokenHash in the daily cron.
+  inviteTokenHash String?
+  inviteTokenExp  DateTime?
 
   // ── First-visit discount (one-time, guardrailed) ─────────────────────────
   firstDiscountClaimed Boolean @default(false)
@@ -385,13 +405,19 @@ model Client {
   clientStatusAt     DateTime?
   clientStatusReason String? // optional free-text note staff can attach (yellow/red context)
 
-  // ── Patch test status (BLD-844) ──────────────────────────────────────────
+  // ── Patch test status (BLD-844, BLD-1846) ────────────────────────────────
   // Staff-recorded PASSED/FAILED result so front desk can see at a glance
   // whether a client is eligible for patch-test-gated treatments (laser etc.)
   // without searching through appointments/notes.
-  patchTestResult String? // 'PASSED' | 'FAILED'
-  patchTestDate   DateTime?
-  patchTestSetBy  String?
+  // patchTestDate is the actual (possibly historical) date the test was
+  // performed, staff-selectable on save (BLD-1846) — many clients were
+  // patch-tested before this feature existed. patchTestRecordedAt is the
+  // separate, always-server-set audit timestamp of when the entry was made,
+  // paired with patchTestSetBy (who made it).
+  patchTestResult     String? // 'PASSED' | 'FAILED'
+  patchTestDate       DateTime?
+  patchTestSetBy      String?
+  patchTestRecordedAt DateTime?
 
   // ── Public loyalty leaderboard (PRJ-1.11) ────────────────────────────────
   // Only clients who explicitly opt in appear on the public leaderboard.
@@ -427,6 +453,7 @@ model Client {
   academyStudents AcademyStudent[] // BLD-528: linked K Academy trainee account(s) (same person, by email)
   incidents      Incident[] // BLD-760: staff-only internal incident (accident) reports
   portfolioEntries PortfolioEntry[] @relation("ClientPortfolioEntries") // BLD-1291: academy cases photographing this client
+  debts          ClientDebt[] // BLD-1572: staff-recorded outstanding balance ("Mark as Debt")
 
   @@index([createdAt])
   @@index([dob])
@@ -600,6 +627,43 @@ model Incident {
   @@index([bookingId])
 }
 
+// ── Staff-recorded outstanding balance / "Mark as Debt" — BLD-1572 ──────────
+// A manual record that a client owes the clinic money — the card couldn't be
+// charged, the payment failed, or they left without paying. Distinct from the
+// automated late-cancel/no-show balance derived in lib/outstanding.ts (BLD-1066),
+// which is computed from Booking.chargedAt/lateCancel/status and clears itself
+// once charged or waived: this is a manual, staff-typed record with its own
+// amount and reason, so it needs a row to hold that free text and persists
+// until a staff member later clears it (resolvedAt — no "clear" UI yet, but the
+// field is here so a future one doesn't need a schema change). Same relation
+// shape as Incident above: SetNull on both FKs so the debt record — an
+// HMRC-relevant financial fact — outlives a client erasure or a deleted
+// booking, matching how Booking charge/refund rows are kept (pseudonymised)
+// rather than deleted (BLD-286).
+model ClientDebt {
+  id       String  @id @default(cuid())
+  client   Client? @relation(fields: [clientId], references: [id], onDelete: SetNull)
+  clientId String?
+
+  booking   Booking? @relation(fields: [bookingId], references: [id], onDelete: SetNull)
+  bookingId String?
+
+  amountPence Int
+  reason      String // why the payment is outstanding — free text, staff-entered
+
+  createdBy String // staff email who recorded the debt
+  createdAt DateTime @default(now())
+
+  // Not built as a UI action in this change, but present so a later "mark as
+  // paid/cleared" control needs no schema change.
+  resolvedAt DateTime?
+  resolvedBy String?
+
+  @@index([clientId])
+  @@index([bookingId])
+  @@index([clientId, resolvedAt])
+}
+
 model Appointment {
   id           String            @id @default(cuid())
   client       Client            @relation(fields: [clientId], references: [id], onDelete: Cascade)
@@ -692,6 +756,12 @@ model Booking {
   chargePaymentIntentId String?
   chargedPence          Int?
   chargedAt             DateTime?
+  // BLD-1874: how this treatment charge was actually taken (card on file,
+  // payment link, cash, card terminal, Treatwell, ClassPass, ...) — a
+  // descriptive label only, shown/corrected in the admin. Never read by any
+  // Stripe/Xero logic; correcting it never touches chargePaymentIntentId/
+  // chargedPence/chargedAt. Additive, nullable — historical rows show none.
+  paymentMethod         String?
   // BNPL course pre-payment (BLD-399; BLD-409 course context). BNPL methods
   // (Klarna/Clearpay) can't be saved off-session, so for a course the client
   // pays the full price upfront via a Stripe Checkout link. Set when the
@@ -722,6 +792,19 @@ model Booking {
   // Additive, nullable — existing rows unaffected.
   packageSessionUsedAt DateTime?
   packageSessionUsedBy String?
+
+  // BLD-1824: staff-recorded payment status for a package/course purchase paid
+  // outside the online booking flow (bank transfer, in-clinic card terminal,
+  // cash) — chargedAt/prepaidAt only ever get set by Stripe, so a package paid
+  // by any other method stayed "Not yet paid" forever with no way to correct
+  // it. 'PAID' | 'PARTIALLY_PAID' | 'NOT_PAID'; only 'PAID' makes the package
+  // spendable (lib/package-sessions.ts clientPackages()) — mirrors the existing
+  // paid-via-Stripe bar rather than loosening it. Additive, nullable.
+  manualPaymentStatus      String?
+  manualPaymentMethod      String?
+  manualPaymentAmountPence Int?
+  manualPaymentAt          DateTime?
+  manualPaymentBy          String?
 
   // BLD-882: gift-voucher redemption at front-desk checkout. The voucher
   // balance is reserved atomically (lib/gift-vouchers reserveVoucher) when
@@ -772,6 +855,15 @@ model Booking {
   // Best-effort — calendar sync never blocks the booking lifecycle.
   googleEventId String?
 
+  // PRJ-1191.4: last calendar-sync failure message (any provider) an admin can
+  // see, set by lib/hostinger-calendar.ts after fetchWithRetry exhausts its
+  // attempts and cleared on the next successful push/remove. Best-effort sync
+  // never blocks the booking lifecycle, so this is the only surfaced signal
+  // that a confirmed/cancelled booking may not actually be reflected on the
+  // shared clinic calendar.
+  calendarSyncError   String?
+  calendarSyncErrorAt DateTime?
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -781,6 +873,7 @@ model Booking {
   attribCampaign      String?
   attribLanding       String?
   gclid               String? // Google click id — for offline conversion upload to Google Ads
+  fbclid              String? // Meta click id — for Meta CAPI user_data fbc matching (PRJ-1200.4)
   marketingCampaign   MarketingCampaign? @relation(fields: [marketingCampaignId], references: [id], onDelete: SetNull)
   marketingCampaignId String?
 
@@ -798,6 +891,7 @@ model Booking {
   followUp    FollowUp? // post-treatment follow-up questionnaire
   liveSession AppointmentSession? // BLD-138 interactive in-clinic session
   incidents   Incident[] // BLD-760: internal incident reports linked to this appointment
+  debts       ClientDebt[] // BLD-1572: staff-recorded outstanding balance linked to this appointment
 
   @@index([startAt])
   @@index([status])
@@ -1052,6 +1146,19 @@ model Campaign {
   abWinner      String?
   sentAt        DateTime?
   recipients    Int       @default(0)
+  // BLD-1832: distinguishes the simple/legacy plain-text broadcast composer
+  // (app/admin/campaigns/actions.ts, body is raw text with {firstName}/
+  // {discountCode} tokens) from the rich block-based one (audienceType always
+  // set, body is JSON EmailBlock[]) so the cron resume sweep renders each
+  // stuck SENDING campaign with the right template instead of guessing from
+  // content. Null for every existing row and every rich-composer send.
+  format        String?
+  // Per-recipient discount config for the plain composer, captured at send
+  // time so a resumed/continued send (cron sweep, no form data available)
+  // mints codes with the same terms as the original attempt (BLD-1832).
+  discountType    String?
+  discountValue   Int?
+  discountExpiresAt DateTime?
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @default(now()) @updatedAt
 
@@ -2075,6 +2182,7 @@ model AcademyStudent {
   homeworkSubmissions HomeworkSubmission[]
   notifications       AcademyNotification[]
   fundingApplications FundingApplication[]
+  vtctRegistrations   VtctRegistration[] // BLD-1794: one per student, enforced in app code (see VtctRegistration)
 
   @@unique([tenantId, email]) // ClinicOS Ring 1 (BLD-301): per-tenant email — replaces the global @unique
   @@index([createdAt])
@@ -2100,6 +2208,109 @@ model StudentPasskey {
   lastUsedAt   DateTime?
 
   @@index([studentId])
+  @@index([tenantId])
+}
+
+// ── BLD-1794: VTCT registration details ──────────────────────────────────────
+// A trainee's personal details + identity documents required for registration
+// with the Academy's awarding body (VTCT Skills, via Linx2Online). Deliberately
+// a SEPARATE record from AcademyStudent — submitting/editing this never
+// overwrites the student's general account/profile fields.
+//
+// One row per student, enforced in app code (lib/vtct-registration.ts finds
+// the existing row before writing), not a DB @unique — the additive deploy
+// gate (`prisma db push` without --accept-data-loss) refuses new unique
+// constraints; see lib/task-refs.ts / HomeworkSubmission for the same pattern.
+//
+// Status lifecycle: SUBMITTED (awaiting admin review) -> CONFIRMED (admin has
+// checked the details against the documents) -> CHANGES_PENDING (the student
+// edited already-confirmed details; the edit saves immediately so nothing is
+// lost, but it flags for admin re-review rather than silently overwriting what
+// was confirmed) -> back to CONFIRMED once admin re-confirms. Chosen over
+// blocking edits outright, per the ticket's own steer to pick the simpler of
+// the two safe options.
+enum VtctRegistrationStatus {
+  SUBMITTED
+  CONFIRMED
+  CHANGES_PENDING
+}
+
+// Identity documents attached to a VtctRegistration. Stored in PRIVATE Vercel
+// Blob storage (mirrors BLD-798 kiosk selfies / BLD-740 portfolio clinical
+// photos) and only ever read through the authenticated relay
+// (lib/vtct-blob.ts, /api/academy/vtct-registration/document) — the trainee
+// who owns the registration, or signed-in staff (settings.manage). Never a
+// public/unauthenticated URL.
+enum VtctDocumentKind {
+  PHOTO_ID
+  PROOF_OF_ADDRESS
+  PRIOR_QUALIFICATION
+}
+
+model VtctRegistration {
+  id       String @id @default(cuid())
+  tenantId String // ClinicOS multi-tenant (Ring 0)
+
+  student   AcademyStudent @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  studentId String
+
+  title              String // Mr | Mrs | Miss | Ms | Other
+  firstName          String // legal first name
+  middleNames        String?
+  lastName           String // legal last name / surname
+  dob                DateTime
+  gender             Gender // reuses the existing inclusive Gender enum (see Client.gender)
+  genderSelfDescribe String? // free text when gender = OTHER
+  personalEmail      String
+  phone              String
+  addressLine1       String
+  addressLine2       String?
+  addressCity        String
+  addressPostcode    String
+  addressCountry     String @default("United Kingdom")
+
+  // "Have you previously completed or been registered for any VTCT Skills
+  // qualifications?" — priorLearnerCode is mandatory (validated in app code)
+  // only when previouslyRegistered is true.
+  previouslyRegistered Boolean @default(false)
+  priorLearnerCode     String?
+
+  // The Student Declaration, Accuracy of Information and Responsibility is
+  // agreed immediately before every submission/resubmission (see
+  // lib/vtct-registration.ts's DECLARATION_TEXT — the single source of truth
+  // the student-facing form renders verbatim).
+  declarationAgreedAt DateTime
+
+  status            VtctRegistrationStatus @default(SUBMITTED)
+  submittedAt       DateTime                @default(now()) // most recent submit/resubmit
+  confirmedAt       DateTime?
+  confirmedBy       String? // staff email
+  changeRequestedAt DateTime? // set when a CONFIRMED registration is edited again
+  adminNotes        String? // internal note (e.g. why a resubmission needs a closer look)
+
+  documents VtctRegistrationDocument[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([studentId])
+  @@index([tenantId])
+  @@index([status])
+}
+
+model VtctRegistrationDocument {
+  id             String           @id @default(cuid())
+  tenantId       String
+  registration   VtctRegistration @relation(fields: [registrationId], references: [id], onDelete: Cascade)
+  registrationId String
+  kind           VtctDocumentKind
+  filename       String
+  url            String // PRIVATE Vercel Blob URL — never sent to the browser directly
+  contentType    String?
+  sizeBytes      Int?
+  uploadedAt     DateTime @default(now())
+
+  @@index([registrationId])
   @@index([tenantId])
 }
 
@@ -3057,6 +3268,31 @@ model Enrolment {
   @@index([studentId])
   @@index([studentId, status])
   @@index([cohortId, status]) // BLD-1142: cohortsWithRemaining() groupBy on every course-page ISR
+}
+
+// BLD-1731: the Learner (Training) Agreement's wording, versioned and editable
+// from the K Academy admin area instead of hardcoded in lib/learner-agreement.ts.
+// One row per published (or drafted) wording; the CURRENT agreement is the most
+// recent PUBLISHED row (ordered by publishedAt) — publishing never edits or
+// removes an older row, so an enrolment's stamped agreementVersion always still
+// resolves to the exact wording that learner signed. Global policy content
+// (like Post), not tenant-scoped.
+enum LearnerAgreementStatus {
+  DRAFT
+  PUBLISHED
+}
+
+model LearnerAgreementVersion {
+  id          String                 @id @default(cuid())
+  version     String // human-readable + monotonic, e.g. "2026-09-11" (see nextAgreementVersion)
+  sections    Json // AgreementSection[] — { heading, body }[]
+  status      LearnerAgreementStatus @default(DRAFT)
+  publishedAt DateTime? // set once, when this row is published; never re-published
+  createdBy   String? // admin email, or 'system' for the initial lazy seed
+  createdAt   DateTime               @default(now())
+  updatedAt   DateTime               @updatedAt
+
+  @@index([status, publishedAt])
 }
 
 // BLD-528: itemised academy payments. One row per payment OR scheduled instalment.
@@ -4748,7 +4984,8 @@ model TaskAutomationRun {
 model ComplianceItem {
   id               String    @id @default(cuid())
   name             String
-  category         String    @default("Other") // Insurance | Licence | Certification | Equipment servicing | Waste contract | PAT testing | EICR | Other
+  category         String    @default("Other") // Insurance | Licence | Certification | Equipment servicing | Waste contract | PAT testing | EICR | Companies House | Corporation Tax | VAT | PAYE | Pension | Other
+  company          String? // legal entity this deadline belongs to (BLD-1830); null for practice-wide items (insurance, licences, PAT testing…)
   provider         String?
   reference        String? // policy / certificate / contract number
   renewalAt        DateTime // expiry / next renewal date
