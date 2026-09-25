@@ -26,7 +26,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ token: s
   });
   if (!b || b.status === 'CANCELLED') return NextResponse.json({ ok: false, error: 'Not found.' }, { status: 404 });
 
-  const location = `${site.name}, ${site.address.street}, ${[site.address.locality, site.address.postalCode].filter(Boolean).join(', ')}`;
+  const location = `${site.name}, ${site.address.street}, ${[site.address.district, site.address.postalCode].filter(Boolean).join(', ')}`;
   const ics = [
     'BEGIN:VCALENDAR',
     'VERSION:2.0',

@@ -58,7 +58,7 @@ export default async function CareersPage() {
                 <div className="rounded-[var(--radius-xl)] border border-[var(--color-line)] bg-[var(--color-bone)] p-6">
                   <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
                     <h3 className="font-[family-name:var(--font-display)] text-xl">{v.title}</h3>
-                    <span className="text-sm text-[var(--color-stone)]">{[v.type, v.location || site.address.locality, v.department].filter(Boolean).join(' · ')}</span>
+                    <span className="text-sm text-[var(--color-stone)]">{[v.type, v.location || site.address.district, v.department].filter(Boolean).join(' · ')}</span>
                   </div>
                   {v.summary && <p className="mt-2 text-[var(--color-ink-soft)]">{v.summary}</p>}
                   {v.description && <p className="mt-3 whitespace-pre-line text-sm text-[var(--color-stone)]">{v.description}</p>}

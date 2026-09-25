@@ -35,7 +35,7 @@ export function AcademyBanner() {
       </div>
       <div className="container-lux relative z-10 py-16 md:py-20">
         <div className="max-w-2xl">
-          <p className="eyebrow mb-4 inline-flex items-center gap-2.5 text-[var(--color-gold-soft)]">
+          <p className="eyebrow eyebrow-on-dark mb-4 inline-flex items-center gap-2.5">
             <span className="h-px w-8 bg-[var(--color-gold-soft)]/70" />
             Limited-time offer
           </p>

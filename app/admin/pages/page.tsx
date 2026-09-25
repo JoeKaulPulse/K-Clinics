@@ -16,7 +16,14 @@ export default async function AdminPagesPage() {
   const pages = (await listPages()).map((p) => ({ ...p, updatedAt: p.updatedAt.toISOString() }));
   const { infoPages } = await import('@/lib/info-pages');
   const skip = new Set(['careers', 'refer-a-friend', 'gift-vouchers']); // these redirect elsewhere
-  const legalPages = infoPages.filter((p) => !skip.has(p.slug)).map((p) => ({ path: `/info/${p.slug}`, label: p.title }));
+  const { academyPolicies } = await import('@/lib/academy-policies');
+  // Academy centre policies sit alongside the clinic's legal pages so the owner
+  // can rewrite any of them here before the EQA visit (a published CMS page at
+  // /academy/policies/<slug> replaces the code default).
+  const legalPages = [
+    ...infoPages.filter((p) => !skip.has(p.slug)).map((p) => ({ path: `/info/${p.slug}`, label: p.title })),
+    ...academyPolicies.map((p) => ({ path: `/academy/policies/${p.slug}`, label: `Academy: ${p.title}` })),
+  ];
   const can = await sessionPermissions();
   const locale = await getLocale();
   return (

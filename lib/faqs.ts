@@ -14,7 +14,7 @@ export const generalFaqs: { heading: string; items: Faq[] }[] = [
     items: [
       { q: 'How do I book an appointment?', a: 'Book online in under a minute — choose your treatment and time and your card is saved securely (no payment is taken until your treatment is delivered). You can also call us or request a consultation.' },
       { q: 'Can I pay in instalments?', a: 'For larger treatment plans and packages, flexible payment options are available. We will talk you through them at your consultation.' },
-      { q: 'What is your cancellation policy?', a: 'Cancellations are completely free up to 24 hours before your appointment. Within 24 hours, the full treatment fee applies (charged to the card saved at booking). You can cancel any time from the link in your confirmation email.' },
+      { q: 'What is your cancellation policy?', a: 'You can cancel or reschedule free of charge online, from the link in your confirmation email, up to 48 hours before your appointment. Within 48 hours, online cancellation and rescheduling are no longer available — please call us on 020 8050 0750. Cancellations made or confirmed with us within 24 hours of your appointment, or if you do not attend, incur the full treatment fee (charged to the card saved at booking).' },
       { q: 'When am I charged?', a: 'Never upfront. Your card is securely saved when you book, but you are only charged once your treatment has been delivered — or, for late cancellations, per our 24-hour policy.' },
     ],
   },

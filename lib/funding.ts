@@ -4,12 +4,20 @@
 // server-only imports so the client wizard can use the types + logic.
 //
 // Honesty rule: a route is only `available` when a learner can actually use it
-// through K Academy today. Government routes need an approval we do not hold yet
+// through K Academy today. Government routes need an approval we do not hold
 // (ESFA Advanced Learner Loans facility, GLA/ASF contract, OfS registration),
 // so they are `coming_soon` — the page invites learners to register interest,
 // which also builds the demand evidence those applications need. Do not present
 // a `coming_soon` route as if funding is in place.
+//
+// Owner position, September 2026: no decent direct learner funding (Advanced
+// Learner Loans / Adult Skills Fund) will be available for about two years.
+// Every public surface (funding page, academy hub, llms.txt, FAQs) must say so
+// plainly; the sentence below is the single wording they share.
 // ─────────────────────────────────────────────────────────────────────────────
+
+export const FUNDING_OUTLOOK =
+  'Direct government funding for learners (Advanced Learner Loans, Mayor of London Adult Skills Fund) is not available through K Academy at present and is not expected before 2028. Monthly course finance and self or employer funding are available now.';
 
 export type FundingRouteKey =
   | 'course_finance'
@@ -63,7 +71,7 @@ export const FUNDING_ROUTES: FundingRoute[] = [
     pays: 'A government loan pays your fees; you repay only once you earn over the threshold',
     detail:
       'For our Ofqual-regulated Level 3 and Level 4 courses. The loan covers your course fee, is not means-tested, and you only start repaying once you earn above the income threshold — like a student loan. Repayments are written off after the set period if not cleared.',
-    note: 'We are applying to offer Advanced Learner Loans. Register your interest and we will contact you the moment our loans facility is approved.',
+    note: 'Not currently available through K Academy. We do not expect a direct loans facility for our courses before 2028. Register your interest and we will contact you if that changes.',
   },
   {
     key: 'adult_skills_fund',
@@ -73,7 +81,7 @@ export const FUNDING_ROUTES: FundingRoute[] = [
     pays: 'Fully or part funded — often free to the learner',
     detail:
       'London adult education funding from the Mayor of London. Eligible Londoners can train for free or at a reduced cost on qualifying courses, with priority for people who are unemployed or earning under the funding threshold.',
-    note: 'Available through a funded college partner or once our own contract is in place. Eligibility is confirmed individually.',
+    note: 'Not currently available through K Academy: we do not hold an Adult Skills Fund contract and do not expect direct funded places before 2028. Register your interest and we will tell you if that changes.',
   },
   {
     key: 'islington',
@@ -83,7 +91,7 @@ export const FUNDING_ROUTES: FundingRoute[] = [
     pays: 'Free or subsidised community learning places',
     detail:
       'Islington Adult Community Learning supports residents into skills and work. We are building a partnership so Islington residents can access funded places on our courses.',
-    note: 'Subject to residency and the council’s eligibility rules.',
+    note: 'No funded places are available yet. Subject to a future partnership, residency and the council’s eligibility rules.',
   },
   {
     key: 'lle',
@@ -93,7 +101,7 @@ export const FUNDING_ROUTES: FundingRoute[] = [
     pays: 'A flexible government loan you can use across your lifetime',
     detail:
       'From January 2027 the new Lifelong Learning Entitlement gives every adult a flexible loan allowance (worth around four years of study) to spend on Level 4–6 courses and modules. It replaces Advanced Learner Loans for most higher-level study.',
-    note: 'Launches for courses starting January 2027. Requires Office for Students registration, which we are working towards.',
+    note: 'Launches nationally for courses starting January 2027, but requires Office for Students registration, which K Academy does not yet hold. Not available through us before 2028 at the earliest.',
   },
 ];
 
@@ -129,27 +137,29 @@ export function recommendRoutes(i: EligibilityInput): FundingRouteKey[] {
   const lowerLevel = i.courseLevel === '2' || i.courseLevel === '3';
   const higherLevel = i.courseLevel === '3' || i.courseLevel === '4' || i.courseLevel === '5_7';
 
-  // Free / fully-funded routes lead when the learner clearly qualifies.
+  // Routes a learner can use today lead (owner position, Sept 2026: no direct
+  // government funding before 2028), so the wizard never opens with a
+  // register-interest route as if it were the answer.
+  out.push('course_finance', 'self');
+
+  // Government / council routes the learner would qualify for in principle,
+  // shown as "register interest" so the demand is recorded for future bids.
   if (i.age19Plus && i.residencyOk && inLondon && lowerLevel && (i.lowIncome || (i.courseLevel === '3' && !i.priorLevel3))) {
     out.push('adult_skills_fund');
   }
   if (i.age19Plus && i.location === 'islington') out.push('islington');
-
-  // Loan routes for the regulated higher levels.
   if (i.age19Plus && i.residencyOk && higherLevel) out.push('advanced_learner_loan');
   if (i.age19Plus && i.residencyOk && (i.courseLevel === '4' || i.courseLevel === '5_7')) out.push('lle');
-
-  // Always-available fallbacks.
-  out.push('course_finance', 'self');
 
   // De-dupe while preserving the priority order above.
   return [...new Set(out)];
 }
 
-/** The primary route to record against an application (first government/loan
- *  route if any qualified, otherwise the monthly-finance fallback). */
+/** The primary route to record against an application: the first route the
+ *  learner can actually use today (monthly finance / self or employer),
+ *  falling back to the first register-interest route only if neither applies. */
 export function primaryRoute(keys: FundingRouteKey[]): FundingRouteKey {
-  return keys.find((k) => k !== 'course_finance' && k !== 'self') ?? 'course_finance';
+  return keys.find((k) => ROUTE_BY_KEY[k].status === 'available') ?? keys[0] ?? 'course_finance';
 }
 
 export const COURSE_LEVEL_LABEL: Record<CourseLevelBand, string> = {

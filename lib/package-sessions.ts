@@ -29,6 +29,14 @@ export type PackageView = {
   purchaseBookingId: string;
   label: string; // e.g. "Laser Hair Removal — Full Body"
   treatmentSlug: string;
+  // BLD-1890: treatmentSlug identifies the marketing category only (e.g.
+  // "laser-hair-removal") — a category can have several service variants/areas
+  // (Chin, Lower Leg, Underarms…) that all share the same slug. variantId is
+  // the specific area purchased, so callers can tell those packages apart
+  // instead of treating every package in the category as interchangeable.
+  // Null when the purchase was made without a specific variant on record
+  // (e.g. a variant-less category, or older data from before this was tracked).
+  variantId: string | null;
   sessionsTotal: number;
   sessionsUsed: number; // completed sessions (incl. the purchase visit itself)
   sessionsBooked: number; // pending/confirmed, not yet taken
@@ -110,7 +118,7 @@ export async function clientPackages(clientId: string): Promise<PackageView[]> {
       chargedAt: true, prepaidAt: true, createdAt: true,
       chargedPence: true, refundedPence: true,
       manualPaymentStatus: true, manualPaymentMethod: true, manualPaymentAmountPence: true, manualPaymentAt: true,
-      items: { where: { isAddon: false }, orderBy: { createdAt: 'asc' }, take: 1, select: { sessions: true, label: true } },
+      items: { where: { isAddon: false }, orderBy: { createdAt: 'asc' }, take: 1, select: { sessions: true, label: true, variantId: true } },
       packageSessions: { where: SESSION_INCLUDED, select: { status: true, packageSessionUsedAt: true } },
     },
   }).catch(() => []);
@@ -127,6 +135,7 @@ export async function clientPackages(clientId: string): Promise<PackageView[]> {
       purchaseBookingId: p.id,
       label: p.items[0]?.label || p.treatmentTitle,
       treatmentSlug: p.treatmentSlug,
+      variantId: p.items[0]?.variantId ?? null,
       sessionsTotal: total,
       sessionsUsed: used,
       sessionsBooked: booked,

@@ -77,6 +77,9 @@ export const guestBookingSchema = clientSignupSchema.omit({ password: true });
 // optional in SignupInput and captured later at booking. Terms acceptance is an
 // explicit "By continuing you agree…" line in that UI, so no consent checkbox
 // field. `eventId` de-dupes the browser Lead pixel against the server CAPI copy.
+// BLD-1870 scope note: deliberately excluded from the mandatory-fields rule —
+// this is a lead-capture quick-signup, not full account registration; forcing
+// full PII here is a UX/conversion policy call beyond that ticket.
 export const kVisionSignupSchema = z.object({
   firstName: z.string().min(1, 'First name is required').max(80),
   email: z.string().email('Enter a valid email'),
@@ -143,13 +146,18 @@ export const bookingStartSchema = z.object({
 });
 export type BookingStartInput = z.infer<typeof bookingStartSchema>;
 
+// BLD-1870: a client account cannot be created without first name, last name,
+// dob, phone and email — lastName/phone below use the exact same rules
+// clientSignupSchema already enforces for the portal signup, so the "new
+// client" public booking path can no longer create an account with a missing
+// surname or contact number.
 export const bookingCreateSchema = z.object({
   slug: z.string().min(1),
   startISO: z.string().datetime(),
   firstName: z.string().min(1).max(80),
-  lastName: z.string().max(80).optional().or(z.literal('')),
+  lastName: z.string().min(1, 'Surname is required').max(80),
   email: z.string().email(),
-  phone: z.string().max(40).optional().or(z.literal('')),
+  phone: z.string().min(7, 'A contact phone number is required').max(40).refine((v) => (v.match(/\d/g) || []).length >= 7, 'Enter a valid phone number'),
   dob: dobField,
   ageDeclare: z.literal(true, 'Please confirm you are 18 or over.'),
   notes: z.string().max(2000).optional().or(z.literal('')),

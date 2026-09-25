@@ -4,6 +4,7 @@ import { treatmentSlugs } from '@/lib/treatments';
 import { packages } from '@/lib/packages';
 import { infoSlugs } from '@/lib/info-pages';
 import { articles } from '@/lib/articles';
+import { academyPolicySlugs } from '@/lib/academy-policies';
 
 // ISR so newly-published academy courses (DB-backed) appear without a redeploy.
 export const revalidate = 3600;
@@ -12,7 +13,7 @@ export const revalidate = 3600;
 // Using a fixed date (rather than `new Date()`) keeps <lastmod> honest — search
 // engines distrust sitemaps that claim every URL changed on every crawl. Bump
 // this when marketing copy is meaningfully refreshed.
-const CONTENT_REVIEWED = new Date('2026-06-01T00:00:00Z');
+const CONTENT_REVIEWED = new Date('2026-09-25T00:00:00Z');
 
 // Fallback academy slugs if the DB can't be reached at build/revalidate time.
 const FALLBACK_COURSE_SLUGS = ['level-2-foundation-skin-laser', 'level-3-laser-aesthetic-therapies', 'level-4-certificate-aesthetic-practice', 'advanced-aesthetics-level-5-7'];
@@ -69,6 +70,9 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   // PRJ-939.14: only list /shop while there is something to sell.
   const shopEntries = await shopProducts();
   const shopLive = shopEntries.length > 0;
+  // BLD-1933: /academy/bundles 404s when no bundle is active, so only list it
+  // (like /shop above) while there is at least one.
+  const bundles = await bundleSlugs();
 
   const reviewed = CONTENT_REVIEWED;
   const base = site.url;
@@ -94,8 +98,9 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { path: '/gallery', priority: 0.6, freq: 'monthly' },
     { path: '/finance', priority: 0.6, freq: 'monthly' },
     { path: '/academy', priority: 0.8, freq: 'weekly' },
-    { path: '/academy/bundles', priority: 0.7, freq: 'monthly' },
+    ...(bundles.length > 0 ? [{ path: '/academy/bundles', priority: 0.7, freq: 'monthly' as const }] : []),
     { path: '/academy/funding', priority: 0.65, freq: 'monthly' },
+    { path: '/academy/policies', priority: 0.4, freq: 'yearly' },
     { path: '/about', priority: 0.6, freq: 'monthly' },
     { path: '/team', priority: 0.7, freq: 'monthly' },
     { path: '/clinics', priority: 0.7, freq: 'monthly' },
@@ -137,6 +142,12 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       changeFrequency: 'yearly' as const,
       priority: 0.3,
     })),
+    ...academyPolicySlugs.map((slug) => ({
+      url: `${base}/academy/policies/${slug}`,
+      lastModified: reviewed,
+      changeFrequency: 'yearly' as const,
+      priority: 0.3,
+    })),
     ...(await journalCards()).map((c) => ({
       url: `${base}/journal/${c.slug}`,
       // Real per-article date so freshness signals are trustworthy.
@@ -150,7 +161,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       changeFrequency: 'monthly' as const,
       priority: 0.6,
     })),
-    ...(await bundleSlugs()).map((slug) => ({
+    ...bundles.map((slug) => ({
       url: `${base}/academy/bundles/${slug}`,
       lastModified: reviewed,
       changeFrequency: 'monthly' as const,

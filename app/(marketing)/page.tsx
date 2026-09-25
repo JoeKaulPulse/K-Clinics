@@ -157,7 +157,7 @@ export default async function HomePage() {
                 />
                 <span className="pointer-events-none absolute inset-0 -z-0 bg-[linear-gradient(to_top,rgba(42,36,32,0.85),rgba(42,36,32,0.35)_45%,rgba(42,36,32,0.15))]" />
                 <div className="relative">
-                  <p className="eyebrow mb-4 flex items-center gap-2.5 text-[var(--color-gold-soft)]">
+                  <p className="eyebrow eyebrow-on-dark mb-4 flex items-center gap-2.5">
                     {c.tag}
                     {c.tag === 'Dentistry' && !dentistryLive && <span className="rounded-full bg-[var(--color-gold-soft)] px-2.5 py-0.5 text-[0.58rem] font-semibold uppercase tracking-[0.12em] text-[var(--color-ink)]">Opening soon</span>}
                   </p>
@@ -322,7 +322,7 @@ export default async function HomePage() {
             <dl className="mt-9 grid max-w-md grid-cols-2 gap-x-12 gap-y-5 text-[var(--color-ink-soft)]">
               <div className="col-span-2">
                 <dt className="eyebrow mb-1.5">Address</dt>
-                <dd>{site.address.street}, {site.address.locality}, {site.address.region} {site.address.postalCode}</dd>
+                <dd>{site.address.street}, {site.address.district}, {site.address.region} {site.address.postalCode}</dd>
               </div>
               <div>
                 <dt className="eyebrow mb-1.5">Call</dt>
