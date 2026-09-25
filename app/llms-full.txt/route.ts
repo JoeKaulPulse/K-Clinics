@@ -68,7 +68,7 @@ export async function GET() {
 
 ${site.description}
 
-Legal entity: ${site.legalName} (company no. ${site.companyNumber}). Address: ${site.address.street}, ${site.address.locality}, London ${site.address.postalCode}. Phone: ${site.phone}. Email: ${site.email}. Website: ${base}. Short index: ${base}/llms.txt. Generated: ${new Date().toISOString().slice(0, 10)}.
+Legal entity: ${site.legalName} (company no. ${site.companyNumber}). Address: ${site.address.street}, ${site.address.district}, London ${site.address.postalCode}. Phone: ${site.phone}. Email: ${site.email}. Website: ${base}. Short index: ${base}/llms.txt. Generated: ${new Date().toISOString().slice(0, 10)}.
 
 Opening hours: ${site.hours.map((h) => `${h.day} ${h.open === 'Closed' ? 'closed' : `${h.open}–${h.close}`}`).join('; ')}.
 
@@ -76,7 +76,7 @@ Opening hours: ${site.hours.map((h) => `${h.day} ${h.open === 'Closed' ? 'closed
 ${treatmentText}
 ${dentistryLive ? '' : `\nDentistry is opening soon and is not yet bookable. Register interest at ${base}/dentistry.\n`}
 # K Academy
-K Academy is the training arm of ${site.name}, delivered inside the working clinic in ${site.address.locality}. Qualifications at Levels 2–4 are Ofqual-regulated and awarded through VTCT; short courses are CPD-accredited. Delivery is blended: online theory on Thinkific, practical days in clinic, VTCT exam administered in-house.
+K Academy is the training arm of ${site.name}, delivered inside the working clinic in ${site.address.district}. Qualifications at Levels 2–4 are Ofqual-regulated and awarded through VTCT; short courses are CPD-accredited. Delivery is blended: online theory on Thinkific, practical days in clinic, VTCT exam administered in-house.
 
 ${courseText || `Course list: ${base}/academy`}
 ${bundleText ? `\n# K Academy bundles\n${bundleText}\n` : ''}

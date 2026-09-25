@@ -45,9 +45,9 @@ export async function GET() {
 
   const body = `# ${site.name}
 
-> ${site.name} is an aesthetics and dentistry clinic in ${site.address.locality}, London, offering laser, skin, injectable and smile treatments — plus K Academy, an Ofqual-regulated, VTCT and CPD-accredited training centre for clinicians.
+> ${site.name} is an aesthetics and dentistry clinic in ${site.address.district}, London, offering laser, skin, injectable and smile treatments — plus K Academy, an Ofqual-regulated, VTCT and CPD-accredited training centre for clinicians.
 
-Location: ${site.address.street}, ${site.address.locality}, London ${site.address.postalCode}. Phone: ${site.phone}. Email: ${site.email}. Booking: ${base}/book
+Location: ${site.address.street}, ${site.address.district}, London ${site.address.postalCode}. Phone: ${site.phone}. Email: ${site.email}. Booking: ${base}/book
 Legal entity: ${site.legalName} (company no. ${site.companyNumber}). Opened ${site.founded}.
 Full page text for citation: ${base}/llms-full.txt · Sitemap: ${base}/sitemap.xml · Last generated: ${new Date().toISOString().slice(0, 10)}
 
@@ -68,7 +68,7 @@ ${aesthetics.map(line).join('\n')}
 ${dentistryLive ? dentistry.map(line).join('\n') : `Dentistry is opening soon and not yet bookable — see [Dentistry](${base}/dentistry) to register interest.`}
 
 ## K Academy (training)
-K Academy is the training arm of ${site.name}, based inside the clinic at ${site.address.street}, ${site.address.locality}. Qualifications are Ofqual-regulated and awarded through VTCT (Levels 2–4); short courses are CPD-accredited. Delivery is blended: online theory on Thinkific, practical days in the working clinic, VTCT exam administered in-house. Learners can enrol at any time and join the next suitable cohort.
+K Academy is the training arm of ${site.name}, based inside the clinic at ${site.address.street}, ${site.address.district}. Qualifications are Ofqual-regulated and awarded through VTCT (Levels 2–4); short courses are CPD-accredited. Delivery is blended: online theory on Thinkific, practical days in the working clinic, VTCT exam administered in-house. Learners can enrol at any time and join the next suitable cohort.
 
 ### Courses
 ${courseLines.join('\n')}
@@ -90,7 +90,7 @@ ${site.hours.map((h) => `- ${h.day}: ${h.open === 'Closed' ? 'Closed' : `${h.ope
 - Booking is online: pick a treatment & time, save a card securely — charged only once the treatment is delivered.
 - Free cancellation up to 24 hours before an appointment; within 24 hours the full fee applies.
 - Finance: pay-as-you-go courses and 0% interest-free options on eligible treatments.
-- Location & transport: ${site.address.street}, ${site.address.locality}, ${site.address.postalCode} — minutes from Farringdon, Barbican and Old Street; step-free access.
+- Location & transport: ${site.address.street}, ${site.address.district}, ${site.address.postalCode} — minutes from Farringdon, Barbican and Old Street; step-free access.
 - Dentistry is ${dentistryLive ? 'open and bookable' : 'opening soon (register interest on the dentistry page)'}.
 
 ## Clinic policies

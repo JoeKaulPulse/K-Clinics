@@ -46,7 +46,7 @@ export default async function AcademyPage() {
   const priced = courses.map((c) => getActivePromo(c) ?? c.pricePence).filter((p) => p > 0);
   const lowestFee = priced.length ? Math.min(...priced) : null;
   const AT_A_GLANCE: { label: string; value: string }[] = [
-    { label: 'Where', value: `${site.address.street}, ${site.address.locality}, London ${site.address.postalCode}. Practical days inside the working clinic.` },
+    { label: 'Where', value: `${site.address.street}, ${site.address.district}, London ${site.address.postalCode}. Practical days inside the working clinic.` },
     { label: 'Regulation', value: 'Ofqual-regulated qualifications awarded through VTCT (Levels 2–4); CPD-accredited short courses; advanced Level 5–7 programmes.' },
     { label: 'Delivery', value: 'Blended: online theory on Thinkific at your own pace, then practical days in clinic. VTCT exam administered in-house.' },
     { label: 'Courses', value: courses.length ? `${courses.length} course${courses.length === 1 ? '' : 's'} open for enrolment${lowestFee ? `, from ${formatFee(lowestFee)}` : ''}. Enrol any time; join the next suitable cohort.` : 'Enrol any time; you join the next suitable cohort.' },
