@@ -76,9 +76,9 @@ export function ClaimReward({ resultId, hasShared = false }: { resultId: string;
       <p className="mt-1 text-center text-sm text-[var(--color-stone)]">Shared it? Create your account to unlock a discount off your first treatment.</p>
       <div className="mt-4 space-y-2">
         <input value={firstName} onChange={(e) => setFirstName(e.target.value)} placeholder="First name" autoComplete="given-name"
-          className="w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-3 py-3 text-base outline-none focus:border-[var(--color-gold)] focus-visible:ring-2 focus-visible:ring-[var(--color-gold)]" />
+          className="w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-3 py-3 text-base outline-none focus:border-[var(--color-gold-deep)] focus-visible:ring-2 focus-visible:ring-[var(--color-gold-deep)]" />
         <input value={email} onChange={(e) => setEmail(e.target.value)} type="email" inputMode="email" placeholder="Email" autoComplete="email"
-          className="w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-3 py-3 text-base outline-none focus:border-[var(--color-gold)] focus-visible:ring-2 focus-visible:ring-[var(--color-gold)]" />
+          className="w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-3 py-3 text-base outline-none focus:border-[var(--color-gold-deep)] focus-visible:ring-2 focus-visible:ring-[var(--color-gold-deep)]" />
       </div>
       {/* BLD-1420: explicit, off-by-default opt-in — same wording/consent-stamping
           pattern as EnquiryForm/GiftVoucherFlow (marketingConsentFields('kiosk')

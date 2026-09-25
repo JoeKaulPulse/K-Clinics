@@ -9,6 +9,7 @@ import { EditClientDetails } from '@/components/admin/EditClientDetails';
 import { LeaderboardCard } from '@/components/admin/LeaderboardCard';
 import { DiscountAction } from '@/components/admin/DiscountActions';
 import { AdjustClientPoints } from '@/components/admin/AdjustClientPoints';
+import { paymentMethodLabel } from '@/lib/payment-methods';
 
 // Visual styling per interaction type for the client timeline.
 const NOTE_STYLE: Record<string, { label: string; dot: string; badge: string }> = {
@@ -35,6 +36,9 @@ import { ClientStatusEditor } from '@/components/admin/ClientStatusEditor';
 import { ClientStatusBadge } from '@/components/admin/ClientStatusBadge';
 import { ClientTasks } from '@/components/admin/ClientTasks';
 import { LogIncident } from '@/components/admin/LogIncident';
+import { EditDebt } from '@/components/admin/EditDebt';
+import { RemoveOutstandingPayment } from '@/components/admin/RemoveOutstandingPayment';
+import { PackagePaymentControl } from '@/components/admin/PackagePaymentControl';
 import { DataPrivacy } from '@/components/admin/DataPrivacy';
 import { sessionCan } from '@/lib/auth';
 import { fmtClinicTime, fmtClinicDate } from '@/lib/clinic-time';
@@ -67,7 +71,16 @@ export default async function ClientDetail({ params }: { params: Promise<{ id: s
   const { id } = await params;
   const { getClient } = await import('@/lib/crm-data');
   const session = await getSession();
-  const c = await getClient(id);
+  // Clinical (health) data — gated on the revocable `clients.clinical.view`
+  // permission (not role), so a permission revoke actually withholds it here too,
+  // matching the SAR export. Resolved before getClient() so the interaction cap
+  // (BLD-1464) is applied to rows this viewer can actually see.
+  const clinical = sessionCan(session, 'clients.clinical.view');
+  // BLD-1693: a Specialist/Practitioner can only open a client they've
+  // actually had a booking with — getClient returns null (404) otherwise,
+  // same as an unknown id, so the page can't be used to probe which ids exist.
+  const practitionerId = session && session.role === 'PRACTITIONER' ? session.sub : undefined;
+  const c = await getClient(id, { clinical, practitionerId });
   if (!c) notFound();
 
   const fullName = [c.firstName, c.lastName].filter(Boolean).join(' ');
@@ -84,11 +97,13 @@ export default async function ClientDetail({ params }: { params: Promise<{ id: s
   // booking routes refuse new bookings while any remain.
   const { outstandingBalance } = await import('@/lib/outstanding');
   const owed = await outstandingBalance(c.id);
+  // BLD-1572: staff-recorded ("Mark as Debt") outstanding balance — a manual
+  // record separate from the automated late-cancel/no-show one above.
+  const { clientDebtBalance } = await import('@/lib/client-debt');
+  const debt = await clientDebtBalance(c.id);
 
-  // Clinical (health) data — gated on the revocable `clients.clinical.view`
-  // permission (not role), so a permission revoke actually withholds it here too,
-  // matching the SAR export. Decrypt the latest version of each assessment type.
-  const clinical = sessionCan(session, 'clients.clinical.view');
+  // Decrypt the latest version of each assessment type (gated on `clinical`,
+  // resolved above alongside the getClient() call).
   // BLD-1511: getClient() decrypts medicalFlag/allergies/consultation notes/
   // allergyNote/interaction detail for display — audit the view (throttled
   // per viewer/client/hour), matching the booking-detail/consultation-detail
@@ -197,6 +212,14 @@ export default async function ClientDetail({ params }: { params: Promise<{ id: s
           <h1 className="flex flex-wrap items-center gap-2 font-[family-name:var(--font-display)] text-3xl">
             {fullName}
             <ClientStatusBadge status={c.clientStatus} />
+            {/* BLD-1572 + BLD-1066: one combined "Outstanding balance" badge —
+                whichever mechanism recorded it (automated fee or staff-recorded
+                debt), the client is unmistakably marked. */}
+            {(owed.totalPence + debt.totalPence) > 0 && (
+              <span className="rounded-full bg-[var(--color-blush)]/25 px-2.5 py-0.5 text-xs font-medium text-[var(--color-blush-deep)]">
+                Outstanding balance — £{((owed.totalPence + debt.totalPence) / 100).toFixed(2)}
+              </span>
+            )}
           </h1>
           {c.clientStatus === 'RED' && (
             <p role="alert" className="mt-2 inline-flex max-w-md items-center gap-1.5 rounded-[var(--radius-sm)] border border-[var(--color-blush-deep)] bg-[var(--color-blush)]/15 px-3 py-1.5 text-sm font-medium text-[var(--color-blush-deep)]">
@@ -244,14 +267,48 @@ export default async function ClientDetail({ params }: { params: Promise<{ id: s
           <p className="font-medium text-[var(--color-blush-deep)]">Outstanding payment — £{(owed.totalPence / 100).toFixed(2)}</p>
           <ul className="mt-1 space-y-0.5 text-sm text-[var(--color-ink)]">
             {owed.items.map((i) => (
-              <li key={i.bookingId}>
+              <li key={i.bookingId} className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
                 <Link href={`/admin/bookings/${i.bookingId}`} className="underline-offset-2 hover:underline">
                   {i.treatmentTitle} · {new Date(i.startAt).toLocaleDateString('en-GB')} · {i.kind === 'no-show' ? 'no-show' : 'late cancellation'} · £{(i.pricePence / 100).toFixed(2)}
                 </Link>
+                {/* BLD-1893: completely remove an incorrectly-generated fee,
+                    rather than only charge it or wait for it to be waived. */}
+                {sessionCan(session, 'bookings.charge') && (
+                  <RemoveOutstandingPayment bookingId={i.bookingId} treatmentTitle={i.treatmentTitle} pricePence={i.pricePence} />
+                )}
               </li>
             ))}
           </ul>
-          <p className="mt-2 text-xs text-[var(--color-stone)]">Online booking is blocked for this client until the balance is charged (open the appointment → charge the card) or the fee is waived on the appointment. Either clears this warning automatically.</p>
+          <p className="mt-2 text-xs text-[var(--color-stone)]">Online booking is blocked for this client until the balance is charged (open the appointment → charge the card), the fee is waived on the appointment, or the payment is removed here. Any of the three clears this warning automatically.</p>
+        </div>
+      )}
+
+      {/* BLD-1572: staff-recorded ("Mark as Debt") outstanding balance — the
+          card couldn't be charged, the payment failed, or the client left
+          without paying. Same visual treatment as the BLD-1066 warning above
+          so the profile never shows two differently-styled "owed money"
+          banners. Persists until a staff member resolves it (no clear UI yet). */}
+      {debt.totalPence > 0 && (
+        <div role="alert" className="mt-6 rounded-[var(--radius-md)] border border-[var(--color-blush-deep)] bg-[var(--color-blush)]/15 p-4">
+          <p className="font-medium text-[var(--color-blush-deep)]">Outstanding balance — £{(debt.totalPence / 100).toFixed(2)}</p>
+          <ul className="mt-1 space-y-1 text-sm text-[var(--color-ink)]">
+            {debt.items.map((i) => (
+              <li key={i.id} className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
+                {i.bookingId ? (
+                  <Link href={`/admin/bookings/${i.bookingId}`} className="underline-offset-2 hover:underline">
+                    £{(i.amountPence / 100).toFixed(2)} · {i.reason} · {new Date(i.createdAt).toLocaleDateString('en-GB')} · {i.createdBy}
+                  </Link>
+                ) : (
+                  <span>£{(i.amountPence / 100).toFixed(2)} · {i.reason} · {new Date(i.createdAt).toLocaleDateString('en-GB')} · {i.createdBy}</span>
+                )}
+                {/* BLD-1763: correct or clear a mistaken/settled debt without a database edit. */}
+                {sessionCan(session, 'bookings.charge') && (
+                  <EditDebt clientId={c.id} debtId={i.id} amountPence={i.amountPence} reason={i.reason} />
+                )}
+              </li>
+            ))}
+          </ul>
+          <p className="mt-2 text-xs text-[var(--color-stone)]">Recorded manually by staff — from "Mark as Debt" on an appointment.</p>
         </div>
       )}
 
@@ -265,25 +322,49 @@ export default async function ClientDetail({ params }: { params: Promise<{ id: s
             <p className="rounded-[var(--radius-md)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-3.5 text-sm text-[var(--color-stone)]">No active package.</p>
           ) : (
             <div className="space-y-2">
-              {packages.map((p) => (
-                <Link key={p.purchaseBookingId} href={`/admin/bookings/${p.purchaseBookingId}`} className="block rounded-[var(--radius-md)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-3.5 transition-colors hover:border-[var(--color-gold)]">
-                  <div className="flex flex-wrap items-baseline justify-between gap-2">
-                    <span className="font-medium">{p.label}</span>
-                    {/* BLD-1380: a fully refunded course is not "Not yet paid" —
-                        staff must not chase money the clinic has given back. */}
-                    <span className={`rounded-full px-2.5 py-0.5 text-xs ${p.paid ? 'bg-[var(--color-jade)]/15 text-[var(--color-jade)]' : p.refunded ? 'bg-[var(--color-line)] text-[var(--color-stone)]' : 'bg-[var(--color-blush)]/20 text-[var(--color-blush-deep)]'}`}>{p.paid ? 'Paid' : p.refunded ? 'Refunded' : 'Not yet paid'}</span>
-                  </div>
-                  <p className="mt-1 text-sm text-[var(--color-stone)]">
-                    Course of {p.sessionsTotal} · {p.sessionsUsed} used · {p.sessionsBooked} booked · <span className="font-medium text-[var(--color-ink)]">{p.sessionsRemaining} remaining</span>
-                  </p>
-                </Link>
-              ))}
+              {packages.map((p) => {
+                // BLD-1824: a manual "Partially paid" override has no equivalent in
+                // the Stripe-derived paid/refunded pair above — surface it as its
+                // own badge state rather than folding it into "Not yet paid".
+                const partial = !p.paid && !p.refunded && p.manualPaymentStatus === 'PARTIALLY_PAID';
+                const badgeLabel = p.paid ? 'Paid' : p.refunded ? 'Refunded' : partial ? 'Partially paid' : 'Not yet paid';
+                const badgeClass = p.paid ? 'bg-[var(--color-jade)]/15 text-[var(--color-jade)]' : p.refunded ? 'bg-[var(--color-line)] text-[var(--color-stone)]' : partial ? 'bg-[var(--color-gold)]/20 text-[var(--color-gold-deep)]' : 'bg-[var(--color-blush)]/20 text-[var(--color-blush-deep)]';
+                return (
+                  <Link key={p.purchaseBookingId} href={`/admin/bookings/${p.purchaseBookingId}`} className="block rounded-[var(--radius-md)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-3.5 transition-colors hover:border-[var(--color-gold)]">
+                    <div className="flex flex-wrap items-baseline justify-between gap-2">
+                      <span className="font-medium">{p.label}</span>
+                      <span className="flex items-center gap-2">
+                        {/* BLD-1380: a fully refunded course is not "Not yet paid" —
+                            staff must not chase money the clinic has given back. */}
+                        <span className={`rounded-full px-2.5 py-0.5 text-xs ${badgeClass}`}>{badgeLabel}</span>
+                        {sessionCan(session, 'bookings.charge') && !p.refunded && (
+                          <PackagePaymentControl
+                            purchaseBookingId={p.purchaseBookingId}
+                            manual={{ status: p.manualPaymentStatus, method: p.manualPaymentMethod, amountPence: p.manualPaymentAmountPence, at: p.manualPaymentAt ? p.manualPaymentAt.toISOString() : null }}
+                          />
+                        )}
+                      </span>
+                    </div>
+                    <p className="mt-1 text-sm text-[var(--color-stone)]">
+                      Course of {p.sessionsTotal} · {p.sessionsUsed} used · {p.sessionsBooked} booked · <span className="font-medium text-[var(--color-ink)]">{p.sessionsRemaining} remaining</span>
+                    </p>
+                    {p.manualPaymentStatus && p.manualPaymentStatus !== 'NOT_PAID' && (
+                      <p className="mt-1 text-xs text-[var(--color-stone)]">
+                        Recorded by staff{p.manualPaymentMethod ? ` — ${p.manualPaymentMethod}` : ''}{p.manualPaymentAmountPence ? `, £${(p.manualPaymentAmountPence / 100).toFixed(2)}` : ''}{p.manualPaymentAt ? ` on ${fmtClinicDate(p.manualPaymentAt, { day: 'numeric', month: 'short', year: 'numeric' })}` : ''}
+                      </p>
+                    )}
+                  </Link>
+                );
+              })}
             </div>
           )}
         </section>
         {/* Appointments — past / current / upcoming, with consent + insights */}
         <section>
           <h2 className="mb-3 font-[family-name:var(--font-display)] text-xl">Appointments</h2>
+          {/* BLD-1464: bookings are capped (take: 50, most-recent-first) at the query — a
+              full one shows this note rather than pretending the list is exhaustive. */}
+          {c.bookings.length === 50 && <p className="mb-3 text-xs text-[var(--color-stone)]">Showing the most recent 50 appointments.</p>}
           {(() => {
             const fmtPence = (p: number) => formatPrice(p);
             // BLD-1453: a booking linked to a package purchase (packageBookingId set)
@@ -318,7 +399,11 @@ export default async function ClientDetail({ params }: { params: Promise<{ id: s
               const isPackagePurchase = packageByPurchaseId.has(b.id);
               const pkg = isPackagePurchase ? packageByPurchaseId.get(b.id) : b.packageBookingId ? packageByPurchaseId.get(b.packageBookingId) : undefined;
               const sessionNumber = pkg ? (sessionsByPurchaseId.get(pkg.purchaseBookingId)?.findIndex((x) => x.id === b.id) ?? -1) + 1 : 0;
-              const isLinkedSession = !isPackagePurchase && !!pkg;
+              // BLD-1891 review fix: keyed on the booking's own link, not on the
+              // package still being in clientPackages() — otherwise a session
+              // linked to a course that has since dropped out of that list fell
+              // through to the plain-price branch below.
+              const isLinkedSession = !isPackagePurchase && Boolean(b.packageBookingId);
               return (
                 <Link href={`/admin/bookings/${b.id}`} className="block rounded-[var(--radius-md)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-3.5 transition-colors hover:border-[var(--color-gold)]">
                   <div className="flex items-start justify-between gap-3">
@@ -326,8 +411,10 @@ export default async function ClientDetail({ params }: { params: Promise<{ id: s
                       <p className="text-sm font-medium">{b.treatmentTitle}</p>
                       <p className="mt-0.5 text-xs text-[var(--color-stone)]">
                         {fmtClinicDate(b.startAt, { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' })} · {fmtClinicTime(b.startAt)}
-                        {isLinkedSession && pkg
-                          ? ` · Package session${sessionNumber > 0 ? ` ${sessionNumber} of ${pkg.sessionsTotal}` : ''}${b.pricePence > 0 ? ` · ${fmtPence(b.pricePence)}` : ''}`
+                        {isLinkedSession
+                          ? // BLD-1891: a linked session is part of an already-paid course — never show
+                            // its own treatment price here, only its position in the package.
+                            ` · Package session${pkg && sessionNumber > 0 ? ` ${sessionNumber} of ${pkg.sessionsTotal}` : ''}`
                           : isPackagePurchase && pkg
                             ? ` · Package purchase — Course of ${pkg.sessionsTotal}${b.pricePence > 0 ? ` · ${fmtPence(b.pricePence)}` : ''}`
                             : b.pricePence > 0 ? ` · ${fmtPence(b.pricePence)}` : ''}
@@ -345,8 +432,16 @@ export default async function ClientDetail({ params }: { params: Promise<{ id: s
                     {b.status === 'COMPLETED' && b.actualMinutes != null && (
                       <span className="rounded-full bg-[var(--color-bone)] px-2 py-0.5 text-[var(--color-stone)]">{b.actualMinutes}m actual{b.durationMin ? ` · ${b.durationMin}m booked` : ''}</span>
                     )}
-                    {b.status === 'COMPLETED' && b.pricePence > 0 && (
-                      <span className={`rounded-full px-2 py-0.5 ${b.chargedAt ? 'bg-[var(--color-bone)] text-[var(--color-stone)]' : 'bg-amber-100 text-amber-800'}`}>{b.chargedAt ? 'Charged' : 'Not charged'}</span>
+                    {/* BLD-1891 review fix: a linked session's payment status lives on the
+                        package purchase, so no "Charged"/"Paid" badge here. "Not charged"
+                        still shows — that is money genuinely owed (e.g. add-ons). */}
+                    {b.status === 'COMPLETED' && b.pricePence > 0 && !(isLinkedSession && (b.chargedAt || b.prepaidAt)) && (
+                      // BLD-1874: show how a charged booking was paid, right next to the badge.
+                      <span className={`rounded-full px-2 py-0.5 ${b.chargedAt ? 'bg-[var(--color-bone)] text-[var(--color-stone)]' : 'bg-amber-100 text-amber-800'}`}>{b.chargedAt ? `Charged${b.paymentMethod ? ` · ${paymentMethodLabel(b.paymentMethod)}` : ''}` : 'Not charged'}</span>
+                    )}
+                    {/* BLD-1874: payments taken before completion (payment link, BNPL pre-pay, late-cancel fee). */}
+                    {!isLinkedSession && b.status !== 'COMPLETED' && (b.chargedAt || b.prepaidAt) && b.paymentMethod && (
+                      <span className="rounded-full bg-[var(--color-bone)] px-2 py-0.5 text-[var(--color-stone)]">Paid · {paymentMethodLabel(b.paymentMethod)}</span>
                     )}
                     {/* BLD-1096: cancelled, but the prepaid package still absorbed the session. */}
                     {b.status === 'CANCELLED' && b.packageSessionUsedAt && (
@@ -377,6 +472,8 @@ export default async function ClientDetail({ params }: { params: Promise<{ id: s
         <section>
           <h2 className="mb-3 font-[family-name:var(--font-display)] text-xl">Timeline</h2>
           <div className="mb-4"><AddNote clientId={c.id} clinical={clinical} /></div>
+          {/* BLD-1464: interactions are capped (take: 30, most-recent-first) at the query. */}
+          {c.interactions.length === 30 && <p className="mb-3 text-xs text-[var(--color-stone)]">Showing the most recent 30 entries.</p>}
           {(() => {
             // Hide clinical notes from non-clinical staff; pinned float to the top.
             const visible = c.interactions.filter((it) => it.type !== 'CLINICAL' || clinical);
@@ -557,6 +654,7 @@ export default async function ClientDetail({ params }: { params: Promise<{ id: s
               result={c.patchTestResult}
               setBy={c.patchTestSetBy}
               setAt={c.patchTestDate ? c.patchTestDate.toISOString() : null}
+              recordedAt={c.patchTestRecordedAt ? c.patchTestRecordedAt.toISOString() : null}
             />
           )}
 
@@ -636,6 +734,8 @@ export default async function ClientDetail({ params }: { params: Promise<{ id: s
 
           <section>
             <h2 className="mb-3 font-[family-name:var(--font-display)] text-xl">Consultations</h2>
+            {/* BLD-1464: consultations are capped (take: 30, most-recent-first) at the query. */}
+            {c.consultations.length === 30 && <p className="mb-2 text-xs text-[var(--color-stone)]">Showing the most recent 30.</p>}
             <div className="space-y-2">
               {c.consultations.length === 0 && <p className="text-sm text-[var(--color-stone)]">None.</p>}
               {c.consultations.map((cn) => (

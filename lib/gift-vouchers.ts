@@ -11,6 +11,24 @@ export const VOUCHER_MAX = 50000;  // £500
 // One shared rejection message so previews and reservations never disagree in copy.
 export const VOUCHER_INVALID_ERROR = 'That voucher code isn’t valid, has expired, or has no balance left.';
 
+// BLD-1918: one shared rejection message for every place a voucher is applied
+// against a specific treatment, so the checkout UI, the API error and the
+// public/portal notices all say exactly the same thing.
+export const GIFT_CARD_TREATMENT_EXCLUDED_ERROR = 'Gift cards cannot be used for injectable treatments or CO2 laser treatments.';
+
+/** BLD-1918 server-side gate: can a gift card be applied against this
+ *  treatment? Only false for the clinic's injectable and CO2 laser treatments
+ *  (lib/treatments.ts `giftCardExcluded`) — every other treatment is
+ *  unaffected. Call this before reserveVoucher() whenever the reservation is
+ *  against a specific treatment/booking (a shop/product checkout has no
+ *  treatment and never calls this). Defaults to allowed (true) for an
+ *  unrecognised slug — that booking's own validation already refused it
+ *  elsewhere; this gate exists only to enforce the exclusion list. */
+export async function giftCardAllowedForTreatment(treatmentSlug: string): Promise<boolean> {
+  const { isGiftCardExcludedTreatment } = await import('@/lib/treatments');
+  return !isGiftCardExcludedTreatment(treatmentSlug);
+}
+
 /** Read-only spendability check (BLD-882): the single predicate both the POS
  *  preview and error paths use, kept in step with reserveVoucher's guard so a
  *  preview can never promise a balance a reservation would refuse. Returns 0
@@ -69,7 +87,19 @@ export type VoucherInput = {
 
 /** Create a PENDING voucher + a Stripe PaymentIntent (charged now). The card
  *  value is `amountPence`; an optional physical-card fee is added to the charge
- *  only — the recipient's balance is always the gift value. */
+ *  only — the recipient's balance is always the gift value.
+ *
+ *  BLD-1919: a gift card is always sold at its full selected value. This
+ *  function deliberately takes no promo/discount-code, offer or coupon
+ *  parameter, and `amount` below is priced from `VoucherInput`/the published
+ *  package price ONLY — never through priceWithPromo (lib/promo.ts) or
+ *  ServiceOffer (lib/services.ts), which apply to treatment bookings, not
+ *  vouchers. The Stripe PaymentIntent is created for exactly `amount +
+ *  feePence`, and confirmVoucher() below re-checks the amount actually
+ *  received against that same figure before activating the card, so a
+ *  manipulated client request can't pay less and still receive full value.
+ *  If a discount mechanism is ever added to the site, it must not be wired in
+ *  here — do not add a discount/promo/offer field to VoucherInput. */
 export async function createVoucherIntent(input: VoucherInput): Promise<{ ok: boolean; error?: string; voucherId?: string; clientSecret?: string }> {
   if (!input.purchaserName?.trim() || !/\S+@\S+\.\S+/.test(input.purchaserEmail || '')) return { ok: false, error: 'Please enter your name and a valid email.' };
 
@@ -204,6 +234,15 @@ async function sendVoucherEmails(voucherId: string, sendToRecipient: boolean, op
   const { sendEmail, tmplCustomGiftCard, tmplGiftVoucherReceipt } = await import('@/lib/email');
   const what = v.packageName || `gift card — ${money(v.amountPence)}`;
   const tasks: Promise<SendResult>[] = [];
+  // BLD-1680: deliberately NOT threading a vatBreakdown()/effectiveVatClass()
+  // call into tmplGiftVoucherReceipt, unlike the charge/order/academy receipts.
+  // A KClinics gift voucher/card is redeemable against any treatment (mixed
+  // EXEMPT dentistry + STANDARD aesthetics) — a "multi-purpose voucher" under UK
+  // VAT law (VATA 1994 Sch 10B). No supply happens at the point of sale, so no
+  // VAT is due and no net/VAT breakdown belongs on THIS receipt, regardless of
+  // vat_registered. VAT is correctly accounted for later, at redemption, by
+  // chargeBooking's existing vatBreakdown() call on the treatment actually
+  // booked (lib/booking-actions.ts) — that is the true tax point.
   if (opts.purchaserReceipt !== false) {
     tasks.push(sendEmail({ to: v.purchaserEmail, subject: `Your KClinics ${v.packageName ? 'gift' : 'gift card'} — ${v.packageName || money(v.amountPence)}`, html: tmplGiftVoucherReceipt({ purchaserName: v.purchaserName, amount: money(v.amountPence), code: v.code, recipientName: v.recipientName, scheduled: !sendToRecipient && !!v.deliverAt, deliverAt: v.deliverAt, designId: v.design, packageName: v.packageName }) }));
   }

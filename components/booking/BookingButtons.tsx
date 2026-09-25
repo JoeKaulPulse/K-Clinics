@@ -18,7 +18,10 @@ export function BookingButtons({
 }) {
   const bookHref = treatmentSlug ? `${site.booking.path}?treatment=${encodeURIComponent(treatmentSlug)}` : site.booking.path;
   return (
-    <div className={`flex flex-wrap items-center gap-3 ${align === 'center' ? 'justify-center' : ''}`}>
+    // data-booking-cta: a marker MobileStickyBookBar (BLD-1609) watches with an
+    // IntersectionObserver so the sticky mobile bar hides whenever a "real"
+    // booking CTA is already on screen — no duplicate/overlapping CTAs.
+    <div data-booking-cta className={`flex flex-wrap items-center gap-3 ${align === 'center' ? 'justify-center' : ''}`}>
       <Button href={bookHref} variant={variant} size="lg">
         Book online <ArrowIcon />
       </Button>

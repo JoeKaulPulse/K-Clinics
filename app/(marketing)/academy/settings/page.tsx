@@ -6,7 +6,7 @@ import { AcademyPortalShell } from '@/components/academy/AcademyPortalShell';
 import { PageTitle } from '@/components/academy/ui';
 import { pageMeta } from '@/lib/seo';
 
-export const generateMetadata = (): Promise<Metadata> => pageMeta({ title: 'Settings — K Academy', description: 'Academy app settings.', path: '/academy/settings' });
+export const generateMetadata = (): Promise<Metadata> => pageMeta({ title: 'Settings — K Academy', description: 'Academy app settings.', path: '/academy/settings', noindex: true });
 export const dynamic = 'force-dynamic';
 
 export default async function AcademySettingsPage() {

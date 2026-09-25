@@ -46,6 +46,8 @@ export function GiftCardClaim({ initialCode, needsAge, claimed }: { initialCode:
         {msg && <p className="mt-3 text-sm text-[var(--color-blush-deep)]">{msg}</p>}
         {ok && <p className="mt-3 rounded-[var(--radius-sm)] bg-[var(--color-jade)]/12 px-3 py-2 text-sm text-[var(--color-jade)]">{ok}</p>}
         <button onClick={claim} disabled={busy || !code} className="mt-4 rounded-full bg-[var(--color-ink)] px-6 py-2.5 text-sm text-[var(--color-porcelain)] disabled:opacity-50">{busy ? 'Adding…' : 'Add gift card'}</button>
+        {/* BLD-1918: shown at the point a client is redeeming a gift card. */}
+        <p className="mt-3 text-xs text-[var(--color-stone)]">Gift cards cannot be used for injectable treatments or CO2 laser treatments.</p>
       </section>
 
       {claimed.length > 0 && (

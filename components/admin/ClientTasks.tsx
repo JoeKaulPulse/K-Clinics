@@ -30,7 +30,7 @@ export function ClientTasks({ clientId, tasks }: { clientId: string; tasks: Task
     router.refresh();
   }
 
-  const field = 'w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-porcelain)] px-3 py-2 text-sm outline-none focus:border-[var(--color-gold)] focus-visible:ring-2 focus-visible:ring-[var(--color-gold)]';
+  const field = 'w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-porcelain)] px-3 py-2 text-sm outline-none focus:border-[var(--color-gold-deep)] focus-visible:ring-2 focus-visible:ring-[var(--color-gold-deep)]';
 
   return (
     <section>
@@ -43,7 +43,7 @@ export function ClientTasks({ clientId, tasks }: { clientId: string; tasks: Task
           {tasks.length === 0 && <li className="text-sm text-[var(--color-stone)]">No open tasks for this client.</li>}
           {tasks.map((t) => (
             <li key={t.id} className="flex items-start gap-2">
-              <button onClick={() => complete(t.id)} title="Mark done" className="mt-0.5 h-4 w-4 shrink-0 rounded-full border border-[var(--color-stone-soft)] hover:border-[var(--color-gold)]" />
+              <button onClick={() => complete(t.id)} title="Mark done" aria-label="Mark done" className="mt-0.5 h-4 w-4 shrink-0 rounded-full border border-[var(--color-stone-soft)] hover:border-[var(--color-gold)]" />
               <div className="min-w-0 flex-1">
                 <p className="text-sm">{t.title}</p>
                 <p className="text-xs text-[var(--color-stone)]">

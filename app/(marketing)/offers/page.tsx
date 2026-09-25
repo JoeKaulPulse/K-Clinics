@@ -26,7 +26,7 @@ const OFFERS = [
   { tag: 'Give £25, get £25', t: 'Refer a friend', d: 'Share KClinics with someone you love — they get £25 off their first treatment, and so do you.', href: '/refer-a-friend', cta: 'How it works' },
   { tag: 'Better together', t: 'Package & course savings', d: 'Our curated packages bundle complementary treatments for better results — and better value.', href: '/packages', cta: 'Explore packages' },
   { tag: 'Beauty Points', t: 'Earn as you go', d: 'Collect points on every visit, plus bonuses for reviews, birthdays and referrals — redeemable as money off.', href: '/membership', cta: 'Discover rewards' },
-  { tag: 'The perfect gift', t: 'Gift vouchers', d: 'Treat someone to a voucher for any amount — redeemable across our entire menu, valid for 12 months.', href: '/gift-vouchers', cta: 'Buy a voucher' },
+  { tag: 'The perfect gift', t: 'Gift vouchers', d: 'Treat someone to a voucher for any amount, valid for 12 months.', href: '/gift-vouchers', cta: 'Buy a voucher' },
 ];
 
 export default function OffersPage() {

@@ -1,8 +1,13 @@
-import { NextResponse } from 'next/server';
+import { NextResponse, after } from 'next/server';
 import { crmEnabled } from '@/lib/crm';
 import { CLINIC_TZ } from '@/lib/clinic-time';
 
 export const runtime = 'nodejs';
+// BLD-1704: the checkout step calls finalizeBookingCharge, which can wait on
+// Resend's rate gate (lib/email.ts) — same risk BLD-1692 fixed on the other
+// finalize routes, missed here because this route's charge path is one branch
+// among several rather than its whole body.
+export const maxDuration = 60;
 
 // BLD-138 v2 — realtime appointment-session coordination. The DB row is the
 // single source of truth; every device (front desk, host, clinician, checkout)
@@ -25,6 +30,18 @@ export async function POST(req: Request) {
   const bookingId = String(body.bookingId || '');
   if (!bookingId) return bad();
 
+  // BLD-1899: blunt scripted abuse of the write ops. Keyed per staff account,
+  // not per IP: every clinic device (front desk, host iPad, clinician,
+  // checkout) shares the clinic's public IP, so a per-IP bucket would throttle
+  // live checkouts. 'status' is exempt: it is the read-only poll fallback
+  // (useSessionChannel, every 2s per device when SSE drops).
+  if (op !== 'status') {
+    const { enforceAccountRateLimit } = await import('@/lib/security/guard');
+    if (!(await enforceAccountRateLimit(req, session.sub, 'admin-booking-session', 120, 60, 'admin'))) {
+      return bad('Too many requests — wait a moment.', 429);
+    }
+  }
+
   const { db } = await import('@/lib/db');
   const { isSessionStep, normalizeStepKey, normalizeTimings, advanceTimings, closeTimings } = await import('@/lib/appointment-session');
   const { getStaffProfile, touchpointAppend } = await import('@/lib/appointment-session-server');
@@ -32,8 +49,15 @@ export async function POST(req: Request) {
   type Data = import('@/lib/appointment-session').SessionData;
   type Touchpoints = import('@/lib/appointment-session').Touchpoint[];
 
-  const booking = await db.booking.findUnique({ where: { id: bookingId }, select: { id: true, clientId: true, status: true, finishedAt: true, chargedAt: true, prepaidAt: true, giftVoucherCode: true, giftVoucherPence: true, pointsRedeemedPence: true } });
+  const booking = await db.booking.findUnique({ where: { id: bookingId }, select: { id: true, clientId: true, practitionerId: true, status: true, finishedAt: true, chargedAt: true, prepaidAt: true, giftVoucherCode: true, giftVoucherPence: true, pointsRedeemedPence: true, treatmentSlug: true, items: { select: { treatmentSlug: true } } } });
   if (!booking) return bad('Booking not found.', 404);
+  // BLD-1899/BLD-1882 pattern (lib/crm-data.ts getClient; BLD-1693/1711/1720):
+  // a PRACTITIONER session may only act on a live appointment session for a
+  // booking assigned to them. Every op below (claim, edit captured answers,
+  // mark complete, create a follow-up booking, checkout...) keys off this
+  // same `booking`, so the ownership check runs once here for all of them.
+  const practitionerId = session.role === 'PRACTITIONER' ? session.sub : undefined;
+  if (practitionerId && booking.practitionerId !== practitionerId) return bad('Booking not found.', 404);
   // BLD-336: never run appointment-session actions against a cancelled booking.
   if (booking.status === 'CANCELLED') return bad('This booking was cancelled — no session actions are allowed.', 409);
 
@@ -231,7 +255,7 @@ export async function POST(req: Request) {
       if (!res.ok) return bad(res.message || 'Terminal payment is unavailable.');
       // Live capture succeeded (only once a terminal provider is wired) — record it.
       const { finalizeBookingCharge } = await import('@/lib/booking-actions');
-      await finalizeBookingCharge(bookingId, res.reference || `terminal_${Date.now()}`, amountPence);
+      await finalizeBookingCharge(bookingId, res.reference || `terminal_${Date.now()}`, amountPence, { method: 'card_terminal' });
       return ok();
     }
 
@@ -250,15 +274,20 @@ export async function POST(req: Request) {
       const amountPence = grossPence - voucherOffPence - pointsOffPence;
       if (amountPence <= 0) return bad(VOUCHER_COVERS);
       const channel = String(body.channel || 'external').toLowerCase().replace(/[^a-z0-9_-]/g, '').slice(0, 24) || 'external';
+      // BLD-1874: normalise the free-form channel into the shared payment-method
+      // vocabulary so it can be displayed/corrected later — chargePaymentIntentId
+      // keeps the raw channel (ext_<channel>) for reconciliation/traceability.
+      const { normalizeExternalChannel, paymentMethodLabel } = await import('@/lib/payment-methods');
+      const paymentMethod = normalizeExternalChannel(channel);
       const updated = await db.booking.updateMany({
         where: { id: bookingId, chargedAt: null, prepaidAt: null },
-        data: { chargedPence: amountPence, chargedAt: new Date(), chargePaymentIntentId: `ext_${channel}` },
+        data: { chargedPence: amountPence, chargedAt: new Date(), chargePaymentIntentId: `ext_${channel}`, paymentMethod },
       });
       if (updated.count === 0) return bad('This booking is already paid.');
       try { const { awardClientSpend } = await import('@/lib/client-loyalty'); await awardClientSpend(bookingId); } catch { /* non-fatal */ }
       try {
         const { logAudit } = await import('@/lib/audit');
-        const label = channel === 'treatwell' ? 'Treatwell' : channel === 'classpass' ? 'ClassPass' : channel === 'cash' ? 'cash' : channel === 'card-terminal' ? 'card terminal' : channel;
+        const label = paymentMethod === 'other' ? channel : paymentMethodLabel(paymentMethod);
         // BLD-207: record any ad-hoc price adjustment + reason.
         const dr = body.discountReason ? String(body.discountReason).slice(0, 120) : '';
         const op = body.originalPence ? Math.round(Number(body.originalPence)) : 0;
@@ -292,6 +321,15 @@ export async function POST(req: Request) {
       if (!code) return bad('Enter the voucher code.');
       if (booking.chargedAt || booking.prepaidAt) return bad('This booking is already paid.');
       if ((booking.giftVoucherPence ?? 0) > 0) return bad('A voucher is already applied to this booking — remove it first to use a different one.');
+      // BLD-1918: gift cards cannot be applied to injectable or CO2 laser
+      // treatments — enforced here (not just in the UI) so a manipulated
+      // request can't apply one regardless of what the checkout screen shows.
+      const { giftCardAllowedForTreatment, GIFT_CARD_TREATMENT_EXCLUDED_ERROR } = await import('@/lib/gift-vouchers');
+      // The voucher covers the whole booking total, so an excluded add-on
+      // (BookingItem) blocks it too, not just the primary treatment.
+      for (const slug of [booking.treatmentSlug, ...booking.items.map((i) => i.treatmentSlug)]) {
+        if (!(await giftCardAllowedForTreatment(slug))) return bad(GIFT_CARD_TREATMENT_EXCLUDED_ERROR);
+      }
       const { reserveVoucher, undoVoucherReservation, VOUCHER_INVALID_ERROR } = await import('@/lib/gift-vouchers');
       const { reservedPence } = await reserveVoucher(code, amountPence);
       if (reservedPence <= 0) return bad(VOUCHER_INVALID_ERROR);
@@ -300,9 +338,10 @@ export async function POST(req: Request) {
       const dr = body.discountReason ? String(body.discountReason).slice(0, 120) : '';
       if (reservedPence >= amountPence) {
         // Fully covered — settle now, mirroring the 'external' channel.
+        // BLD-1874: 'gift_voucher' in the shared vocabulary.
         const updated = await db.booking.updateMany({
           where: { id: bookingId, chargedAt: null, prepaidAt: null, giftVoucherPence: 0 },
-          data: { chargedPence: amountPence, chargedAt: new Date(), chargePaymentIntentId: 'ext_gift-voucher', giftVoucherCode: code, giftVoucherPence: amountPence },
+          data: { chargedPence: amountPence, chargedAt: new Date(), chargePaymentIntentId: 'ext_gift-voucher', giftVoucherCode: code, giftVoucherPence: amountPence, paymentMethod: 'gift_voucher' },
         });
         if (updated.count === 0) { await undoVoucherReservation(code, reservedPence); return bad('This booking was just paid on another screen.'); }
         try { const { awardClientSpend } = await import('@/lib/client-loyalty'); await awardClientSpend(bookingId); } catch { /* non-fatal */ }
@@ -455,7 +494,14 @@ export async function POST(req: Request) {
         data: { status: 'COMPLETED', completedAt: new Date(), steps: closeTimings(normalizeTimings((row.steps ?? {}) as Record<string, Timings[keyof Timings]>)) as object },
       });
       // PRJ-63.11: clinician finished — hand the room over to reception/cleaners.
-      import('@/lib/cross-role').then((m) => m.handleSessionTurnover(bookingId, session.email)).catch(() => {});
+      // BLD-1885: after(), not a bare floating promise — the response below can
+      // be sent before this resolves, and the runtime can freeze the function
+      // mid-flight (same fix as the kiosk analyze/photo routes /
+      // lib/ai-consultation.ts, BLD-1137/1166/1418/491).
+      after(async () => {
+        const { handleSessionTurnover } = await import('@/lib/cross-role');
+        await handleSessionTurnover(bookingId, session.email).catch(() => {});
+      });
       return ok();
     }
 

@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { crmEnabled } from '@/lib/crm';
+import { verifiedFileMime } from '@/lib/security/file-type';
 
 export const runtime = 'nodejs';
 
@@ -24,13 +25,21 @@ export async function POST(req: Request) {
   const folder = (String(form?.get('folder') || 'uploads').replace(/[^a-zA-Z0-9/_-]/g, '').replace(/^\/+|\/+$/g, '').slice(0, 40)) || 'uploads';
   if (!(file instanceof File)) return NextResponse.json({ ok: false, error: 'No file received.' }, { status: 400 });
   if (file.size > MAX) return NextResponse.json({ ok: false, error: 'File is over 4.5 MB — use a smaller file or compress it.', tooLarge: true }, { status: 413 });
-  if (!file.type || !OK.test(file.type)) return NextResponse.json({ ok: false, error: 'That file type is not supported.' }, { status: 415 });
+  // PRJ-1191.11: verify the declared Content-Type against the actual bytes
+  // wherever that's checkable (images + PDF — the common relabel-as-an-image
+  // bypass) instead of trusting it outright. Anything declared or sniffed as
+  // an image/PDF must have the magic bytes to match, so a script/HTML/SVG
+  // payload labelled image/png is rejected too, not just a wrong image format;
+  // video/audio/office-doc/zip types this module can't fingerprint still fall
+  // back to the declared type, same as before.
+  const mime = await verifiedFileMime(file);
+  if (!mime || !OK.test(mime)) return NextResponse.json({ ok: false, error: 'That file type is not supported.' }, { status: 415 });
 
   try {
     const { put } = await import('@vercel/blob');
     const safe = (file.name || 'file').replace(/[^a-zA-Z0-9.\-_]/g, '-').replace(/-+/g, '-').slice(0, 80) || 'file';
-    const blob = await put(`${folder}/${Date.now().toString(36)}-${safe}`, file, { access: 'public', addRandomSuffix: true, contentType: file.type || undefined });
-    return NextResponse.json({ ok: true, url: blob.url, name: file.name, mime: file.type || null, size: file.size });
+    const blob = await put(`${folder}/${Date.now().toString(36)}-${safe}`, file, { access: 'public', addRandomSuffix: true, contentType: mime });
+    return NextResponse.json({ ok: true, url: blob.url, name: file.name, mime, size: file.size });
   } catch (e) {
     return NextResponse.json({ ok: false, error: (e as Error)?.message || 'Upload failed.' }, { status: 400 });
   }

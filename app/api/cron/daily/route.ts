@@ -28,7 +28,7 @@ export async function GET(req: Request) {
     result = await runDailyAutomations();
   } catch (e) {
     console.error('[cron] daily automations failed (continuing):', (e as Error)?.message);
-    result = { birthdays: 0, followUps: 0, winBacks: 0, reviews: 0, reminders: 0, formReminders: 0, treatmentFollowUps: 0, giftVouchers: 0, tierNudges: 0, anniversaries: 0, abandonedBookings: 0, abandonedOrders: 0, bookingIntents: 0, membershipRenewals: 0, staffDigests: 0, staffNudges: 0, reencrypted: 0, aftercare: 0, satisfaction: 0, rebookNudges: 0, npsPromoters: 0, npsDetractors: 0, liveClassReminders: 0, courseContentReady: 0, tcsReminders: 0, treatmentPrep: 0, referralAsks: 0, errors: 1 };
+    result = { birthdays: 0, followUps: 0, winBacks: 0, reviews: 0, reminders: 0, formReminders: 0, treatmentFollowUps: 0, giftVouchers: 0, tierNudges: 0, anniversaries: 0, abandonedBookings: 0, abandonedOrders: 0, abandonedGiftVouchers: 0, bookingIntents: 0, membershipRenewals: 0, staffDigests: 0, staffNudges: 0, reencrypted: 0, aftercare: 0, satisfaction: 0, rebookNudges: 0, npsPromoters: 0, npsDetractors: 0, liveClassReminders: 0, courseContentReady: 0, tcsReminders: 0, treatmentPrep: 0, referralAsks: 0, errors: 1 };
   }
   // BLD-153: count failures so the cron doesn't silently return 200 when work
   // failed. Vercel Cron / the status page key off the HTTP status + ok flag.
@@ -249,12 +249,18 @@ export async function GET(req: Request) {
     } catch (e) {
       console.error('[cron] job-application CV shortlist failed (continuing):', (e as Error)?.message);
     }
-    const [jobs, , academyTokens] = await Promise.all([
+    const [jobs, , , academyTokens] = await Promise.all([
       db.jobApplication.deleteMany({ where: jobPurgeWhere }),
       // Client portal: clear expired reset tokens (no personal data beyond email FK).
       db.client.updateMany({
         where: { resetTokenExp: { lt: tokenExpiredCutoff }, resetTokenHash: { not: null } },
         data: { resetTokenHash: null, resetTokenExp: null },
+      }),
+      // BLD-1797: same sweep for the (now separate) passwordless account-invite
+      // token — see lib/client-auth.ts.
+      db.client.updateMany({
+        where: { inviteTokenExp: { lt: tokenExpiredCutoff }, inviteTokenHash: { not: null } },
+        data: { inviteTokenHash: null, inviteTokenExp: null },
       }),
       // Academy portal: clear expired reset tokens.
       db.academyStudent.updateMany({
@@ -398,6 +404,19 @@ export async function GET(req: Request) {
     failures++; console.error('[cron] portfolio photo migration failed (continuing):', (e as Error)?.message);
   }
 
+  // BLD-1794: same self-heal as above, for VTCT registration documents (Photo
+  // ID / Proof of Address / prior qualification certs) — the client upload
+  // token can't pin the store's access level either, so this is the backstop
+  // that re-homes any that land in the public store.
+  let vtctMigration = { ran: false, migrated: 0, failed: 0, complete: false };
+  try {
+    const { migrateVtctDocumentsIfNeeded } = await import('@/lib/vtct-blob');
+    vtctMigration = await migrateVtctDocumentsIfNeeded();
+    if (vtctMigration.failed > 0) { failures++; console.error(`[cron] VTCT document migration: ${vtctMigration.failed} document(s) failed`); }
+  } catch (e) {
+    failures++; console.error('[cron] VTCT document migration failed (continuing):', (e as Error)?.message);
+  }
+
   // (ClinicOS Ring 0 academy-tenant backfill retired in Ring 1c — tenantId is now
   // NOT NULL, so no row can be tenant-less and there is nothing to backfill.)
 
@@ -512,27 +531,69 @@ export async function GET(req: Request) {
   // error aggregator — no-op until SENTRY_DSN is set) so failures surface without
   // any extra config, and additionally push a summary to the ops webhook channel
   // when CRON_ALERT_WEBHOOK_URL (Slack/Discord/Make/Zapier) is configured in Vercel.
+  // PRJ-1200.10: no cooldown/dedup here previously. This cron only runs once a
+  // day via Vercel Cron (vercel.json), but a manual re-hit with CRON_SECRET (or
+  // a Vercel retry) during a sustained failure could still re-page repeatedly —
+  // the same alert-fatigue risk BLD-1723/BLD-1187 fixed for the health-check
+  // paths. Mirrors that watermark cooldown/dedup pattern exactly: same
+  // db.setting watermark table, a key of its own so it can't collide with
+  // theirs or with cron/dispatch's, and the same 30-minute cooldown window
+  // (this cron's own once-a-day schedule already keeps re-alerts rare, so
+  // there's no reason to diverge from the established window). Alert
+  // immediately on a fresh failure and at most once per cooldown while it
+  // persists, and clear the watermark the moment it recovers so the next
+  // incident alerts right away.
+  const ALERT_WATERMARK_KEY = 'cron_daily_alert_last_sent_at';
+  const ALERT_COOLDOWN_MS = 30 * 60 * 1000;
   if (failures > 0) {
     const summary = `[kclinics cron] ${failures} failure(s) in ${Math.round(cronDurationMs / 1000)}s — check Vercel logs`;
+    let shouldAlert = true;
     try {
-      const Sentry = await import('@sentry/nextjs');
-      Sentry.captureMessage(summary, 'error');
-    } catch { /* Sentry not available — non-fatal */ }
-    const webhookUrl = process.env.CRON_ALERT_WEBHOOK_URL;
-    if (webhookUrl) {
-      const body = JSON.stringify({ text: summary, failures, durationMs: cronDurationMs });
-      // BLD-1137: await the alert — the serverless runtime can freeze once the
-      // response is sent, so an un-awaited fetch may silently never send.
-      // PRJ-1118.10: bound it — a hung webhook endpoint previously stalled this
-      // request indefinitely; on timeout the alert is simply dropped (non-fatal,
-      // matching every other outcome of this best-effort send).
-      try { await fetch(webhookUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body, signal: AbortSignal.timeout(8_000) }); } catch { /* non-fatal */ }
+      const { db } = await import('@/lib/db');
+      const row = await db.setting.findUnique({ where: { key: ALERT_WATERMARK_KEY } });
+      const lastAlertAt = row?.value ? Number(row.value) : 0;
+      shouldAlert = !lastAlertAt || Date.now() - lastAlertAt >= ALERT_COOLDOWN_MS;
+      if (shouldAlert) {
+        await db.setting.upsert({
+          where: { key: ALERT_WATERMARK_KEY },
+          create: { key: ALERT_WATERMARK_KEY, value: String(Date.now()) },
+          update: { value: String(Date.now()) },
+        });
+      }
+    } catch {
+      // Can't read/write the watermark — fail open and alert rather than risk
+      // a silent outage; a duplicate page is the safer failure mode.
+      shouldAlert = true;
     }
+
+    if (shouldAlert) {
+      try {
+        const Sentry = await import('@sentry/nextjs');
+        Sentry.captureMessage(summary, 'error');
+      } catch { /* Sentry not available — non-fatal */ }
+      const webhookUrl = process.env.CRON_ALERT_WEBHOOK_URL;
+      if (webhookUrl) {
+        const body = JSON.stringify({ text: summary, failures, durationMs: cronDurationMs });
+        // BLD-1137: await the alert — the serverless runtime can freeze once the
+        // response is sent, so an un-awaited fetch may silently never send.
+        // PRJ-1118.10: bound it — a hung webhook endpoint previously stalled this
+        // request indefinitely; on timeout the alert is simply dropped (non-fatal,
+        // matching every other outcome of this best-effort send).
+        try { await fetch(webhookUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body, signal: AbortSignal.timeout(8_000) }); } catch { /* non-fatal */ }
+      }
+    }
+  } else {
+    // Recovered — clear the watermark so the next incident alerts immediately
+    // instead of possibly landing inside the previous incident's cooldown.
+    try {
+      const { db } = await import('@/lib/db');
+      await db.setting.deleteMany({ where: { key: ALERT_WATERMARK_KEY } });
+    } catch { /* non-fatal */ }
   }
 
   // BLD-153: surface failure to the scheduler — non-200 when anything failed.
   return NextResponse.json(
-    { ok: failures === 0, failures, durationMs: cronDurationMs, ...result, loyalty, membership, gcal, gbiz, gbizPosts, retention, idMeta, pii, gdprSweep, scheduledEmail, adSpend, board, clinicalBackfill, consultBackfill, galleryEncrypt, courseLevels, staleOrders, portfolioMigration, examBank, gamification, authored, courseContent, communityDigest, instalmentDunning },
+    { ok: failures === 0, failures, durationMs: cronDurationMs, ...result, loyalty, membership, gcal, gbiz, gbizPosts, retention, idMeta, pii, gdprSweep, scheduledEmail, adSpend, board, clinicalBackfill, consultBackfill, galleryEncrypt, courseLevels, staleOrders, portfolioMigration, vtctMigration, examBank, gamification, authored, courseContent, communityDigest, instalmentDunning },
     { status: failures === 0 ? 200 : 500 },
   );
 }

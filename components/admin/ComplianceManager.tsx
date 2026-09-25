@@ -1,14 +1,20 @@
 'use client';
 
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { RENEWAL_CATEGORIES, type RenewalStatus } from '@/lib/renewals-shared';
+import { KCLINICS_GROUP, KCLINICS_SKIN_AND_LASER } from '@/lib/compliance-calendar-seed';
 
 type Row = {
-  id: string; name: string; category: string; provider: string | null; reference: string | null;
+  id: string; name: string; category: string; company: string | null; provider: string | null; reference: string | null;
   renewalAt: string; costPence: number | null; notes: string | null; reminderDays: number[];
   lastRenewedAt: string | null; status: RenewalStatus; days: number;
 };
+
+// BLD-1830: the two known legal entities, offered in the company filter and
+// the create/edit form's dropdown. Free-standing items (insurance, licences,
+// PAT testing…) keep company unset ("-").
+const KNOWN_COMPANIES = [KCLINICS_GROUP, KCLINICS_SKIN_AND_LASER];
 
 const field = 'w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-porcelain)] px-3 py-2 text-sm';
 const label = 'mb-1 block text-xs font-medium text-[var(--color-stone)]';
@@ -28,24 +34,39 @@ const post = (body: object) =>
   fetch('/api/admin/compliance', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
     .then((r) => r.json()).catch(() => ({ ok: false, error: 'Network error' }));
 
-const blank = { name: '', category: 'Insurance', renewalAt: '', provider: '', reference: '', costPence: '', notes: '' };
+const blank = { name: '', category: 'Insurance', company: '', renewalAt: '', provider: '', reference: '', costPence: '', notes: '' };
 
 export function ComplianceManager({ rows, canManage }: { rows: Row[]; canManage: boolean }) {
   const router = useRouter();
   const [adding, setAdding] = useState(false);
   const [editing, setEditing] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [companyFilter, setCompanyFilter] = useState<string>('ALL');
+
+  // BLD-1830: companies present in the data (known ones first, in a stable
+  // order, then anything else a staff member typed into the form) — the
+  // filter only ever shows options that actually exist.
+  const companies = useMemo(() => {
+    const present = new Set(rows.map((r) => r.company).filter((c): c is string => !!c));
+    const extra = [...present].filter((c) => !KNOWN_COMPANIES.includes(c)).sort();
+    return [...KNOWN_COMPANIES.filter((c) => present.has(c)), ...extra];
+  }, [rows]);
+  const visibleRows = useMemo(() => {
+    if (companyFilter === 'ALL') return rows;
+    if (companyFilter === 'NONE') return rows.filter((r) => !r.company);
+    return rows.filter((r) => r.company === companyFilter);
+  }, [rows, companyFilter]);
 
   const counts = {
-    expired: rows.filter((r) => r.status === 'EXPIRED').length,
-    due: rows.filter((r) => r.status === 'DUE').length,
-    soon: rows.filter((r) => r.status === 'SOON').length,
+    expired: visibleRows.filter((r) => r.status === 'EXPIRED').length,
+    due: visibleRows.filter((r) => r.status === 'DUE').length,
+    soon: visibleRows.filter((r) => r.status === 'SOON').length,
   };
 
   async function submit(op: 'create' | 'update', f: typeof blank, id?: string) {
     if (!f.name.trim() || !f.renewalAt) { alert('Enter a name and a renewal date.'); return; }
     setBusy(true);
-    const r = await post({ op, id, name: f.name, category: f.category, renewalAt: f.renewalAt, provider: f.provider, reference: f.reference, costPence: f.costPence === '' ? null : Number(f.costPence) * 100, notes: f.notes });
+    const r = await post({ op, id, name: f.name, category: f.category, company: f.company, renewalAt: f.renewalAt, provider: f.provider, reference: f.reference, costPence: f.costPence === '' ? null : Number(f.costPence) * 100, notes: f.notes });
     setBusy(false);
     if (r.ok) { setAdding(false); setEditing(null); router.refresh(); } else alert(r.error || 'Failed.');
   }
@@ -73,6 +94,18 @@ export function ComplianceManager({ rows, canManage }: { rows: Row[]; canManage:
         <Stat label="Due within 90 days" value={counts.soon} tone={counts.soon ? 'gold' : 'stone'} />
       </div>
 
+      {companies.length > 0 && (
+        <div className="mt-6 flex flex-wrap gap-2">
+          <FilterPill label="All companies" active={companyFilter === 'ALL'} onClick={() => setCompanyFilter('ALL')} />
+          {companies.map((c) => (
+            <FilterPill key={c} label={c} active={companyFilter === c} onClick={() => setCompanyFilter(c)} />
+          ))}
+          {rows.some((r) => !r.company) && (
+            <FilterPill label="No company" active={companyFilter === 'NONE'} onClick={() => setCompanyFilter('NONE')} />
+          )}
+        </div>
+      )}
+
       {canManage && (
         <div className="mt-6">
           {adding ? (
@@ -84,19 +117,21 @@ export function ComplianceManager({ rows, canManage }: { rows: Row[]; canManage:
       )}
 
       <div className="mt-6 overflow-x-auto rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-porcelain)]">
-        {rows.length === 0 ? (
-          <p className="p-8 text-center text-sm text-[var(--color-stone)]">No compliance items yet.{canManage ? ' Add your first renewal above.' : ''}</p>
+        {visibleRows.length === 0 ? (
+          <p className="p-8 text-center text-sm text-[var(--color-stone)]">
+            {rows.length === 0 ? <>No compliance items yet.{canManage ? ' Add your first renewal above.' : ''}</> : 'No items match this filter.'}
+          </p>
         ) : (
           <table className="w-full text-sm">
             <thead><tr className="border-b border-[var(--color-line)] text-left text-xs uppercase tracking-wide text-[var(--color-stone)]">
-              <th className="px-4 py-3">Item</th><th className="px-4 py-3">Category</th><th className="px-4 py-3">Renews</th><th className="px-4 py-3">Status</th><th className="px-4 py-3" />
+              <th className="px-4 py-3">Item</th><th className="px-4 py-3">Company</th><th className="px-4 py-3">Category</th><th className="px-4 py-3">Renews</th><th className="px-4 py-3">Status</th><th className="px-4 py-3" />
             </tr></thead>
             <tbody>
-              {rows.map((r) => (
+              {visibleRows.map((r) => (
                 editing === r.id ? (
-                  <tr key={r.id}><td colSpan={5} className="border-b border-[var(--color-line)] bg-[var(--color-bone)] p-4">
+                  <tr key={r.id}><td colSpan={6} className="border-b border-[var(--color-line)] bg-[var(--color-bone)] p-4">
                     <ItemForm
-                      initial={{ name: r.name, category: r.category, renewalAt: r.renewalAt.slice(0, 10), provider: r.provider ?? '', reference: r.reference ?? '', costPence: r.costPence != null ? String(r.costPence / 100) : '', notes: r.notes ?? '' }}
+                      initial={{ name: r.name, category: r.category, company: r.company ?? '', renewalAt: r.renewalAt.slice(0, 10), provider: r.provider ?? '', reference: r.reference ?? '', costPence: r.costPence != null ? String(r.costPence / 100) : '', notes: r.notes ?? '' }}
                       busy={busy} onSave={(f) => submit('update', f, r.id)} onCancel={() => setEditing(null)} submitLabel="Save changes" />
                   </td></tr>
                 ) : (
@@ -108,6 +143,7 @@ export function ComplianceManager({ rows, canManage }: { rows: Row[]; canManage:
                       </div>
                       {r.notes && <div className="mt-1 max-w-md text-xs text-[var(--color-stone)]">{r.notes}</div>}
                     </td>
+                    <td className="px-4 py-3 text-[var(--color-stone)]">{r.company || '-'}</td>
                     <td className="px-4 py-3 text-[var(--color-stone)]">{r.category}</td>
                     <td className="px-4 py-3 tabular-nums">{fmtDate(r.renewalAt)}</td>
                     <td className="px-4 py-3"><span className={`inline-block rounded-full px-2.5 py-1 text-xs font-medium ${BADGE[r.status]}`}>{statusText(r)}</span></td>
@@ -132,6 +168,21 @@ export function ComplianceManager({ rows, canManage }: { rows: Row[]; canManage:
   );
 }
 
+function FilterPill({ label, active, onClick }: { label: string; active: boolean; onClick: () => void }) {
+  return (
+    <button
+      onClick={onClick}
+      className={`rounded-full border px-3.5 py-1.5 text-xs font-medium transition ${
+        active
+          ? 'border-[var(--color-ink)] bg-[var(--color-ink)] text-[var(--color-porcelain)]'
+          : 'border-[var(--color-line)] bg-[var(--color-porcelain)] text-[var(--color-stone)] hover:text-[var(--color-ink)]'
+      }`}
+    >
+      {label}
+    </button>
+  );
+}
+
 function Stat({ label, value, tone }: { label: string; value: number; tone: 'red' | 'blush' | 'gold' | 'stone' }) {
   const color = tone === 'red' ? 'text-[var(--color-blush-deep)]' : tone === 'blush' ? 'text-[var(--color-ink)]' : tone === 'gold' ? 'text-[var(--color-gold-deep)]' : 'text-[var(--color-stone)]';
   return (
@@ -152,6 +203,12 @@ function ItemForm({ initial, busy, onSave, onCancel, submitLabel }: { initial: t
         <div><label className={label}>Category</label>
           <select className={field} value={f.category} onChange={(e) => set('category', e.target.value)}>
             {RENEWAL_CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
+          </select>
+        </div>
+        <div><label className={label}>Company</label>
+          <select className={field} value={f.company} onChange={(e) => set('company', e.target.value)} aria-label="Company">
+            <option value="">-</option>
+            {KNOWN_COMPANIES.map((c) => <option key={c} value={c}>{c}</option>)}
           </select>
         </div>
         <div><label className={label}>Renewal / expiry date *</label><input type="date" className={field} value={f.renewalAt} onChange={(e) => set('renewalAt', e.target.value)} /></div>

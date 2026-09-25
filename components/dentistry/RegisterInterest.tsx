@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { trackLead } from '@/lib/analytics-events';
 
 export function RegisterInterest({ className = '' }: { className?: string }) {
   const [email, setEmail] = useState('');
@@ -15,7 +16,9 @@ export function RegisterInterest({ className = '' }: { className?: string }) {
     try {
       const res = await fetch('/api/dentistry-interest', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email, company }) });
       const j = await res.json().catch(() => ({ ok: false }));
-      if (j.ok) { setState('done'); setEmail(''); }
+      // BLD-1876: track the dentistry waitlist signup as a lead, same as
+      // NewsletterForm/EnquiryForm/FranchiseEnquiryForm (BLD-1130).
+      if (j.ok) { trackLead({ detail: { source: 'dentistry-waitlist' } }); setState('done'); setEmail(''); }
       else { setState('error'); setMsg(j.error || 'Something went wrong.'); }
     } catch { setState('error'); setMsg('Network error. Please try again.'); }
   }
@@ -26,7 +29,7 @@ export function RegisterInterest({ className = '' }: { className?: string }) {
 
   return (
     <form onSubmit={submit} noValidate className={className}>
-      <div className="flex max-w-md overflow-hidden rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-porcelain)] focus-within:border-[var(--color-gold)]">
+      <div className="flex max-w-md overflow-hidden rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-porcelain)] focus-within:border-[var(--color-gold-deep)]">
         <input
           type="email"
           autoComplete="email"
@@ -34,7 +37,7 @@ export function RegisterInterest({ className = '' }: { className?: string }) {
           onChange={(e) => { setEmail(e.target.value); if (state === 'error') setState('idle'); }}
           placeholder="Your email address"
           aria-label="Your email address"
-          className="min-w-0 flex-1 bg-transparent px-4 py-3 text-sm text-[var(--color-ink)] outline-none placeholder:text-[var(--color-stone)] focus-visible:ring-2 focus-visible:ring-[var(--color-gold)]"
+          className="min-w-0 flex-1 bg-transparent px-4 py-3 text-sm text-[var(--color-ink)] outline-none placeholder:text-[var(--color-stone)] focus-visible:ring-2 focus-visible:ring-[var(--color-gold-deep)]"
         />
         <input type="text" tabIndex={-1} autoComplete="off" value={company} onChange={(e) => setCompany(e.target.value)} className="absolute -left-[9999px]" aria-hidden />
         <button type="submit" disabled={state === 'busy'} className="shrink-0 bg-[var(--color-ink)] px-5 text-sm font-medium text-[var(--color-porcelain)] transition-colors hover:bg-[var(--color-gold-deep)] hover:text-white disabled:opacity-60">

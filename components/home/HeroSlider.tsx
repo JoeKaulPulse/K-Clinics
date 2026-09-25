@@ -174,7 +174,9 @@ export function HeroSlider({
 
         <div className="container-lux relative z-10 py-32">
           <div className="max-w-2xl">
-            <p className="rise eyebrow mb-6 inline-flex items-center gap-2.5 text-[var(--color-gold-soft)]" style={{ animationDelay: '0.05s' }}>
+            {/* BLD-1877: .eyebrow-on-dark (not a text-color utility class) is what
+                actually wins the cascade against .eyebrow's own color rule. */}
+            <p className="rise eyebrow eyebrow-on-dark mb-6 inline-flex items-center gap-2.5" style={{ animationDelay: '0.05s' }}>
               <span className="h-px w-8 bg-[var(--color-gold-soft)]/70" />
               Islington · London — Established {site.founded}
             </p>
@@ -227,7 +229,7 @@ export function HeroSlider({
 
         <div className="container-lux relative z-10 py-32">
           <div className="max-w-2xl">
-            <p className="eyebrow mb-6 inline-flex items-center gap-2.5 text-[var(--color-gold-soft)]">
+            <p className="eyebrow eyebrow-on-dark mb-6 inline-flex items-center gap-2.5">
               <span className="h-px w-8 bg-[var(--color-gold-soft)]/70" />
               Limited-time offer
             </p>
@@ -262,7 +264,7 @@ export function HeroSlider({
 
         <div className="container-lux relative z-10 py-32">
           <div className="max-w-2xl">
-            <p className="eyebrow mb-6 inline-flex items-center gap-2.5 text-[var(--color-gold-soft)]">
+            <p className="eyebrow eyebrow-on-dark mb-6 inline-flex items-center gap-2.5">
               <span className="h-px w-8 bg-[var(--color-gold-soft)]/70" />
               K Academy — Level 2 to Level 7
             </p>
@@ -315,7 +317,7 @@ export function HeroSlider({
 
         <div className="container-lux relative z-10 py-32">
           <div className="max-w-2xl">
-            <p className="eyebrow mb-6 inline-flex items-center gap-2.5 text-[var(--color-gold-soft)]">
+            <p className="eyebrow eyebrow-on-dark mb-6 inline-flex items-center gap-2.5">
               <span className="h-px w-8 bg-[var(--color-gold-soft)]/70" />
               Inside KClinics
             </p>

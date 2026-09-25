@@ -49,11 +49,58 @@ export async function GET(req: Request) {
   if (!c) return NextResponse.json({ ok: false, error: 'Not found.' }, { status: 404 });
 
   // Shop orders relate to the client by clientId, not a named relation.
+  // BLD-1879: guest (POS) orders with clientId null are deliberately NOT
+  // matched by email here. A brand-new portal signup gets a session without
+  // proving it owns the address (lib/client-auth.ts signupClient), and POS
+  // sales never create a Client row that would block that, so an email match
+  // would hand a stranger's in-clinic purchase history to whoever registers
+  // their address first. Those orders are included in the staff-run SAR
+  // (app/api/admin/clients/[id]/export) and in erasure, where identity is
+  // checked.
   const orders = await db.order.findMany({
     where: { clientId: c.id },
     orderBy: { createdAt: 'desc' },
     select: { number: true, status: true, totalPence: true, createdAt: true, paidAt: true, items: { select: { name: true, qty: true, unitPence: true } } },
   });
+
+  // BLD-1715: GiftVoucher has no FK relation to Client (claimedByClientId/
+  // purchaserEmail are plain columns, matched the same way eraseClientData
+  // matches them — app/admin/actions.ts:136-139), so it was missing from this
+  // export. Same third-party-PII care as referralsMade above (PRJ-1033.5):
+  // withhold the other party's name/email on a gifted-to-them or gifted-by-them
+  // voucher, keeping only the subject's own side of the transaction.
+  const giftVouchersRaw = await db.giftVoucher.findMany({
+    where: { OR: [{ claimedByClientId: c.id }, { purchaserEmail: c.email }] },
+    orderBy: { createdAt: 'desc' },
+    select: {
+      code: true, amountPence: true, balancePence: true, status: true, design: true, packageName: true,
+      delivered: true, deliverAt: true, expiresAt: true, claimedAt: true,
+      purchaserEmail: true, purchaserName: true, recipientEmail: true, recipientName: true, createdAt: true,
+    },
+  });
+  const ownEmail = c.email.toLowerCase();
+  const giftVouchers = giftVouchersRaw.map((v) => ({
+    ...v,
+    purchaserName: v.purchaserEmail.toLowerCase() === ownEmail ? v.purchaserName : null,
+    purchaserEmail: v.purchaserEmail.toLowerCase() === ownEmail ? v.purchaserEmail : null,
+    recipientName: v.recipientEmail?.toLowerCase() === ownEmail ? v.recipientName : null,
+    recipientEmail: v.recipientEmail?.toLowerCase() === ownEmail ? v.recipientEmail : null,
+  }));
+
+  // BLD-1721: BookingIntent and NewsletterSubscriber have no Client relation
+  // (matched by email, like GiftVoucher above) and were missing from this
+  // self-service export — both hold only the subject's own data, no
+  // third-party PII concern like giftVouchers above.
+  // Review fix (BLD-1721): matched against the lower-cased address (ownEmail
+  // above), not c.email raw. Every write to both tables lowercases, but
+  // Client.email does not — app/admin/clients/actions.ts saves a staff-edited
+  // address exactly as typed — so an exact match would silently return nothing
+  // for such a client and under-report the export. Mirrors how eraseClientData
+  // matches these two tables (app/admin/actions.ts).
+  const [bookingIntents, newsletterSubscription] = await Promise.all([
+    db.bookingIntent.findMany({ where: { email: { equals: ownEmail, mode: 'insensitive' } }, orderBy: { createdAt: 'desc' }, select: { treatmentSlug: true, treatmentTitle: true, variantLabel: true, source: true, createdAt: true } }),
+    db.newsletterSubscriber.findUnique({ where: { email: ownEmail }, select: { active: true, source: true, consentedAt: true, createdAt: true } }),
+  ]);
 
   const out = {
     exportedAt: new Date().toISOString(),
@@ -75,6 +122,9 @@ export async function GET(req: Request) {
     feedback: c.npsResponses,
     waitlist: c.waitlist,
     emails: c.emails,
+    giftVouchers,
+    bookingIntents,
+    newsletterSubscription,
     note: 'Clinical and special-category health detail (consultation notes, health-form answers, before/after photos, call transcripts) is not included in this self-service file. Request it through a verified subject-access request and we will provide it with an identity check.',
   };
 

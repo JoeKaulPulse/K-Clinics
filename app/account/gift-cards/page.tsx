@@ -24,7 +24,7 @@ export default async function GiftCardsPage({ searchParams }: { searchParams: Pr
   const locale: Locale = client.locale === 'uk' ? 'uk' : 'en';
 
   return (
-    <PortalShell firstName={client.firstName} locale={locale}>
+    <PortalShell firstName={client.firstName} locale={locale} termsAccepted={!!client.termsAcceptedAt}>
       <PortalPageHeader eyebrow="Gift cards" title="Redeem a gift card" subtitle="Add a gift card to your account to use against your treatments." />
       <div className="mt-6 max-w-lg">
         <GiftCardClaim initialCode={sp.code ?? ''} needsAge={needsAge} claimed={claimed} />

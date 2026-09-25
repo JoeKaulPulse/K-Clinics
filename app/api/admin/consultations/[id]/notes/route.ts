@@ -52,9 +52,17 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   const { db } = await import('@/lib/db');
   const consult = await db.consultation.findUnique({
     where: { id },
-    include: { client: { select: { firstName: true, lastName: true } } },
+    include: {
+      client: { select: { firstName: true, lastName: true, bookings: { select: { practitionerId: true } } } },
+    },
   });
   if (!consult) return NextResponse.json({ ok: false, error: 'Not found.' }, { status: 404 });
+  // BLD-1711: same practitioner scoping the client/booking API routes already
+  // apply (BLD-1693) — a Specialist must not be able to read or post a note on
+  // another practitioner's consultation by guessing/typing the id.
+  if (session.role === 'PRACTITIONER' && !consult.client.bookings.some((b) => b.practitionerId === session.sub)) {
+    return NextResponse.json({ ok: false, error: 'Not found.' }, { status: 404 });
+  }
 
   // BLD-913: team notes can hold clinical detail — encrypt at rest like every
   // structurally equivalent field (medicalNotes/allergies/clinicalNoteEnc).

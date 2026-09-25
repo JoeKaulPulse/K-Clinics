@@ -136,6 +136,8 @@ export async function runKioskAnalysis(sessionId: string): Promise<void> {
     await logKioskEvent('analyzed', session.id, session.ipHash);
   } catch (e) {
     console.error('[kiosk] analysis save failed:', (e as Error)?.message);
+    Sentry.captureException(e, { tags: { area: 'kiosk-analysis-v1' } });
+    await db.kioskSession.update({ where: { id: sessionId }, data: { status: 'ANALYSIS_FAILED' } }).catch(() => {});
   }
 }
 

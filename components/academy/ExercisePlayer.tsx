@@ -325,6 +325,7 @@ function TypeIn({ exercise, result, busy, onGrade }: SubProps) {
           <li key={i} className="flex items-center gap-2">
             <span className="grid h-6 w-6 shrink-0 place-items-center rounded-full bg-[var(--color-ink)] text-xs text-[var(--color-porcelain)]">{i + 1}</span>
             <input value={vals[i] ?? ''} disabled={!!result} onChange={(e) => setVals((v) => ({ ...v, [i]: e.target.value }))} placeholder="Type your answer…"
+              aria-label={`Label for point ${i + 1}`}
               className={`flex-1 rounded-[var(--radius-sm)] border bg-white px-3 py-1.5 text-sm ${result ? (result.results?.[i] ? 'border-[var(--color-gold)]' : 'border-[var(--color-blush)]') : 'border-[var(--color-line)]'}`} />
             {result && !result.results?.[i] && <span className="text-xs text-[var(--color-gold-deep)]">{reveal?.[i]?.label}</span>}
           </li>

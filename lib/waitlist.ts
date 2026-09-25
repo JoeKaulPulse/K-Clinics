@@ -83,35 +83,98 @@ export async function notifyOnFreedSlot(treatmentSlug: string, slotStart: Date):
     const entry = await db.waitlistEntry.findFirst({
       where: { treatmentSlug, status: 'ACTIVE', fromDate: { lte: day }, toDate: { gte: day } },
       orderBy: { createdAt: 'asc' },
-      include: { client: { select: { firstName: true, email: true, unsubToken: true } } },
+      include: { client: { select: { firstName: true, email: true, phone: true, smsReminders: true, unsubToken: true } } },
     });
-    if (!entry?.client?.email) return false;
-
-    const { randomUUID } = await import('node:crypto');
-    const claimToken = randomUUID();
-    const expiresAt = new Date(Date.now() + CLAIM_WINDOW_MS);
-    await db.waitlistEntry.update({ where: { id: entry.id }, data: { status: 'NOTIFIED', notifiedAt: new Date(), expiresAt, claimToken, offeredStart: slotStart } });
-
-    const { sendEmail, emailShell } = await import('@/lib/email');
-    const when = slotStart.toLocaleString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit', timeZone: 'Europe/London' });
-    const link = claimUrl(claimToken);
-    const body = `
-      <p style="font-family:Helvetica,Arial,sans-serif;font-size:13px;letter-spacing:1.5px;text-transform:uppercase;color:#a98a6d;margin:0 0 8px;">Waitlist</p>
-      <h1 style="margin:0 0 12px;font-size:25px;">A ${escapeHtml(entry.treatmentTitle)} slot just opened</h1>
-      <p style="margin:0 0 14px;">Hi ${escapeHtml(entry.client.firstName || 'there')}, a space has come up for <strong>${escapeHtml(entry.treatmentTitle)}</strong> on <strong>${when}</strong>. It's yours to claim for the next 6 hours — after that we offer it to the next person on the list.</p>
-      <p style="margin:6px 0 18px;"><a href="${link}" style="display:inline-block;background:#a98a6d;color:#fff;text-decoration:none;padding:13px 26px;border-radius:999px;font-size:14px;">Claim this slot</a></p>
-      <p style="font-size:13px;color:#91766e;">If it's already gone, you'll stay on the waitlist for the next opening. This link only works for you.</p>`;
-    await sendEmail({ to: entry.client.email, subject: `A ${entry.treatmentTitle} slot just opened`, html: emailShell({ body, preheader: `A space opened on ${when} — claim it within 6 hours.`, unsubUrl: entry.client.unsubToken ? `${SITE_URL}/unsubscribe/${entry.client.unsubToken}` : undefined }) });
-    await db.emailEvent.create({ data: { clientId: entry.clientId, kind: 'MANUAL', to: entry.client.email, subject: 'Waitlist slot opened', status: 'SENT' } }).catch(() => {});
-    // A freed slot was matched to a waitlister — let the diary know a booking may land.
-    try {
-      const { notifyStaffByPermission } = await import('@/lib/notifications');
-      await notifyStaffByPermission('bookings.view', { kind: 'status', category: 'bookings', priority: 'normal', title: `Waitlist slot offered: ${entry.treatmentTitle}`, body: `${entry.client.firstName || 'A client'} · ${when}`, href: '/admin/waitlist' });
-    } catch { /* non-fatal */ }
-    return true;
+    if (!entry || !entry.client.email) return false;
+    return await sendWaitlistOffer(entry, slotStart);
   } catch (e) {
     console.error('[waitlist] notify failed (non-fatal):', (e as Error)?.message);
     return false;
+  }
+}
+
+type OfferableEntry = {
+  id: string;
+  clientId: string;
+  treatmentTitle: string;
+  client: { firstName: string; email: string; phone: string | null; smsReminders: boolean; unsubToken: string };
+};
+
+/** Send the "a slot just opened" claim-link offer for one entry and flip it to
+ *  NOTIFIED. Shared by the automatic cancellation-triggered flow above and the
+ *  staff-initiated manual notify below (BLD-1646) — same email, same claim
+ *  token/expiry mechanics either way. Non-fatal to the caller; never throws. */
+async function sendWaitlistOffer(entry: OfferableEntry, slotStart: Date): Promise<boolean> {
+  const { randomUUID } = await import('node:crypto');
+  const claimToken = randomUUID();
+  const expiresAt = new Date(Date.now() + CLAIM_WINDOW_MS);
+  await db.waitlistEntry.update({ where: { id: entry.id }, data: { status: 'NOTIFIED', notifiedAt: new Date(), expiresAt, claimToken, offeredStart: slotStart } });
+
+  const { sendEmail, emailShell } = await import('@/lib/email');
+  const when = slotStart.toLocaleString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit', timeZone: 'Europe/London' });
+  const link = claimUrl(claimToken);
+  const body = `
+    <p style="font-family:Helvetica,Arial,sans-serif;font-size:13px;letter-spacing:1.5px;text-transform:uppercase;color:#a98a6d;margin:0 0 8px;">Waitlist</p>
+    <h1 style="margin:0 0 12px;font-size:25px;">A ${escapeHtml(entry.treatmentTitle)} slot just opened</h1>
+    <p style="margin:0 0 14px;">Hi ${escapeHtml(entry.client.firstName || 'there')}, a space has come up for <strong>${escapeHtml(entry.treatmentTitle)}</strong> on <strong>${when}</strong>. It's yours to claim for the next 6 hours — after that we offer it to the next person on the list.</p>
+    <p style="margin:6px 0 18px;"><a href="${link}" style="display:inline-block;background:#a98a6d;color:#fff;text-decoration:none;padding:13px 26px;border-radius:999px;font-size:14px;">Claim this slot</a></p>
+    <p style="font-size:13px;color:#91766e;">If it's already gone, you'll stay on the waitlist for the next opening. This link only works for you.</p>`;
+  await sendEmail({ to: entry.client.email, subject: `A ${entry.treatmentTitle} slot just opened`, html: emailShell({ body, preheader: `A space opened on ${when} — claim it within 6 hours.`, unsubUrl: entry.client.unsubToken ? `${SITE_URL}/unsubscribe/${entry.client.unsubToken}` : undefined }) });
+  await db.emailEvent.create({ data: { clientId: entry.clientId, kind: 'MANUAL', to: entry.client.email, subject: 'Waitlist slot opened', status: 'SENT' } }).catch(() => {});
+
+  // SMS mirrors the opt-in gate booking-notify.ts uses for confirmations.
+  if (entry.client.smsReminders && entry.client.phone) {
+    try {
+      const { smsConfigured, sendSms } = await import('@/lib/sms');
+      if (await smsConfigured()) await sendSms(entry.client.phone, `KClinics: a ${entry.treatmentTitle} slot opened on ${when}. Claim it within 6 hours: ${link}`);
+    } catch { /* non-fatal */ }
+  }
+
+  // A freed slot was matched to a waitlister — let the diary know a booking may land.
+  try {
+    const { notifyStaffByPermission } = await import('@/lib/notifications');
+    await notifyStaffByPermission('bookings.view', { kind: 'status', category: 'bookings', priority: 'normal', title: `Waitlist slot offered: ${entry.treatmentTitle}`, body: `${entry.client.firstName || 'A client'} · ${when}`, href: '/admin/waitlist' });
+  } catch { /* non-fatal */ }
+  return true;
+}
+
+/**
+ * Staff-initiated notify (BLD-1646): a front-desk/practitioner already agreed a
+ * freed slot with the waitlisted client by phone and wants the system to send
+ * the same claim-link email/SMS the automatic flow above would send — targeting
+ * this exact entry, not just "whoever is first in line" for the treatment.
+ * `slotStart` defaults to the entry's already-offered slot, or the start of its
+ * waiting window, when staff don't pass a specific date/time.
+ */
+export async function notifyWaitlistEntryManually(entryId: string, slotStart?: Date): Promise<{ ok: boolean; error?: string }> {
+  try {
+    const entry = await db.waitlistEntry.findUnique({
+      where: { id: entryId },
+      include: { client: { select: { firstName: true, email: true, phone: true, smsReminders: true, unsubToken: true } } },
+    });
+    if (!entry) return { ok: false, error: 'Waitlist entry not found.' };
+    if (!['ACTIVE', 'NOTIFIED'].includes(entry.status)) return { ok: false, error: 'This entry is no longer active.' };
+    if (!entry.client?.email) return { ok: false, error: 'No email on file for this client.' };
+    const start = slotStart || entry.offeredStart || entry.fromDate;
+    await sendWaitlistOffer(entry, start);
+    return { ok: true };
+  } catch (e) {
+    console.error('[waitlist] manual notify failed:', (e as Error)?.message);
+    return { ok: false, error: 'Could not send the notification.' };
+  }
+}
+
+/** Staff-initiated withdrawal (BLD-1646) — e.g. the client called to cancel
+ *  their waitlist spot. Marks CANCELLED rather than deleting, so it drops off
+ *  the admin list (which only shows ACTIVE/NOTIFIED) while keeping the record. */
+export async function cancelWaitlistEntry(entryId: string): Promise<{ ok: boolean; error?: string }> {
+  try {
+    const r = await db.waitlistEntry.updateMany({ where: { id: entryId, status: { in: ['ACTIVE', 'NOTIFIED'] } }, data: { status: 'CANCELLED' } });
+    if (r.count === 0) return { ok: false, error: 'Entry not found or already resolved.' };
+    return { ok: true };
+  } catch (e) {
+    console.error('[waitlist] cancel failed:', (e as Error)?.message);
+    return { ok: false, error: 'Could not remove the entry.' };
   }
 }
 

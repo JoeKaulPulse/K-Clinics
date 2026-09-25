@@ -6,7 +6,7 @@ import { PageTitle, Card } from '@/components/academy/ui';
 import { BadgeIcon } from '@/components/academy/BadgeIcon';
 import { pageMeta } from '@/lib/seo';
 
-export const generateMetadata = (): Promise<Metadata> => pageMeta({ title: 'Your progress — K Academy', description: 'Your own XP, level and badges as you work through the academy.', path: '/academy/leaderboard' });
+export const generateMetadata = (): Promise<Metadata> => pageMeta({ title: 'Your progress — K Academy', description: 'Your own XP, level and badges as you work through the academy.', path: '/academy/leaderboard', noindex: true });
 export const dynamic = 'force-dynamic';
 
 // Tetiana (privacy): trainees only ever see their OWN progress here — never other

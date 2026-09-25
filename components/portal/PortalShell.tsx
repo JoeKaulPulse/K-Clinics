@@ -6,6 +6,7 @@ import { useEffect, useState } from 'react';
 import { motion } from 'motion/react';
 import { KMark, ClinicsWordmark } from '@/components/brand/marks';
 import { GuideHost } from '@/components/guide/GuideHost';
+import { TermsGate } from '@/components/portal/TermsGate';
 import { Aurora } from '@/components/ui/Aurora';
 import { PhoneLink } from '@/components/marketing/PhoneLink';
 import { portalTranslator, PORTAL_LOCALE_COOKIE } from '@/lib/i18n-portal';
@@ -28,7 +29,16 @@ function readCookieLocale(): Locale {
   return m && isLocale(m[1]) ? (m[1] as Locale) : DEFAULT_LOCALE;
 }
 
-export function PortalShell({ firstName, locale: localeProp, children }: { firstName: string; locale?: Locale; children: React.ReactNode }) {
+export function PortalShell({ firstName, locale: localeProp, termsAccepted = true, children }: {
+  firstName: string; locale?: Locale;
+  // BLD-1845: whether the signed-in client already has a recorded T&Cs
+  // acceptance. Passed down from the server component that already loaded the
+  // client record (getCurrentClient), so this shell doesn't run its own extra
+  // query. Defaults to true (no gate) so any caller that hasn't been updated
+  // yet degrades to today's behaviour rather than wrongly blocking everyone.
+  termsAccepted?: boolean;
+  children: React.ReactNode;
+}) {
   const pathname = usePathname();
   const router = useRouter();
   const [locale, setLocale] = useState<Locale>(localeProp ?? DEFAULT_LOCALE);
@@ -136,6 +146,7 @@ export function PortalShell({ firstName, locale: localeProp, children }: { first
         </footer>
       </div>
       <GuideHost />
+      <TermsGate accepted={termsAccepted} />
     </div>
   );
 }

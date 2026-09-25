@@ -3,6 +3,11 @@ import * as Sentry from '@sentry/nextjs';
 import { crmEnabled } from '@/lib/crm';
 
 export const runtime = 'nodejs';
+// BLD-1692: finalizeOrder can wait up to ~30s on Resend's rate gate
+// (lib/email.ts) before it returns — without this the platform's default
+// timeout can kill the request mid-order-finalize. Matches
+// app/api/stripe/webhook/route.ts, raised for the same risk.
+export const maxDuration = 60;
 
 // Finalise an order after payment succeeds (verified against Stripe).
 export async function POST(req: Request) {

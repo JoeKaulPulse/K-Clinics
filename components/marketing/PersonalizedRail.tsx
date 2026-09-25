@@ -40,7 +40,7 @@ export function PersonalizedRail({ heading, subheading, count = 6, showGiftCard 
         <div className="mt-8 flex flex-wrap items-center justify-between gap-4 rounded-[var(--radius-lg)] border border-[var(--color-gold)]/30 bg-gradient-to-br from-[var(--color-gold)]/8 to-transparent p-6">
           <div>
             <h3 className="font-[family-name:var(--font-display)] text-xl">{seg === 'male' ? 'The perfect gift for him' : seg === 'female' ? 'The perfect gift for her' : 'Give the gift of glow'}</h3>
-            <p className="mt-1 text-sm text-[var(--color-stone)]">A KClinics gift voucher — redeemable across every treatment.</p>
+            <p className="mt-1 text-sm text-[var(--color-stone)]">A KClinics gift voucher, for any amount.</p>
           </div>
           <Button href="/gift-vouchers" variant="gold">Shop gift vouchers <ArrowIcon /></Button>
         </div>
