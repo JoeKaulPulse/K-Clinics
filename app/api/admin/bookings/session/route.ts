@@ -49,7 +49,7 @@ export async function POST(req: Request) {
   type Data = import('@/lib/appointment-session').SessionData;
   type Touchpoints = import('@/lib/appointment-session').Touchpoint[];
 
-  const booking = await db.booking.findUnique({ where: { id: bookingId }, select: { id: true, clientId: true, practitionerId: true, status: true, finishedAt: true, chargedAt: true, prepaidAt: true, giftVoucherCode: true, giftVoucherPence: true, pointsRedeemedPence: true } });
+  const booking = await db.booking.findUnique({ where: { id: bookingId }, select: { id: true, clientId: true, practitionerId: true, status: true, finishedAt: true, chargedAt: true, prepaidAt: true, giftVoucherCode: true, giftVoucherPence: true, pointsRedeemedPence: true, treatmentSlug: true, items: { select: { treatmentSlug: true } } } });
   if (!booking) return bad('Booking not found.', 404);
   // BLD-1899/BLD-1882 pattern (lib/crm-data.ts getClient; BLD-1693/1711/1720):
   // a PRACTITIONER session may only act on a live appointment session for a
@@ -321,6 +321,15 @@ export async function POST(req: Request) {
       if (!code) return bad('Enter the voucher code.');
       if (booking.chargedAt || booking.prepaidAt) return bad('This booking is already paid.');
       if ((booking.giftVoucherPence ?? 0) > 0) return bad('A voucher is already applied to this booking — remove it first to use a different one.');
+      // BLD-1918: gift cards cannot be applied to injectable or CO2 laser
+      // treatments — enforced here (not just in the UI) so a manipulated
+      // request can't apply one regardless of what the checkout screen shows.
+      const { giftCardAllowedForTreatment, GIFT_CARD_TREATMENT_EXCLUDED_ERROR } = await import('@/lib/gift-vouchers');
+      // The voucher covers the whole booking total, so an excluded add-on
+      // (BookingItem) blocks it too, not just the primary treatment.
+      for (const slug of [booking.treatmentSlug, ...booking.items.map((i) => i.treatmentSlug)]) {
+        if (!(await giftCardAllowedForTreatment(slug))) return bad(GIFT_CARD_TREATMENT_EXCLUDED_ERROR);
+      }
       const { reserveVoucher, undoVoucherReservation, VOUCHER_INVALID_ERROR } = await import('@/lib/gift-vouchers');
       const { reservedPence } = await reserveVoucher(code, amountPence);
       if (reservedPence <= 0) return bad(VOUCHER_INVALID_ERROR);
