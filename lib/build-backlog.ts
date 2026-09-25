@@ -5891,6 +5891,19 @@ export const BUILD_BACKLOG: BacklogItem[] = [
       "Review fix (pre-merge): (1) the paid-correction path now also requires bookings.charge (server + page gates), matching overrideBookingPrice/removeOutstandingPayment/PaymentMethodEditor, so an admin with Take payments revoked can't re-price a paid booking. (2) removeAddonTreatment treats a BNPL pre-paid course (prepaidAt, no chargedAt) as paid too, so a practitioner can't lower a paid-in-full course's price from the new button. (3) Removal took the add-on's list price off booking.pricePence, but online add-ons carry a 20% upsell discountPence and the booking total holds the net, so the total dropped too far; it now subtracts pricePence - discountPence. (4) The delete re-asserts bookingId + isAddon in a conditional deleteMany inside an interactive transaction, so a double-click or concurrent removal can't decrement twice; the audit 'total now' figure comes from the post-update row, not the pre-read. (5) The 'Already charged - add further treatments to a new booking' note is hidden when the add picker is shown, and RemoveAddonButton now shows its error instead of leaving it hidden behind the Yes/No confirm.",
     ],
   },
+  {
+    title: 'Move the Shop tab into the main website navigation (BLD-1923)',
+    type: 'TASK', urgency: 'P0', status: 'IN_REVIEW', assignee: 'claude',
+    value: 6, effort: 2,
+    detail: "The Shop link lived in the header's small utility strip next to site search / account menu / Book Now (components/layout/Header.tsx), not as a primary nav tab -- lib/nav.ts's primaryNav (Aesthetics, Dentistry, Packages, Pricing, Academy, Get My Plan, Clinic) never included it. The owner asked for Shop to be clearly visible as its own separate tab in the main navigation, same as the others.",
+    notes: [
+      "Fix: primaryNav (lib/nav.ts, served to the client via config.nav.primary) is a static default with no request-time product data, so it can't itself gate on config.shopLive (computed per-request from the active product count). Header.tsx now builds its displayed nav list by splicing a plain Shop tab (no mega-menu, same treatment as Packages/Pricing) into config.nav.primary right before Academy, only when config.shopLive is true -- a new insertShopTab() helper, applied once at the top of the component so both the desktop nav row and the mobile drawer pick it up automatically.",
+      "Removed the old utility-strip Shop link (desktop cluster and the mobile drawer's separate Shop row) now that it's promoted to a real tab, so it isn't shown twice.",
+      "config.shopLive's zero-active-products gating is unchanged -- Shop still disappears entirely (from the nav and the sitemap) when there is nothing to sell.",
+      "No Prisma schema change -- this is header rendering logic only.",
+      "Verified: npx tsc --noEmit and npm run build both pass clean.",
+    ],
+  },
 ];
 
 // A content hash over every item's title + status + PR, so ANY change (a new

@@ -5,6 +5,7 @@ import { useEffect, useRef, useState } from 'react';
 import { usePathname } from 'next/navigation';
 import { AnimatePresence, motion } from 'motion/react';
 import type { SiteConfig } from '@/lib/site-config';
+import type { NavGroup } from '@/lib/nav';
 import { getTreatment } from '@/lib/treatments';
 import { Logo } from '@/components/brand/Logo';
 import { Button, ArrowIcon } from '@/components/ui/Button';
@@ -15,9 +16,25 @@ import { AccountMenu } from '@/components/layout/AccountMenu';
 import { SiteSearch } from '@/components/layout/SiteSearch';
 import { PhoneLink } from '@/components/marketing/PhoneLink';
 
+// BLD-1923: inserts a plain (no mega-menu) Shop tab after Pricing / before
+// Academy, matching the visual treatment of the other single-link tabs.
+// Falls back to appending at the end if that anchor ever moves/is renamed.
+function insertShopTab(items: NavGroup[]): NavGroup[] {
+  const next = [...items];
+  const idx = next.findIndex((i) => i.label === 'Academy');
+  const shopItem: NavGroup = { label: 'Shop', href: '/shop' };
+  if (idx === -1) next.push(shopItem);
+  else next.splice(idx, 0, shopItem);
+  return next;
+}
+
 export function Header({ config }: { config: SiteConfig }) {
-  const { nav, booking, name, phone, phoneHref } = config;
-  const primaryNav = nav.primary;
+  const { nav, booking, name, phone, phoneHref, shopLive } = config;
+  // BLD-1923: promote Shop from the small utility-strip link into a real
+  // primary-nav tab (same treatment as Packages/Pricing). nav.primary is a
+  // static default with no request-time product data, so the entry is
+  // spliced in here, still gated on shopLive (no active products → no tab).
+  const primaryNav = shopLive ? insertShopTab(nav.primary) : nav.primary;
   const [scrolled, setScrolled] = useState(false);
   const [open, setOpen] = useState<string | null>(null);
   const [mobile, setMobile] = useState(false);
@@ -177,7 +194,6 @@ export function Header({ config }: { config: SiteConfig }) {
         </nav>
 
         <div className="hidden items-center gap-3 xl:flex">
-          {config.shopLive && <Link href="/shop" className={`text-sm font-medium transition-colors ${light ? 'text-[var(--color-porcelain)] hover:text-[var(--color-gold)]' : 'text-[var(--color-ink)] hover:text-[var(--color-gold-deep)]'}`}>Shop</Link>}
           <SiteSearch light={light} />
           <AccountMenu light={light} />
           <Button href={booking.path} size="md" variant={light ? 'gold' : 'ink'}>
@@ -369,13 +385,6 @@ export function Header({ config }: { config: SiteConfig }) {
                   </motion.div>
                 );
               })}
-              {config.shopLive && (
-                <div className="py-4">
-                  <Link href="/shop" onClick={() => setMobile(false)} className="block font-[family-name:var(--font-display)] text-2xl">
-                    Shop
-                  </Link>
-                </div>
-              )}
             </nav>
             <div className="mt-8 flex flex-col gap-3">
               <Button href={booking.path} size="lg" className="w-full">
