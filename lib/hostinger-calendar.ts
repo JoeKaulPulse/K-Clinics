@@ -78,7 +78,7 @@ export async function pushBooking(bookingId: string): Promise<{ ok: boolean; err
     const b = await db.booking.findUnique({ where: { id: bookingId }, include: { client: { select: { firstName: true, lastName: true, email: true, phone: true } } } });
     if (!b) return { ok: false, error: 'Booking not found' };
     const name = [b.client?.firstName, b.client?.lastName].filter(Boolean).join(' ') || 'Client';
-    const loc = `${site.address.street}, ${site.address.locality}, ${site.address.postalCode}`;
+    const loc = `${site.address.street}, ${site.address.district}, ${site.address.postalCode}`;
     const ics = buildICS({
       uid: uidFor(bookingId),
       start: b.startAt,
