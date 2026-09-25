@@ -321,6 +321,16 @@ export async function TreatmentTemplate({ t, dentistryLive = site.dentistryLive 
                 )}
                 <Button href="/pricing" variant="outline">Full price list <ArrowIcon /></Button>
               </div>
+              {/* BLD-1827: BNPL on treatments is real but staff-sent (a hosted
+                  Stripe Checkout link -- app/api/admin/bookings/bnpl-link and the
+                  booking-balance paylink), NOT the online booking form, which
+                  takes no payment and only saves a card. Wording says exactly
+                  that, and carries the same eligibility caveat as /finance. */}
+              {!enquiryOnly && (
+                <p className="mt-4 text-xs text-[var(--color-stone)]">
+                  Prefer to spread the cost? Klarna and Clearpay are available on eligible treatment courses and packages — ask the team and we’ll send you a secure payment link. Approval and eligibility are decided by the provider. <Link href="/finance" className="link-underline font-medium text-[var(--color-ink)]">Ways to pay</Link>
+                </p>
+              )}
               {vatNote && <p className="mt-4 text-xs text-[var(--color-stone)]">{vatNote}</p>}
               {rating && rating.count > 0 && (
                 <Link href="/reviews" className="mt-6 flex items-center gap-2.5">
