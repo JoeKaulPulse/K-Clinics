@@ -6,13 +6,13 @@ import { getSetting, getConfigNumber } from '@/lib/settings';
 // prices are treated as VAT-INCLUSIVE by default; each service carries a VAT
 // class (dentistry is EXEMPT by default, everything else STANDARD 20%).
 
-export type VatClass = 'STANDARD' | 'REDUCED' | 'ZERO' | 'EXEMPT';
-export const VAT_CLASSES: { id: VatClass; label: string }[] = [
-  { id: 'STANDARD', label: 'Standard (20%)' },
-  { id: 'REDUCED', label: 'Reduced (5%)' },
-  { id: 'ZERO', label: 'Zero-rated (0%)' },
-  { id: 'EXEMPT', label: 'Exempt (e.g. dentistry)' },
-];
+// Classes and their rates are plain data and live in lib/vat-rates.ts so the
+// browser-side pricing planner can use them too; re-exported here so every
+// existing `from '@/lib/vat'` import keeps working.
+export { VAT_CLASSES, ratePctForClass } from '@/lib/vat-rates';
+export type { VatClass } from '@/lib/vat-rates';
+import type { VatClass } from '@/lib/vat-rates';
+import { ratePctForClass } from '@/lib/vat-rates';
 
 export type VatConfig = { registered: boolean; inclusive: boolean; defaultRatePct: number };
 
@@ -30,17 +30,6 @@ export async function getVatConfig(): Promise<VatConfig> {
 export function effectiveVatClass(service: { vatClass?: string | null; category?: string | null }): VatClass {
   if (service.vatClass && ['STANDARD', 'REDUCED', 'ZERO', 'EXEMPT'].includes(service.vatClass)) return service.vatClass as VatClass;
   return service.category === 'dentistry' ? 'EXEMPT' : 'STANDARD';
-}
-
-/** The VAT rate (%) for a class. STANDARD uses the configurable default (20%). */
-export function ratePctForClass(cls: VatClass, defaultRatePct: number): number {
-  switch (cls) {
-    case 'STANDARD': return defaultRatePct;
-    case 'REDUCED': return 5;
-    case 'ZERO':
-    case 'EXEMPT':
-    default: return 0;
-  }
 }
 
 export type VatBreakdown = { netPence: number; vatPence: number; grossPence: number; ratePct: number; applied: boolean; exempt: boolean };
