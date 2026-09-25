@@ -39,12 +39,28 @@ export const STATUS_LABEL: Record<string, string> = {
 // both the student-facing form and (for audit purposes) any export render.
 // "Awarding Body" is used deliberately in place of "VTCT Skills" so this stays
 // applicable if the Academy registers learners with other awarding bodies later.
+//
+// BLD-1867: these three constants are now only the FALLBACK defaults — the
+// account owner can edit the live title/body/checkbox wording from
+// /admin/academy/vtct-registrations (see getStringSetting/setStringSetting in
+// lib/settings.ts and app/(marketing)/academy/vtct-registration/page.tsx).
+// Kept here, unchanged, so a Setting row that has never been written still
+// renders today's exact wording.
+export const DECLARATION_TITLE = 'Student Declaration, Accuracy of Information and Responsibility';
+
 export const DECLARATION_TEXT =
   'Please read this declaration carefully before submitting your registration details. '
   + 'I confirm that all information, statements and documents provided by me to KClinics Academy are true, accurate, complete, authentic and up to date at the time of submission. '
   + 'I confirm that I have not knowingly omitted, withheld, altered or misrepresented any information that may be relevant to my enrolment, eligibility, assessment, qualification, registration with the Awarding Body or certification. '
   + 'I confirm that my full legal name, date of birth, residential address and other personal details correspond with my current official identification and supporting documents. '
   + 'I understand that the information I provide may be used for enrolment, identity and eligibility verification, learner registration, qualification administration and certification.';
+
+export const DECLARATION_CHECKBOX_LABEL = 'I have read the declaration above and I agree to it.';
+
+// The Setting table keys the owner-editable copy is stored under.
+export const DECLARATION_TITLE_KEY = 'vtct_declaration_title';
+export const DECLARATION_BODY_KEY = 'vtct_declaration_body';
+export const DECLARATION_CHECKBOX_KEY = 'vtct_declaration_checkbox_label';
 
 export type DocumentInput = { kind: string; url: string; filename?: string; contentType?: string; sizeBytes?: number };
 export type DocumentView = { id: string; kind: DocumentKind; filename: string; url: string; uploadedAt: string };
