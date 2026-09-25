@@ -1,4 +1,4 @@
-import { NextResponse } from 'next/server';
+import { NextResponse, after } from 'next/server';
 import { crmEnabled } from '@/lib/crm';
 
 export const runtime = 'nodejs';
@@ -28,7 +28,14 @@ export async function POST(req: Request) {
     revalidatePath('/academy'); revalidatePath('/sitemap.xml');
     const paths = ['/academy'];
     if (slug) { revalidatePath(`/academy/${slug}`); paths.push(`/academy/${slug}`); }
-    import('@/lib/indexnow').then((m) => m.indexNow(paths)).catch(() => {});
+    // BLD-1885: a bare `.then().catch()` with no await can be frozen mid-flight
+    // once the response is sent — same anti-pattern already fixed on the kiosk
+    // analyze/photo routes, lib/ai-consultation.ts and app/api/admin/posts/route.ts
+    // (BLD-1137/1166/1418/491). after() keeps the function alive to finish the ping.
+    after(async () => {
+      const { indexNow } = await import('@/lib/indexnow');
+      await indexNow(paths).catch(() => {});
+    });
   };
 
   switch (body.op) {
@@ -186,10 +193,18 @@ export async function POST(req: Request) {
         const existing = await db.liveClass.findFirst({ where: { id: String(b.id), tenantId }, select: { courseId: true, startAt: true } });
         if (!existing) return bad();
         await db.liveClass.updateMany({ where: { id: String(b.id), tenantId }, data });
-        notifyLiveClassChange({ id: String(b.id), courseId: existing.courseId, title: data.title, startAt: data.startAt, joinUrl: data.joinUrl, trainer: data.trainer }, 'rescheduled', { oldStartAt: existing.startAt }).catch(() => {});
+        // BLD-1885: after(), not a bare floating promise — the response below can
+        // be sent before this fire-and-forget notify resolves, and the runtime
+        // can freeze the function mid-flight (same fix as the kiosk analyze/photo
+        // routes / lib/ai-consultation.ts, BLD-1137/1166/1418/491).
+        after(async () => {
+          await notifyLiveClassChange({ id: String(b.id), courseId: existing.courseId, title: data.title, startAt: data.startAt, joinUrl: data.joinUrl, trainer: data.trainer }, 'rescheduled', { oldStartAt: existing.startAt }).catch(() => {});
+        });
       } else {
         const created = await db.liveClass.create({ data: { ...data, tenantId, courseId: String(b.courseId) } });
-        notifyLiveClassChange({ id: created.id, courseId: created.courseId, title: created.title, startAt: created.startAt, joinUrl: created.joinUrl, trainer: created.trainer }, 'created').catch(() => {});
+        after(async () => {
+          await notifyLiveClassChange({ id: created.id, courseId: created.courseId, title: created.title, startAt: created.startAt, joinUrl: created.joinUrl, trainer: created.trainer }, 'created').catch(() => {});
+        });
       }
       return ok();
     }
@@ -203,7 +218,10 @@ export async function POST(req: Request) {
       const del = await db.liveClass.deleteMany({ where: { id: body.id, tenantId } });
       if (del.count > 0) {
         const { notifyLiveClassChange } = await import('@/lib/academy-live-class');
-        notifyLiveClassChange(existing, 'cancelled').catch(() => {});
+        // BLD-1885: after() — see the create/reschedule branches above.
+        after(async () => {
+          await notifyLiveClassChange(existing, 'cancelled').catch(() => {});
+        });
       }
       return ok();
     }

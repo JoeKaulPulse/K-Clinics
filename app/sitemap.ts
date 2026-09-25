@@ -69,6 +69,9 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   // PRJ-939.14: only list /shop while there is something to sell.
   const shopEntries = await shopProducts();
   const shopLive = shopEntries.length > 0;
+  // BLD-1933: /academy/bundles 404s when no bundle is active, so only list it
+  // (like /shop above) while there is at least one.
+  const bundles = await bundleSlugs();
 
   const reviewed = CONTENT_REVIEWED;
   const base = site.url;
@@ -94,7 +97,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { path: '/gallery', priority: 0.6, freq: 'monthly' },
     { path: '/finance', priority: 0.6, freq: 'monthly' },
     { path: '/academy', priority: 0.8, freq: 'weekly' },
-    { path: '/academy/bundles', priority: 0.7, freq: 'monthly' },
+    ...(bundles.length > 0 ? [{ path: '/academy/bundles', priority: 0.7, freq: 'monthly' as const }] : []),
     { path: '/academy/funding', priority: 0.65, freq: 'monthly' },
     { path: '/about', priority: 0.6, freq: 'monthly' },
     { path: '/team', priority: 0.7, freq: 'monthly' },
@@ -150,7 +153,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       changeFrequency: 'monthly' as const,
       priority: 0.6,
     })),
-    ...(await bundleSlugs()).map((slug) => ({
+    ...bundles.map((slug) => ({
       url: `${base}/academy/bundles/${slug}`,
       lastModified: reviewed,
       changeFrequency: 'monthly' as const,

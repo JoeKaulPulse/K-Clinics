@@ -136,8 +136,13 @@ export async function eraseClientData(clientId: string) {
     db.discountClaim.updateMany({ where: { clientId }, data: { emailNorm: 'erased', phoneNorm: null, nameDobKey: null, ip: null } }),
     // Strip PII from retail Orders (email/name/phone/address) — keep order number
     // and amounts for Xero/HMRC basis. Order.clientId is a nullable String set at
-    // checkout (no formal FK relation), so we match on it directly.
-    db.order.updateMany({ where: { clientId }, data: { name: 'Erased', email: erasedEmail, phone: null, shipName: null, shipLine1: null, shipLine2: null, shipCity: null, shipPostcode: null } }),
+    // checkout (no formal FK relation), so we match on it directly. BLD-1879:
+    // guest orders (POS sales, which never create a Client row) leave clientId
+    // null with only the order's own email set, so also match those by this
+    // client's stored address. Guest rows only (clientId: null), so an order
+    // linked to a different account is never touched; case-insensitive because
+    // POS saves the email as typed (same as the chat/bookingIntent matches here).
+    db.order.updateMany({ where: { OR: [{ clientId }, { clientId: null, email: { equals: client.email, mode: 'insensitive' } }] }, data: { name: 'Erased', email: erasedEmail, phone: null, shipName: null, shipLine1: null, shipLine2: null, shipCity: null, shipPostcode: null } }),
     // GiftVouchers claimed by this client — strip purchaser + recipient PII.
     db.giftVoucher.updateMany({ where: { claimedByClientId: clientId }, data: { purchaserName: 'Erased', purchaserEmail: erasedEmail, recipientName: null, recipientEmail: null, message: null, shipName: null, shipLine1: null, shipLine2: null, shipCity: null, shipPostcode: null } }),
     // GiftVouchers purchased by this client (email-matched; no purchaserClientId FK).
