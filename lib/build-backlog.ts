@@ -5960,6 +5960,12 @@ export const BUILD_BACKLOG: BacklogItem[] = [
       "Verified: npx tsc --noEmit and npm run build both pass clean.",
     ],
   },
+  {
+    title: 'Health record showing "debil" on booking page -- data issue (BLD-423-data)', type: 'ERROR', urgency: 'P0', status: 'IN_REVIEW', assignee: 'joe@kaulindustries.com',
+    value: 5, effort: 1,
+    detail: 'The "debil" text visible in the Health & Consent section on booking cmqgpmg8e00000aj83k71c015 is the literal content of that client\'s medicalFlag database field -- not a rendering bug. The code correctly decrypts and displays the flag. To fix: open the client record in Admin, clear or correct the Medical Flag field. Step-by-step instructions posted as a board comment.',
+    notes: ['Data fix required. Admin -> Clients -> find client -> Medical Flag field -> clear or correct.'],
+  },
 ];
 
 // A content hash over every item's title + status + PR, so ANY change (a new
