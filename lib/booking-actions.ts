@@ -11,10 +11,15 @@ import {
 } from './email';
 import { logAudit } from './audit';
 import { CLINIC_TZ } from './clinic-time';
+import { isWithinSelfServiceWindow, SELF_SERVICE_WINDOW_MS, SELF_SERVICE_CLOSED_MESSAGE } from './cancellation-policy';
 import type { Booking, Client } from '@prisma/client';
 
 const CANCEL_WINDOW_MS = 24 * 60 * 60 * 1000;
-const RESCHEDULE_WINDOW_MS = 48 * 60 * 60 * 1000;
+// BLD-1920: the self-service cancel/reschedule window now lives in
+// lib/cancellation-policy.ts (a plain module, shared with client components).
+// Kept as a local alias so the rest of this file — and RESCHEDULE_WINDOW_MS's
+// existing call sites below — don't need to change.
+const RESCHEDULE_WINDOW_MS = SELF_SERVICE_WINDOW_MS;
 const MAX_FREE_RESCHEDULES = 3;
 // PRJ-1043.3: a PENDING booking holds its slot from creation until the client
 // finishes card setup (see app/api/booking/create). If they close the tab
@@ -580,18 +585,34 @@ export async function recordChargeFailure(bookingId: string, reason: string): Pr
 }
 
 /**
- * Cancel a booking, applying the 24-hour policy.
- * - >24h before: free.
- * - <24h before: charge 100% (the late fee), unless `waiveFee` is set.
+ * Cancel a booking.
+ * - BLD-1920: a CLIENT self-service cancellation (opts.admin not set) needs
+ *   >=48h notice at all — inside that window it is blocked outright, with the
+ *   client pointed at our Cancellation & Rescheduling Policy, rather than
+ *   silently proceeding. This is a separate, stricter gate from the fee rule
+ *   below; staff/admin cancellations (opts.admin: true) are never subject to
+ *   it and can cancel at any notice, exactly as before.
+ * - The pre-existing 24-hour late-cancellation FEE policy is unchanged by the
+ *   above and still applies whenever cancelBooking actually runs (staff at
+ *   any notice, or a client at >=48h — which by definition is never inside
+ *   the 24h fee window, so a client self-service cancellation can no longer
+ *   incur this fee; it now only ever fires on a staff-assisted cancel):
+ *   - >24h before: free.
+ *   - <24h before: charge 100% (the late fee), unless `waiveFee` is set.
  */
 export async function cancelBooking(
   bookingId: string,
-  opts: { by: string; reason?: string; waiveFee?: boolean },
-): Promise<{ ok: boolean; charged?: number; requiresAction?: boolean; feeFailed?: boolean; error?: string }> {
+  opts: { by: string; reason?: string; waiveFee?: boolean; admin?: boolean },
+): Promise<{ ok: boolean; charged?: number; requiresAction?: boolean; feeFailed?: boolean; error?: string; code?: 'SELF_SERVICE_WINDOW_CLOSED' }> {
   const booking = await db.booking.findUnique({ where: { id: bookingId }, include: { client: true } });
   if (!booking) return { ok: false, error: 'Booking not found' };
   if (['CANCELLED', 'COMPLETED', 'NO_SHOW'].includes(booking.status)) {
     return { ok: false, error: 'This booking can no longer be cancelled.' };
+  }
+  // BLD-1920: client self-service must give >=48h notice — checked before any
+  // of the existing 24h fee logic below, and skipped entirely for staff/admin.
+  if (!opts.admin && isWithin48h(booking)) {
+    return { ok: false, code: 'SELF_SERVICE_WINDOW_CLOSED', error: SELF_SERVICE_CLOSED_MESSAGE };
   }
 
   const late = isWithin24h(booking);
@@ -873,8 +894,10 @@ export async function applyNoShowFee(
   return { ...nil, feeFailed: true };
 }
 
+// BLD-1920: now a thin wrapper over the shared lib/cancellation-policy helper
+// (same 48h window), used by both cancelBooking and rescheduleBooking below.
 export function isWithin48h(b: Pick<Booking, 'startAt'>): boolean {
-  return b.startAt.getTime() - Date.now() < RESCHEDULE_WINDOW_MS;
+  return isWithinSelfServiceWindow(b.startAt);
 }
 
 // BLD-1873/BLD-1886: shared overlap predicate for a proposed [newStart, newEnd]
@@ -929,15 +952,16 @@ export async function rescheduleBooking(
   bookingId: string,
   newStartISO: string,
   opts: { by: string; reason?: string; admin?: boolean; force?: boolean },
-): Promise<{ ok: boolean; charged?: number; requiresAction?: boolean; error?: string; code?: 'SLOT_TAKEN' | 'RESOURCE_CONFLICT' }> {
+): Promise<{ ok: boolean; charged?: number; requiresAction?: boolean; error?: string; code?: 'SLOT_TAKEN' | 'RESOURCE_CONFLICT' | 'SELF_SERVICE_WINDOW_CLOSED' }> {
   const booking = await db.booking.findUnique({ where: { id: bookingId }, include: { client: true, resources: { select: { id: true } } } });
   if (!booking) return { ok: false, error: 'Booking not found.' };
   if (['CANCELLED', 'COMPLETED', 'NO_SHOW'].includes(booking.status)) {
     return { ok: false, error: 'This booking can no longer be rescheduled.' };
   }
   // Client self-service must give >=48h notice; staff (admin) can move any time.
+  // BLD-1920: same window, code and wording as cancelBooking's self-service gate.
   if (!opts.admin && isWithin48h(booking)) {
-    return { ok: false, error: "Reschedules require at least 48 hours' notice. Please call us on 020 8050 0750 if you need to make a late change." };
+    return { ok: false, code: 'SELF_SERVICE_WINDOW_CLOSED', error: SELF_SERVICE_CLOSED_MESSAGE };
   }
 
   const newStart = new Date(newStartISO);
