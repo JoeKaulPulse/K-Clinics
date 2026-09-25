@@ -5908,6 +5908,20 @@ export const BUILD_BACKLOG: BacklogItem[] = [
     ],
   },
   {
+    title: 'Move the Shop tab into the main website navigation (BLD-1923)',
+    type: 'TASK', urgency: 'P0', status: 'IN_REVIEW', assignee: 'claude', pr: PR(2015),
+    value: 6, effort: 2,
+    detail: "The Shop link lived in the header's small utility strip next to site search / account menu / Book Now (components/layout/Header.tsx), not as a primary nav tab -- lib/nav.ts's primaryNav (Aesthetics, Dentistry, Packages, Pricing, Academy, Get My Plan, Clinic) never included it. The owner asked for Shop to be clearly visible as its own separate tab in the main navigation, same as the others.",
+    notes: [
+      "Fix: primaryNav (lib/nav.ts, served to the client via config.nav.primary) is a static default with no request-time product data, so it can't itself gate on config.shopLive (computed per-request from the active product count). Header.tsx now builds its displayed nav list by splicing a plain Shop tab (no mega-menu, same treatment as Packages/Pricing) into config.nav.primary right before Academy, only when config.shopLive is true -- a new insertShopTab() helper, applied once at the top of the component so both the desktop nav row and the mobile drawer pick it up automatically.",
+      "Removed the old utility-strip Shop link (desktop cluster and the mobile drawer's separate Shop row) now that it's promoted to a real tab, so it isn't shown twice.",
+      "config.shopLive's zero-active-products gating is unchanged -- Shop still disappears entirely (from the nav and the sitemap) when there is nothing to sell.",
+      "No Prisma schema change -- this is header rendering logic only.",
+      "Review fix (Opus max-effort pass): nav.primary can also be edited in the admin NavEditor -- if a Shop tab is added there too, using item.label as the React key would clash. insertShopTab() now skips inserting when a Shop entry already exists in the list.",
+      "Verified: npx tsc --noEmit and npm run build both pass clean.",
+    ],
+  },
+  {
     title: "Practitioner role can edit clinical notes, add-ons and prices on colleagues' bookings (BOLA) (BLD-1930)",
     type: 'ERROR', urgency: 'P1', status: 'SHIPPED', assignee: 'claude', pr: PR(2012),
     value: 8, effort: 1,
