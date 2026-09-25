@@ -144,7 +144,7 @@ export default async function BookingsPage({ searchParams }: { searchParams: Pro
             {/* BLD-1891: a session linked to a package shows its place in the
                 course here, never its own price — the full price and payment
                 status live on the package purchase booking. */}
-            <p className="hidden text-sm sm:block">{b.packageBookingId ? 'Package session' : b.chargedAt ? `${money(b.chargedPence || 0)} paid` : b.pricePence > 0 ? money(b.pricePence) : '—'}</p>
+            <p className="hidden text-sm sm:block">{b.packageBookingId ? 'Package session' : b.chargedAt ? `${money(b.chargedPence || 0)} paid` : b.priceOverriddenAt || b.pricePence > 0 ? money(b.pricePence) : '—'}</p>
             <span className="flex justify-self-end gap-1.5">
               {/* BLD-1096: cancelled, but the client's prepaid package still absorbed the session. */}
               {b.status === 'CANCELLED' && b.packageSessionUsedAt && (

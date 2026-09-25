@@ -34,6 +34,9 @@ type Props = {
   nextRec: { dateISO: string; label: string; maintenance: boolean } | null;
   booking: {
     id: string; treatmentSlug: string; treatmentTitle: string; startAt: string; durationMin: number; pricePence: number;
+    // BLD-1869: set when staff priced THIS appointment themselves (reason
+    // recorded). pricePence 0 then means a real GBP 0, not "on consultation".
+    priceOverridden: boolean;
     chargedAt: string | null;
     giftVoucherCode: string | null; giftVoucherPence: number;
     // BLD-1591: money off already redeemed against this booking via loyalty
@@ -945,7 +948,7 @@ function CheckoutStep({ p, live, sessData, pending, presenting, api, run, onCont
         <p className="text-xs uppercase tracking-[0.16em] text-[var(--color-stone)]">Today’s treatment</p>
         <div className="mt-2 flex flex-wrap items-baseline justify-between gap-3">
           <p className="font-[family-name:var(--font-display)] text-2xl">{p.booking.treatmentTitle}</p>
-          <p className="font-[family-name:var(--font-display)] text-2xl tabular-nums">{charged ? money(live.chargedPence || 0) : p.booking.pricePence > 0 ? money(p.booking.pricePence) : 'On consultation'}</p>
+          <p className="font-[family-name:var(--font-display)] text-2xl tabular-nums">{charged ? money(live.chargedPence || 0) : p.booking.priceOverridden || p.booking.pricePence > 0 ? money(p.booking.pricePence) : 'On consultation'}</p>
         </div>
         {charged ? (
           <p className="mt-3 inline-flex items-center gap-2 text-sm text-[var(--color-stone)]">

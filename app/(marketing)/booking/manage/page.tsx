@@ -12,7 +12,9 @@ export const metadata: Metadata = { title: 'Manage your booking | KClinics', rob
 export default async function ManageBookingPage({ searchParams }: { searchParams: Promise<{ t?: string }> }) {
   const { t } = await searchParams;
 
-  let booking: { treatmentTitle: string; treatmentSlug: string; startISO: string; status: string; pricePence: number; within24h: boolean; within48h: boolean; cancelled: boolean; rescheduleCount: number; clientFirstName: string; clientEmail: string } | null = null;
+  // priceOverridden (BLD-1869): staff priced this appointment themselves, so
+  // pricePence 0 is the agreed price and not "assessed at your visit".
+  let booking: { treatmentTitle: string; treatmentSlug: string; startISO: string; status: string; pricePence: number; priceOverridden: boolean; within24h: boolean; within48h: boolean; cancelled: boolean; rescheduleCount: number; clientFirstName: string; clientEmail: string } | null = null;
   if (crmEnabled && t) {
     try {
       const { db, withDbRetry } = await import('@/lib/db');
@@ -26,6 +28,7 @@ export default async function ManageBookingPage({ searchParams }: { searchParams
           startISO: b.startAt.toISOString(),
           status: b.status,
           pricePence: b.pricePence,
+          priceOverridden: !!b.priceOverriddenAt,
           within24h: b.startAt.getTime() - Date.now() < 24 * 60 * 60 * 1000,
           // BLD-1920: within48h now gates BOTH self-service reschedule and
           // cancel below (the same window lib/booking-actions.ts enforces
