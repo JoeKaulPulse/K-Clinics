@@ -13,8 +13,16 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
 
   const { id } = await params;
   const { db } = await import('@/lib/db');
-  const row = await db.beforePhoto.findUnique({ where: { id }, select: { dataEnc: true } });
+  const row = await db.beforePhoto.findUnique({ where: { id }, select: { dataEnc: true, clientId: true } });
   if (!row) return new NextResponse('Not found', { status: 404 });
+  // BLD-1882/BLD-1693 pattern (lib/crm-data.ts getClient): a PRACTITIONER
+  // session may only view a before-photo for a client they actually have a
+  // booking with — ownership check runs against the bookings table directly,
+  // same as getClient.
+  if (session.role === 'PRACTITIONER') {
+    const own = await db.booking.findFirst({ where: { clientId: row.clientId, practitionerId: session.sub }, select: { id: true } });
+    if (!own) return new NextResponse('Not found', { status: 404 });
+  }
 
   try {
     const { decryptJson } = await import('@/lib/crypto');

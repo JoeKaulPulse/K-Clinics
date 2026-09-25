@@ -111,7 +111,13 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
     // Metadata only here; the decrypted image is added under the clinical gate below (BLD-367).
     db.beforePhoto.findMany({ where: { clientId: id }, select: { id: true, bookingId: true, area: true, capturedBy: true, attestation: true, createdAt: true } }),
     db.chatConversation.findMany({ where: { clientId: id }, include: { messages: true } }),
-    db.order.findMany({ where: { clientId: id }, include: { items: true }, orderBy: { createdAt: 'desc' } }),
+    // BLD-1879: Order.clientId is nullable (POS guest sales leave it null with
+    // only the order's own email set), so also include guest orders placed
+    // under this client's stored address. Guest rows only (clientId: null);
+    // case-insensitive because POS saves the email as typed. Staff-run SAR, so
+    // the subject's identity is checked before export — unlike the self-service
+    // export (app/api/account/export), which deliberately does not do this.
+    db.order.findMany({ where: { OR: [{ clientId: id }, { clientId: null, email: { equals: c.email, mode: 'insensitive' } }] }, include: { items: true }, orderBy: { createdAt: 'desc' } }),
     db.consentRequest.findMany({ where: { clientId: id }, orderBy: { createdAt: 'desc' } }),
     db.promoRedemption.findMany({ where: { clientId: id }, orderBy: { createdAt: 'desc' } }),
     // BLD-1715: GiftVoucher has no FK relation to Client (claimedByClientId/

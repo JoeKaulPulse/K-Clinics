@@ -2,6 +2,24 @@
  * Understated, monochrome vector payment marks for the footer. Tinted to the
  * palette (not the brands' official colours) so the row reads as a calm,
  * cohesive strip rather than a clash of logos. Accepted methods only.
+ *
+ * BLD-1827: Klarna and Clearpay are back, after BLD-1006 removed them. They are
+ * now genuinely accepted, re-verified in code before restoring: self-service at
+ * Academy enrolment (lib/academy-payments.ts), shop checkout
+ * (app/api/shop/checkout/route.ts) and gift vouchers (lib/gift-vouchers.ts) --
+ * all three create a PaymentIntent with automatic_payment_methods and render a
+ * Stripe PaymentElement, so BNPL appears as a selectable option when eligible --
+ * and on a staff-sent payment link for a treatment course or booking balance
+ * (hosted Checkout surfaces whatever is enabled on the account).
+ *
+ * They are deliberately palette-tinted word marks like the other five, not brand
+ * artwork: this strip's design contract is that no mark uses its official
+ * colours. Where BNPL does and does not apply is spelled out in the "Can I pay
+ * in instalments?" FAQ (lib/faqs.ts) and on /finance, so the strip stays a plain
+ * list of accepted methods rather than an implied promise that every checkout
+ * offers every method. Online treatment booking still takes no payment at all
+ * (a SetupIntent saves a card), so it is not a BNPL surface and is not claimed
+ * as one anywhere.
  */
 
 const wrap = 'inline-flex h-7 items-center justify-center rounded-[5px] border border-white/15 bg-white/[0.05] px-2.5 text-[var(--color-porcelain)]';
@@ -12,7 +30,7 @@ export function PaymentMarks({ className = '' }: { className?: string }) {
   // are aria-hidden. This avoids aria-label on role-less <span>s (WCAG
   // aria-prohibited-attr) while announcing the accepted methods once.
   return (
-    <div className={`flex flex-wrap items-center gap-1.5 ${className}`} role="img" aria-label="Accepted payment methods: Visa, Mastercard, American Express, Apple Pay and Google Pay">
+    <div className={`flex flex-wrap items-center gap-1.5 ${className}`} role="img" aria-label="Accepted payment methods: Visa, Mastercard, American Express, Apple Pay, Google Pay, Klarna and Clearpay">
       {/* Visa */}
       <span className={wrap} aria-hidden><span className={`${word} italic tracking-[0.04em]`}>VISA</span></span>
       {/* Mastercard */}
@@ -35,6 +53,10 @@ export function PaymentMarks({ className = '' }: { className?: string }) {
       <span className={wrap} aria-hidden>
         <span className={`${word} mr-1`}>G</span><span className={word}>Pay</span>
       </span>
+      {/* Klarna */}
+      <span className={wrap} aria-hidden><span className={word}>Klarna</span></span>
+      {/* Clearpay */}
+      <span className={wrap} aria-hidden><span className={word}>Clearpay</span></span>
     </div>
   );
 }

@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { trackLead } from '@/lib/analytics-events';
 
 export function RegisterInterest({ className = '' }: { className?: string }) {
   const [email, setEmail] = useState('');
@@ -15,7 +16,9 @@ export function RegisterInterest({ className = '' }: { className?: string }) {
     try {
       const res = await fetch('/api/dentistry-interest', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email, company }) });
       const j = await res.json().catch(() => ({ ok: false }));
-      if (j.ok) { setState('done'); setEmail(''); }
+      // BLD-1876: track the dentistry waitlist signup as a lead, same as
+      // NewsletterForm/EnquiryForm/FranchiseEnquiryForm (BLD-1130).
+      if (j.ok) { trackLead({ detail: { source: 'dentistry-waitlist' } }); setState('done'); setEmail(''); }
       else { setState('error'); setMsg(j.error || 'Something went wrong.'); }
     } catch { setState('error'); setMsg('Network error. Please try again.'); }
   }

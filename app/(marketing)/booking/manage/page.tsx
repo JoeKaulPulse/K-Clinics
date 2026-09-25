@@ -4,6 +4,7 @@ import { Reveal } from '@/components/motion/Reveal';
 import { ManageClient } from './ManageClient';
 import { crmEnabled } from '@/lib/crm';
 import { PhoneLink } from '@/components/marketing/PhoneLink';
+import { isWithinSelfServiceWindow } from '@/lib/cancellation-policy';
 
 export const dynamic = 'force-dynamic';
 export const metadata: Metadata = { title: 'Manage your booking | KClinics', robots: { index: false } };
@@ -29,7 +30,10 @@ export default async function ManageBookingPage({ searchParams }: { searchParams
           pricePence: b.pricePence,
           priceOverridden: !!b.priceOverriddenAt,
           within24h: b.startAt.getTime() - Date.now() < 24 * 60 * 60 * 1000,
-          within48h: b.startAt.getTime() - Date.now() < 48 * 60 * 60 * 1000,
+          // BLD-1920: within48h now gates BOTH self-service reschedule and
+          // cancel below (the same window lib/booking-actions.ts enforces
+          // server-side) — read from the one shared helper.
+          within48h: isWithinSelfServiceWindow(b.startAt),
           cancelled: b.status === 'CANCELLED',
           rescheduleCount: b.rescheduleCount,
           clientFirstName: b.client.firstName,

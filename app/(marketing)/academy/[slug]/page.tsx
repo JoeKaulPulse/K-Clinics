@@ -6,7 +6,7 @@ import { PageHero } from '@/components/ui/PageHero';
 import { Reveal } from '@/components/motion/Reveal';
 import { ApplyForm } from '@/components/academy/ApplyForm';
 import { Stars } from '@/components/ui/Stars';
-import { pageMeta, JsonLd, breadcrumbLd, courseLd } from '@/lib/seo';
+import { pageMeta, JsonLd, breadcrumbLd, courseLd, academyLd } from '@/lib/seo';
 import { ACCREDITATION_LABELS, formatFee } from '@/lib/academy';
 import { getActivePromo } from '@/lib/academy-utils';
 import { ViewItemTracker } from '@/components/marketing/ViewItemTracker';
@@ -45,6 +45,9 @@ export default async function CoursePage({ params }: { params: Promise<{ slug: s
       <JsonLd data={[
         breadcrumbLd([{ name: 'Home', path: '/' }, { name: 'Academy', path: '/academy' }, { name: course.title, path: `/academy/${slug}` }]),
         courseLd({ title: course.title, description: course.summary || course.description || course.title, path: `/academy/${slug}`, pricePence: course.pricePence, durationText: course.durationText, accreditations: course.accreditations, level: course.level, teaches: course.outcomes.slice(0, 10), prerequisites: course.prerequisites }),
+        // The Course's provider is the academy @id; ship the full node on the
+        // same page so the reference resolves without a second fetch (GEO).
+        academyLd(),
       ]} />
       {/* BLD-1553: item id is the course slug (not course.id), matching the
           begin_checkout convention already used in EnrolmentCheckout.tsx --
@@ -166,7 +169,12 @@ export default async function CoursePage({ params }: { params: Promise<{ slug: s
               ) : (
                 <p className="mt-1 font-[family-name:var(--font-display)] text-3xl text-[var(--color-ink)]">{formatFee(course.pricePence)}</p>
               )}
-              {course.pricePence > 0 && <p className="mt-2 text-sm text-[var(--color-stone)]">Spread the cost monthly, or check if you qualify for <Link href="/academy/funding" className="link-underline font-medium text-[var(--color-ink)]">government or council funding</Link>. No payment is taken until your place is confirmed.</p>}
+              {/* BLD-1827: genuinely true here -- enrolment payment is a
+                  PaymentIntent with automatic_payment_methods
+                  (lib/academy-payments.ts) rendered through a Stripe
+                  PaymentElement (components/academy/EnrolmentCheckout.tsx), so
+                  Klarna/Clearpay really do appear as options when eligible. */}
+              {course.pricePence > 0 && <p className="mt-2 text-sm text-[var(--color-stone)]">Spread the cost with Klarna or Clearpay at checkout, subject to their eligibility checks and approval, or check if you qualify for <Link href="/academy/funding" className="link-underline font-medium text-[var(--color-ink)]">government or council funding</Link>. No payment is taken until your place is confirmed.</p>}
             </div>
             {/* BLD-1393: Suspense bounds the useSearchParams bailout inside
                 ApplyForm (it reads the ?bundle= pathway tag) so this ISR page's

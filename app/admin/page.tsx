@@ -311,16 +311,14 @@ export default async function AdminOverview() {
     canManageRoom: canRoomsPrep,
     drinks: nextBk.refreshments ?? [],
     // clients.clinical.view gated — same redaction as ReceptionistView (front-of-house never sees clinical data).
-    allergies: canClinical ? decClinical(nextBk.client.allergies) ?? null : null,
-    medicalFlag: canClinical ? decClinical(nextBk.client.medicalFlag) ?? null : null,
+    // BLD-1872: only a presence flag is sent. The allergy/medical-flag text is
+    // fetched by an explicit "Show" tap (app/admin/arrival-actions.ts), which is
+    // where the clinical-view audit row is written. Before this, every /admin
+    // render decrypted the text for whichever booking was next clinic-wide and
+    // logged "Clinical data viewed (admin-dashboard)" for staff who had only
+    // opened the dashboard.
+    clinicalOnFile: canClinical && !!(decClinical(nextBk.client.allergies)?.trim() || decClinical(nextBk.client.medicalFlag)?.trim()),
   } : null;
-
-  // BLD-1419: decrypting allergies/medicalFlag for the next-arrival card is a
-  // medical-record view — audit it (throttled per viewer/client/hour).
-  if (nextArrival && canClinical && session?.email) {
-    const { auditClinicalView } = await import('@/lib/clinical-view-audit');
-    auditClinicalView({ actor: session.email, actorRole: session.role, clientId: nextArrival.clientId, surface: 'admin-dashboard', bookingId: nextArrival.id });
-  }
 
   return (
     <AdminShell user={session?.email} can={can} locale={locale}>

@@ -25,11 +25,13 @@ const field = 'w-full rounded-[var(--radius-sm)] border border-[var(--color-line
 const label = 'block text-xs font-medium text-[var(--color-stone)]';
 const DOC_LABEL: Record<DocKind, string> = { PHOTO_ID: 'Photo ID', PROOF_OF_ADDRESS: 'Proof of address', PRIOR_QUALIFICATION: 'Previous qualification certificate' };
 
-export function VtctRegistrationForm({ initial, titles, genderOptions, declarationText }: {
+export function VtctRegistrationForm({ initial, titles, genderOptions, declarationTitle, declarationText, declarationCheckboxLabel }: {
   initial: Registration | null;
   titles: readonly string[];
   genderOptions: { value: string; label: string }[];
+  declarationTitle: string;
   declarationText: string;
+  declarationCheckboxLabel: string;
 }) {
   const router = useRouter();
   const [title, setTitle] = useState(initial?.title ?? '');
@@ -198,11 +200,11 @@ export function VtctRegistrationForm({ initial, titles, genderOptions, declarati
       </Card>
 
       <Card tone="bone" className="p-5">
-        <h3 className="font-[family-name:var(--font-display)] text-lg">Student Declaration, Accuracy of Information and Responsibility</h3>
+        <h3 className="font-[family-name:var(--font-display)] text-lg">{declarationTitle}</h3>
         <p className="mt-3 whitespace-pre-line text-sm text-[var(--color-ink-soft)]">{declarationText}</p>
         <label className="mt-4 flex items-start gap-2.5 text-sm text-[var(--color-ink)]">
           <input type="checkbox" className="mt-0.5 shrink-0" checked={agreed} onChange={(e) => setAgreed(e.target.checked)} />
-          <span>I have read the declaration above and I agree to it.</span>
+          <span>{declarationCheckboxLabel}</span>
         </label>
       </Card>
 

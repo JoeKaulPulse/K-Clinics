@@ -83,12 +83,18 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: false, error: 'A package session books one visit at a time — choose “single session”.' }, { status: 409 });
     }
     const { clientPackages } = await import('@/lib/package-sessions');
+    const { eligiblePackagesFor } = await import('@/lib/package-match');
     const pkg = (await clientPackages(client.id)).find((p) => p.purchaseBookingId === d.usePackageBookingId);
     if (!pkg) {
       return NextResponse.json({ ok: false, error: 'We couldn’t find that course on your account. Please refresh and try again.' }, { status: 404 });
     }
-    if (pkg.treatmentSlug !== primary.service.treatmentSlug) {
-      return NextResponse.json({ ok: false, error: `That course is for a different treatment (${pkg.label}).` }, { status: 409 });
+    // BLD-1890: treatmentSlug alone is the marketing category, not the specific
+    // service/area (e.g. Chin vs Lower Leg share one "laser-hair-removal"
+    // slug) — also require the package's own variant (when recorded) to match
+    // the one actually being booked, so a session is never deducted off the
+    // wrong area's package.
+    if (!eligiblePackagesFor([pkg], primary.service.treatmentSlug, primary.variant.id).length) {
+      return NextResponse.json({ ok: false, error: `That course is for a different treatment or area (${pkg.label}).` }, { status: 409 });
     }
     if (pkg.sessionsRemaining < 1) {
       return NextResponse.json({ ok: false, error: 'There are no sessions left on that course — every one is already booked or used.' }, { status: 409 });

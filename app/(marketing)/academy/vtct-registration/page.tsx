@@ -18,8 +18,18 @@ export default async function VtctRegistrationPage() {
   const student = await getCurrentStudent().catch(() => null);
   if (!student) redirect('/academy/portal');
 
-  const { getMyRegistration, TITLES, GENDER_OPTIONS, DECLARATION_TEXT } = await import('@/lib/vtct-registration');
-  const registration = await getMyRegistration(student.id);
+  const {
+    getMyRegistration, TITLES, GENDER_OPTIONS,
+    DECLARATION_TITLE, DECLARATION_TEXT, DECLARATION_CHECKBOX_LABEL,
+    DECLARATION_TITLE_KEY, DECLARATION_BODY_KEY, DECLARATION_CHECKBOX_KEY,
+  } = await import('@/lib/vtct-registration');
+  const { getStringSetting } = await import('@/lib/settings');
+  const [registration, declarationTitle, declarationText, declarationCheckboxLabel] = await Promise.all([
+    getMyRegistration(student.id),
+    getStringSetting(DECLARATION_TITLE_KEY, DECLARATION_TITLE),
+    getStringSetting(DECLARATION_BODY_KEY, DECLARATION_TEXT),
+    getStringSetting(DECLARATION_CHECKBOX_KEY, DECLARATION_CHECKBOX_LABEL),
+  ]);
 
   return (
     <AcademyPortalShell firstName={student.firstName}>
@@ -28,7 +38,9 @@ export default async function VtctRegistrationPage() {
         initial={registration}
         titles={TITLES}
         genderOptions={GENDER_OPTIONS}
-        declarationText={DECLARATION_TEXT}
+        declarationTitle={declarationTitle}
+        declarationText={declarationText}
+        declarationCheckboxLabel={declarationCheckboxLabel}
       />
     </AcademyPortalShell>
   );

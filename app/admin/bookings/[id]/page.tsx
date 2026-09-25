@@ -18,6 +18,9 @@ import { BeforePhotoCapture } from '@/components/admin/BeforePhotoCapture';
 import { ReadinessPanel } from '@/components/admin/ReadinessPanel';
 import { AddTreatment } from '@/components/admin/AddTreatment';
 import { PriceOverride } from '@/components/admin/PriceOverride';
+import { PaymentMethodEditor } from '@/components/admin/PaymentMethodEditor';
+import { RemoveOutstandingPayment } from '@/components/admin/RemoveOutstandingPayment';
+import { RemoveAddonButton } from '@/components/admin/RemoveAddonButton';
 import { MarkAsDebt } from '@/components/admin/MarkAsDebt';
 import { ScheduleFollowUp } from '@/components/admin/ScheduleFollowUp';
 import { BnplPaymentButton } from '@/components/admin/BnplPaymentButton';
@@ -28,6 +31,7 @@ import { ClientStatusEditor } from '@/components/admin/ClientStatusEditor';
 import { ClientStatusBadge } from '@/components/admin/ClientStatusBadge';
 import { sessionCan, sessionIsAdmin } from '@/lib/auth';
 import { site } from '@/lib/site';
+import { paymentMethodLabel } from '@/lib/payment-methods';
 
 export const dynamic = 'force-dynamic';
 
@@ -179,7 +183,7 @@ export default async function BookingDetail({ params }: { params: Promise<{ id: 
   // Surface the booked course/session count. Clients can book a Course of 3/6/10,
   // but after booking only the treatment name + total showed — staff couldn't tell
   // how many sessions were paid for. The primary (non-add-on) line item holds it.
-  const primaryItem = await db.bookingItem.findFirst({ where: { bookingId: id, isAddon: false }, orderBy: { createdAt: 'asc' }, select: { sessions: true } }).catch(() => null);
+  const primaryItem = await db.bookingItem.findFirst({ where: { bookingId: id, isAddon: false }, orderBy: { createdAt: 'asc' }, select: { sessions: true, variantId: true } }).catch(() => null);
   const courseSessions = primaryItem?.sessions ?? 1;
   // BLD-1014: "Session X of N" when this booking is part of a package (the
   // course purchase itself or a session linked to one).
@@ -197,17 +201,29 @@ export default async function BookingDetail({ params }: { params: Promise<{ id: 
   // BLD-1375: offer to retro-link this appointment to a prepaid course the
   // client holds for the SAME treatment (appointments booked by phone or before
   // the course existed never get the link, so the balance over-counts). Only a
-  // single-session booking that isn't itself a course, isn't already linked and
-  // wasn't charged separately qualifies — the server action re-validates all of
-  // it. A cancelled/missed appointment doesn't occupy a slot until marked used,
-  // so those may link to a fully-used course too (e.g. to record the mark next).
+  // single-session booking that isn't itself a course and isn't already linked
+  // qualifies — the server action re-validates all of it. A cancelled/missed
+  // appointment doesn't occupy a slot until marked used, so those may link to a
+  // fully-used course too (e.g. to record the mark next).
+  // BLD-1892: an already-charged/pre-paid appointment (e.g. a completed visit
+  // from before the client bought the course) is offered too — linkBookingToPackage
+  // leaves its existing payment untouched rather than zeroing it, so there's no
+  // double-charge risk in letting it through here.
   let linkablePackages: LinkablePackage[] = [];
-  if (canManageBk && !b.packageBookingId && courseSessions === 1 && !b.chargedAt) {
+  if (canManageBk && !b.packageBookingId && courseSessions === 1) {
     const { clientPackages } = await import('@/lib/package-sessions');
+    const { eligiblePackagesFor } = await import('@/lib/package-match');
     const occupies = !['CANCELLED', 'NO_SHOW'].includes(b.status);
-    linkablePackages = (await clientPackages(b.clientId).catch(() => []))
-      .filter((p) => p.treatmentSlug === b.treatmentSlug && p.purchaseBookingId !== b.id && (!occupies || p.sessionsRemaining > 0))
-      .map(({ purchaseBookingId, label, sessionsTotal, sessionsRemaining, paid, refunded }) => ({ purchaseBookingId, label, sessionsTotal, sessionsRemaining, paid, refunded }));
+    // BLD-1890: treatmentSlug alone is the marketing category, not the
+    // specific service/area (e.g. Chin vs Lower Leg share one
+    // "laser-hair-removal" slug) — eligiblePackagesFor also matches this
+    // appointment's own variant, so staff are never offered another area's
+    // package to link this one to.
+    linkablePackages = eligiblePackagesFor(
+      (await clientPackages(b.clientId).catch(() => [])).filter((p) => p.purchaseBookingId !== b.id && (!occupies || p.sessionsRemaining > 0)),
+      b.treatmentSlug,
+      primaryItem?.variantId ?? null,
+    ).map(({ purchaseBookingId, label, sessionsTotal, sessionsRemaining, paid, refunded }) => ({ purchaseBookingId, label, sessionsTotal, sessionsRemaining, paid, refunded }));
   }
   // BLD-1066: surface the client's unpaid late-cancel/no-show balance on every
   // one of their appointments, so it's seen the moment a booking is opened.
@@ -218,16 +234,30 @@ export default async function BookingDetail({ params }: { params: Promise<{ id: 
   const { clientDebtBalance } = await import('@/lib/client-debt');
   const debtHere = await clientDebtBalance(b.clientId);
   const perSessionPence = courseSessions > 1 && basePence > 0 ? Math.round(basePence / courseSessions) : basePence;
-  // BLD-1119: !b.prepaidAt as well as !b.chargedAt — an add-on on a BNPL pre-paid
-  // course can never be collected (every charge surface refuses a pre-paid
-  // booking), so don't offer the picker; extras go on a new booking.
-  const canAddTreatment = canManageBk && !b.chargedAt && !b.prepaidAt && !['CANCELLED', 'NO_SHOW'].includes(b.status);
+  // BLD-1119: !b.prepaidAt — an add-on on a BNPL pre-paid course can never be
+  // collected (every charge surface refuses a pre-paid booking), so don't
+  // offer the picker; extras go on a new booking.
+  // BLD-1895: an already-charged booking is now allowed too, admin-only —
+  // same record-only pattern as canPriceOverride below.
+  // Review fix: the paid path also needs bookings.charge (matches the server).
+  const canPaidCorrect = sessionIsAdmin(session) && sessionCan(session, 'bookings.charge');
+  const canAddTreatment = canManageBk && !b.prepaidAt && !['CANCELLED', 'NO_SHOW'].includes(b.status)
+    && (!b.chargedAt || canPaidCorrect);
+  // BLD-1895: remove an add-on — canManageBk/liveAppointments.manage as before,
+  // now also allowed once paid (charged OR BNPL pre-paid) for an admin with
+  // bookings.charge (removeAddonTreatment enforces the same gate server-side;
+  // never touches chargedPence/chargedAt/prepaidPence).
+  const canRemoveAddon = (canManageBk || sessionCan(session, 'liveAppointments.manage')) && !['CANCELLED', 'NO_SHOW'].includes(b.status)
+    && (!(b.chargedAt || b.prepaidAt) || canPaidCorrect);
   // BLD-1149: price override — same lifecycle gate, but keyed on bookings.charge
   // (the permission that already lets the holder adjust the amount at checkout).
   // BLD-1094 (owner decision: record-only): admins may also correct the price
   // of an already-paid appointment — the audit trail records it; no money moves.
   const canPriceOverride = sessionCan(session, 'bookings.charge') && !b.prepaidAt && !['CANCELLED', 'NO_SHOW'].includes(b.status)
     && (!b.chargedAt || sessionIsAdmin(session));
+  // BLD-1874: correcting the payment method only makes sense once something has
+  // actually been paid — same permission as every other "money has moved" edit.
+  const canEditPaymentMethod = sessionCan(session, 'bookings.charge') && Boolean(b.chargedAt || b.prepaidAt);
   // BLD-1165: BNPL (Klarna/Clearpay) pre-payment is only for courses — a single
   // session has nothing left to defer past this visit — same lifecycle gate as
   // the add-on picker plus the "already a course" check the API itself enforces.
@@ -341,9 +371,29 @@ export default async function BookingDetail({ params }: { params: Promise<{ id: 
           )}
         </div>
         <div className="text-right">
-          <p className="font-[family-name:var(--font-display)] text-2xl">{priceSetByStaff || b.pricePence > 0 ? money(b.pricePence) : 'On consultation'}</p>
-          {b.chargedAt && <p className="text-xs text-[var(--color-jade)]">Charged {money(b.chargedPence || 0)}</p>}
+          {/* BLD-1891: a linked package session never shows its own price or
+              charge status here — that lives on the package purchase booking. */}
+          {b.packageBookingId ? (
+            <p className="text-sm text-[var(--color-stone)]">Covered by package — <Link href={`/admin/bookings/${b.packageBookingId}`} className="underline-offset-2 hover:underline">see price &amp; payment →</Link></p>
+          ) : (
+            <>
+              <p className="font-[family-name:var(--font-display)] text-2xl">{priceSetByStaff || b.pricePence > 0 ? money(b.pricePence) : 'On consultation'}</p>
+              {b.chargedAt && <p className="text-xs text-[var(--color-jade)]">Charged {money(b.chargedPence || 0)}{b.paymentMethod ? ` · ${paymentMethodLabel(b.paymentMethod)}` : ''}</p>}
+              {!b.chargedAt && b.prepaidAt && b.paymentMethod && <p className="text-xs text-[var(--color-jade)]">Pre-paid · {paymentMethodLabel(b.paymentMethod)}</p>}
+            </>
+          )}
+          {/* BLD-1874: correct how this booking was actually paid — never
+              affects the amount, charge date or Stripe reference above. Kept
+              available on a linked session too (BLD-1892 can link an already
+              -charged visit, and its payment method may still need fixing). */}
+          {canEditPaymentMethod && <div className="mt-0.5"><PaymentMethodEditor bookingId={b.id} method={b.paymentMethod} /></div>}
           {b.lateCancel && <p className="text-xs text-[var(--color-stone)]">Cancelled within 24h{b.feeWaived ? ' · fee waived' : ''}</p>}
+          {/* BLD-1893: an outstanding late-cancel/no-show fee can be removed
+              outright, not just charged or waived at cancel/no-show time. */}
+          {sessionCan(session, 'bookings.charge') && !b.chargedAt && !b.prepaidAt && !b.feeWaived && b.pricePence > 0
+            && ((b.status === 'CANCELLED' && b.lateCancel) || b.status === 'NO_SHOW') && (
+            <div className="mt-1"><RemoveOutstandingPayment bookingId={b.id} treatmentTitle={b.treatmentTitle} pricePence={b.pricePence} /></div>
+          )}
         </div>
       </div>
 
@@ -439,28 +489,63 @@ export default async function BookingDetail({ params }: { params: Promise<{ id: 
           {!['CANCELLED', 'NO_SHOW'].includes(b.status) && (canManageBk || addOnItems.length > 0) && (
             <div className="rounded-[var(--radius-md)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-5">
               <p className="eyebrow mb-3 text-[var(--color-stone)]">Treatments &amp; billing</p>
-              <div className="space-y-1.5 text-sm">
-                <div className="flex items-baseline justify-between gap-3">
-                  <span className="min-w-0 break-words">{b.treatmentTitle}{courseSessions > 1 ? ` · course of ${courseSessions}` : ''}</span>
-                  <span className="shrink-0 tabular-nums text-[var(--color-stone)]">{priceSetByStaff || basePence > 0 ? money(basePence) : 'On consultation'}</span>
+              {b.packageBookingId ? (
+                // BLD-1891: a linked package session shows its position in the
+                // course, never an individual price — the full package price and
+                // payment status live on the purchase booking (linked above).
+                // Review fix: add-ons are NOT covered by the package (the link
+                // only zeroes the primary item) and stay chargeable here, so they
+                // keep their own lines and, while unpaid, their own total.
+                <div className="space-y-1.5 text-sm">
+                  <p className="min-w-0 break-words">
+                    {b.treatmentTitle} · Package session{pkgSession ? ` ${pkgSession.session} of ${pkgSession.total}` : ''}
+                  </p>
+                  {addOnItems.map((it) => (
+                    <div key={it.id} className="flex items-baseline justify-between gap-3">
+                      <span className="min-w-0 break-words text-[var(--color-stone)]">+ {it.label}</span>
+                      <span className="flex shrink-0 items-baseline gap-2 tabular-nums text-[var(--color-stone)]">
+                        {money(it.pricePence)}
+                        {canRemoveAddon && <RemoveAddonButton bookingId={b.id} itemId={it.id} />}
+                      </span>
+                    </div>
+                  ))}
+                  {/* What the charge flow would actually take (booking.pricePence,
+                      which the link netted down to the add-ons). Shown only while
+                      something is still owed, so staff never charge blind. */}
+                  {b.pricePence > 0 && !b.chargedAt && !b.prepaidAt && (
+                    <div className="flex items-baseline justify-between gap-3 border-t border-[var(--color-line)] pt-2 font-medium">
+                      <span>Total to charge</span>
+                      <span className="tabular-nums">{money(b.pricePence)}</span>
+                    </div>
+                  )}
                 </div>
-                {/* BLD-1149: adjust the agreed price for this appointment (pre-payment),
-                    restoring the override staff previously had on this page. Same gate
-                    as the checkout adjust (bookings.charge). */}
-                {canPriceOverride && <PriceOverride bookingId={b.id} basePence={basePence} paid={!!b.chargedAt} />}
-                {addOnItems.map((it) => (
-                  <div key={it.id} className="flex items-baseline justify-between gap-3">
-                    <span className="min-w-0 break-words text-[var(--color-stone)]">+ {it.label}</span>
-                    <span className="shrink-0 tabular-nums text-[var(--color-stone)]">{money(it.pricePence)}</span>
+              ) : (
+                <div className="space-y-1.5 text-sm">
+                  <div className="flex items-baseline justify-between gap-3">
+                    <span className="min-w-0 break-words">{b.treatmentTitle}{courseSessions > 1 ? ` · course of ${courseSessions}` : ''}</span>
+                    <span className="shrink-0 tabular-nums text-[var(--color-stone)]">{priceSetByStaff || basePence > 0 ? money(basePence) : 'On consultation'}</span>
                   </div>
-                ))}
-                <div className="flex items-baseline justify-between gap-3 border-t border-[var(--color-line)] pt-2 font-medium">
-                  <span>{b.chargedAt ? 'Charged' : 'Total to charge'}</span>
-                  <span className="tabular-nums">{money(b.chargedAt ? (b.chargedPence ?? b.pricePence) : b.pricePence)}</span>
+                  {/* BLD-1149: adjust the agreed price for this appointment (pre-payment),
+                      restoring the override staff previously had on this page. Same gate
+                      as the checkout adjust (bookings.charge). */}
+                  {canPriceOverride && <PriceOverride bookingId={b.id} basePence={basePence} paid={!!b.chargedAt} />}
+                  {addOnItems.map((it) => (
+                    <div key={it.id} className="flex items-baseline justify-between gap-3">
+                      <span className="min-w-0 break-words text-[var(--color-stone)]">+ {it.label}</span>
+                      <span className="flex shrink-0 items-baseline gap-2 tabular-nums text-[var(--color-stone)]">
+                        {money(it.pricePence)}
+                        {canRemoveAddon && <RemoveAddonButton bookingId={b.id} itemId={it.id} />}
+                      </span>
+                    </div>
+                  ))}
+                  <div className="flex items-baseline justify-between gap-3 border-t border-[var(--color-line)] pt-2 font-medium">
+                    <span>{b.chargedAt ? 'Charged' : 'Total to charge'}</span>
+                    <span className="tabular-nums">{money(b.chargedAt ? (b.chargedPence ?? b.pricePence) : b.pricePence)}</span>
+                  </div>
                 </div>
-              </div>
+              )}
               {canAddTreatment && <div className="mt-4"><AddTreatment bookingId={b.id} variants={variantOptions} /></div>}
-              {b.chargedAt && addOnItems.length > 0 && <p className="mt-3 text-xs text-[var(--color-stone)]">Already charged — add further treatments to a new booking.</p>}
+              {b.chargedAt && addOnItems.length > 0 && !canAddTreatment && <p className="mt-3 text-xs text-[var(--color-stone)]">Already charged — add further treatments to a new booking.</p>}
               {canBnpl && <BnplPaymentButton bookingId={b.id} />}
             </div>
           )}
@@ -545,7 +630,7 @@ export default async function BookingDetail({ params }: { params: Promise<{ id: 
                 one linked in error) so the course balance matches reality. */}
             {canManageBk && (linkablePackages.length > 0 || packageEligible) && (
               <div className="mt-6">
-                <PackageLinkControl bookingId={b.id} linked={packageEligible} options={linkablePackages} />
+                <PackageLinkControl bookingId={b.id} linked={packageEligible} options={linkablePackages} alreadySettled={Boolean(b.chargedAt || b.prepaidAt)} />
               </div>
             )}
           </div>

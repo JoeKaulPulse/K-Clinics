@@ -168,6 +168,22 @@ export default async function PricingPage() {
           </div>
         </Reveal>
 
+        {/* BLD-1827: Klarna/Clearpay on treatments run through a staff-sent
+            hosted Stripe Checkout link, not the online booking form (which takes
+            no payment and only saves a card). Same eligibility caveat as
+            /finance -- no stronger claim than the checkout can actually honour. */}
+        <Reveal>
+          <div className="mt-[var(--space-section-sm)] rounded-[var(--radius-xl)] border border-[var(--color-line)] bg-[var(--color-bone)] p-8 text-center md:p-12">
+            <p className="eyebrow mb-3">Spread the cost</p>
+            <p className="mx-auto max-w-2xl text-lg text-[var(--color-stone)]">
+              On eligible treatments, packages and KClinics Academy courses, you may be able to spread the cost with Klarna or Clearpay. For Academy courses you choose them at checkout; for treatment courses and packages, ask the team and we’ll send you a secure payment link. Eligibility, approval and the payment schedule are decided by the provider, not by us.
+            </p>
+            <div className="mt-8 flex justify-center">
+              <Button href="/finance" variant="outline">Ways to pay <ArrowIcon /></Button>
+            </div>
+          </div>
+        </Reveal>
+
         <Reveal>
           <p className="mt-10 text-center text-sm text-[var(--color-stone)]">
             All prices in GBP. Course prices show the total for the package. Your full, fixed quote is always agreed before treatment begins.{vatNote ? ` ${vatNote}` : ''}
