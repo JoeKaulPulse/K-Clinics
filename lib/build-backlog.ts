@@ -5817,7 +5817,7 @@ export const BUILD_BACKLOG: BacklogItem[] = [
   },
   {
     title: 'A client with two treatment packages could have the wrong one linked and deducted (BLD-1890)',
-    type: 'ERROR', urgency: 'P0', status: 'IN_REVIEW', assignee: 'claude', pr: PR(2008),
+    type: 'ERROR', urgency: 'P0', status: 'SHIPPED', assignee: 'claude', pr: PR(2008),
     value: 8, effort: 4,
     detail: "Owner-reported (BLD-1890): a client with both a Lower Leg and a Chin laser-hair-removal package -- managing or rescheduling the Chin appointment only offered the Lower Leg package to link/spend a session against. Root cause: Booking.treatmentSlug / PackageView.treatmentSlug (lib/package-sessions.ts) identify only the marketing category (e.g. 'laser-hair-removal'), shared by every service variant/area in it -- Chin and Lower Leg are separate ServiceVariant rows under that one Service/treatmentSlug. Every package-matching call site keyed off treatmentSlug alone, so a package bought for one area matched an appointment for a different one: components/admin/NewBookingButton.tsx and components/booking/BookingFlow.tsx each used packages.find(p => p.treatmentSlug === ...) -- a single silent auto-pick with no way to choose otherwise -- and the three server-side validators (app/admin/bookings/create-action.ts, app/api/booking/start/route.ts, app/admin/bookings/actions.ts's linkBookingToPackage) accepted whatever purchaseBookingId the client sent as long as its treatmentSlug matched, so even a correct UI pick elsewhere couldn't be enforced server-side.",
     notes: [
@@ -5832,7 +5832,7 @@ export const BUILD_BACKLOG: BacklogItem[] = [
   },
   {
     title: "Practitioner role can claim/edit/complete another clinician's live appointment session (BOLA)",
-    type: 'ERROR', urgency: 'P1', status: 'IN_REVIEW', assignee: 'claude', pr: PR(2007),
+    type: 'ERROR', urgency: 'P1', status: 'SHIPPED', assignee: 'claude', pr: PR(2007),
     value: 8, effort: 2,
     detail: "BLD-1899: app/api/admin/bookings/session/route.ts and app/api/admin/bookings/session/stream/route.ts gated only on the bookings.manage / liveAppointments.manage permission -- both granted to PRACTITIONER by default -- with no check that a PRACTITIONER caller is actually the assigned practitioner on the caller-supplied bookingId. Any practitioner who knew (or guessed/enumerated) a colleague's bookingId could claim that live session, edit its captured non-clinical answers, mark it complete (firing loyalty award, review-invite email and room-turnover), create a follow-on booking for that client, or read its full SSE snapshot stream -- all for a client they were never assigned to. Same bug class as BLD-1882/BLD-1693/1711/1720, just not yet applied to these two routes; BLD-1882's same-day commit (6068cdf) fixed the five sibling routes (incidents, patch-test, medical-flag, client-status, before-photo) but missed these. Payment-taking ops in the same route (paylink/terminal/external/voucher/voucher-remove, plus the saved-card 'charge' op via chargeBookingAction) were already separately gated behind bookings.charge and are unaffected -- only the clinical/scheduling surface was exposed.",
     notes: [
@@ -5862,7 +5862,7 @@ export const BUILD_BACKLOG: BacklogItem[] = [
   },
   {
     title: 'Add Option to Remove Outstanding Payments (BLD-1893)',
-    type: 'ERROR', urgency: 'P1', status: 'IN_REVIEW', assignee: 'claude', pr: PR(2010),
+    type: 'ERROR', urgency: 'P1', status: 'SHIPPED', assignee: 'claude', pr: PR(2010),
     value: 6, effort: 2,
     detail: "Admin/Owner could edit or clear a staff-recorded debt (Mark as Debt, BLD-1572/1763), but the automated late-cancel/no-show outstanding fee (lib/outstanding.ts, BLD-1066) had no removal path at all -- only charging it or waiving it at the moment of cancel/no-show cleared it. An incorrectly-generated fee (e.g. a cancellation later confirmed to be outside the 24h window) stayed on the client's balance and kept blocking their online booking forever, with no way to clear it after the fact.",
     notes: [
@@ -5878,7 +5878,7 @@ export const BUILD_BACKLOG: BacklogItem[] = [
   },
   {
     title: 'Allow Adding and Removing Additional Treatments (BLD-1895)',
-    type: 'ERROR', urgency: 'P1', status: 'IN_REVIEW', assignee: 'claude', pr: PR(2011),
+    type: 'ERROR', urgency: 'P1', status: 'SHIPPED', assignee: 'claude', pr: PR(2011),
     value: 6, effort: 2,
     detail: "app/admin/bookings/clinical-actions.ts's addTreatmentToBooking()/removeAddonTreatment() only ever worked before an appointment was charged -- an add-on could be added mid-session but never removed once wrong, and neither action was reachable at all once the booking was paid, so a mistaken extra treatment (or its price) stuck around for the life of the booking with no way to correct it. removeAddonTreatment already existed (BLD-480) but was only ever wired into the live session runner, never onto the booking detail page.",
     notes: [
@@ -5893,7 +5893,7 @@ export const BUILD_BACKLOG: BacklogItem[] = [
   },
   {
     title: 'Gift Card Restrictions: exclude injectables/CO2 laser and all discounts (BLD-1918, BLD-1919)',
-    type: 'TASK', urgency: 'P0', status: 'IN_REVIEW', assignee: 'claude',
+    type: 'TASK', urgency: 'P0', status: 'IN_REVIEW', assignee: 'claude', pr: PR(2017),
     value: 8, effort: 3,
     detail: "Two owner tickets on the same gift-card rule change, shipped together. BLD-1918: gift cards must not be usable for injectable treatments (anti-wrinkle, dermal filler, fat-dissolving, PRP) or CO2 laser treatments (intimate rejuvenation, intimate area whitening) -- the main /gift-vouchers page and several other pages/emails claimed the card was redeemable on everything, and nothing actually blocked applying one to an excluded treatment. BLD-1919: gift cards must always be sold at full selected value, with no discount code, promo or automatic offer ever reducing the purchase price.",
     notes: [
@@ -5903,6 +5903,30 @@ export const BUILD_BACKLOG: BacklogItem[] = [
       "T&Cs (BLD-1918): added the two exclusions plus the full-value/no-discount rule to the live 'Prepaid packages, courses and gift vouchers' clause on the Cancellations & Refunds policy (the real, linked legal document that already covered gift vouchers) and to the orphaned lib/info-pages.ts gift-vouchers entry's own 'Conditions and Terms' block (unreachable directly -- /info/gift-vouchers redirects to the marketing page -- but real content in the repo, so fixed for accuracy rather than left wrong). Did not build a new policy CMS/version history (that's BLD-1922, explicitly out of scope) -- edited the static copy in place, same as any other page-copy change in this repo.",
       "Discount exclusion (BLD-1919): audited every discount/promo mechanism in the codebase (ServiceOffer, welcome-discount claims, priceWithPromo) and confirmed none of them are reachable from a gift-card purchase -- they all key off a treatment booking (app/api/booking/start, /create) and gift vouchers are priced independently in lib/gift-vouchers.ts's createVoucherIntent, which reads only VoucherInput/the published package price. The shop cart (gift packages are Product rows) also has no discount logic in validateCart. So there was no live vulnerability to close, but added explicit, documented enforcement: the /api/gift-vouchers/create zod schema is now .strict() (a stray discountCode/promoCode field is rejected outright, not silently ignored) and createVoucherIntent carries a doc comment stating no discount/promo/offer parameter may ever be added to it. confirmVoucher's existing amount-received check (BLD-130) already guards the server-authoritative charge amount.",
       "No Prisma schema change -- giftCardExcluded lives on the plain-TypeScript Treatment content array, not a database table.",
+      "Review fix (Opus max-effort pass): Botox/anti-wrinkle is booked under the 'botox' slug, one of POM_BRAND_SLUGS, which lib/treatments.ts filters out of the browsable treatment list entirely -- so getTreatment('botox') returned nothing and the clinic's single most common injectable was NOT excluded. isGiftCardExcludedTreatment() now also treats every POM_BRAND_SLUGS entry (botox, kybella) as excluded. Also found the staff voucher check only read the booking's main treatment, so an injectable add-on item could still be paid by gift card since the voucher covers the whole booking total -- it now checks every item on the booking, not just the primary one.",
+      "Verified: npx tsc --noEmit and npm run build both pass clean.",
+    ],
+  },
+  {
+    title: "Practitioner role can edit clinical notes, add-ons and prices on colleagues' bookings (BOLA) (BLD-1930)",
+    type: 'ERROR', urgency: 'P1', status: 'SHIPPED', assignee: 'claude', pr: PR(2012),
+    value: 8, effort: 1,
+    detail: "app/admin/bookings/clinical-actions.ts's saveClinicalNote/addTreatmentToBooking/removeAddonTreatment/overrideBookingPrice checked only role permission, not practitionerId ownership, unlike the debt route and the session/incidents/patch-test/medical-flag/client-status/before-photo routes already fixed under BLD-1882/BLD-1899. Any practitioner could write a clinical note, add/remove a billed treatment, or change price on a colleague's booking by ID.",
+    notes: [
+      "Fix: copied the existing practitionerId ownership guard (app/api/admin/clients/[id]/debt/route.ts, same pattern BLD-1899 applied to the live-session routes) onto all four functions -- a PRACTITIONER session whose sub does not match the booking's own practitionerId gets 'Booking not found.', never a 403, so a guessed bookingId can't be distinguished from one that doesn't exist. OWNER/ADMIN/RECEPTION are unaffected.",
+      "No Prisma schema change.",
+      "Verified: npx tsc --noEmit and npm run build both pass clean.",
+    ],
+  },
+  {
+    title: '/academy/bundles is listed in sitemap.xml but 404s live; academy certificate PDF carried a strap-line under the logo (BLD-1933, BLD-1935)',
+    type: 'ERROR', urgency: 'P1', status: 'SHIPPED', assignee: 'claude', pr: PR(2013),
+    value: 6, effort: 2,
+    detail: "BLD-1933: app/sitemap.ts has listed ${base}/academy/bundles since BLD-651, but no app/(marketing)/academy/bundles/page.tsx existed (only bundles/[slug]/), so the request fell through to academy/[slug] and returned a live 404 -- submitted to Google, dead in production, no internal link pointed to it. BLD-1935: the academy certificate PDF (app/(marketing)/academy/learn/[slug]/certificate/page.tsx) stacked the K monogram + wordmark lock-up, then added an 'Academy' line directly underneath it -- a strap-line under the logo, the one thing docs/BRAND_GUIDELINES.md never allows.",
+    notes: [
+      "Fix (BLD-1933): new /academy/bundles index page lists active bundles via the existing listBundles() query, reusing the same <BundleCard> the 'Learning pathways' section on /academy already renders, so the listing and the index stay visually consistent. 404s (not an empty page) when no bundle is active, matching sitemap.ts's own gating (it only lists the path while at least one bundle is active).",
+      "Fix (BLD-1935): dropped the 'Academy' line from directly under the mark; the certificate keeps the standard K monogram + CLINICS wordmark lock-up with no sub-brand label under it, per docs/BRAND_GUIDELINES.md.",
+      "No Prisma schema change.",
       "Verified: npx tsc --noEmit and npm run build both pass clean.",
     ],
   },
