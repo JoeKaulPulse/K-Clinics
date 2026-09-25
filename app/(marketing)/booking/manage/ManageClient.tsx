@@ -15,6 +15,9 @@ type B = {
   startISO: string;
   status: string;
   pricePence: number;
+  // BLD-1869: a price staff set on this appointment. £0 is then the real price,
+  // not the "assessed at your visit" default.
+  priceOverridden: boolean;
   within24h: boolean;
   within48h: boolean;
   cancelled: boolean;
@@ -155,7 +158,7 @@ export function ManageClient({ token, booking }: { token: string; booking: B }) 
       <span className={`inline-block rounded-full px-3 py-1 text-xs uppercase tracking-[0.16em] ${cancelled || rescheduled ? 'bg-[var(--color-sand)] text-[var(--color-ink-soft)]' : 'bg-[var(--color-gold)]/20 text-[var(--color-ink)]'}`}>{status}</span>
       <h2 className="mt-4 font-[family-name:var(--font-display)] text-3xl">{booking.treatmentTitle}</h2>
       <p className="mt-2 text-[var(--color-stone)]">{when}</p>
-      <p className="mt-1 text-[var(--color-stone)]">{booking.pricePence > 0 ? money(booking.pricePence) : 'Assessed at your visit'}</p>
+      <p className="mt-1 text-[var(--color-stone)]">{booking.priceOverridden || booking.pricePence > 0 ? money(booking.pricePence) : 'Assessed at your visit'}</p>
 
       {msg && <p role="status" aria-live="polite" className="mt-6 rounded-[var(--radius-sm)] bg-[var(--color-porcelain)] px-4 py-3 text-sm">{msg}</p>}
 
