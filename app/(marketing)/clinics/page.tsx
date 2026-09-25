@@ -49,7 +49,7 @@ export default async function ClinicsPage() {
       <section className="container-lux section grid gap-10 lg:grid-cols-2 lg:items-start">
         <Reveal>
           <p className="eyebrow mb-3">Where to find us</p>
-          <h2 className="text-title">{site.address.locality}.</h2>
+          <h2 className="text-title">{site.address.district}.</h2>
           <dl className="mt-7 space-y-5 text-[var(--color-ink-soft)]">
             <div>
               <dt className="eyebrow mb-1.5">Address</dt>

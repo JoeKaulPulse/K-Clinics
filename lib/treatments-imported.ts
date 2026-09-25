@@ -176,6 +176,8 @@ export const importedTreatments: Treatment[] = [
     title: "PRP Therapy",
     // Platelet-rich plasma is injected into the treatment area (BLD-1588).
     invasiveness: "percutaneous",
+    // BLD-1918: injectable treatment — gift cards cannot be used for it.
+    giftCardExcluded: true,
     tagline: "Ideal for skin rejuvenation, acne treatment, stretch marks and scars.",
     metaTitle: "PRP Therapy in London (Islington) | KClinics",
     metaDescription: "PRP therapy in Islington uses platelet-rich plasma from your own blood to stimulate regeneration, firming skin and softening scars.",
@@ -232,6 +234,8 @@ export const importedTreatments: Treatment[] = [
     title: "Dermal Fillers",
     // Hyaluronic acid filler injected beneath the skin (BLD-1588).
     invasiveness: "percutaneous",
+    // BLD-1918: injectable treatment — gift cards cannot be used for it.
+    giftCardExcluded: true,
     tagline: "Ideal for restoring facial volume, contouring, reducing wrinkles and folds, adding volume and shape to lips.",
     metaTitle: "Dermal Fillers in London (Islington) | KClinics",
     metaDescription: "Dermal fillers in Islington smooth wrinkles, restore lost facial volume and enhance lip and cheek contours for a refreshed, natural look.",
@@ -288,6 +292,8 @@ export const importedTreatments: Treatment[] = [
     title: "Hip Dip Filler",
     // Filler injected beneath the skin to add volume (BLD-1588).
     invasiveness: "percutaneous",
+    // BLD-1918: injectable treatment — gift cards cannot be used for it.
+    giftCardExcluded: true,
     tagline: "Ideal for correcting hip contours and creating a harmonious silhouette.",
     metaTitle: "Hip Dip Filler in London (Islington) | KClinics",
     metaDescription: "Hip dip filler in Islington smooths the contour of the hips, adding volume where it is needed for a balanced, natural-looking silhouette.",
@@ -324,6 +330,8 @@ export const importedTreatments: Treatment[] = [
     category: "aesthetics",
     group: "Body & Injectables",
     title: "Intimate Area Whitening",
+    // BLD-1918: CO2 laser treatment — gift cards cannot be used for it.
+    giftCardExcluded: true,
     tagline: "Ideal for evening out the skin tone in the intimate area.",
     metaTitle: "Intimate Area Whitening in London (Islington) | KClinics",
     metaDescription: "Intimate area whitening in Islington uses CO2 laser technology to reduce excess pigmentation and gently even out skin tone.",

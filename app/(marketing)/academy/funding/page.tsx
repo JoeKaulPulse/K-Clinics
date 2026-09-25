@@ -6,12 +6,13 @@ import { Button, ArrowIcon } from '@/components/ui/Button';
 import { FundingWizard } from '@/components/academy/FundingWizard';
 import { FUNDING_ROUTES } from '@/lib/funding';
 import { PhoneLink } from '@/components/marketing/PhoneLink';
-import { pageMeta, JsonLd, breadcrumbLd } from '@/lib/seo';
+import { pageMeta, JsonLd, breadcrumbLd, faqLd } from '@/lib/seo';
+import { FUNDING_OUTLOOK } from '@/lib/funding';
 
 export const generateMetadata = (): Promise<Metadata> => pageMeta({
   title: 'Funding & Finance — Pay for Your Training | K Academy London',
   description:
-    'Ways to fund your aesthetics training at K Academy, Islington — course finance, employer sponsorship, Advanced Learner Loans and council funding routes.',
+    'How to pay for aesthetics training at K Academy, Islington: monthly course finance and employer sponsorship available now, with an honest guide to the government funding routes that are not yet open.',
   path: '/academy/funding',
   keywords: ['aesthetics course funding', 'advanced learner loan aesthetics', 'pay monthly aesthetics training', 'adult skills fund London', 'student funding aesthetics academy'],
 });
@@ -20,9 +21,9 @@ export const revalidate = 3600;
 
 const FAQS = [
   { q: 'Do I have to pay anything up front?', d: 'Not to enquire. With monthly course finance you typically pay a small deposit and spread the rest. With government loans your fees are paid for you and you repay later, once you earn over the threshold. We never take payment until your place and funding are confirmed.' },
-  { q: 'Is the Advanced Learner Loan like a student loan?', d: 'Yes. It is a government loan that covers your course fee, is not means-tested, and you only start repaying once you earn above the income threshold. Any balance left after the set period is written off. We are applying to offer these on our regulated Level 3 and Level 4 courses.' },
-  { q: 'I’m unemployed or on a low income — can I train for free?', d: 'Possibly. London adult education funding (the Mayor of London Adult Skills Fund) can fully fund eligible Londoners aged 19+, with priority for people who are unemployed or on a low wage. Register your interest and we’ll check what you qualify for.' },
-  { q: 'I live in Islington — does that help?', d: 'It can. We’re building a partnership with Islington Adult Community Learning so residents can access funded places. Tell us you’re an Islington resident in the form and we’ll keep you posted.' },
+  { q: 'Can I get an Advanced Learner Loan for a K Academy course?', d: 'Not at the moment. An Advanced Learner Loan is a government loan that covers your course fee and is repaid only once you earn above the income threshold, but it can only be used at a provider with an approved loans facility. K Academy does not hold one and we do not expect to before 2028. Register your interest and we will contact you if that changes.' },
+  { q: 'I’m unemployed or on a low income — can I train for free?', d: 'Not through K Academy at present. Mayor of London Adult Skills Fund places are only available through providers with a funding contract, which we do not hold and do not expect before 2028. Monthly course finance and employer sponsorship are the routes open today; register your interest so we can tell you if funded places open.' },
+  { q: 'I live in Islington — does that help?', d: 'Not yet. We would like to partner with Islington Adult Community Learning so residents can access funded places, but no funded places exist today. Tell us you’re an Islington resident in the form and we will keep you posted.' },
   { q: 'Does applying affect my credit score?', d: 'Enquiring with us does not. Monthly course finance uses a soft check to show your options, which doesn’t affect your score; only a full application with the finance provider does. Government funding routes don’t involve a credit check at all.' },
 ];
 
@@ -31,11 +32,14 @@ export default function AcademyFundingPage() {
 
   return (
     <>
-      <JsonLd data={breadcrumbLd([{ name: 'Home', path: '/' }, { name: 'Academy', path: '/academy' }, { name: 'Funding & Finance', path: '/academy/funding' }])} />
+      <JsonLd data={[
+        breadcrumbLd([{ name: 'Home', path: '/' }, { name: 'Academy', path: '/academy' }, { name: 'Funding & Finance', path: '/academy/funding' }]),
+        faqLd(FAQS.map((f) => ({ q: f.q, a: f.d }))),
+      ]} />
       <PageHero
         eyebrow="K Academy · Funding & finance"
         title="Don’t let cost stand in your way."
-        lede="There’s more than one way to pay for your training. From spreading the cost monthly to government and London funding for those who qualify — find the route that works for you, and we’ll help you apply."
+        lede="Spread the cost monthly or ask your employer to sponsor you today. Government and London funding routes are not open to our learners yet, so we explain each one honestly and let you register interest for when that changes."
         gradient={['#2a2420', '#7b6a5d']}
       >
         <div className="flex flex-wrap gap-3">
@@ -48,8 +52,8 @@ export default function AcademyFundingPage() {
       <section className="container-lux section">
         <Reveal>
           <p className="eyebrow mb-3">Ways to pay</p>
-          <h2 className="text-title">Five ways to fund your course.</h2>
-          <p className="mt-3 max-w-2xl text-[var(--color-ink-soft)]">Our Level 2–4 courses are Ofqual-regulated qualifications, which is what makes them eligible for government and council funding. Some routes are open today; others we’re getting approved — register your interest and we’ll tell you the moment they go live.</p>
+          <h2 className="text-title">Ways to fund your course.</h2>
+          <p className="mt-3 max-w-2xl text-[var(--color-ink-soft)]">Two routes are open today: monthly course finance, and paying yourself or through your employer. The government and council routes are listed so you know what exists and can register interest. {FUNDING_OUTLOOK.replace('Monthly course finance and self or employer funding are available now.', '').trim()}</p>
         </Reveal>
         <Stagger className="mt-10 grid gap-6 md:grid-cols-2">
           {FUNDING_ROUTES.map((r) => (

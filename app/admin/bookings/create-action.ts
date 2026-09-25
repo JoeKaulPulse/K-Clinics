@@ -185,9 +185,17 @@ export async function createManualBooking(input: {
     if (consultBooking) return { ok: false, error: 'A consultation can’t use a package session.' };
     if (sessions > 1) return { ok: false, error: 'A package session books one visit at a time.' };
     const { clientPackages } = await import('@/lib/package-sessions');
+    const { eligiblePackagesFor } = await import('@/lib/package-match');
     const pkg = (await clientPackages(client.id)).find((p) => p.purchaseBookingId === input.usePackageBookingId);
     if (!pkg) return { ok: false, error: 'That package could not be found on this client.' };
-    if (pkg.treatmentSlug !== input.treatmentSlug) return { ok: false, error: `That package is for a different treatment (${pkg.label}).` };
+    // BLD-1890: treatmentSlug alone is the marketing category, not the specific
+    // service/area (e.g. Chin vs Lower Leg share one "laser-hair-removal"
+    // slug) — also require the package's own variant (when recorded) to match
+    // the one actually being booked, so a session is never deducted off the
+    // wrong area's package.
+    if (!eligiblePackagesFor([pkg], input.treatmentSlug, chosenVariantId).length) {
+      return { ok: false, error: `That package is for a different treatment or area (${pkg.label}).` };
+    }
     if (pkg.sessionsRemaining < 1) return { ok: false, error: 'No sessions left on that package — every remaining session is already booked or used.' };
     packageBookingId = pkg.purchaseBookingId;
     packageSessionsTotal = pkg.sessionsTotal;
