@@ -3,6 +3,9 @@ import { crmEnabled } from '@/lib/crm';
 
 export const runtime = 'nodejs';
 
+// BLD-1870 scope note: deliberately excluded from the mandatory-fields rule —
+// this is a lightweight lead-capture join, not full account registration; forcing
+// full PII here is a UX/conversion policy call beyond that ticket.
 // BLD-133 — public "notify me if a slot frees" join. Used from the booking flow
 // when a date is fully booked. Find-or-creates the client by email, then adds an
 // ACTIVE waitlist entry for the treatment + date window.
