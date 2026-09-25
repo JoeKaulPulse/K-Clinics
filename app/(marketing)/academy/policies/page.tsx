@@ -11,7 +11,7 @@ import { pageMeta, JsonLd, breadcrumbLd, itemListLd } from '@/lib/seo';
 // page at /academy/policies/<slug> replaces the code default).
 export const generateMetadata = (): Promise<Metadata> => pageMeta({
   title: 'Centre Policies — Learner Policies | K Academy London',
-  description: 'K Academy learner and centre policies: malpractice, appeals, complaints, equality and inclusion, safeguarding, reasonable adjustments, assessment and internal quality assurance, health and safety, conduct and conflicts of interest.',
+  description: 'K Academy learner and centre policies: malpractice, appeals, complaints, equality, safeguarding, reasonable adjustments, assessment and quality assurance, health and safety, conduct.',
   path: '/academy/policies',
 });
 

@@ -36,16 +36,17 @@ const MERGED_TODAY = [
   ['#1907', 'chore(deps): fast-uri 3.1.5 → 3.1.7 (high-severity fixes)'],
   ['#1624', 'build(deps): actions/setup-node 6 → 7'],
   ['#2018', 'feat(geo): AI-crawler rules, llms.txt/llms-full.txt, academy schema, centre policies hub, honest funding copy, this document (PRJ-1291.1–.3)'],
+  ['#2019', 'fix(academy): centre-policy pages public in middleware, meta descriptions trimmed (found by geo-check after the first deploy)'],
+  ['#1997', 'fix(clients): mandatory client registration fields (BLD-1870) — conflict resolved and merged later the same day'],
+  ['#1994', 'feat(academy): editable VTCT registration declaration (BLD-1867) — conflict resolved and merged later the same day'],
+  ['#1996', 'feat(payments): Klarna & Clearpay claims where BNPL is real (BLD-1827) — conflict resolved and merged later the same day'],
 ];
 
 // Conflicts resolved in a local checkout during the session, but the push to
 // another session's PR branch was held back by the sandbox's safety check.
 // The owner (or any session with the go-ahead) pushes the prepared merge.
 const PREPARED = [
-  ['#1997', 'Mandatory client registration fields (BLD-1870)', 'Backlog file only', 'Keep both sides of lib/build-backlog.ts. Push, wait for typecheck, merge.'],
-  ['#1994', 'Editable VTCT declaration (BLD-1867)', 'Backlog file only', 'Same. The academy owner-editable declaration matters for the EQA visit.'],
-  ['#1996', 'Klarna & Clearpay copy (BLD-1827)', 'Backlog file + lib/faqs.ts', 'Keep the two Klarna/Clearpay FAQs from the PR and main\'s newer 48-hour cancellation answer.'],
-  ['#1995', 'Deliberate £0 appointment price (BLD-1869)', 'Backlog file + two admin booking pages', 'Take main\'s package-session layout and add the "price set by staff" guard in the three price expressions.'],
+  ['#1995', 'Deliberate £0 appointment price (BLD-1869)', 'Backlog file + two admin booking pages', 'Keep both sides of lib/build-backlog.ts; take main\'s package-session layout in the two admin booking pages and add the "price set by staff" guard in the three price expressions (priceSetByStaff || … > 0). Push, wait for typecheck, squash-merge.'],
 ];
 
 const OWNER_DECISIONS = [
@@ -73,10 +74,10 @@ const CONFLICT_PRS = [
 
 const OPEN_PR_TABLE = [
   ['1998','Dependabot codeql-action','no','merged today'],
-  ['1997','Mandatory client registration fields (BLD-1870)','no','resolution prepared; push + merge'],
-  ['1996','Klarna/Clearpay copy (BLD-1827)','no','resolution prepared; push + merge'],
+  ['1997','Mandatory client registration fields (BLD-1870)','no','merged today (after conflict resolution)'],
+  ['1996','Klarna/Clearpay copy (BLD-1827)','no','merged today (after conflict resolution)'],
   ['1995','£0 appointment price (BLD-1869)','no','resolution prepared; push + merge'],
-  ['1994','Editable VTCT declaration (BLD-1867)','no','resolution prepared; push + merge'],
+  ['1994','Editable VTCT declaration (BLD-1867)','no','merged today (after conflict resolution)'],
   ['1992','Schema post town, OG truncation, chat focus','no','merged today'],
   ['1964','Dependabot production deps (21)','no','typecheck fails — fix forward or split'],
   ['1963','Dependabot dev deps (eslint 10, pdfkit 0.20)','no','breaking majors — split'],
@@ -117,7 +118,7 @@ const SECTIONS = [
       ['Then the shop.', 'The shop already switches itself on the moment a product goes live; it now also announces its catalogue to search and AI engines. The remaining work is the owner adding products.'],
       ['Dental last, step by step.', 'Nothing changes until a GDC-registered dentist is in post. The site keeps saying "opening soon" everywhere, including to AI assistants.'],
       ['Ads after, not before.', 'Yes: get the academy policies and copy approved before paying for academy traffic. Clinic treatment ads can start earlier because booking, pricing and conversion tracking are already live.'],
-      ['Pull requests.', 'Of 35 open pull requests, none could be merged as they stood. The clean ones were updated and merged today, one superseded PR was closed, four small conflicts were resolved and wait for one push, and the rest are listed with the exact decision or rework each one needs.'],
+      ['Pull requests.', 'Of 35 open pull requests, none could be merged as they stood. By the end of the day 11 were merged and one closed as already shipped, leaving 24 open: one resolved and waiting for a push, seven to re-cut on current main, two Dependabot majors, and the drafts that need an owner decision. Each is listed with the exact decision or rework it needs.'],
     ] },
     { h2: 'Done today' },
     { ul: [
@@ -125,7 +126,7 @@ const SECTIONS = [
       ['Funding copy corrected.', 'Every page, FAQ and AI-facing file now says the same thing: Advanced Learner Loans and the Adult Skills Fund are not available through K Academy and are not expected before 2028; monthly finance and employer funding are.'],
       ['Centre policies hub.', 'Ten draft policies at kclinics.co.uk/academy/policies, each editable in Admin → Pages. Version 1.0, marked for owner review.'],
       ['Board updated.', 'Project PRJ-1291 on the Build board holds the nine tasks from the owner\'s message, with who does what and what "done" looks like.'],
-      ['Pull requests merged.', `${MERGED_TODAY.length} pull requests shipped to production, one closed as already shipped, four prepared (list in section 3).`],
+      ['Pull requests merged.', `${MERGED_TODAY.length} pull requests shipped to production and one closed as already shipped (list in section 3). Open security advisories on main fell from 9 to 1.`],
     ] },
     { tip: 'Two things only the owner can do this week: (1) read and approve the ten centre policies before the EQA visit, and (2) send the list of new programmes (title, level, awarding body, fee, duration, first cohort) so they can be added in Admin → Academy.', label: 'Owner actions' },
   ] },
@@ -158,7 +159,7 @@ const SECTIONS = [
     { h2: 'Merged to production today' },
     { table: [['PR', 'What'], MERGED_TODAY, [12, 88]] },
     { h2: 'Resolved locally, one push away' },
-    { p: 'Four non-draft PRs conflicted only on the backlog file (and, in two cases, one small content file). The merge from main was prepared and checked in this session, but pushing onto another session\'s branch was stopped by the sandbox safety check, so they are not merged yet. Each needs one push of the prepared merge, a green typecheck, and a squash merge.' },
+    { p: 'Four non-draft PRs conflicted only on the backlog file (and, in two cases, one small content file). The merges from main were prepared and checked in this session; pushing onto another session\'s branch was stopped by the sandbox safety check, so the pushes were handed over as a task. Three of the four (#1997, #1994, #1996) were then pushed and merged the same afternoon. One remains:' },
     { table: [['PR', 'Topic', 'Conflict', 'Resolution'], PREPARED, [10, 30, 22, 38]] },
     { h2: 'Waiting on an owner decision' },
     { p: 'Each of these is blocked on a judgement only the owner can make. Reply on the PR or on the board item with the decision and Claude will finish it.' },
