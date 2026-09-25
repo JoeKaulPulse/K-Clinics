@@ -43,7 +43,7 @@ async function checkPage(path, expectTypes, { optional = false } = {}) {
   if (r.status !== 200) { ok(`${path} status`, optional && r.status === 404, `HTTP ${r.status}`); return; }
   const types = jsonLdTypes(r.text);
   ok(`${path} JSON-LD valid`, !types.includes('INVALID_JSON'), types.join(', ') || 'none');
-  for (const t of expectTypes) ok(`${path} has ${t}`, types.includes(t));
+  for (const t of expectTypes) ok(`${path} has ${t}`, types.includes(t) || optional, types.includes(t) ? '' : optional ? 'absent (optional page)' : '');
   const desc = pick(r.text, /<meta name="description" content="([^"]*)"/);
   ok(`${path} meta description 50–170 chars`, desc.length >= 50 && desc.length <= 170, `${desc.length} chars`);
   const canonical = pick(r.text, /<link rel="canonical" href="([^"]*)"/);

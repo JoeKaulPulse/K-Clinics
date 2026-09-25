@@ -88,6 +88,7 @@ const isPublicAcademyPath = (p: string) =>
   PUBLIC_ACADEMY.has(p) ||
   p.startsWith('/academy/verify/') || // BLD-528: public certificate verification
   /^\/academy\/bundles\/[^/]+$/.test(p) || // BLD-532: public learning-pathway pages
+  /^\/academy\/policies\/[^/]+$/.test(p) || // PRJ-1291.3: public centre-policy pages (EQA)
   /^\/academy\/[^/]+\/taster\/[^/]+$/.test(p) || // BLD-532: public free taster lessons
   (!RESERVED_ACADEMY.has(p) && /^\/academy\/[^/]+$/.test(p));
 
