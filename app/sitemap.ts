@@ -4,6 +4,7 @@ import { treatmentSlugs } from '@/lib/treatments';
 import { packages } from '@/lib/packages';
 import { infoSlugs } from '@/lib/info-pages';
 import { articles } from '@/lib/articles';
+import { academyPolicySlugs } from '@/lib/academy-policies';
 
 // ISR so newly-published academy courses (DB-backed) appear without a redeploy.
 export const revalidate = 3600;
@@ -12,7 +13,7 @@ export const revalidate = 3600;
 // Using a fixed date (rather than `new Date()`) keeps <lastmod> honest — search
 // engines distrust sitemaps that claim every URL changed on every crawl. Bump
 // this when marketing copy is meaningfully refreshed.
-const CONTENT_REVIEWED = new Date('2026-06-01T00:00:00Z');
+const CONTENT_REVIEWED = new Date('2026-09-25T00:00:00Z');
 
 // Fallback academy slugs if the DB can't be reached at build/revalidate time.
 const FALLBACK_COURSE_SLUGS = ['level-2-foundation-skin-laser', 'level-3-laser-aesthetic-therapies', 'level-4-certificate-aesthetic-practice', 'advanced-aesthetics-level-5-7'];
@@ -99,6 +100,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { path: '/academy', priority: 0.8, freq: 'weekly' },
     ...(bundles.length > 0 ? [{ path: '/academy/bundles', priority: 0.7, freq: 'monthly' as const }] : []),
     { path: '/academy/funding', priority: 0.65, freq: 'monthly' },
+    { path: '/academy/policies', priority: 0.4, freq: 'yearly' },
     { path: '/about', priority: 0.6, freq: 'monthly' },
     { path: '/team', priority: 0.7, freq: 'monthly' },
     { path: '/clinics', priority: 0.7, freq: 'monthly' },
@@ -136,6 +138,12 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     // /info/ stubs so search engines aren't re-submitted crawlable duplicates.
     ...infoSlugs.filter((slug) => !['refer-a-friend', 'careers', 'gift-vouchers'].includes(slug)).map((slug) => ({
       url: `${base}/info/${slug}`,
+      lastModified: reviewed,
+      changeFrequency: 'yearly' as const,
+      priority: 0.3,
+    })),
+    ...academyPolicySlugs.map((slug) => ({
+      url: `${base}/academy/policies/${slug}`,
       lastModified: reviewed,
       changeFrequency: 'yearly' as const,
       priority: 0.3,
