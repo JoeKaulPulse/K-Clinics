@@ -8,13 +8,24 @@ import { renderOg } from '@/lib/og';
 // `img` background photo is fetched at runtime when not on the local disk.
 export const runtime = 'nodejs';
 
-const clip = (s: string | null, n: number) => (s || '').replace(/\s+/g, ' ').trim().slice(0, n);
+// PRJ-1229.11: hard-slicing at `n` chars could land mid-word ("...design-led
+// cl"). `ellipsis` truncates at the last word boundary before the limit and
+// appends "…" instead — only for human-readable text, never for the `img`
+// path (its regex check below expects an exact filename, not "…").
+const clip = (s: string | null, n: number, ellipsis = false) => {
+  const t = (s || '').replace(/\s+/g, ' ').trim();
+  if (t.length <= n) return t;
+  if (!ellipsis) return t.slice(0, n);
+  const sliced = t.slice(0, n);
+  const lastSpace = sliced.lastIndexOf(' ');
+  return `${lastSpace > 0 ? sliced.slice(0, lastSpace) : sliced}…`;
+};
 
 export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
-  const title = clip(searchParams.get('title'), 110) || `${site.name} — aesthetics & skin, reimagined`;
-  const eyebrow = clip(searchParams.get('eyebrow'), 48) || `${site.name} · London`;
-  const tag = clip(searchParams.get('tag'), 150);
+  const title = clip(searchParams.get('title'), 110, true) || `${site.name} — aesthetics & skin, reimagined`;
+  const eyebrow = clip(searchParams.get('eyebrow'), 48, true) || `${site.name} · London`;
+  const tag = clip(searchParams.get('tag'), 150, true);
   // Only allow our own /treatments and /hero photography as backgrounds.
   const rawImg = clip(searchParams.get('img'), 200);
   const img = /^\/(treatments|hero)\/[\w.-]+\.(jpe?g|png|webp|avif)$/i.test(rawImg) ? rawImg : null;

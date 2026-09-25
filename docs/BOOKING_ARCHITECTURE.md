@@ -10,6 +10,11 @@ Replaces Treatwell/Fresha with a first-party booking system on Stripe.
   2. The client cancels **within 24h** of the start (100% late-cancellation fee),
      unless a staff/admin user **overrides/waives** it.
 - Cancelling **>24h before** the appointment is **free**; the saved card is released.
+- BLD-1920: the 24h fee logic above is about *money*, not *access* — the client can
+  only reach `cancelBooking`/`rescheduleBooking` themselves with **>=48h** notice at
+  all (`lib/cancellation-policy.ts`). Inside 48h, self-service cancel/reschedule is
+  blocked outright (`code: 'SELF_SERVICE_WINDOW_CLOSED'`); staff (`opts.admin: true`)
+  are exempt and still hit the 24h fee rule at any notice.
 
 ## Scheduling: slot-based (single resource)
 - Opening hours come from `site.hours`; bookable slots are generated per treatment

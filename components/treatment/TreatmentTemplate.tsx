@@ -154,7 +154,7 @@ export async function TreatmentTemplate({ t, dentistryLive = site.dentistryLive 
               </nav>
             </Reveal>
             <Reveal delay={0.05}>
-              <p className="eyebrow mb-4 flex flex-wrap items-center gap-3 text-[var(--color-gold-soft)]">
+              <p className="eyebrow eyebrow-on-dark mb-4 flex flex-wrap items-center gap-3">
                 {t.eyebrow}
                 {comingSoon && <span className="rounded-full bg-[var(--color-gold-soft)] px-3 py-1 text-[0.6rem] font-semibold uppercase tracking-[0.14em] text-[var(--color-ink)]">Opening soon</span>}
               </p>

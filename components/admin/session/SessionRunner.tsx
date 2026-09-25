@@ -6,6 +6,7 @@ import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
 import { SESSION_STEPS, STEP_STATION, STATION_LABEL, stepActiveAtStation, type SessionStepKey, type StationMode, type StepTimings } from '@/lib/appointment-session';
 import type { SessionSnapshot } from '@/lib/appointment-session-server';
 import { reviewMedicalFlag, saveSopChecklist, startAppointment, finishAppointment, saveClinicalNote, removeAddonTreatment } from '@/app/admin/bookings/clinical-actions';
+import { isGiftCardExcludedTreatment } from '@/lib/treatments';
 import { BeforePhotoCapture } from '@/components/admin/BeforePhotoCapture';
 import { useSessionChannel } from '@/components/admin/session/useSessionChannel';
 import { CheckIcon } from '@/components/ui/session-icons';
@@ -847,6 +848,10 @@ function CheckoutStep({ p, live, sessData, pending, presenting, api, run, onCont
   // charge op. The amount field always means the agreed price — the remainder
   // is derived, never written back, so a reload, a second till or a discount
   // can't double-count the voucher.
+  // BLD-1918: gift cards cannot be applied to injectable or CO2 laser
+  // treatments — this hides/disables the redeem control here, and the server
+  // (app/api/admin/bookings/session/route.ts) refuses it independently.
+  const voucherExcluded = isGiftCardExcludedTreatment(p.booking.treatmentSlug);
   const [vOpen, setVOpen] = useState(false);
   const [vCode, setVCode] = useState('');
   const [vApplied, setVApplied] = useState<{ code: string; pence: number } | null>(
@@ -1002,6 +1007,8 @@ function CheckoutStep({ p, live, sessData, pending, presenting, api, run, onCont
                   <button type="button" onClick={removeVoucher} disabled={vBusy} className="text-xs text-[var(--color-gold-deep)] underline-offset-2 hover:underline disabled:opacity-50">{vBusy ? 'Removing…' : 'Remove'}</button>
                   {voucherExceedsAmount && <span className="w-full text-xs text-[var(--color-blush-deep)]">The voucher covers more than the current amount — remove it and apply again at the new price.</span>}
                 </div>
+              ) : voucherExcluded ? (
+                <p className="text-xs text-[var(--color-stone)]">Gift cards can’t be redeemed against {p.booking.treatmentTitle.toLowerCase()} — it’s an injectable/CO2 laser treatment.</p>
               ) : !vOpen ? (
                 <button type="button" onClick={() => setVOpen(true)} className="text-xs text-[var(--color-gold-deep)] underline-offset-2 hover:underline">Redeem a gift voucher</button>
               ) : (

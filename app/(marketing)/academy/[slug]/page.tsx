@@ -6,7 +6,7 @@ import { PageHero } from '@/components/ui/PageHero';
 import { Reveal } from '@/components/motion/Reveal';
 import { ApplyForm } from '@/components/academy/ApplyForm';
 import { Stars } from '@/components/ui/Stars';
-import { pageMeta, JsonLd, breadcrumbLd, courseLd } from '@/lib/seo';
+import { pageMeta, JsonLd, breadcrumbLd, courseLd, academyLd } from '@/lib/seo';
 import { ACCREDITATION_LABELS, formatFee } from '@/lib/academy';
 import { getActivePromo } from '@/lib/academy-utils';
 import { ViewItemTracker } from '@/components/marketing/ViewItemTracker';
@@ -45,6 +45,9 @@ export default async function CoursePage({ params }: { params: Promise<{ slug: s
       <JsonLd data={[
         breadcrumbLd([{ name: 'Home', path: '/' }, { name: 'Academy', path: '/academy' }, { name: course.title, path: `/academy/${slug}` }]),
         courseLd({ title: course.title, description: course.summary || course.description || course.title, path: `/academy/${slug}`, pricePence: course.pricePence, durationText: course.durationText, accreditations: course.accreditations, level: course.level, teaches: course.outcomes.slice(0, 10), prerequisites: course.prerequisites }),
+        // The Course's provider is the academy @id; ship the full node on the
+        // same page so the reference resolves without a second fetch (GEO).
+        academyLd(),
       ]} />
       {/* BLD-1553: item id is the course slug (not course.id), matching the
           begin_checkout convention already used in EnrolmentCheckout.tsx --

@@ -142,6 +142,99 @@ export async function refundBookingAction(bookingId: string, amountPence: number
   return res;
 }
 
+// BLD-1893: completely remove an incorrectly-generated outstanding payment
+// (a late-cancel or no-show fee that was never charged) — distinct from
+// charging it or waiting for it to be waived at cancel/no-show time. Reuses
+// the same feeWaived field lib/outstanding.ts already derives the balance
+// and the online-booking block from (BLD-1066/applyNoShowFee's waive branch),
+// so clearing it here lifts both automatically — no new column needed.
+export async function removeOutstandingPayment(bookingId: string, reason: string) {
+  if (!crmEnabled) return { ok: false, error: 'CRM disabled' };
+  const session = await getSession();
+  if (!session) return { ok: false, error: 'Unauthorised' };
+  if (!sessionCan(session, 'bookings.charge')) return { ok: false, error: 'You don’t have permission to remove an outstanding payment.' };
+  const cleanReason = (reason || '').trim().slice(0, 2000);
+  if (!cleanReason) return { ok: false, error: 'Add a reason explaining why this payment is being removed.' };
+
+  const { db } = await import('@/lib/db');
+  const b = await db.booking.findUnique({
+    where: { id: bookingId },
+    select: { clientId: true, treatmentTitle: true, status: true, lateCancel: true, chargedAt: true, prepaidAt: true, feeWaived: true, pricePence: true, chargePaymentIntentId: true },
+  });
+  if (!b) return { ok: false, error: 'Booking not found.' };
+  // BLD-1693/BLD-1711 pattern, same client-level scope as the sibling
+  // Mark-as-Debt/EditDebt routes (app/api/admin/clients/[id]/debt/...): a
+  // PRACTITIONER holding bookings.charge may only act on a client they have a
+  // booking with. 'Not found' so a guessed id can't be told apart.
+  if (session.role === 'PRACTITIONER') {
+    const own = await db.booking.findFirst({ where: { clientId: b.clientId, practitionerId: session.sub }, select: { id: true } });
+    if (!own) return { ok: false, error: 'Booking not found.' };
+  }
+  // Same shape lib/outstanding.ts's query uses — only ever act on a booking
+  // that is actually contributing to the derived balance right now.
+  const isOutstanding = !b.chargedAt && !b.prepaidAt && !b.feeWaived && b.pricePence > 0
+    && ((b.status === 'CANCELLED' && b.lateCancel) || b.status === 'NO_SHOW');
+  if (!isOutstanding) return { ok: false, error: 'This appointment has no outstanding payment to remove.' };
+
+  // A fee that hit SCA (chargeBooking's authentication_required branch) left a
+  // live PaymentIntent on chargePaymentIntentId and emailed the client a
+  // /booking/pay link. Cancel it first, or the client can still pay the fee
+  // after it was removed (the webhook/pay-confirm would then set chargedAt).
+  // If it already succeeded/is processing, or Stripe can't cancel it, refuse.
+  const piId = b.chargePaymentIntentId;
+  if (piId && piId.startsWith('pi_')) {
+    try {
+      const { stripe } = await import('@/lib/stripe');
+      const pi = await stripe().paymentIntents.retrieve(piId);
+      if (pi.status === 'succeeded' || pi.status === 'processing') {
+        return { ok: false, error: 'The client has already paid (or is paying) this fee online. Refresh the page — it may need a refund instead.' };
+      }
+      if (pi.status !== 'canceled') await stripe().paymentIntents.cancel(piId);
+    } catch (e) {
+      console.error('[removeOutstandingPayment] could not cancel pending payment:', (e as Error)?.message);
+      return { ok: false, error: 'Could not cancel the payment link already sent to the client for this fee. Nothing was removed — try again.' };
+    }
+  }
+
+  // Conditional write on the same outstanding shape, so two concurrent removals
+  // (or a removal racing a charge landing) can't both proceed — only the one
+  // that actually flips the row runs the points refund / audit / timeline.
+  const flipped = await db.booking.updateMany({
+    where: {
+      id: bookingId, chargedAt: null, prepaidAt: null, feeWaived: false, pricePence: { gt: 0 },
+      OR: [{ status: 'CANCELLED', lateCancel: true }, { status: 'NO_SHOW' }],
+    },
+    data: { feeWaived: true },
+  });
+  if (flipped.count === 0) return { ok: false, error: 'This appointment has no outstanding payment to remove.' };
+  // BLD-1443 parity with applyNoShowFee/cancelBooking's own waive branches:
+  // the fee was never actually taken, so any loyalty points the client
+  // redeemed as money off it are returned rather than staying spent.
+  try {
+    const { refundBookingPoints } = await import('@/lib/client-loyalty');
+    await refundBookingPoints(bookingId);
+  } catch (e) {
+    console.error('[removeOutstandingPayment] points refund failed (continuing):', (e as Error)?.message);
+  }
+
+  const kind = b.status === 'NO_SHOW' ? 'no-show' : 'late-cancellation';
+  const summary = `Outstanding payment removed — ${b.treatmentTitle} (${kind} fee, £${(b.pricePence / 100).toFixed(2)}) — ${cleanReason}`;
+  const { logAudit } = await import('@/lib/audit');
+  await logAudit({
+    action: b.status === 'NO_SHOW' ? 'BOOKING_NO_SHOW' : 'BOOKING_CANCELLED',
+    actor: session.email, actorRole: session.role, bookingId, clientId: b.clientId,
+    summary, meta: { outstandingPaymentRemoved: true, pricePence: b.pricePence, reason: cleanReason },
+  }).catch(() => {});
+  // BLD-1893: "record the removal in the client's activity timeline, including
+  // who removed it and when" — Interaction stamps author + createdAt itself.
+  await db.interaction.create({ data: { clientId: b.clientId, type: 'APPOINTMENT', summary, author: session.email } }).catch(() => {});
+
+  revalidatePath(`/admin/bookings/${bookingId}`);
+  revalidatePath('/admin/bookings');
+  revalidatePath(`/admin/clients/${b.clientId}`);
+  return { ok: true };
+}
+
 // Approve a same-day appointment request: re-checks availability (the slot may have
 // been taken since the request came in), confirms the booking and notifies the
 // client. Staff only. Decline uses the normal cancelBookingAction.
@@ -437,7 +530,9 @@ export async function cancelBookingAction(bookingId: string, opts: { reason?: st
     }
   }
   const { cancelBooking } = await import('@/lib/booking-actions');
-  const res = await cancelBooking(bookingId, { by: session.email, reason: opts.reason, waiveFee: opts.waiveFee });
+  // BLD-1920: admin: true exempts staff from the new client-only 48h
+  // self-service block — mirrors rescheduleBookingAction's admin: true below.
+  const res = await cancelBooking(bookingId, { by: session.email, reason: opts.reason, waiveFee: opts.waiveFee, admin: true });
   revalidatePath(`/admin/bookings/${bookingId}`);
   revalidatePath('/admin/bookings');
   return res;
@@ -445,12 +540,19 @@ export async function cancelBookingAction(bookingId: string, opts: { reason?: st
 
 // BLD-211 — reassign the practitioner/specialist on a booking. Admins/managers
 // only; the new clinician must be bookable and competent for the treatment.
-export async function reassignPractitioner(bookingId: string, practitionerId: string | null): Promise<{ ok: boolean; error?: string }> {
+// BLD-1886: also checks the target clinician isn't already booked over this
+// appointment's time — a warning the caller can override with force: true,
+// mirroring the resource-conflict UX built for reschedule (BLD-1873).
+export async function reassignPractitioner(
+  bookingId: string,
+  practitionerId: string | null,
+  opts?: { force?: boolean },
+): Promise<{ ok: boolean; error?: string; code?: 'PRACTITIONER_CONFLICT' }> {
   if (!crmEnabled) return { ok: false, error: 'CRM disabled' };
   const session = await getSession();
   if (!session || !sessionCan(session, 'bookings.manage')) return { ok: false, error: 'You don’t have permission to reassign appointments.' };
   const { db } = await import('@/lib/db');
-  const booking = await db.booking.findUnique({ where: { id: bookingId }, select: { treatmentSlug: true } });
+  const booking = await db.booking.findUnique({ where: { id: bookingId }, select: { treatmentSlug: true, startAt: true, endAt: true, bufferMin: true } });
   if (!booking) return { ok: false, error: 'Booking not found.' };
 
   let label = 'unassigned';
@@ -470,6 +572,27 @@ export async function reassignPractitioner(bookingId: string, practitionerId: st
       return { ok: false, error: 'That clinician isn’t set up to perform this treatment.' };
     }
     label = clin.name || clin.email;
+
+    // BLD-1886: the target clinician might already have another live booking
+    // overlapping this one's time window — check before writing, not after.
+    if (!opts?.force) {
+      const { overlapsBookingWindow } = await import('@/lib/booking-actions');
+      // Busy window includes this booking's own buffer, matching the
+      // rescheduleBooking clash rule (newBusyEnd = end + bufferMin).
+      const busyEnd = new Date(booking.endAt.getTime() + booking.bufferMin * 60_000);
+      const others = await db.booking.findMany({
+        where: {
+          id: { not: bookingId }, status: { in: ['PENDING', 'CONFIRMED'] }, practitionerId,
+          startAt: { gte: new Date(booking.startAt.getTime() - 24 * 60 * 60 * 1000), lte: busyEnd },
+        },
+        select: { startAt: true, endAt: true, bufferMin: true },
+      });
+      const clash = others.find((o) => overlapsBookingWindow(booking.startAt, busyEnd, o));
+      if (clash) {
+        const when = clash.startAt.toLocaleString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+        return { ok: false, code: 'PRACTITIONER_CONFLICT', error: `${label} already has another appointment at ${when} that overlaps this time. You can still reassign if you’ve confirmed they can cover both.` };
+      }
+    }
   }
 
   await db.booking.update({ where: { id: bookingId }, data: { practitionerId: practitionerId || null } });
@@ -486,14 +609,21 @@ export async function reassignPractitioner(bookingId: string, practitionerId: st
 // cancel-and-rebook. Reuses rescheduleBooking with the admin override (no 48h
 // notice / window / fee rules), but keeps the slot-availability + future-time
 // guards, the client confirmation email, calendar re-push and audit.
-export async function rescheduleBookingAction(bookingId: string, newStartISO: string): Promise<{ ok: boolean; error?: string }> {
+// BLD-1873: `force` lets staff proceed past a room/equipment-only conflict
+// once they've seen the warning (`code: 'RESOURCE_CONFLICT'`); a practitioner
+// clash still can't be forced.
+export async function rescheduleBookingAction(
+  bookingId: string,
+  newStartISO: string,
+  opts?: { force?: boolean },
+): Promise<{ ok: boolean; error?: string; code?: 'SLOT_TAKEN' | 'RESOURCE_CONFLICT' }> {
   if (!crmEnabled) return { ok: false, error: 'CRM disabled' };
   const session = await getSession();
   if (!session || !sessionCan(session, 'bookings.manage')) return { ok: false, error: 'You don’t have permission to reschedule appointments.' };
   if (!newStartISO) return { ok: false, error: 'Pick a new date and time.' };
   const { rescheduleBooking } = await import('@/lib/booking-actions');
-  const r = await rescheduleBooking(bookingId, newStartISO, { by: session.email, admin: true });
-  return r.ok ? { ok: true } : { ok: false, error: r.error || 'Could not reschedule.' };
+  const r = await rescheduleBooking(bookingId, newStartISO, { by: session.email, admin: true, force: opts?.force });
+  return r.ok ? { ok: true } : { ok: false, error: r.error || 'Could not reschedule.', code: r.code === 'RESOURCE_CONFLICT' ? 'RESOURCE_CONFLICT' : r.code === 'SLOT_TAKEN' ? 'SLOT_TAKEN' : undefined };
 }
 
 // BLD-1096 — owner request: sometimes a client cancels with enough notice that
@@ -607,33 +737,42 @@ export async function linkBookingToPackage(bookingId: string, purchaseBookingId:
     select: {
       clientId: true, status: true, treatmentSlug: true, treatmentTitle: true, packageBookingId: true, chargedAt: true,
       prepaidAt: true, giftVoucherPence: true, pointsRedeemed: true,
-      items: { where: { isAddon: false }, orderBy: { createdAt: 'asc' }, take: 1, select: { sessions: true } },
+      items: { where: { isAddon: false }, orderBy: { createdAt: 'asc' }, take: 1, select: { sessions: true, variantId: true } },
     },
   });
   if (!b) return { ok: false, error: 'Booking not found.' };
   if (b.packageBookingId) return { ok: false, error: 'This appointment is already linked to a package. Unlink it first if it belongs to a different course.' };
   if ((b.items[0]?.sessions ?? 1) > 1) return { ok: false, error: 'This appointment IS a course purchase — it can’t also be a session of another package.' };
-  // An appointment paid on its own card charge isn't a package session — linking
-  // it would spend a prepaid session AND keep the money, double-charging the
-  // client. Refund the standalone charge first if it should come off the course.
-  if (b.chargedAt) return { ok: false, error: 'This appointment was charged separately, so it can’t also use a prepaid package session. Refund that charge first if it should come off the course.' };
-  // BLD-1824 review: chargedAt alone is not "has this been paid". A BNPL
-  // settlement records the money on prepaidAt/prepaidPence and never touches
-  // chargedAt — the same trap BLD-1119/BLD-1200 fixed in the session route and
-  // outstandingBalance. Linking here now zeroes the price, so an unguarded
-  // prepaidAt would hand back a paid-for visit AND spend a prepaid session.
-  if (b.prepaidAt) return { ok: false, error: 'This appointment was pre-paid in full, so it can’t also use a prepaid package session. Refund that payment first if it should come off the course.' };
+  // BLD-1892: an already-charged/pre-paid appointment (e.g. a completed visit
+  // from before the client bought the course) can still be retro-linked so it
+  // counts toward the course balance — its existing payment record is left
+  // exactly as-is (no zeroing, no refund) rather than blocked outright, which
+  // would otherwise make it impossible to ever add a past treatment to a
+  // package. `alreadySettled` below skips the price-zeroing step for it, so
+  // there is no double-charge: the course consumes a session, the prior
+  // payment stays the money of record and nothing new is charged.
+  const alreadySettled = Boolean(b.chargedAt || b.prepaidAt);
   // A gift voucher applied to this appointment has already been debited off the
   // voucher (lib/gift-vouchers reserveVoucher). Zeroing the price below would
   // leave that balance spent against a £0 visit with nothing to return it.
-  if ((b.giftVoucherPence ?? 0) > 0) {
+  // BLD-1892: an already-settled visit is never zeroed, so its voucher stays
+  // spent against the real price it paid towards — nothing is stranded, and
+  // there is no "Remove voucher" on a paid booking to unblock it anyway.
+  if (!alreadySettled && (b.giftVoucherPence ?? 0) > 0) {
     return { ok: false, error: 'A gift voucher is applied to this appointment. Remove it first (Remove voucher on the appointment’s payment panel puts the balance back on the card), then link it to the course.' };
   }
 
   const { clientPackages, packageOccupancyWhere } = await import('@/lib/package-sessions');
+  const { eligiblePackagesFor } = await import('@/lib/package-match');
   const pkg = (await clientPackages(b.clientId)).find((p) => p.purchaseBookingId === purchaseBookingId);
   if (!pkg) return { ok: false, error: 'That course isn’t on this client’s account.' };
-  if (pkg.treatmentSlug !== b.treatmentSlug) return { ok: false, error: `That course is for a different treatment (${pkg.label}).` };
+  // BLD-1890: treatmentSlug alone is the marketing category, not the specific
+  // service/area (e.g. Chin vs Lower Leg share one "laser-hair-removal" slug)
+  // — also require the package's own variant (when recorded) to match this
+  // appointment's, so a session is never deducted off the wrong area's package.
+  if (!eligiblePackagesFor([pkg], b.treatmentSlug, b.items[0]?.variantId ?? null).length) {
+    return { ok: false, error: `That course is for a different treatment or area (${pkg.label}).` };
+  }
 
   // A live or completed appointment occupies a slot the moment it's linked
   // (that's the point, for retro-linking taken sessions); a cancelled/missed
@@ -642,6 +781,14 @@ export async function linkBookingToPackage(bookingId: string, purchaseBookingId:
   let zeroed: PackageZeroing | null = null;
   try {
     const linked = await db.$transaction(async (tx) => {
+      // BLD-1892 review fix: `alreadySettled` decides whether the price is
+      // zeroed, but it came from a read taken before this transaction. A charge
+      // (or voucher, or another link) landing in between would otherwise zero a
+      // just-paid booking. Re-read inside the Serializable transaction and bail
+      // if any of it moved, so the decision and the write see the same row.
+      const fresh = await tx.booking.findUnique({ where: { id: bookingId }, select: { pricePence: true, packageBookingId: true, chargedAt: true, prepaidAt: true, giftVoucherPence: true } });
+      if (!fresh || fresh.packageBookingId || Boolean(fresh.chargedAt || fresh.prepaidAt) !== alreadySettled
+        || (!alreadySettled && (fresh.giftVoucherPence ?? 0) > 0)) return 'CHANGED' as const;
       if (occupies) {
         const total = (await tx.bookingItem.findFirst({ where: { bookingId: purchaseBookingId, isAddon: false }, orderBy: { createdAt: 'asc' }, select: { sessions: true } }))?.sessions ?? 1;
         const occupied = await tx.booking.count({ where: packageOccupancyWhere(purchaseBookingId) });
@@ -662,8 +809,11 @@ export async function linkBookingToPackage(bookingId: string, purchaseBookingId:
       // write that debt off silently while leaving the session unspent: the link
       // alone consumes nothing, staff still have to mark the session used, which
       // is how BLD-1347 takes the fee out of the course instead.
-      const current = occupies ? await tx.booking.findUnique({ where: { id: bookingId }, select: { pricePence: true } }) : null;
-      const primaryItem = occupies
+      // BLD-1892: nor for an already-settled appointment — its price is real,
+      // already-collected money, not a quote to net against the course.
+      const zeroPrice = occupies && !alreadySettled;
+      const current = zeroPrice ? fresh : null;
+      const primaryItem = zeroPrice
         ? await tx.bookingItem.findFirst({ where: { bookingId, isAddon: false }, orderBy: { createdAt: 'asc' }, select: { id: true, pricePence: true, discountPence: true } })
         : null;
       if (current && primaryItem) {
@@ -679,6 +829,7 @@ export async function linkBookingToPackage(bookingId: string, purchaseBookingId:
       return NO_ZEROING;
     }, { isolationLevel: 'Serializable' });
     if (!linked) return { ok: false, error: 'That course has no sessions left — every session is already taken or booked.' };
+    if (linked === 'CHANGED') return { ok: false, error: 'This appointment changed while linking (it was paid, linked or had a voucher applied). Refresh the page and try again.' };
     zeroed = linked.itemId ? linked : null;
   } catch {
     return { ok: false, error: 'Could not link just now (another update was in flight). Please try again.' };
@@ -704,10 +855,11 @@ export async function linkBookingToPackage(bookingId: string, purchaseBookingId:
     action: 'SESSION_EDITED', actor: session.email, actorRole: session.role, bookingId, clientId: b.clientId,
     summary: `Appointment (${b.treatmentTitle}, ${b.status.toLowerCase().replace('_', ' ')}) linked to package ${pkg.label} — now counts against the course balance`
       + (zeroed ? `; its own price was zeroed (£${(zeroed.removedPence / 100).toFixed(2)} off this appointment) — the course purchase carries the money` : '')
+      + (alreadySettled ? `; this visit was already charged/pre-paid — that payment record was left untouched, no refund or new charge made` : '')
       + (pointsReturned ? `; ${pointsReturned} loyalty points returned to the client` : ''),
     // packagePriceZeroed is what unlinkBookingFromPackage reads to put the money
     // back, so it has to stay on the entry, not just in the summary text.
-    meta: { packageBookingId: purchaseBookingId, ...(zeroed ? { packagePriceZeroed: zeroed } : {}) },
+    meta: { packageBookingId: purchaseBookingId, ...(zeroed ? { packagePriceZeroed: zeroed } : {}), ...(alreadySettled ? { alreadyCharged: true } : {}) },
   }).catch(() => {});
   revalidatePath(`/admin/bookings/${bookingId}`);
   revalidatePath(`/admin/bookings/${purchaseBookingId}`);
@@ -839,6 +991,43 @@ export async function unmarkPackageSessionUsed(bookingId: string): Promise<{ ok:
   });
   revalidatePath(`/admin/bookings/${bookingId}`);
   revalidatePath('/admin/bookings');
+  revalidatePath(`/admin/clients/${booking.clientId}`);
+  return { ok: true };
+}
+
+// BLD-1874 — correct the payment method recorded against a charged booking
+// (e.g. staff picked "Cash" by mistake when it was actually paid on a card
+// terminal). Gated on bookings.charge — the same permission that gates every
+// other "money has moved" action (chargeBookingAction, refunds,
+// setPackageManualPayment above). Updates ONLY paymentMethod: the amount,
+// Stripe payment-intent reference and charge timestamp are never touched.
+export async function updateBookingPaymentMethod(bookingId: string, newMethod: string): Promise<{ ok: boolean; error?: string }> {
+  if (!crmEnabled) return { ok: false, error: 'CRM disabled' };
+  const session = await getSession();
+  if (!session || !sessionCan(session, 'bookings.charge')) return { ok: false, error: 'You don’t have permission to correct payments.' };
+  // A server action is a public POST endpoint — validate against the shared
+  // vocabulary rather than trusting the caller (mirrors setPackageManualPayment).
+  const { isPaymentMethod, paymentMethodLabel } = await import('@/lib/payment-methods');
+  if (!isPaymentMethod(newMethod)) return { ok: false, error: 'Pick a valid payment method.' };
+
+  const { db } = await import('@/lib/db');
+  const booking = await db.booking.findUnique({ where: { id: bookingId }, select: { clientId: true, chargedAt: true, prepaidAt: true, paymentMethod: true } });
+  if (!booking) return { ok: false, error: 'Booking not found.' };
+  // Only a booking that has actually been paid has a payment method worth correcting.
+  if (!booking.chargedAt && !booking.prepaidAt) return { ok: false, error: 'This booking hasn’t been charged yet.' };
+  if (booking.paymentMethod === newMethod) return { ok: true }; // no-op
+
+  const oldLabel = paymentMethodLabel(booking.paymentMethod) || 'none recorded';
+  const newLabel = paymentMethodLabel(newMethod);
+  await db.booking.update({ where: { id: bookingId }, data: { paymentMethod: newMethod } });
+
+  const { logAudit } = await import('@/lib/audit');
+  await logAudit({
+    action: 'SESSION_EDITED', actor: session.email, actorRole: session.role, bookingId, clientId: booking.clientId,
+    summary: `Payment method corrected: ${oldLabel} → ${newLabel}`,
+    meta: { oldMethod: booking.paymentMethod, newMethod },
+  }).catch(() => {});
+  revalidatePath(`/admin/bookings/${bookingId}`);
   revalidatePath(`/admin/clients/${booking.clientId}`);
   return { ok: true };
 }

@@ -101,7 +101,14 @@ export async function POST(req: Request) {
             console.error('[webhook] payment_intent.succeeded with no amount_received — not finalising:', { bookingId, piId: pi.id });
           } else {
             const { finalizeBookingCharge } = await import('@/lib/booking-actions');
-            await finalizeBookingCharge(bookingId, pi.id, receivedPence, { late: pi.metadata?.late === 'true' });
+            // BLD-1874: a staff-sent payment link (the 'paylink' case in
+            // app/api/admin/bookings/session/route.ts) is the only caller that
+            // stamps kind: 'booking_balance'. A BNPL course checkout link
+            // (kind: 'course_prepaid') also carries bookingId and passes through
+            // here before its own handler below. Everything else on this generic
+            // succeeded handler is the saved-card/SCA-recovery rail ('card').
+            const method = pi.metadata?.kind === 'booking_balance' || pi.metadata?.kind === 'course_prepaid' ? 'payment_link' : 'card';
+            await finalizeBookingCharge(bookingId, pi.id, receivedPence, { late: pi.metadata?.late === 'true', method });
           }
         }
         // Finalise retail orders server-side so they complete even if the customer
@@ -175,7 +182,10 @@ export async function POST(req: Request) {
               // runs the side-effects, guarding webhook redeliveries.
               const claimed = await db.booking.updateMany({
                 where: { id: courseBookingId, prepaidVia: null },
-                data: { prepaidVia: method, prepaidPence: received, prepaidAt: new Date(), prepaidCheckoutId: pi.metadata.checkoutId || undefined, status: 'CONFIRMED' },
+                // BLD-1874: this is a BNPL course pre-payment taken via a Stripe
+                // Checkout link — 'payment_link' in the shared vocabulary
+                // (prepaidVia keeps its own finer klarna/clearpay/bnpl label).
+                data: { prepaidVia: method, prepaidPence: received, prepaidAt: new Date(), prepaidCheckoutId: pi.metadata.checkoutId || undefined, status: 'CONFIRMED', paymentMethod: 'payment_link' },
               });
               if (claimed.count > 0) {
                 try {
@@ -564,7 +574,26 @@ export async function POST(req: Request) {
           if (order) {
             const fullyRefunded = (charge.amount_refunded ?? 0) >= order.totalPence;
             if (!fullyRefunded) {
-              console.error(`[webhook] partial dashboard refund on order ${order.number} (${charge.amount_refunded}/${order.totalPence}p) — not auto-reconciled; complete it via Mark refunded in Orders.`);
+              // BLD-1881: unlike every other reconciliation branch in this file
+              // (disputes, chargebacks), a partial dashboard refund only ever
+              // logged to console — stock isn't restored, any gift-card portion
+              // isn't re-credited, and the order stays PAID/FULFILLED with no
+              // operator-visible trace. Surface it the same way disputes do:
+              // Sentry + a staff notification linking to the order.
+              const partialSummary = `Partial refund issued in the Stripe dashboard on order ${order.number} (£${((charge.amount_refunded ?? 0) / 100).toFixed(2)} of £${(order.totalPence / 100).toFixed(2)}) — not auto-reconciled; complete it via Mark refunded in Orders.`;
+              console.error(`[webhook] ${partialSummary}`);
+              Sentry.captureMessage(`[stripe] ${partialSummary}`, { level: 'warning', tags: { area: 'stripe-webhook', sub: 'order-partial-refund' } });
+              try {
+                const { notifyStaffByPermission } = await import('@/lib/notifications');
+                await notifyStaffByPermission('finance.manage', {
+                  kind: 'status',
+                  category: 'finance',
+                  priority: 'high',
+                  title: 'Partial refund needs reconciling',
+                  body: partialSummary,
+                  href: `/admin/orders?q=${encodeURIComponent(order.number)}`,
+                });
+              } catch (e) { console.error('[webhook] partial-refund staff notification failed:', (e as Error)?.message); }
             } else {
               // creditVoucher caps at the card's face value (BLD-646) but is not
               // per-call idempotent, and charge.refunded redelivers — so claim the

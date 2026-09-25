@@ -21,6 +21,9 @@ const hashesEqual = (a: string, b: string) => {
 // /api/consult and /api/booking/create. `marketingOptIn` is omitted (or
 // false) for the staff re-link path below, which only ever links an existing
 // record and never touches consent.
+// BLD-1870 scope note: deliberately excluded from the mandatory-fields rule —
+// this is an academy-to-clinic identity bridge, not full account registration;
+// forcing full PII here is a UX/conversion policy call beyond that ticket.
 async function linkClientByEmail(studentId: string, email: string, marketingOptIn?: boolean, firstName?: string): Promise<void> {
   try {
     const emailNorm = email.trim().toLowerCase();

@@ -65,7 +65,13 @@ export async function createManualBooking(input: {
   const treatment = isConsultation ? null : getTreatment(input.treatmentSlug);
   if (!isConsultation && !treatment) return { ok: false, error: 'Unknown treatment.' };
   if (!input.startISO) return { ok: false, error: 'Choose a time.' };
-  if (!input.clientId && (!input.email || !input.firstName)) return { ok: false, error: 'Name and email are required for a new client.' };
+  // BLD-1870: a client account cannot be created unless first name, last name,
+  // dob, phone and email are all provided — extends the previous name+email-only
+  // check to match the mandatory-fields rule (mirrors NewBookingButton.tsx's
+  // client-side check above it).
+  if (!input.clientId && (!input.email || !input.firstName || !input.lastName?.trim() || !input.phone?.trim() || !input.dob)) {
+    return { ok: false, error: 'First name, last name, date of birth, phone and email are required for a new client.' };
+  }
   const start = new Date(input.startISO);
   if (isNaN(+start)) return { ok: false, error: 'Invalid date/time.' };
   // BLD-1065: hold dob to the same rule the public forms use (lib/validation.ts):
@@ -179,9 +185,17 @@ export async function createManualBooking(input: {
     if (consultBooking) return { ok: false, error: 'A consultation can’t use a package session.' };
     if (sessions > 1) return { ok: false, error: 'A package session books one visit at a time.' };
     const { clientPackages } = await import('@/lib/package-sessions');
+    const { eligiblePackagesFor } = await import('@/lib/package-match');
     const pkg = (await clientPackages(client.id)).find((p) => p.purchaseBookingId === input.usePackageBookingId);
     if (!pkg) return { ok: false, error: 'That package could not be found on this client.' };
-    if (pkg.treatmentSlug !== input.treatmentSlug) return { ok: false, error: `That package is for a different treatment (${pkg.label}).` };
+    // BLD-1890: treatmentSlug alone is the marketing category, not the specific
+    // service/area (e.g. Chin vs Lower Leg share one "laser-hair-removal"
+    // slug) — also require the package's own variant (when recorded) to match
+    // the one actually being booked, so a session is never deducted off the
+    // wrong area's package.
+    if (!eligiblePackagesFor([pkg], input.treatmentSlug, chosenVariantId).length) {
+      return { ok: false, error: `That package is for a different treatment or area (${pkg.label}).` };
+    }
     if (pkg.sessionsRemaining < 1) return { ok: false, error: 'No sessions left on that package — every remaining session is already booked or used.' };
     packageBookingId = pkg.purchaseBookingId;
     packageSessionsTotal = pkg.sessionsTotal;

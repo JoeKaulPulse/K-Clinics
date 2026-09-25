@@ -62,7 +62,7 @@ export default async function ContractorLanding({
       </section>
 
       <footer className="mt-auto pt-10 text-center text-xs text-[var(--color-stone)]">
-        {site.address.street}, {site.address.locality}
+        {site.address.street}, {site.address.district}
       </footer>
     </main>
   );

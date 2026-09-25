@@ -408,7 +408,7 @@ async function ContactInfoSection({ data }: { data: Record<string, unknown> }) {
         {str(data.heading) && <h2 className="text-title">{str(data.heading)}</h2>}
         <div>
           <p className="eyebrow mb-3">Address</p>
-          <p className="font-[family-name:var(--font-display)] text-2xl leading-snug">{c.address.street}<br />{c.address.locality}<br />{c.address.region} {c.address.postalCode}</p>
+          <p className="font-[family-name:var(--font-display)] text-2xl leading-snug">{c.address.street}<br />{c.address.district}<br />{c.address.region} {c.address.postalCode}</p>
           <a href={c.mapLink} target="_blank" rel="noopener noreferrer" className="link-underline mt-3 inline-block text-sm font-medium text-[var(--color-gold-deep)]">Get directions →</a>
         </div>
         {/* min-w-0 belongs on the grid ITEMS: a grid item's automatic minimum

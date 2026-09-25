@@ -20,7 +20,11 @@ export const dynamic = 'force-dynamic';
 export default async function IncidentsPage() {
   if (!crmEnabled) return <CrmDisabled />;
   const session = await getSession();
-  if (!sessionCan(session, 'clients.clinical.view')) redirect('/admin');
+  // BLD-1882: this register spans every client, so per-client practitioner
+  // scoping can't apply. Same gate as GET /api/admin/incidents?all=1:
+  // clients.clinical.view alone is every PRACTITIONER's default grant and
+  // would expose other clinicians' patients' incident detail.
+  if (!sessionCan(session, 'clients.clinical.view') || !sessionCan(session, 'compliance.manage')) redirect('/admin');
 
   const { rows, total } = await listIncidentRegister();
 
