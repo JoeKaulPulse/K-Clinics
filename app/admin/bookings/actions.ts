@@ -530,7 +530,9 @@ export async function cancelBookingAction(bookingId: string, opts: { reason?: st
     }
   }
   const { cancelBooking } = await import('@/lib/booking-actions');
-  const res = await cancelBooking(bookingId, { by: session.email, reason: opts.reason, waiveFee: opts.waiveFee });
+  // BLD-1920: admin: true exempts staff from the new client-only 48h
+  // self-service block — mirrors rescheduleBookingAction's admin: true below.
+  const res = await cancelBooking(bookingId, { by: session.email, reason: opts.reason, waiveFee: opts.waiveFee, admin: true });
   revalidatePath(`/admin/bookings/${bookingId}`);
   revalidatePath('/admin/bookings');
   return res;
