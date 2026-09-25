@@ -5686,6 +5686,18 @@ export const BUILD_BACKLOG: BacklogItem[] = [
     ],
   },
   {
+    title: 'Make client account registration fields mandatory (BLD-1870)',
+    type: 'TASK', urgency: 'P2', status: 'IN_REVIEW', assignee: 'claude',
+    value: 6, effort: 3,
+    detail: "A client account could be created online without a last name or phone number, and staff could create one via the phone-booking modal without a last name, dob or phone. First name, last name, dob, phone and email should all be mandatory for a client account. prisma/schema.prisma's Client model only requires firstName/email at the DB level, which is correct to leave as-is: deploys run prisma db push without --accept-data-loss (CLAUDE.md), so adding a NOT NULL constraint to lastName/phone/dob on a table with existing rows that have them null would fail every deploy. This is enforced at the application/validation layer only, matching the existing clientSignupSchema convention (lib/validation.ts) rather than a schema change.",
+    notes: [
+      "Entry points fixed: (1) app/api/booking/create/route.ts's bookingCreateSchema (lib/validation.ts) had lastName and phone as optional -- both now require the exact same rules clientSignupSchema already uses (lastName min 1, phone min 7 digits via the same regex refine). This route has no current frontend caller (BookingFlow.tsx uses /api/booking/guest and /api/account/signup instead, both already on clientSignupSchema, which was already fully correct for all five fields) -- it's a standalone public endpoint kept for defence in depth, same rationale as its existing RED-client block (see BLD-1802 notes above), so tightening its schema closes the gap without needing a BookingFlow.tsx UI change. (2) The admin phone-booking 'new client' path: components/admin/NewBookingButton.tsx's client-side check and app/admin/bookings/create-action.ts's createManualBooking server-side check both only verified firstName + email format; both now also require lastName, phone (7+ digits) and dob (present and a valid past date, reusing the existing BLD-1065 dob-validity check) when tab/branch is 'new', with the error message spelled out as 'First name, last name, date of birth, phone and email are required for a new client.' The existing-client (clientId) path is untouched in both files.",
+      "Deliberately excluded (comment left at each site so this isn't re-flagged as an oversight): lib/validation.ts's kVisionSignupSchema (the K Vision AI-consultation quick-signup, BLD-928/BLD-734 owner decision -- passwordless, name+email only by design), app/api/waitlist/route.ts (a lead-capture 'notify me' join, not account registration), and lib/academy-auth.ts's linkClientByEmail (the academy-to-clinic identity bridge, which only links or minimally creates a Client row behind a trainee signup that has its own, separate mandatory-field rules). All three are lightweight lead-capture/bridge flows, not full account registration, and forcing full PII there is a UX/conversion policy call beyond this ticket's scope.",
+      "No schema change: prisma/schema.prisma's Client.lastName/phone/dob stay nullable. Making them DB-required would need an additive backfill path or a versioned migration (USE_MIGRATIONS=true) before a NOT NULL could ever land, per CLAUDE.md's non-destructive db push gate -- out of scope here since app-level validation already closes every account-creation entry point.",
+      "Verified: npx tsc --noEmit and npm run build pass clean.",
+    ],
+  },
+  {
     title: 'There is an issue with the Activity Log',
     type: 'ERROR', urgency: 'P0', status: 'SHIPPED', assignee: 'claude', pr: PR(1999),
     value: 8, effort: 2,

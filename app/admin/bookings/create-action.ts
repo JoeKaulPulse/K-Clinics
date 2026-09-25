@@ -65,7 +65,13 @@ export async function createManualBooking(input: {
   const treatment = isConsultation ? null : getTreatment(input.treatmentSlug);
   if (!isConsultation && !treatment) return { ok: false, error: 'Unknown treatment.' };
   if (!input.startISO) return { ok: false, error: 'Choose a time.' };
-  if (!input.clientId && (!input.email || !input.firstName)) return { ok: false, error: 'Name and email are required for a new client.' };
+  // BLD-1870: a client account cannot be created unless first name, last name,
+  // dob, phone and email are all provided — extends the previous name+email-only
+  // check to match the mandatory-fields rule (mirrors NewBookingButton.tsx's
+  // client-side check above it).
+  if (!input.clientId && (!input.email || !input.firstName || !input.lastName?.trim() || !input.phone?.trim() || !input.dob)) {
+    return { ok: false, error: 'First name, last name, date of birth, phone and email are required for a new client.' };
+  }
   const start = new Date(input.startISO);
   if (isNaN(+start)) return { ok: false, error: 'Invalid date/time.' };
   // BLD-1065: hold dob to the same rule the public forms use (lib/validation.ts):
