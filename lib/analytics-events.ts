@@ -55,20 +55,62 @@ export function trackViewItem({ id, name, category, valuePence = 0 }: { id: stri
   meta('ViewContent', { content_ids: [id], content_name: name, content_type: 'product', ...(category ? { content_category: category } : {}), currency: 'GBP', value });
 }
 
-/** Purchase — a completed booking. GA4 `purchase`; on the Meta side a booking is
- *  pre-charge, so we fire `Schedule` (not `Purchase`): the actual Meta `Purchase`
- *  is sent server-side from `lib/conversions.ts` when the card is charged, deduped
- *  by booking id. Set `metaPurchase: true` for a true point-of-sale Purchase.
- *  `valuePence` is in pence and converted to pounds for both platforms; pass
- *  `eventId` (booking id) to de-duplicate against the server-side CAPI copy. */
+/** Add to cart — a shop item added to the bag (top-of-funnel retargeting).
+ *  GA4 `add_to_cart` + Meta `AddToCart`, same params shape as `trackViewItem`
+ *  (product id, name, price, currency) plus quantity; fired from
+ *  components/shop/AddToCart.tsx alongside the existing view_item/ViewContent
+ *  and begin_checkout/InitiateCheckout events so the funnel joins up in
+ *  GA4/Meta (BLD-1631). */
+export function trackAddToCart({ id, name, category, valuePence = 0, quantity = 1 }: { id: string; name: string; category?: string; valuePence?: number; quantity?: number }) {
+  const qty = Math.max(1, quantity);
+  const value = (Math.max(0, valuePence) / 100) * qty;
+  ga4('add_to_cart', { currency: 'GBP', value, items: [{ item_id: id, item_name: name, quantity: qty, ...(category ? { item_category: category } : {}) }] });
+  meta('AddToCart', { content_ids: [id], content_name: name, content_type: 'product', ...(category ? { content_category: category } : {}), currency: 'GBP', value });
+}
+
+/** Purchase — a completed booking, or a true point-of-sale purchase (shop/gift
+ *  voucher/academy — `metaPurchase: true`), on the Meta side. GA4's `purchase`
+ *  has no such pre-charge/point-of-sale split: it is sent once, server-side,
+ *  from `lib/conversions.ts`'s `sendPurchase`/`ga4Purchase` at actual
+ *  card-charge time. So `ga4Purchase: false` (PRJ-1191.5 — see BookingFlow.tsx's
+ *  pre-charge booking-request callers) skips the GA4 side here entirely rather
+ *  than double-firing it with no `transaction_id` to dedupe against the
+ *  server-side copy. Meta still gets `Schedule` (not `Purchase`) pre-charge —
+ *  it dedupes correctly via `eventId` against the server-side CAPI copy, so
+ *  that side is unaffected. `valuePence` is in pence, converted to pounds for
+ *  both platforms. */
 export function trackPurchase({
   valuePence,
   currency = 'GBP',
   eventId,
   detail = {},
   metaPurchase = false,
-}: { valuePence: number; currency?: string; eventId?: string; detail?: Record<string, unknown>; metaPurchase?: boolean }) {
+  ga4Purchase = true,
+}: { valuePence: number; currency?: string; eventId?: string; detail?: Record<string, unknown>; metaPurchase?: boolean; ga4Purchase?: boolean }) {
   const value = Math.max(0, valuePence) / 100;
-  ga4('purchase', { currency, value, ...detail });
-  meta(metaPurchase ? 'Purchase' : 'Schedule', { currency, value }, eventId);
+  if (ga4Purchase) ga4('purchase', { currency, value, ...detail });
+  // BLD-1698: point-of-sale callers that pass `detail.items` (shape matches
+  // trackViewItem/trackAddToCart above) also get Meta's content_ids/content_type
+  // — previously every trackPurchase call sent Meta bare {currency, value}
+  // regardless of detail.
+  //
+  // Gated on `metaPurchase` deliberately, so this covers the retail surfaces
+  // only (shop products, gift vouchers, academy courses). The `Schedule` side is
+  // the booking flow, and its item_id is a ServiceVariant id — a stable
+  // per-treatment identifier. BLD-1251 removed exactly that class of field from
+  // the browser events it audited: it generalises even the *id* to the category
+  // for dentistry and intimate/medical aesthetics, because tying a procedure to
+  // an identifiable ad profile is UK GDPR Art. 9 special-category territory that
+  // generic cookie-banner consent does not cover. That fix explicitly left the
+  // booking-flow events as a follow-up owner decision, so bookings keep sending
+  // Meta bare {currency, value} until the owner makes it.
+  const items = metaPurchase && Array.isArray(detail.items) ? (detail.items as { item_id?: string }[]) : undefined;
+  const metaParams: Record<string, unknown> = { currency, value };
+  if (items?.length) {
+    // Only attach the pair when at least one id survives — content_type
+    // 'product' alongside an empty content_ids is a malformed Meta payload.
+    const ids = items.map((i) => i.item_id).filter(Boolean);
+    if (ids.length) { metaParams.content_ids = ids; metaParams.content_type = 'product'; }
+  }
+  meta(metaPurchase ? 'Purchase' : 'Schedule', metaParams, eventId);
 }

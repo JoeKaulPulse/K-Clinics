@@ -23,6 +23,14 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
   }
 
   const { db } = await import('@/lib/db');
+  const rawClient = await db.client.findUnique({ where: { id }, select: { id: true, bookings: { select: { practitionerId: true } } } });
+  // BLD-1720: a PRACTITIONER session must not export a client it has never
+  // actually had a booking with — same ownership check getClient/getBooking
+  // already apply (BLD-1693/1711); this export route had no such gate at all.
+  if (rawClient && session!.role === 'PRACTITIONER' && !rawClient.bookings.some((b) => b.practitionerId === session!.sub)) {
+    return NextResponse.json({ ok: false, error: 'Not found.' }, { status: 404 });
+  }
+
   const c = await db.client.findUnique({
     where: { id },
     include: {
@@ -38,6 +46,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
       waitlist: true,
       referralsMade: true,
       points: true, // loyalty ledger — the subject's own points history (BLD-315)
+      debts: true, // BLD-1572: staff-recorded outstanding balances are the subject's own data (Art. 15)
       callRecords: { select: { id: true, direction: true, durationSec: true, fromNumber: true, toNumber: true, answeredAt: true, endedAt: true, transcript: true, createdAt: true } },
     },
   });
@@ -93,18 +102,45 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
   }
 
   // Strip secrets from the dump.
-  const { passwordHash, resetTokenHash, resetTokenExp, ...client } = c as Record<string, unknown> & { passwordHash?: unknown; resetTokenHash?: unknown; resetTokenExp?: unknown };
-  void passwordHash; void resetTokenHash; void resetTokenExp;
+  const { passwordHash, resetTokenHash, resetTokenExp, inviteTokenHash, inviteTokenExp, ...client } = c as Record<string, unknown> & { passwordHash?: unknown; resetTokenHash?: unknown; resetTokenExp?: unknown; inviteTokenHash?: unknown; inviteTokenExp?: unknown };
+  void passwordHash; void resetTokenHash; void resetTokenExp; void inviteTokenHash; void inviteTokenExp;
 
   // Fetch records not declared as reverse-FK relations on Client (no include path). (BLD-315)
-  const [signedConsents, beforePhotos, chatConversations, shopOrders, consentRequests, promoRedemptions] = await Promise.all([
+  const [signedConsents, beforePhotos, chatConversations, shopOrders, consentRequests, promoRedemptions, giftVouchers, bookingIntents, newsletterSubscription] = await Promise.all([
     db.signedConsent.findMany({ where: { clientId: id } }),
     // Metadata only here; the decrypted image is added under the clinical gate below (BLD-367).
     db.beforePhoto.findMany({ where: { clientId: id }, select: { id: true, bookingId: true, area: true, capturedBy: true, attestation: true, createdAt: true } }),
     db.chatConversation.findMany({ where: { clientId: id }, include: { messages: true } }),
-    db.order.findMany({ where: { clientId: id }, include: { items: true }, orderBy: { createdAt: 'desc' } }),
+    // BLD-1879: Order.clientId is nullable (POS guest sales leave it null with
+    // only the order's own email set), so also include guest orders placed
+    // under this client's stored address. Guest rows only (clientId: null);
+    // case-insensitive because POS saves the email as typed. Staff-run SAR, so
+    // the subject's identity is checked before export — unlike the self-service
+    // export (app/api/account/export), which deliberately does not do this.
+    db.order.findMany({ where: { OR: [{ clientId: id }, { clientId: null, email: { equals: c.email, mode: 'insensitive' } }] }, include: { items: true }, orderBy: { createdAt: 'desc' } }),
     db.consentRequest.findMany({ where: { clientId: id }, orderBy: { createdAt: 'desc' } }),
     db.promoRedemption.findMany({ where: { clientId: id }, orderBy: { createdAt: 'desc' } }),
+    // BLD-1715: GiftVoucher has no FK relation to Client (claimedByClientId/
+    // purchaserEmail are plain columns, matched the same way eraseClientData
+    // matches them — app/admin/actions.ts:136-139), so it never surfaced in the
+    // include above and was missing from the SAR export even though erasure
+    // already covers it.
+    db.giftVoucher.findMany({ where: { OR: [{ claimedByClientId: id }, { purchaserEmail: c.email }] }, orderBy: { createdAt: 'desc' } }),
+    // BLD-1721: BookingIntent (an "email me my selection" capture from the
+    // funnel — no Client relation, matched by email like GiftVoucher above)
+    // was missing from the SAR export.
+    // Review fix (BLD-1721): match case-insensitively. Every BookingIntent and
+    // NewsletterSubscriber write lowercases the address, but Client.email does
+    // not — app/admin/clients/actions.ts saves a staff-edited address exactly
+    // as typed — so an exact match silently returns nothing for such a client
+    // and under-reports the SAR. Mirrors how eraseClientData already matches
+    // these two tables (app/admin/actions.ts), keeping export and erasure over
+    // the same rows.
+    db.bookingIntent.findMany({ where: { email: { equals: c.email, mode: 'insensitive' } }, orderBy: { createdAt: 'desc' } }),
+    // BLD-1721: NewsletterSubscriber likewise has no Client relation — the
+    // subject's own newsletter subscription record (active/unsubscribed,
+    // consent date, source) was missing entirely.
+    db.newsletterSubscriber.findUnique({ where: { email: c.email.toLowerCase() } }),
   ]);
 
   // BLD-1160: ChatMessage.body is encrypted at rest, like Consultation.message
@@ -122,6 +158,9 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
     shopOrders,
     consentRequests,
     promoRedemptions,
+    giftVouchers,
+    bookingIntents,
+    newsletterSubscription,
   };
 
   // BLD-1291: academy portfolio cases photographing this client (staff-linked

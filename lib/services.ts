@@ -1,5 +1,6 @@
 import 'server-only';
 import { cache } from 'react';
+import { unstable_cache } from 'next/cache';
 import { db } from '@/lib/db';
 import { crmEnabled } from '@/lib/crm';
 import { bookableTreatments } from '@/lib/treatments';
@@ -206,8 +207,6 @@ export const pricingByTreatment = cache(async (): Promise<Map<string, TreatmentP
     }
     for (const [slug, svcList] of byTreatment) {
       const variants: PricedVariant[] = [];
-      // Headline status: the first non-NORMAL service status, else NORMAL.
-      const serviceStatus = svcList.find((s) => s.status !== 'NORMAL')?.status ?? 'NORMAL';
       for (const s of svcList) {
         for (const v of s.variants) {
           const status = effectiveStatus(s.status, v.status);
@@ -234,6 +233,35 @@ export const pricingByTreatment = cache(async (): Promise<Map<string, TreatmentP
         if (fromOfferPence == null || payable < fromOfferPence) { fromOfferPence = payable; offerName = v.offerName; }
       }
       const discounted = fromOfferPence != null && fromPence != null && fromOfferPence < fromPence;
+      // BLD-1826: headline status is bookable (NORMAL) if ANY variant under this
+      // treatmentSlug is bookable — a treatment split across multiple Service rows
+      // (e.g. "Botox — Forehead" / "Botox — Full Face" both slug 'botox') must not
+      // read as wholesale Coming Soon just because a sibling Service is still
+      // COMING_SOON/UNAVAILABLE. Previously this picked the *first* non-NORMAL
+      // sibling status regardless of order, so fixing one Service's status in the
+      // admin left the public page stuck on the other's. Only when every variant
+      // is non-bookable does the headline fall back to whichever of the two shows.
+      //
+      // CONSULTATION keeps its own rung rather than collapsing into NORMAL:
+      // it is bookable (isBookableStatus), but it drives distinct behaviour that
+      // a bare NORMAL loses — the "On consultation" badge on the treatment card,
+      // the "Free consultation" CTA on the treatment page (BookingButtons
+      // `consult`), and the £0 card-on-file hold in /api/booking/create. A
+      // genuinely NORMAL sibling still outranks it, which is the case this fix
+      // is about.
+      const serviceStatus: ServiceStatus = variants.some((v) => v.status === 'NORMAL')
+        ? 'NORMAL'
+        : variants.some((v) => v.status === 'CONSULTATION')
+          ? 'CONSULTATION'
+          : variants.some((v) => v.status === 'COMING_SOON')
+            ? 'COMING_SOON'
+            : variants.some((v) => v.status === 'UNAVAILABLE')
+              ? 'UNAVAILABLE'
+              // No active variants at all (a Service row created but not yet given
+              // its variants): there is nothing to derive from, so keep the
+              // pre-BLD-1826 Service-level reading. Defaulting to NORMAL here would
+              // publish a half-configured COMING_SOON treatment as bookable.
+              : (svcList.find((s) => s.status !== 'NORMAL')?.status ?? 'NORMAL');
       map.set(slug, {
         status: serviceStatus,
         fromPence,
@@ -308,3 +336,15 @@ export async function bookingCatalogue(): Promise<BookingService[]> {
     }))
     .filter((s) => s.variants.length > 0);
 }
+
+// BLD-1833: the public /book page hit these on every request with no cache, so
+// it couldn't use the same hourly ISR as the homepage's featured pricing. Tag
+// matches SITE_CONFIG_TAG's pattern (lib/site-config.ts) — admin catalogue/offer
+// writes call revalidateTag(BOOK_CATALOGUE_TAG) (app/api/admin/services/route.ts)
+// so a price/offer/status change still shows immediately rather than waiting out
+// the window. Only /book uses these cached wrappers; every other caller
+// (booking/start pricing, admin catalogue editor, OffersStrip) still calls
+// bookingCatalogue()/liveOffers() directly and must stay uncached.
+export const BOOK_CATALOGUE_TAG = 'book-catalogue';
+export const getBookingCatalogue = unstable_cache(bookingCatalogue, ['book-catalogue-v1'], { tags: [BOOK_CATALOGUE_TAG], revalidate: 3600 });
+export const getPromotedOffers = unstable_cache(() => liveOffers(true), ['book-promoted-offers-v1'], { tags: [BOOK_CATALOGUE_TAG], revalidate: 3600 });

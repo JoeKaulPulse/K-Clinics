@@ -1,6 +1,7 @@
 import 'server-only';
 import * as Sentry from '@sentry/nextjs';
 import { getSecret } from '@/lib/secrets';
+import { fetchWithRetry } from '@/lib/fetch-retry';
 
 // Kiosk Skin & Smile AI analysis — lightweight, friendly, non-clinical.
 // Uses the same Claude API as K Vision (lib/ai-consultation.ts) but with a
@@ -26,18 +27,26 @@ const HAIKU = 'claude-haiku-4-5-20251001';
 // and billed upstream, which is what analyzeKioskPhotosV2's original budget rule
 // was guarding. Connection-level failures fail fast, never reach the model, and
 // still retry.
+//
+// BLD-1641: the actual network call now goes through the shared fetchWithRetry
+// (lib/fetch-retry.ts, already used by the Calendar/Xero integrations) instead
+// of a bare fetch(), so a transient 429 is retried the same as a 5xx -- the
+// kiosk's own AI outage handling previously only looked at `>= 500` and let a
+// rate-limit fail the whole customer-facing flow outright. `attempts: 1` keeps
+// fetchWithRetry as a single-shot timeout+fetch wrapper here: the outer loop
+// above still owns the retry decision so the timeout-exclusion rule (the
+// paragraph above) is preserved exactly -- fetchWithRetry has no way to tell a
+// timeout apart from any other thrown error, so letting it retry internally
+// would silently reintroduce the >60s worst case this file was fixed to avoid.
 async function postAnthropicWithRetry(key: string, body: object, timeoutMs = 30_000): Promise<Response> {
   for (let attempt = 0; attempt < 2; attempt++) {
-    const ac = new AbortController();
-    const timer = setTimeout(() => ac.abort(), timeoutMs);
     try {
-      const res = await fetch('https://api.anthropic.com/v1/messages', {
+      const res = await fetchWithRetry('https://api.anthropic.com/v1/messages', {
         method: 'POST',
-        signal: ac.signal,
         headers: { 'content-type': 'application/json', 'x-api-key': key, 'anthropic-version': '2023-06-01' },
         body: JSON.stringify(body),
-      });
-      if (!res.ok && res.status >= 500 && attempt === 0) {
+      }, { attempts: 1, timeoutMs, label: 'kiosk-ai' });
+      if ((res.status === 429 || res.status >= 500) && attempt === 0) {
         // Release the connection: nothing reads this body, and it is discarded.
         await res.body?.cancel().catch(() => {});
         await new Promise((r) => setTimeout(r, 600));
@@ -45,10 +54,9 @@ async function postAnthropicWithRetry(key: string, body: object, timeoutMs = 30_
       }
       return res;
     } catch (e) {
-      if (attempt === 0 && !ac.signal.aborted) { await new Promise((r) => setTimeout(r, 600)); continue; }
+      const isTimeout = e instanceof Error && e.name === 'TimeoutError';
+      if (attempt === 0 && !isTimeout) { await new Promise((r) => setTimeout(r, 600)); continue; }
       throw e;
-    } finally {
-      clearTimeout(timer);
     }
   }
   // Unreachable: the loop above always either returns or throws on its final iteration.

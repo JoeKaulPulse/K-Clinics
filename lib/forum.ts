@@ -95,21 +95,35 @@ export async function replyToThread(student: { id: string } & NameParts, threadI
 export type AdminPost = { id: string; authorName: string; isStaff: boolean; body: string; hidden: boolean; createdAt: string };
 export type AdminThread = {
   id: string; category: string; title: string; body: string; authorName: string; isStaff: boolean;
-  pinned: boolean; locked: boolean; hidden: boolean; replyCount: number; lastPostAt: string; createdAt: string; posts: AdminPost[];
+  pinned: boolean; locked: boolean; hidden: boolean; replyCount: number; lastPostAt: string; createdAt: string;
 };
 
-/** Every thread (including hidden) with its posts, for the moderation board. */
+/** BLD-1724: every thread (including hidden), summary only — mirrors the
+ *  public listThreads/getThread split above, so the moderation board no
+ *  longer loads every thread's full post history (worst case ~150k rows) on
+ *  every page view. A thread's posts load only when a moderator opens it,
+ *  via adminGetThreadPosts. */
 export async function adminListThreads(): Promise<AdminThread[]> {
   const rows = await db.forumThread.findMany({
     orderBy: [{ pinned: 'desc' }, { lastPostAt: 'desc' }],
     take: 300,
-    include: { posts: { orderBy: { createdAt: 'asc' }, take: 500 } },
   });
   return rows.map((t) => ({
     id: t.id, category: t.category, title: t.title, body: t.body, authorName: t.authorName, isStaff: t.isStaff,
     pinned: t.pinned, locked: t.locked, hidden: t.hidden, replyCount: t.postCount, lastPostAt: t.lastPostAt.toISOString(), createdAt: t.createdAt.toISOString(),
-    posts: t.posts.map((p) => ({ id: p.id, authorName: p.authorName, isStaff: p.isStaff, body: p.body, hidden: p.hidden, createdAt: p.createdAt.toISOString() })),
   }));
+}
+
+/** BLD-1724: a single thread's posts (including hidden ones), lazy-loaded
+ *  when a moderator expands it. */
+export async function adminGetThreadPosts(threadId: string): Promise<AdminPost[]> {
+  const posts = await db.forumPost.findMany({
+    where: { threadId },
+    orderBy: { createdAt: 'asc' },
+    take: 500,
+    select: { id: true, authorName: true, isStaff: true, body: true, hidden: true, createdAt: true },
+  });
+  return posts.map((p) => ({ id: p.id, authorName: p.authorName, isStaff: p.isStaff, body: p.body, hidden: p.hidden, createdAt: p.createdAt.toISOString() }));
 }
 
 /** Staff opens a thread (any category, including Announcements). */

@@ -2,9 +2,8 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState, type Ref } from 'react';
 import Link from 'next/link';
+import dynamic from 'next/dynamic';
 import { AnimatePresence, motion } from 'motion/react';
-import { Elements, PaymentElement, useElements, useStripe } from '@stripe/react-stripe-js';
-import { getStripe } from '@/lib/stripe-client';
 import { isDemo } from '@/lib/booking-mode';
 import { Glyph } from '@/components/ui/Glyph';
 import { demoSlots } from '@/lib/availability-client';
@@ -13,6 +12,7 @@ import { Button, ArrowIcon } from '@/components/ui/Button';
 import { REFRESHMENTS } from '@/lib/hospitality';
 import { trackPurchase } from '@/lib/analytics-events';
 import { WaitlistCTA } from '@/components/booking/WaitlistCTA';
+import { eligiblePackagesFor } from '@/lib/package-match';
 
 type Course = { sessions: number; totalPence: number };
 type Variant = { id: string; name: string; durationMin: number; displayDurationMin?: number | null; pricePence: number; offerPence: number | null; offerName: string | null; courses: Course[] };
@@ -20,11 +20,18 @@ type Service = { id: string; slug: string; treatmentSlug: string; name: string; 
 type ClientInfo = { signedIn: boolean; firstName: string; email: string; gender: string | null; smsReminders: boolean; hasPhone: boolean; welcomeEligible: boolean };
 // BLD-1346: a course the client has bought, with its derived session balance
 // (lib/package-sessions.ts). Only paid packages with sessions left are served.
-type Pkg = { purchaseBookingId: string; label: string; treatmentSlug: string; sessionsTotal: number; sessionsUsed: number; sessionsBooked: number; sessionsRemaining: number; paid: boolean };
+type Pkg = { purchaseBookingId: string; label: string; treatmentSlug: string; variantId: string | null; sessionsTotal: number; sessionsUsed: number; sessionsBooked: number; sessionsRemaining: number; paid: boolean };
 
-const field = 'w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-porcelain)] px-4 py-3 text-[var(--color-ink)] transition-colors placeholder:text-[var(--color-stone)] focus:border-[var(--color-gold)] focus-visible:ring-2 focus-visible:ring-[var(--color-gold)]';
+const field = 'w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-porcelain)] px-4 py-3 text-[var(--color-ink)] transition-colors placeholder:text-[var(--color-stone)] focus:border-[var(--color-gold-deep)] focus-visible:ring-2 focus-visible:ring-[var(--color-gold-deep)]';
 const label = 'mb-1.5 block text-xs uppercase tracking-[0.16em] text-[var(--color-stone)]';
 const money = (p: number) => (p <= 0 ? 'On consultation' : `£${(p / 100).toLocaleString('en-GB', { minimumFractionDigits: p % 100 ? 2 : 0 })}`);
+
+// PRJ-1200.12: the Stripe Elements JS (@stripe/react-stripe-js + @stripe/stripe-js)
+// is only needed once a visitor reaches the card step, which most of the funnel
+// never does — statically importing it here shipped it on every /book page load.
+// next/dynamic + ssr:false splits it into its own chunk, fetched only when this
+// component is actually rendered (stage === 'card'), not on BookingFlow mount.
+const StripeCardStep = dynamic(() => import('@/components/booking/StripeCardStep'), { ssr: false, loading: () => <CardStepLoading /> });
 
 const UPSELL_PCT = 20;
 
@@ -46,9 +53,33 @@ type Stage = 'account' | 'service' | 'variant' | 'time' | 'upsell' | 'card' | 'd
 export function BookingFlow({ catalogue, client, preselect = null, preselectDate = '', waitlistToken = '' }: { catalogue: Service[]; client: ClientInfo; preselect?: string | null; preselectDate?: string; waitlistToken?: string }) {
   const [authed, setAuthed] = useState(client.signedIn);
   const [firstName, setFirstName] = useState(client.firstName);
+  const [email, setEmail] = useState(client.email);
   const [gender, setGender] = useState<string | null>(client.gender);
   const [welcome, setWelcome] = useState(client.welcomeEligible);
   const [smsPref, setSmsPref] = useState(client.smsReminders);
+
+  // BLD-1833: /book no longer reads the session cookie when it renders, so
+  // `client` above is always the signed-out default — the real signed-in state
+  // (name, welcome-discount eligibility, SMS pref) is fetched here once
+  // mounted, same split as the packages effect below. Everything that depends
+  // on it must therefore read the state below, never the `client` prop.
+  useEffect(() => {
+    if (isDemo) return;
+    let live = true;
+    fetch('/api/booking/client-info')
+      .then((r) => r.json())
+      .then((j) => {
+        if (!live) return;
+        setAuthed(j.signedIn);
+        setFirstName(j.firstName);
+        setEmail(j.email);
+        setGender(j.gender);
+        setWelcome(j.welcomeEligible);
+        setSmsPref(j.smsReminders);
+      })
+      .catch(() => { /* stay on the signed-out default — client can still book as a guest */ });
+    return () => { live = false; };
+  }, []);
 
   // Deep-link preselect (e.g. from K Vision "Book →"): jump straight to the
   // variant step for that service when the client is already signed in.
@@ -138,17 +169,32 @@ export function BookingFlow({ catalogue, client, preselect = null, preselectDate
     return () => { live = false; };
   }, [authed]);
 
-  // The one package that covers the treatment being booked, if any.
-  const matchingPackage = useMemo(
-    () => (service ? packages.find((p) => p.treatmentSlug === service.treatmentSlug && p.sessionsRemaining > 0) : undefined),
-    [packages, service],
+  // BLD-1890: the treatment/area being booked may have more than one eligible
+  // package (a repeat purchase, or a category with several areas sharing one
+  // treatmentSlug) — list every one and let the client choose, rather than
+  // silently spending whichever package happened to match first.
+  const matchingPackages = useMemo(
+    () => (service ? eligiblePackagesFor(packages, service.treatmentSlug, variant?.id ?? null).filter((p) => p.sessionsRemaining > 0) : []),
+    [packages, service, variant],
   );
-  // Changing treatment (or switching to a course purchase) invalidates a
-  // selected package from a different treatment — clear it rather than letting
+  const chosenPackage = matchingPackages.find((p) => p.purchaseBookingId === usePackageId) ?? null;
+  // Changing treatment/area (or switching to a course purchase) invalidates a
+  // selected package that's no longer eligible — clear it rather than letting
   // a stale id reach the server and get rejected at the last step.
+  // '' = ticked but not yet chosen. If the eligible list narrows to one or none
+  // (or the picker is hidden) while pending, resolve it — the dropdown only
+  // renders for >1, so otherwise submit is blocked with nothing on screen to fix.
+  const onlyPackageId = matchingPackages.length === 1 ? matchingPackages[0].purchaseBookingId : null;
   useEffect(() => {
-    if (usePackageId && (matchingPackage?.purchaseBookingId !== usePackageId || sessions > 1)) setUsePackageId(null);
-  }, [matchingPackage, usePackageId, sessions]);
+    if (usePackageId === null) return;
+    if (sessions > 1) { setUsePackageId(null); return; }
+    if (usePackageId === '') {
+      if (!variant) setUsePackageId(null);
+      else if (matchingPackages.length <= 1) setUsePackageId(onlyPackageId);
+      return;
+    }
+    if (!chosenPackage) setUsePackageId(null);
+  }, [chosenPackage, usePackageId, sessions, variant, matchingPackages.length, onlyPackageId]);
 
   // Live availability from the admin engine (works without Stripe).
   useEffect(() => {
@@ -225,6 +271,23 @@ export function BookingFlow({ catalogue, client, preselect = null, preselectDate
     try { (window as Window & { gtag?: (...a: unknown[]) => void }).gtag?.('event', 'booking_stage', { stage }); } catch { /* analytics best-effort */ }
   }, [stage]);
 
+  // BLD-1833: the signed-in state now arrives AFTER mount (the client-info
+  // fetch above), so `authed` can flip to true while the visitor is already
+  // sitting on the account step — they pressed Continue at `upsell` before the
+  // fetch came back and were routed to sign up. The account step's signed-in
+  // branch renders only the "Securing your booking…" panel, and the Back /
+  // Continue bar is hidden for it, so without this the funnel dead-ends there
+  // with no way forward or back. Submitting is exactly what AccountStep's
+  // onAuthed does once it has an identity, so do that instead. Ref-guarded, so
+  // it can fire at most once and can never double-book.
+  const recoveredAccountStage = useRef(false);
+  useEffect(() => {
+    if (stage !== 'account' || !authed || submitting || error) return;
+    if (recoveredAccountStage.current) return;
+    recoveredAccountStage.current = true;
+    submitBooking();
+  }, [stage, authed, submitting, error]);
+
   // BLD-1515: each stage swaps the whole panel via AnimatePresence, but nothing
   // ever moved keyboard/screen-reader focus — it stayed parked on "Continue"
   // while the content silently replaced itself (WCAG 2.4.3 / 4.1.3). Every
@@ -272,6 +335,9 @@ export function BookingFlow({ catalogue, client, preselect = null, preselectDate
   const totalLabel = usePackageId && orderTotal <= 0 ? 'Nothing to pay — prepaid session' : money(orderTotal);
 
   async function submitBooking() {
+    // BLD-1890: "Use package session" is ticked but the client hasn't yet
+    // picked which of several eligible packages — never guess, make them choose.
+    if (usePackageId === '') { setError('Choose which course package to use.'); return; }
     setSubmitting(true); setError('');
     if (isDemo) { setSubmitting(false); setStage('card'); return; }
     try {
@@ -404,27 +470,44 @@ export function BookingFlow({ catalogue, client, preselect = null, preselectDate
               </div>
               {/* BLD-1346: this client already paid for a course of this
                   treatment and has sessions left — let them spend one instead
-                  of being quoted the full price again. */}
-              {variant && matchingPackage && (
+                  of being quoted the full price again. BLD-1890: they may hold
+                  more than one eligible package (a repeat purchase) — list every
+                  one and make them pick, never guess which to spend. */}
+              {variant && matchingPackages.length > 0 && (
                 <div className="mt-5 rounded-[var(--radius-md)] border border-[var(--color-gold)] bg-[color-mix(in_oklab,var(--color-gold)_8%,transparent)] p-4">
                   <label className="flex cursor-pointer items-start gap-3">
                     <input
                       type="checkbox"
                       className="mt-1 size-4 accent-[var(--color-gold-deep)]"
-                      checked={usePackageId === matchingPackage.purchaseBookingId}
+                      checked={usePackageId !== null}
                       onChange={(e) => {
-                        setUsePackageId(e.target.checked ? matchingPackage.purchaseBookingId : null);
+                        setUsePackageId(e.target.checked ? (matchingPackages.length === 1 ? matchingPackages[0].purchaseBookingId : '') : null);
                         if (e.target.checked) setSessions(1); // a package books one visit at a time
                       }}
                     />
-                    <span className="text-sm">
-                      <span className="block font-medium">Use one of your prepaid sessions — nothing to pay</span>
-                      <span className="mt-0.5 block text-[var(--color-stone)]">
-                        {matchingPackage.label}: {matchingPackage.sessionsRemaining} of {matchingPackage.sessionsTotal} left
-                        {matchingPackage.sessionsBooked > 0 ? ` · ${matchingPackage.sessionsBooked} already booked` : ''}
-                      </span>
-                    </span>
+                    <span className="block text-sm font-medium">Use one of your prepaid sessions — nothing to pay</span>
                   </label>
+                  {usePackageId !== null && matchingPackages.length > 1 && (
+                    <select
+                      className={field + ' mt-3'}
+                      aria-label="Which course"
+                      value={usePackageId}
+                      onChange={(e) => setUsePackageId(e.target.value)}
+                    >
+                      <option value="">Choose which course…</option>
+                      {matchingPackages.map((p) => (
+                        <option key={p.purchaseBookingId} value={p.purchaseBookingId}>
+                          {p.label} — {p.sessionsRemaining} of {p.sessionsTotal} left
+                        </option>
+                      ))}
+                    </select>
+                  )}
+                  {chosenPackage && (
+                    <span className="mt-2 block text-sm text-[var(--color-stone)]">
+                      {chosenPackage.label}: {chosenPackage.sessionsRemaining} of {chosenPackage.sessionsTotal} left
+                      {chosenPackage.sessionsBooked > 0 ? ` · ${chosenPackage.sessionsBooked} already booked` : ''}
+                    </span>
+                  )}
                 </div>
               )}
 
@@ -513,7 +596,7 @@ export function BookingFlow({ catalogue, client, preselect = null, preselectDate
               )}
               {/* BLD-838: optional email capture — anonymous visitors only (signed-in
                   clients are already recoverable). Never blocks progress. */}
-              {!client.email && <SaveProgress treatmentSlug={service.treatmentSlug} variantLabel={variant.name} />}
+              {!email && <SaveProgress treatmentSlug={service.treatmentSlug} variantLabel={variant.name} />}
             </div>
           )}
 
@@ -587,9 +670,9 @@ export function BookingFlow({ catalogue, client, preselect = null, preselectDate
                 <div className="flex justify-between"><span className="text-[var(--color-stone)]">Due today</span><span className="font-medium text-[var(--color-stone)]">Nothing charged until after your visit</span></div>
                 <div className="flex justify-between"><span className="text-[var(--color-stone)]">Total at your visit</span><span className="font-medium text-[var(--color-ink)]">{totalLabel}</span></div>
                 {promo?.ok && !usePackageId && <div className="mt-1 flex justify-between text-[var(--color-jade,#3f7a5a)]"><span>Promo {promo.code}</span><span>−{money(promo.discountPence || 0)} applied</span></div>}
-                {usePackageId && matchingPackage && (
+                {usePackageId && chosenPackage && (
                   <div className="mt-1 flex justify-between text-[var(--color-gold-deep)]">
-                    <span>{matchingPackage.label}</span>
+                    <span>{chosenPackage.label}</span>
                     <span>1 prepaid session used</span>
                   </div>
                 )}
@@ -631,7 +714,7 @@ export function BookingFlow({ catalogue, client, preselect = null, preselectDate
               </div>
               <div className="mt-5">
                 {isDemo ? <DemoCard onDone={() => setStage('done')} onError={setError} />
-                  : <ElementsWrapper clientSecret={clientSecret}><CardStep bookingId={bookingId} clientSecret={clientSecret} onDone={() => setStage('done')} onError={setError} /></ElementsWrapper>}
+                  : <StripeCardStep bookingId={bookingId} clientSecret={clientSecret} onDone={() => setStage('done')} onError={setError} />}
               </div>
             </div>
           )}
@@ -762,12 +845,24 @@ function AccountStep({ onAuthed, setError, headingRef }: { onAuthed: (i: { first
   // Guest booking (BLD-550): same identity + consent, no password. Creates a
   // passwordless account + session so the rest of the flow works; they get an
   // email to set a password later.
+  // BLD-1682: per-field errors + focus-move-to-first-invalid, matching signup()
+  // (BLD-1674) — same required fields as guest checkout itself (no password,
+  // since guest has none), same fieldErrors/focusFirstInvalid pattern, reusing
+  // both directly since guest() shares AccountStep's closure with signup().
   async function guest() {
     const digits = (f.phone.match(/\d/g) || []).length;
     const dobErr = dobError(f.dob);
-    if (!f.firstName || !f.lastName.trim() || !/\S+@\S+\.\S+/.test(f.email) || digits < 7 || dobErr || !f.consent) {
-      setError(dobErr || 'Please complete all required fields (surname, a valid mobile, date of birth) and accept the terms.'); return;
-    }
+    const fieldErrors: Record<string, string> = {};
+    if (!f.firstName) fieldErrors.firstName = 'First name is required.';
+    if (!f.lastName.trim()) fieldErrors.lastName = 'Last name is required.';
+    if (!/\S+@\S+\.\S+/.test(f.email)) fieldErrors.email = 'Enter a valid email address.';
+    if (digits < 7) fieldErrors.phone = 'Enter a valid mobile number.';
+    if (dobErr) fieldErrors.dob = dobErr;
+    if (!f.consent) fieldErrors.consent = 'Please accept the booking terms to continue.';
+    // Clear any stale banner from a previous submit — the inline messages are
+    // now the whole story for client-side validation, same as signup().
+    if (Object.keys(fieldErrors).length > 0) { setErrors(fieldErrors); setError(''); focusFirstInvalid(fieldErrors); return; }
+    setErrors({});
     setBusy(true); setError('');
     try {
       const res = await fetch('/api/booking/guest', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ firstName: f.firstName, lastName: f.lastName, email: f.email, phone: f.phone, dob: f.dob, gender: f.gender || undefined, marketingOptIn: f.marketingOptIn, consent: f.consent, locale: 'en', company: f.company }) });
@@ -845,10 +940,14 @@ function RequestReceived({ firstName, treatment, slot, orderTotal, variantId, ca
     // BLD-873: a same-day request is a placed booking pending approval — fire
     // the same browser conversion Done does, deduped with the server CAPI
     // Schedule via the booking id (previously this outcome tracked nothing).
+    // PRJ-1191.5: ga4Purchase: false — the request is pre-charge; the sole GA4
+    // `purchase` fires server-side (lib/conversions.ts) when the card is
+    // actually charged, or this double-counted every booking in GA4.
     trackPurchase({
       valuePence: orderTotal,
       eventId: bookingId || undefined,
       detail: { items: [{ item_id: variantId, item_name: treatment, item_category: category }] },
+      ga4Purchase: false,
     });
   }, []);
   return (
@@ -866,12 +965,17 @@ function RequestReceived({ firstName, treatment, slot, orderTotal, variantId, ca
 
 function Done({ firstName, treatment, slot, orderTotal, variantId, category, bookingId }: { firstName: string; treatment?: string; slot: string; orderTotal: number; variantId: string; category?: string; bookingId?: string }) {
   useEffect(() => {
-    // GA4 `purchase` + Meta `Schedule` (pre-charge); eventId = booking id so the
-    // browser Pixel de-duplicates against the server-side CAPI Schedule.
+    // Meta `Schedule` (pre-charge); eventId = booking id so the browser Pixel
+    // de-duplicates against the server-side CAPI Schedule.
+    // PRJ-1191.5: no GA4 `purchase` here — the card is only saved, not charged,
+    // at this step. Firing it anyway (with no transaction_id) double-counted
+    // every booking against the real GA4 `purchase` lib/conversions.ts sends
+    // server-side at actual card-charge time.
     trackPurchase({
       valuePence: orderTotal,
       eventId: bookingId || undefined,
       detail: { items: [{ item_id: variantId, item_name: treatment, item_category: category }] },
+      ga4Purchase: false,
     });
   }, []);
   return (
@@ -897,44 +1001,12 @@ function Done({ firstName, treatment, slot, orderTotal, variantId, category, boo
   );
 }
 
-function ElementsWrapper({ clientSecret, children }: { clientSecret: string; children: React.ReactNode }) {
-  return (
-    <Elements stripe={getStripe()} options={{ clientSecret, appearance: { theme: 'flat', variables: { colorPrimary: '#816748', fontFamily: 'system-ui, sans-serif', borderRadius: '10px', colorBackground: '#f6ece3' } } }}>
-      {children}
-    </Elements>
-  );
-}
-
-function CardStep({ bookingId, clientSecret, onDone, onError }: { bookingId: string; clientSecret: string; onDone: () => void; onError: (e: string) => void }) {
-  const stripe = useStripe();
-  const elements = useElements();
-  const [submitting, setSubmitting] = useState(false);
-  async function submit() {
-    if (!stripe || !elements) return;
-    setSubmitting(true); onError('');
-    const { error } = await stripe.confirmSetup({ elements, redirect: 'if_required' });
-    if (error) { onError(error.message || 'Card could not be saved.'); setSubmitting(false); return; }
-    // The card is saved now. Confirming is idempotent server-side (a repeat call
-    // returns the same success), so a transient failure here is safe to surface
-    // for retry without double-booking — and must not leave the button hung.
-    try {
-      // BLD-700: the client secret proves this browser ran the Elements flow.
-      const res = await fetch('/api/booking/confirm', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ bookingId, clientSecret }) });
-      const j = await res.json().catch(() => null);
-      if (j?.ok) { onDone(); return; }
-      onError(j?.error || 'Your card was saved, but we couldn’t finish confirming. Please tap Confirm again — you won’t be booked or charged twice.');
-      setSubmitting(false);
-    } catch {
-      onError('Your card was saved. If you don’t receive a confirmation email shortly, check “My appointments”, then tap Confirm again.');
-      setSubmitting(false);
-    }
-  }
-  return (
-    <div>
-      <PaymentElement />
-      <div className="mt-6 flex justify-end"><Button onClick={submit} disabled={submitting} variant="gold" size="lg">{submitting ? 'Confirming…' : 'Confirm booking'} <ArrowIcon /></Button></div>
-    </div>
-  );
+// PRJ-1200.12: brief placeholder shown while the dynamically-imported
+// StripeCardStep chunk loads (typically sub-second on a warm cache) — the
+// visitor already sees the "Secure your booking" heading and summary above
+// this, so a plain skeleton is enough, not a full spinner treatment.
+function CardStepLoading() {
+  return <div className="h-32 animate-pulse rounded-[var(--radius-md)] bg-[var(--color-porcelain)]" aria-hidden />;
 }
 
 // BLD-838 — optional "email me my selection" capture on the time step. Gives a
@@ -965,7 +1037,7 @@ function SaveProgress({ treatmentSlug, variantLabel }: { treatmentSlug: string; 
     <div className="mt-8 rounded-[var(--radius-md)] border border-[var(--color-line)] bg-[var(--color-bone)]/50 p-4">
       <label htmlFor="bintent" className={label}>Email me my selection so I can finish later (optional)</label>
       <div className="mt-1 flex flex-wrap items-center gap-2">
-        <input id="bintent" type="email" autoComplete="email" value={email} onChange={(e) => { setEmail(e.target.value); if (status === 'saved') setStatus(''); }} onBlur={save} placeholder="you@email.com" aria-label="Email me my selection" className="min-w-0 flex-1 rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-3 py-2 text-sm focus:border-[var(--color-gold)] focus-visible:ring-2 focus-visible:ring-[var(--color-gold)]" />
+        <input id="bintent" type="email" autoComplete="email" value={email} onChange={(e) => { setEmail(e.target.value); if (status === 'saved') setStatus(''); }} onBlur={save} placeholder="you@email.com" aria-label="Email me my selection" className="min-w-0 flex-1 rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-3 py-2 text-sm focus:border-[var(--color-gold-deep)] focus-visible:ring-2 focus-visible:ring-[var(--color-gold-deep)]" />
         <input type="text" tabIndex={-1} autoComplete="off" value={company} onChange={(e) => setCompany(e.target.value)} className="absolute -left-[9999px] h-0 w-0" aria-hidden />
         <button type="button" onClick={save} disabled={status === 'saving' || !valid} className="shrink-0 rounded-full border border-[var(--color-line)] px-4 py-2 text-sm font-medium hover:border-[var(--color-gold)] disabled:opacity-50">{status === 'saving' ? '…' : 'Save'}</button>
       </div>

@@ -27,7 +27,7 @@ export default async function AssessmentsPage() {
   const pct = total ? Math.round((doneCount / total) * 100) : 0;
 
   return (
-    <PortalShell firstName={client.firstName} locale={locale}>
+    <PortalShell firstName={client.firstName} locale={locale} termsAccepted={!!client.termsAcceptedAt}>
       <PortalPageHeader eyebrow={t('asmt.eyebrow')} title={t('asmt.title')} subtitle={t('asmt.intro')} />
 
       {/* Progress band */}

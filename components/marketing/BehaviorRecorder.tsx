@@ -3,6 +3,7 @@
 import { useEffect, useRef } from 'react';
 import { usePathname } from 'next/navigation';
 import { getConsent } from '@/components/legal/CookieConsent';
+import { NO_RECORD_PATH } from '@/lib/no-record-paths';
 
 // First-party heatmap + session-replay capture. Runs ONLY after analytics
 // consent and never on the admin/portal areas. Inputs are masked; we store
@@ -17,7 +18,8 @@ const SAMPLE = 0.08; // fraction of consenting sessions to record
 // data — name/email/address/DOB — is entered/echoed there; BLD-1314), or the
 // academy portal (BLD-1621: real client before/after treatment photos,
 // trainee income/employment/residency data, and trainee contact details).
-const NO_RECORD_PATH = /^\/(admin|account|book|booking|shop|academy)(\/|$)/;
+// PRJ-1191.1: NO_RECORD_PATH now lives in lib/no-record-paths.ts, shared with
+// the server-side ingest safeguard, so the two lists can't drift apart again.
 
 function sessionKey(): string {
   try {

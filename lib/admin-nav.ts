@@ -88,6 +88,7 @@ export const navGroups: NavGroup[] = [
     { href: '/admin/day-close', key: 'nav.dayclose', perm: 'dayclose.run', keywords: 'cash up end of day reconciliation till' },
     { href: '/admin/facility', key: 'nav.facility', perm: 'facility.view', keywords: 'floor plan electrical plumbing equipment where things are maintenance knowledge base' },
     { href: '/admin/compliance', key: 'nav.compliance', perm: 'compliance.view', keywords: 'compliance renewals insurance licence licences certification pat testing eicr equipment servicing waste contract expiry deadlines renewal dates reminders certificates' },
+    { href: '/admin/incidents', key: 'nav.incidents', perm: 'compliance.manage', keywords: 'incidents accidents riddor adverse reaction health and safety register h&s report reportable' },
   ] },
   { heading: 'nav.group.marketing', icon: 'marketing', items: [
     { href: '/admin/marketing', key: 'nav.marketing', exact: true, perm: 'campaigns.view', keywords: 'hub overview' },

@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
+import Image from 'next/image';
 import { notFound } from 'next/navigation';
 import { Markdown } from '@/components/academy/Markdown';
 import { LessonMedia, Downloads } from '@/components/academy/LessonMedia';
@@ -37,8 +38,25 @@ export default async function TasterLessonPage({ params }: { params: Promise<{ s
 
         <LessonMedia lesson={lesson} />
         {lesson.imageUrl && !lesson.videoUrl && (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img src={lesson.imageUrl} alt={lesson.title} className="mt-6 w-full rounded-[var(--radius-lg)] border border-[var(--color-line)]" />
+          // PRJ-1191.7: lesson.imageUrl is staff-set in the curriculum admin (a
+          // free-typed URL, not restricted to Vercel Blob — see MediaPicker's
+          // manual "https://…" field), so it can be any external host, not only
+          // the ones allow-listed in next.config.mjs images.remotePatterns.
+          // `unoptimized` skips next/image's optimizer (and its host check)
+          // entirely, matching the previous plain <img>'s "any https URL works"
+          // behaviour, while `fill` in a sized parent still reserves layout
+          // space up front to prevent CLS.
+          // Review fix: object-contain, not object-cover. The previous plain <img
+          // className="w-full"> rendered the staff-set image at its own aspect
+          // ratio, so cropping it to 16:9 silently cut the top and bottom off
+          // anything portrait or square — and the enrolled-student view of the
+          // same image (components/academy/CoursePlayer.tsx) still renders it
+          // uncropped, so the taster would have disagreed with the real lesson.
+          // object-contain keeps the whole image inside the reserved box (on the
+          // bone surface, letterboxed) — same CLS protection, nothing cut off.
+          <div className="relative mt-6 aspect-video w-full overflow-hidden rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-bone)]">
+            <Image src={lesson.imageUrl} alt={lesson.title} fill unoptimized sizes="(max-width: 768px) 100vw, 48rem" className="object-contain" />
+          </div>
         )}
         <div className="prose-lux mt-2"><Markdown text={lesson.body} /></div>
 

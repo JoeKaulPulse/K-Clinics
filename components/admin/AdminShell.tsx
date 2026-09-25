@@ -336,7 +336,7 @@ export function AdminShell({
                     </Link>
                     <label className="block px-4 py-2.5">
                       <span className="mb-1 block text-[0.6rem] uppercase tracking-[0.14em] text-[var(--color-stone)]">{t('shell.language')}</span>
-                      <select value={locale} onChange={(e) => changeLanguage(e.target.value as Locale)} className="w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-porcelain)] px-2 py-1.5 text-sm outline-none focus:border-[var(--color-gold)] focus-visible:ring-2 focus-visible:ring-[var(--color-gold)]">
+                      <select value={locale} onChange={(e) => changeLanguage(e.target.value as Locale)} className="w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-porcelain)] px-2 py-1.5 text-sm outline-none focus:border-[var(--color-gold-deep)] focus-visible:ring-2 focus-visible:ring-[var(--color-gold-deep)]">
                         {LOCALES.map((l) => <option key={l} value={l}>{LOCALE_LABELS[l]}</option>)}
                       </select>
                     </label>
@@ -354,7 +354,7 @@ export function AdminShell({
           </header>
           {/* key={pathname} restarts the entrance on every navigation — a short
               fade-up that makes page changes feel composed rather than abrupt. */}
-          <main id="admin-main" key={pathname} className="kc-page-enter flex-1 p-5 md:p-8 lg:p-10">
+          <main id="admin-main" key={pathname} tabIndex={-1} className="kc-page-enter flex-1 p-5 md:p-8 lg:p-10">
             {allowed.has('dayclose.run') && <CloseDownReminder />}
             {children}
           </main>

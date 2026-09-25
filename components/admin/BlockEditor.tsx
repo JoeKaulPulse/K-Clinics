@@ -284,7 +284,7 @@ const EDITOR_CSS = `
 .be-insert{height:0;overflow:visible;display:flex;justify-content:center;position:relative;z-index:2;}
 .be-add{display:inline-flex;align-items:center;justify-content:center;width:1.4rem;height:1.4rem;margin-top:-0.1rem;border-radius:999px;background:var(--color-porcelain);border:1px solid var(--color-line);color:var(--color-stone);opacity:0;transition:opacity .15s,color .15s,border-color .15s;}
 .be-row:hover .be-add{opacity:1;}
-.be-add:hover{color:var(--color-gold);border-color:var(--color-gold);}
+.be-add:hover{color:var(--color-gold-deep);border-color:var(--color-gold);}
 .be-add-primary{display:inline-flex;align-items:center;border-radius:999px;background:var(--color-ink);color:var(--color-porcelain);padding:0.5rem 1.1rem;font-size:0.85rem;}
 .be-menu{position:absolute;left:50%;top:1.6rem;transform:translateX(-50%);z-index:30;width:11rem;background:var(--color-porcelain);border:1px solid var(--color-line);border-radius:var(--radius-md);box-shadow:var(--shadow-lift);padding:0.3rem;display:grid;gap:1px;}
 .be-menu-item{display:flex;align-items:center;gap:0.6rem;width:100%;text-align:left;font-size:0.85rem;padding:0.45rem 0.6rem;border-radius:var(--radius-sm);color:var(--color-ink-soft);}
@@ -298,7 +298,7 @@ const EDITOR_CSS = `
 .be-h2,.be-input.be-h2{font-family:var(--font-display),serif;font-size:clamp(1.5rem,1.2rem+1vw,2rem);line-height:1.15;color:var(--color-ink);font-weight:500;}
 .be-h3,.be-input.be-h3{font-family:var(--font-display),serif;font-size:1.3rem;line-height:1.2;color:var(--color-ink);font-weight:500;}
 .be-p,.be-input.be-p{font-size:1.05rem;line-height:1.75;color:var(--color-ink-soft);}
-.be-p a,.be-preview a{color:var(--color-gold);text-decoration:underline;text-underline-offset:3px;}
+.be-p a,.be-preview a{color:var(--color-gold-deep);text-decoration:underline;text-underline-offset:3px;}
 .be-quote,.be-input.be-quote{border-left:3px solid var(--color-gold);padding-left:1rem;font-style:italic;color:var(--color-stone);font-size:1.1rem;line-height:1.6;}
 .be-quote cite{display:block;margin-top:0.4rem;font-style:normal;font-size:0.85rem;color:var(--color-stone);}
 .be-callout,.be-input.be-callout{background:var(--color-bone);border:1px solid var(--color-line);border-left:3px solid var(--color-gold);border-radius:var(--radius-md);padding:1rem 1.2rem;color:var(--color-ink-soft);font-size:1rem;line-height:1.6;}

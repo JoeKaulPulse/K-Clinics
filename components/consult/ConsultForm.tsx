@@ -33,7 +33,7 @@ const aesthetic = treatments.filter((t) => t.category === 'aesthetics');
 const dental = treatments.filter((t) => t.category === 'dentistry');
 
 const field =
-  'w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-porcelain)] px-4 py-3 text-[var(--color-ink)] outline-none transition-colors placeholder:text-[var(--color-stone)] focus:border-[var(--color-gold)] focus-visible:ring-2 focus-visible:ring-[var(--color-gold)]';
+  'w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-porcelain)] px-4 py-3 text-[var(--color-ink)] outline-none transition-colors placeholder:text-[var(--color-stone)] focus:border-[var(--color-gold-deep)] focus-visible:ring-2 focus-visible:ring-[var(--color-gold-deep)]';
 const label = 'mb-1.5 block text-xs uppercase tracking-[0.16em] text-[var(--color-stone)]';
 
 export function ConsultForm() {
@@ -232,11 +232,11 @@ export function ConsultForm() {
           ← Back
         </button>
         {step < 3 ? (
-          <Button onClick={() => canNext && setStep((s) => s + 1)} variant={canNext ? 'gold' : 'outline'}>
+          <Button onClick={() => setStep((s) => s + 1)} disabled={!canNext} variant={canNext ? 'gold' : 'outline'}>
             Continue <ArrowIcon />
           </Button>
         ) : (
-          <Button onClick={() => d.consent && submit()} disabled={status === 'sending'} variant={d.consent ? 'gold' : 'outline'}>
+          <Button onClick={submit} disabled={!d.consent || status === 'sending'} variant={d.consent ? 'gold' : 'outline'}>
             {status === 'sending' ? 'Sending…' : 'Request consultation'} <ArrowIcon />
           </Button>
         )}

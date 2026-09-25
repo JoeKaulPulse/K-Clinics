@@ -26,9 +26,9 @@ export function SectionRenderer({ sections, includeHidden = false }: { sections:
     .flatMap((s) => (Array.isArray((s.data as { blocks?: Block[] }).blocks) ? (s.data as { blocks: Block[] }).blocks : []))
     .filter((b): b is Extract<Block, { type: 'heading' }> => b.type === 'heading' && !!b.text?.trim())
     .map((b) => ({ text: b.text, slug: slugifyHeading(b.text), level: b.level }));
-  return <>{visible.map((s) => (
+  return <>{visible.map((s, index) => (
     <SectionFrame key={s.id} data={s.data}>
-      {s.type === 'tableOfContents' ? <TocSection data={s.data} headings={headings} /> : <SectionView section={s} />}
+      {s.type === 'tableOfContents' ? <TocSection data={s.data} headings={headings} /> : <SectionView section={s} priority={index === 0} />}
     </SectionFrame>
   ))}</>;
 }
@@ -89,7 +89,7 @@ function CmsButton({ label, href, variant = 'ink' }: { label: string; href: stri
   return <Link href={href} className={`inline-flex items-center gap-2 rounded-full px-6 py-3 text-sm font-medium transition-colors ${cls}`}>{label}</Link>;
 }
 
-function SectionView({ section: { type, data } }: { section: Section }) {
+function SectionView({ section: { type, data }, priority = false }: { section: Section; priority?: boolean }) {
   switch (type) {
     case 'abHeadline':
       return (
@@ -139,7 +139,7 @@ function SectionView({ section: { type, data } }: { section: Section }) {
         <section className="container-lux grid items-center gap-12 py-20 md:grid-cols-2 md:py-28">
           <MaskReveal className={`relative aspect-[4/5] overflow-hidden rounded-[var(--radius-2xl)] shadow-[var(--shadow-lift)] ${right ? 'md:order-2' : ''}`}>
             {img
-              ? <Image src={img} alt={str(data.heading)} fill sizes="(max-width: 768px) 100vw, 50vw" className="object-cover" style={{ objectPosition: str(data.focal, '50% 50%') }} />
+              ? <Image src={img} alt={str(data.heading)} fill sizes="(max-width: 768px) 100vw, 50vw" className="object-cover" style={{ objectPosition: str(data.focal, '50% 50%') }} priority={priority} />
               : <MediaArt src="" from="#a98a6d" to="#7b6a5d" alt={str(data.heading)} className="h-full w-full" />}
           </MaskReveal>
           <Reveal delay={0.1}>

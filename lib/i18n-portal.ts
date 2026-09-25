@@ -276,12 +276,45 @@ export const PORTAL_DICT: Record<string, Entry> = {
   'appt.cancelConfirm': { en: 'Cancel this appointment? A late-cancellation fee may apply if less than 24 hours remain.', uk: 'Скасувати цей запис? Якщо залишилося менше 24 годин, може стягуватися плата за пізнє скасування.' },
   'appt.cancelLateFee': { en: 'Cancelled. A late-cancellation fee was charged:', uk: 'Скасовано. Стягнуто плату за пізнє скасування:' },
   'appt.cancelError': { en: 'Could not cancel. Please try again or call us.', uk: 'Не вдалося скасувати. Спробуйте ще раз або зателефонуйте нам.' },
+  // BLD-1878: the confirm dialog (replacing window.confirm) states the actual
+  // fee, not just "may apply" — the amount is known server-side before the
+  // client ever confirms.
+  'appt.cancelTitle': { en: 'Cancel appointment?', uk: 'Скасувати запис?' },
+  'appt.cancelConfirmFee': { en: 'This appointment is within 24 hours, so cancelling now will charge a late-cancellation fee of {fee}.', uk: 'До цього запису залишилося менше 24 годин, тому скасування зараз призведе до стягнення плати за пізнє скасування у розмірі {fee}.' },
+  'appt.cancelConfirmSession': { en: 'This appointment is within 24 hours, so cancelling now will use one prepaid session from your course.', uk: 'До цього запису залишилося менше 24 годин, тому скасування зараз спише одне передоплачене заняття з вашого курсу.' },
+  'appt.cancelConfirmFree': { en: 'Are you sure you want to cancel this appointment? No fee applies.', uk: 'Ви впевнені, що хочете скасувати цей запис? Плата не стягується.' },
+  'appt.cancelKeep': { en: 'Keep appointment', uk: 'Залишити запис' },
+  'appt.cancelNow': { en: 'Yes, cancel', uk: 'Так, скасувати' },
+  // BLD-1920: shown in place of the Reschedule/Cancel controls once a booking
+  // is inside the 48h self-service window — split so the policy name can
+  // link to /info/cancellations-refunds, mirroring signup.consentPre/Terms.
+  'appt.policyPre': { en: 'This appointment is less than 48 hours away, so it’s now subject to our', uk: 'До цього запису залишилося менше 48 годин, тому він тепер підпадає під нашу' },
+  'appt.policyName': { en: 'Cancellation & Rescheduling Policy', uk: 'Політику скасування та перенесення запису' },
+  'appt.policyPost': { en: '. Please call us on 020 8050 0750 and our team will help.', uk: '. Будь ласка, зателефонуйте нам за номером 020 8050 0750 — наша команда допоможе.' },
   'status.REQUESTED': { en: 'Requested — awaiting confirmation', uk: 'Запит — очікує підтвердження' },
   'status.PENDING': { en: 'Awaiting confirmation', uk: 'Очікує підтвердження' },
   'status.CONFIRMED': { en: 'Confirmed', uk: 'Підтверджено' },
   'status.COMPLETED': { en: 'Completed', uk: 'Завершено' },
   'status.CANCELLED': { en: 'Cancelled', uk: 'Скасовано' },
   'status.NO_SHOW': { en: 'Missed', uk: 'Пропущено' },
+
+  // Card on file (BLD-1797)
+  'card.title': { en: 'Card on file', uk: 'Картка на файлі' },
+  'card.intro': { en: 'Save a card for no-show and late-cancellation protection. No payment is taken now — your card is only charged if you miss an appointment or cancel within 24 hours.', uk: 'Збережіть картку для захисту від неявки та пізнього скасування. Зараз оплата не стягується — картку буде списано лише за пропущений візит або скасування менш ніж за 24 години.' },
+  'card.none': { en: 'No card on file', uk: 'Картки немає' },
+  'card.onFile': { en: 'Card on file', uk: 'Картка на файлі' },
+  'card.expires': { en: 'Expires {month}/{year}', uk: 'Дійсна до {month}/{year}' },
+  'card.add': { en: 'Add a card', uk: 'Додати картку' },
+  'card.update': { en: 'Update card', uk: 'Оновити картку' },
+  'card.cancel': { en: 'Cancel', uk: 'Скасувати' },
+  'card.save': { en: 'Save card securely', uk: 'Зберегти картку' },
+  'card.saving': { en: 'Saving…', uk: 'Збереження…' },
+  'card.saved': { en: 'Card saved ✓', uk: 'Картку збережено ✓' },
+  'card.appliedToBookings': { en: 'This now protects your upcoming appointments too.', uk: 'Тепер це також захищає ваші майбутні візити.' },
+  'card.loadError': { en: 'Could not load the card form. Please try again.', uk: 'Не вдалося завантажити форму картки. Спробуйте ще раз.' },
+  'card.saveError': { en: 'Your card could not be saved.', uk: 'Не вдалося зберегти картку.' },
+  'card.confirmError': { en: 'Saved with the bank, but we couldn’t confirm it. Please call us.', uk: 'Збережено банком, але ми не змогли це підтвердити. Будь ласка, зателефонуйте нам.' },
+  'card.unavailable': { en: 'Card management is temporarily unavailable — please call us to save a card.', uk: 'Керування карткою тимчасово недоступне — зателефонуйте нам, щоб зберегти картку.' },
 
   // Data & privacy
   'privacy.title': { en: 'Data & privacy', uk: 'Дані та конфіденційність' },

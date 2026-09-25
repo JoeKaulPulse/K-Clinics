@@ -12,6 +12,7 @@ import { CLINIC_TZ, clinicDateISO } from '@/lib/clinic-time';
 import { formatPrice } from '@/lib/treatments';
 import { pt } from '@/lib/i18n-portal';
 import type { Locale } from '@/lib/i18n';
+import { isWithinSelfServiceWindow, CANCELLATION_POLICY_HREF } from '@/lib/cancellation-policy';
 
 const STATUS_STYLE: Record<string, string> = {
   REQUESTED: 'bg-[color-mix(in_oklab,var(--color-gold)_20%,transparent)] text-[var(--color-ink)]',
@@ -38,13 +39,18 @@ export default async function AppointmentsPage() {
   const t = (k: string, v?: Record<string, string | number>) => pt(locale, k, v);
   const lc = locale === 'uk' ? 'uk-UA' : 'en-GB';
   const dayCount = (d: Date) => Math.ceil((d.getTime() - Date.now()) / 864e5);
+  // BLD-1878: the cancel dialog states what a late cancellation would really
+  // do, using cancelBooking's own formula and branches (lib/booking-actions.ts).
+  // Whether the booking is inside the 24h window is decided in the browser when
+  // the dialog opens, so a page left open across the boundary stays correct.
+  const { lateCancelOutcome } = await import('@/lib/booking-actions');
   const redeemLabels = {
     use: t('rw.applyPoints'), title: t('rw.applyTitle'), hint: t('rw.applyHint'),
     applied: t('rw.applied'), apply: t('rw.apply'), remove: t('rw.remove'), cancel: t('rw.cancel'),
   };
 
   return (
-    <PortalShell firstName={client.firstName} locale={locale}>
+    <PortalShell firstName={client.firstName} locale={locale} termsAccepted={!!client.termsAcceptedAt}>
       <PortalPageHeader
         eyebrow={t('nav.appointments')}
         title={t('appt.title')}
@@ -81,14 +87,32 @@ export default async function AppointmentsPage() {
                   <a href={`/api/account/calendar/${b.manageToken}`} className="rounded-full border border-[var(--color-line)] px-4 py-2 text-sm font-medium hover:border-[var(--color-gold)] hover:text-[var(--color-gold-deep)]">
                     {t('appt.addCalendar')}
                   </a>
-                  <Link href={`/booking/manage?t=${b.manageToken}`} className="rounded-full border border-[var(--color-line)] px-4 py-2 text-sm font-medium hover:border-[var(--color-gold)] hover:text-[var(--color-gold-deep)]">
-                    {t('appt.reschedule')}
-                  </Link>
-                  <CancelButton
-                    token={b.manageToken}
-                    treatmentTitle={b.treatmentTitle}
-                    labels={{ cancel: t('appt.cancel'), cancelled: t('appt.cancelled'), confirm: t('appt.cancelConfirm'), lateFee: t('appt.cancelLateFee'), error: t('appt.cancelError') }}
-                  />
+                  {/* BLD-1920: inside 48h, self-service reschedule/cancel are
+                      blocked — show the policy notice instead of the controls,
+                      rather than only letting the server reject after the fact. */}
+                  {isWithinSelfServiceWindow(b.startAt) ? (
+                    <p className="max-w-xs text-xs text-[var(--color-stone)]">
+                      {t('appt.policyPre')}{' '}
+                      <Link href={CANCELLATION_POLICY_HREF} className="font-medium text-[var(--color-ink)] underline">{t('appt.policyName')}</Link>
+                      {t('appt.policyPost')}
+                    </p>
+                  ) : (
+                    <>
+                      <Link href={`/booking/manage?t=${b.manageToken}`} className="rounded-full border border-[var(--color-line)] px-4 py-2 text-sm font-medium hover:border-[var(--color-gold)] hover:text-[var(--color-gold-deep)]">
+                        {t('appt.reschedule')}
+                      </Link>
+                      <CancelButton
+                        token={b.manageToken}
+                        treatmentTitle={b.treatmentTitle}
+                        startIso={b.startAt.toISOString()}
+                        late={lateCancelOutcome(b)}
+                        labels={{
+                          cancel: t('appt.cancel'), cancelled: t('appt.cancelled'), confirm: t('appt.cancelConfirm'), lateFee: t('appt.cancelLateFee'), error: t('appt.cancelError'),
+                          title: t('appt.cancelTitle'), confirmFee: t('appt.cancelConfirmFee'), confirmSession: t('appt.cancelConfirmSession'), confirmFree: t('appt.cancelConfirmFree'), keep: t('appt.cancelKeep'), confirmNow: t('appt.cancelNow'),
+                        }}
+                      />
+                    </>
+                  )}
                   {b.pricePence > 0 && (
                     <RedeemPoints
                       bookingId={b.id}

@@ -6,7 +6,11 @@ export type RenewalStatus = 'EXPIRED' | 'DUE' | 'SOON' | 'OK';
 
 export const RENEWAL_CATEGORIES = [
   'Insurance', 'Licence', 'Certification', 'Equipment servicing',
-  'Waste contract', 'PAT testing', 'EICR', 'Other',
+  'Waste contract', 'PAT testing', 'EICR',
+  // BLD-1830 — statutory/regulatory filing deadlines (Companies House / HMRC),
+  // added additively so the existing categories keep working unchanged.
+  'Companies House', 'Corporation Tax', 'VAT', 'PAYE', 'Pension',
+  'Other',
 ] as const;
 
 const DAY = 86_400_000;

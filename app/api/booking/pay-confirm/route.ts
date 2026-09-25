@@ -4,6 +4,11 @@ import { crmEnabled } from '@/lib/crm';
 import { stripeEnabled } from '@/lib/stripe';
 
 export const runtime = 'nodejs';
+// BLD-1692: finalizeBookingCharge can wait up to ~30s on Resend's rate gate
+// (lib/email.ts) before it returns — without this the platform's default
+// timeout can kill the request mid-charge-finalize. Matches
+// app/api/stripe/webhook/route.ts, raised for the same risk.
+export const maxDuration = 60;
 
 // Called by /booking/pay after the client authenticates an off-session charge.
 // Verifies with Stripe that the PaymentIntent really succeeded (and that the

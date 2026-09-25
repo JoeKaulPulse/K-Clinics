@@ -4,6 +4,12 @@ import { clientSignupSchema, kVisionSignupSchema } from '@/lib/validation';
 import { crmEnabled } from '@/lib/crm';
 
 export const runtime = 'nodejs';
+// BLD-1769: signupClient() can await an outbound email (the returning-client
+// claim-invite send) before the response returns. The send itself is already
+// non-fatal (try/catch, matching academy/apply and careers/apply), but a slow
+// or hanging provider could still run the request into the platform's default
+// function timeout. A little headroom keeps a blip from failing the signup.
+export const maxDuration = 30;
 
 export async function POST(req: Request) {
   if (!crmEnabled) {
@@ -39,10 +45,10 @@ export async function POST(req: Request) {
     if (result.ok && isKVision) {
       try {
         const { sendLead } = await import('@/lib/conversions');
-        const { consentFromCookieHeader } = await import('@/lib/attribution');
+        const { consentFromCookieHeader, metaCookiesFromHeader } = await import('@/lib/attribution');
         const eventId = (parsed.data as { eventId?: string }).eventId || globalThis.crypto.randomUUID();
         const { analyticsConsent, marketingConsent } = consentFromCookieHeader(req.headers.get('cookie'));
-        await sendLead({ eventId, email: null, sourceUrl: req.headers.get('referer'), analyticsConsent, marketingConsent });
+        await sendLead({ eventId, email: null, sourceUrl: req.headers.get('referer'), analyticsConsent, marketingConsent, ...metaCookiesFromHeader(req.headers.get('cookie')), clientIp: clientIp(req), userAgent: req.headers.get('user-agent') });
       } catch { /* best-effort */ }
       // BLD-734: email the passwordless account a one-tap sign-in link so they
       // can return without a password (same claim path as guest bookings,

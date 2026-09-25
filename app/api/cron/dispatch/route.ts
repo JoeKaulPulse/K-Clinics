@@ -50,21 +50,60 @@ export async function GET(req: Request) {
     await db.setting.upsert({ where: { key: 'cron_dispatch_last' }, update: { value: new Date().toISOString() }, create: { key: 'cron_dispatch_last', value: new Date().toISOString() } });
   } catch { /* non-fatal: timestamp is advisory */ }
 
+  // PRJ-1200.10: no cooldown/dedup here previously — with a 15-minute cadence,
+  // a sustained partial failure (any of the try/catches above) re-paged up to
+  // 96 times a day. Mirrors the watermark cooldown/dedup pattern already fixed
+  // for /api/health (BLD-1723) and /api/admin/api-health (BLD-1187): the same
+  // db.setting watermark table, a key of its own so it can't collide with
+  // theirs or with cron/daily's, same 30-minute cooldown window as the
+  // health-check paths (no reason here to diverge), alert immediately on a
+  // fresh failure and at most once per cooldown while it persists, and clear
+  // the watermark the moment it recovers so the next incident alerts right away.
+  const ALERT_WATERMARK_KEY = 'cron_dispatch_alert_last_sent_at';
+  const ALERT_COOLDOWN_MS = 30 * 60 * 1000;
   if (failures.length > 0) {
+    let shouldAlert = true;
     try {
-      const Sentry = await import('@sentry/nextjs');
-      Sentry.captureMessage(`[cron/dispatch] ${failures.length} task(s) failed: ${failures.join('; ')}`, 'error');
-    } catch { /* Sentry not initialised */ }
-    const webhook = process.env.CRON_ALERT_WEBHOOK_URL;
-    if (webhook) {
-      // PRJ-1118.10: bound it — a hung webhook endpoint previously stalled this
-      // request indefinitely; on timeout the alert is simply dropped (non-fatal,
-      // matching every other outcome of this best-effort send).
-      try { await fetch(webhook, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ text: `cron/dispatch failures: ${failures.join('; ')}` }), signal: AbortSignal.timeout(8_000) }); } catch { /* non-fatal */ }
+      const { db } = await import('@/lib/db');
+      const row = await db.setting.findUnique({ where: { key: ALERT_WATERMARK_KEY } });
+      const lastAlertAt = row?.value ? Number(row.value) : 0;
+      shouldAlert = !lastAlertAt || Date.now() - lastAlertAt >= ALERT_COOLDOWN_MS;
+      if (shouldAlert) {
+        await db.setting.upsert({
+          where: { key: ALERT_WATERMARK_KEY },
+          create: { key: ALERT_WATERMARK_KEY, value: String(Date.now()) },
+          update: { value: String(Date.now()) },
+        });
+      }
+    } catch {
+      // Can't read/write the watermark — fail open and alert rather than risk
+      // a silent outage; a duplicate page is the safer failure mode.
+      shouldAlert = true;
+    }
+
+    if (shouldAlert) {
+      try {
+        const Sentry = await import('@sentry/nextjs');
+        Sentry.captureMessage(`[cron/dispatch] ${failures.length} task(s) failed: ${failures.join('; ')}`, 'error');
+      } catch { /* Sentry not initialised */ }
+      const webhook = process.env.CRON_ALERT_WEBHOOK_URL;
+      if (webhook) {
+        // PRJ-1118.10: bound it — a hung webhook endpoint previously stalled this
+        // request indefinitely; on timeout the alert is simply dropped (non-fatal,
+        // matching every other outcome of this best-effort send).
+        try { await fetch(webhook, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ text: `cron/dispatch failures: ${failures.join('; ')}` }), signal: AbortSignal.timeout(8_000) }); } catch { /* non-fatal */ }
+      }
     }
     console.error('[cron/dispatch] failures:', failures);
     return NextResponse.json({ ok: false, failures, ...result, chatFollowups: chat.emailed, waitlistExpired: waitlist.expired, waitlistReoffered: waitlist.reoffered, abandonedBookingsReleased: abandoned.released, githubSynced: ghSync.synced, githubRemaining: ghSync.remaining, taskAutomationsFired: taskAutomations.fired, taskAutomationTasks: taskAutomations.tasksCreated }, { status: 500 });
   }
+
+  // Recovered — clear the watermark so the next incident alerts immediately
+  // instead of possibly landing inside the previous incident's cooldown.
+  try {
+    const { db } = await import('@/lib/db');
+    await db.setting.deleteMany({ where: { key: ALERT_WATERMARK_KEY } });
+  } catch { /* non-fatal */ }
 
   return NextResponse.json({ ok: true, ...result, chatFollowups: chat.emailed, waitlistExpired: waitlist.expired, waitlistReoffered: waitlist.reoffered, abandonedBookingsReleased: abandoned.released, githubSynced: ghSync.synced, githubRemaining: ghSync.remaining, taskAutomationsFired: taskAutomations.fired, taskAutomationTasks: taskAutomations.tasksCreated });
 }
