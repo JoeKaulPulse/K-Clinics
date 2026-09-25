@@ -3,6 +3,11 @@ import * as Sentry from '@sentry/nextjs';
 import { crmEnabled } from '@/lib/crm';
 
 export const runtime = 'nodejs';
+// BLD-1692: the zero-total path awaits finalizeOrder, which can wait up to
+// ~30s on Resend's rate gate (lib/email.ts) — without this the platform's
+// default timeout can kill the request mid-finalize. Matches
+// app/api/stripe/webhook/route.ts, raised for the same risk.
+export const maxDuration = 60;
 
 // Server-authoritative checkout: re-prices the cart, enforces age on restricted
 // items, applies any gift card, then either creates a Stripe PaymentIntent or

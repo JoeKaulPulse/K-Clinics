@@ -8,6 +8,14 @@ import { CrmDisabled } from '@/components/admin/CrmDisabled';
 import { CampaignComposer } from '@/components/admin/CampaignComposer';
 
 export const dynamic = 'force-dynamic';
+// Bounds sendCampaign (./actions.ts), matching the 60s convention used on every
+// other long-running route in this app (see vercel.json). A 'use server' file
+// may only export async functions, so this has to live on the page/route
+// segment instead — Vercel applies it to Server Actions invoked from here too.
+// Batching + the cron resume sweep (lib/email-campaigns.ts, BLD-1832) is what
+// actually makes a large send safe; this just keeps a single invocation's
+// ceiling predictable and explicit.
+export const maxDuration = 60;
 
 export default async function CampaignsPage() {
   if (!crmEnabled) return <CrmDisabled />;
@@ -40,7 +48,10 @@ export default async function CampaignsPage() {
               <div key={c.id} className="border-b border-[var(--color-line)] px-5 py-3.5 last:border-0">
                 <div className="flex items-center justify-between gap-3">
                   <p className="font-medium">{c.name}</p>
-                  <span className="text-xs text-[var(--color-stone)]">{c.sentAt ? `${c.recipients} sent` : 'draft'}</span>
+                  {/* BLD-1832: a campaign can now sit in SENDING for a while on a large
+                      list (batched, resumed by cron) — show that state rather than the
+                      misleading "draft" a stuck send used to fall back to. */}
+                  <span className="text-xs text-[var(--color-stone)]">{c.sentAt ? `${c.recipients} sent` : c.status === 'SENDING' ? `sending… (${c.recipients} so far)` : 'draft'}</span>
                 </div>
                 <p className="text-xs text-[var(--color-stone)]">{c.subject}</p>
               </div>

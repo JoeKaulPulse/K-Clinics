@@ -4,6 +4,10 @@ import * as Sentry from '@sentry/nextjs';
 import { crmEnabled } from '@/lib/crm';
 
 export const runtime = 'nodejs';
+// BLD-1704: a manual PENDING→PAID goes through finalizeOrder, which can wait
+// on Resend's rate gate (lib/email.ts) — same risk BLD-1692 fixed on the
+// other finalize-calling routes.
+export const maxDuration = 60;
 
 // Manage retail orders (status + fulfilment). These change money/fulfilment
 // state, so require finance.manage.
@@ -52,6 +56,23 @@ export async function POST(req: Request) {
             // the other can never trigger a second refund for the same order.
             { idempotencyKey: `order-refund-${body.id}-${order.totalPence}` },
           );
+          // PRJ-1200.7: this staff-initiated refund was only ever logged as the
+          // generic SETTINGS_UPDATED entry below (with no amount), invisible to
+          // any audit/report view filtered on payment actions. Mirrors the
+          // charge.refunded webhook's order-reconciliation logging (same action
+          // + orderId field name — app/api/stripe/webhook/route.ts) plus the
+          // amountPence field used across every other PAYMENT_REFUNDED call site
+          // (e.g. lib/booking-actions.ts, lib/academy-payments.ts).
+          try {
+            const { logAudit } = await import('@/lib/audit');
+            await logAudit({
+              action: 'PAYMENT_REFUNDED',
+              actor: session.email,
+              actorRole: session.role,
+              summary: `Refunded order ${order.number} — £${(order.totalPence / 100).toFixed(2)}`,
+              meta: { orderId: body.id, amountPence: order.totalPence },
+            });
+          } catch { /* non-fatal */ }
         } catch (e) {
           Sentry.captureException(e, { tags: { area: 'admin/orders', stage: 'stripe-refund' } });
           // Roll back the status change so staff can retry after fixing Stripe config.

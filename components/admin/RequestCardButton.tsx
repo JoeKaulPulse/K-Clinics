@@ -15,8 +15,14 @@ export function RequestCardButton({ bookingId, hasEmail, hasPhone }: { bookingId
       method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ bookingId, channel }),
     }).then((x) => x.json()).catch(() => ({ ok: false }));
     setBusy(false);
-    if (r.ok) { setMsg(`Sent by ${r.sent.join(' & ')} ✓`); setLink(r.url || ''); }
-    else { setMsg(r.error || 'Could not send.'); if (r.url) setLink(r.url); }
+    if (r.ok) {
+      // BLD-1797: a partial send (e.g. email went, SMS didn't — Twilio not
+      // configured or the client opted out) used to report as a plain
+      // success with no sign the other channel never reached the client.
+      const warn = Array.isArray(r.warnings) && r.warnings.length ? ` — but ${r.warnings.join('; ')}` : '';
+      setMsg(`Sent by ${r.sent.join(' & ')} ✓${warn}`);
+      setLink(r.url || '');
+    } else { setMsg(r.error || 'Could not send.'); if (r.url) setLink(r.url); }
   }
 
   return (

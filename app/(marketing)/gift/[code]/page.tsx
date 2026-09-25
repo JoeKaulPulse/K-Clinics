@@ -60,7 +60,7 @@ export default async function GiftCardViewPage({ params }: { params: Promise<{ c
                 <>
                   <p className="mt-3 text-sm text-[var(--color-stone)]">
                     Balance <strong className="text-[var(--color-ink)]">{money(v!.balancePence)}</strong>
-                    {v!.balancePence !== v!.amountPence ? ` of ${money(v!.amountPence)}` : ''} · valid for 12 months · redeemable on any treatment.
+                    {v!.balancePence !== v!.amountPence ? ` of ${money(v!.amountPence)}` : ''} · valid for 12 months.
                   </p>
                   <div className="mt-4 flex flex-wrap justify-center gap-3">
                     <Link href={`/account/gift-cards?code=${clean}`} className="rounded-full bg-[var(--color-ink)] px-5 py-2.5 text-sm font-medium text-[var(--color-porcelain)] transition-colors hover:bg-[var(--color-gold-deep)]">Add to your account</Link>
@@ -69,7 +69,8 @@ export default async function GiftCardViewPage({ params }: { params: Promise<{ c
                 </>
               )}
             </div>
-            <p className="mt-5 text-center text-xs text-[var(--color-stone)]">Treatments are for ages 18+. Show this code in clinic or add it to your account to use online.</p>
+            {/* BLD-1918: shown wherever a client is about to redeem a gift card. */}
+            <p className="mt-5 text-center text-xs text-[var(--color-stone)]">Treatments are for ages 18+. Not valid for injectable treatments or CO2 laser treatments. Show this code in clinic or add it to your account to use online.</p>
           </>
         )}
       </div>

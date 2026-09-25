@@ -66,7 +66,7 @@ export default async function DashboardPage() {
   const openToday = !!todayHours && todayHours.open !== 'Closed';
 
   return (
-    <PortalShell firstName={client.firstName} locale={locale}>
+    <PortalShell firstName={client.firstName} locale={locale} termsAccepted={!!client.termsAcceptedAt}>
       <DashboardHero
         firstName={client.firstName}
         locale={locale}

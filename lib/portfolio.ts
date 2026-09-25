@@ -2,6 +2,7 @@ import 'server-only';
 import { db } from '@/lib/db';
 import { currentTenantId } from '@/lib/tenant';
 import { PORTFOLIO_PHOTO_RELAY } from '@/lib/portfolio-blob';
+import { escapeHtml } from '@/lib/sanitize';
 
 // ── BLD-534: learner portfolio ───────────────────────────────────────────────
 // A trainee's evidence log of practical case studies, reviewed by tutors.
@@ -214,10 +215,48 @@ export async function adminListEntries(): Promise<AdminPortfolioEntry[]> {
 /** Tutor sets a review outcome + feedback. */
 export async function reviewEntry(staffEmail: string, id: string, status: string, feedback: string): Promise<{ ok: boolean; error?: string }> {
   if (status !== 'APPROVED' && status !== 'NEEDS_WORK') return { ok: false, error: 'Invalid status.' };
-  const e = await db.portfolioEntry.findUnique({ where: { id }, select: { id: true } });
+  const e = await db.portfolioEntry.findUnique({ where: { id }, select: { id: true, studentId: true } });
   if (!e) return { ok: false, error: 'Not found.' };
   await db.portfolioEntry.update({ where: { id }, data: { status, feedback: feedback.trim().slice(0, 4000) || null, reviewedBy: staffEmail, reviewedAt: new Date() } });
+  notifyPortfolioReviewed(e.studentId, id).catch(() => {});
   return { ok: true };
+}
+
+/** Best-effort email to a trainee that their portfolio case was reviewed
+ *  (BLD-1809). Mirrors notifyHomeworkGraded (lib/lms.ts): same lookup shape,
+ *  same emailShell template, same fire-and-forget call convention. */
+export async function notifyPortfolioReviewed(studentId: string, entryId: string): Promise<void> {
+  const entry = await db.portfolioEntry.findUnique({
+    where: { id: entryId },
+    select: {
+      title: true, status: true, feedback: true,
+      student: { select: { email: true, firstName: true } },
+    },
+  });
+  if (!entry || !entry.student?.email) return;
+  if (entry.status !== 'APPROVED' && entry.status !== 'NEEDS_WORK') return;
+
+  const outcome = entry.status === 'APPROVED'
+    ? { verb: 'approved', line: 'Your case has been <strong>approved</strong> — nice work.' }
+    : { verb: 'sent back for changes', line: 'Your tutor has asked for <strong>changes</strong> to this case — please revise and resubmit it.' };
+
+  const base = process.env.NEXT_PUBLIC_SITE_URL || process.env.NEXT_PUBLIC_BASE_URL || 'https://kclinics.co.uk';
+  const url = `${base}/academy/portfolio`;
+  try {
+    const { sendEmail, emailShell } = await import('@/lib/email');
+    await sendEmail({
+      to: entry.student.email,
+      subject: `Portfolio case ${outcome.verb} — ${entry.title}`,
+      html: emailShell({
+        preheader: `Your portfolio case "${entry.title}" was ${outcome.verb}.`,
+        body: `<h1 style="font-size:24px;margin:0 0 14px;">Your portfolio case was ${outcome.verb}</h1>
+          <p style="margin:0 0 12px;">Hi ${escapeHtml(entry.student.firstName || 'there')},</p>
+          <p style="margin:0 0 12px;">${outcome.line} This was for <strong>${escapeHtml(entry.title)}</strong>.</p>
+          ${entry.feedback ? `<p style="margin:0 0 12px;"><strong>Tutor feedback:</strong><br>${escapeHtml(entry.feedback)}</p>` : ''}
+          <p style="margin:0 0 22px;"><a class="kc-btn" href="${url}" style="display:inline-block;background:#2a2420;color:#f7f1e8;text-decoration:none;padding:13px 26px;border-radius:999px;font-weight:600;">View your portfolio &rarr;</a></p>`,
+      }),
+    });
+  } catch { /* best-effort */ }
 }
 
 // ── BLD-1291: data-subject reachability ──────────────────────────────────────

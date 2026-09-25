@@ -5,6 +5,7 @@ import { db } from '@/lib/db';
 import { encryptJson } from '@/lib/crypto';
 import { getSecret } from '@/lib/secrets';
 import { aiConsultationConsentFields } from '@/lib/consent';
+import { fetchWithRetry } from '@/lib/fetch-retry';
 
 // ── "Get My Plan" — AI consultation engine ──────────────────────────────────
 // Cost-minimal: Claude Haiku by default (escalates to Sonnet only on low
@@ -257,34 +258,34 @@ Use 1–4 phases and 1–2 treatments each — fewer when little is needed (a si
 type Parsed = { refused?: boolean; confidence?: number; needsExpert?: boolean; summary?: string; findings?: unknown; phases?: unknown; worthConsidering?: unknown; _model: string; _in?: number; _out?: number };
 
 async function callClaude(key: string, model: string, system: string, content: object[]): Promise<Parsed | null> {
-  // BLD-334: one bounded retry on a transient failure (network error / timeout /
-  // 5xx). A 4xx is not retried (it won't succeed), and a failed call never
-  // produced a completion, so retrying can't double-bill.
-  for (let attempt = 0; attempt < 2; attempt++) {
-    try {
-      const res = await fetch('https://api.anthropic.com/v1/messages', {
-        method: 'POST',
-        headers: { 'content-type': 'application/json', 'x-api-key': key, 'anthropic-version': '2023-06-01' },
-        body: JSON.stringify({ model, max_tokens: 1100, system: [{ type: 'text', text: system, cache_control: { type: 'ephemeral' } }], messages: [{ role: 'user', content }] }),
-        signal: AbortSignal.timeout(25_000),
-      });
-      if (!res.ok) {
-        if (res.status >= 500 && attempt === 0) { await new Promise((r) => setTimeout(r, 600)); continue; }
-        const body = await res.text().catch(() => '');
-        console.error('[get-my-plan] anthropic', res.status, body);
-        Sentry.captureMessage('[get-my-plan] anthropic call failed', { level: 'error', tags: { area: 'ai-consultation', status: String(res.status) } });
-        return null;
-      }
-      const j = await res.json();
-      const text = j?.content?.find((c: { type: string }) => c.type === 'text')?.text ?? '';
-      const obj = JSON.parse(text.slice(text.indexOf('{'), text.lastIndexOf('}') + 1));
-      return { ...obj, _model: model, _in: j?.usage?.input_tokens, _out: j?.usage?.output_tokens };
-    } catch (e) {
-      if (attempt === 0) { await new Promise((r) => setTimeout(r, 600)); continue; }
-      console.error('[get-my-plan] call failed:', (e as Error)?.message);
-      Sentry.captureException(e, { tags: { area: 'ai-consultation' } });
+  // BLD-334 / BLD-1641: the network call goes through the shared fetchWithRetry
+  // (lib/fetch-retry.ts, already used by the Calendar/Xero integrations) instead
+  // of a bare fetch() with its own retry loop -- attempts: 2 / 600ms backoff /
+  // 25s per-attempt timeout matches this call site's previous behaviour exactly
+  // (it already retried on its own timeout too, so nothing changes there), and
+  // a 429 is now retried the same as a 5xx, which the old `res.status >= 500`
+  // check didn't cover. A 4xx still returns immediately -- it won't succeed on
+  // retry, and a failed call never produced a completion, so retrying can't
+  // double-bill.
+  try {
+    const res = await fetchWithRetry('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', 'x-api-key': key, 'anthropic-version': '2023-06-01' },
+      body: JSON.stringify({ model, max_tokens: 1100, system: [{ type: 'text', text: system, cache_control: { type: 'ephemeral' } }], messages: [{ role: 'user', content }] }),
+    }, { attempts: 2, baseDelayMs: 600, timeoutMs: 25_000, label: 'ai-consultation' });
+    if (!res.ok) {
+      const body = await res.text().catch(() => '');
+      console.error('[get-my-plan] anthropic', res.status, body);
+      Sentry.captureMessage('[get-my-plan] anthropic call failed', { level: 'error', tags: { area: 'ai-consultation', status: String(res.status) } });
       return null;
     }
+    const j = await res.json();
+    const text = j?.content?.find((c: { type: string }) => c.type === 'text')?.text ?? '';
+    const obj = JSON.parse(text.slice(text.indexOf('{'), text.lastIndexOf('}') + 1));
+    return { ...obj, _model: model, _in: j?.usage?.input_tokens, _out: j?.usage?.output_tokens };
+  } catch (e) {
+    console.error('[get-my-plan] call failed:', (e as Error)?.message);
+    Sentry.captureException(e, { tags: { area: 'ai-consultation' } });
+    return null;
   }
-  return null;
 }

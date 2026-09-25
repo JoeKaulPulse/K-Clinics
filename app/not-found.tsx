@@ -1,7 +1,19 @@
+import type { Metadata } from 'next';
 import { Button, ArrowIcon } from '@/components/ui/Button';
 import { GenerativeArt } from '@/components/ui/GenerativeArt';
 import { Header } from '@/components/layout/Header';
 import { getSiteConfig } from '@/lib/site-config';
+
+// BLD-1697: without its own metadata this page fell back to the root layout's
+// defaults (title/description built for the homepage, robots index:true) —
+// Next also auto-injects a noindex meta tag for a not-found response, so the
+// rendered <head> carried two conflicting robots tags. An explicit,
+// route-specific export fixes both.
+export const metadata: Metadata = {
+  title: 'Page not found',
+  description: 'The page you were looking for could not be found. Explore treatments, pricing and how to book at KClinics.',
+  robots: { index: false, follow: false },
+};
 
 export default async function NotFound() {
   const config = await getSiteConfig();
@@ -11,7 +23,7 @@ export default async function NotFound() {
       <section className="relative grid min-h-[80svh] place-items-center overflow-hidden">
         <GenerativeArt from="#2a2420" to="#4a3f37" className="absolute inset-0" />
         <div className="container-narrow relative z-10 text-center text-[var(--color-porcelain)]">
-          <p className="eyebrow mb-5 text-[var(--color-gold-soft)]">Page not found</p>
+          <p className="eyebrow eyebrow-on-dark mb-5">Page not found</p>
           <h1 className="text-hero">404</h1>
           <p className="mx-auto mt-6 max-w-md text-lg text-[color-mix(in_oklab,var(--color-porcelain)_76%,transparent)]">
             The page you are looking for has moved, or perhaps never existed. Let us guide you back to something beautiful.

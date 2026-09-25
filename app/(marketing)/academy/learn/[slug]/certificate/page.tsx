@@ -50,7 +50,6 @@ export default async function CertificatePage({ params }: { params: Promise<{ sl
           <div className="mx-auto flex flex-col items-center text-[var(--color-ink)]">
             <span className="block h-11 w-7"><KMark /></span>
             <span className="mt-3 block h-3 w-32"><ClinicsWordmark /></span>
-            <span className="mt-2 text-[0.62rem] uppercase tracking-[0.34em] text-[var(--color-stone)]">Academy</span>
           </div>
 
           <p className="mt-9 text-xs uppercase tracking-[0.24em] text-[var(--color-stone)]">Certificate of completion</p>

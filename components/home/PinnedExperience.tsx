@@ -29,7 +29,7 @@ export function PinnedExperience() {
     <section className="surface-ink grain relative">
       <Aurora />
       <div className="container-lux relative section-t pb-6 text-center md:pb-10">
-        <p className="eyebrow mb-6 inline-flex items-center gap-2.5 text-[var(--color-gold-soft)]">
+        <p className="eyebrow eyebrow-on-dark mb-6 inline-flex items-center gap-2.5">
           <span className="h-px w-7 bg-[var(--color-gold-soft)]/60" />
           The KClinics experience
         </p>

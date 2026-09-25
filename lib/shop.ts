@@ -162,10 +162,50 @@ export async function finalizeOrder(orderId: string): Promise<{ ok: boolean; num
   // Confirmation email (best-effort).
   try {
     const { sendEmail, emailShell } = await import('@/lib/email');
+    // VAT breakdown on the receipt once the clinic is VAT-registered (dormant
+    // otherwise) — computed per line item from each Product's vatClass, the same
+    // way lib/booking-actions.ts derives a booking receipt's breakdown from the
+    // treatment Service's vatClass. Net + VAT is summed across ALL items
+    // (not just VAT-applied ones) so it always reconciles exactly to the goods
+    // subtotal, even when some items are exempt/zero-rated or the cart mixes
+    // rates; the rate suffix is only shown when every applied item shares one.
+    //
+    // Only the explicit Product.vatClass counts for retail — no category
+    // fallback. effectiveVatClass' fallback derives EXEMPT from the *Service*
+    // category 'dentistry', but Product.category is a free-text shop category,
+    // so a shop category named "dentistry" would zero-rate standard-rated
+    // goods. Unset means STANDARD, which is what the product editor's
+    // "Default (standard)" says and exactly how the VAT report already totals
+    // retail (app/admin/reports/page.tsx, BLD-1170) — the receipt must agree
+    // with the books.
+    let vatNetPence = 0, vatPence = 0, vatRatePct: number | null = null, vatMixedRates = false, vatShown = false;
+    try {
+      const { getVatConfig, effectiveVatClass, vatBreakdown } = await import('@/lib/vat');
+      const cfg = await getVatConfig();
+      if (cfg.registered) {
+        const productIds = [...new Set(order.items.map((i) => i.productId).filter((id): id is string => !!id))];
+        const products = productIds.length ? await db.product.findMany({ where: { id: { in: productIds } }, select: { id: true, vatClass: true } }) : [];
+        const byId = new Map(products.map((p) => [p.id, p]));
+        for (const it of order.items) {
+          const p = it.productId ? byId.get(it.productId) : undefined;
+          const b = vatBreakdown(it.unitPence * it.qty, cfg, effectiveVatClass({ vatClass: p?.vatClass }));
+          vatNetPence += b.netPence;
+          vatPence += b.vatPence;
+          if (b.applied) {
+            vatShown = true;
+            if (vatRatePct === null) vatRatePct = b.ratePct;
+            else if (vatRatePct !== b.ratePct) vatMixedRates = true;
+          }
+        }
+      }
+    } catch { /* confirmation still sends without the VAT line */ }
     const rows = order.items.map((i) => `<tr><td style="padding:6px 0;">${i.name} × ${i.qty}</td><td style="padding:6px 0;text-align:right;">${formatPence(i.unitPence * i.qty)}</td></tr>`).join('');
+    const vatLabel = vatMixedRates ? 'VAT' : `VAT (${vatRatePct}%)`;
     const body = `<h1 style="font-size:24px;margin:0 0 10px;">Thank you for your order</h1>
       <p>Order <strong>${order.number}</strong> is confirmed.</p>
       <table style="width:100%;font-size:14px;border-collapse:collapse;">${rows}
+      ${vatShown ? `<tr><td style="padding-top:8px;">Net</td><td style="padding-top:8px;text-align:right;">${formatPence(vatNetPence)}</td></tr>
+      <tr><td style="padding-top:8px;">${vatLabel}</td><td style="padding-top:8px;text-align:right;">${formatPence(vatPence)}</td></tr>` : ''}
       <tr><td style="padding-top:8px;">Shipping</td><td style="padding-top:8px;text-align:right;">${formatPence(order.shippingPence)}</td></tr>
       ${order.giftCardPence ? `<tr><td>Gift card</td><td style="text-align:right;">−${formatPence(order.giftCardPence)}</td></tr>` : ''}
       <tr><td style="padding-top:8px;font-weight:bold;">Total paid</td><td style="padding-top:8px;text-align:right;font-weight:bold;">${formatPence(order.totalPence)}</td></tr></table>

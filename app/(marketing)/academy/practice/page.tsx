@@ -6,7 +6,7 @@ import { AcademyPortalShell } from '@/components/academy/AcademyPortalShell';
 import { PageTitle, SectionTitle, Card, AButton } from '@/components/academy/ui';
 import { pageMeta } from '@/lib/seo';
 
-export const generateMetadata = (): Promise<Metadata> => pageMeta({ title: 'Practice — K Academy', description: 'Test your knowledge any time and see real exam-style papers.', path: '/academy/practice' });
+export const generateMetadata = (): Promise<Metadata> => pageMeta({ title: 'Practice — K Academy', description: 'Test your knowledge any time and see real exam-style papers.', path: '/academy/practice', noindex: true });
 export const dynamic = 'force-dynamic';
 
 export default async function PracticePage() {

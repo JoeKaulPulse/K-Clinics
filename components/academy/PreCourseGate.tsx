@@ -23,10 +23,18 @@ export function PreCourseGate({ slug, title, level, content, agreement }: {
   async function acknowledge() {
     setBusy(true); setError('');
     const r = await fetch('/api/academy/precourse-ack', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ slug, agreementName: signName.trim() }),
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      // BLD-1731: pin the signature to the wording actually on screen — the
+      // server refuses if a new version was published since this page loaded.
+      body: JSON.stringify({ slug, agreementName: signName.trim(), agreementVersion: agreement.version }),
     }).then((x) => x.json()).catch(() => ({ ok: false }));
     if (r.ok) router.refresh();
-    else { setBusy(false); setError(r.error || 'Could not save — please try again.'); }
+    else {
+      setBusy(false);
+      setError(r.error || 'Could not save — please try again.');
+      // Superseded wording: pull the new version in and make them agree afresh.
+      if (r.stale) { setAgreed(false); router.refresh(); }
+    }
   }
 
   const paragraphs = content.split(/\n{2,}/).filter((p) => p.trim());
@@ -65,7 +73,7 @@ export function PreCourseGate({ slug, title, level, content, agreement }: {
         <input
           type="text" value={signName} onChange={(e) => setSignName(e.target.value)}
           autoComplete="name" placeholder="Your full name" maxLength={120}
-          className="w-full rounded-[var(--radius-md)] border border-[var(--color-line)] bg-white px-3.5 py-2.5 font-[family-name:var(--font-display)] text-lg outline-none focus-visible:border-[var(--color-gold)] focus-visible:ring-2 focus-visible:ring-[var(--color-gold)]/35"
+          className="w-full rounded-[var(--radius-md)] border border-[var(--color-line)] bg-white px-3.5 py-2.5 font-[family-name:var(--font-display)] text-lg outline-none focus-visible:border-[var(--color-gold-deep)] focus-visible:ring-2 focus-visible:ring-[var(--color-gold-deep)]/35"
         />
       </label>
 

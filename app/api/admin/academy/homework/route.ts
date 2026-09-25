@@ -1,4 +1,4 @@
-import { NextResponse } from 'next/server';
+import { NextResponse, after } from 'next/server';
 import { crmEnabled } from '@/lib/crm';
 
 export const runtime = 'nodejs';
@@ -25,9 +25,12 @@ export async function POST(req: Request) {
     where: { id },
     data: { status: status as (typeof STATUSES)[number], feedback, reviewedBy: session.email, reviewedAt: new Date() },
   });
-  // BLD-1296: tell the student their homework was graded — same fire-and-forget
-  // convention as notifyStudentReply's call site (app/api/admin/lms/route.ts).
+  // BLD-1296: tell the student their homework was graded — fire-and-forget so
+  // the grading save isn't held up. BLD-1885: inside after(), not a bare
+  // floating promise — the response below can be sent before this resolves,
+  // and the runtime can freeze the function mid-flight (same fix as the kiosk
+  // analyze/photo routes / lib/ai-consultation.ts, BLD-1137/1166/1418/491).
   const { notifyHomeworkGraded } = await import('@/lib/lms');
-  notifyHomeworkGraded(id).catch(() => {});
+  after(async () => { await notifyHomeworkGraded(id).catch(() => {}); });
   return NextResponse.json({ ok: true });
 }

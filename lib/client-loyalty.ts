@@ -327,13 +327,14 @@ async function maybeQualifyReferral(clientId: string, bookingId: string, spendPe
  *  pence discounted. Replaces any prior redemption on the same booking. */
 export async function redeemPointsOnBooking(clientId: string, bookingId: string, points: number): Promise<{ ok: boolean; error?: string; discountPence?: number }> {
   try {
-    const b = await db.booking.findUnique({ where: { id: bookingId }, select: { id: true, clientId: true, status: true, pricePence: true, treatmentTitle: true } });
+    const b = await db.booking.findUnique({ where: { id: bookingId }, select: { id: true, clientId: true, status: true, pricePence: true, giftVoucherPence: true, treatmentTitle: true } });
     if (!b || b.clientId !== clientId) return { ok: false, error: 'Booking not found.' };
     if (b.status === 'COMPLETED' || b.status === 'CANCELLED' || b.status === 'NO_SHOW') return { ok: false, error: 'This booking can no longer be changed.' };
     if (b.pricePence <= 0) return { ok: false, error: 'Points can’t be applied to this booking.' };
 
     const want = Math.max(0, Math.floor(points / 100) * 100); // whole pounds only
-    const capPoints = Math.floor(Math.floor(b.pricePence * LOYALTY.maxRedeemFraction) / LOYALTY.pointValuePence);
+    const netPricePence = Math.max(0, b.pricePence - (b.giftVoucherPence ?? 0));
+    const capPoints = Math.floor(Math.floor(netPricePence * LOYALTY.maxRedeemFraction) / LOYALTY.pointValuePence);
 
     // Read balance and write the ledger + booking atomically (Serializable) so
     // concurrent redemptions can't both pass the balance check and overspend.
