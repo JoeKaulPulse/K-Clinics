@@ -20,6 +20,9 @@ import { PhoneLink } from '@/components/marketing/PhoneLink';
 // Academy, matching the visual treatment of the other single-link tabs.
 // Falls back to appending at the end if that anchor ever moves/is renamed.
 function insertShopTab(items: NavGroup[]): NavGroup[] {
+  // nav.primary is editable in the admin NavEditor; if a Shop tab was added
+  // there, don't render a second one (duplicate tab + duplicate React key).
+  if (items.some((i) => i.href === '/shop' || i.label === 'Shop')) return items;
   const next = [...items];
   const idx = next.findIndex((i) => i.label === 'Academy');
   const shopItem: NavGroup = { label: 'Shop', href: '/shop' };
