@@ -5817,7 +5817,7 @@ export const BUILD_BACKLOG: BacklogItem[] = [
   },
   {
     title: 'A client with two treatment packages could have the wrong one linked and deducted (BLD-1890)',
-    type: 'ERROR', urgency: 'P0', status: 'IN_REVIEW', assignee: 'claude', pr: PR(2008),
+    type: 'ERROR', urgency: 'P0', status: 'SHIPPED', assignee: 'claude', pr: PR(2008),
     value: 8, effort: 4,
     detail: "Owner-reported (BLD-1890): a client with both a Lower Leg and a Chin laser-hair-removal package -- managing or rescheduling the Chin appointment only offered the Lower Leg package to link/spend a session against. Root cause: Booking.treatmentSlug / PackageView.treatmentSlug (lib/package-sessions.ts) identify only the marketing category (e.g. 'laser-hair-removal'), shared by every service variant/area in it -- Chin and Lower Leg are separate ServiceVariant rows under that one Service/treatmentSlug. Every package-matching call site keyed off treatmentSlug alone, so a package bought for one area matched an appointment for a different one: components/admin/NewBookingButton.tsx and components/booking/BookingFlow.tsx each used packages.find(p => p.treatmentSlug === ...) -- a single silent auto-pick with no way to choose otherwise -- and the three server-side validators (app/admin/bookings/create-action.ts, app/api/booking/start/route.ts, app/admin/bookings/actions.ts's linkBookingToPackage) accepted whatever purchaseBookingId the client sent as long as its treatmentSlug matched, so even a correct UI pick elsewhere couldn't be enforced server-side.",
     notes: [
@@ -5832,7 +5832,7 @@ export const BUILD_BACKLOG: BacklogItem[] = [
   },
   {
     title: "Practitioner role can claim/edit/complete another clinician's live appointment session (BOLA)",
-    type: 'ERROR', urgency: 'P1', status: 'IN_REVIEW', assignee: 'claude', pr: PR(2007),
+    type: 'ERROR', urgency: 'P1', status: 'SHIPPED', assignee: 'claude', pr: PR(2007),
     value: 8, effort: 2,
     detail: "BLD-1899: app/api/admin/bookings/session/route.ts and app/api/admin/bookings/session/stream/route.ts gated only on the bookings.manage / liveAppointments.manage permission -- both granted to PRACTITIONER by default -- with no check that a PRACTITIONER caller is actually the assigned practitioner on the caller-supplied bookingId. Any practitioner who knew (or guessed/enumerated) a colleague's bookingId could claim that live session, edit its captured non-clinical answers, mark it complete (firing loyalty award, review-invite email and room-turnover), create a follow-on booking for that client, or read its full SSE snapshot stream -- all for a client they were never assigned to. Same bug class as BLD-1882/BLD-1693/1711/1720, just not yet applied to these two routes; BLD-1882's same-day commit (6068cdf) fixed the five sibling routes (incidents, patch-test, medical-flag, client-status, before-photo) but missed these. Payment-taking ops in the same route (paylink/terminal/external/voucher/voucher-remove, plus the saved-card 'charge' op via chargeBookingAction) were already separately gated behind bookings.charge and are unaffected -- only the clinical/scheduling surface was exposed.",
     notes: [
@@ -5862,7 +5862,7 @@ export const BUILD_BACKLOG: BacklogItem[] = [
   },
   {
     title: 'Add Option to Remove Outstanding Payments (BLD-1893)',
-    type: 'ERROR', urgency: 'P1', status: 'IN_REVIEW', assignee: 'claude', pr: PR(2010),
+    type: 'ERROR', urgency: 'P1', status: 'SHIPPED', assignee: 'claude', pr: PR(2010),
     value: 6, effort: 2,
     detail: "Admin/Owner could edit or clear a staff-recorded debt (Mark as Debt, BLD-1572/1763), but the automated late-cancel/no-show outstanding fee (lib/outstanding.ts, BLD-1066) had no removal path at all -- only charging it or waiving it at the moment of cancel/no-show cleared it. An incorrectly-generated fee (e.g. a cancellation later confirmed to be outside the 24h window) stayed on the client's balance and kept blocking their online booking forever, with no way to clear it after the fact.",
     notes: [
@@ -5878,7 +5878,7 @@ export const BUILD_BACKLOG: BacklogItem[] = [
   },
   {
     title: 'Allow Adding and Removing Additional Treatments (BLD-1895)',
-    type: 'ERROR', urgency: 'P1', status: 'IN_REVIEW', assignee: 'claude', pr: PR(2011),
+    type: 'ERROR', urgency: 'P1', status: 'SHIPPED', assignee: 'claude', pr: PR(2011),
     value: 6, effort: 2,
     detail: "app/admin/bookings/clinical-actions.ts's addTreatmentToBooking()/removeAddonTreatment() only ever worked before an appointment was charged -- an add-on could be added mid-session but never removed once wrong, and neither action was reachable at all once the booking was paid, so a mistaken extra treatment (or its price) stuck around for the life of the booking with no way to correct it. removeAddonTreatment already existed (BLD-480) but was only ever wired into the live session runner, never onto the booking detail page.",
     notes: [
@@ -5889,6 +5889,29 @@ export const BUILD_BACKLOG: BacklogItem[] = [
       "No Prisma schema change.",
       "Verified: npx tsc --noEmit and npm run build both pass clean.",
       "Review fix (pre-merge): (1) the paid-correction path now also requires bookings.charge (server + page gates), matching overrideBookingPrice/removeOutstandingPayment/PaymentMethodEditor, so an admin with Take payments revoked can't re-price a paid booking. (2) removeAddonTreatment treats a BNPL pre-paid course (prepaidAt, no chargedAt) as paid too, so a practitioner can't lower a paid-in-full course's price from the new button. (3) Removal took the add-on's list price off booking.pricePence, but online add-ons carry a 20% upsell discountPence and the booking total holds the net, so the total dropped too far; it now subtracts pricePence - discountPence. (4) The delete re-asserts bookingId + isAddon in a conditional deleteMany inside an interactive transaction, so a double-click or concurrent removal can't decrement twice; the audit 'total now' figure comes from the post-update row, not the pre-read. (5) The 'Already charged - add further treatments to a new booking' note is hidden when the add picker is shown, and RemoveAddonButton now shows its error instead of leaving it hidden behind the Yes/No confirm.",
+    ],
+  },
+  {
+    title: "Practitioner role can edit clinical notes, add-ons and prices on colleagues' bookings (BOLA) (BLD-1930)",
+    type: 'ERROR', urgency: 'P1', status: 'SHIPPED', assignee: 'claude', pr: PR(2012),
+    value: 8, effort: 1,
+    detail: "app/admin/bookings/clinical-actions.ts's saveClinicalNote/addTreatmentToBooking/removeAddonTreatment/overrideBookingPrice checked only role permission, not practitionerId ownership, unlike the debt route and the session/incidents/patch-test/medical-flag/client-status/before-photo routes already fixed under BLD-1882/BLD-1899. Any practitioner could write a clinical note, add/remove a billed treatment, or change price on a colleague's booking by ID.",
+    notes: [
+      "Fix: copied the existing practitionerId ownership guard (app/api/admin/clients/[id]/debt/route.ts, same pattern BLD-1899 applied to the live-session routes) onto all four functions -- a PRACTITIONER session whose sub does not match the booking's own practitionerId gets 'Booking not found.', never a 403, so a guessed bookingId can't be distinguished from one that doesn't exist. OWNER/ADMIN/RECEPTION are unaffected.",
+      "No Prisma schema change.",
+      "Verified: npx tsc --noEmit and npm run build both pass clean.",
+    ],
+  },
+  {
+    title: '/academy/bundles is listed in sitemap.xml but 404s live; academy certificate PDF carried a strap-line under the logo (BLD-1933, BLD-1935)',
+    type: 'ERROR', urgency: 'P1', status: 'SHIPPED', assignee: 'claude', pr: PR(2013),
+    value: 6, effort: 2,
+    detail: "BLD-1933: app/sitemap.ts has listed ${base}/academy/bundles since BLD-651, but no app/(marketing)/academy/bundles/page.tsx existed (only bundles/[slug]/), so the request fell through to academy/[slug] and returned a live 404 -- submitted to Google, dead in production, no internal link pointed to it. BLD-1935: the academy certificate PDF (app/(marketing)/academy/learn/[slug]/certificate/page.tsx) stacked the K monogram + wordmark lock-up, then added an 'Academy' line directly underneath it -- a strap-line under the logo, the one thing docs/BRAND_GUIDELINES.md never allows.",
+    notes: [
+      "Fix (BLD-1933): new /academy/bundles index page lists active bundles via the existing listBundles() query, reusing the same <BundleCard> the 'Learning pathways' section on /academy already renders, so the listing and the index stay visually consistent. 404s (not an empty page) when no bundle is active, matching sitemap.ts's own gating (it only lists the path while at least one bundle is active).",
+      "Fix (BLD-1935): dropped the 'Academy' line from directly under the mark; the certificate keeps the standard K monogram + CLINICS wordmark lock-up with no sub-brand label under it, per docs/BRAND_GUIDELINES.md.",
+      "No Prisma schema change.",
+      "Verified: npx tsc --noEmit and npm run build both pass clean.",
     ],
   },
 ];
