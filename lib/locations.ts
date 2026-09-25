@@ -14,7 +14,7 @@ export async function ensurePrimaryLocation() {
       name: site.name,
       slug: 'main',
       addressLine: site.address.street,
-      city: [site.address.locality, site.address.region].filter(Boolean).join(', '),
+      city: [site.address.district, site.address.region].filter(Boolean).join(', '),
       postcode: site.address.postalCode,
       phone: site.phone,
       email: site.email,
