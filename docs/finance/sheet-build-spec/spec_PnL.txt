@@ -1,0 +1,107 @@
+FILL	C4:AL4	=EDATE(Assumptions!$B$5,COLUMN()-3)
+FILL	C5:AL5	=Volumes!C$114
+FILL	D6:AL6	=C6+D5
+FILL	C7:M7	=C6+Assumptions!$B$44*(12-(COLUMN()-2))/12
+FILL	O7:AL7	=O6-C6
+FILL	D8:AL8	=IF(Assumptions!$B$45>0,IF(COLUMN()-2>=Assumptions!$B$45,1,0),IF(OR(C8=1,C7>=Assumptions!$B$43),1,0))
+FILL	AM9:AM13	=SUM(C9:N9)
+FILL	AN9:AN13	=SUM(O9:Z9)
+FILL	AO9:AO13	=SUM(AA9:AL9)
+FILL	C9:AL9	=-C8*C5*Assumptions!$B$42/(1+Assumptions!$B$42)
+FILL	C10:AL10	=C5+C9
+FILL	C11:AL11	=-Volumes!C$115
+FILL	C12:AL12	=-C5*Assumptions!$B$34*Assumptions!$B$35
+FILL	C13:AL13	=C10+C11+C12
+FILL	C14:AL14	=IF(C10=0,0,C13/C10)
+FILL	AM15:AM25	=SUM(C15:N15)
+FILL	AN15:AN25	=SUM(O15:Z15)
+FILL	AO15:AO25	=SUM(AA15:AL15)
+FILL	C15:N15	=-(Assumptions!$B$16*Assumptions!$B$12+Assumptions!$B$17*Assumptions!$B$13+Assumptions!$B$14)*Assumptions!$B$15/12
+FILL	O15:Z15	=-(Assumptions!$C$16*Assumptions!$B$12+Assumptions!$C$17*Assumptions!$B$13+Assumptions!$B$14)*Assumptions!$B$15/12
+FILL	AA15:AL15	=-(Assumptions!$E$16*Assumptions!$B$12+Assumptions!$E$17*Assumptions!$B$13+Assumptions!$B$14)*Assumptions!$B$15/12
+FILL	C16:AL16	=-Assumptions!$B$28/12
+FILL	C17:AL17	=-Assumptions!$B$29/12
+FILL	C18:AL18	=-Assumptions!$B$30/12
+FILL	C19:AL19	=-Energy!C$17
+FILL	C20:N20	=-MAX(Assumptions!$B$40,Assumptions!$B$39*C10)
+FILL	O20:Z20	=-MAX(Assumptions!$B$40,Assumptions!$C$39*O10)
+FILL	AA20:AL20	=-MAX(Assumptions!$B$40,Assumptions!$E$39*AA10)
+FILL	C21:AL21	=-Assumptions!$B$32/12
+FILL	C22:AL22	=-Assumptions!$B$33
+FILL	C23:AL23	=-Assumptions!$B$36
+FILL	C24:AL24	=-Assumptions!$B$37
+FILL	C25:AL25	=C13+C15+C16+C17+C18+C19+C20+C21+C22+C23+C24
+FILL	C26:AL26	=IF(C10=0,0,C25/C10)
+FILL	AM27:AM31	=SUM(C27:N27)
+FILL	AN27:AN31	=SUM(O27:Z27)
+FILL	AO27:AO31	=SUM(AA27:AL27)
+FILL	C27:AL27	=-Machinery!B$49
+FILL	C28:AL28	=-Machinery!B$50
+FILL	C29:AL29	=C25+C27+C28
+FILL	C31:AL31	=C29+C30
+FILL	C32:AL32	=-MAX(0,C31)*Assumptions!$B$46
+FILL	C33:AO33	=C31+C32
+FILL	C34:AL34	=IF(C10=0,0,C33/C10)
+FILL	C36:AL36	=Volumes!C$118
+FILL	C37:N37	=(Assumptions!$B$16+1)*Assumptions!$B$21
+FILL	O37:Z37	=(Assumptions!$C$16+1)*Assumptions!$B$21
+FILL	AA37:AL37	=(Assumptions!$E$16+1)*Assumptions!$B$21
+FILL	C38:AL38	=IF(C36>C37,"OVER","ok")
+SET	AM5	=SUM(C5:N5)
+SET	AN5	=SUM(O5:Z5)
+SET	AO5	=SUM(AA5:AL5)
+SET	C6	=C5
+SET	N7	=N6
+SET	C8	=IF(Assumptions!$B$45>0,IF(COLUMN()-2>=Assumptions!$B$45,1,0),0)
+SET	AM14	=IF(SUM(C10:N10)=0,0,SUM(C13:N13)/SUM(C10:N10))
+SET	AN14	=IF(SUM(O10:Z10)=0,0,SUM(O13:Z13)/SUM(O10:Z10))
+SET	AO14	=IF(SUM(AA10:AL10)=0,0,SUM(AA13:AL13)/SUM(AA10:AL10))
+SET	AM26	=IF(SUM(C10:N10)=0,0,SUM(C25:N25)/SUM(C10:N10))
+SET	AN26	=IF(SUM(O10:Z10)=0,0,SUM(O25:Z25)/SUM(O10:Z10))
+SET	AO26	=IF(SUM(AA10:AL10)=0,0,SUM(AA25:AL25)/SUM(AA10:AL10))
+SET	AM32	=-IF(SUM(C31:N31)<=0,0,IF(SUM(C31:N31)<=Assumptions!$C$46,SUM(C31:N31)*Assumptions!$B$46,IF(SUM(C31:N31)<=Assumptions!$C$47,Assumptions!$C$46*Assumptions!$B$46+(SUM(C31:N31)-Assumptions!$C$46)*Assumptions!$B$47,SUM(C31:N31)*Assumptions!$B$48)))
+SET	AN32	=-IF(SUM(O31:Z31)<=0,0,IF(SUM(O31:Z31)<=Assumptions!$C$46,SUM(O31:Z31)*Assumptions!$B$46,IF(SUM(O31:Z31)<=Assumptions!$C$47,Assumptions!$C$46*Assumptions!$B$46+(SUM(O31:Z31)-Assumptions!$C$46)*Assumptions!$B$47,SUM(O31:Z31)*Assumptions!$B$48)))
+SET	AO32	=-IF(SUM(AA31:AL31)<=0,0,IF(SUM(AA31:AL31)<=Assumptions!$C$46,SUM(AA31:AL31)*Assumptions!$B$46,IF(SUM(AA31:AL31)<=Assumptions!$C$47,Assumptions!$C$46*Assumptions!$B$46+(SUM(AA31:AL31)-Assumptions!$C$46)*Assumptions!$B$47,SUM(AA31:AL31)*Assumptions!$B$48)))
+BLOCK	A1:A2
+P&L forecast — 36 months + annual summary
+Gross profit = net revenue − variable direct costs (consumables, machine energy & service, card fees). Salaried practitioners sit in overheads: they are capacity, not per-unit cost. Monthly corporation tax is a flat 19% accrual on positive months; the annual columns apply the real 19%/26.5%/25% bands. VAT switches on automatically when the rolling 12-month turnover tracker (bottom) crosses the threshold — prices are held, so VAT comes out of margin.
+BLOCK	A4:A34
+Month
+Gross booking revenue
+      cumulative gross revenue
+      rolling 12-mo taxable turnover (incl. pre-model estimate)
+      VAT-registered this month? (1/0)
+Output VAT (prices held — VAT absorbed)
+Net revenue
+    Consumables, machine energy & service
+    Card processing fees
+GROSS PROFIT
+Gross margin %
+    Staff (practitioners, reception, owner)
+    Rent
+    Business rates
+    Service charge
+    Facility energy (HVAC, base load, standing)
+    Marketing
+    Insurance
+    Platform hosting & infra
+    Cleaning & sundries
+    Other fixed
+EBITDA
+EBITDA margin %
+    Depreciation (machinery)
+    Amortisation (enhancements/fit-out)
+EBIT
+    Interest / finance costs (EDIT if machines financed)
+Profit before tax
+    Corporation tax (monthly ≈ 19% accrual; annual = banded)
+NET PROFIT
+Net margin %
+BLOCK	AM4:AO4
+Year 1	Year 2	Year 3
+BLOCK	C30:AL30
+0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0	0
+BLOCK	A36:A38
+Practitioner-hours needed (revenue treatments)
+Practitioner-hours available (headcount + owner)
+CAPACITY CHECK

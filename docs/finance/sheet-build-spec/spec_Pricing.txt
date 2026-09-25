@@ -1,0 +1,447 @@
+FILL	J29:J194	=I29/(1+H29*$B$5)
+FILL	O29:O194	=F29/60*Assumptions!$B$20
+FILL	P29:P194	=I29*Assumptions!$B$34*Assumptions!$B$35
+FILL	Q29:Q194	=SUM(K29:P29)
+FILL	R29:R194	=J29-Q29
+FILL	S29:S194	=IF(J29=0,0,R29/J29)
+FILL	T29:T194	=INDEX($B$13:$B$25,MATCH(E29,$A$13:$A$25,0))
+FILL	U29:U194	=SUM(K29:O29)/(1-T29-Assumptions!$B$34*Assumptions!$B$35*(1+H29*$B$5))
+FILL	V29:V194	=MROUND(U29*(1+H29*$B$5),$B$6)
+FILL	W29:W194	=IF(I29=0,0,V29/I29-1)
+FILL	X29:X194	=MROUND(V29*3*(1-$B$7),$B$6)
+FILL	Y29:Y194	=MROUND(V29*6*(1-$B$8),$B$6)
+FILL	Z29:Z194	=MROUND(V29*10*(1-$B$9),$B$6)
+FILL	AC29:AC194	=IF(OR(D29="ACTIVE",D29="CONSULTATION"),1,0)
+FILL	L29:L88	=G29/60*Machinery!$H$5*Assumptions!$B$23/100
+FILL	M29:M88	=G29/60*Machinery!$K$5
+FILL	N29:N88	=G29/60*Machinery!$L$5
+FILL	L89:L90	=G89/60*Machinery!$H$8*Assumptions!$B$23/100
+FILL	M89:M90	=G89/60*Machinery!$K$8
+FILL	N89:N90	=G89/60*Machinery!$L$8
+FILL	L91:L101	=G91/60*Machinery!$H$6*Assumptions!$B$23/100
+FILL	M91:M101	=G91/60*Machinery!$K$6
+FILL	N91:N101	=G91/60*Machinery!$L$6
+FILL	L102:L107	=G102/60*Machinery!$H$7*Assumptions!$B$23/100
+FILL	M102:M107	=G102/60*Machinery!$K$7
+FILL	N102:N107	=G102/60*Machinery!$L$7
+FILL	L108:L114	=G108/60*Machinery!$H$11*Assumptions!$B$23/100
+FILL	M108:M114	=G108/60*Machinery!$K$11
+FILL	N108:N114	=G108/60*Machinery!$L$11
+FILL	L115:L127	=G115/60*Machinery!$H$9*Assumptions!$B$23/100
+FILL	M115:M127	=G115/60*Machinery!$K$9
+FILL	N115:N127	=G115/60*Machinery!$L$9
+FILL	L129:L131	=G129/60*Machinery!$H$16*Assumptions!$B$23/100
+FILL	M129:M131	=G129/60*Machinery!$K$16
+FILL	N129:N131	=G129/60*Machinery!$L$16
+FILL	L133:L137	=G133/60*Machinery!$H$6*Assumptions!$B$23/100
+FILL	M133:M137	=G133/60*Machinery!$K$6
+FILL	N133:N137	=G133/60*Machinery!$L$6
+FILL	L138:L141	=G138/60*Machinery!$H$12*Assumptions!$B$23/100
+FILL	M138:M141	=G138/60*Machinery!$K$12
+FILL	N138:N141	=G138/60*Machinery!$L$12
+FILL	L142:L145	=G142/60*Machinery!$H$15*Assumptions!$B$23/100
+FILL	M142:M145	=G142/60*Machinery!$K$15
+FILL	N142:N145	=G142/60*Machinery!$L$15
+FILL	L146:L147	=G146/60*Machinery!$H$13*Assumptions!$B$23/100
+FILL	M146:M147	=G146/60*Machinery!$K$13
+FILL	N146:N147	=G146/60*Machinery!$L$13
+FILL	L148:L154	=G148/60*Machinery!$H$17*Assumptions!$B$23/100
+FILL	M148:M154	=G148/60*Machinery!$K$17
+FILL	N148:N154	=G148/60*Machinery!$L$17
+FILL	L155:L157	=G155/60*Machinery!$H$13*Assumptions!$B$23/100
+FILL	M155:M157	=G155/60*Machinery!$K$13
+FILL	N155:N157	=G155/60*Machinery!$L$13
+FILL	L158:L160	=G158/60*Machinery!$H$12*Assumptions!$B$23/100
+FILL	M158:M160	=G158/60*Machinery!$K$12
+FILL	N158:N160	=G158/60*Machinery!$L$12
+FILL	L161:L164	=G161/60*Machinery!$H$11*Assumptions!$B$23/100
+FILL	M161:M164	=G161/60*Machinery!$K$11
+FILL	N161:N164	=G161/60*Machinery!$L$11
+FILL	L166:L169	=G166/60*Machinery!$H$17*Assumptions!$B$23/100
+FILL	M166:M169	=G166/60*Machinery!$K$17
+FILL	N166:N169	=G166/60*Machinery!$L$17
+FILL	L171:L173	=G171/60*Machinery!$H$15*Assumptions!$B$23/100
+FILL	M171:M173	=G171/60*Machinery!$K$15
+FILL	N171:N173	=G171/60*Machinery!$L$15
+FILL	L174:L192	=G174/60*Machinery!$H$16*Assumptions!$B$23/100
+FILL	M174:M192	=G174/60*Machinery!$K$16
+FILL	N174:N192	=G174/60*Machinery!$L$16
+FILL	L193:L194	=G193/60*Machinery!$H$6*Assumptions!$B$23/100
+FILL	M193:M194	=G193/60*Machinery!$K$6
+FILL	N193:N194	=G193/60*Machinery!$L$6
+SET	L128	=G128/60*Machinery!$H$17*Assumptions!$B$23/100
+SET	M128	=G128/60*Machinery!$K$17
+SET	N128	=G128/60*Machinery!$L$17
+SET	L132	=G132/60*Machinery!$H$10*Assumptions!$B$23/100
+SET	M132	=G132/60*Machinery!$K$10
+SET	N132	=G132/60*Machinery!$L$10
+SET	L165	=G165/60*Machinery!$H$15*Assumptions!$B$23/100
+SET	M165	=G165/60*Machinery!$K$15
+SET	N165	=G165/60*Machinery!$L$15
+SET	L170	=G170/60*Machinery!$H$14*Assumptions!$B$23/100
+SET	M170	=G170/60*Machinery!$K$14
+SET	N170	=G170/60*Machinery!$L$14
+BLOCK	A1:A2
+Treatment pricing architecture — unit economics per variant
+Every recommended price is a formula: fully-loaded cost ÷ (1 − target margin − card-fee drag), then VAT, then rounding. Change the levers below or any machine/labour assumption and the whole price list moves. Current prices scraped from the live admin catalogue on 2026-08-28. Recorded COGS is empty on every variant, so consumables are researched estimates (blue).
+VAL	A4	LEVERS
+BLOCK	A5:C7
+Price for the VAT-registered state? (1 = yes)	1	1 = recommended prices keep their margin AFTER VAT registration (the safe basis for a durable price list). 0 = price for today's unregistered state.
+Round recommended prices to nearest £	1	1, 5 or 9 — e.g. 5 gives £85/£90-style pricing.
+Course discount — 3 sessions	0.1	Per-session discount vs single price. Current live courses average ~15% off.
+BLOCK	A8:B9
+Course discount — 6 sessions	0.15
+Course discount — 10 sessions	0.2
+VAL	A11	TARGET CONTRIBUTION MARGIN BY MACHINE CLASS
+BLOCK	A12:C12
+Class	Target margin	Margin = (net revenue − fully-loaded cost) ÷ net revenue. Fully-loaded cost includes consumables, machine energy, machine service & depreciation per hour, practitioner time and card fees.
+BLOCK	A13:B25
+diode-laser	0.7
+laser-ipl-platform	0.7
+pico-laser-PLANNED	0.7
+co2-laser	0.7
+hifu	0.6
+rf-tightening	0.7
+hydrafacial-platform	0.65
+endosphere-vacuum	0.7
+microneedling-pen	0.65
+microdermabrasion	0.7
+microcurrent-led	0.7
+none-injectables	0.55
+none-manual	0.65
+BLOCK	A28:AC28
+Service	Variant	Category	Status	Machine class	Internal min	Machine min	VAT %	Current price £	Current net £	Consumables £	Machine energy £	Machine service £	Machine depreciation £	Practitioner £	Card fee £	Fully-loaded cost £	Contribution £	Contribution %	Target %	Recommended net £	Recommended price £	Δ vs current	Course 3 rec £	Course 6 rec £	Course 10 rec £	Current course 6 £	Current 6-course discount	Sellable
+BLOCK	A29:I194
+Laser Hair Removal — Women	Bikini Line	aesthetics	CONSULTATION	diode-laser	20	20	0.2	35
+Laser Hair Removal — Women	Brazilian	aesthetics	CONSULTATION	diode-laser	20	20	0.2	43
+Laser Hair Removal — Women	Hollywood Brazilian (incl. Peri-Anal)	aesthetics	CONSULTATION	diode-laser	30	30	0.2	54
+Laser Hair Removal — Women	Behind (Peri-Anal)	aesthetics	CONSULTATION	diode-laser	20	20	0.2	26
+Laser Hair Removal — Women	Brazilian/Bikini & Underarms	aesthetics	CONSULTATION	diode-laser	30	30	0.2	60
+Laser Hair Removal — Women	Hollywood Brazilian (incl. Peri-Anal) & Underarms	aesthetics	CONSULTATION	diode-laser	30	30	0.2	64
+Laser Hair Removal — Women	Hollywood Brazilian (incl. Peri-Anal) & Full Legs	aesthetics	CONSULTATION	diode-laser	40	40	0.2	119
+Laser Hair Removal — Women	Full Leg & Underarms	aesthetics	CONSULTATION	diode-laser	30	30	0.2	115
+Laser Hair Removal — Women	Lower Leg, Brazilian/Bikini & Underarms	aesthetics	CONSULTATION	diode-laser	40	40	0.2	95
+Laser Hair Removal — Women	Full Legs, Brazilian/Bikini & Underarms	aesthetics	CONSULTATION	diode-laser	50	50	0.2	121
+Laser Hair Removal — Women	Full Legs, Hollywood Brazilian (incl. Peri-Anal) & Underarms	aesthetics	CONSULTATION	diode-laser	50	50	0.2	149
+Laser Hair Removal — Women	Eyebrows (middle, above bridge of nose)	aesthetics	CONSULTATION	diode-laser	15	15	0.2	11
+Laser Hair Removal — Women	Lip	aesthetics	CONSULTATION	diode-laser	15	15	0.2	15
+Laser Hair Removal — Women	Chin	aesthetics	CONSULTATION	diode-laser	15	15	0.2	23
+Laser Hair Removal — Women	Sides of Face	aesthetics	CONSULTATION	diode-laser	20	20	0.2	29
+Laser Hair Removal — Women	Lip & Chin	aesthetics	CONSULTATION	diode-laser	20	20	0.2	32
+Laser Hair Removal — Women	Jawline & Chin	aesthetics	CONSULTATION	diode-laser	20	20	0.2	40
+Laser Hair Removal — Women	½ Face (forehead–nose or upper lip–chin)	aesthetics	CONSULTATION	diode-laser	20	20	0.2	46
+Laser Hair Removal — Women	Front of Neck	aesthetics	CONSULTATION	diode-laser	20	20	0.2	34
+Laser Hair Removal — Women	Back of Neck	aesthetics	CONSULTATION	diode-laser	20	20	0.2	34
+Laser Hair Removal — Women	Full Face	aesthetics	CONSULTATION	diode-laser	30	30	0.2	54
+Laser Hair Removal — Women	Full Face & Neck	aesthetics	CONSULTATION	diode-laser	30	30	0.2	66
+Laser Hair Removal — Women	Underarms	aesthetics	CONSULTATION	diode-laser	20	20	0.2	17
+Laser Hair Removal — Women	Snail Trail / Naval	aesthetics	CONSULTATION	diode-laser	20	20	0.2	28
+Laser Hair Removal — Women	Stomach	aesthetics	CONSULTATION	diode-laser	25	25	0.2	43
+Laser Hair Removal — Women	Shoulders	aesthetics	CONSULTATION	diode-laser	25	25	0.2	43
+Laser Hair Removal — Women	½ Arms	aesthetics	CONSULTATION	diode-laser	30	30	0.2	58
+Laser Hair Removal — Women	Chest	aesthetics	CONSULTATION	diode-laser	30	30	0.2	69
+Laser Hair Removal — Women	Chest & Stomach	aesthetics	CONSULTATION	diode-laser	35	35	0.2	87
+Laser Hair Removal — Women	Full Arms	aesthetics	CONSULTATION	diode-laser	35	35	0.2	104
+Laser Hair Removal — Women	Fingers & Toes	aesthetics	CONSULTATION	diode-laser	20	20	0.2	23
+Laser Hair Removal — Women	Feet & Toes	aesthetics	CONSULTATION	diode-laser	20	20	0.2	15
+Laser Hair Removal — Women	Buttocks	aesthetics	CONSULTATION	diode-laser	20	20	0.2	45
+Laser Hair Removal — Women	Half Body	aesthetics	CONSULTATION	diode-laser	50	50	0.2	140
+Laser Hair Removal — Women	Lower Leg	aesthetics	CONSULTATION	diode-laser	30	30	0.2	84
+Laser Hair Removal — Women	Full Legs	aesthetics	CONSULTATION	diode-laser	40	40	0.2	101
+Laser Hair Removal — Women	Full Body	aesthetics	CONSULTATION	diode-laser	60	60	0.2	218
+Laser Hair Removal — Men	Centre Brow	aesthetics	ACTIVE	diode-laser	20	20	0.2	17
+Laser Hair Removal — Men	Front of Neck	aesthetics	ACTIVE	diode-laser	20	20	0.2	57
+Laser Hair Removal — Men	Back of Neck	aesthetics	ACTIVE	diode-laser	20	20	0.2	57
+Laser Hair Removal — Men	Full Beard	aesthetics	ACTIVE	diode-laser	30	30	0.2	75
+Laser Hair Removal — Men	Full Beard & Neck	aesthetics	ACTIVE	diode-laser	40	40	0.2	90
+Laser Hair Removal — Men	Underarms	aesthetics	ACTIVE	diode-laser	20	20	0.2	33
+Laser Hair Removal — Men	½ Arms	aesthetics	ACTIVE	diode-laser	30	30	0.2	90
+Laser Hair Removal — Men	Shoulders	aesthetics	ACTIVE	diode-laser	20	20	0.2	90
+Laser Hair Removal — Men	Lower Back	aesthetics	ACTIVE	diode-laser	30	30	0.2	90
+Laser Hair Removal — Men	Full Arms	aesthetics	ACTIVE	diode-laser	40	40	0.2	105
+Laser Hair Removal — Men	Chest	aesthetics	ACTIVE	diode-laser	25	25	0.2	105
+Laser Hair Removal — Men	Stomach	aesthetics	ACTIVE	diode-laser	25	25	0.2	105
+Laser Hair Removal — Men	Chest & Stomach	aesthetics	ACTIVE	diode-laser	30	30	0.2	115
+Laser Hair Removal — Men	Full Back	aesthetics	ACTIVE	diode-laser	40	40	0.2	147
+Laser Hair Removal — Men	Full Back & Shoulders	aesthetics	ACTIVE	diode-laser	50	50	0.2	158
+Laser Hair Removal — Men	Full Back, Shoulders, Chest & Stomach	aesthetics	ACTIVE	diode-laser	60	60	0.2	219
+Laser Hair Removal — Men	Full Body (excl. face)	aesthetics	ACTIVE	diode-laser	70	70	0.2	321
+Laser Hair Removal — Men	Feet & Toes	aesthetics	ACTIVE	diode-laser	20	20	0.2	61
+Laser Hair Removal — Men	Buttocks	aesthetics	ACTIVE	diode-laser	20	20	0.2	63
+Laser Hair Removal — Men	Male Brazilian	aesthetics	ACTIVE	diode-laser	30	30	0.2	95
+Laser Hair Removal — Men	Lower Legs	aesthetics	ACTIVE	diode-laser	40	40	0.2	110
+Laser Hair Removal — Men	Any Male Bikini (incl. Peri-Anal)	aesthetics	ACTIVE	diode-laser	30	30	0.2	118
+Laser Hair Removal — Men	Full Legs	aesthetics	ACTIVE	diode-laser	60	60	0.2	147
+Intimate Rejuvenation	CO2 Laser Rejuvenation	aesthetics	COMING_SOON	co2-laser	40	40	0.2	690
+Intimate Rejuvenation	Intimate Area Whitening	aesthetics	COMING_SOON	co2-laser	40	40	0.2	690
+Laser Pigmentation Removal	Face	aesthetics	ACTIVE	laser-ipl-platform	30	30	0.2	150
+Vascular Lesions Treatment	Face	aesthetics	ACTIVE	laser-ipl-platform	30	30	0.2	150
+Spider Veins Removal	Nose Thread Vein	aesthetics	CONSULTATION	laser-ipl-platform	25	25	0.2	230
+Spider Veins Removal	Cheek Thread Vein	aesthetics	CONSULTATION	laser-ipl-platform	30	30	0.2	296
+Spider Veins Removal	Leg Thread Vein	aesthetics	CONSULTATION	laser-ipl-platform	40	40	0.2	417
+Carbon Laser Facial (Hollywood Peel)	Neck	aesthetics	INACTIVE	laser-ipl-platform	30	30	0.2	90
+Carbon Laser Facial (Hollywood Peel)	Full Face	aesthetics	INACTIVE	laser-ipl-platform	50	50	0.2	121
+Carbon Laser Facial (Hollywood Peel)	Face & Neck	aesthetics	INACTIVE	laser-ipl-platform	60	60	0.2	205
+Carbon Laser Facial (Hollywood Peel)	Face, Neck & Décolleté	aesthetics	INACTIVE	laser-ipl-platform	70	70	0.2	237
+Laser Fungal Nail Treatment	1 Foot	aesthetics	COMING_SOON	laser-ipl-platform	30	30	0.2	79
+Laser Fungal Nail Treatment	2 Feet	aesthetics	COMING_SOON	laser-ipl-platform	40	40	0.2	100
+Laser Tattoo Removal	Very Small (1–3 cm)	aesthetics	COMING_SOON	pico-laser-PLANNED	20	20	0.2	44
+Laser Tattoo Removal	Small (4–6 cm)	aesthetics	COMING_SOON	pico-laser-PLANNED	20	20	0.2	66
+Laser Tattoo Removal	Medium (7–15 cm)	aesthetics	COMING_SOON	pico-laser-PLANNED	25	25	0.2	116
+Laser Tattoo Removal	Large (16–20 cm)	aesthetics	COMING_SOON	pico-laser-PLANNED	35	35	0.2	165
+Laser Tattoo Removal	X-Large (21 cm+)	aesthetics	COMING_SOON	pico-laser-PLANNED	45	45	0.2	237
+Permanent Make-Up Removal	Eyebrows	aesthetics	COMING_SOON	pico-laser-PLANNED	30	30	0.2	275
+HydraFacial	Signature Express (30 min)	aesthetics	ACTIVE	hydrafacial-platform	45	45	0.2	95
+HydraFacial	Full Face Deluxe (50 min)	aesthetics	ACTIVE	hydrafacial-platform	60	60	0.2	145
+HydraFacial	Platinum — Anti-Acne (60 min)	aesthetics	ACTIVE	hydrafacial-platform	70	70	0.2	185
+HydraFacial	Platinum — Collagen (60 min)	aesthetics	ACTIVE	hydrafacial-platform	70	70	0.2	185
+HydraFacial	Platinum — Pigmentation & Sun Damage (60 min)	aesthetics	ACTIVE	hydrafacial-platform	70	70	0.2	185
+HydraFacial	Platinum — Anti-Ageing (60 min)	aesthetics	ACTIVE	hydrafacial-platform	70	70	0.2	185
+HydraFacial	Platinum — Brightening (60 min)	aesthetics	ACTIVE	hydrafacial-platform	70	70	0.2	185
+SMAS HIFU Lifting	Eyebrow Lift	aesthetics	ACTIVE	hifu	30	30	0.2	349
+SMAS HIFU Lifting	Forehead Lift	aesthetics	ACTIVE	hifu	30	30	0.2	349
+SMAS HIFU Lifting	Neck Lift	aesthetics	ACTIVE	hifu	40	40	0.2	349
+SMAS HIFU Lifting	Jawline Lift	aesthetics	ACTIVE	hifu	40	40	0.2	399
+SMAS HIFU Lifting	Full Face	aesthetics	ACTIVE	hifu	60	60	0.2	479
+SMAS HIFU Lifting	Full Face & Neck	aesthetics	ACTIVE	hifu	60	60	0.2	559
+SMAS HIFU Lifting	Stomach	aesthetics	ACTIVE	hifu	60	60	0.2	399
+SMAS HIFU Lifting	Outer Thighs	aesthetics	ACTIVE	hifu	60	60	0.2	329
+SMAS HIFU Lifting	Inner Thighs	aesthetics	ACTIVE	hifu	60	60	0.2	349
+SMAS HIFU Lifting	Back & Flanks	aesthetics	ACTIVE	hifu	60	60	0.2	329
+SMAS HIFU Lifting	Buttock	aesthetics	ACTIVE	hifu	60	60	0.2	349
+SMAS HIFU Lifting	Skin Above the Knee Caps	aesthetics	ACTIVE	hifu	40	40	0.2	309
+SMAS HIFU Lifting	Arms (bingo wings)	aesthetics	ACTIVE	hifu	50	50	0.2	349
+Cosmetic Peels	Full Face	aesthetics	ACTIVE	none-manual	60	0	0.2	125
+Fat-Dissolving Injections	Small Area (under chin)	aesthetics	ACTIVE	none-injectables	30	0	0.2	145
+Fat-Dissolving Injections	Medium Area (Stomach, Bingo Wings, Knees)	aesthetics	ACTIVE	none-injectables	30	0	0.2	225
+Fat-Dissolving Injections	Large Area (Thighs, Waist, Stomach)	aesthetics	ACTIVE	none-injectables	30	0	0.2	290
+RF Lifting	RF Lifting	aesthetics	ACTIVE	rf-tightening	60	60	0.2	260
+IPL Phototherapy	Face	aesthetics	ACTIVE	laser-ipl-platform	30	30	0.2	150
+IPL Phototherapy	Face & Neck	aesthetics	ACTIVE	laser-ipl-platform	30	30	0.2	210
+Laser Skin Rejuvenation	Face & Neck	aesthetics	ACTIVE	laser-ipl-platform	45	45	0.2	210
+Laser Skin Rejuvenation	Face	aesthetics	ACTIVE	laser-ipl-platform	40	40	0.2	150
+Laser Skin Resurfacing	Laser Skin Resurfacing	aesthetics	ACTIVE	laser-ipl-platform	60	60	0.2	180
+Endosphere Body Contouring	BodySphere 30 min	aesthetics	ACTIVE	endosphere-vacuum	35	35	0.2	75
+Endosphere Body Contouring	BodySphere 45 min	aesthetics	ACTIVE	endosphere-vacuum	45	45	0.2	105
+Endosphere Body Contouring	BodySphere 60 min	aesthetics	ACTIVE	endosphere-vacuum	60	60	0.2	120
+Endosphere Body Contouring	BodySphere & Facial Massage 60 min	aesthetics	ACTIVE	endosphere-vacuum	60	60	0.2	125
+CACI Treatment	CACI Face & Neck Lift	aesthetics	INACTIVE	microcurrent-led	70	70	0.2	140
+CACI Treatment	CACI with Hydra Mask	aesthetics	INACTIVE	microcurrent-led	70	70	0.2	150
+CACI Treatment	CACI Jaw Line Lift	aesthetics	INACTIVE	microcurrent-led	40	40	0.2	70
+CACI Treatment	Microcurrent	aesthetics	INACTIVE	microcurrent-led	30	30	0.2	85
+Red Carpet Lift	BB Glow	aesthetics	INACTIVE	microneedling-pen	50	50	0.2	145
+BB Glow	BB Glow	aesthetics	ACTIVE	microneedling-pen	60	60	0.2	145
+Massage	Deep Tissue Massage	aesthetics	ACTIVE	none-manual	60	0	0.2	95
+Massage	Swedish Massage	aesthetics	ACTIVE	none-manual	60	0	0.2	95
+Massage	Back, Neck & Shoulders Massage	aesthetics	ACTIVE	none-manual	30	0	0.2	60
+Massage	Relaxing Massage	aesthetics	ACTIVE	none-manual	60	0	0.2	95
+Massage	Hot Stone Massage	aesthetics	ACTIVE	none-manual	60	0	0.2	105
+Massage	Full Body Massage	aesthetics	ACTIVE	none-manual	60	0	0.2	95
+Massage	Lymphatic Drainage Massage	aesthetics	ACTIVE	none-manual	60	0	0.2	95
+Microneedling	Microneedling for face	aesthetics	ACTIVE	microneedling-pen	60	60	0.2	95
+Microneedling	Microneedling for face and neck	aesthetics	ACTIVE	microneedling-pen	60	60	0.2	115
+Microneedling	Microneedling with hyaluronic acid serum or exosome serum	aesthetics	ACTIVE	microneedling-pen	60	60	0.2	145
+Vacuum massage	Vacuum massage (30 min)	aesthetics	ACTIVE	endosphere-vacuum	40	40	0.2	75
+Vacuum massage	Vacuum massage (45 min)	aesthetics	ACTIVE	endosphere-vacuum	50	50	0.2	105
+Vacuum massage	Vacuum massage (60 min)	aesthetics	ACTIVE	endosphere-vacuum	70	70	0.2	120
+Deep Cleansing	Deep Cleansing Classic	aesthetics	ACTIVE	hydrafacial-platform	60	60	0.2	95
+Deep Cleansing	Deep Cleansing with LED Therapy	aesthetics	ACTIVE	hydrafacial-platform	70	70	0.2	145
+Deep Cleansing	Deep Cleansing with Alginate Mask	aesthetics	ACTIVE	hydrafacial-platform	70	70	0.2	155
+Deep Cleansing	Deep Cleansing with Peel	aesthetics	ACTIVE	hydrafacial-platform	70	70	0.2	175
+LED Light Therapy	Facial LED Light Therapy	aesthetics	ACTIVE	microcurrent-led	30	30	0.2	45
+Face&Head Massage	Head Massage	aesthetics	ACTIVE	none-manual	30	0	0.2	45
+Face&Head Massage	Face Massage 15 min	aesthetics	ACTIVE	none-manual	15	0	0.2	35
+Face&Head Massage	Face Massage 30 min	aesthetics	ACTIVE	none-manual	30	0	0.2	55
+Face&Head Massage	Indian Head Massage	aesthetics	ACTIVE	none-manual	30	0	0.2	45
+Microdermabrasion	Microdermabrasion	aesthetics	ACTIVE	microdermabrasion	30	30	0.2	80
+Microcurrent lifting	Microcurrent lifting	aesthetics	ACTIVE	microcurrent-led	45	45	0.2	85
+Microcurrent lifting	Microcurrent lifting face & neck lift	aesthetics	ACTIVE	microcurrent-led	60	60	0.2	140
+Microcurrent lifting	Microcurrent lifting with hydra mask	aesthetics	ACTIVE	microcurrent-led	60	60	0.2	150
+Botox	Ladie's Anti-Wrinkle 1 area	aesthetics	ACTIVE	none-injectables	40	0	0.2	175
+Botox	Ladie's Anti-Wrinkle 2 area	aesthetics	ACTIVE	none-injectables	40	0	0.2	200
+Botox	Ladie's Anti-Wrinkle 3 area	aesthetics	ACTIVE	none-injectables	40	0	0.2	250
+Botox	Men's Anti-Wrinkle 1 area	aesthetics	ACTIVE	none-injectables	40	0	0.2	195
+Botox	Men's Anti-Wrinkle 2 area	aesthetics	ACTIVE	none-injectables	40	0	0.2	220
+Botox	Men's Anti-Wrinkle 3 area	aesthetics	ACTIVE	none-injectables	40	0	0.2	270
+Lip Filler	Lip Filler 0.5 ml	aesthetics	ACTIVE	none-injectables	40	0	0.2	180
+Lip Filler	Lip Filler 0.7 ml	aesthetics	ACTIVE	none-injectables	40	0	0.2	200
+Lip Filler	Lip Filler 1 ml	aesthetics	ACTIVE	none-injectables	40	0	0.2	230
+Lip Filler	Lip Filler 1.5 ml	aesthetics	ACTIVE	none-injectables	40	0	0.2	280
+Mesotherapy	Mesotherapy Under Eyes	aesthetics	ACTIVE	none-injectables	45	0	0.2	175
+Mesotherapy	Mesotherapy Full Face	aesthetics	ACTIVE	none-injectables	45	0	0.2	185
+Mesotherapy	Mesotherapy Decolletage	aesthetics	ACTIVE	none-injectables	45	0	0.2	190
+Mesotherapy	Mesotherapy Hair Growth	aesthetics	ACTIVE	none-injectables	45	0	0.2	190
+Mesotherapy	Mesotherapy Neck	aesthetics	ACTIVE	none-injectables	45	0	0.2	190
+Polynucleotides	Polynucleotides Face	aesthetics	ACTIVE	none-injectables	40	0	0.2	170
+Polynucleotides	Polynucleotides Eyes	aesthetics	ACTIVE	none-injectables	40	0	0.2	170
+Polynucleotides	Polynucleotides Hair Rejuvenation	aesthetics	ACTIVE	none-injectables	40	0	0.2	170
+Polynucleotides	Rejuran Healer - Advanced Polynucleotides	aesthetics	ACTIVE	none-injectables	50	0	0.2	200
+Rosacea Treatment	Rosacea Treatment Face	aesthetics	ACTIVE	laser-ipl-platform	30	30	0.2	150
+Laser Wrinkles Removal	Laser Wrinkles Removal Face	aesthetics	ACTIVE	laser-ipl-platform	30	30	0.2	150
+BLOCK	K29:K194
+1.5
+1.5
+1.5
+1.5
+1.5
+1.5
+2
+2
+2
+2
+2
+1
+1
+1
+1.5
+1.5
+1.5
+1.5
+1.5
+1.5
+1.5
+1.5
+1
+1.5
+1.5
+1.5
+1.5
+1.5
+2
+2
+1
+1
+1.5
+2.5
+1.5
+2
+3
+1
+1.5
+1.5
+1.5
+2
+1.5
+1.5
+1.5
+1.5
+2
+1.5
+1.5
+2
+2
+2.5
+3
+3.5
+1
+1.5
+1.5
+2
+1.5
+2.5
+50
+50
+2
+2
+2
+2
+3
+5
+5
+6
+7
+2
+2
+1
+1
+1.5
+2
+2.5
+1
+15
+20
+25
+25
+25
+25
+25
+40
+40
+50
+50
+65
+75
+80
+80
+80
+80
+80
+50
+65
+12
+35
+55
+75
+3
+2
+2
+2
+2
+2
+2
+2
+2
+2.5
+4
+8
+3
+3
+25
+25
+3
+3
+2
+3
+4
+3
+3
+20
+22
+35
+2
+2
+2
+8
+10
+12
+15
+1
+2
+1.5
+2
+2
+2
+3
+3
+8
+45
+60
+75
+55
+70
+85
+35
+45
+60
+85
+25
+25
+25
+25
+25
+70
+70
+70
+100
+2
+2
