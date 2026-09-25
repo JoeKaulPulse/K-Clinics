@@ -12,7 +12,7 @@ import { FUNDING_OUTLOOK } from '@/lib/funding';
 export const generateMetadata = (): Promise<Metadata> => pageMeta({
   title: 'Funding & Finance — Pay for Your Training | K Academy London',
   description:
-    'How to pay for aesthetics training at K Academy, Islington: monthly course finance and employer sponsorship available now, with an honest guide to the government funding routes that are not yet open.',
+    'How to pay for aesthetics training at K Academy, Islington: monthly course finance and employer sponsorship now, and an honest guide to government routes not yet open.',
   path: '/academy/funding',
   keywords: ['aesthetics course funding', 'advanced learner loan aesthetics', 'pay monthly aesthetics training', 'adult skills fund London', 'student funding aesthetics academy'],
 });
