@@ -889,8 +889,13 @@ export const treatmentSlugs = treatments.map((t) => t.slug);
  *  (injectables and CO2 laser)? Shared by the server-side redemption block
  *  (lib/gift-vouchers.ts) and every client-facing gift-card notice, so the
  *  policy is defined once and can't drift between them. An unrecognised slug
- *  is never excluded — the caller's own validation handles a missing treatment. */
-export const isGiftCardExcludedTreatment = (slug: string): boolean => !!getTreatment(slug)?.giftCardExcluded;
+ *  is never excluded — the caller's own validation handles a missing treatment.
+ *  POM-brand slugs (e.g. 'botox') are filtered out of `treatments` above, so
+ *  getTreatment() can't see them, but the live CRM catalogue still books
+ *  anti-wrinkle services under treatmentSlug 'botox'. They are injectables by
+ *  definition, so they are excluded explicitly. */
+export const isGiftCardExcludedTreatment = (slug: string): boolean =>
+  POM_BRAND_SLUGS.has(slug) || !!getTreatment(slug)?.giftCardExcluded;
 
 // BLD-1251: which treatment pages are HEALTH data in an ad platform's hands.
 // Sending "Dentures" or "Intimate Rejuvenation" as the item label to Meta/GA4
