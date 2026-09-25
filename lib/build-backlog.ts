@@ -5893,7 +5893,7 @@ export const BUILD_BACKLOG: BacklogItem[] = [
   },
   {
     title: 'Move the Shop tab into the main website navigation (BLD-1923)',
-    type: 'TASK', urgency: 'P0', status: 'IN_REVIEW', assignee: 'claude',
+    type: 'TASK', urgency: 'P0', status: 'IN_REVIEW', assignee: 'claude', pr: PR(2015),
     value: 6, effort: 2,
     detail: "The Shop link lived in the header's small utility strip next to site search / account menu / Book Now (components/layout/Header.tsx), not as a primary nav tab -- lib/nav.ts's primaryNav (Aesthetics, Dentistry, Packages, Pricing, Academy, Get My Plan, Clinic) never included it. The owner asked for Shop to be clearly visible as its own separate tab in the main navigation, same as the others.",
     notes: [
