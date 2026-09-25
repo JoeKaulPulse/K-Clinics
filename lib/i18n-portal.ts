@@ -276,6 +276,21 @@ export const PORTAL_DICT: Record<string, Entry> = {
   'appt.cancelConfirm': { en: 'Cancel this appointment? A late-cancellation fee may apply if less than 24 hours remain.', uk: 'Скасувати цей запис? Якщо залишилося менше 24 годин, може стягуватися плата за пізнє скасування.' },
   'appt.cancelLateFee': { en: 'Cancelled. A late-cancellation fee was charged:', uk: 'Скасовано. Стягнуто плату за пізнє скасування:' },
   'appt.cancelError': { en: 'Could not cancel. Please try again or call us.', uk: 'Не вдалося скасувати. Спробуйте ще раз або зателефонуйте нам.' },
+  // BLD-1878: the confirm dialog (replacing window.confirm) states the actual
+  // fee, not just "may apply" — the amount is known server-side before the
+  // client ever confirms.
+  'appt.cancelTitle': { en: 'Cancel appointment?', uk: 'Скасувати запис?' },
+  'appt.cancelConfirmFee': { en: 'This appointment is within 24 hours, so cancelling now will charge a late-cancellation fee of {fee}.', uk: 'До цього запису залишилося менше 24 годин, тому скасування зараз призведе до стягнення плати за пізнє скасування у розмірі {fee}.' },
+  'appt.cancelConfirmSession': { en: 'This appointment is within 24 hours, so cancelling now will use one prepaid session from your course.', uk: 'До цього запису залишилося менше 24 годин, тому скасування зараз спише одне передоплачене заняття з вашого курсу.' },
+  'appt.cancelConfirmFree': { en: 'Are you sure you want to cancel this appointment? No fee applies.', uk: 'Ви впевнені, що хочете скасувати цей запис? Плата не стягується.' },
+  'appt.cancelKeep': { en: 'Keep appointment', uk: 'Залишити запис' },
+  'appt.cancelNow': { en: 'Yes, cancel', uk: 'Так, скасувати' },
+  // BLD-1920: shown in place of the Reschedule/Cancel controls once a booking
+  // is inside the 48h self-service window — split so the policy name can
+  // link to /info/cancellations-refunds, mirroring signup.consentPre/Terms.
+  'appt.policyPre': { en: 'This appointment is less than 48 hours away, so it’s now subject to our', uk: 'До цього запису залишилося менше 48 годин, тому він тепер підпадає під нашу' },
+  'appt.policyName': { en: 'Cancellation & Rescheduling Policy', uk: 'Політику скасування та перенесення запису' },
+  'appt.policyPost': { en: '. Please call us on 020 8050 0750 and our team will help.', uk: '. Будь ласка, зателефонуйте нам за номером 020 8050 0750 — наша команда допоможе.' },
   'status.REQUESTED': { en: 'Requested — awaiting confirmation', uk: 'Запит — очікує підтвердження' },
   'status.PENDING': { en: 'Awaiting confirmation', uk: 'Очікує підтвердження' },
   'status.CONFIRMED': { en: 'Confirmed', uk: 'Підтверджено' },

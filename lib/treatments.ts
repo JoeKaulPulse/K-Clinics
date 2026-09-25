@@ -55,6 +55,17 @@ export type Treatment = {
    *  mentions surgery/implants/injections/needles/fillers, so text overrides a
    *  missing classification rather than the other way round. */
   invasiveness?: 'noninvasive' | 'percutaneous' | 'surgical';
+  /** BLD-1918: gift cards cannot be purchased against, or redeemed towards,
+   *  this treatment — the clinic's injectable and CO2 laser treatments. Set
+   *  explicitly on the specific treatments this applies to (needle-injected
+   *  substances — anti-wrinkle, dermal filler, fat-dissolving, PRP — and the
+   *  two CO2-laser treatments); left unset (falsy) for everything else,
+   *  including needle-based but non-injection treatments (microneedling, BB
+   *  Glow) which are not what "injectable treatments" means clinically or to
+   *  clients. Read by lib/gift-vouchers.ts (server-side redemption block) and
+   *  the client-facing purchase/redemption notices — a single source of truth
+   *  so the two can never disagree. */
+  giftCardExcluded?: boolean;
 };
 
 /** Audiences to hide from a client's *recommendations* given their gender.
@@ -430,6 +441,8 @@ export const treatments: Treatment[] = [
     menuTitle: 'Cosmetic Injections',
     // Needle-based: anti-wrinkle injections, dermal filler and fat-dissolving (BLD-1588).
     invasiveness: 'percutaneous',
+    // BLD-1918: injectable treatment — gift cards cannot be used for it.
+    giftCardExcluded: true,
     tagline: 'Refined, never reinvented. The art of looking like you.',
     metaTitle: 'Anti-Wrinkle & Dermal Filler Injections London | KClinics',
     metaDescription:
@@ -467,6 +480,8 @@ export const treatments: Treatment[] = [
     category: 'aesthetics',
     group: 'Body & Injectables',
     title: 'Intimate Rejuvenation',
+    // BLD-1918: CO2 laser treatment — gift cards cannot be used for it.
+    giftCardExcluded: true,
     audience: 'female',
     tagline: 'Confidence, restored — with discretion and care.',
     metaTitle: 'Intimate Rejuvenation & Whitening London | KClinics',
@@ -869,6 +884,18 @@ export const formatPrice = (pence: number | null | undefined) =>
 // ── Helpers ──────────────────────────────────────────────────────────────────
 export const getTreatment = (slug: string) => treatments.find((t) => t.slug === slug);
 export const treatmentSlugs = treatments.map((t) => t.slug);
+
+/** BLD-1918: is this treatment excluded from gift-card purchase/redemption
+ *  (injectables and CO2 laser)? Shared by the server-side redemption block
+ *  (lib/gift-vouchers.ts) and every client-facing gift-card notice, so the
+ *  policy is defined once and can't drift between them. An unrecognised slug
+ *  is never excluded — the caller's own validation handles a missing treatment.
+ *  POM-brand slugs (e.g. 'botox') are filtered out of `treatments` above, so
+ *  getTreatment() can't see them, but the live CRM catalogue still books
+ *  anti-wrinkle services under treatmentSlug 'botox'. They are injectables by
+ *  definition, so they are excluded explicitly. */
+export const isGiftCardExcludedTreatment = (slug: string): boolean =>
+  POM_BRAND_SLUGS.has(slug) || !!getTreatment(slug)?.giftCardExcluded;
 
 // BLD-1251: which treatment pages are HEALTH data in an ad platform's hands.
 // Sending "Dentures" or "Intimate Rejuvenation" as the item label to Meta/GA4

@@ -5,6 +5,10 @@ import { VOUCHER_MAX } from '@/lib/gift-vouchers';
 
 export const runtime = 'nodejs';
 
+// BLD-1919: gift cards are always sold at full selected value — this schema
+// deliberately has no promo/discount/coupon-code field, and `.strict()` below
+// means a request carrying one (or any other unexpected field) is rejected
+// outright rather than silently accepted and ignored. Do not add one.
 const schema = z.object({
   amountPence: z.number().int().positive().max(VOUCHER_MAX),
   purchaserName: z.string().min(1).max(120),
@@ -25,7 +29,7 @@ const schema = z.object({
     postcode: z.string().max(16).optional().or(z.literal('')),
   }).optional(),
   company: z.string().max(0).optional().or(z.literal('')), // honeypot
-});
+}).strict();
 
 export async function POST(req: Request) {
   if (!crmEnabled) return NextResponse.json({ ok: false, error: 'Not available.' }, { status: 503 });

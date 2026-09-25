@@ -9,7 +9,7 @@ export function NewsletterCapture({ source }: { source?: string } = {}) {
       <div className="container-lux relative py-20 md:py-24">
         <Reveal>
           <div className="mx-auto max-w-xl text-center">
-            <p className="eyebrow mb-4 text-[var(--color-gold-soft)]">K Edit</p>
+            <p className="eyebrow eyebrow-on-dark mb-4">K Edit</p>
             <h2 className="font-[family-name:var(--font-display)] text-3xl text-[var(--color-porcelain)] md:text-4xl">
               Skincare wisdom, delivered.
             </h2>

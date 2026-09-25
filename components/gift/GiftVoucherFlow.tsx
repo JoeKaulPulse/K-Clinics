@@ -129,7 +129,11 @@ export function GiftVoucherFlow({ physicalEnabled = false, physicalFeePence = 0,
               )}
 
               {error && <p role="alert" aria-live="assertive" className="mt-4 rounded-[var(--radius-sm)] bg-[var(--color-blush)]/25 px-4 py-3 text-sm text-[var(--color-ink)]">{error}</p>}
-              <div className="mt-6 flex flex-wrap items-center justify-between gap-4">
+              {/* BLD-1918/BLD-1919: shown before the buyer pays — the two exclusions
+                  and the no-discount rule, read from the same policy every other
+                  gift-card touchpoint (redemption UI, T&Cs) uses. */}
+              <p className="mt-4 text-xs text-[var(--color-stone)]">Not valid for injectable treatments or CO2 laser treatments. Gift cards are always sold at full value — no discount codes apply. <a href="/info/cancellations-refunds" className="link-underline">Full terms</a>.</p>
+              <div className="mt-4 flex flex-wrap items-center justify-between gap-4">
                 <span className="text-sm text-[var(--color-stone)]">Total <strong className="text-[var(--color-ink)]">{money(amountPence || 0)}</strong></span>
                 <Button onClick={() => !busy && start()} variant="gold" size="lg">{busy ? 'Please wait…' : 'Continue to payment'} <ArrowIcon /></Button>
               </div>

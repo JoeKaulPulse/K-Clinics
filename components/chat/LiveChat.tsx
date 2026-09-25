@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { AnimatePresence, motion } from 'motion/react';
 import { useHideAtFooter } from '@/components/chat/useHideAtFooter';
+import { Dialog } from '@/components/ui/Dialog';
 
 type Msg = { id: string; sender: string; body: string; createdAt: string; from?: string; link?: string };
 const TOKEN_KEY = 'kc_chat_token';
@@ -20,6 +21,16 @@ export function LiveChat() {
   const [email, setEmail] = useState('');
   const [busy, setBusy] = useState(false);
   const [showAiNotice, setShowAiNotice] = useState(false);
+  // BLD-1878: "email me this chat" used window.prompt() to collect the address
+  // when none was already given — a native dialog with no branding that
+  // silently no-ops (returns null immediately, capturing nothing) inside an
+  // in-app/webview browser such as an email or SMS app's built-in viewer.
+  // Replaced with an inline <Dialog> input. The follow-up alert() for the send
+  // result is the same class of bug (a webview can drop it just as silently),
+  // so it's shown inline too rather than via alert().
+  const [emailPromptOpen, setEmailPromptOpen] = useState(false);
+  const [emailPromptValue, setEmailPromptValue] = useState('');
+  const [emailStatus, setEmailStatus] = useState('');
   const lastAt = useRef<string | null>(null);
   const scroller = useRef<HTMLDivElement>(null);
   const messageInput = useRef<HTMLInputElement>(null);
@@ -90,17 +101,33 @@ export function LiveChat() {
     finally { setBusy(false); }
   }
 
-  // Visitor asks us to email them the conversation. Uses the email they left, or
-  // prompts for one.
-  async function emailMe() {
+  // Visitor asks us to email them the conversation. Uses the email they left,
+  // or opens the inline dialog to collect one.
+  function emailMe() {
     if (!token) return;
-    let addr = email.trim();
-    if (!addr) { addr = (window.prompt('What email should we send the chat to?') || '').trim(); if (!addr) return; }
+    const addr = email.trim();
+    if (addr) { sendTranscript(addr); return; }
+    setEmailPromptValue('');
+    setEmailPromptOpen(true);
+  }
+
+  async function sendTranscript(addr: string) {
+    setEmailStatus('');
     try {
       const res = await fetch('/api/chat', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ op: 'emailTranscript', token, email: addr }) });
       const j = await res.json();
-      alert(j.ok ? 'Sent — check your inbox (and spam, just in case).' : (j.error || 'Sorry, that didn’t send.'));
-    } catch { alert('Sorry, that didn’t send.'); }
+      setEmailStatus(j.ok ? 'Sent — check your inbox (and spam, just in case).' : (j.error || 'Sorry, that didn’t send.'));
+    } catch { setEmailStatus('Sorry, that didn’t send.'); }
+  }
+
+  // Light client-side shape check so a typo keeps the dialog open; the server
+  // (/api/chat emailTranscript) still validates authoritatively.
+  const emailPromptValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailPromptValue.trim());
+  function submitEmailPrompt() {
+    const addr = emailPromptValue.trim();
+    if (!emailPromptValid) return;
+    setEmailPromptOpen(false);
+    sendTranscript(addr);
   }
 
   return (
@@ -148,7 +175,10 @@ export function LiveChat() {
                 <input value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Email (optional — so we can reply if you leave)" className="mb-2 w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-3 py-2 text-xs outline-none focus:border-[var(--color-gold-deep)] focus-visible:ring-2 focus-visible:ring-[var(--color-gold-deep)]" />
               )}
               {token && msgs.length > 0 && (
-                <button onClick={emailMe} className="mb-2 text-[0.7rem] text-[var(--color-stone)] underline hover:text-[var(--color-ink)]">Email me this chat</button>
+                <div className="mb-2 flex items-center gap-2">
+                  <button onClick={emailMe} className="text-[0.7rem] text-[var(--color-stone)] underline hover:text-[var(--color-ink)]">Email me this chat</button>
+                  {emailStatus && <span role="status" aria-live="polite" className="text-[0.7rem] text-[var(--color-stone)]">{emailStatus}</span>}
+                </div>
               )}
               <div className="flex gap-2">
                 <input
@@ -174,6 +204,29 @@ export function LiveChat() {
         <svg viewBox="0 0 24 24" className="h-6 w-6 shrink-0 text-[var(--color-gold-soft)]" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M21 11.5a8.5 8.5 0 0 1-12.4 7.5L3 20l1.1-5.1A8.5 8.5 0 1 1 21 11.5z" /></svg>
         <span className="text-sm font-medium">{open ? 'Close' : 'Live chat'}</span>
       </button>
+
+      <Dialog open={emailPromptOpen} onClose={() => setEmailPromptOpen(false)} labelledby="chat-email-prompt-title">
+        <div className="w-full max-w-xs rounded-t-[var(--radius-xl)] bg-[var(--color-porcelain)] p-6 shadow-[var(--shadow-lift)] sm:rounded-[var(--radius-xl)]">
+          <div className="mb-1 flex items-center justify-between">
+            <h2 id="chat-email-prompt-title" className="font-[family-name:var(--font-display)] text-lg">Email this chat</h2>
+            <button onClick={() => setEmailPromptOpen(false)} aria-label="Close" className="text-[var(--color-stone)] hover:text-[var(--color-ink)]"><span aria-hidden="true">✕</span></button>
+          </div>
+          <p className="mb-3 text-xs text-[var(--color-stone)]">What email should we send the conversation to?</p>
+          <input
+            type="email"
+            autoFocus
+            value={emailPromptValue}
+            onChange={(e) => setEmailPromptValue(e.target.value)}
+            onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); submitEmailPrompt(); } }}
+            placeholder="you@example.com"
+            className="w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-3 py-2 text-sm outline-none focus:border-[var(--color-gold-deep)] focus-visible:ring-2 focus-visible:ring-[var(--color-gold-deep)]"
+          />
+          <div className="mt-4 flex justify-end gap-3">
+            <button onClick={() => setEmailPromptOpen(false)} className="px-4 py-2 text-sm text-[var(--color-stone)]">Cancel</button>
+            <button onClick={submitEmailPrompt} disabled={!emailPromptValid} className="rounded-full bg-[var(--color-gold-deep)] px-5 py-2 text-sm font-medium text-white disabled:opacity-50">Send</button>
+          </div>
+        </div>
+      </Dialog>
     </div>
   );
 }

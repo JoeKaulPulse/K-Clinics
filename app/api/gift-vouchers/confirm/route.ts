@@ -1,4 +1,4 @@
-import { NextResponse } from 'next/server';
+import { NextResponse, after } from 'next/server';
 import { z } from 'zod';
 import { crmEnabled } from '@/lib/crm';
 
@@ -42,7 +42,12 @@ export async function POST(req: Request) {
     const { consentFromCookieHeader, metaCookiesFromHeader } = await import('@/lib/attribution');
     const { clientIp } = await import('@/lib/security/guard');
     const { analyticsConsent, marketingConsent } = consentFromCookieHeader(req.headers.get('cookie'));
-    sendPurchase({ bookingId: parsed.data.voucherId, valuePence: totalPence, email: consentedEmail, analyticsConsent, marketingConsent, ...metaCookiesFromHeader(req.headers.get('cookie')), clientIp: clientIp(req), userAgent: req.headers.get('user-agent') }).catch(() => {});
+    const purchaseEvent = { bookingId: parsed.data.voucherId, valuePence: totalPence, email: consentedEmail, analyticsConsent, marketingConsent, ...metaCookiesFromHeader(req.headers.get('cookie')), clientIp: clientIp(req), userAgent: req.headers.get('user-agent') };
+    // BLD-1885: after(), not a bare floating promise — the response below can
+    // be sent before this conversion ping resolves, and the runtime can freeze
+    // the function mid-flight (same fix as the kiosk analyze/photo routes /
+    // lib/ai-consultation.ts, BLD-1137/1166/1418/491).
+    after(async () => { await sendPurchase(purchaseEvent).catch(() => {}); });
   }
   return NextResponse.json(res, { status: res.ok ? 200 : 400 });
 }

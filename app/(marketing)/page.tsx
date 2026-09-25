@@ -157,7 +157,7 @@ export default async function HomePage() {
                 />
                 <span className="pointer-events-none absolute inset-0 -z-0 bg-[linear-gradient(to_top,rgba(42,36,32,0.85),rgba(42,36,32,0.35)_45%,rgba(42,36,32,0.15))]" />
                 <div className="relative">
-                  <p className="eyebrow mb-4 flex items-center gap-2.5 text-[var(--color-gold-soft)]">
+                  <p className="eyebrow eyebrow-on-dark mb-4 flex items-center gap-2.5">
                     {c.tag}
                     {c.tag === 'Dentistry' && !dentistryLive && <span className="rounded-full bg-[var(--color-gold-soft)] px-2.5 py-0.5 text-[0.58rem] font-semibold uppercase tracking-[0.12em] text-[var(--color-ink)]">Opening soon</span>}
                   </p>
