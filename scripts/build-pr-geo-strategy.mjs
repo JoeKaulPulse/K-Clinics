@@ -40,14 +40,9 @@ const MERGED_TODAY = [
   ['#1997', 'fix(clients): mandatory client registration fields (BLD-1870) — conflict resolved and merged later the same day'],
   ['#1994', 'feat(academy): editable VTCT registration declaration (BLD-1867) — conflict resolved and merged later the same day'],
   ['#1996', 'feat(payments): Klarna & Clearpay claims where BNPL is real (BLD-1827) — conflict resolved and merged later the same day'],
+  ['#1995', 'fix(bookings): deliberate £0 appointment price (BLD-1869) — conflict resolved and merged later the same day'],
 ];
 
-// Conflicts resolved in a local checkout during the session, but the push to
-// another session's PR branch was held back by the sandbox's safety check.
-// The owner (or any session with the go-ahead) pushes the prepared merge.
-const PREPARED = [
-  ['#1995', 'Deliberate £0 appointment price (BLD-1869)', 'Backlog file + two admin booking pages', 'Keep both sides of lib/build-backlog.ts; take main\'s package-session layout in the two admin booking pages and add the "price set by staff" guard in the three price expressions (priceSetByStaff || … > 0). Push, wait for typecheck, squash-merge.'],
-];
 
 const OWNER_DECISIONS = [
   ['#1777', 'Homepage hero carousel', 'Promo slide says "£150, was £210" but the catalogue price is £125. Confirm the real price and the was-price (ASA/CPR rule: a was-price must be a genuine previous price).'],
@@ -76,7 +71,7 @@ const OPEN_PR_TABLE = [
   ['1998','Dependabot codeql-action','no','merged today'],
   ['1997','Mandatory client registration fields (BLD-1870)','no','merged today (after conflict resolution)'],
   ['1996','Klarna/Clearpay copy (BLD-1827)','no','merged today (after conflict resolution)'],
-  ['1995','£0 appointment price (BLD-1869)','no','resolution prepared; push + merge'],
+  ['1995','£0 appointment price (BLD-1869)','no','merged today (after conflict resolution)'],
   ['1994','Editable VTCT declaration (BLD-1867)','no','merged today (after conflict resolution)'],
   ['1992','Schema post town, OG truncation, chat focus','no','merged today'],
   ['1964','Dependabot production deps (21)','no','typecheck fails — fix forward or split'],
@@ -118,7 +113,7 @@ const SECTIONS = [
       ['Then the shop.', 'The shop already switches itself on the moment a product goes live; it now also announces its catalogue to search and AI engines. The remaining work is the owner adding products.'],
       ['Dental last, step by step.', 'Nothing changes until a GDC-registered dentist is in post. The site keeps saying "opening soon" everywhere, including to AI assistants.'],
       ['Ads after, not before.', 'Yes: get the academy policies and copy approved before paying for academy traffic. Clinic treatment ads can start earlier because booking, pricing and conversion tracking are already live.'],
-      ['Pull requests.', 'Of 35 open pull requests, none could be merged as they stood. By the end of the day 11 were merged and one closed as already shipped, leaving 24 open: one resolved and waiting for a push, seven to re-cut on current main, two Dependabot majors, and the drafts that need an owner decision. Each is listed with the exact decision or rework it needs.'],
+      ['Pull requests.', 'Of 35 open pull requests, none could be merged as they stood. By the end of the day 12 were merged and one closed as already shipped, leaving 23 open: seven to re-cut on current main, two Dependabot majors, and the drafts that need an owner decision. Each is listed with the exact decision or rework it needs.'],
     ] },
     { h2: 'Done today' },
     { ul: [
@@ -158,9 +153,8 @@ const SECTIONS = [
     ] },
     { h2: 'Merged to production today' },
     { table: [['PR', 'What'], MERGED_TODAY, [12, 88]] },
-    { h2: 'Resolved locally, one push away' },
-    { p: 'Four non-draft PRs conflicted only on the backlog file (and, in two cases, one small content file). The merges from main were prepared and checked in this session; pushing onto another session\'s branch was stopped by the sandbox safety check, so the pushes were handed over as a task. Three of the four (#1997, #1994, #1996) were then pushed and merged the same afternoon. One remains:' },
-    { table: [['PR', 'Topic', 'Conflict', 'Resolution'], PREPARED, [10, 30, 22, 38]] },
+    { h2: 'Small conflicts, resolved the same day' },
+    { p: 'Four non-draft PRs (#1997, #1994, #1996, #1995) conflicted only on the backlog file and, in two cases, one small content file. The merges from main were prepared and checked in the session, handed over as a task because the sandbox would not push onto another session\'s branch, and all four were pushed and merged the same afternoon.' },
     { h2: 'Waiting on an owner decision' },
     { p: 'Each of these is blocked on a judgement only the owner can make. Reply on the PR or on the board item with the decision and Claude will finish it.' },
     { table: [['PR', 'Topic', 'Decision needed'], OWNER_DECISIONS, [14, 26, 60]] },
