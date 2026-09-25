@@ -253,7 +253,7 @@ export function ManageClient({ token, booking }: { token: string; booking: B }) 
               longer land inside the 24h fee window; that fee still applies to
               a staff-assisted cancellation (lib/booking-actions.ts). */}
           <div>
-            <p className="mb-3 text-sm text-[var(--color-stone)]">You can cancel free of charge until 24 hours before your appointment.</p>
+            <p className="mb-3 text-sm text-[var(--color-stone)]">You can cancel online free of charge until 48 hours before your appointment.</p>
             {!confirming ? (
               <Button onClick={() => setConfirming(true)} variant="outline">Cancel booking</Button>
             ) : (

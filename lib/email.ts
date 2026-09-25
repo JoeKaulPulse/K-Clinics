@@ -790,7 +790,7 @@ export function tmplBookingConfirmation(o: {
 
     <p style="background:#efe3d7;padding:14px 16px;border-radius:10px;font-size:14px;">
       Your card is securely saved — <strong>no payment is taken now</strong>. You're only charged when your treatment is delivered.
-      Cancellations are free up to <strong>24 hours</strong> before; within 24 hours the full fee applies.
+      You can cancel or reschedule online up to <strong>48 hours</strong> before; after that, please call us on 020 8050 0750. Cancellations within 24 hours incur the full fee.
     </p>
 
     <h2 class="kc-display" style="font-size:18px;margin:26px 0 10px;">Before your visit</h2>
@@ -1141,7 +1141,7 @@ export function tmplAppointmentReminder(o: { firstName: string; treatment: strin
       <tr><td style="color:#91766e;padding-right:20px;">Where</td><td>4 Charterhouse Buildings, Goswell Road, London EC1M 7AN</td></tr>
     </table>
     <p style="margin:24px 0;">${btn(o.manageUrl, 'Manage your appointment')}</p>
-    <p style="font-size:14px;color:#91766e;">Need to reschedule? You can do so free of charge up to 24 hours before. We look forward to welcoming you.</p>
+    <p style="font-size:14px;color:#91766e;">Need to reschedule or cancel? You can do it online up to 48 hours before your appointment; after that, please call us on 020 8050 0750. We look forward to welcoming you.</p>
     <p>With warmth,<br>The KClinics team</p>`,
   });
 }
