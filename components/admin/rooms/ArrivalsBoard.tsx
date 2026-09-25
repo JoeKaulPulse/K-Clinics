@@ -60,7 +60,7 @@ export function ArrivalsBoard({ initialArrivals, canManage }: { initialArrivals:
               onClick={() => toggle(r.id, !r.arrived)}
               disabled={busy === r.id}
               aria-pressed={r.arrived}
-              className={`shrink-0 rounded-full px-3 py-1.5 text-xs font-medium transition-colors disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-gold)] ${
+              className={`shrink-0 rounded-full px-3 py-1.5 text-xs font-medium transition-colors disabled:opacity-50 ${
                 r.arrived ? 'bg-[color-mix(in_oklab,var(--color-jade)_16%,transparent)] text-[var(--color-jade)]' : 'border border-[var(--color-line)] text-[var(--color-ink)] hover:bg-[var(--color-bone)]'
               }`}
             >

@@ -1,9 +1,11 @@
 import 'server-only';
+import { after } from 'next/server';
 import * as Sentry from '@sentry/nextjs';
 import { db } from '@/lib/db';
 import { encryptJson } from '@/lib/crypto';
 import { getSecret } from '@/lib/secrets';
 import { aiConsultationConsentFields } from '@/lib/consent';
+import { fetchWithRetry } from '@/lib/fetch-retry';
 
 // ── "Get My Plan" — AI consultation engine ──────────────────────────────────
 // Cost-minimal: Claude Haiku by default (escalates to Sonnet only on low
@@ -211,40 +213,79 @@ Use 1–4 phases and 1–2 treatments each — fewer when little is needed (a si
     },
   });
 
+  // BLD-1603: nothing in admin ever read `needsExpert` before this — flagged
+  // cases (unclear photos / genuinely complex) got zero follow-up. Alert staff
+  // who can see clinical detail via the existing in-app notification channel,
+  // same mechanism app/api/consult/route.ts uses for a new enquiry. Best-effort:
+  // a notification failure must never fail the analysis the client is waiting on.
+  if (analysis.needsExpert) {
+    const notifyFlagged = async () => {
+      try {
+        const { notifyStaffByPermission } = await import('@/lib/notifications');
+        const client = await db.client.findUnique({ where: { id: opts.clientId }, select: { firstName: true, lastName: true } }).catch(() => null);
+        const who = client ? [client.firstName, client.lastName].filter(Boolean).join(' ') : 'A client';
+        await notifyStaffByPermission('clients.clinical.view', {
+          kind: 'status',
+          category: 'clinical',
+          priority: 'high',
+          email: true,
+          title: 'AI consultation flagged for expert review',
+          body: `${who} · ${opts.areas.join(', ') || 'general'} — the AI plan needs a clinician's review.`,
+          href: '/admin/consultations?status=FLAGGED',
+        });
+      } catch (e) {
+        console.error('[get-my-plan] flag notification failed (non-fatal):', (e as Error)?.message);
+      }
+    };
+    // Review fix (BLD-1603): run it AFTER the response, not before. analyze() is
+    // awaited by app/api/ai-consultation/analyze/route.ts under maxDuration = 60,
+    // and the model call above can already burn most of that (25s timeout plus one
+    // bounded retry). Because this notification is priority:'high' with email:true
+    // it fans out to an SMTP send per clinical recipient — awaited inline that both
+    // delays the plan the client is waiting on and risks the function being killed
+    // before the response is sent, losing an analysis already saved to the DB.
+    // after() keeps the function alive to finish the send, unlike a bare
+    // floating promise (same reason as app/api/admin/posts/route.ts, BLD-1424).
+    // The "Flagged for expert review" tab is the durable queue regardless, so a
+    // dropped notification never loses the case. Falls back to inline if there is
+    // no request scope (after() throws), e.g. a future script/cron caller.
+    try { after(notifyFlagged); } catch { await notifyFlagged(); }
+  }
+
   return { ok: true, analysisId: analysis.id, summary, findings, phases, planTotalPence: planTotal, aboveBudget, extras, confidence: parsed.confidence ?? 0.8, needsExpert: !!parsed.needsExpert };
 }
 
 type Parsed = { refused?: boolean; confidence?: number; needsExpert?: boolean; summary?: string; findings?: unknown; phases?: unknown; worthConsidering?: unknown; _model: string; _in?: number; _out?: number };
 
 async function callClaude(key: string, model: string, system: string, content: object[]): Promise<Parsed | null> {
-  // BLD-334: one bounded retry on a transient failure (network error / timeout /
-  // 5xx). A 4xx is not retried (it won't succeed), and a failed call never
-  // produced a completion, so retrying can't double-bill.
-  for (let attempt = 0; attempt < 2; attempt++) {
-    try {
-      const res = await fetch('https://api.anthropic.com/v1/messages', {
-        method: 'POST',
-        headers: { 'content-type': 'application/json', 'x-api-key': key, 'anthropic-version': '2023-06-01' },
-        body: JSON.stringify({ model, max_tokens: 1100, system: [{ type: 'text', text: system, cache_control: { type: 'ephemeral' } }], messages: [{ role: 'user', content }] }),
-        signal: AbortSignal.timeout(25_000),
-      });
-      if (!res.ok) {
-        if (res.status >= 500 && attempt === 0) { await new Promise((r) => setTimeout(r, 600)); continue; }
-        const body = await res.text().catch(() => '');
-        console.error('[get-my-plan] anthropic', res.status, body);
-        Sentry.captureMessage('[get-my-plan] anthropic call failed', { level: 'error', tags: { area: 'ai-consultation', status: String(res.status) } });
-        return null;
-      }
-      const j = await res.json();
-      const text = j?.content?.find((c: { type: string }) => c.type === 'text')?.text ?? '';
-      const obj = JSON.parse(text.slice(text.indexOf('{'), text.lastIndexOf('}') + 1));
-      return { ...obj, _model: model, _in: j?.usage?.input_tokens, _out: j?.usage?.output_tokens };
-    } catch (e) {
-      if (attempt === 0) { await new Promise((r) => setTimeout(r, 600)); continue; }
-      console.error('[get-my-plan] call failed:', (e as Error)?.message);
-      Sentry.captureException(e, { tags: { area: 'ai-consultation' } });
+  // BLD-334 / BLD-1641: the network call goes through the shared fetchWithRetry
+  // (lib/fetch-retry.ts, already used by the Calendar/Xero integrations) instead
+  // of a bare fetch() with its own retry loop -- attempts: 2 / 600ms backoff /
+  // 25s per-attempt timeout matches this call site's previous behaviour exactly
+  // (it already retried on its own timeout too, so nothing changes there), and
+  // a 429 is now retried the same as a 5xx, which the old `res.status >= 500`
+  // check didn't cover. A 4xx still returns immediately -- it won't succeed on
+  // retry, and a failed call never produced a completion, so retrying can't
+  // double-bill.
+  try {
+    const res = await fetchWithRetry('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', 'x-api-key': key, 'anthropic-version': '2023-06-01' },
+      body: JSON.stringify({ model, max_tokens: 1100, system: [{ type: 'text', text: system, cache_control: { type: 'ephemeral' } }], messages: [{ role: 'user', content }] }),
+    }, { attempts: 2, baseDelayMs: 600, timeoutMs: 25_000, label: 'ai-consultation' });
+    if (!res.ok) {
+      const body = await res.text().catch(() => '');
+      console.error('[get-my-plan] anthropic', res.status, body);
+      Sentry.captureMessage('[get-my-plan] anthropic call failed', { level: 'error', tags: { area: 'ai-consultation', status: String(res.status) } });
       return null;
     }
+    const j = await res.json();
+    const text = j?.content?.find((c: { type: string }) => c.type === 'text')?.text ?? '';
+    const obj = JSON.parse(text.slice(text.indexOf('{'), text.lastIndexOf('}') + 1));
+    return { ...obj, _model: model, _in: j?.usage?.input_tokens, _out: j?.usage?.output_tokens };
+  } catch (e) {
+    console.error('[get-my-plan] call failed:', (e as Error)?.message);
+    Sentry.captureException(e, { tags: { area: 'ai-consultation' } });
+    return null;
   }
-  return null;
 }

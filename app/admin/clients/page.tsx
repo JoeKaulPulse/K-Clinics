@@ -30,7 +30,10 @@ export default async function ClientsPage({ searchParams }: { searchParams: Prom
   const { listClients } = await import('@/lib/crm-data');
   const session = await getSession();
   if (!sessionCan(session, 'clients.view')) redirect('/admin');
-  const { rows, total, page, pages, perPage, hiddenTest } = await listClients({ q, sort, dir, flag, page: reqPage, includeTest });
+  // BLD-1693: a Specialist/Practitioner sees only clients they've actually had
+  // a booking with — never the whole clinic roster.
+  const practitionerId = session && session.role === 'PRACTITIONER' ? session.sub : undefined;
+  const { rows, total, page, pages, perPage, hiddenTest } = await listClients({ q, sort, dir, flag, page: reqPage, includeTest, practitionerId });
   const canEdit = sessionCan(session, 'clients.edit');
 
   const can = await sessionPermissions();
@@ -139,7 +142,7 @@ export default async function ClientsPage({ searchParams }: { searchParams: Prom
               <p className="hidden text-sm text-[var(--color-stone)] sm:block">{c.phone ?? '—'}</p>
               <p className="hidden text-sm text-[var(--color-stone)] sm:block">{fmtDate(c.createdAt)}</p>
               <div className="flex flex-wrap justify-end gap-1.5">
-                {test && <span className="rounded-full bg-[color-mix(in_oklab,#c0392b_18%,transparent)] px-2.5 py-0.5 text-[0.65rem] uppercase tracking-wide text-[var(--color-ink)]" title="Looks like an old test/junk signup — review and archive">test</span>}
+                {test && <span className="rounded-full bg-[color-mix(in_oklab,var(--color-blush-deep)_18%,transparent)] px-2.5 py-0.5 text-[0.65rem] uppercase tracking-wide text-[var(--color-ink)]" title="Looks like an old test/junk signup — review and archive">test</span>}
                 {review && <span className="rounded-full bg-[color-mix(in_oklab,#d9a441_22%,transparent)] px-2.5 py-0.5 text-[0.65rem] uppercase tracking-wide text-[var(--color-ink)]" title="No real name in the imported data — please review">review</span>}
                 {c.marketingOptIn && <span className="rounded-full bg-[var(--color-bone)] px-2.5 py-0.5 text-[0.65rem] uppercase tracking-wide text-[var(--color-stone)]">opt-in</span>}
               </div>

@@ -32,6 +32,21 @@ async function rateGate(): Promise<void> {
 const isRateLimited = (m: string): boolean => /too many requests|rate.?limit|\b429\b/i.test(m);
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
+// BLD-1557: send failures have to be observable WITHOUT copying client data into
+// Vercel logs or Sentry. The recipient address is personal data, and subjects
+// routinely pair a client's first name with their treatment ("How are your
+// results, Sarah?", "Your dermal fillers aftercare") — health data about an
+// identifiable person. Both Sentry inits set sendDefaultPii:false, and BLD-1173
+// removed exactly this class of value from the error logs, so the failure
+// reports below carry a masked recipient (first character + mail domain) and no
+// subject: enough to correlate repeat failures and spot a provider-wide outage,
+// not an identifier on its own. The full address stays in Resend's dashboard and
+// the EmailEvent table.
+const maskRecipient = (to: string): string => {
+  const at = String(to).lastIndexOf('@');
+  return at > 0 ? `${String(to).slice(0, 1)}***${String(to).slice(at)}` : '***';
+};
+
 // The email pipeline: every send acquires a slot before going out, so we stay at or
 // below Resend's 5/sec at ALL times. (1) the in-process gate paces sends within an
 // instance; (2) a shared limiter (Upstash when configured, Postgres fallback) caps the
@@ -40,12 +55,20 @@ const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 async function acquireSendSlot(): Promise<void> {
   await rateGate(); // smooth within this instance
   try {
-    const { rateLimit } = await import('@/lib/security/rate-limit');
+    const { rateLimit, redisConfigured } = await import('@/lib/security/rate-limit');
     const deadline = Date.now() + 30_000;
     // ≤4 per rolling second globally (headroom under the cap). Poll for a slot, don't fail.
+    // BLD-1480: the Postgres fallback (no Upstash configured) writes a row on every
+    // poll — a fixed 250ms cadence across a burst fan-out (e.g. the nightly digest)
+    // can pile dozens of extra writes onto the same connection pool during the exact
+    // spike it exists to smooth. Back off the poll interval when on that fallback so
+    // a burst produces materially fewer writes; Redis has no such cost, so it keeps
+    // the tight 250ms cadence.
+    let pollMs = 250;
     while (Date.now() < deadline) {
       if ((await rateLimit('resend-send', 4, 1)).allowed) return;
-      await sleep(250);
+      await sleep(pollMs);
+      if (!redisConfigured) pollMs = Math.min(pollMs * 2, 2_000);
     }
   } catch { /* limiter unavailable — the in-process gate + retry still protect us */ }
 }
@@ -64,8 +87,13 @@ export async function sendEmail(opts: {
   /** Extra file attachments (e.g. an .ics calendar invite). */
   attachments?: { filename: string; content: Buffer | string; contentType?: string }[];
 }): Promise<SendResult> {
+  const recipient = maskRecipient(opts.to);
   const apiKey = await getSecret('RESEND_API_KEY');
-  if (!apiKey) return { ok: false, error: 'RESEND_API_KEY not configured' };
+  if (!apiKey) {
+    console.error('[email] RESEND_API_KEY not configured');
+    try { const Sentry = await import('@sentry/nextjs'); Sentry.captureMessage('[email] RESEND_API_KEY not configured', { level: 'error', tags: { area: 'email' }, extra: { recipient } }); } catch { /* Sentry unavailable */ }
+    return { ok: false, error: 'RESEND_API_KEY not configured' };
+  }
   const resend = new Resend(apiKey);
   const FROM = (await getSecret('EMAIL_FROM')) || `KClinics <hello@mail.${MAIL_HOST}>`;
   const REPLY_TO = (await getSecret('EMAIL_REPLY_TO')) || `KClinics <replies@reply.mail.${MAIL_HOST}>`;
@@ -92,20 +120,30 @@ export async function sendEmail(opts: {
         resend.emails.send(payload),
         new Promise<typeof TIMEOUT>((resolve) => { timer = setTimeout(() => resolve(TIMEOUT), 10_000); }),
       ]).finally(() => { if (timer) clearTimeout(timer); });
-      if (result === TIMEOUT) return { ok: false, error: 'Email send timed out after 10s' };
+      if (result === TIMEOUT) {
+        console.error('[email] send timed out after 10s:', recipient);
+        try { const Sentry = await import('@sentry/nextjs'); Sentry.captureMessage('[email] send timed out after 10s', { level: 'error', tags: { area: 'email' }, extra: { recipient, attempt } }); } catch { /* Sentry unavailable */ }
+        return { ok: false, error: 'Email send timed out after 10s' };
+      }
       const { data, error } = result;
       if (error) {
         const msg = String(error.message || error);
         if (isRateLimited(msg) && attempt < 2) { await sleep(1100 * (attempt + 1)); continue; }
+        console.error('[email] Resend API error:', msg);
+        try { const Sentry = await import('@sentry/nextjs'); Sentry.captureMessage('[email] Resend API error', { level: 'error', tags: { area: 'email' }, extra: { recipient, attempt, error: msg } }); } catch { /* Sentry unavailable */ }
         return { ok: false, error: msg };
       }
       return { ok: true, id: data?.id };
     } catch (e) {
       const msg = e instanceof Error ? e.message : 'send failed';
       if (isRateLimited(msg) && attempt < 2) { await sleep(1100 * (attempt + 1)); continue; }
+      console.error('[email] send threw:', msg);
+      try { const Sentry = await import('@sentry/nextjs'); Sentry.captureMessage('[email] send threw', { level: 'error', tags: { area: 'email' }, extra: { recipient, attempt, error: msg } }); } catch { /* Sentry unavailable */ }
       return { ok: false, error: msg };
     }
   }
+  console.error('[email] rate-limited — retried and gave up:', recipient);
+  try { const Sentry = await import('@sentry/nextjs'); Sentry.captureMessage('[email] rate-limited — retried and gave up', { level: 'error', tags: { area: 'email' }, extra: { recipient } }); } catch { /* Sentry unavailable */ }
   return { ok: false, error: 'Email rate-limited — retried and gave up' };
 }
 
@@ -534,14 +572,26 @@ export function tmplFundingDecision(o: { name: string; status: string; courseTit
 }
 
 // Payment confirmation / receipt for a course payment.
-export function tmplAcademyPaymentReceipt(o: { firstName: string; courseTitle: string; amountPence: number; outstandingPence: number; portalUrl: string }) {
+export function tmplAcademyPaymentReceipt(o: {
+  firstName: string; courseTitle: string; amountPence: number; outstandingPence: number; portalUrl: string;
+  vat?: { netPence: number; vatPence: number; ratePct: number } | null;
+}) {
   const paid = `£${(o.amountPence / 100).toLocaleString('en-GB')}`;
   const owing = o.outstandingPence > 0 ? `£${(o.outstandingPence / 100).toLocaleString('en-GB')}` : null;
+  const muted = 'color:#91766e;';
+  const totalRow = (label: string, value: string, strong = false) => `
+        <tr><td style="padding:6px 0;${muted}">${label}</td><td align="right" style="padding:6px 0;${strong ? 'font-weight:700;color:#2a2420;' : 'color:#3d352f;'}white-space:nowrap;">${value}</td></tr>`;
+  const vatTable = o.vat ? `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="font-family:Helvetica,Arial,sans-serif;font-size:14px;margin:16px 0 0;">
+      ${totalRow('Net', fmtMoney(o.vat.netPence))}
+      ${totalRow(`VAT (${o.vat.ratePct}%)`, fmtMoney(o.vat.vatPence))}
+      ${totalRow('Total paid', paid, true)}
+    </table>` : '';
   return emailShell({
     preheader: `Payment received — ${o.courseTitle}`,
     body: `<h1 style="font-size:24px;margin:0 0 16px;">Thank you, ${escape(o.firstName)} — payment received.</h1>
     <p>We've received your payment of <strong>${paid}</strong> for <strong>${escape(o.courseTitle)}</strong>. Your place is secured and your online theory is now unlocked in your portal.</p>
-    ${owing ? `<p style="background:#efe3d7;padding:14px 16px;border-radius:10px;font-size:14px;">Outstanding balance: <strong>${owing}</strong>. We'll be in touch about the remaining payment${''}, or you can settle it any time from your portal.</p>` : ''}
+    ${vatTable}
+    ${owing ? `<p style="background:#efe3d7;padding:14px 16px;border-radius:10px;font-size:14px;${o.vat ? 'margin-top:16px;' : ''}">Outstanding balance: <strong>${owing}</strong>. We'll be in touch about the remaining payment${''}, or you can settle it any time from your portal.</p>` : ''}
     <p style="margin:28px 0;">${btn(o.portalUrl, 'Open my portal')}</p>
     <p style="margin-top:20px;">With warmth,<br>The K Academy team</p>`,
   });
@@ -598,12 +648,12 @@ export function tmplCustomGiftCard(o: { recipientName: string; fromName: string;
     preheader: `${o.fromName} sent you a KClinics ${o.packageName || `${o.amount} gift card`}`,
     body: `${heroBand('voucher')}
     <h1 style="font-size:26px;margin:0 0 12px;">A gift for you, ${escape(o.recipientName)}.</h1>
-    <p><strong>${escape(o.fromName)}</strong> has sent you ${o.packageName ? `the <strong>${escape(o.packageName)}</strong> at KClinics` : 'a KClinics gift card to spend on any of our treatments'}.</p>
+    <p><strong>${escape(o.fromName)}</strong> has sent you ${o.packageName ? `the <strong>${escape(o.packageName)}</strong> at KClinics` : 'a KClinics gift card to spend on our treatments'}.</p>
     ${o.packageName ? `<p style="font-size:14px;color:#91766e;">Worth ${o.amount}, redeemable towards this package in clinic.</p>` : ''}
     ${voucherCard(o.amount, o.code, { designId: o.designId, recipientName: o.recipientName, message: o.message })}
     <p style="margin:22px 0 10px;">${btn(o.viewUrl, 'View &amp; share your card')}</p>
     <p style="margin:0 0 22px;">${btnOutline(o.claimUrl, 'Add to your account &amp; claim')}</p>
-    <p style="font-size:14px;">Valid for 12 months; partial use is fine — any balance stays on your card. (Treatments are for ages 18+.)</p>
+    <p style="font-size:14px;">Valid for 12 months; partial use is fine — any balance stays on your card. Not valid for injectable treatments or CO2 laser treatments. (Treatments are for ages 18+.)</p>
     <p>With warmth,<br>The KClinics team</p>`,
   });
 }
@@ -613,10 +663,10 @@ export function tmplGiftVoucher(o: { recipientName: string; fromName: string; am
     preheader: `${o.fromName} sent you a ${o.amount} KClinics gift voucher`,
     body: `${heroBand('voucher')}
     <h1 style="font-size:26px;margin:0 0 12px;">A gift for you, ${escape(o.recipientName)}.</h1>
-    <p><strong>${escape(o.fromName)}</strong> has sent you a KClinics gift voucher to spend on any of our treatments.</p>
+    <p><strong>${escape(o.fromName)}</strong> has sent you a KClinics gift voucher to spend on our treatments.</p>
     ${o.message ? `<p style="background:#efe3d7;padding:14px 16px;border-radius:10px;font-style:italic;">“${escape(o.message)}”</p>` : ''}
     ${voucherCard(o.amount, o.code)}
-    <p style="font-size:14px;">Create your free account to add this gift card to your profile and use it against any treatment. Valid for 12 months; partial use is fine — any balance stays on your card. (Treatments are for ages 18+.)</p>
+    <p style="font-size:14px;">Create your free account to add this gift card to your profile and use it against your treatment. Valid for 12 months; partial use is fine — any balance stays on your card. Not valid for injectable treatments or CO2 laser treatments. (Treatments are for ages 18+.)</p>
     <p style="margin:24px 0;">${btn(o.bookUrl, 'Create your account &amp; claim')}</p>
     <p>With warmth,<br>The KClinics team</p>`,
   });
@@ -631,7 +681,7 @@ export function tmplGiftVoucherReceipt(o: { purchaserName: string; amount: strin
     <p>Your ${o.packageName ? `<strong>${escape(o.packageName)}</strong> gift (worth ${o.amount})` : `${o.amount} gift card`} is ready${o.recipientName ? ` for <strong>${escape(o.recipientName)}</strong>` : ''}.</p>
     ${o.scheduled ? `<p>We’ll deliver it to them on <strong>${when}</strong>.</p>` : `<p>${o.recipientName ? 'We’ve sent it to them too.' : 'Here it is to share however you like.'}</p>`}
     ${voucherCard(o.amount, o.code, { designId: o.designId })}
-    <p style="font-size:14px;">Valid for 12 months. Redeemable against any treatment; partial use keeps the balance on the code.</p>
+    <p style="font-size:14px;">Valid for 12 months; partial use keeps the balance on the code. Not valid for injectable treatments or CO2 laser treatments.</p>
     <p>With warmth,<br>The KClinics team</p>`,
   });
 }
@@ -740,7 +790,7 @@ export function tmplBookingConfirmation(o: {
 
     <p style="background:#efe3d7;padding:14px 16px;border-radius:10px;font-size:14px;">
       Your card is securely saved — <strong>no payment is taken now</strong>. You're only charged when your treatment is delivered.
-      Cancellations are free up to <strong>24 hours</strong> before; within 24 hours the full fee applies.
+      You can cancel or reschedule online up to <strong>48 hours</strong> before; after that, please call us on 020 8050 0750. Cancellations within 24 hours incur the full fee.
     </p>
 
     <h2 class="kc-display" style="font-size:18px;margin:26px 0 10px;">Before your visit</h2>
@@ -948,6 +998,73 @@ export function tmplAbandonedBooking(o: { firstName: string; treatment: string; 
   });
 }
 
+// BLD-1204: one-time nudge to a shopper who reached checkout but never
+// completed payment for their shop order. Mirrors tmplAbandonedBooking.
+export function tmplAbandonedOrder(o: { firstName: string; resumeUrl: string }) {
+  return emailShell({
+    preheader: `Your order is still waiting in your bag`,
+    body: `${heroBand('reminder')}
+    <h1 style="font-size:25px;margin:0 0 14px;">Pick up where you left off, ${escape(o.firstName)}.</h1>
+    <p>You started an order with us but didn't quite finish checking out. Your bag is still waiting — it only takes a moment to complete it.</p>
+    <p style="margin:26px 0;">${btn(o.resumeUrl, 'Finish my order')}</p>
+    <p style="font-size:14px;color:#91766e;">If you'd rather talk it through first, just reply to this email or call us — we're happy to help.</p>
+    <p style="margin-top:20px;">With warmth,<br>The KClinics team</p>`,
+  });
+}
+
+// BLD-1540: one-time nudge to a buyer who reached the Stripe payment step but
+// never completed a gift-voucher purchase. Mirrors tmplAbandonedOrder.
+export function tmplAbandonedGiftVoucher(o: { firstName: string; resumeUrl: string }) {
+  return emailShell({
+    preheader: `Your gift voucher is still waiting to be sent`,
+    body: `${heroBand('reminder')}
+    <h1 style="font-size:25px;margin:0 0 14px;">Pick up where you left off, ${escape(o.firstName)}.</h1>
+    <p>You started buying a gift voucher with us but didn't quite finish the payment. It only takes a moment to complete your gift voucher purchase.</p>
+    <p style="margin:26px 0;">${btn(o.resumeUrl, 'Finish my gift voucher purchase')}</p>
+    <p style="font-size:14px;color:#91766e;">If you'd rather talk it through first, just reply to this email or call us — we're happy to help.</p>
+    <p style="margin-top:20px;">With warmth,<br>The KClinics team</p>`,
+  });
+}
+
+// BLD-1452: nudge for a client whose profile still shows no recorded T&Cs
+// acceptance — points them at account setup, which is where the acceptance is
+// actually captured (the tick on the signup form; signupClient records it
+// even when the client already exists). Review fix: the first draft asked them
+// to "add a payment card to your account" from the same link, which no screen
+// in /account does — a card is saved by Stripe during a booking — so the copy
+// now says what genuinely happens instead of asking for something the link
+// can't deliver. Mirrors tmplAbandonedBooking's tone; care-class (sent
+// regardless of marketing opt-in, only suppressed by a hard unsubscribe).
+export function tmplTcsReminder(o: { firstName: string; signupUrl: string }) {
+  return emailShell({
+    preheader: 'One quick thing to finish setting up your account',
+    body: `${heroBand('reminder')}
+    <h1 style="font-size:25px;margin:0 0 14px;">One quick thing, ${escape(o.firstName)}.</h1>
+    <p>Your KClinics account is nearly ready — we just don't have your acceptance of our Terms &amp; Conditions on file yet. Finishing your account setup records it and takes about a minute.</p>
+    <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:16px 0 22px;font-family:Helvetica,Arial,sans-serif;">
+      ${checkItem('Accept our Terms &amp; Conditions')}
+      ${checkItem('Set up your online account, so your appointments and forms are in one place')}
+    </table>
+    <p style="margin:26px 0;">${btn(o.signupUrl, 'Finish setting up my account')}</p>
+    <p style="font-size:14px;color:#91766e;">Your card is saved securely at the time you book — nothing is taken then, and our cancellation policy is set out in the terms. If you have any questions, just reply to this email or call us — we're happy to help.</p>
+    <p style="margin-top:20px;">With warmth,<br>The KClinics team</p>`,
+  });
+}
+
+// BLD-1231: sent once, the day a course's first module publishes, to every
+// paid/enrolled student who was stuck on the portal's "content coming soon"
+// dead end.
+export function tmplCourseContentReady(o: { firstName: string; courseTitle: string; learnUrl: string }) {
+  return emailShell({
+    preheader: `${o.courseTitle} is ready — start whenever you like`,
+    body: `${heroBand('confirmed')}
+    <h1 style="font-size:25px;margin:0 0 14px;">Your course is ready, ${escape(o.firstName)}</h1>
+    <p>Good news — the theory content for <strong>${escape(o.courseTitle)}</strong> is now live. You can start whenever suits you.</p>
+    <p style="margin:26px 0;">${btn(o.learnUrl, 'Start the course')}</p>
+    <p style="font-size:14px;color:#91766e;">Any questions before you dive in? Just reply — we're happy to help.</p>`,
+  });
+}
+
 export function tmplPostCourse(o: { firstName: string; treatment: string; rebookUrl: string; maintenance?: string | null }) {
   return emailShell({
     preheader: `You've completed your ${o.treatment} course`,
@@ -1024,7 +1141,7 @@ export function tmplAppointmentReminder(o: { firstName: string; treatment: strin
       <tr><td style="color:#91766e;padding-right:20px;">Where</td><td>4 Charterhouse Buildings, Goswell Road, London EC1M 7AN</td></tr>
     </table>
     <p style="margin:24px 0;">${btn(o.manageUrl, 'Manage your appointment')}</p>
-    <p style="font-size:14px;color:#91766e;">Need to reschedule? You can do so free of charge up to 24 hours before. We look forward to welcoming you.</p>
+    <p style="font-size:14px;color:#91766e;">Need to reschedule or cancel? You can do it online up to 48 hours before your appointment; after that, please call us on 020 8050 0750. We look forward to welcoming you.</p>
     <p>With warmth,<br>The KClinics team</p>`,
   });
 }
@@ -1039,6 +1156,30 @@ export function tmplConsentRequest(o: { firstName: string; formTitle: string; ur
     <p>Before your appointment at KClinics, please read and sign your consent form: <strong>${escape(o.formTitle)}</strong>. It takes less than a minute and can be done on your phone.</p>
     <p style="margin:28px 0;">${btn(o.url, 'Read &amp; sign my consent form')}</p>
     <p style="font-size:14px;color:#91766e;">This is a private link just for you — please don't share it. Your signed form is stored securely and sealed to your record.</p>
+    <p style="margin-top:20px;">With warmth,<br>The KClinics team</p>`,
+  });
+}
+
+// BLD-1573: pre-treatment prep instructions, sent 48h before every Laser Hair
+// Removal appointment (both the standard and men's variants share this copy).
+export function tmplLaserHairRemovalPrep(o: { firstName: string; treatment: string; start: Date }) {
+  return emailShell({
+    preheader: `How to prepare for your ${o.treatment}`,
+    body: `${heroBand('reminder')}
+    <h1 style="font-size:24px;margin:0 0 16px;">Before your appointment, ${escape(o.firstName)}.</h1>
+    <p>We're looking forward to seeing you soon. Here's how to prepare for your <strong>${escape(o.treatment)}</strong> on ${fmtWhen(o.start)}, to help your treatment go smoothly and achieve the best possible results.</p>
+    <h2 class="kc-display" style="font-size:18px;margin:26px 0 10px;">Before your appointment</h2>
+    <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:0 0 18px;font-family:Helvetica,Arial,sans-serif;">
+      ${checkItem('Please ensure the treatment area is fully shaved 12&ndash;24 hours before your appointment. We do not provide shaving at the clinic.')}
+      ${checkItem('Do not wax, tweeze or epilate the treatment area.')}
+      ${checkItem('Avoid sun exposure, sunbeds and fake tan.')}
+      ${checkItem('Arrive with clean skin &mdash; no creams, oils, deodorant, perfume or fake tan on the treatment area.')}
+      ${checkItem('Avoid retinol, strong acids and exfoliating products for several days beforehand.')}
+      ${checkItem('Let us know if you have started any new medication, your health has changed, or the skin is irritated, sunburnt or damaged.')}
+      ${checkItem('Wear comfortable, loose clothing where possible.')}
+    </table>
+    <p style="font-size:14px;color:#91766e;border-left:2px solid #c2a589;padding-left:14px;">If the area has not been adequately shaved and we are unable to safely carry out the treatment, the appointment may be treated as a late cancellation and the applicable cancellation fee will apply in accordance with our Cancellation Policy.</p>
+    <p style="margin-top:20px;">If you have any questions before your appointment, just reply to this email &mdash; we're happy to help.</p>
     <p style="margin-top:20px;">With warmth,<br>The KClinics team</p>`,
   });
 }

@@ -6,7 +6,7 @@ import type { Block } from '@/lib/blocks';
 import { BlockEditor } from '@/components/admin/BlockEditor';
 import { MediaField } from '@/components/admin/MediaPicker';
 
-const fld = 'w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-porcelain)] px-3 py-2 text-sm outline-none focus:border-[var(--color-gold)]';
+const fld = 'w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-porcelain)] px-3 py-2 text-sm outline-none focus:border-[var(--color-gold-deep)] focus-visible:ring-2 focus-visible:ring-[var(--color-gold-deep)]';
 const lbl = 'block text-xs font-medium uppercase tracking-[0.12em] text-[var(--color-stone)] mb-1.5';
 
 type Data = Record<string, unknown>;
@@ -135,7 +135,7 @@ function FieldInput({ field: f, value, data, onChange }: { field: Field; value: 
                 <span className="flex items-center gap-1">
                   <button onClick={() => onChange(move(items, i, -1))} aria-label="Up" className="text-[var(--color-stone)] hover:text-[var(--color-ink)]">▲</button>
                   <button onClick={() => onChange(move(items, i, 1))} aria-label="Down" className="text-[var(--color-stone)] hover:text-[var(--color-ink)]">▼</button>
-                  <button onClick={() => onChange(items.filter((_, j) => j !== i))} aria-label="Remove" className="ml-1 text-[var(--color-stone)] hover:text-[#c0392b]">✕</button>
+                  <button onClick={() => onChange(items.filter((_, j) => j !== i))} aria-label="Remove" className="ml-1 text-[var(--color-stone)] hover:text-[var(--color-blush-deep)]">✕</button>
                 </span>
               </div>
               <div className="space-y-3">

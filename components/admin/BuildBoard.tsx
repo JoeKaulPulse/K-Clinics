@@ -46,7 +46,9 @@ async function serverUpload(file: File): Promise<string> {
 }
 async function clientUpload(file: File): Promise<string> {
   const { upload } = await import('@vercel/blob/client');
-  const blob = await upload(file.name || `file-${Date.now()}`, file, { access: 'public', handleUploadUrl: '/api/admin/build/blob-token', contentType: file.type || undefined });
+  // BLD-1628: the blob-token route now scopes tokens to build/ paths.
+  const safe = (file.name || 'file').replace(/[^A-Za-z0-9._-]+/g, '-').replace(/-+/g, '-').slice(-120) || 'file';
+  const blob = await upload(`build/${Date.now()}-${safe}`, file, { access: 'public', handleUploadUrl: '/api/admin/build/blob-token', contentType: file.type || undefined });
   return blob.url;
 }
 async function uploadOne(file: File): Promise<string> {
@@ -73,8 +75,8 @@ const COLUMNS: { key: string; label: string }[] = [
 ];
 const ALL_STATUSES = [...COLUMNS.map((c) => c.key), 'CANCELLED'];
 const URGENCY: Record<string, { label: string; cls: string }> = {
-  P0: { label: 'P0 · Critical', cls: 'bg-red-100 text-red-800' },
-  P1: { label: 'P1 · High', cls: 'bg-amber-100 text-amber-800' },
+  P0: { label: 'P0 · Critical', cls: 'bg-[var(--color-blush)]/20 text-[var(--color-blush-deep)]' },
+  P1: { label: 'P1 · High', cls: 'bg-[var(--color-gold)]/20 text-[var(--color-ink)]' },
   P2: { label: 'P2 · Normal', cls: 'bg-[var(--color-bone)] text-[var(--color-stone)]' },
   P3: { label: 'P3 · Low', cls: 'bg-[var(--color-bone)] text-[var(--color-stone)]' },
 };
@@ -230,8 +232,8 @@ export function BuildBoard({ canManage, isAdmin, github, staff, me }: { canManag
         <span><strong className="text-[var(--color-ink)]">{awaitingSignoff}</strong> awaiting sign-off</span>
         <span><strong className="text-[var(--color-ink)]">{items.filter((i) => i.assignee === 'claude' && !['SHIPPED', 'CLOSED', 'CANCELLED'].includes(i.status)).length}</strong> with Claude</span>
         {gh.connected ? <span className="text-[var(--color-jade)]">GitHub ✓{gh.repo ? ` · ${gh.repo}` : ''}</span> : <span className="text-[var(--color-stone)]">GitHub not connected</span>}
-        {gh.connected && canManage && <button onClick={toggleMirror} title="When off, the board never auto-pushes to GitHub — it runs entirely on its own and won’t hit API limits. Turn on to also mirror items to issues." className={`rounded-full px-2 py-0.5 text-xs ${mirror ? 'bg-[var(--color-jade)]/15 text-[var(--color-jade)]' : 'bg-[var(--color-bone)] text-[var(--color-stone)]'}`}>mirror {mirror ? 'on' : 'off'}</button>}
-        {backoffUntil > Date.now() && <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs text-amber-800" title="GitHub rate-limited; auto-pushes paused. The board is unaffected.">GitHub cooling down · {new Date(backoffUntil).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}</span>}
+        {gh.connected && canManage && <button onClick={toggleMirror} title="When off, the board never auto-pushes to GitHub — it runs entirely on its own and won’t hit API limits. Turn on to also mirror items to issues." className={`rounded-full px-2 py-0.5 text-xs ${mirror ? 'bg-[var(--color-jade)]/15 text-[var(--color-ink)]' : 'bg-[var(--color-bone)] text-[var(--color-stone)]'}`}>mirror {mirror ? 'on' : 'off'}</button>}
+        {backoffUntil > Date.now() && <span className="rounded-full bg-[var(--color-gold)]/20 px-2 py-0.5 text-xs text-[var(--color-gold-deep)]" title="GitHub rate-limited; auto-pushes paused. The board is unaffected.">GitHub cooling down · {new Date(backoffUntil).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}</span>}
         <span className="ml-auto flex flex-wrap items-center gap-2">
           {canManage && <button onClick={continueWork} disabled={continuing} className="rounded-full bg-[var(--color-gold-deep)] px-4 py-1.5 text-xs font-medium text-white hover:bg-[var(--color-ink)] disabled:opacity-50">{continuing ? 'Prompting…' : '▶ Continue working'}</button>}
           {sessionUrl && <a href={sessionUrl} target="_blank" rel="noreferrer" className="rounded-full border border-[var(--color-jade)] px-3 py-1.5 text-xs text-[var(--color-jade)] hover:bg-[var(--color-jade)]/10">▶ Watch session ↗</a>}
@@ -243,16 +245,16 @@ export function BuildBoard({ canManage, isAdmin, github, staff, me }: { canManag
 
       {/* Search + view switcher + sync state */}
       <div className="mb-3 flex flex-wrap items-center gap-3">
-        <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search ref, title, detail, people… (all words must match)" aria-label="Search board items" className="min-w-0 flex-1 rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-3 py-2 text-sm outline-none focus:border-[var(--color-gold)]" />
-        <div className="flex rounded-full border border-[var(--color-line)] bg-white p-0.5 text-xs">
+        <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search ref, title, detail, people… (all words must match)" aria-label="Search board items" className="min-w-0 flex-1 rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-porcelain)] px-3 py-2 text-sm outline-none focus:border-[var(--color-gold-deep)] focus-visible:ring-2 focus-visible:ring-[var(--color-gold-deep)]" />
+        <div className="flex rounded-full border border-[var(--color-line)] bg-[var(--color-porcelain)] p-0.5 text-xs">
           {(['kanban', 'list', 'timeline', 'projects'] as const).map((v) => (
             <button key={v} onClick={() => { setView(v); if (v === 'projects') setProjectFilter(null); }} className={`rounded-full px-3 py-1 capitalize ${view === v ? 'bg-[var(--color-ink)] text-[var(--color-porcelain)]' : 'text-[var(--color-stone)]'}`}>{v}</button>
           ))}
         </div>
         {canManage && gh.connected && items.some((i) => !i.githubUrl) && <button onClick={syncAll} disabled={syncing} className="rounded-full border border-[var(--color-line)] px-3 py-1 text-xs hover:bg-[var(--color-bone)] disabled:opacity-50">{syncing ? 'Syncing…' : `⤴ Sync ${items.filter((i) => !i.githubUrl).length} to GitHub`}</button>}
         {sync && (
-          <span className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs ${sync.inSync ? 'bg-[var(--color-bone)] text-[var(--color-stone)]' : 'bg-amber-100 text-amber-800'}`} title={`Live build: ${sync.commit}`}>
-            <span className={`h-2 w-2 rounded-full ${sync.inSync ? 'bg-[var(--color-jade)]' : 'bg-amber-500'}`} />
+          <span className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs ${sync.inSync ? 'bg-[var(--color-bone)] text-[var(--color-stone)]' : 'bg-[var(--color-gold)]/20 text-[var(--color-ink)]'}`} title={`Live build: ${sync.commit}`}>
+            <span className={`h-2 w-2 rounded-full ${sync.inSync ? 'bg-[var(--color-jade)]' : 'bg-[var(--color-gold)]'}`} />
             {sync.inSync ? 'In sync' : 'Behind'} · {sync.dbCount}/{sync.backlogCount} · {sync.commit}
           </span>
         )}
@@ -261,7 +263,7 @@ export function BuildBoard({ canManage, isAdmin, github, staff, me }: { canManag
       {/* Filter + sort bar */}
       {view !== 'projects' && (
         <div className="mb-5 flex flex-wrap items-center gap-2 text-xs text-[var(--color-stone)]">
-          {(() => { const sel = 'rounded-full border border-[var(--color-line)] bg-white px-2.5 py-1.5 outline-none focus:border-[var(--color-gold)]'; return (<>
+          {(() => { const sel = 'rounded-full border border-[var(--color-line)] bg-[var(--color-porcelain)] px-2.5 py-1.5 outline-none focus:border-[var(--color-gold-deep)] focus-visible:ring-2 focus-visible:ring-[var(--color-gold-deep)]'; return (<>
             <span className="text-[var(--color-stone)]">Filter</span>
             <select aria-label="Priority" value={fUrgency} onChange={(e) => setFUrgency(e.target.value)} className={sel}>
               <option value="">All priorities</option>
@@ -299,8 +301,8 @@ export function BuildBoard({ canManage, isAdmin, github, staff, me }: { canManag
           <h2 className="font-[family-name:var(--font-display)] text-lg">Connect GitHub</h2>
           <p className="mt-1 text-sm text-[var(--color-stone)]">Link a repo so items push to issues, P0/P1 auto-create one, and the “Continue working” button can wake Claude. Use a fine-grained token with <strong>Metadata: Read</strong> + <strong>Issues: Read &amp; write</strong>.</p>
           <div className="mt-3 flex flex-wrap items-end gap-2">
-            <label className="text-xs text-[var(--color-stone)]">Repository<br /><input value={ghForm.repo} onChange={(e) => setGhForm((f) => ({ ...f, repo: e.target.value }))} placeholder="owner/name" className="mt-1 w-56 rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-3 py-2 text-sm outline-none focus:border-[var(--color-gold)]" /></label>
-            <label className="text-xs text-[var(--color-stone)]">Access token<br /><input type="password" value={ghForm.token} onChange={(e) => setGhForm((f) => ({ ...f, token: e.target.value }))} placeholder="github_pat_… / ghp_…" className="mt-1 w-64 rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-3 py-2 text-sm outline-none focus:border-[var(--color-gold)]" /></label>
+            <label className="text-xs text-[var(--color-stone)]">Repository<br /><input value={ghForm.repo} onChange={(e) => setGhForm((f) => ({ ...f, repo: e.target.value }))} placeholder="owner/name" className="mt-1 w-56 rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-porcelain)] px-3 py-2 text-sm outline-none focus:border-[var(--color-gold-deep)] focus-visible:ring-2 focus-visible:ring-[var(--color-gold-deep)]" /></label>
+            <label className="text-xs text-[var(--color-stone)]">Access token<br /><input type="password" value={ghForm.token} onChange={(e) => setGhForm((f) => ({ ...f, token: e.target.value }))} placeholder="github_pat_… / ghp_…" className="mt-1 w-64 rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-porcelain)] px-3 py-2 text-sm outline-none focus:border-[var(--color-gold-deep)] focus-visible:ring-2 focus-visible:ring-[var(--color-gold-deep)]" /></label>
             <button onClick={connectGh} disabled={ghForm.busy} className="rounded-full bg-[var(--color-ink)] px-5 py-2 text-sm font-medium text-[var(--color-porcelain)] disabled:opacity-50">{ghForm.busy ? 'Connecting…' : 'Connect & test'}</button>
             {canManage && gh.connected && <button onClick={disconnectGh} className="text-xs text-[var(--color-blush-deep)] hover:underline">Disconnect</button>}
           </div>
@@ -313,8 +315,8 @@ export function BuildBoard({ canManage, isAdmin, github, staff, me }: { canManag
         <div className="mb-4 flex flex-wrap items-center gap-3 rounded-[var(--radius-md)] border border-[var(--color-line)] bg-[var(--color-porcelain)] px-4 py-2 text-sm">
           <span className="font-medium">Project: {activeProject.name}</span>
           <span className="text-[var(--color-stone)]">{activeProject.done}/{activeProject.total} done · {activeProject.progress}%</span>
-          {activeProject.openErrors > 0 && <span className="rounded-full bg-red-100 px-2 py-0.5 text-xs font-medium text-red-800">{activeProject.openErrors} error{activeProject.openErrors === 1 ? '' : 's'}</span>}
-          {activeProject.userGated > 0 && <span className="rounded-full bg-red-600 px-2 py-0.5 text-xs font-semibold text-white" title="Tasks waiting on you">⚑ {activeProject.userGated} need you</span>}
+          {activeProject.openErrors > 0 && <span className="rounded-full bg-[var(--color-blush)]/20 px-2 py-0.5 text-xs font-medium text-[var(--color-blush-deep)]">{activeProject.openErrors} error{activeProject.openErrors === 1 ? '' : 's'}</span>}
+          {activeProject.userGated > 0 && <span className="rounded-full bg-[var(--color-blush-deep)] px-2 py-0.5 text-xs font-semibold text-white" title="Tasks waiting on you">⚑ {activeProject.userGated} need you</span>}
           <button onClick={() => setProjectFilter(null)} className="ml-auto text-xs text-[var(--color-stone)] hover:underline">Clear ✕</button>
         </div>
       )}
@@ -362,12 +364,12 @@ function Card({ i, onOpen }: { i: Item; onOpen: (i: Item) => void }) {
   const r = ve(i);
   const d = durMs(i);
   return (
-    <button onClick={() => onOpen(i)} className="block w-full rounded-[var(--radius-md)] border border-[var(--color-line)] bg-white p-3 text-left hover:border-[var(--color-gold)]">
+    <button onClick={() => onOpen(i)} className="block w-full rounded-[var(--radius-md)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-3 text-left hover:border-[var(--color-gold)]">
       <div className="mb-1 flex items-center gap-1.5">
         {i.ref && <span className="rounded bg-[var(--color-bone)] px-1 py-0.5 font-mono text-[0.6rem] tracking-tight text-[var(--color-stone)]">{i.ref}</span>}
         <span className={`rounded-full px-1.5 py-0.5 text-[0.6rem] font-semibold ${URGENCY[i.urgency]?.cls}`}>{i.urgency}</span>
         <span className="text-[0.6rem] uppercase tracking-wide text-[var(--color-stone)]">{i.type}</span>
-        {gatedCount(i) > 0 && <span title={`${gatedCount(i)} item(s) need your input`} className="grid h-4 min-w-4 place-items-center rounded-full bg-red-600 px-1 text-[0.6rem] font-bold text-white">{gatedCount(i)}</span>}
+        {gatedCount(i) > 0 && <span title={`${gatedCount(i)} item(s) need your input`} className="grid h-4 min-w-4 place-items-center rounded-full bg-[var(--color-blush-deep)] px-1 text-[0.6rem] font-bold text-white">{gatedCount(i)}</span>}
         {r != null && <span className="ml-auto text-[0.6rem] text-[var(--color-stone)]">V:E {r}</span>}
       </div>
       <p className="break-words text-sm font-medium leading-snug">{i.title}</p>
@@ -396,7 +398,7 @@ function ProjectsView({ projects, onOpen }: { projects: Project[]; onOpen: (id: 
               {p.ref && <span className="mb-1 inline-block rounded bg-[var(--color-bone)] px-1.5 py-0.5 font-mono text-[0.65rem] tracking-tight text-[var(--color-stone)]">{p.ref}</span>}
               <h3 className="font-[family-name:var(--font-display)] text-lg leading-tight">{p.name}</h3>
             </div>
-            {p.userGated > 0 && <span title={`${p.userGated} task(s) need your input`} className="shrink-0 grid h-6 min-w-6 place-items-center rounded-full bg-red-600 px-1.5 text-xs font-bold text-white">{p.userGated}</span>}
+            {p.userGated > 0 && <span title={`${p.userGated} task(s) need your input`} className="shrink-0 grid h-6 min-w-6 place-items-center rounded-full bg-[var(--color-blush-deep)] px-1.5 text-xs font-bold text-white">{p.userGated}</span>}
           </div>
           {p.summary && <p className="mt-1.5 line-clamp-2 text-sm text-[var(--color-stone)]">{p.summary}</p>}
           <div className="mt-3 h-2 w-full overflow-hidden rounded-full bg-[var(--color-bone)]">
@@ -405,8 +407,8 @@ function ProjectsView({ projects, onOpen }: { projects: Project[]; onOpen: (id: 
           <p className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-[var(--color-stone)]">
             <span><strong className="text-[var(--color-ink)]">{p.progress}%</strong> · {p.done}/{p.total} done</span>
             <span>{p.open} open</span>
-            {p.openErrors > 0 && <span className="rounded-full bg-red-100 px-2 py-0.5 font-medium text-red-800">{p.openErrors} error{p.openErrors === 1 ? '' : 's'}</span>}
-            {p.userGated > 0 && <span className="font-medium text-red-700">⚑ {p.userGated} need you</span>}
+            {p.openErrors > 0 && <span className="rounded-full bg-[var(--color-blush)]/20 px-2 py-0.5 font-medium text-[var(--color-blush-deep)]">{p.openErrors} error{p.openErrors === 1 ? '' : 's'}</span>}
+            {p.userGated > 0 && <span className="font-medium text-[var(--color-blush-deep)]">⚑ {p.userGated} need you</span>}
             {p.originIdeaTitle && <span className="text-[var(--color-stone)]">· from idea</span>}
           </p>
         </button>
@@ -442,7 +444,7 @@ function ListView({ items, onOpen }: { items: Item[]; onOpen: (i: Item) => void 
           {sorted.map((i) => {
             const done = i.subtasks.filter((s) => s.status === 'DONE').length; const d = durMs(i); const r = ve(i);
             return (
-              <tr key={i.id} onClick={() => onOpen(i)} tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onOpen(i); } }} className="cursor-pointer border-t border-[var(--color-line)] bg-white hover:bg-[var(--color-bone)]">
+              <tr key={i.id} onClick={() => onOpen(i)} tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onOpen(i); } }} className="cursor-pointer border-t border-[var(--color-line)] bg-[var(--color-porcelain)] hover:bg-[var(--color-bone)]">
                 <td className="px-3 py-2 font-mono text-xs text-[var(--color-stone)]">{i.ref || '—'}</td>
                 <td className="px-3 py-2 font-medium">{i.title}</td>
                 <td className="px-3 py-2 text-xs text-[var(--color-stone)]">{i.type}</td>
@@ -478,7 +480,7 @@ function TimelineView({ items, onOpen }: { items: Item[]; onOpen: (i: Item) => v
         const s = +new Date(i.startedAt || i.createdAt); const e = +new Date(i.closedAt || i.shippedAt || i.estCompleteAt || new Date().toISOString());
         return (
           <button key={i.id} onClick={() => onOpen(i)} className="group block w-full">
-            <div className="relative h-6 w-full rounded-full bg-white">
+            <div className="relative h-6 w-full rounded-full bg-[var(--color-porcelain)]">
               <div className="absolute top-0 flex h-6 items-center rounded-full px-2 text-[0.6rem] text-white" style={{ left: pct(s), width: `max(8%, ${((e - s) / span) * 100}%)`, background: barColor(i.status) }}>
                 <span className="truncate">{withRef(i)}</span>
               </div>
@@ -528,7 +530,7 @@ function TaskModal({ item, allItems, projects, canManage, isAdmin, gh, staff, on
 
   // Dependencies
   async function addDep(dependsOnId: string) { if (!dependsOnId) return; const r = await post({ op: 'dep-add', id: item.id, dependsOnId }); if (r.ok) onChange(); else alert(r.error || 'Failed'); }
-  async function removeDep(dependsOnId: string) { const r = await post({ op: 'dep-remove', id: item.id, dependsOnId }); if (r.ok) onChange(); else alert(r.error || 'Failed'); }
+  async function removeDep(dependsOnId: string) { if (!confirm('Remove this dependency link?')) return; const r = await post({ op: 'dep-remove', id: item.id, dependsOnId }); if (r.ok) onChange(); else alert(r.error || 'Failed'); }
 
   // Project — promote this item into a new or existing project, or detach it.
   const [projBusy, setProjBusy] = useState(false);
@@ -570,7 +572,7 @@ function TaskModal({ item, allItems, projects, canManage, isAdmin, gh, staff, on
     }
     if (errs.length) setUpErr(`${urls.length} uploaded, ${errs.length} failed — ${errs[0]}${errs.length > 1 ? ` (+${errs.length - 1} more)` : ''}`);
   }
-  async function removeAttachment(url: string) { const r = await post({ op: 'attach-remove', id: item.id, url }); if (r.ok) onChange(); else alert(r.error || 'Failed'); }
+  async function removeAttachment(url: string) { if (!confirm('Remove this attachment?')) return; const r = await post({ op: 'attach-remove', id: item.id, url }); if (r.ok) onChange(); else alert(r.error || 'Failed'); }
 
   async function signoff() { if (!confirm('Sign off and close this task? This marks the work reviewed & complete.')) return; const r = await post({ op: 'signoff', id: item.id }); if (r.ok) onChange(); else alert(r.error || 'Failed'); }
   async function reopen() { const reason = prompt('Reopen this task — add a note for Claude (what still needs doing):') || undefined; const r = await post({ op: 'reopen', id: item.id, reason }); if (r.ok) onChange(); else alert(r.error || 'Failed'); }
@@ -602,7 +604,7 @@ function TaskModal({ item, allItems, projects, canManage, isAdmin, gh, staff, on
 
         {item.detail && <p className="mt-3 whitespace-pre-wrap text-sm text-[var(--color-ink-soft)]">{item.detail}</p>}
         {item.screenshots.length > 0 && (
-          <div className="mt-3 flex flex-wrap gap-2">{item.screenshots.map((s) => <a key={s} href={s} target="_blank" rel="noreferrer"><img src={s} alt="" className="h-24 w-auto rounded border border-[var(--color-line)]" /></a>)}</div>
+          <div className="mt-3 flex flex-wrap gap-2">{item.screenshots.map((s, i) => <a key={s} href={s} target="_blank" rel="noreferrer" aria-label={`Open screenshot ${i + 1}`}><img src={s} alt="" className="h-24 w-auto rounded border border-[var(--color-line)]" /></a>)}</div>
         )}
 
         {/* Attachments — photos & videos (works from iPhone) */}
@@ -617,11 +619,11 @@ function TaskModal({ item, allItems, projects, canManage, isAdmin, gh, staff, on
           {upErr && <p className="mt-2 text-xs text-[var(--color-blush-deep)]">{upErr}</p>}
           {item.attachments.length > 0 ? (
             <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-3">
-              {item.attachments.map((u) => (
+              {item.attachments.map((u, i) => (
                 <div key={u} className="group relative overflow-hidden rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-black/5">
                   {isVideo(u)
                     ? <video src={u} controls playsInline className="h-28 w-full object-cover" />
-                    : <a href={u} target="_blank" rel="noreferrer"><img src={u} alt="" className="h-28 w-full object-cover" /></a>}
+                    : <a href={u} target="_blank" rel="noreferrer" aria-label={`Open attachment ${i + 1}`}><img src={u} alt="" className="h-28 w-full object-cover" /></a>}
                   {canManage && <button onClick={() => removeAttachment(u)} title="Remove" className="absolute right-1 top-1 rounded-full bg-black/60 px-1.5 text-xs text-white opacity-0 group-hover:opacity-100">✕</button>}
                 </div>
               ))}
@@ -630,7 +632,7 @@ function TaskModal({ item, allItems, projects, canManage, isAdmin, gh, staff, on
         </div>
 
         {/* Telemetry strip */}
-        <div className="mt-4 grid grid-cols-2 gap-3 rounded-[var(--radius-md)] border border-[var(--color-line)] bg-white p-3 text-xs sm:grid-cols-4">
+        <div className="mt-4 grid grid-cols-2 gap-3 rounded-[var(--radius-md)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-3 text-xs sm:grid-cols-4">
           <div><p className={lbl}>Value:Effort</p><p className="mt-0.5">{ve(item) ?? '—'}{item.value && item.effort ? <span className="text-[var(--color-stone)]"> ({item.value}/{item.effort})</span> : ''}</p></div>
           <div><p className={lbl}>Time spent</p><p className="mt-0.5">{d != null ? fmtDur(d) : '—'}</p></div>
           <div><p className={lbl}>ETA</p><p className="mt-0.5">{item.estCompleteAt ? day(item.estCompleteAt) : '—'}</p></div>
@@ -639,15 +641,15 @@ function TaskModal({ item, allItems, projects, canManage, isAdmin, gh, staff, on
 
         {canManage && (
           <div className="mt-3 flex flex-wrap items-end gap-3 rounded-[var(--radius-md)] border border-[var(--color-line)] bg-[var(--color-bone)]/50 p-3 text-xs">
-            <label>Status<br /><select value={item.status} onChange={(e) => patch(item.id, { status: e.target.value })} className="mt-1 rounded border border-[var(--color-line)] bg-white px-2 py-1">{ALL_STATUSES.map((s) => <option key={s} value={s}>{s}</option>)}</select></label>
-            <label>Urgency<br /><select value={item.urgency} onChange={(e) => patch(item.id, { urgency: e.target.value })} className="mt-1 rounded border border-[var(--color-line)] bg-white px-2 py-1">{Object.keys(URGENCY).map((u) => <option key={u} value={u}>{u}</option>)}</select></label>
-            <label>Assignee<br /><select value={item.assignee} onChange={(e) => patch(item.id, { assignee: e.target.value })} className="mt-1 rounded border border-[var(--color-line)] bg-white px-2 py-1"><option value="claude">Claude</option>{staff.map((s) => <option key={s.email} value={s.email}>{s.name || s.email}</option>)}</select></label>
-            <label>Value<br /><input value={tel.value} onChange={(e) => setTel((t) => ({ ...t, value: e.target.value.replace(/\D/g, '').slice(0, 2) }))} className="mt-1 w-12 rounded border border-[var(--color-line)] bg-white px-2 py-1" /></label>
-            <label>Effort<br /><input value={tel.effort} onChange={(e) => setTel((t) => ({ ...t, effort: e.target.value.replace(/\D/g, '').slice(0, 2) }))} className="mt-1 w-12 rounded border border-[var(--color-line)] bg-white px-2 py-1" /></label>
-            <label>ETA<br /><input type="date" value={tel.estCompleteAt} onChange={(e) => setTel((t) => ({ ...t, estCompleteAt: e.target.value }))} className="mt-1 rounded border border-[var(--color-line)] bg-white px-2 py-1" /></label>
-            <label>Tokens<br /><input value={tel.actualTokens} onChange={(e) => setTel((t) => ({ ...t, actualTokens: e.target.value.replace(/\D/g, '').slice(0, 9) }))} className="mt-1 w-20 rounded border border-[var(--color-line)] bg-white px-2 py-1" /></label>
+            <label>Status<br /><select value={item.status} onChange={(e) => patch(item.id, { status: e.target.value })} className="mt-1 rounded border border-[var(--color-line)] bg-[var(--color-porcelain)] px-2 py-1">{ALL_STATUSES.map((s) => <option key={s} value={s}>{s}</option>)}</select></label>
+            <label>Urgency<br /><select value={item.urgency} onChange={(e) => patch(item.id, { urgency: e.target.value })} className="mt-1 rounded border border-[var(--color-line)] bg-[var(--color-porcelain)] px-2 py-1">{Object.keys(URGENCY).map((u) => <option key={u} value={u}>{u}</option>)}</select></label>
+            <label>Assignee<br /><select value={item.assignee} onChange={(e) => patch(item.id, { assignee: e.target.value })} className="mt-1 rounded border border-[var(--color-line)] bg-[var(--color-porcelain)] px-2 py-1"><option value="claude">Claude</option>{staff.map((s) => <option key={s.email} value={s.email}>{s.name || s.email}</option>)}</select></label>
+            <label>Value<br /><input value={tel.value} onChange={(e) => setTel((t) => ({ ...t, value: e.target.value.replace(/\D/g, '').slice(0, 2) }))} className="mt-1 w-12 rounded border border-[var(--color-line)] bg-[var(--color-porcelain)] px-2 py-1" /></label>
+            <label>Effort<br /><input value={tel.effort} onChange={(e) => setTel((t) => ({ ...t, effort: e.target.value.replace(/\D/g, '').slice(0, 2) }))} className="mt-1 w-12 rounded border border-[var(--color-line)] bg-[var(--color-porcelain)] px-2 py-1" /></label>
+            <label>ETA<br /><input type="date" value={tel.estCompleteAt} onChange={(e) => setTel((t) => ({ ...t, estCompleteAt: e.target.value }))} className="mt-1 rounded border border-[var(--color-line)] bg-[var(--color-porcelain)] px-2 py-1" /></label>
+            <label>Tokens<br /><input value={tel.actualTokens} onChange={(e) => setTel((t) => ({ ...t, actualTokens: e.target.value.replace(/\D/g, '').slice(0, 9) }))} className="mt-1 w-20 rounded border border-[var(--color-line)] bg-[var(--color-porcelain)] px-2 py-1" /></label>
             <button onClick={saveTel} disabled={telBusy} className="rounded-full bg-[var(--color-ink)] px-3 py-1.5 text-[var(--color-porcelain)] disabled:opacity-50">{telBusy ? 'Saving…' : 'Save'}</button>
-            {gh.connected && !item.githubUrl && <button onClick={async () => { const r = await post({ op: 'github', id: item.id }); if (r.ok) onChange(); else alert(r.error); }} className="rounded-full border border-[var(--color-line)] px-3 py-1.5 hover:bg-white">Push to GitHub</button>}
+            {gh.connected && !item.githubUrl && <button onClick={async () => { const r = await post({ op: 'github', id: item.id }); if (r.ok) onChange(); else alert(r.error); }} className="rounded-full border border-[var(--color-line)] px-3 py-1.5 hover:bg-[var(--color-porcelain)]">Push to GitHub</button>}
             {item.githubUrl && <a href={item.githubUrl} target="_blank" rel="noreferrer" className="text-[var(--color-gold-deep)] underline">GitHub ↗</a>}
             <label className="flex items-center gap-1.5 cursor-pointer select-none">
               <input type="checkbox" checked={item.isPublic} onChange={async (e) => { await patch(item.id, { isPublic: e.target.checked }); }} className="h-3.5 w-3.5 accent-[var(--color-gold)]" />
@@ -661,11 +663,11 @@ function TaskModal({ item, allItems, projects, canManage, isAdmin, gh, staff, on
           <div className="mt-3 flex items-center gap-3 rounded-[var(--radius-md)] border border-[var(--color-jade)]/40 bg-[var(--color-jade)]/5 p-3 text-xs">
             <span className="text-[var(--color-stone)]">Shipped — review and sign off to close, or reopen for more work.</span>
             <button onClick={signoff} className="ml-auto rounded-full bg-[var(--color-jade)] px-4 py-1.5 font-medium text-white">✓ Sign off &amp; close</button>
-            <button onClick={reopen} className="rounded-full border border-[var(--color-line)] px-3 py-1.5 hover:bg-white">Reopen</button>
+            <button onClick={reopen} className="rounded-full border border-[var(--color-line)] px-3 py-1.5 hover:bg-[var(--color-porcelain)]">Reopen</button>
           </div>
         )}
         {isAdmin && closed && (
-          <div className="mt-3 flex items-center gap-3 rounded-[var(--radius-md)] border border-[var(--color-line)] bg-white p-3 text-xs">
+          <div className="mt-3 flex items-center gap-3 rounded-[var(--radius-md)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-3 text-xs">
             <span className="text-[var(--color-stone)]">Closed by {item.closedBy?.split('@')[0] || '—'}{item.closedAt ? ` · ${day(item.closedAt)}` : ''}.</span>
             <button onClick={reopen} className="ml-auto rounded-full border border-[var(--color-line)] px-3 py-1.5 hover:bg-[var(--color-bone)]">Reopen</button>
           </div>
@@ -677,7 +679,7 @@ function TaskModal({ item, allItems, projects, canManage, isAdmin, gh, staff, on
             <button
               onClick={del}
               title="Permanently delete this task and its subtasks"
-              className="rounded-full border border-[var(--color-blush)]/50 px-3 py-1.5 text-xs text-[#b23b3b] transition-colors hover:bg-[color-mix(in_oklab,#c0392b_10%,transparent)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#b23b3b]/40"
+              className="rounded-full border border-[var(--color-blush)]/50 px-3 py-1.5 text-xs text-[var(--color-blush-deep)] transition-colors hover:bg-[color-mix(in_oklab,var(--color-blush-deep)_10%,transparent)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-blush-deep)]/40"
             >
               Delete task
             </button>
@@ -688,11 +690,11 @@ function TaskModal({ item, allItems, projects, canManage, isAdmin, gh, staff, on
         <h3 className="mt-5 flex items-center justify-between text-xs font-semibold uppercase tracking-wide text-[var(--color-stone)]">Subtasks {item.subtasks.length > 0 && <span className="text-[var(--color-stone)]">{done}/{item.subtasks.length} done</span>}</h3>
         <ul className="mt-2 space-y-1">
           {item.subtasks.map((s) => (
-            <li key={s.id} className="flex items-center gap-2 rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-2.5 py-1.5 text-sm">
+            <li key={s.id} className="flex items-center gap-2 rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-porcelain)] px-2.5 py-1.5 text-sm">
               <input type="checkbox" checked={s.status === 'DONE'} onChange={(e) => setSubStatus(s.id, e.target.checked ? 'DONE' : 'TODO')} className="h-4 w-4 accent-[var(--color-jade)]" />
               {s.ref && <span className="shrink-0 rounded bg-[var(--color-bone)] px-1 py-0.5 font-mono text-[0.6rem] tracking-tight text-[var(--color-stone)]">{s.ref}</span>}
               <span className={s.status === 'DONE' ? 'text-[var(--color-stone)] line-through' : ''}>{s.title}</span>
-              {s.ownerInput && <span className="rounded-full bg-amber-100 px-1.5 py-0.5 text-[0.55rem] font-medium text-amber-800">owner input</span>}
+              {s.ownerInput && <span className="rounded-full bg-[var(--color-gold)]/20 px-1.5 py-0.5 text-[0.55rem] font-medium text-[var(--color-gold-deep)]">owner input</span>}
               <span className="ml-auto text-[0.6rem] text-[var(--color-stone)]">{s.assignee === 'claude' ? '◆' : s.assignee.split('@')[0]}{s.status === 'DOING' ? ' · doing' : ''}</span>
               {canManage && s.status !== 'DONE' && <button onClick={() => setSubStatus(s.id, s.status === 'DOING' ? 'TODO' : 'DOING')} className="text-[0.6rem] text-[var(--color-stone)] hover:underline">{s.status === 'DOING' ? '↩' : '▶'}</button>}
             </li>
@@ -701,7 +703,7 @@ function TaskModal({ item, allItems, projects, canManage, isAdmin, gh, staff, on
         </ul>
         {canManage && (
           <div className="mt-2 flex flex-wrap items-center gap-2">
-            <input value={stTitle} onChange={(e) => setStTitle(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && addSub()} placeholder="Add a subtask…" aria-label="Add a subtask" className="min-w-0 flex-1 rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-3 py-1.5 text-sm outline-none focus:border-[var(--color-gold)]" />
+            <input value={stTitle} onChange={(e) => setStTitle(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && addSub()} placeholder="Add a subtask…" aria-label="Add a subtask" className="min-w-0 flex-1 rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-porcelain)] px-3 py-1.5 text-sm outline-none focus:border-[var(--color-gold-deep)] focus-visible:ring-2 focus-visible:ring-[var(--color-gold-deep)]" />
             <label className="flex items-center gap-1 text-[0.65rem] text-[var(--color-stone)]"><input type="checkbox" checked={stOwner} onChange={(e) => setStOwner(e.target.checked)} className="h-3.5 w-3.5 accent-[var(--color-gold)]" /> owner input</label>
             <button onClick={addSub} disabled={stBusy || !stTitle.trim()} className="rounded-[var(--radius-sm)] bg-[var(--color-ink)] px-3 py-1.5 text-sm text-[var(--color-porcelain)] disabled:opacity-50">Add</button>
           </div>
@@ -718,13 +720,13 @@ function TaskModal({ item, allItems, projects, canManage, isAdmin, gh, staff, on
           <p className="mt-2 text-xs text-[var(--color-stone)]">Not part of a project.</p>
         ) : newProj ? (
           <div className="mt-2 flex flex-wrap items-center gap-2">
-            <input autoFocus value={projName} onChange={(e) => setProjName(e.target.value)} placeholder="New project name" aria-label="New project name" className="flex-1 rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-2.5 py-1.5 text-sm" />
+            <input autoFocus value={projName} onChange={(e) => setProjName(e.target.value)} placeholder="New project name" aria-label="New project name" className="flex-1 rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-porcelain)] px-2.5 py-1.5 text-sm" />
             <button onClick={() => projName.trim() && promote({ name: projName.trim() })} disabled={projBusy || !projName.trim()} className="rounded-full bg-[var(--color-ink)] px-3 py-1.5 text-xs font-medium text-[var(--color-porcelain)] disabled:opacity-50">{projBusy ? 'Creating…' : 'Create & add'}</button>
             <button onClick={() => { setNewProj(false); setProjName(''); }} className="text-[0.7rem] text-[var(--color-stone)] hover:underline">cancel</button>
           </div>
         ) : (
           <div className="mt-2 flex flex-wrap items-center gap-2">
-            <select value="" disabled={projBusy} onChange={(e) => e.target.value && promote({ projectId: e.target.value })} className="flex-1 rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-2 py-1.5 text-xs">
+            <select value="" disabled={projBusy} onChange={(e) => e.target.value && promote({ projectId: e.target.value })} className="flex-1 rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-porcelain)] px-2 py-1.5 text-xs">
               <option value="">Promote into an existing project…</option>
               {projects.map((p) => <option key={p.id} value={p.id}>{p.ref ? `${p.ref} · ${p.name}` : p.name}</option>)}
             </select>
@@ -739,7 +741,7 @@ function TaskModal({ item, allItems, projects, canManage, isAdmin, gh, staff, on
             <p className="text-[0.6rem] uppercase tracking-wide text-[var(--color-stone)]">Blocked by</p>
             <ul className="mt-1 space-y-1">
               {item.dependencies.map((d) => (
-                <li key={d.id} className="flex items-center gap-2 rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-2.5 py-1.5 text-sm">
+                <li key={d.id} className="flex items-center gap-2 rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-porcelain)] px-2.5 py-1.5 text-sm">
                   <span title={d.dependsOn.status}>{depDone(d.dependsOn.status) ? '✅' : '🔒'}</span>
                   <span className={depDone(d.dependsOn.status) ? 'text-[var(--color-stone)] line-through' : ''}>{withRef(d.dependsOn)}</span>
                   {canManage && <button onClick={() => removeDep(d.dependsOn.id)} className="ml-auto text-[0.6rem] text-[var(--color-stone)] hover:underline">remove</button>}
@@ -748,7 +750,7 @@ function TaskModal({ item, allItems, projects, canManage, isAdmin, gh, staff, on
               {item.dependencies.length === 0 && <li className="text-xs text-[var(--color-stone)]">Nothing — ready to start.</li>}
             </ul>
             {canManage && (
-              <select value="" onChange={(e) => { addDep(e.target.value); e.currentTarget.value = ''; }} className="mt-1.5 w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-2 py-1.5 text-xs">
+              <select value="" onChange={(e) => { addDep(e.target.value); e.currentTarget.value = ''; }} className="mt-1.5 w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-porcelain)] px-2 py-1.5 text-xs">
                 <option value="">+ Add a prerequisite…</option>
                 {allItems.filter((x) => !depIds.has(x.id)).map((x) => <option key={x.id} value={x.id}>{withRef(x)}</option>)}
               </select>
@@ -758,7 +760,7 @@ function TaskModal({ item, allItems, projects, canManage, isAdmin, gh, staff, on
             <p className="text-[0.6rem] uppercase tracking-wide text-[var(--color-stone)]">Blocks</p>
             <ul className="mt-1 space-y-1">
               {item.dependents.map((d) => (
-                <li key={d.id} className="rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-2.5 py-1.5 text-sm">{withRef(d.item)}</li>
+                <li key={d.id} className="rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-porcelain)] px-2.5 py-1.5 text-sm">{withRef(d.item)}</li>
               ))}
               {item.dependents.length === 0 && <li className="text-xs text-[var(--color-stone)]">Nothing depends on this.</li>}
             </ul>
@@ -800,7 +802,7 @@ function CommentBox({ id, onDone }: { id: string; onDone: () => void }) {
   async function send() { if (!v.trim() || busy) return; setBusy(true); const r = await post({ op: 'comment', id, body: v }); setBusy(false); if (r.ok) { setV(''); onDone(); } }
   return (
     <div className="mt-3 flex items-start gap-2">
-      <MentionInput value={v} onChange={setV} onSubmit={send} placeholder="Add a note… (@ to mention; @claude to nudge me)" className="w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-3 py-2 text-sm outline-none focus:border-[var(--color-gold)]" />
+      <MentionInput value={v} onChange={setV} onSubmit={send} placeholder="Add a note… (@ to mention; @claude to nudge me)" className="w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-porcelain)] px-3 py-2 text-sm outline-none focus:border-[var(--color-gold-deep)] focus-visible:ring-2 focus-visible:ring-[var(--color-gold-deep)]" />
       <button disabled={busy || !v.trim()} onClick={send} className="rounded-[var(--radius-sm)] bg-[var(--color-ink)] px-4 py-2 text-sm font-medium text-[var(--color-porcelain)] disabled:opacity-50">Note</button>
     </div>
   );
@@ -826,8 +828,8 @@ function IdeaModal({ onClose, onDone }: { onClose: () => void; onDone: () => voi
       <div ref={panelRef} role="dialog" aria-modal="true" aria-labelledby="idea-modal-title" tabIndex={-1} className="my-12 w-full max-w-md rounded-[var(--radius-lg)] bg-[var(--color-porcelain)] p-6 shadow-[var(--shadow-lift)]" onClick={(e) => e.stopPropagation()}>
         <h2 id="idea-modal-title" className="font-[family-name:var(--font-display)] text-xl">💡 Add an idea</h2>
         <p className="mt-1 text-sm text-[var(--color-stone)]">Drop it in — Claude scores it (value/effort) and triages it into the workflow automatically.</p>
-        <input value={title} onChange={(e) => setTitle(e.target.value)} autoFocus placeholder="The idea, in a line" aria-label="Idea title" className="mt-4 w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-3 py-2 text-sm outline-none focus:border-[var(--color-gold)]" />
-        <textarea value={detail} onChange={(e) => setDetail(e.target.value)} rows={4} placeholder="Any context, why it matters, links… (optional)" aria-label="Idea details" className="mt-2 w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-3 py-2 text-sm outline-none focus:border-[var(--color-gold)]" />
+        <input value={title} onChange={(e) => setTitle(e.target.value)} autoFocus placeholder="The idea, in a line" aria-label="Idea title" className="mt-4 w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-porcelain)] px-3 py-2 text-sm outline-none focus:border-[var(--color-gold-deep)] focus-visible:ring-2 focus-visible:ring-[var(--color-gold-deep)]" />
+        <textarea value={detail} onChange={(e) => setDetail(e.target.value)} rows={4} placeholder="Any context, why it matters, links… (optional)" aria-label="Idea details" className="mt-2 w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-porcelain)] px-3 py-2 text-sm outline-none focus:border-[var(--color-gold-deep)] focus-visible:ring-2 focus-visible:ring-[var(--color-gold-deep)]" />
         {err && <p role="alert" aria-live="assertive" className="mt-2 text-sm text-[var(--color-blush-deep)]">{err}</p>}
         <div className="mt-4 flex justify-end gap-2">
           <button onClick={onClose} className="rounded-full px-4 py-2 text-sm text-[var(--color-stone)]">Cancel</button>

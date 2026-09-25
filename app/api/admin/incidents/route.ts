@@ -5,51 +5,135 @@ import { encClinical } from '@/lib/clinical-crypto';
 export const runtime = 'nodejs';
 
 // BLD-760 — Internal Incident (Accident) report. Staff-only: this route lives
-// under /api/admin and is NEVER reachable from the client portal. Both verbs
-// require an authenticated admin session AND the existing `clients.edit`
-// permission (front desk can log a slip/trip they witnessed; no new permission
-// key is introduced). The injury/description free-text is encrypted at rest with
+// under /api/admin and is NEVER reachable from the client portal.
+// GET returns decrypted injury/description free-text (health data), so it
+// requires `clients.clinical.view` — the same clinical gate the SAR export
+// route uses for this data class (BLD-1594) — and audits the view, matching
+// every other clinical-data-serving route. POST (logging a new incident) is
+// deliberately left on `clients.edit`: front desk may log a slip/trip they
+// witnessed, and creating a record doesn't read back anyone else's clinical
+// detail. The injury/description free-text is encrypted at rest with
 // encClinical (the same helper as clinical notes) and never appears in an audit
 // summary or on the client timeline — only the non-sensitive classification does.
 
 const CATEGORIES = ['slip_trip', 'adverse_reaction', 'equipment', 'other'];
 const SEVERITIES = ['minor', 'moderate', 'serious'];
 
-// GET — list incidents for a client (?clientId=...), newest first.
+// GET — either:
+//   ?clientId=...        per-client incidents (unchanged existing behaviour)
+//   ?all=1                clinic-wide register (PRJ-1229.4), optionally
+//                          narrowed with &severity=... and/or &riddor=1.
+// The register mode is what makes an erasure-retained incident (clientId set
+// to null by eraseClientData's SetNull relation, kept for its Art. 17(3)(b)
+// legal-retention basis) reachable at all — the per-client path can never
+// surface it once clientId is gone. Newest first either way.
 export async function GET(req: Request) {
   if (!crmEnabled) return NextResponse.json({ ok: false }, { status: 503 });
 
   const { getSession, sessionCan } = await import('@/lib/auth');
   const session = await getSession();
-  if (!sessionCan(session, 'clients.edit')) {
+  if (!sessionCan(session, 'clients.clinical.view')) {
     return NextResponse.json({ ok: false, error: 'Not permitted.' }, { status: 403 });
   }
 
-  const clientId = new URL(req.url).searchParams.get('clientId');
-  if (!clientId) return NextResponse.json({ ok: false, error: 'Bad request' }, { status: 400 });
+  const url = new URL(req.url);
+  const clientId = url.searchParams.get('clientId');
+  const all = url.searchParams.get('all') === '1';
+  if (!clientId && !all) return NextResponse.json({ ok: false, error: 'Bad request' }, { status: 400 });
 
-  const { db } = await import('@/lib/db');
-  const { decClinical } = await import('@/lib/clinical-crypto');
-  const rows = await db.incident.findMany({ where: { clientId }, orderBy: { createdAt: 'desc' }, take: 100 });
-  const incidents = rows.map((r) => {
-    let detail: { description?: string; injury?: string; actionTaken?: string; witnesses?: string } = {};
-    try { detail = JSON.parse(decClinical(r.descriptionEnc) || '{}'); } catch { /* leave blank if undecryptable */ }
-    return {
-      id: r.id,
-      bookingId: r.bookingId,
-      category: r.category,
-      severity: r.severity,
-      location: r.location,
-      riddorReportable: r.riddorReportable,
-      loggedBy: r.loggedBy,
-      createdAt: r.createdAt.toISOString(),
-      description: detail.description || '',
-      injury: detail.injury || '',
-      actionTaken: detail.actionTaken || '',
-      witnesses: detail.witnesses || '',
-    };
-  });
-  return NextResponse.json({ ok: true, incidents });
+  // BLD-1882: `clients.clinical.view` alone is every PRACTITIONER's default
+  // grant, so it let any Specialist read another clinician's patient's
+  // incident detail by passing that client's id — mirrors the
+  // getClient/getConsultation practitionerId guard (lib/crm-data.ts,
+  // BLD-1693/1711 pattern).
+  const practitionerId = session!.role === 'PRACTITIONER' ? session!.sub : undefined;
+
+  // BLD-1882: the clinic-wide register (?all=1) spans every client — including
+  // erasure-retained rows with none — so per-client ownership scoping can't
+  // apply to it; it needs a stronger gate of its own. Require the elevated
+  // compliance.manage permission (OWNER always passes sessionCan) instead of
+  // the clinical-view permission every PRACTITIONER already holds.
+  if (all && !sessionCan(session, 'compliance.manage')) {
+    return NextResponse.json({ ok: false, error: 'Not permitted.' }, { status: 403 });
+  }
+
+  let incidents;
+  // Total matching the filter, ignoring the register's row cap. Only meaningful
+  // in ?all=1 mode; null on the per-client path so that response is unchanged
+  // apart from the two fields already added below.
+  let total: number | null = null;
+  if (all) {
+    const { listIncidentRegister } = await import('@/lib/incidents');
+    const severity = url.searchParams.get('severity');
+    const res = await listIncidentRegister({
+      severity: severity && SEVERITIES.includes(severity) ? severity : undefined,
+      riddorOnly: url.searchParams.get('riddor') === '1',
+    });
+    incidents = res.rows;
+    total = res.total;
+  } else {
+    const { db } = await import('@/lib/db');
+    const { decClinical } = await import('@/lib/clinical-crypto');
+    // BLD-1882: ownership check runs against the bookings table directly,
+    // same as getClient (lib/crm-data.ts) — a PRACTITIONER must not be able
+    // to read another Specialist's client's incidents by guessing/typing the
+    // id. Returns the same shape as a client with no incidents, rather than
+    // an error, so this never confirms whether the id exists.
+    if (practitionerId) {
+      // clientId is non-null here — the `!clientId && !all` guard above and the
+      // `!all` branch we're in together guarantee it.
+      const own = await db.booking.findFirst({ where: { clientId: clientId!, practitionerId }, select: { id: true } });
+      if (!own) return NextResponse.json({ ok: true, incidents: [] });
+    }
+    const rows = await db.incident.findMany({ where: { clientId }, orderBy: { createdAt: 'desc' }, take: 100 });
+    incidents = rows.map((r) => {
+      let detail: { description?: string; injury?: string; actionTaken?: string; witnesses?: string } = {};
+      try { detail = JSON.parse(decClinical(r.descriptionEnc) || '{}'); } catch { /* leave blank if undecryptable */ }
+      return {
+        id: r.id,
+        bookingId: r.bookingId,
+        clientId: r.clientId,
+        clientName: null as string | null,
+        category: r.category,
+        severity: r.severity,
+        location: r.location,
+        riddorReportable: r.riddorReportable,
+        loggedBy: r.loggedBy,
+        createdAt: r.createdAt.toISOString(),
+        description: detail.description || '',
+        injury: detail.injury || '',
+        actionTaken: detail.actionTaken || '',
+        witnesses: detail.witnesses || '',
+      };
+    });
+  }
+  if (session?.email) {
+    // Review fix: this branches on `all`, exactly like the read above it, NOT on
+    // whether a clientId happened to be supplied. `?clientId=X&all=1` returns the
+    // whole clinic register (the `all` branch wins), so keying the audit off
+    // clientId would have recorded a single-client view for a read of every
+    // client's incident detail — a special-category read under-stated in the very
+    // trail that exists to catch it.
+    if (all) {
+      // Register view spans many clients (and erasure-retained rows with no
+      // client at all), so it can't go through the single-clientId helper
+      // below — logged directly instead. Best-effort, matches other audit
+      // writes on this route.
+      try {
+        const { logAudit } = await import('@/lib/audit');
+        await logAudit({
+          action: 'ASSESSMENT_VIEWED',
+          actor: session.email,
+          actorRole: session.role,
+          summary: `Clinic-wide incidents register viewed (${incidents.length} record${incidents.length === 1 ? '' : 's'}${total !== null && total > incidents.length ? ` of ${total}` : ''})`,
+        });
+      } catch { /* audit is best-effort */ }
+    } else if (clientId) {
+      const { auditClinicalView } = await import('@/lib/clinical-view-audit');
+      auditClinicalView({ actor: session.email, actorRole: session.role, clientId, surface: 'incidents' });
+    }
+  }
+  return NextResponse.json({ ok: true, incidents, ...(total !== null ? { total } : {}) });
 }
 
 // POST — log a new incident against a client (and optionally a booking).
@@ -86,6 +170,14 @@ export async function POST(req: Request) {
   // (so an incident can't be mis-linked to another client's appointment).
   const client = await db.client.findUnique({ where: { id: clientId }, select: { id: true } });
   if (!client) return NextResponse.json({ ok: false, error: 'Client not found.' }, { status: 404 });
+  // BLD-1882: same practitioner-ownership guard as the GET handler above — a
+  // PRACTITIONER must not be able to log an incident against another
+  // Specialist's client by guessing/typing the id.
+  const practitionerId = session!.role === 'PRACTITIONER' ? session!.sub : undefined;
+  if (practitionerId) {
+    const own = await db.booking.findFirst({ where: { clientId, practitionerId }, select: { id: true } });
+    if (!own) return NextResponse.json({ ok: false, error: 'Client not found.' }, { status: 404 });
+  }
   let bookingId: string | null = null;
   if (bookingIdIn) {
     const bk = await db.booking.findUnique({ where: { id: bookingIdIn }, select: { clientId: true } });

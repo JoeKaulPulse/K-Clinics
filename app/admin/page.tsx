@@ -91,7 +91,7 @@ export default async function AdminOverview() {
               <span className="tabular-nums">{weather.tempC}°</span>
               <span className="ml-1 inline-block max-w-[7rem] truncate align-bottom font-normal text-[var(--color-stone)]">{weather.label}</span>
               {weather.uvMax != null && uv && (
-                <span className="ml-1.5 text-[var(--color-stone)]">· UV <span className={uv.tone === 'high' ? 'text-[#b23b3b]' : uv.tone === 'moderate' ? 'text-[var(--color-gold-deep)]' : 'text-[var(--color-jade)]'}>{weather.uvMax}</span></span>
+                <span className="ml-1.5 text-[var(--color-stone)]">· UV <span className={uv.tone === 'high' ? 'text-[var(--color-blush-deep)]' : uv.tone === 'moderate' ? 'text-[var(--color-gold-deep)]' : 'text-[var(--color-jade)]'}>{weather.uvMax}</span></span>
               )}
             </p>
           </div>
@@ -260,19 +260,27 @@ export default async function AdminOverview() {
     { show: canBuild && buildBlocked > 0, label: 'Blocked build items', value: buildBlocked, href: '/admin/build', tone: 'amber' },
   ].filter((x) => x.show);
 
+  // BLD-1391: --color-gold-deep is only rated AA on *plain* porcelain (4.54:1);
+  // laying a gold tint behind it drops it to 3.4–4.0:1 on the admin's bone
+  // background, under the 4.5:1 needed for this small badge text. The amber
+  // tones therefore keep the gold tint + gold-deep border as the warning cue but
+  // take --color-ink for the label itself (9.9–11.4:1 in both themes), matching
+  // how the `blush` tone below already pairs a tint with ink text. The blush
+  // tones clear AA on their own (4.9–5.3:1 light, 5.4–5.8:1 dark) and keep
+  // --color-blush-deep.
   const toneCls: Record<string, string> = {
-    red: 'border-red-300 bg-red-50 text-red-800',
-    amber: 'border-amber-300 bg-amber-50 text-amber-900',
+    red: 'border-[var(--color-blush-deep)]/40 bg-[var(--color-blush)]/15 text-[var(--color-blush-deep)]',
+    amber: 'border-[var(--color-gold-deep)]/40 bg-[var(--color-gold)]/15 text-[var(--color-ink)]',
     blush: 'border-[var(--color-blush)]/40 bg-[var(--color-blush)]/10 text-[var(--color-ink)]',
     ink: 'border-[var(--color-line)] bg-[var(--color-porcelain)] text-[var(--color-ink)]',
   };
 
   const bookingStatusCls: Record<string, string> = {
     CONFIRMED: 'bg-[color-mix(in_oklab,var(--color-jade)_12%,transparent)] text-[var(--color-jade)]',
-    PENDING: 'bg-amber-50 text-amber-800',
-    REQUESTED: 'bg-amber-100 text-amber-900',
+    PENDING: 'bg-[var(--color-gold)]/15 text-[var(--color-ink)]',
+    REQUESTED: 'bg-[var(--color-gold)]/25 text-[var(--color-ink)]',
     COMPLETED: 'bg-[var(--color-bone)] text-[var(--color-stone)]',
-    CANCELLED: 'bg-red-50 text-[#b23b3b]',
+    CANCELLED: 'bg-[var(--color-blush)]/15 text-[var(--color-blush-deep)]',
     NO_SHOW: 'bg-[var(--color-bone)] text-[var(--color-stone)]',
   };
 
@@ -303,8 +311,13 @@ export default async function AdminOverview() {
     canManageRoom: canRoomsPrep,
     drinks: nextBk.refreshments ?? [],
     // clients.clinical.view gated — same redaction as ReceptionistView (front-of-house never sees clinical data).
-    allergies: canClinical ? decClinical(nextBk.client.allergies) ?? null : null,
-    medicalFlag: canClinical ? decClinical(nextBk.client.medicalFlag) ?? null : null,
+    // BLD-1872: only a presence flag is sent. The allergy/medical-flag text is
+    // fetched by an explicit "Show" tap (app/admin/arrival-actions.ts), which is
+    // where the clinical-view audit row is written. Before this, every /admin
+    // render decrypted the text for whichever booking was next clinic-wide and
+    // logged "Clinical data viewed (admin-dashboard)" for staff who had only
+    // opened the dashboard.
+    clinicalOnFile: canClinical && !!(decClinical(nextBk.client.allergies)?.trim() || decClinical(nextBk.client.medicalFlag)?.trim()),
   } : null;
 
   return (
@@ -448,7 +461,7 @@ export default async function AdminOverview() {
               <p className="text-xs text-[var(--color-stone)]">Blocked</p>
             </div>
             <div>
-              <p className={`font-[family-name:var(--font-display)] text-2xl ${buildUnsynced > 0 ? 'text-[var(--color-gold)]' : 'text-[var(--color-ink)]'}`}>{buildUnsynced}</p>
+              <p className={`font-[family-name:var(--font-display)] text-2xl ${buildUnsynced > 0 ? 'text-[var(--color-gold-deep)]' : 'text-[var(--color-ink)]'}`}>{buildUnsynced}</p>
               <p className="text-xs text-[var(--color-stone)]">Not on GitHub</p>
             </div>
           </div>

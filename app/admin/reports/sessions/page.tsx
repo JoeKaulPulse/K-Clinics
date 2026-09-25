@@ -94,7 +94,7 @@ export default async function SessionInsightsPage({ searchParams }: { searchPara
                     </td>
                     <td className="p-3 hidden sm:table-cell tabular-nums text-[var(--color-stone)]">{fmtDuration(s.medianSeconds)}</td>
                     <td className="p-3 tabular-nums">{s.revisitRate > 0 ? <span className={s.revisitRate >= 0.25 ? 'text-[var(--color-gold-deep)]' : ''}>{pct(s.revisitRate)}</span> : <span className="text-[var(--color-stone)]">—</span>}</td>
-                    <td className="p-3 tabular-nums">{s.skipRate > 0 ? <span className={s.skipRate >= 0.25 ? 'text-[#b23b3b]' : ''}>{pct(s.skipRate)}</span> : <span className="text-[var(--color-stone)]">—</span>}</td>
+                    <td className="p-3 tabular-nums">{s.skipRate > 0 ? <span className={s.skipRate >= 0.25 ? 'text-[var(--color-blush-deep)]' : ''}>{pct(s.skipRate)}</span> : <span className="text-[var(--color-stone)]">—</span>}</td>
                     <td className="p-3 hidden sm:table-cell tabular-nums text-[var(--color-stone)]">{s.sessions}</td>
                   </tr>
                 ))}

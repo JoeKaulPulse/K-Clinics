@@ -122,7 +122,7 @@ export function AssessmentRunner({ q, locale = 'en' }: { q: Questionnaire; local
               <h1 className="font-[family-name:var(--font-display)] text-[clamp(2rem,1.4rem+2.4vw,3.25rem)] leading-[1.08]">{q.title}</h1>
               <p className="mt-5 max-w-lg text-lg leading-relaxed text-[var(--color-stone)]">{q.intro}</p>
               <div className="mt-8 flex items-center gap-3 rounded-[var(--radius-md)] border border-[var(--color-line)] bg-[var(--color-bone)] px-4 py-3 text-sm text-[var(--color-stone)]">
-                <svg viewBox="0 0 24 24" className="h-5 w-5 shrink-0 text-[var(--color-gold)]" fill="none"><path d="M12 3l7 3v5c0 4.5-3 7.6-7 9-4-1.4-7-4.5-7-9V6l7-3z" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round" /></svg>
+                <svg viewBox="0 0 24 24" className="h-5 w-5 shrink-0 text-[var(--color-gold-deep)]" fill="none"><path d="M12 3l7 3v5c0 4.5-3 7.6-7 9-4-1.4-7-4.5-7-9V6l7-3z" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round" /></svg>
                 {t('assess.encrypted')}
               </div>
               <button onClick={() => go(1)} className="mt-9 rounded-full bg-[var(--color-gold-deep)] px-7 py-3.5 font-medium text-white shadow-[var(--shadow-gold)] hover:bg-[var(--color-ink)]">
@@ -132,7 +132,7 @@ export function AssessmentRunner({ q, locale = 'en' }: { q: Questionnaire; local
           ) : current ? (
             <motion.div key={current.id} custom={dir} variants={slide} initial="enter" animate="center" exit="exit" transition={trans}>
               <span className={`inline-block rounded-full px-2.5 py-0.5 text-[0.6rem] font-medium uppercase tracking-[0.14em] ${current.required ? 'bg-[var(--color-gold)]/15 text-[var(--color-ink)]' : 'bg-[var(--color-bone)] text-[var(--color-stone)]'}`}>{current.required ? t('assess.required') : t('assess.optional')}</span>
-              <h2 className="mt-2 font-[family-name:var(--font-display)] text-[clamp(1.6rem,1.2rem+1.6vw,2.5rem)] leading-[1.12]">{current.prompt}</h2>
+              <h2 id={`q-${current.id}`} className="mt-2 font-[family-name:var(--font-display)] text-[clamp(1.6rem,1.2rem+1.6vw,2.5rem)] leading-[1.12]">{current.prompt}</h2>
               {current.help && <p className="mt-3 text-[var(--color-stone)]">{current.help}</p>}
               <div className="mt-8">
                 <Field q={current} value={answers[current.id]} set={set} pick={pickAndAdvance} />
@@ -241,11 +241,11 @@ function Field({ q, value, set, pick }: { q: Question; value: unknown; set: (id:
   }
 
   if (q.type === 'longtext') {
-    return <textarea autoFocus rows={4} placeholder={q.placeholder} className="w-full rounded-[var(--radius-md)] border border-[var(--color-line)] bg-white px-4 py-3 text-lg outline-none focus:border-[var(--color-gold)]" value={(value as string) || ''} onChange={(e) => set(q.id, e.target.value)} />;
+    return <textarea autoFocus rows={4} placeholder={q.placeholder} aria-labelledby={`q-${q.id}`} className="w-full rounded-[var(--radius-md)] border border-[var(--color-line)] bg-white px-4 py-3 text-lg outline-none focus:border-[var(--color-gold-deep)] focus-visible:ring-2 focus-visible:ring-[var(--color-gold-deep)]" value={(value as string) || ''} onChange={(e) => set(q.id, e.target.value)} />;
   }
   if (q.type === 'date') {
-    return <input type="date" autoFocus className="rounded-[var(--radius-md)] border border-[var(--color-line)] bg-white px-4 py-3 text-lg outline-none focus:border-[var(--color-gold)]" value={(value as string) || ''} onChange={(e) => set(q.id, e.target.value)} />;
+    return <input type="date" autoFocus aria-labelledby={`q-${q.id}`} className="rounded-[var(--radius-md)] border border-[var(--color-line)] bg-white px-4 py-3 text-lg outline-none focus:border-[var(--color-gold-deep)] focus-visible:ring-2 focus-visible:ring-[var(--color-gold-deep)]" value={(value as string) || ''} onChange={(e) => set(q.id, e.target.value)} />;
   }
   // text
-  return <input type="text" autoFocus placeholder={q.placeholder} className="w-full rounded-[var(--radius-md)] border border-[var(--color-line)] bg-white px-4 py-3 text-lg outline-none focus:border-[var(--color-gold)]" value={(value as string) || ''} onChange={(e) => set(q.id, e.target.value)} />;
+  return <input type="text" autoFocus placeholder={q.placeholder} aria-labelledby={`q-${q.id}`} className="w-full rounded-[var(--radius-md)] border border-[var(--color-line)] bg-white px-4 py-3 text-lg outline-none focus:border-[var(--color-gold-deep)] focus-visible:ring-2 focus-visible:ring-[var(--color-gold-deep)]" value={(value as string) || ''} onChange={(e) => set(q.id, e.target.value)} />;
 }

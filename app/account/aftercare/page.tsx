@@ -10,6 +10,7 @@ import { getTreatment } from '@/lib/treatments';
 import { guideForGroup, aftercareTitle, aftercareIntro, aftercareText, type AftercareItem } from '@/lib/aftercare';
 import { pt } from '@/lib/i18n-portal';
 import { site } from '@/lib/site';
+import { PhoneLink } from '@/components/marketing/PhoneLink';
 import type { Locale } from '@/lib/i18n';
 
 function Icon({ name }: { name: AftercareItem['icon'] }) {
@@ -44,7 +45,7 @@ export default async function AftercarePage() {
     .map((b) => ({ slug: b.treatmentSlug, title: b.treatmentTitle, tr: getTreatment(b.treatmentSlug) }));
 
   return (
-    <PortalShell firstName={client.firstName} locale={locale}>
+    <PortalShell firstName={client.firstName} locale={locale} termsAccepted={!!client.termsAcceptedAt}>
       <PortalPageHeader eyebrow={t('after.eyebrow')} title={t('after.title')} subtitle={t('after.intro')} />
 
       {treatments.length === 0 ? (
@@ -67,7 +68,7 @@ export default async function AftercarePage() {
                   <ul className="grid gap-x-8 gap-y-4 p-6 sm:grid-cols-2">
                     {guide.items.map((it, j) => (
                       <li key={j} className="flex items-start gap-3.5">
-                        <span className="mt-0.5 grid h-9 w-9 shrink-0 place-items-center rounded-full bg-[var(--color-gold)]/12 text-[var(--color-gold)]">
+                        <span className="mt-0.5 grid h-9 w-9 shrink-0 place-items-center rounded-full bg-[var(--color-gold)]/12 text-[var(--color-gold-deep)]">
                           <Icon name={it.icon} />
                         </span>
                         <p className="text-sm leading-relaxed text-[var(--color-ink-soft)]">{aftercareText(it, locale)}</p>
@@ -88,10 +89,10 @@ export default async function AftercarePage() {
             <p className="font-medium">{t('after.questions')}</p>
             <p className="text-sm text-[var(--color-stone)]">{t('after.questionsBody')}</p>
           </div>
-          <a href={site.phoneHref} className="inline-flex items-center gap-2 rounded-full border border-[var(--color-line)] px-5 py-2.5 text-sm font-medium hover:border-[var(--color-gold)] hover:text-[var(--color-gold-deep)]">
-            <svg viewBox="0 0 24 24" className="h-4 w-4 text-[var(--color-gold)]" fill="none" stroke="currentColor" strokeWidth="1.6"><path d="M5 4h4l2 5-3 2a12 12 0 0 0 5 5l2-3 5 2v4a2 2 0 0 1-2 2A16 16 0 0 1 3 6a2 2 0 0 1 2-2z" strokeLinejoin="round" /></svg>
+          <PhoneLink className="inline-flex items-center gap-2 rounded-full border border-[var(--color-line)] px-5 py-2.5 text-sm font-medium hover:border-[var(--color-gold)] hover:text-[var(--color-gold-deep)]">
+            <svg viewBox="0 0 24 24" className="h-4 w-4 text-[var(--color-gold-deep)]" fill="none" stroke="currentColor" strokeWidth="1.6"><path d="M5 4h4l2 5-3 2a12 12 0 0 0 5 5l2-3 5 2v4a2 2 0 0 1-2 2A16 16 0 0 1 3 6a2 2 0 0 1 2-2z" strokeLinejoin="round" /></svg>
             {site.phone}
-          </a>
+          </PhoneLink>
         </section>
       </Reveal>
     </PortalShell>

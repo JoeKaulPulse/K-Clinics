@@ -5,6 +5,7 @@ import { useEffect, useRef, useState } from 'react';
 import { usePathname } from 'next/navigation';
 import { AnimatePresence, motion } from 'motion/react';
 import type { SiteConfig } from '@/lib/site-config';
+import type { NavGroup } from '@/lib/nav';
 import { getTreatment } from '@/lib/treatments';
 import { Logo } from '@/components/brand/Logo';
 import { Button, ArrowIcon } from '@/components/ui/Button';
@@ -13,10 +14,30 @@ import { MediaArt } from '@/components/ui/MediaArt';
 import { treatmentImage } from '@/lib/treatment-images';
 import { AccountMenu } from '@/components/layout/AccountMenu';
 import { SiteSearch } from '@/components/layout/SiteSearch';
+import { PhoneLink } from '@/components/marketing/PhoneLink';
+
+// BLD-1923: inserts a plain (no mega-menu) Shop tab after Pricing / before
+// Academy, matching the visual treatment of the other single-link tabs.
+// Falls back to appending at the end if that anchor ever moves/is renamed.
+function insertShopTab(items: NavGroup[]): NavGroup[] {
+  // nav.primary is editable in the admin NavEditor; if a Shop tab was added
+  // there, don't render a second one (duplicate tab + duplicate React key).
+  if (items.some((i) => i.href === '/shop' || i.label === 'Shop')) return items;
+  const next = [...items];
+  const idx = next.findIndex((i) => i.label === 'Academy');
+  const shopItem: NavGroup = { label: 'Shop', href: '/shop' };
+  if (idx === -1) next.push(shopItem);
+  else next.splice(idx, 0, shopItem);
+  return next;
+}
 
 export function Header({ config }: { config: SiteConfig }) {
-  const { nav, booking, name, phone, phoneHref } = config;
-  const primaryNav = nav.primary;
+  const { nav, booking, name, phone, phoneHref, shopLive } = config;
+  // BLD-1923: promote Shop from the small utility-strip link into a real
+  // primary-nav tab (same treatment as Packages/Pricing). nav.primary is a
+  // static default with no request-time product data, so the entry is
+  // spliced in here, still gated on shopLive (no active products → no tab).
+  const primaryNav = shopLive ? insertShopTab(nav.primary) : nav.primary;
   const [scrolled, setScrolled] = useState(false);
   const [open, setOpen] = useState<string | null>(null);
   const [mobile, setMobile] = useState(false);
@@ -118,6 +139,12 @@ export function Header({ config }: { config: SiteConfig }) {
       onMouseLeave={() => setOpen(null)}
       onBlur={(e) => { if (!e.currentTarget.contains(e.relatedTarget as Node | null)) setOpen(null); }}
     >
+      {/* BLD-1481: deliberately NO skip link here. app/(marketing)/layout.tsx
+          already renders one, above AnnouncementBar + Header, so it is the first
+          focusable element in the document — a second copy inside the header
+          would only add a duplicate tab stop with identical text and target, and
+          would point at a #main that does not exist on app/not-found.tsx (which
+          renders this Header outside the marketing layout). */}
       <div className="container-lux flex h-[var(--header-h,5.25rem)] items-center justify-between">
         <Link href="/" className="relative z-10 shrink-0" aria-label={`${name} home`}>
           <Logo mono={light} className={light ? 'text-[var(--color-porcelain)]' : ''} />
@@ -170,7 +197,6 @@ export function Header({ config }: { config: SiteConfig }) {
         </nav>
 
         <div className="hidden items-center gap-3 xl:flex">
-          {config.shopLive && <Link href="/shop" className={`text-sm font-medium transition-colors ${light ? 'text-[var(--color-porcelain)] hover:text-[var(--color-gold)]' : 'text-[var(--color-ink)] hover:text-[var(--color-gold-deep)]'}`}>Shop</Link>}
           <SiteSearch light={light} />
           <AccountMenu light={light} />
           <Button href={booking.path} size="md" variant={light ? 'gold' : 'ink'}>
@@ -257,7 +283,7 @@ export function Header({ config }: { config: SiteConfig }) {
                                     <span className="block font-[family-name:var(--font-display)] text-lg leading-tight">{l.label}</span>
                                     {l.description && <span className="text-sm text-[var(--color-stone)]">{l.description}</span>}
                                   </span>
-                                  <ArrowIcon className="mt-1 shrink-0 text-[var(--color-gold)] opacity-0 transition-opacity group-hover:opacity-100" />
+                                  <ArrowIcon className="mt-1 shrink-0 text-[var(--color-gold-deep)] opacity-0 transition-opacity group-hover:opacity-100" />
                                 </Link>
                               </li>
                             ))}
@@ -362,13 +388,6 @@ export function Header({ config }: { config: SiteConfig }) {
                   </motion.div>
                 );
               })}
-              {config.shopLive && (
-                <div className="py-4">
-                  <Link href="/shop" onClick={() => setMobile(false)} className="block font-[family-name:var(--font-display)] text-2xl">
-                    Shop
-                  </Link>
-                </div>
-              )}
             </nav>
             <div className="mt-8 flex flex-col gap-3">
               <Button href={booking.path} size="lg" className="w-full">
@@ -388,9 +407,9 @@ export function Header({ config }: { config: SiteConfig }) {
               <Link href="/consultation" className="mt-1 text-center text-sm font-medium text-[var(--color-gold-deep)] underline-offset-4 hover:underline">
                 Or request a free consultation
               </Link>
-              <a href={phoneHref} className="mt-2 text-center text-sm font-medium">
+              <PhoneLink href={phoneHref} className="mt-2 text-center text-sm font-medium">
                 {phone}
-              </a>
+              </PhoneLink>
             </div>
           </motion.div>
         )}

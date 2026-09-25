@@ -10,7 +10,7 @@ import { pricingByTreatment, fromLabel, formatPence, statusLabel, type ServiceSt
  *  photo when available, else generative art — text lives in HTML, never baked in.
  *  The "from" price + presentation status are derived live from the admin
  *  catalogue (never hardcoded). */
-export async function TreatmentCard({ t, index = 0 }: { t: Treatment; index?: number }) {
+export async function TreatmentCard({ t, index = 0, priority = false }: { t: Treatment; index?: number; priority?: boolean }) {
   const pricing = (await pricingByTreatment()).get(t.slug) ?? null;
   let status: ServiceStatus = pricing?.status ?? 'NORMAL';
   if (status === 'NORMAL' && t.onRequest) status = 'COMING_SOON'; // machine not in yet (code-level)
@@ -30,6 +30,7 @@ export async function TreatmentCard({ t, index = 0 }: { t: Treatment; index?: nu
             seed={index}
             alt={t.title}
             sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
+            priority={priority}
             className="h-full w-full transition-transform duration-[1.6s] [transition-timing-function:var(--ease-lux)] group-hover:scale-[1.08]"
             objectPosition={t.imagePosition}
           />
@@ -57,7 +58,7 @@ export async function TreatmentCard({ t, index = 0 }: { t: Treatment; index?: nu
           ) : null}
         </div>
         <div className="flex flex-1 flex-col p-7">
-          <h3 className="font-[family-name:var(--font-display)] text-2xl leading-tight transition-colors duration-500 group-hover:text-[var(--color-gold)]">
+          <h3 className="font-[family-name:var(--font-display)] text-2xl leading-tight transition-colors duration-500 group-hover:text-[var(--color-gold-deep)]">
             {t.title}
           </h3>
           <p className="mt-2.5 flex-1 text-sm leading-relaxed text-[var(--color-stone)]">{t.tagline}</p>

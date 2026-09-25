@@ -25,7 +25,7 @@ The notable risks are concentrated in **two areas**:
 
 1. **Stored XSS via the Journal raw-HTML block.** The block renderer (`lib/blocks.ts`) escapes every block type *except* the `'html'` block, which is emitted verbatim (`blocksToHtml` line 107) and rendered with `dangerouslySetInnerHTML` on the **public** journal page (`app/(marketing)/journal/[slug]/page.tsx:73`). The same raw passthrough is reached automatically when WordPress posts are imported (`htmlToBlocks` wraps unrecognised markup in a raw `html` block). There is no HTML sanitizer anywhere in the repo. Write access is gated to `settings.manage` (owner/admin/manager), so this is admin/editor-authored stored XSS against site visitors rather than an anonymous vector — but imported third-party HTML is trusted as if it were first-party. *(Resolved — see note above.)*
 
-2. **Session-replay coverage of the shop checkout.** `BehaviorRecorder` (mounted site-wide on the marketing layout) excludes `/admin`, `/account`, `/book`, `/booking`, but **not** `/shop`. The shop checkout (`/shop/checkout`, `/shop/cart`) collects name, email, phone, full address and DOB as plain inputs. Card data is safe (Stripe `PaymentElement` is a cross-origin iframe rrweb cannot read), and `maskAllInputs: true` masks input *values* — but rrweb does not mask PII rendered as visible **text** (order summaries, confirmations) unless tagged with the `kc-mask` class, which the checkout does not use.
+2. **Session-replay coverage of the shop checkout.** *(Resolved — BLD-1314. `/shop` added to the exclusion regex; the recorder no longer starts on any shop route.)* `BehaviorRecorder` (mounted site-wide on the marketing layout) excluded `/admin`, `/account`, `/book`, `/booking`, but **not** `/shop`. The shop checkout (`/shop/checkout`, `/shop/cart`) collects name, email, phone, full address and DOB as plain inputs. Card data is safe (Stripe `PaymentElement` is a cross-origin iframe rrweb cannot read), and `maskAllInputs: true` masks input *values* — but rrweb does not mask PII rendered as visible **text** (order summaries, confirmations) unless tagged with the `kc-mask` class, which the checkout does not use.
 
 ### rrweb masking verdict
 
@@ -68,7 +68,9 @@ case 'html': return (b.html || '').trim();   // ⚠ no sanitization — verbatim
 
 **Recommendation:** Sanitize on import (before persisting to `Post.content`/`blocks`) and again on render (defence in depth). Strip scripts, event handlers and dangerous URL schemes. Surface a warning in the editor when a post contains a raw `html` block so it can be reviewed.
 
-### [MEDIUM] Session replay runs on the shop checkout; PII text is not masked
+### [MEDIUM — RESOLVED] Session replay runs on the shop checkout; PII text is not masked
+
+**Fix (BLD-1314):** `/shop` added to the recorder's exclusion regex (`components/marketing/BehaviorRecorder.tsx:29`, now `/^\/(admin|account|book|booking|shop)(\/|$)/`). The recorder never starts on any `/shop` route, so checkout/cart/confirmation are no longer captured at all — the simpler, more robust fix vs. hunting for every PII text node.
 
 **Location:** `components/marketing/BehaviorRecorder.tsx:29` (exclusion regex `/^\/(admin|account|book|booking)(\/|$)/`) and `:45-50` (rrweb config); checkout inputs at `components/shop/CheckoutForm.tsx:63-91`; routes `app/(marketing)/shop/checkout/page.tsx`, `app/(marketing)/shop/cart/page.tsx`.
 

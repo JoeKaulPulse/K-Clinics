@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import { Suspense } from 'react';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { PageHero } from '@/components/ui/PageHero';
@@ -8,6 +9,7 @@ import { Stars } from '@/components/ui/Stars';
 import { pageMeta, JsonLd, breadcrumbLd, courseLd } from '@/lib/seo';
 import { ACCREDITATION_LABELS, formatFee } from '@/lib/academy';
 import { getActivePromo } from '@/lib/academy-utils';
+import { ViewItemTracker } from '@/components/marketing/ViewItemTracker';
 
 export const revalidate = 3600;
 
@@ -44,6 +46,10 @@ export default async function CoursePage({ params }: { params: Promise<{ slug: s
         breadcrumbLd([{ name: 'Home', path: '/' }, { name: 'Academy', path: '/academy' }, { name: course.title, path: `/academy/${slug}` }]),
         courseLd({ title: course.title, description: course.summary || course.description || course.title, path: `/academy/${slug}`, pricePence: course.pricePence, durationText: course.durationText, accreditations: course.accreditations, level: course.level, teaches: course.outcomes.slice(0, 10), prerequisites: course.prerequisites }),
       ]} />
+      {/* BLD-1553: item id is the course slug (not course.id), matching the
+          begin_checkout convention already used in EnrolmentCheckout.tsx --
+          GA4/Meta group view + checkout events on the same course slug. */}
+      <ViewItemTracker id={slug} name={course.title} category="academy" valuePence={course.pricePence} />
       <PageHero
         eyebrow={course.level ? `K Academy · ${course.level}` : 'K Academy'}
         title={course.title}
@@ -56,7 +62,7 @@ export default async function CoursePage({ params }: { params: Promise<{ slug: s
           <div className="space-y-8">
             {course.accreditations.length > 0 && (
               <div className="flex flex-wrap gap-x-6 gap-y-2 text-sm uppercase tracking-[0.14em] text-[var(--color-stone)]">
-                {course.accreditations.map((a) => <span key={a} className="flex items-center gap-2"><span className="text-[var(--color-gold)]">✦</span>{ACCREDITATION_LABELS[a] ?? a}</span>)}
+                {course.accreditations.map((a) => <span key={a} className="flex items-center gap-2"><span className="text-[var(--color-gold-deep)]">✦</span>{ACCREDITATION_LABELS[a] ?? a}</span>)}
               </div>
             )}
 
@@ -112,7 +118,7 @@ export default async function CoursePage({ params }: { params: Promise<{ slug: s
                   {previews.map((p) => (
                     <li key={p.id}>
                       <Link href={`/academy/${slug}/taster/${p.id}`} className="flex flex-wrap items-center gap-2 rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-bone)] px-4 py-3 text-sm transition-colors hover:border-[var(--color-gold)]">
-                        <span className="text-[var(--color-gold)]">▶</span>
+                        <span className="text-[var(--color-gold-deep)]">▶</span>
                         <span className="font-medium text-[var(--color-ink)]">{p.title}</span>
                         <span className="text-[var(--color-stone)]">· {p.moduleTitle}{p.durationMin ? ` · ${p.durationMin} min` : ''}</span>
                         <span className="ml-auto text-xs font-medium text-[var(--color-gold-deep)]">Free →</span>
@@ -162,7 +168,12 @@ export default async function CoursePage({ params }: { params: Promise<{ slug: s
               )}
               {course.pricePence > 0 && <p className="mt-2 text-sm text-[var(--color-stone)]">Spread the cost monthly, or check if you qualify for <Link href="/academy/funding" className="link-underline font-medium text-[var(--color-ink)]">government or council funding</Link>. No payment is taken until your place is confirmed.</p>}
             </div>
-            <ApplyForm courseId={course.id} courseTitle={course.title} cohorts={cohortOptions} />
+            {/* BLD-1393: Suspense bounds the useSearchParams bailout inside
+                ApplyForm (it reads the ?bundle= pathway tag) so this ISR page's
+                shell stays statically rendered. */}
+            <Suspense fallback={null}>
+              <ApplyForm courseId={course.id} courseTitle={course.title} cohorts={cohortOptions} />
+            </Suspense>
             <p className="text-center text-sm text-[var(--color-stone)]">Already training with us? <Link href="/academy/portal" className="link-underline font-medium text-[var(--color-ink)]">Trainee login</Link></p>
           </div>
         </Reveal>

@@ -4,13 +4,18 @@ import { Stagger, StaggerItem, Reveal } from '@/components/motion/Reveal';
 import { Button, ArrowIcon } from '@/components/ui/Button';
 import { pageMeta, JsonLd, breadcrumbLd } from '@/lib/seo';
 import { NewsletterCapture } from '@/components/layout/NewsletterCapture';
+import { OffersStrip } from '@/components/marketing/OffersStrip';
 
-export const revalidate = false;
+// BLD-1167: was `false` (built once, cached forever) while the page was a purely
+// static list. OffersStrip now reads live promotions, so the page needs the same
+// hourly ISR as /pricing and the homepage — otherwise the strip is frozen at
+// build time and would keep advertising a promotion after it ended.
+export const revalidate = 3600;
 
 export const generateMetadata = (): Promise<Metadata> => pageMeta({
   title: 'Special Offers & Savings | KClinics London',
   description:
-    'Current offers at KClinics, Islington — 15% off your first visit, complimentary consultations, refer-a-friend rewards, gift vouchers and savings on treatment packages.',
+    'Current offers at KClinics, Islington — 15% off your first visit, complimentary consultations, refer-a-friend rewards and gift vouchers.',
   path: '/offers',
   keywords: ['aesthetics offers London', 'first visit discount clinic', 'treatment package savings'],
 });
@@ -21,7 +26,7 @@ const OFFERS = [
   { tag: 'Give £25, get £25', t: 'Refer a friend', d: 'Share KClinics with someone you love — they get £25 off their first treatment, and so do you.', href: '/refer-a-friend', cta: 'How it works' },
   { tag: 'Better together', t: 'Package & course savings', d: 'Our curated packages bundle complementary treatments for better results — and better value.', href: '/packages', cta: 'Explore packages' },
   { tag: 'Beauty Points', t: 'Earn as you go', d: 'Collect points on every visit, plus bonuses for reviews, birthdays and referrals — redeemable as money off.', href: '/membership', cta: 'Discover rewards' },
-  { tag: 'The perfect gift', t: 'Gift vouchers', d: 'Treat someone to a voucher for any amount — redeemable across our entire menu, valid for 12 months.', href: '/gift-vouchers', cta: 'Buy a voucher' },
+  { tag: 'The perfect gift', t: 'Gift vouchers', d: 'Treat someone to a voucher for any amount, valid for 12 months.', href: '/gift-vouchers', cta: 'Buy a voucher' },
 ];
 
 export default function OffersPage() {
@@ -34,6 +39,8 @@ export default function OffersPage() {
         lede="We’d rather offer genuine, lasting value than gimmicks. Here’s how to make the most of KClinics — from your very first visit onwards."
         gradient={['#a98a6d', '#3d352f']}
       />
+
+      <div className="container-lux pt-10"><OffersStrip heading="Live promotions" /></div>
 
       <section className="container-lux section">
         <h2 className="sr-only">Our current offers</h2>

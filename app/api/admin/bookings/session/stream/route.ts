@@ -13,12 +13,22 @@ export const maxDuration = 60;
 
 export async function GET(req: Request) {
   if (!crmEnabled) return new Response('disabled', { status: 503 });
-  const { requirePermission } = await import('@/lib/auth');
-  const session = await requirePermission('bookings.manage');
+  const { requirePermissionAny } = await import('@/lib/auth');
+  const session = await requirePermissionAny(['bookings.manage', 'liveAppointments.manage']);
   if (!session) return new Response('forbidden', { status: 403 });
 
   const bookingId = new URL(req.url).searchParams.get('bookingId') || '';
   if (!bookingId) return new Response('missing bookingId', { status: 400 });
+
+  // BLD-1899/BLD-1882 pattern (lib/crm-data.ts getClient; BLD-1693/1711/1720):
+  // a PRACTITIONER session may only stream a live appointment session for a
+  // booking assigned to them.
+  const practitionerId = session.role === 'PRACTITIONER' ? session.sub : undefined;
+  if (practitionerId) {
+    const { db } = await import('@/lib/db');
+    const own = await db.booking.findFirst({ where: { id: bookingId, practitionerId }, select: { id: true } });
+    if (!own) return new Response('not found', { status: 404 });
+  }
 
   const { sessionSnapshot, sessionProbe } = await import('@/lib/appointment-session-server');
 

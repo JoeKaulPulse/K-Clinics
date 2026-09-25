@@ -19,7 +19,7 @@ const NEXT: Record<string, 'OPEN' | 'IN_PROGRESS' | 'DONE'> = { OPEN: 'IN_PROGRE
 const STATUS_LABEL: Record<string, string> = { OPEN: 'Open', IN_PROGRESS: 'In progress', DONE: 'Done' };
 const STATUS_CLS: Record<string, string> = {
   OPEN: 'bg-[var(--color-bone)] text-[var(--color-stone)]',
-  IN_PROGRESS: 'bg-amber-100 text-amber-800',
+  IN_PROGRESS: 'bg-[var(--color-gold)]/20 text-[var(--color-ink)]',
   DONE: 'bg-[color-mix(in_oklab,var(--color-jade)_16%,transparent)] text-[var(--color-jade)]',
 };
 
@@ -50,7 +50,7 @@ export function ContractorTasks({ tasks, showAssignee = false }: { tasks: Contra
             <p className={`text-sm font-medium ${t.status === 'DONE' ? 'line-through' : ''}`}>{t.title}</p>
             {t.description && <p className="mt-0.5 text-sm text-[var(--color-stone)]">{t.description}</p>}
             <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs">
-              {t.dueLabel && <span className={t.overdue && t.status !== 'DONE' ? 'font-medium text-[#b23b3b]' : 'text-[var(--color-stone)]'}>Due {t.dueLabel}{t.overdue && t.status !== 'DONE' ? ' · overdue' : ''}</span>}
+              {t.dueLabel && <span className={t.overdue && t.status !== 'DONE' ? 'font-medium text-[var(--color-blush-deep)]' : 'text-[var(--color-stone)]'}>Due {t.dueLabel}{t.overdue && t.status !== 'DONE' ? ' · overdue' : ''}</span>}
               {showAssignee && t.assigneeName && <span className="text-[var(--color-stone)]">· {t.assigneeName}</span>}
             </div>
           </div>

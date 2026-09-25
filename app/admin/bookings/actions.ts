@@ -2,7 +2,7 @@
 
 import { revalidatePath } from 'next/cache';
 import { crmEnabled } from '@/lib/crm';
-import { getSession, sessionCan } from '@/lib/auth';
+import { getSession, sessionCan, sessionIsAdmin } from '@/lib/auth';
 import { site } from '@/lib/site';
 
 // Set which location an appointment takes place at (multi-location).
@@ -142,6 +142,99 @@ export async function refundBookingAction(bookingId: string, amountPence: number
   return res;
 }
 
+// BLD-1893: completely remove an incorrectly-generated outstanding payment
+// (a late-cancel or no-show fee that was never charged) — distinct from
+// charging it or waiting for it to be waived at cancel/no-show time. Reuses
+// the same feeWaived field lib/outstanding.ts already derives the balance
+// and the online-booking block from (BLD-1066/applyNoShowFee's waive branch),
+// so clearing it here lifts both automatically — no new column needed.
+export async function removeOutstandingPayment(bookingId: string, reason: string) {
+  if (!crmEnabled) return { ok: false, error: 'CRM disabled' };
+  const session = await getSession();
+  if (!session) return { ok: false, error: 'Unauthorised' };
+  if (!sessionCan(session, 'bookings.charge')) return { ok: false, error: 'You don’t have permission to remove an outstanding payment.' };
+  const cleanReason = (reason || '').trim().slice(0, 2000);
+  if (!cleanReason) return { ok: false, error: 'Add a reason explaining why this payment is being removed.' };
+
+  const { db } = await import('@/lib/db');
+  const b = await db.booking.findUnique({
+    where: { id: bookingId },
+    select: { clientId: true, treatmentTitle: true, status: true, lateCancel: true, chargedAt: true, prepaidAt: true, feeWaived: true, pricePence: true, chargePaymentIntentId: true },
+  });
+  if (!b) return { ok: false, error: 'Booking not found.' };
+  // BLD-1693/BLD-1711 pattern, same client-level scope as the sibling
+  // Mark-as-Debt/EditDebt routes (app/api/admin/clients/[id]/debt/...): a
+  // PRACTITIONER holding bookings.charge may only act on a client they have a
+  // booking with. 'Not found' so a guessed id can't be told apart.
+  if (session.role === 'PRACTITIONER') {
+    const own = await db.booking.findFirst({ where: { clientId: b.clientId, practitionerId: session.sub }, select: { id: true } });
+    if (!own) return { ok: false, error: 'Booking not found.' };
+  }
+  // Same shape lib/outstanding.ts's query uses — only ever act on a booking
+  // that is actually contributing to the derived balance right now.
+  const isOutstanding = !b.chargedAt && !b.prepaidAt && !b.feeWaived && b.pricePence > 0
+    && ((b.status === 'CANCELLED' && b.lateCancel) || b.status === 'NO_SHOW');
+  if (!isOutstanding) return { ok: false, error: 'This appointment has no outstanding payment to remove.' };
+
+  // A fee that hit SCA (chargeBooking's authentication_required branch) left a
+  // live PaymentIntent on chargePaymentIntentId and emailed the client a
+  // /booking/pay link. Cancel it first, or the client can still pay the fee
+  // after it was removed (the webhook/pay-confirm would then set chargedAt).
+  // If it already succeeded/is processing, or Stripe can't cancel it, refuse.
+  const piId = b.chargePaymentIntentId;
+  if (piId && piId.startsWith('pi_')) {
+    try {
+      const { stripe } = await import('@/lib/stripe');
+      const pi = await stripe().paymentIntents.retrieve(piId);
+      if (pi.status === 'succeeded' || pi.status === 'processing') {
+        return { ok: false, error: 'The client has already paid (or is paying) this fee online. Refresh the page — it may need a refund instead.' };
+      }
+      if (pi.status !== 'canceled') await stripe().paymentIntents.cancel(piId);
+    } catch (e) {
+      console.error('[removeOutstandingPayment] could not cancel pending payment:', (e as Error)?.message);
+      return { ok: false, error: 'Could not cancel the payment link already sent to the client for this fee. Nothing was removed — try again.' };
+    }
+  }
+
+  // Conditional write on the same outstanding shape, so two concurrent removals
+  // (or a removal racing a charge landing) can't both proceed — only the one
+  // that actually flips the row runs the points refund / audit / timeline.
+  const flipped = await db.booking.updateMany({
+    where: {
+      id: bookingId, chargedAt: null, prepaidAt: null, feeWaived: false, pricePence: { gt: 0 },
+      OR: [{ status: 'CANCELLED', lateCancel: true }, { status: 'NO_SHOW' }],
+    },
+    data: { feeWaived: true },
+  });
+  if (flipped.count === 0) return { ok: false, error: 'This appointment has no outstanding payment to remove.' };
+  // BLD-1443 parity with applyNoShowFee/cancelBooking's own waive branches:
+  // the fee was never actually taken, so any loyalty points the client
+  // redeemed as money off it are returned rather than staying spent.
+  try {
+    const { refundBookingPoints } = await import('@/lib/client-loyalty');
+    await refundBookingPoints(bookingId);
+  } catch (e) {
+    console.error('[removeOutstandingPayment] points refund failed (continuing):', (e as Error)?.message);
+  }
+
+  const kind = b.status === 'NO_SHOW' ? 'no-show' : 'late-cancellation';
+  const summary = `Outstanding payment removed — ${b.treatmentTitle} (${kind} fee, £${(b.pricePence / 100).toFixed(2)}) — ${cleanReason}`;
+  const { logAudit } = await import('@/lib/audit');
+  await logAudit({
+    action: b.status === 'NO_SHOW' ? 'BOOKING_NO_SHOW' : 'BOOKING_CANCELLED',
+    actor: session.email, actorRole: session.role, bookingId, clientId: b.clientId,
+    summary, meta: { outstandingPaymentRemoved: true, pricePence: b.pricePence, reason: cleanReason },
+  }).catch(() => {});
+  // BLD-1893: "record the removal in the client's activity timeline, including
+  // who removed it and when" — Interaction stamps author + createdAt itself.
+  await db.interaction.create({ data: { clientId: b.clientId, type: 'APPOINTMENT', summary, author: session.email } }).catch(() => {});
+
+  revalidatePath(`/admin/bookings/${bookingId}`);
+  revalidatePath('/admin/bookings');
+  revalidatePath(`/admin/clients/${b.clientId}`);
+  return { ok: true };
+}
+
 // Approve a same-day appointment request: re-checks availability (the slot may have
 // been taken since the request came in), confirms the booking and notifies the
 // client. Staff only. Decline uses the normal cancelBookingAction.
@@ -195,17 +288,111 @@ export async function approveBookingRequestAction(bookingId: string): Promise<{ 
   return { ok: true };
 }
 
-export async function setBookingStatus(bookingId: string, status: 'COMPLETED' | 'NO_SHOW' | 'CONFIRMED'): Promise<{ ok: boolean; error?: string }> {
+// BLD-1347: `opts.waiveFee` is the override on the no-show branch. Without it a
+// no-show now applies the published 24-hour policy — the full fee is taken, as a
+// card charge or as one session off a prepaid package (see noShowFee below).
+export async function setBookingStatus(
+  bookingId: string,
+  status: 'COMPLETED' | 'NO_SHOW' | 'CONFIRMED',
+  opts: { waiveFee?: boolean } = {},
+): Promise<{ ok: boolean; error?: string; charged?: number; sessionConsumed?: boolean; feeFailed?: boolean; requiresAction?: boolean }> {
   if (!crmEnabled) return { ok: false, error: 'CRM disabled' };
   const session = await getSession();
   if (!session || !sessionCan(session, 'bookings.manage')) return { ok: false, error: 'You don’t have permission to update appointments.' };
+  // Taking money needs the payment permission; waiving a fee that is owed is a
+  // financial concession, so it needs it too. Marking the no-show itself doesn't.
+  if (status === 'NO_SHOW' && opts.waiveFee && !sessionCan(session, 'bookings.charge')) {
+    return { ok: false, error: 'You don’t have permission to waive a no-show fee.' };
+  }
   const { db } = await import('@/lib/db');
-  await db.booking.update({ where: { id: bookingId }, data: { status } });
+  // BLD-1249: the live checkout screen (SessionRunner) gates every payment
+  // method — including "Record cash" — on booking.finishedAt, not on status.
+  // That field is normally stamped by the live session's "End treatment" step
+  // (clinical-actions.ts finishAppointment). This "Mark completed" shortcut
+  // only ever set status, so a booking completed from here stayed COMPLETED
+  // with finishedAt permanently null — the payment buttons on checkout then
+  // stayed disabled forever with no way to unstick them. Stamp finishedAt
+  // here too, and clear it on "Reset to confirmed" so the two stay in sync.
+  const prior = status === 'COMPLETED' || status === 'CONFIRMED'
+    ? await db.booking.findUnique({ where: { id: bookingId }, select: { startedAt: true, finishedAt: true } })
+    : null;
+  const data: { status: typeof status; finishedAt?: Date | null; actualMinutes?: number | null; packageSessionUsedAt?: Date | null; packageSessionUsedBy?: string | null } = { status };
+  // BLD-1347: "Reset to confirmed" undoes a mis-clicked no-show, so it must also
+  // hand back the prepaid session that no-show spent. The derived balance already
+  // stops counting it (isUsed needs a CANCELLED/NO_SHOW status), but leaving the
+  // mark behind would make the booking-detail badge claim a session was used on a
+  // live appointment.
+  if (status === 'CONFIRMED') { data.packageSessionUsedAt = null; data.packageSessionUsedBy = null; }
+  if (status === 'COMPLETED' && prior && !prior.finishedAt) {
+    const finishedAt = new Date();
+    data.finishedAt = finishedAt;
+    data.actualMinutes = prior.startedAt ? Math.max(1, Math.round((finishedAt.getTime() - prior.startedAt.getTime()) / 60000)) : null;
+  } else if (status === 'CONFIRMED' && prior?.finishedAt) {
+    data.finishedAt = null;
+    data.actualMinutes = null;
+  }
+  await db.booking.update({ where: { id: bookingId }, data });
+  let fee: { charged: number; sessionConsumed: boolean; waived: boolean; alreadyPaid: boolean; requiresAction: boolean; feeFailed: boolean } | null = null;
   const b = await db.booking.findUnique({ where: { id: bookingId } });
   if (b) {
     await db.interaction.create({ data: { clientId: b.clientId, type: 'APPOINTMENT', summary: `Booking marked ${status.toLowerCase().replace('_', ' ')}`, author: session.email } });
     if (status === 'NO_SHOW') {
+      // Let the diary know a client didn't show (the staff member who marked it is skipped).
+      try {
+        const { notifyStaffByPermission } = await import('@/lib/notifications');
+        await notifyStaffByPermission('bookings.manage', { kind: 'status', category: 'bookings', priority: 'normal', title: `No-show: ${b.treatmentTitle}`, body: b.startAt.toLocaleString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', timeZone: 'Europe/London' }), href: `/admin/bookings/${b.id}` }, session.email);
+      } catch { /* non-fatal */ }
+      // PRJ-1118.12: release a reserved-but-unconsumed gift-voucher application,
+      // mirroring cancelBooking's BLD-882 guard — a booking already charged before
+      // the no-show consumed its voucher as part of that settled sale; only an
+      // unconsumed reservation (never charged) returns automatically.
+      if ((b.giftVoucherPence ?? 0) > 0 && b.giftVoucherCode && !b.chargedAt) {
+        try {
+          const cleared = await db.booking.updateMany({
+            // `chargedAt: null` is in the guard here (cancelBooking deliberately
+            // omits it, because a late fee charged DURING that cancellation sets
+            // chargedAt and must not block the return). Nothing charges on the
+            // no-show path, so any chargedAt landing between the read above and
+            // this write is a concurrent till charge that already netted the
+            // voucher off — matching zero rows is the correct outcome.
+            where: { id: b.id, giftVoucherCode: b.giftVoucherCode, giftVoucherPence: b.giftVoucherPence, chargedAt: null },
+            data: { giftVoucherCode: null, giftVoucherPence: 0 },
+          });
+          if (cleared.count > 0) {
+            const { creditVoucher } = await import('@/lib/gift-vouchers');
+            await creditVoucher(b.giftVoucherCode, b.giftVoucherPence);
+            const { logAudit } = await import('@/lib/audit');
+            await logAudit({ action: 'REWARD_REDEEMED', actor: session.email, actorRole: session.role, bookingId: b.id, clientId: b.clientId, summary: `Gift voucher ${b.giftVoucherCode} returned on no-show — £${(b.giftVoucherPence / 100).toFixed(2)} back on the voucher` }).catch(() => {});
+          }
+        } catch (e) {
+          console.error('[setBookingStatus] voucher re-credit failed (continuing):', (e as Error)?.message);
+        }
+      }
+
+      // BLD-1347: apply the published no-show fee — a card charge, or one
+      // session off a prepaid package, or nothing when staff waived it. Runs
+      // LAST in this branch, after the voucher release above, so that release
+      // still sees the pre-fee chargedAt the BLD-882 guard depends on. Never
+      // throws: a payment problem must not stop the appointment being marked.
+      try {
+        const { applyNoShowFee } = await import('@/lib/booking-actions');
+        fee = await applyNoShowFee(bookingId, { by: session.email, waiveFee: opts.waiveFee });
+      } catch (e) {
+        console.error('[setBookingStatus] no-show fee failed (continuing):', (e as Error)?.message);
+      }
+
       // Warm rebooking note (opt-in). Care-class, deduped once per booking.
+      // BLD-1482: sent AFTER applyNoShowFee above (not before) and using its
+      // returned `charged` amount, not the pre-fee b.chargedPence read at the
+      // top of this function -- otherwise the email always reported the fee as
+      // unpaid, even when applyNoShowFee had just charged it moments earlier.
+      // `charged` is 0 on every branch that took no card fee (waived, package
+      // session consumed, alreadyPaid, 3DS requiresAction, declined), so the
+      // template's fee paragraph is correctly omitted for all of them. If
+      // applyNoShowFee itself threw, `fee` is null and we send no fee amount at
+      // all: b.chargedPence is the booking's total settled charge, NOT a no-show
+      // fee, so falling back to it would tell an already-paid client that "a fee
+      // of £X was applied to your card" when nothing was taken.
       try {
         const { getSetting } = await import('@/lib/settings');
         if (await getSetting('no_show_notice')) {
@@ -214,21 +401,28 @@ export async function setBookingStatus(bookingId: string, status: 'COMPLETED' | 
           if (client?.email && !client.unsubscribed && !already) {
             const base = (process.env.NEXT_PUBLIC_SITE_URL || site.url).replace(/\/$/, '');
             const { sendEmail, tmplNoShow } = await import('@/lib/email');
-            const res = await sendEmail({ to: client.email, subject: `Sorry we missed you — rebook your ${b.treatmentTitle}`, html: tmplNoShow({ firstName: client.firstName, treatment: b.treatmentTitle, start: b.startAt, rebookUrl: `${base}/book?treatment=${encodeURIComponent(b.treatmentSlug)}`, feePence: b.chargedPence }) });
+            const res = await sendEmail({ to: client.email, subject: `Sorry we missed you — rebook your ${b.treatmentTitle}`, html: tmplNoShow({ firstName: client.firstName, treatment: b.treatmentTitle, start: b.startAt, rebookUrl: `${base}/book?treatment=${encodeURIComponent(b.treatmentSlug)}`, feePence: fee?.charged ?? null }) });
             await db.emailEvent.create({ data: { clientId: b.clientId, kind: 'NO_SHOW', to: client.email, subject: `No-show rebooking — ${b.treatmentTitle}`, status: res.ok ? 'SENT' : 'FAILED', providerId: res.id, error: res.error, meta: { bookingId: b.id } } }).catch(() => {});
           }
         }
       } catch (e) {
         console.error('[bookings] no-show notice failed:', (e as Error)?.message);
       }
-      // Let the diary know a client didn't show (the staff member who marked it is skipped).
-      try {
-        const { notifyStaffByPermission } = await import('@/lib/notifications');
-        await notifyStaffByPermission('bookings.manage', { kind: 'status', category: 'bookings', priority: 'normal', title: `No-show: ${b.treatmentTitle}`, body: b.startAt.toLocaleString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', timeZone: 'Europe/London' }), href: `/admin/bookings/${b.id}` }, session.email);
-      } catch { /* non-fatal */ }
     }
     if (status === 'COMPLETED') {
       await db.client.update({ where: { id: b.clientId }, data: { lastVisitAt: new Date() } });
+
+      // (0) Release any manually-flagged "occupied" room (BLD-506) — the client
+      // has left. finishAppointment() does this on the live-session path, and
+      // since BLD-1249 stamps finishedAt here it now returns early when called
+      // afterwards, so this path has to release the room itself or the in-room
+      // screen stays Occupied until someone taps Vacant.
+      try {
+        const { clearOccupiedForBooking } = await import('@/lib/room-prep');
+        await clearOccupiedForBooking(bookingId);
+      } catch (e) {
+        console.error('[bookings] clear room occupancy on complete failed:', (e as Error)?.message);
+      }
 
       // Completing an appointment closes two loops, neither on the critical path:
       // (1) award the practitioner efficiency / low-waste points, and
@@ -304,7 +498,13 @@ export async function setBookingStatus(bookingId: string, status: 'COMPLETED' | 
   }
   revalidatePath(`/admin/bookings/${bookingId}`);
   revalidatePath('/admin/bookings');
-  return { ok: true };
+  // BLD-1347: the client's package balance and outstanding-fee warning both
+  // render off this booking, so refresh their record too.
+  if (b && fee && (fee.sessionConsumed || fee.charged > 0 || fee.waived)) revalidatePath(`/admin/clients/${b.clientId}`);
+  return {
+    ok: true,
+    ...(fee ? { charged: fee.charged, sessionConsumed: fee.sessionConsumed, feeFailed: fee.feeFailed, requiresAction: fee.requiresAction } : {}),
+  };
 }
 
 // Staff cancel with optional fee waiver (override of the within-24h charge).
@@ -313,8 +513,26 @@ export async function cancelBookingAction(bookingId: string, opts: { reason?: st
   const session = await getSession();
   if (!session) return { ok: false, error: 'Unauthorised' };
   if (!sessionCan(session, 'bookings.manage')) return { ok: false, error: 'You don’t have permission to manage bookings.' };
+  // BLD-1437: waiving the cancellation fee is a financial concession, same as
+  // waiving a no-show fee above — it needs bookings.charge, not just bookings.manage.
+  if (opts.waiveFee && !sessionCan(session, 'bookings.charge')) {
+    // Exception: declining a same-day REQUEST. That booking was never
+    // confirmed, holds no slot and has no card on file, so there is no fee to
+    // concede — and SameDayRequestActions must pass waiveFee, because a
+    // same-day request is by definition inside 24h and cancelling it without
+    // the waiver would bill the client in full for an appointment the clinic
+    // itself refused. Read the status server-side; the caller's flag alone is
+    // not trusted for this.
+    const { db } = await import('@/lib/db');
+    const b = await db.booking.findUnique({ where: { id: bookingId }, select: { status: true } });
+    if (b?.status !== 'REQUESTED') {
+      return { ok: false, error: 'You don’t have permission to waive fees.' };
+    }
+  }
   const { cancelBooking } = await import('@/lib/booking-actions');
-  const res = await cancelBooking(bookingId, { by: session.email, reason: opts.reason, waiveFee: opts.waiveFee });
+  // BLD-1920: admin: true exempts staff from the new client-only 48h
+  // self-service block — mirrors rescheduleBookingAction's admin: true below.
+  const res = await cancelBooking(bookingId, { by: session.email, reason: opts.reason, waiveFee: opts.waiveFee, admin: true });
   revalidatePath(`/admin/bookings/${bookingId}`);
   revalidatePath('/admin/bookings');
   return res;
@@ -322,12 +540,19 @@ export async function cancelBookingAction(bookingId: string, opts: { reason?: st
 
 // BLD-211 — reassign the practitioner/specialist on a booking. Admins/managers
 // only; the new clinician must be bookable and competent for the treatment.
-export async function reassignPractitioner(bookingId: string, practitionerId: string | null): Promise<{ ok: boolean; error?: string }> {
+// BLD-1886: also checks the target clinician isn't already booked over this
+// appointment's time — a warning the caller can override with force: true,
+// mirroring the resource-conflict UX built for reschedule (BLD-1873).
+export async function reassignPractitioner(
+  bookingId: string,
+  practitionerId: string | null,
+  opts?: { force?: boolean },
+): Promise<{ ok: boolean; error?: string; code?: 'PRACTITIONER_CONFLICT' }> {
   if (!crmEnabled) return { ok: false, error: 'CRM disabled' };
   const session = await getSession();
   if (!session || !sessionCan(session, 'bookings.manage')) return { ok: false, error: 'You don’t have permission to reassign appointments.' };
   const { db } = await import('@/lib/db');
-  const booking = await db.booking.findUnique({ where: { id: bookingId }, select: { treatmentSlug: true } });
+  const booking = await db.booking.findUnique({ where: { id: bookingId }, select: { treatmentSlug: true, startAt: true, endAt: true, bufferMin: true } });
   if (!booking) return { ok: false, error: 'Booking not found.' };
 
   let label = 'unassigned';
@@ -336,10 +561,38 @@ export async function reassignPractitioner(bookingId: string, practitionerId: st
     if (!clin) return { ok: false, error: 'That person isn’t a bookable clinician.' };
     // A clinician with explicit competencies must list this treatment; an empty
     // list means a generalist (no restriction).
-    if (clin.competencies.length && !clin.competencies.includes(booking.treatmentSlug)) {
+    // BLD-1474: 'consultation' is a reserved pseudo-treatment slug (see
+    // create-action.ts) deliberately kept out of the real treatment catalogue,
+    // so it can never appear in anyone's competencies — the Schedules picker
+    // only offers checkboxes built from bookableTreatments. Applied here, the
+    // rule rejected EVERY clinician who has any specialism set, so the eligible
+    // list on the booking-detail page (fixed in the same ticket) could be saved
+    // by nobody. Any active clinician can run a consultation.
+    if (booking.treatmentSlug !== 'consultation' && clin.competencies.length && !clin.competencies.includes(booking.treatmentSlug)) {
       return { ok: false, error: 'That clinician isn’t set up to perform this treatment.' };
     }
     label = clin.name || clin.email;
+
+    // BLD-1886: the target clinician might already have another live booking
+    // overlapping this one's time window — check before writing, not after.
+    if (!opts?.force) {
+      const { overlapsBookingWindow } = await import('@/lib/booking-actions');
+      // Busy window includes this booking's own buffer, matching the
+      // rescheduleBooking clash rule (newBusyEnd = end + bufferMin).
+      const busyEnd = new Date(booking.endAt.getTime() + booking.bufferMin * 60_000);
+      const others = await db.booking.findMany({
+        where: {
+          id: { not: bookingId }, status: { in: ['PENDING', 'CONFIRMED'] }, practitionerId,
+          startAt: { gte: new Date(booking.startAt.getTime() - 24 * 60 * 60 * 1000), lte: busyEnd },
+        },
+        select: { startAt: true, endAt: true, bufferMin: true },
+      });
+      const clash = others.find((o) => overlapsBookingWindow(booking.startAt, busyEnd, o));
+      if (clash) {
+        const when = clash.startAt.toLocaleString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+        return { ok: false, code: 'PRACTITIONER_CONFLICT', error: `${label} already has another appointment at ${when} that overlaps this time. You can still reassign if you’ve confirmed they can cover both.` };
+      }
+    }
   }
 
   await db.booking.update({ where: { id: bookingId }, data: { practitionerId: practitionerId || null } });
@@ -356,12 +609,425 @@ export async function reassignPractitioner(bookingId: string, practitionerId: st
 // cancel-and-rebook. Reuses rescheduleBooking with the admin override (no 48h
 // notice / window / fee rules), but keeps the slot-availability + future-time
 // guards, the client confirmation email, calendar re-push and audit.
-export async function rescheduleBookingAction(bookingId: string, newStartISO: string): Promise<{ ok: boolean; error?: string }> {
+// BLD-1873: `force` lets staff proceed past a room/equipment-only conflict
+// once they've seen the warning (`code: 'RESOURCE_CONFLICT'`); a practitioner
+// clash still can't be forced.
+export async function rescheduleBookingAction(
+  bookingId: string,
+  newStartISO: string,
+  opts?: { force?: boolean },
+): Promise<{ ok: boolean; error?: string; code?: 'SLOT_TAKEN' | 'RESOURCE_CONFLICT' }> {
   if (!crmEnabled) return { ok: false, error: 'CRM disabled' };
   const session = await getSession();
   if (!session || !sessionCan(session, 'bookings.manage')) return { ok: false, error: 'You don’t have permission to reschedule appointments.' };
   if (!newStartISO) return { ok: false, error: 'Pick a new date and time.' };
   const { rescheduleBooking } = await import('@/lib/booking-actions');
-  const r = await rescheduleBooking(bookingId, newStartISO, { by: session.email, admin: true });
-  return r.ok ? { ok: true } : { ok: false, error: r.error || 'Could not reschedule.' };
+  const r = await rescheduleBooking(bookingId, newStartISO, { by: session.email, admin: true, force: opts?.force });
+  return r.ok ? { ok: true } : { ok: false, error: r.error || 'Could not reschedule.', code: r.code === 'RESOURCE_CONFLICT' ? 'RESOURCE_CONFLICT' : r.code === 'SLOT_TAKEN' ? 'SLOT_TAKEN' : undefined };
+}
+
+// BLD-1096 — owner request: sometimes a client cancels with enough notice that
+// no late fee applies, but the clinic and client have separately agreed the
+// prepaid package session is spent rather than credited back. This marks that
+// WITHOUT touching the booking's status — it stays CANCELLED in the diary and
+// the client's appointment history — and deducts one session from the client's
+// package balance by making lib/package-sessions.ts's derived totals count it as
+// used (same mechanism as a COMPLETED session; nothing is reimplemented here).
+// Admin/owner only, same gate as the paid-price correction (BLD-1094).
+export async function markPackageSessionUsed(bookingId: string): Promise<{ ok: boolean; error?: string }> {
+  if (!crmEnabled) return { ok: false, error: 'CRM disabled' };
+  const session = await getSession();
+  if (!session || !sessionIsAdmin(session)) return { ok: false, error: 'Only an admin can mark a cancelled appointment as a used package session.' };
+  const { db } = await import('@/lib/db');
+  const booking = await db.booking.findUnique({
+    where: { id: bookingId },
+    select: { status: true, clientId: true, treatmentTitle: true, packageBookingId: true, packageSessionUsedAt: true },
+  });
+  if (!booking) return { ok: false, error: 'Booking not found.' };
+  // BLD-1347: a no-show now consumes the session automatically, but staff still
+  // need the manual mark on both statuses — to re-apply it after an
+  // unmark/undo, and for a cancellation the policy left untouched.
+  if (booking.status !== 'CANCELLED' && booking.status !== 'NO_SHOW') return { ok: false, error: 'Only a cancelled or missed appointment can be marked this way.' };
+  if (booking.packageSessionUsedAt) return { ok: true }; // idempotent
+  // Review fix (BLD-1096): only a FOLLOW-UP session (one linked back to a
+  // purchase via packageBookingId) can be marked. The course purchase booking
+  // itself must not be: clientPackages() drops a package whose purchase booking
+  // is CANCELLED (`status: { notIn: ['CANCELLED','NO_SHOW'] }`) and counts the
+  // purchase's own slot without reading packageSessionUsedAt, so marking it
+  // would change nothing while the badge and audit entry claimed a session had
+  // been deducted.
+  if (!booking.packageBookingId) {
+    return { ok: false, error: 'This appointment isn’t a session booked against a client package, so there’s no package balance to deduct from. (A cancelled course purchase itself can’t be marked — cancelling it already ends the package.)' };
+  }
+
+  await db.booking.update({ where: { id: bookingId }, data: { packageSessionUsedAt: new Date(), packageSessionUsedBy: session.email } });
+  const { logAudit } = await import('@/lib/audit');
+  await logAudit({
+    action: 'SESSION_EDITED', actor: session.email, actorRole: session.role, bookingId, clientId: booking.clientId,
+    summary: `Cancelled appointment (${booking.treatmentTitle}) marked "package session used" — one session deducted from the client's package balance; appointment stays Cancelled`,
+  });
+  revalidatePath(`/admin/bookings/${bookingId}`);
+  revalidatePath('/admin/bookings');
+  revalidatePath(`/admin/clients/${booking.clientId}`);
+  return { ok: true };
+}
+
+// BLD-1375 — retro-link an existing appointment to a client's prepaid course
+// (owner request: "link all appointments to her 6-session package"). Sessions
+// booked THROUGH the package flows link automatically; appointments booked
+// separately (by phone, or before the course was set up) never get the link, so
+// the package balance over-counts what's left. This attaches such an
+// appointment to the purchase after the fact. Validation mirrors the client
+// booking flow (app/api/booking/start): same client, same treatment, and — when
+// the appointment will occupy a slot — a session genuinely left, re-counted
+// inside a Serializable transaction against the same occupancy definition the
+// derived balance uses.
+
+// BLD-1824 review: what linking took off an appointment, recorded on the link's
+// own audit entry so unlinking can put exactly that back. (No schema change —
+// the deploy gate only takes additive columns, and AuditEvent.meta already
+// exists for precisely this kind of before/after record.)
+type PackageZeroing = { itemId: string; itemPricePence: number; itemDiscountPence: number; removedPence: number };
+// "Linked, but nothing was zeroed" — an empty itemId. Distinct from the null the
+// transaction returns for "the course is full", which is an error the caller
+// reports rather than a successful link.
+const NO_ZEROING = { itemId: '', itemPricePence: 0, itemDiscountPence: 0, removedPence: 0 } satisfies PackageZeroing;
+
+/** The pre-link amounts recorded on the most recent link of this booking to this
+ *  course, or null if there is no usable record (an older link, or a link that
+ *  zeroed nothing). Never throws.
+ *
+ *  Review fix: the window was the 25 most recent SESSION_EDITED rows for this
+ *  booking, and SESSION_EDITED is a busy action on a booking — add-on added,
+ *  add-on removed, session notes saved, price overridden, marked/unmarked as a
+ *  used package session, plus the system row written at creation. Once enough of
+ *  those land after the link, the link's own entry falls out of the window, the
+ *  unlink below finds no prior amounts and silently restores nothing: the
+ *  appointment stays at GBP 0 for ever with nothing on screen saying so. 200 is
+ *  far beyond any realistic per-booking edit count and the rows are tiny. */
+async function priorPackageZeroing(bookingId: string, purchaseBookingId: string): Promise<PackageZeroing | null> {
+  const { db } = await import('@/lib/db');
+  const rows = await db.auditEvent.findMany({
+    where: { bookingId, action: 'SESSION_EDITED' },
+    orderBy: { createdAt: 'desc' },
+    take: 200,
+    select: { meta: true },
+  }).catch(() => [] as { meta: unknown }[]);
+  for (const r of rows) {
+    const m = r.meta as unknown as Record<string, unknown> | null;
+    if (!m || m.packageBookingId !== purchaseBookingId) continue;
+    const z = m.packagePriceZeroed as Partial<PackageZeroing> | undefined | null;
+    if (!z) continue;
+    if (typeof z.itemId === 'string' && z.itemId && typeof z.itemPricePence === 'number'
+      && typeof z.itemDiscountPence === 'number' && typeof z.removedPence === 'number') {
+      return { itemId: z.itemId, itemPricePence: z.itemPricePence, itemDiscountPence: z.itemDiscountPence, removedPence: z.removedPence };
+    }
+  }
+  return null;
+}
+
+export async function linkBookingToPackage(bookingId: string, purchaseBookingId: string): Promise<{ ok: boolean; error?: string }> {
+  if (!crmEnabled) return { ok: false, error: 'CRM disabled' };
+  const session = await getSession();
+  if (!session || !sessionCan(session, 'bookings.manage')) return { ok: false, error: 'You don’t have permission to manage bookings.' };
+  if (!purchaseBookingId || bookingId === purchaseBookingId) return { ok: false, error: 'Pick the course purchase to link this appointment to.' };
+  const { db } = await import('@/lib/db');
+  const b = await db.booking.findUnique({
+    where: { id: bookingId },
+    select: {
+      clientId: true, status: true, treatmentSlug: true, treatmentTitle: true, packageBookingId: true, chargedAt: true,
+      prepaidAt: true, giftVoucherPence: true, pointsRedeemed: true,
+      items: { where: { isAddon: false }, orderBy: { createdAt: 'asc' }, take: 1, select: { sessions: true, variantId: true } },
+    },
+  });
+  if (!b) return { ok: false, error: 'Booking not found.' };
+  if (b.packageBookingId) return { ok: false, error: 'This appointment is already linked to a package. Unlink it first if it belongs to a different course.' };
+  if ((b.items[0]?.sessions ?? 1) > 1) return { ok: false, error: 'This appointment IS a course purchase — it can’t also be a session of another package.' };
+  // BLD-1892: an already-charged/pre-paid appointment (e.g. a completed visit
+  // from before the client bought the course) can still be retro-linked so it
+  // counts toward the course balance — its existing payment record is left
+  // exactly as-is (no zeroing, no refund) rather than blocked outright, which
+  // would otherwise make it impossible to ever add a past treatment to a
+  // package. `alreadySettled` below skips the price-zeroing step for it, so
+  // there is no double-charge: the course consumes a session, the prior
+  // payment stays the money of record and nothing new is charged.
+  const alreadySettled = Boolean(b.chargedAt || b.prepaidAt);
+  // A gift voucher applied to this appointment has already been debited off the
+  // voucher (lib/gift-vouchers reserveVoucher). Zeroing the price below would
+  // leave that balance spent against a £0 visit with nothing to return it.
+  // BLD-1892: an already-settled visit is never zeroed, so its voucher stays
+  // spent against the real price it paid towards — nothing is stranded, and
+  // there is no "Remove voucher" on a paid booking to unblock it anyway.
+  if (!alreadySettled && (b.giftVoucherPence ?? 0) > 0) {
+    return { ok: false, error: 'A gift voucher is applied to this appointment. Remove it first (Remove voucher on the appointment’s payment panel puts the balance back on the card), then link it to the course.' };
+  }
+
+  const { clientPackages, packageOccupancyWhere } = await import('@/lib/package-sessions');
+  const { eligiblePackagesFor } = await import('@/lib/package-match');
+  const pkg = (await clientPackages(b.clientId)).find((p) => p.purchaseBookingId === purchaseBookingId);
+  if (!pkg) return { ok: false, error: 'That course isn’t on this client’s account.' };
+  // BLD-1890: treatmentSlug alone is the marketing category, not the specific
+  // service/area (e.g. Chin vs Lower Leg share one "laser-hair-removal" slug)
+  // — also require the package's own variant (when recorded) to match this
+  // appointment's, so a session is never deducted off the wrong area's package.
+  if (!eligiblePackagesFor([pkg], b.treatmentSlug, b.items[0]?.variantId ?? null).length) {
+    return { ok: false, error: `That course is for a different treatment or area (${pkg.label}).` };
+  }
+
+  // A live or completed appointment occupies a slot the moment it's linked
+  // (that's the point, for retro-linking taken sessions); a cancelled/missed
+  // one only counts if staff later mark it used, so no balance is needed yet.
+  const occupies = !['CANCELLED', 'NO_SHOW'].includes(b.status);
+  let zeroed: PackageZeroing | null = null;
+  try {
+    const linked = await db.$transaction(async (tx) => {
+      // BLD-1892 review fix: `alreadySettled` decides whether the price is
+      // zeroed, but it came from a read taken before this transaction. A charge
+      // (or voucher, or another link) landing in between would otherwise zero a
+      // just-paid booking. Re-read inside the Serializable transaction and bail
+      // if any of it moved, so the decision and the write see the same row.
+      const fresh = await tx.booking.findUnique({ where: { id: bookingId }, select: { pricePence: true, packageBookingId: true, chargedAt: true, prepaidAt: true, giftVoucherPence: true } });
+      if (!fresh || fresh.packageBookingId || Boolean(fresh.chargedAt || fresh.prepaidAt) !== alreadySettled
+        || (!alreadySettled && (fresh.giftVoucherPence ?? 0) > 0)) return 'CHANGED' as const;
+      if (occupies) {
+        const total = (await tx.bookingItem.findFirst({ where: { bookingId: purchaseBookingId, isAddon: false }, orderBy: { createdAt: 'asc' }, select: { sessions: true } }))?.sessions ?? 1;
+        const occupied = await tx.booking.count({ where: packageOccupancyWhere(purchaseBookingId) });
+        if (occupied >= total) return null;
+      }
+      // BLD-1824: a package session is covered by the purchase — it must not
+      // also charge (or show as owing) its own individual treatment price. Zero
+      // the primary line item's price/discount and net that out of the booking
+      // total, mirroring how a package session is priced when booked THROUGH
+      // the package flow in the first place (base = 0 — BLD-1346, booking/start
+      // and create-action). Any add-on booked in the same slot is untouched —
+      // the package covers the primary treatment only.
+      //
+      // Review fix: only for an appointment that actually takes a session
+      // (`occupies`). On a CANCELLED-late or NO_SHOW booking pricePence is not a
+      // price — it IS the unwaived late-cancel/no-show fee the client owes, which
+      // lib/outstanding.ts derives from `pricePence > 0`. Zeroing it there would
+      // write that debt off silently while leaving the session unspent: the link
+      // alone consumes nothing, staff still have to mark the session used, which
+      // is how BLD-1347 takes the fee out of the course instead.
+      // BLD-1892: nor for an already-settled appointment — its price is real,
+      // already-collected money, not a quote to net against the course.
+      const zeroPrice = occupies && !alreadySettled;
+      const current = zeroPrice ? fresh : null;
+      const primaryItem = zeroPrice
+        ? await tx.bookingItem.findFirst({ where: { bookingId, isAddon: false }, orderBy: { createdAt: 'asc' }, select: { id: true, pricePence: true, discountPence: true } })
+        : null;
+      if (current && primaryItem) {
+        const netPrimary = Math.max(0, primaryItem.pricePence - primaryItem.discountPence);
+        // Never below zero, and never take off more than the booking total holds
+        // (add-ons keep their own share of it).
+        const removedPence = Math.min(netPrimary, current.pricePence);
+        await tx.booking.update({ where: { id: bookingId }, data: { packageBookingId: purchaseBookingId, pricePence: current.pricePence - removedPence } });
+        await tx.bookingItem.update({ where: { id: primaryItem.id }, data: { pricePence: 0, discountPence: 0 } });
+        return { itemId: primaryItem.id, itemPricePence: primaryItem.pricePence, itemDiscountPence: primaryItem.discountPence, removedPence };
+      }
+      await tx.booking.update({ where: { id: bookingId }, data: { packageBookingId: purchaseBookingId } });
+      return NO_ZEROING;
+    }, { isolationLevel: 'Serializable' });
+    if (!linked) return { ok: false, error: 'That course has no sessions left — every session is already taken or booked.' };
+    if (linked === 'CHANGED') return { ok: false, error: 'This appointment changed while linking (it was paid, linked or had a voucher applied). Refresh the page and try again.' };
+    zeroed = linked.itemId ? linked : null;
+  } catch {
+    return { ok: false, error: 'Could not link just now (another update was in flight). Please try again.' };
+  }
+
+  // Review fix: the treatment now costs nothing, so loyalty points the client
+  // spent on it go back to their balance — the same rule the cancellation and
+  // refund paths follow (lib/booking-actions.ts). Left burnt, the client would
+  // have paid points for a visit the course already covers.
+  let pointsReturned = 0;
+  if (zeroed && b.pointsRedeemed > 0) {
+    try {
+      const { refundBookingPoints } = await import('@/lib/client-loyalty');
+      await refundBookingPoints(bookingId);
+      pointsReturned = b.pointsRedeemed;
+    } catch (e) {
+      console.error('[linkBookingToPackage] loyalty points return failed (continuing):', (e as Error)?.message);
+    }
+  }
+
+  const { logAudit } = await import('@/lib/audit');
+  await logAudit({
+    action: 'SESSION_EDITED', actor: session.email, actorRole: session.role, bookingId, clientId: b.clientId,
+    summary: `Appointment (${b.treatmentTitle}, ${b.status.toLowerCase().replace('_', ' ')}) linked to package ${pkg.label} — now counts against the course balance`
+      + (zeroed ? `; its own price was zeroed (£${(zeroed.removedPence / 100).toFixed(2)} off this appointment) — the course purchase carries the money` : '')
+      + (alreadySettled ? `; this visit was already charged/pre-paid — that payment record was left untouched, no refund or new charge made` : '')
+      + (pointsReturned ? `; ${pointsReturned} loyalty points returned to the client` : ''),
+    // packagePriceZeroed is what unlinkBookingFromPackage reads to put the money
+    // back, so it has to stay on the entry, not just in the summary text.
+    meta: { packageBookingId: purchaseBookingId, ...(zeroed ? { packagePriceZeroed: zeroed } : {}), ...(alreadySettled ? { alreadyCharged: true } : {}) },
+  }).catch(() => {});
+  revalidatePath(`/admin/bookings/${bookingId}`);
+  revalidatePath(`/admin/bookings/${purchaseBookingId}`);
+  revalidatePath('/admin/bookings');
+  revalidatePath(`/admin/clients/${b.clientId}`);
+  return { ok: true };
+}
+
+// Undo of the above — detaches the appointment from the package (and clears any
+// "session used" mark, which is meaningless without the link). Same gate.
+export async function unlinkBookingFromPackage(bookingId: string): Promise<{ ok: boolean; error?: string }> {
+  if (!crmEnabled) return { ok: false, error: 'CRM disabled' };
+  const session = await getSession();
+  if (!session || !sessionCan(session, 'bookings.manage')) return { ok: false, error: 'You don’t have permission to manage bookings.' };
+  const { db } = await import('@/lib/db');
+  const b = await db.booking.findUnique({ where: { id: bookingId }, select: { clientId: true, treatmentTitle: true, packageBookingId: true } });
+  if (!b) return { ok: false, error: 'Booking not found.' };
+  if (!b.packageBookingId) return { ok: true }; // idempotent
+
+  // BLD-1824 review fix: linking zeroes the appointment's own price (the course
+  // carries the money), so the undo has to put it back — otherwise an
+  // appointment linked by mistake stays free for ever, with nothing on screen
+  // saying so. The pre-link amounts are on the link's own audit entry.
+  const prior = await priorPackageZeroing(bookingId, b.packageBookingId);
+  let restoredPence = 0;
+  try {
+    restoredPence = await db.$transaction(async (tx) => {
+      await tx.booking.update({ where: { id: bookingId }, data: { packageBookingId: null, packageSessionUsedAt: null, packageSessionUsedBy: null } });
+      if (!prior) return 0;
+      const item = await tx.bookingItem.findUnique({ where: { id: prior.itemId }, select: { bookingId: true, pricePence: true, discountPence: true } });
+      const bk = await tx.booking.findUnique({ where: { id: bookingId }, select: { pricePence: true, chargedAt: true, prepaidAt: true } });
+      // Only restore a zeroing nobody has touched since. If staff have re-priced
+      // the appointment (overrideBookingPrice) or it has been paid, what they set
+      // is the truth and this must not overwrite it.
+      if (!item || !bk || item.bookingId !== bookingId || item.pricePence !== 0 || item.discountPence !== 0 || bk.chargedAt || bk.prepaidAt) return 0;
+      await tx.bookingItem.update({ where: { id: prior.itemId }, data: { pricePence: prior.itemPricePence, discountPence: prior.itemDiscountPence } });
+      await tx.booking.update({ where: { id: bookingId }, data: { pricePence: bk.pricePence + prior.removedPence } });
+      return prior.removedPence;
+    });
+  } catch {
+    return { ok: false, error: 'Could not unlink just now (another update was in flight). Please try again.' };
+  }
+
+  const { logAudit } = await import('@/lib/audit');
+  await logAudit({
+    action: 'SESSION_EDITED', actor: session.email, actorRole: session.role, bookingId, clientId: b.clientId,
+    summary: `Appointment (${b.treatmentTitle}) unlinked from its package — no longer counts against the course balance`
+      + (restoredPence ? `; its own price of £${(restoredPence / 100).toFixed(2)} was restored` : ''),
+    meta: { packageBookingId: b.packageBookingId, ...(restoredPence ? { packagePriceRestoredPence: restoredPence } : {}) },
+  }).catch(() => {});
+  revalidatePath(`/admin/bookings/${bookingId}`);
+  revalidatePath(`/admin/bookings/${b.packageBookingId}`);
+  revalidatePath('/admin/bookings');
+  revalidatePath(`/admin/clients/${b.clientId}`);
+  return { ok: true };
+}
+
+// BLD-1824 — record how a package/course purchase was actually paid when it
+// happened outside the online booking flow (bank transfer, in-clinic terminal,
+// cash): chargedAt/prepaidAt only ever get set by Stripe, so a package settled
+// any other way stayed "Not yet paid" forever with nothing in the admin able
+// to correct it. Gated on bookings.charge — the same permission that gates
+// every other "money has moved" action (chargeBookingAction, refunds).
+export type ManualPaymentStatus = 'PAID' | 'PARTIALLY_PAID' | 'NOT_PAID';
+const MANUAL_PAYMENT_STATUSES: readonly string[] = ['PAID', 'PARTIALLY_PAID', 'NOT_PAID'];
+
+export async function setPackageManualPayment(
+  purchaseBookingId: string,
+  status: ManualPaymentStatus,
+  opts: { method?: string; amountPence?: number } = {},
+): Promise<{ ok: boolean; error?: string }> {
+  if (!crmEnabled) return { ok: false, error: 'CRM disabled' };
+  const session = await getSession();
+  if (!session || !sessionCan(session, 'bookings.charge')) return { ok: false, error: 'You don’t have permission to record payments.' };
+  // A server action is a public POST endpoint and the ManualPaymentStatus type is
+  // erased at runtime, so validate rather than trusting the caller: an arbitrary
+  // string here lands in the column every downstream reader compares against
+  // 'PAID' / 'PARTIALLY_PAID' (lib/package-sessions.ts, the client-profile badge).
+  if (!MANUAL_PAYMENT_STATUSES.includes(status)) return { ok: false, error: 'Pick a payment status.' };
+  const method = typeof opts.method === 'string' ? opts.method.trim().slice(0, 60) : '';
+  const { db } = await import('@/lib/db');
+  const b = await db.booking.findUnique({
+    where: { id: purchaseBookingId },
+    select: { clientId: true, treatmentTitle: true, items: { where: { isAddon: false }, orderBy: { createdAt: 'asc' }, take: 1, select: { sessions: true } } },
+  });
+  if (!b) return { ok: false, error: 'Booking not found.' };
+  if ((b.items[0]?.sessions ?? 1) <= 1) return { ok: false, error: 'This appointment isn’t a package/course purchase.' };
+
+  const cleared = status === 'NOT_PAID';
+  await db.booking.update({
+    where: { id: purchaseBookingId },
+    data: {
+      manualPaymentStatus: status,
+      manualPaymentMethod: cleared ? null : (method || null),
+      manualPaymentAmountPence: cleared ? null : (opts.amountPence != null && Number.isFinite(opts.amountPence) ? Math.max(0, Math.round(opts.amountPence)) : null),
+      manualPaymentAt: cleared ? null : new Date(),
+      manualPaymentBy: cleared ? null : session.email,
+    },
+  });
+
+  const { logAudit } = await import('@/lib/audit');
+  const label = status === 'PAID' ? 'paid' : status === 'PARTIALLY_PAID' ? 'partially paid' : 'not paid';
+  await logAudit({
+    action: 'SESSION_EDITED', actor: session.email, actorRole: session.role, bookingId: purchaseBookingId, clientId: b.clientId,
+    summary: `Package payment status for "${b.treatmentTitle}" set to ${label}${!cleared && method ? ` (${method})` : ''}`,
+  }).catch(() => {});
+  revalidatePath(`/admin/bookings/${purchaseBookingId}`);
+  revalidatePath('/admin/bookings');
+  revalidatePath(`/admin/clients/${b.clientId}`);
+  return { ok: true };
+}
+
+// Undo the mark above — restores the session to the client's package balance.
+// Same admin-only gate; the booking's CANCELLED status is untouched either way.
+export async function unmarkPackageSessionUsed(bookingId: string): Promise<{ ok: boolean; error?: string }> {
+  if (!crmEnabled) return { ok: false, error: 'CRM disabled' };
+  const session = await getSession();
+  if (!session || !sessionIsAdmin(session)) return { ok: false, error: 'Only an admin can undo this.' };
+  const { db } = await import('@/lib/db');
+  const booking = await db.booking.findUnique({ where: { id: bookingId }, select: { clientId: true, treatmentTitle: true, packageSessionUsedAt: true } });
+  if (!booking) return { ok: false, error: 'Booking not found.' };
+  if (!booking.packageSessionUsedAt) return { ok: true }; // idempotent
+
+  await db.booking.update({ where: { id: bookingId }, data: { packageSessionUsedAt: null, packageSessionUsedBy: null } });
+  const { logAudit } = await import('@/lib/audit');
+  await logAudit({
+    action: 'SESSION_EDITED', actor: session.email, actorRole: session.role, bookingId, clientId: booking.clientId,
+    summary: `Reverted "package session used" mark on cancelled appointment (${booking.treatmentTitle}) — session restored to the client's package balance`,
+  });
+  revalidatePath(`/admin/bookings/${bookingId}`);
+  revalidatePath('/admin/bookings');
+  revalidatePath(`/admin/clients/${booking.clientId}`);
+  return { ok: true };
+}
+
+// BLD-1874 — correct the payment method recorded against a charged booking
+// (e.g. staff picked "Cash" by mistake when it was actually paid on a card
+// terminal). Gated on bookings.charge — the same permission that gates every
+// other "money has moved" action (chargeBookingAction, refunds,
+// setPackageManualPayment above). Updates ONLY paymentMethod: the amount,
+// Stripe payment-intent reference and charge timestamp are never touched.
+export async function updateBookingPaymentMethod(bookingId: string, newMethod: string): Promise<{ ok: boolean; error?: string }> {
+  if (!crmEnabled) return { ok: false, error: 'CRM disabled' };
+  const session = await getSession();
+  if (!session || !sessionCan(session, 'bookings.charge')) return { ok: false, error: 'You don’t have permission to correct payments.' };
+  // A server action is a public POST endpoint — validate against the shared
+  // vocabulary rather than trusting the caller (mirrors setPackageManualPayment).
+  const { isPaymentMethod, paymentMethodLabel } = await import('@/lib/payment-methods');
+  if (!isPaymentMethod(newMethod)) return { ok: false, error: 'Pick a valid payment method.' };
+
+  const { db } = await import('@/lib/db');
+  const booking = await db.booking.findUnique({ where: { id: bookingId }, select: { clientId: true, chargedAt: true, prepaidAt: true, paymentMethod: true } });
+  if (!booking) return { ok: false, error: 'Booking not found.' };
+  // Only a booking that has actually been paid has a payment method worth correcting.
+  if (!booking.chargedAt && !booking.prepaidAt) return { ok: false, error: 'This booking hasn’t been charged yet.' };
+  if (booking.paymentMethod === newMethod) return { ok: true }; // no-op
+
+  const oldLabel = paymentMethodLabel(booking.paymentMethod) || 'none recorded';
+  const newLabel = paymentMethodLabel(newMethod);
+  await db.booking.update({ where: { id: bookingId }, data: { paymentMethod: newMethod } });
+
+  const { logAudit } = await import('@/lib/audit');
+  await logAudit({
+    action: 'SESSION_EDITED', actor: session.email, actorRole: session.role, bookingId, clientId: booking.clientId,
+    summary: `Payment method corrected: ${oldLabel} → ${newLabel}`,
+    meta: { oldMethod: booking.paymentMethod, newMethod },
+  }).catch(() => {});
+  revalidatePath(`/admin/bookings/${bookingId}`);
+  revalidatePath(`/admin/clients/${booking.clientId}`);
+  return { ok: true };
 }

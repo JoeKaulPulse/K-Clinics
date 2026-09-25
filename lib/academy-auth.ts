@@ -13,10 +13,37 @@ const hashesEqual = (a: string, b: string) => {
 // BLD-528: best-effort bridge to the clinic CRM. A trainee is often also a
 // clinic client; link them by email so staff see both sides of the same person.
 // Only fills an empty clientId (never overwrites an existing link).
-async function linkClientByEmail(studentId: string, email: string): Promise<void> {
+//
+// BLD-1188: when the signup form's marketing opt-in was ticked, this also
+// records that consent against the linked Client — creating one if the
+// trainee has no existing clinic record — with recorded consent evidence (not
+// just the bare boolean), mirroring the no-clobber pattern used by
+// /api/consult and /api/booking/create. `marketingOptIn` is omitted (or
+// false) for the staff re-link path below, which only ever links an existing
+// record and never touches consent.
+async function linkClientByEmail(studentId: string, email: string, marketingOptIn?: boolean, firstName?: string): Promise<void> {
   try {
-    const client = await db.client.findUnique({ where: { email: email.trim().toLowerCase() }, select: { id: true } });
-    if (client) await db.academyStudent.updateMany({ where: { id: studentId, clientId: null }, data: { clientId: client.id } });
+    const emailNorm = email.trim().toLowerCase();
+    let clientId: string | null = null;
+    if (marketingOptIn) {
+      const { marketingConsentFields } = await import('@/lib/consent');
+      const existing = await db.client.findUnique({ where: { email: emailNorm }, select: { id: true, marketingOptIn: true } });
+      if (existing) {
+        clientId = existing.id;
+        if (!existing.marketingOptIn) {
+          await db.client.update({ where: { id: existing.id }, data: { marketingOptIn: true, ...marketingConsentFields('academy-signup') } });
+        }
+      } else {
+        const created = await db.client.create({
+          data: { firstName: firstName?.trim() || 'Trainee', email: emailNorm, source: 'academy-signup', marketingOptIn: true, ...marketingConsentFields('academy-signup') },
+        });
+        clientId = created.id;
+      }
+    } else {
+      const client = await db.client.findUnique({ where: { email: emailNorm }, select: { id: true } });
+      clientId = client?.id ?? null;
+    }
+    if (clientId) await db.academyStudent.updateMany({ where: { id: studentId, clientId: null }, data: { clientId } });
   } catch { /* best-effort — never block account creation */ }
 }
 
@@ -30,7 +57,7 @@ export async function linkStudentToClient(studentId: string): Promise<{ ok: bool
   return { ok: true, linked: !!after?.clientId };
 }
 
-export type AcademySignup = { firstName: string; lastName?: string; email: string; phone?: string; password: string; dob?: string };
+export type AcademySignup = { firstName: string; lastName?: string; email: string; phone?: string; password: string; dob?: string; marketingOptIn?: boolean };
 
 /** Create a trainee (academy) account — separate from the clinic client portal. */
 export async function signupStudent(input: AcademySignup): Promise<{ ok: boolean; error?: string }> {
@@ -56,7 +83,7 @@ export async function signupStudent(input: AcademySignup): Promise<{ ok: boolean
   });
   // Link any prior applications made with this email to the new account.
   await db.enrolment.updateMany({ where: { applicantEmail: email, studentId: null }, data: { studentId: student.id } }).catch(() => {});
-  await linkClientByEmail(student.id, email);
+  await linkClientByEmail(student.id, email, input.marketingOptIn, input.firstName);
   await createAcademySession({ sub: student.id, email: student.email, firstName: student.firstName, epoch: student.sessionEpoch });
   return { ok: true };
 }

@@ -31,7 +31,7 @@ export function CardOnFileForm({ token, treatment, startISO, clientSecret }: { t
         <strong>No payment is taken now.</strong> Your card is stored securely with Stripe and is only charged when your treatment is delivered, or for a late cancellation within 24 hours of your appointment.
       </p>
       <div className="mt-6">
-        <Elements stripe={getStripe()} options={{ clientSecret, appearance: { theme: 'flat', variables: { colorPrimary: '#a98a6d', fontFamily: 'system-ui, sans-serif', borderRadius: '10px', colorBackground: '#f6ece3' } } }}>
+        <Elements stripe={getStripe()} options={{ clientSecret, appearance: { theme: 'flat', variables: { colorPrimary: '#816748', fontFamily: 'system-ui, sans-serif', borderRadius: '10px', colorBackground: '#f6ece3' } } }}>
           <Inner token={token} onDone={() => setDone(true)} />
         </Elements>
       </div>

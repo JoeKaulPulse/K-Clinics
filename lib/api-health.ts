@@ -411,6 +411,58 @@ async function checkGa4(): Promise<Outcome> {
   } catch (e) { return netFail(e); }
 }
 
+// BLD-1254: the browser pixels (TrackingScripts) and the server-side CAPI/GA4
+// senders (lib/conversions.ts) both go dark together whenever every provider ID
+// in tracking_config (+ its env fallbacks) is empty — e.g. all three fields
+// cleared in Admin -> SEO -> "Tracking & pixels". That page shows a per-field
+// "Live"/"Not set" dot, but nobody looks at it unless they already suspect a
+// problem. Same amber-not-grey treatment as checkTwilio above: a total loss of
+// ad attribution is a visible warning here, not a quiet grey "not configured".
+async function checkTracking(): Promise<Outcome> {
+  try {
+    const { getTrackingConfig, hasAnyTracking } = await import('@/lib/tracking');
+    const config = await getTrackingConfig();
+    if (!hasAnyTracking(config)) {
+      return {
+        light: 'amber',
+        detail: 'No ad-tracking IDs configured — GA4, Google Ads and the Meta Pixel are ALL off (browser pixels AND server-side CAPI conversions)',
+        info: ['Set at least one ID in Admin → SEO → "Tracking & pixels" to restore attribution.'],
+      };
+    }
+    const live = [config.ga4Id && 'GA4', config.googleAdsId && 'Google Ads', config.metaPixelId && 'Meta Pixel'].filter(Boolean) as string[];
+    const missing = [!config.ga4Id && 'GA4', !config.googleAdsId && 'Google Ads', !config.metaPixelId && 'Meta Pixel'].filter(Boolean) as string[];
+    // Partial config (e.g. no Google Ads yet) is normal and not worth an amber —
+    // only a total blackout (handled above) needs a visible warning.
+    return { light: 'green', detail: missing.length ? `${live.join(' + ')} configured; ${missing.join(' + ')} not set` : `${live.join(' + ')} all configured` };
+  } catch (e) { return { light: 'grey', detail: `Could not read tracking config — ${(e as Error)?.message?.slice(0, 60)}` }; }
+}
+
+// BLD-1273: every Sentry.captureException/captureMessage call across app/api/**
+// and lib/** (dozens of sites) is a silent no-op whenever SENTRY_DSN isn't set —
+// sentry.server.config.ts / sentry.edge.config.ts / instrumentation-client.ts all
+// skip Sentry.init() without a DSN and only console.warn once at boot. There's no
+// cheap read-only Sentry API to call here (unlike Stripe/Resend/etc.), so this is
+// a config-presence check, same shape as checkTracking above: amber (a visible
+// warning), not grey, because a total loss of error reporting is exactly the
+// class of "staff could assume it's on" misconfiguration that check already
+// treats as amber rather than a quiet grey "not configured".
+async function checkSentry(): Promise<Outcome> {
+  const server = has(process.env.SENTRY_DSN);
+  const client = has(process.env.NEXT_PUBLIC_SENTRY_DSN);
+  if (server && client) return { light: 'green', detail: 'SENTRY_DSN + NEXT_PUBLIC_SENTRY_DSN both set — server and client errors are captured' };
+  if (!server && !client) {
+    return {
+      light: 'amber',
+      detail: 'SENTRY_DSN not set — server + client errors are NOT reported to Sentry (falls back to a DB-logged trace + the ops webhook only when CRON_ALERT_WEBHOOK_URL is set)',
+      info: ['Set SENTRY_DSN (server) and NEXT_PUBLIC_SENTRY_DSN (client) in Vercel env to restore full error reporting.'],
+    };
+  }
+  return {
+    light: 'amber',
+    detail: server ? 'SENTRY_DSN set but NEXT_PUBLIC_SENTRY_DSN missing — client-side (browser) errors are not reported' : 'NEXT_PUBLIC_SENTRY_DSN set but SENTRY_DSN missing — server-side errors are not reported',
+  };
+}
+
 async function checkGithub(): Promise<Outcome> {
   try {
     const { getGithubConfig } = await import('@/lib/build-board');
@@ -430,21 +482,31 @@ async function checkGithub(): Promise<Outcome> {
 export type CronStaleness = {
   daily: Date | null;
   dispatch: Date | null;
+  kioskCleanup: Date | null;
   dailyOk: boolean;
   dispatchOk: boolean;
-  /** True when either heartbeat has fallen outside its expected window. */
+  kioskCleanupOk: boolean;
+  /** True when a heartbeat that has been written before has fallen outside its
+   *  expected window. A heartbeat key that has never been written at all is
+   *  reported as not-ok (amber on the traffic light) but does NOT set this flag —
+   *  see the note on `kioskCleanupOk` in getCronStaleness. */
   stale: boolean;
 };
 
-// Expected cadence: daily runner every 24h, dispatcher every 15m — see vercel.json.
+// Expected cadence: daily runner every 24h, dispatcher every 15m, kiosk-cleanup
+// (GDPR purge) daily — see vercel.json.
 const DAILY_MAX_AGE_MS = 26 * 3600000;
 const DISPATCH_MAX_AGE_MS = 30 * 60000;
+const KIOSK_CLEANUP_MAX_AGE_MS = 26 * 3600000;
 
-/** Reads the cron heartbeats (written by app/api/cron/daily + app/api/cron/dispatch)
- *  and reports whether each is within its expected window. Shared by the
- *  /admin/api-health traffic light (checkCron, below) and the /api/health probe
- *  that Vercel Cron polls + alerts on (app/api/health/route.ts), so a silently
- *  broken cron is caught by both without duplicating the staleness thresholds. */
+/** Reads the cron heartbeats (written by app/api/cron/daily, app/api/cron/dispatch
+ *  and app/api/cron/kiosk-cleanup) and reports whether each is within its expected
+ *  window. Shared by the /admin/api-health traffic light (checkCron, below) and the
+ *  /api/health probe that Vercel Cron polls + alerts on (app/api/health/route.ts),
+ *  so a silently broken cron is caught by both without duplicating the staleness
+ *  thresholds. BLD-1272: kiosk-cleanup is the GDPR purge of visitor selfie photos —
+ *  a silently-unfiring run is a PII retention breach with no alert, so it gets the
+ *  same heartbeat treatment as the other two runners. */
 export async function getCronStaleness(): Promise<CronStaleness> {
   const read = async (key: string) => {
     const r = await db.setting.findUnique({ where: { key } });
@@ -452,19 +514,36 @@ export async function getCronStaleness(): Promise<CronStaleness> {
   };
   const daily = await read('cron_daily_last');
   const dispatch = await read('cron_dispatch_last');
+  const kioskCleanup = await read('cron_kiosk_cleanup_last');
   const dailyOk = Boolean(daily && Date.now() - daily.getTime() < DAILY_MAX_AGE_MS);
   const dispatchOk = Boolean(dispatch && Date.now() - dispatch.getTime() < DISPATCH_MAX_AGE_MS);
-  return { daily, dispatch, dailyOk, dispatchOk, stale: !dailyOk || !dispatchOk };
+  const kioskCleanupOk = Boolean(kioskCleanup && Date.now() - kioskCleanup.getTime() < KIOSK_CLEANUP_MAX_AGE_MS);
+  // cron_kiosk_cleanup_last is written for the first time by the deploy that
+  // introduced it, so between that deploy and the first 03:30 run the row does
+  // not exist. /api/health turns `stale` into a 503 plus a Sentry error and an
+  // ops-webhook message EVERY five minutes with no dedupe watermark, so counting
+  // a never-written heartbeat as stale would page for up to a day after each
+  // fresh environment comes up and drown out a real outage. A missing row is
+  // therefore reported (kioskCleanupOk false → amber on /admin/api-health and
+  // /admin/status, where a human can see it) but is not alert-worthy; once the
+  // purge has run once, an aged heartbeat behaves exactly like the other two.
+  const kioskCleanupStale = Boolean(kioskCleanup) && !kioskCleanupOk;
+  // BLD-1381: same reasoning applies to daily/dispatch — a fresh DB, preview
+  // branch or staging reset has never had the chance to write these heartbeats
+  // either, so a missing row must not page (mirrors kioskCleanupStale above).
+  const dailyStale = Boolean(daily) && !dailyOk;
+  const dispatchStale = Boolean(dispatch) && !dispatchOk;
+  return { daily, dispatch, kioskCleanup, dailyOk, dispatchOk, kioskCleanupOk, stale: dailyStale || dispatchStale || kioskCleanupStale };
 }
 
 async function checkCron(): Promise<Outcome> {
   try {
-    const { daily, dispatch, dailyOk, dispatchOk } = await getCronStaleness();
-    const light: Light = dailyOk && dispatchOk ? 'green' : (daily || dispatch) ? 'amber' : 'red';
+    const { daily, dispatch, kioskCleanup, dailyOk, dispatchOk, kioskCleanupOk } = await getCronStaleness();
+    const light: Light = dailyOk && dispatchOk && kioskCleanupOk ? 'green' : (daily || dispatch || kioskCleanup) ? 'amber' : 'red';
     return {
       light,
-      detail: `Daily ${ago(daily)} · dispatcher ${ago(dispatch)}`,
-      info: light !== 'green' ? ['Reminders, follow-ups and scheduled sends depend on these runners (Vercel cron).'] : undefined,
+      detail: `Daily ${ago(daily)} · dispatcher ${ago(dispatch)} · kiosk cleanup ${ago(kioskCleanup)}`,
+      info: light !== 'green' ? ['Reminders, follow-ups, scheduled sends and the kiosk GDPR photo purge depend on these runners (Vercel cron).'] : undefined,
     };
   } catch (e) { return { light: 'grey', detail: `Could not read heartbeats — ${(e as Error)?.message?.slice(0, 60)}` }; }
 }
@@ -508,7 +587,7 @@ const CHECKS: Def[] = [
   { id: 'public-api', label: 'Public site & API', category: 'Core', critical: true, probe: `GET ${site.url}/api/health`, run: checkPublicApi },
   { id: 'blob', label: 'File storage (Vercel Blob)', category: 'Core', probe: 'Blob list (limit 1)', run: checkBlob },
   { id: 'redis', label: 'Rate limiting (Upstash Redis)', category: 'Core', probe: 'GET …upstash.io/ping', run: checkRedis },
-  { id: 'cron', label: 'Scheduled jobs (Vercel cron)', category: 'Core', critical: true, probe: 'Heartbeats written by /api/cron/daily + /api/cron/dispatch', run: checkCron },
+  { id: 'cron', label: 'Scheduled jobs (Vercel cron)', category: 'Core', critical: true, probe: 'Heartbeats written by /api/cron/daily + /api/cron/dispatch + /api/cron/kiosk-cleanup', run: checkCron },
 
   { id: 'stripe', label: 'Payments (Stripe)', category: 'Payments', critical: true, probe: 'GET api.stripe.com/v1/balance', run: checkStripe },
 
@@ -527,12 +606,14 @@ const CHECKS: Def[] = [
   { id: 'google-ads', label: 'Google Ads', category: 'Marketing', probe: 'OAuth refresh-token grant', run: checkGoogleAds },
   { id: 'tiktok', label: 'TikTok Ads', category: 'Marketing', probe: 'GET advertiser list with stored token', run: checkTikTok },
   { id: 'ga4', label: 'GA4 conversions', category: 'Marketing', probe: 'POST GA4 /debug/mp/collect (validates, records nothing)', run: checkGa4 },
+  { id: 'tracking-ids', label: 'Ad tracking pixels', category: 'Marketing', probe: 'Reads tracking_config — amber if GA4 + Google Ads + Meta Pixel are ALL unset', run: checkTracking },
 
   { id: 'places', label: 'Google rating (Places API)', category: 'Scheduling & Reviews', probe: 'GET maps.googleapis.com place/details', run: checkPlaces },
   { id: 'google-business', label: 'Google Business Profile', category: 'Scheduling & Reviews', probe: 'Accounts + locations list with stored token', run: checkGoogleBusiness },
   { id: 'gcal', label: 'Google Calendar', category: 'Scheduling & Reviews', probe: 'Config + connected staff (parked)', run: checkGoogleCalendar },
   { id: 'caldav', label: 'Clinic calendar (CalDAV)', category: 'Scheduling & Reviews', probe: 'OPTIONS on the CalDAV collection', run: checkCalDav },
 
+  { id: 'sentry', label: 'Error monitoring (Sentry)', category: 'Platform', probe: 'Reads SENTRY_DSN / NEXT_PUBLIC_SENTRY_DSN env presence', run: checkSentry },
   { id: 'github', label: 'GitHub (board mirror)', category: 'Platform', probe: 'GET api.github.com/repos/{repo}', run: checkGithub },
   { id: 'indexnow', label: 'IndexNow (SEO pings)', category: 'Platform', probe: 'GET /indexnow-key.txt + key match', run: checkIndexNow },
   { id: 'weather', label: 'Weather (Open-Meteo)', category: 'Platform', probe: 'GET api.open-meteo.com forecast', run: checkWeather },

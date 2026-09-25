@@ -96,6 +96,7 @@ async function aiSuggest(input: { title?: string; description?: string; path?: s
       method: 'POST',
       headers: { 'content-type': 'application/json', 'x-api-key': key, 'anthropic-version': '2023-06-01' },
       body: JSON.stringify({ model: 'claude-haiku-4-5-20251001', max_tokens: 700, messages: [{ role: 'user', content: prompt }] }),
+      signal: AbortSignal.timeout(20_000),
     });
     if (!res.ok) throw new Error(`Anthropic ${res.status}`);
     const j = await res.json();

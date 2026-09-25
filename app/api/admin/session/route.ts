@@ -9,7 +9,11 @@ export const runtime = 'nodejs';
 export async function POST(req: Request) {
   if (!crmEnabled) return NextResponse.json({ ok: false }, { status: 503 });
   const { getSession, destroySession } = await import('@/lib/auth');
-  const session = await getSession();
+  // BLD-1306: "sign out everywhere" is a session-termination control (it only
+  // ever revokes access, never grants it), so — like /api/admin/logout — it
+  // stays reachable for a needsSetup:true (2FA-pending) session even though
+  // getSession() now rejects such sessions by default everywhere else.
+  const session = await getSession(true);
   if (!session) return NextResponse.json({ ok: false, error: 'Not signed in.' }, { status: 401 });
 
   const body = await req.json().catch(() => ({}));

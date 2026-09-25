@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 
 export type RedirectRow = { id: string; fromPath: string; toUrl: string; code: number; active: boolean; note: string | null };
 
-const field = 'rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-2 py-1.5 text-sm';
+const field = 'rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-porcelain)] px-2 py-1.5 text-sm';
 
 async function post(payload: object) {
   const res = await fetch('/api/admin/redirects', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
@@ -81,7 +81,7 @@ function BulkPanel() {
       </div>
       {open && (
         <div className="mt-3 space-y-2">
-          <textarea value={text} onChange={(e) => setText(e.target.value)} rows={6} placeholder={'/old-laser, /treatments/laser-hair-removal\n/promo-2023, /offers'} aria-label="Redirects, one per line" className="w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white p-3 font-mono text-xs" />
+          <textarea value={text} onChange={(e) => setText(e.target.value)} rows={6} placeholder={'/old-laser, /treatments/laser-hair-removal\n/promo-2023, /offers'} aria-label="Redirects, one per line" className="w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-3 font-mono text-xs" />
           <div className="flex items-center gap-2"><button onClick={run} className="rounded-full bg-[var(--color-ink)] px-4 py-1.5 text-sm text-[var(--color-porcelain)]">Import</button>{msg && <span className="text-sm text-[var(--color-stone)]">{msg}</span>}</div>
         </div>
       )}
@@ -104,7 +104,7 @@ function Row({ r }: { r: RedirectRow }) {
       <td className="p-3 text-xs text-[var(--color-stone)]">{r.code}</td>
       <td className="p-3 text-right">
         <span className="flex items-center justify-end gap-3">
-          {dirty ? <button onClick={save} className="rounded-full bg-[var(--color-gold-deep)] px-3 py-1 text-xs text-white">Save</button> : saved ? <span className="text-xs text-green-700">Saved ✓</span> : null}
+          {dirty ? <button onClick={save} className="rounded-full bg-[var(--color-gold-deep)] px-3 py-1 text-xs text-white">Save</button> : saved ? <span className="text-xs text-[var(--color-jade)]">Saved ✓</span> : null}
           <button onClick={toggle} className="text-xs text-[var(--color-stone)] hover:underline">{r.active ? 'Disable' : 'Enable'}</button>
           <button onClick={remove} className="text-xs text-[var(--color-blush-deep)] hover:underline">Delete</button>
         </span>

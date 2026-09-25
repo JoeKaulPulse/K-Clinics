@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Elements, PaymentElement, useElements, useStripe } from '@stripe/react-stripe-js';
@@ -23,8 +23,13 @@ export function EnrolmentCheckout(props: {
   hasPlan: boolean;
   instalments: Instalment[];
 }) {
-  const { enrolmentId, courseTitle, feePence, paidPence, outstandingPence, depositPence, hasPlan, instalments } = props;
+  const { enrolmentId, courseTitle, courseSlug, feePence, paidPence, outstandingPence, depositPence, hasPlan, instalments } = props;
   const router = useRouter();
+  // The payment step has a "← Change" button back to the choice screen, so
+  // start() can run more than once per visit (deposit → change → full). GA4
+  // begin_checkout / Meta InitiateCheckout must only count the first one,
+  // otherwise one learner inflates the checkout-start step of the funnel.
+  const checkoutPixelFired = useRef(false);
   const [stage, setStage] = useState<'choose' | 'pay' | 'done'>('choose');
   const [clientSecret, setClientSecret] = useState('');
   const [paymentId, setPaymentId] = useState('');
@@ -41,6 +46,17 @@ export function EnrolmentCheckout(props: {
     setBusy(false);
     if (!j.ok) { setError(j.error || 'Could not start the payment.'); return; }
     setClientSecret(j.clientSecret); setPaymentId(j.paymentId); setChargePence(j.amountPence); setStage('pay');
+    // BLD-1310: fire the checkout-start pixels the moment the learner reaches the
+    // Stripe payment step (mirrors BookingFlow.tsx's begin_checkout/InitiateCheckout).
+    // The item id is the course slug, not the enrolment id: a per-learner id is
+    // unique on every event, so GA4 item reports and Meta's catalogue/retargeting
+    // would never group two learners on the same course.
+    if (!checkoutPixelFired.current) {
+      checkoutPixelFired.current = true;
+      const value = (j.amountPence ?? 0) / 100;
+      try { (window as Window & { gtag?: (...a: unknown[]) => void }).gtag?.('event', 'begin_checkout', { currency: 'GBP', value, items: [{ item_id: courseSlug, item_name: courseTitle, item_category: 'academy' }] }); } catch { /* analytics best-effort */ }
+      try { (window as Window & { fbq?: (...a: unknown[]) => void }).fbq?.('track', 'InitiateCheckout', { currency: 'GBP', value, content_ids: [courseSlug], content_type: 'product' }); } catch { /* analytics best-effort */ }
+    }
   }
 
   if (outstandingPence <= 0 || stage === 'done') {
@@ -104,8 +120,8 @@ export function EnrolmentCheckout(props: {
             <h3 className="font-medium">Pay {money(chargePence)}</h3>
             <button onClick={() => { setStage('choose'); setError(''); }} className="text-xs text-[var(--color-stone)] hover:underline">← Change</button>
           </div>
-          <Elements stripe={getStripe()} options={{ clientSecret, appearance: { theme: 'flat', variables: { colorPrimary: '#a98a6d', fontFamily: 'system-ui, sans-serif', borderRadius: '10px', colorBackground: '#f6ece3' } } }}>
-            <PayStep paymentId={paymentId} onDone={() => { trackPurchase({ valuePence: chargePence, eventId: paymentId, metaPurchase: true }); setStage('done'); router.refresh(); }} />
+          <Elements stripe={getStripe()} options={{ clientSecret, appearance: { theme: 'flat', variables: { colorPrimary: '#816748', fontFamily: 'system-ui, sans-serif', borderRadius: '10px', colorBackground: '#f6ece3' } } }}>
+            <PayStep paymentId={paymentId} onDone={() => { trackPurchase({ valuePence: chargePence, eventId: paymentId, metaPurchase: true, detail: { transaction_id: paymentId, items: [{ item_id: courseSlug, item_name: courseTitle, item_category: 'academy' }] } }); setStage('done'); router.refresh(); }} />
           </Elements>
         </div>
       )}
@@ -121,12 +137,20 @@ function PayStep({ paymentId, onDone }: { paymentId: string; onDone: () => void 
   async function pay() {
     if (!stripe || !elements) return;
     setBusy(true); setErr('');
-    const { error } = await stripe.confirmPayment({ elements, redirect: 'if_required' });
-    if (error) { setErr(error.message || 'Payment failed.'); setBusy(false); return; }
-    const res = await fetch('/api/academy/pay/confirm', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ paymentId }) });
-    const j = await res.json().catch(() => ({}));
-    setBusy(false);
-    if (j.ok) onDone(); else setErr(j.error || 'Could not confirm your payment.');
+    // The button is disabled while busy, so a thrown confirm/fetch must still
+    // clear it — otherwise the learner is stuck on a dead "Processing…" button
+    // with no message after their card has been charged (PRJ-1060.4).
+    try {
+      const { error } = await stripe.confirmPayment({ elements, redirect: 'if_required' });
+      if (error) { setErr(error.message || 'Payment failed.'); setBusy(false); return; }
+      const res = await fetch('/api/academy/pay/confirm', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ paymentId }) });
+      const j = await res.json().catch(() => ({}));
+      setBusy(false);
+      if (j.ok) onDone(); else setErr(j.error || 'Could not confirm your payment.');
+    } catch {
+      setErr('We couldn’t confirm your payment. Check your email before paying again — if the payment went through, your enrolment is confirmed.');
+      setBusy(false);
+    }
   }
   return (
     <div>

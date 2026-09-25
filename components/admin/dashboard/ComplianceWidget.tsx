@@ -21,7 +21,7 @@ export async function ComplianceWidget() {
         </div>
         <div className="flex items-center gap-6">
           <div>
-            <p className={`font-[family-name:var(--font-display)] text-2xl ${s.expired > 0 ? 'text-red-700' : 'text-[var(--color-ink)]'}`}>{s.expired}</p>
+            <p className={`font-[family-name:var(--font-display)] text-2xl ${s.expired > 0 ? 'text-[var(--color-blush-deep)]' : 'text-[var(--color-ink)]'}`}>{s.expired}</p>
             <p className="text-xs text-[var(--color-stone)]">Expired</p>
           </div>
           <div>

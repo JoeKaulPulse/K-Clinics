@@ -103,10 +103,38 @@ export async function POST(req: Request) {
   // ── Approve / decline (managers) ──
   if (body.op === 'approve' || body.op === 'decline') {
     if (!canApprove) return NextResponse.json({ ok: false, error: 'Not permitted.' }, { status: 403 });
-    const { id, note } = body as { id?: string; note?: string };
+    const { id, note, force } = body as { id?: string; note?: string; force?: boolean };
     if (!id) return NextResponse.json({ ok: false, error: 'Bad request' }, { status: 400 });
     const row = await db.staffTimeOff.findUnique({ where: { id }, include: { staff: { select: { name: true, email: true } } } });
     if (!row) return NextResponse.json({ ok: false, error: 'Not found.' }, { status: 404 });
+
+    // BLD-1886: approving leave over a window where the staff member already
+    // has live appointments booked leaves reception and the client stranded —
+    // warn before approving (unless already confirmed with force: true), the
+    // same warn-and-confirm pattern as the reschedule/reassign conflicts.
+    let conflicts: { id: string; startAt: Date; endAt: Date }[] = [];
+    if (body.op === 'approve') {
+      const { overlapsBookingWindow } = await import('@/lib/booking-actions');
+      const candidates = await db.booking.findMany({
+        where: {
+          status: { in: ['PENDING', 'CONFIRMED'] }, practitionerId: row.staffId,
+          startAt: { gte: new Date(row.startAt.getTime() - 24 * 60 * 60 * 1000), lt: row.endAt },
+        },
+        select: { id: true, startAt: true, endAt: true, bufferMin: true },
+      });
+      conflicts = candidates.filter((b) => overlapsBookingWindow(row.startAt, row.endAt, b));
+      if (conflicts.length && !force) {
+        const soonest = conflicts.reduce((a, b) => (a.startAt < b.startAt ? a : b));
+        const when = soonest.startAt.toLocaleString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+        return NextResponse.json({
+          ok: false,
+          code: 'BOOKING_CONFLICT',
+          error: `${row.staff?.name || row.staff?.email} has ${conflicts.length} existing appointment${conflicts.length === 1 ? '' : 's'} in this window — the soonest is ${when}. Approve anyway if reception will reassign or contact ${conflicts.length === 1 ? 'that client' : 'those clients'}.`,
+          conflicts: conflicts.map((c) => ({ id: c.id, startAt: c.startAt.toISOString(), endAt: c.endAt.toISOString() })),
+        }, { status: 409 });
+      }
+    }
+
     const status = body.op === 'approve' ? 'APPROVED' : 'DECLINED';
     await db.staffTimeOff.update({ where: { id }, data: { status: status as never, reviewedBy: session.email, reviewedAt: new Date(), reviewNote: note?.slice(0, 500) || null } });
     await logAudit({
@@ -115,6 +143,32 @@ export async function POST(req: Request) {
       summary: `${row.kind.toLowerCase()} ${status.toLowerCase()} for ${row.staff?.name || row.staff?.email}: ${row.startAt.toLocaleDateString('en-GB')}–${row.endAt.toLocaleDateString('en-GB')}`,
       meta: { timeOffId: id },
     });
+    // PRJ-1118.8: tell the requester the outcome — same staff-notification
+    // mechanism (in-app + email per their prefs) used above for the original
+    // "request" ping to approvers, targeted at the requester by id since we
+    // hold row.staffId, not necessarily their email lower-cased (mirrors the
+    // notifyStaffById doc comment: "e.g. task assignment").
+    const { notifyStaffById } = await import('@/lib/notifications');
+    await notifyStaffById(row.staffId, {
+      kind: 'status', category: 'team', priority: 'high',
+      title: body.op === 'approve' ? 'Your time-off request was approved' : 'Your time-off request was declined',
+      body: `${row.kind.toLowerCase()} · ${row.startAt.toLocaleDateString('en-GB')}–${row.endAt.toLocaleDateString('en-GB')}${note ? ` · ${note.slice(0, 200)}` : ''}`,
+      href: '/admin/time-off',
+    }, session.sub).catch(() => {});
+
+    // BLD-1886: leave was approved over existing appointments (staff confirmed
+    // the conflict warning above) — reception needs to know so those
+    // appointments get reassigned or the clients contacted; nothing else
+    // surfaces this otherwise.
+    if (body.op === 'approve' && conflicts.length) {
+      const { notifyStaffByPermission } = await import('@/lib/notifications');
+      await notifyStaffByPermission('schedule.manage', {
+        kind: 'status', category: 'bookings', priority: 'urgent',
+        title: `Time off approved over ${conflicts.length} existing appointment${conflicts.length === 1 ? '' : 's'}`,
+        body: `${row.staff?.name || row.staff?.email} · ${row.startAt.toLocaleDateString('en-GB')}–${row.endAt.toLocaleDateString('en-GB')} — please reassign or contact the affected client${conflicts.length === 1 ? '' : 's'}.`,
+        href: '/admin/bookings',
+      }, session.email).catch(() => {});
+    }
     return NextResponse.json({ ok: true });
   }
 

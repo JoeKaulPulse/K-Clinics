@@ -10,7 +10,7 @@ export function RegisterForm() {
   const [pending, start] = useTransition();
 
   const field =
-    'w-full rounded-[var(--radius-md)] border border-[var(--color-line)] bg-[var(--color-porcelain)] px-4 py-3 text-base focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-gold)]';
+    'w-full rounded-[var(--radius-md)] border border-[var(--color-line)] bg-[var(--color-porcelain)] px-4 py-3 text-base';
 
   if (!open) {
     return (

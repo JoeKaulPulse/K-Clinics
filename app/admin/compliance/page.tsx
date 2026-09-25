@@ -4,7 +4,7 @@ import { getSession, sessionCan, sessionPermissions } from '@/lib/auth';
 import { AdminShell } from '@/components/admin/AdminShell';
 import { CrmDisabled } from '@/components/admin/CrmDisabled';
 import { getLocale } from '@/lib/locale';
-import { listRenewals } from '@/lib/renewals';
+import { listRenewals, ensureComplianceCalendarSeeded } from '@/lib/renewals';
 import { ComplianceManager } from '@/components/admin/ComplianceManager';
 
 export const dynamic = 'force-dynamic';
@@ -17,9 +17,14 @@ export default async function CompliancePage() {
   if (!sessionCan(session, 'compliance.view')) redirect('/admin');
   const canManage = sessionCan(session, 'compliance.manage');
 
+  // BLD-1830: self-healing seed for the two K-Clinics entities' statutory
+  // filing calendar (Companies House / HMRC deadlines) — first load after
+  // deploy backfills the rows, same pattern as ensureTaskRefs/ensureBuildRefs.
+  await ensureComplianceCalendarSeeded();
+
   const items = await listRenewals();
   const rows = items.map((r) => ({
-    id: r.id, name: r.name, category: r.category, provider: r.provider, reference: r.reference,
+    id: r.id, name: r.name, category: r.category, company: r.company, provider: r.provider, reference: r.reference,
     renewalAt: r.renewalAt.toISOString(), costPence: r.costPence, notes: r.notes,
     reminderDays: r.reminderDays, lastRenewedAt: r.lastRenewedAt ? r.lastRenewedAt.toISOString() : null,
     status: r.status, days: r.days,

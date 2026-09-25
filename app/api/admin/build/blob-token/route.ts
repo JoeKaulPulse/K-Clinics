@@ -20,14 +20,21 @@ export async function POST(req: Request) {
     const json = await handleUpload({
       body,
       request: req,
-      onBeforeGenerateToken: async () => ({
-        allowedContentTypes: [
-          'image/png', 'image/jpeg', 'image/webp', 'image/gif', 'image/avif', 'image/heic', 'image/heif',
-          'video/mp4', 'video/quicktime', 'video/webm', 'video/x-m4v', 'video/3gpp',
-        ],
-        maximumSizeInBytes: 200 * 1024 * 1024, // 200 MB — comfortably covers phone videos
-        addRandomSuffix: true,
-      }),
+      onBeforeGenerateToken: async (pathname) => {
+        // BLD-1628: scope the token to build/ paths (matches the academy homework/
+        // portfolio routes' pathname check, BLD-1544) — otherwise any staff member
+        // with build.view could request a token for an arbitrary pathname in the
+        // shared Blob store.
+        if (!pathname.startsWith('build/')) throw new Error('Please refresh the page and try again.');
+        return {
+          allowedContentTypes: [
+            'image/png', 'image/jpeg', 'image/webp', 'image/gif', 'image/avif', 'image/heic', 'image/heif',
+            'video/mp4', 'video/quicktime', 'video/webm', 'video/x-m4v', 'video/3gpp',
+          ],
+          maximumSizeInBytes: 200 * 1024 * 1024, // 200 MB — comfortably covers phone videos
+          addRandomSuffix: true,
+        };
+      },
       // No-op: the client persists the resulting URL via the board's `attach` op.
       onUploadCompleted: async () => {},
     });

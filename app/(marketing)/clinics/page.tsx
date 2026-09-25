@@ -5,7 +5,8 @@ import { Reveal, Stagger, StaggerItem } from '@/components/motion/Reveal';
 import { BookingButtons } from '@/components/booking/BookingButtons';
 import { AccessBadges } from '@/components/ui/AccessBadges';
 import { site } from '@/lib/site';
-import { pageMeta, JsonLd, breadcrumbLd, organizationLd } from '@/lib/seo';
+import { PhoneLink } from '@/components/marketing/PhoneLink';
+import { pageMeta, JsonLd, breadcrumbLd } from '@/lib/seo';
 
 // BLD-517: hourly ISR so these mostly-static pages are cached, not full SSR per request.
 export const revalidate = 3600;
@@ -13,7 +14,7 @@ export const revalidate = 3600;
 export const generateMetadata = (): Promise<Metadata> => pageMeta({
   title: 'Our Clinic — Find Us in Islington, London | KClinics',
   description:
-    'Visit KClinics on the border of the City of London and Islington — 4 Charterhouse Buildings, Goswell Road, EC1M 7AN. Step-free access, parking nearby and minutes from Barbican, Farringdon and Old Street.',
+    'Visit KClinics at 4 Charterhouse Buildings, Goswell Road, EC1M 7AN, on the Islington/City of London border. Step-free access, parking nearby.',
   path: '/clinics',
   keywords: ['KClinics location', 'aesthetics clinic Islington', 'clinic near Barbican Farringdon'],
 });
@@ -30,11 +31,11 @@ export default async function ClinicsPage() {
   const cms = await getPublishedPage('/clinics');
   if (cms) {
     const { SectionRenderer } = await import('@/components/cms/SectionRenderer');
-    return (<><JsonLd data={[organizationLd(), breadcrumbLd([{ name: 'Home', path: '/' }, { name: 'Our Clinics', path: '/clinics' }])]} /><SectionRenderer sections={cms} /></>);
+    return (<><JsonLd data={[breadcrumbLd([{ name: 'Home', path: '/' }, { name: 'Our Clinics', path: '/clinics' }])]} /><SectionRenderer sections={cms} /></>);
   }
   return (
     <>
-      <JsonLd data={[organizationLd(), breadcrumbLd([{ name: 'Home', path: '/' }, { name: 'Our Clinics', path: '/clinics' }])]} />
+      <JsonLd data={[breadcrumbLd([{ name: 'Home', path: '/' }, { name: 'Our Clinics', path: '/clinics' }])]} />
       <PageHero
         eyebrow="Our clinic"
         title="Find us in Clerkenwell."
@@ -55,7 +56,7 @@ export default async function ClinicsPage() {
               <dd><a href={site.mapLink} target="_blank" rel="noopener noreferrer" className="link-underline">{site.address.street}, {site.address.region} {site.address.postalCode}</a></dd>
             </div>
             <div className="flex flex-wrap gap-x-12 gap-y-5">
-              <div><dt className="eyebrow mb-1.5">Call</dt><dd><a href={site.phoneHref} className="link-underline">{site.phone}</a></dd></div>
+              <div><dt className="eyebrow mb-1.5">Call</dt><dd><PhoneLink className="link-underline" /></dd></div>
               <div><dt className="eyebrow mb-1.5">Email</dt><dd><a href={site.emailHref} className="link-underline">{site.email}</a></dd></div>
             </div>
             <div>
@@ -122,9 +123,9 @@ export default async function ClinicsPage() {
               <p className="eyebrow mb-3">Access for everyone</p>
               <h2 className="text-title">Comfortable, and easy to reach.</h2>
               <ul className="mt-6 space-y-3 text-[var(--color-ink-soft)]">
-                <li className="flex items-start gap-3"><span className="mt-1 text-[var(--color-gold)]">✦</span> Step-free, wheelchair-accessible entrance.</li>
-                <li className="flex items-start gap-3"><span className="mt-1 text-[var(--color-gold)]">✦</span> Accessible parking as close to the entrance as possible.</li>
-                <li className="flex items-start gap-3"><span className="mt-1 text-[var(--color-gold)]">✦</span> Spacious, comfortable waiting areas for clients using mobility aids.</li>
+                <li className="flex items-start gap-3"><span className="mt-1 text-[var(--color-gold-deep)]">✦</span> Step-free, wheelchair-accessible entrance.</li>
+                <li className="flex items-start gap-3"><span className="mt-1 text-[var(--color-gold-deep)]">✦</span> Accessible parking as close to the entrance as possible.</li>
+                <li className="flex items-start gap-3"><span className="mt-1 text-[var(--color-gold-deep)]">✦</span> Spacious, comfortable waiting areas for clients using mobility aids.</li>
               </ul>
               <p className="mt-5 text-sm text-[var(--color-stone)]">Anything you need to make your visit easier? Tell us when you book, or read our <Link href="/info/accessibility" className="link-underline font-medium text-[var(--color-ink)]">accessibility statement</Link>.</p>
             </div>

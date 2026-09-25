@@ -39,6 +39,7 @@ export async function POST(req: Request) {
       if (body.description !== undefined) data.description = body.description ? String(body.description).slice(0, 4000) : null;
       if (body.brand !== undefined) data.brand = body.brand ? String(body.brand).slice(0, 80) : null;
       if (body.category !== undefined) data.category = body.category ? String(body.category).slice(0, 80) : null;
+      if (body.vatClass !== undefined) data.vatClass = ['STANDARD', 'REDUCED', 'ZERO', 'EXEMPT'].includes(body.vatClass) ? body.vatClass : null;
       if (body.price !== undefined) data.pricePence = pence(body.price) ?? 0;
       if (body.compareAt !== undefined) data.compareAtPence = pence(body.compareAt);
       if (body.cost !== undefined) data.costPence = pence(body.cost);

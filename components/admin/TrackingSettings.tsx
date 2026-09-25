@@ -1,10 +1,11 @@
 'use client';
 
 import { useState } from 'react';
+import Link from 'next/link';
 
-const field = 'mt-1 w-full max-w-xs rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-3 py-2 text-sm font-mono';
+const field = 'mt-1 w-full max-w-xs rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-porcelain)] px-3 py-2 text-sm font-mono';
 
-export function TrackingSettings({ initial, conversions }: { initial: { ga4Id: string; googleAdsId: string; metaPixelId: string }; conversions?: { ga4: boolean; meta: boolean } }) {
+export function TrackingSettings({ initial, conversions }: { initial: { ga4Id: string; googleAdsId: string; metaPixelId: string }; conversions?: { ga4: boolean; meta: boolean; googleAds: boolean } }) {
   const [ga4Id, setGa4] = useState(initial.ga4Id);
   const [googleAdsId, setAds] = useState(initial.googleAdsId);
   const [metaPixelId, setMeta] = useState(initial.metaPixelId);
@@ -74,6 +75,18 @@ export function TrackingSettings({ initial, conversions }: { initial: { ga4Id: s
           <label className="text-xs text-[var(--color-stone)]">Meta Conversions API token {conversions?.meta && <span className="text-[var(--color-jade)]">· set ✓</span>}
             <input type="password" value={metaCapiToken} onChange={(e) => setMetaToken(e.target.value)} placeholder={conversions?.meta ? '•••••••• (set)' : 'paste token'} className={field} />
           </label>
+        </div>
+        {/* Google Ads offline conversion upload — uploads booking value against the landing
+            GCLID for value-based Smart Bidding. Configured via the developer token, conversion
+            action id and a connected Google account (Settings → Credentials), not here, so this
+            is status-only (PRJ-1200.14). */}
+        <div className="mt-4 text-xs text-[var(--color-stone)]">
+          Google Ads offline conversions {conversions?.googleAds ? <span className="text-[var(--color-jade)]">· configured ✓</span> : <span className="text-[var(--color-stone)]">· not configured</span>}
+          <p className="mt-1 max-w-2xl text-xs leading-relaxed text-[var(--color-stone)]">
+            {conversions?.googleAds
+              ? 'Charged bookings with a captured GCLID are uploaded to Google Ads for value-based Smart Bidding.'
+              : <>Needs a connected Google account, the Ads developer token and a conversion action id — set these in <Link href="/admin/settings/credentials" className="underline">Credentials</Link> (Ads group).</>}
+          </p>
         </div>
       </div>
       <div className="mt-4 flex items-center gap-3">

@@ -11,16 +11,69 @@ import {
 } from './email';
 import { logAudit } from './audit';
 import { CLINIC_TZ } from './clinic-time';
+import { isWithinSelfServiceWindow, SELF_SERVICE_WINDOW_MS, SELF_SERVICE_CLOSED_MESSAGE } from './cancellation-policy';
 import type { Booking, Client } from '@prisma/client';
 
 const CANCEL_WINDOW_MS = 24 * 60 * 60 * 1000;
-const RESCHEDULE_WINDOW_MS = 48 * 60 * 60 * 1000;
+// BLD-1920: the self-service cancel/reschedule window now lives in
+// lib/cancellation-policy.ts (a plain module, shared with client components).
+// Kept as a local alias so the rest of this file — and RESCHEDULE_WINDOW_MS's
+// existing call sites below — don't need to change.
+const RESCHEDULE_WINDOW_MS = SELF_SERVICE_WINDOW_MS;
 const MAX_FREE_RESCHEDULES = 3;
+// PRJ-1043.3: a PENDING booking holds its slot from creation until the client
+// finishes card setup (see app/api/booking/create). If they close the tab
+// (or a bot only ever hits /create) the hold never clears — the only existing
+// PENDING->CANCELLED paths are an immediate SetupIntent failure or an explicit
+// cancel. 45 minutes gives a genuine checkout (including a slow 3DS challenge)
+// comfortable room while still bounding the hold — wider than the kiosk
+// session's 30-min TTL (lib/kiosk.ts SESSION_TTL_MS), the closest "abandoned
+// in-progress" precedent in this codebase, since card setup can legitimately
+// take longer than a kiosk selfie.
+const PENDING_ABANDON_MS = 45 * 60 * 1000;
 
 type BookingWithClient = Booking & { client: Client };
 
+// BLD-1166: a bare `import().then().catch()` with no await can be frozen
+// mid-flight once the caller's response is sent — Vercel's serverless runtime
+// suspends the function, so the pending call may silently never complete (the
+// same bug already fixed for the ops-alert webhook, BLD-1137). This awaits a
+// best-effort background call but caps the wait so a slow provider can't hold
+// up the response either.
+// Never rejects: the swallow is on `p` itself, so a rejection can't escape the
+// race. The timer is cleared when the call wins (BLD-281 pattern in lib/email)
+// so a fast provider doesn't leave a 10s timer pinning the event loop.
+async function bestEffort(p: Promise<unknown>, ms = 10_000): Promise<void> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  await Promise.race([
+    p.then(() => {}).catch(() => {}),
+    new Promise<void>((resolve) => { timer = setTimeout(resolve, ms); }),
+  ]).finally(() => { if (timer) clearTimeout(timer); });
+}
+
 export function isWithin24h(b: Pick<Booking, 'startAt'>): boolean {
   return b.startAt.getTime() - Date.now() < CANCEL_WINDOW_MS;
+}
+
+/** Late-cancellation fee in pence: the price net of redeemed points (BLD-733)
+ *  and an applied gift voucher (BLD-1236). cancelBooking charges exactly this,
+ *  and the portal cancel dialog shows it (BLD-1878), so both read one formula. */
+export function lateCancelFeePence(b: Pick<Booking, 'pricePence' | 'pointsRedeemedPence' | 'giftVoucherPence'>): number {
+  return Math.max(0, b.pricePence - (b.pointsRedeemedPence ?? 0) - (b.giftVoucherPence ?? 0));
+}
+
+/** What a client-initiated cancellation inside 24h would do, following
+ *  cancelBooking's branches (no waiver on the client path). 'unclear' covers
+ *  the cases where no card charge is taken but value is still kept (already
+ *  paid, or a fee fully covered by points/voucher); the dialog uses the
+ *  general policy wording for those rather than stating an amount. */
+export type LateCancelOutcome = { kind: 'fee'; pence: number } | { kind: 'session' } | { kind: 'none' } | { kind: 'unclear' };
+export function lateCancelOutcome(b: Pick<Booking, 'pricePence' | 'pointsRedeemedPence' | 'giftVoucherPence' | 'packageBookingId' | 'chargedAt' | 'prepaidAt'>): LateCancelOutcome {
+  if (b.packageBookingId) return b.pricePence > 0 ? { kind: 'unclear' } : { kind: 'session' };
+  if (b.pricePence <= 0) return { kind: 'none' };
+  if (b.chargedAt || b.prepaidAt) return { kind: 'unclear' };
+  const pence = lateCancelFeePence(b);
+  return pence > 0 ? { kind: 'fee', pence } : { kind: 'unclear' };
 }
 
 /**
@@ -30,22 +83,52 @@ export function isWithin24h(b: Pick<Booking, 'startAt'>): boolean {
  * pricePence to (price-per-session × sessions), and the booking detail derives
  * `basePence` the same way (booking.pricePence minus add-ons). We read the
  * primary item directly so the link, the validation and the badge all agree.
- * Returns { pence, sessions, label }; pence is 0 for an on-consultation (£0)
- * booking, which callers must reject (nothing to pre-pay).
+ * Returns { pence, grossPence, sessions, label }; pence is 0 for an
+ * on-consultation (£0) booking, which callers must reject (nothing to pre-pay).
+ *
+ * BLD-1186: pricePence — both the booking-level figure and the line item's —
+ * is always the GROSS price. Redeeming loyalty points or a gift voucher never
+ * rewrites it; the discount is tracked separately in pointsRedeemedPence /
+ * giftVoucherPence and netted off at the point of charge instead (the same
+ * pattern already used for the card-on-file charge in
+ * app/admin/bookings/actions.ts, BLD-882/BLD-1001). Net both fields off here
+ * too, for whichever branch below supplies the gross figure — the primary
+ * line item or the legacy no-line-item fallback — since neither is ever
+ * pre-discounted.
+ *
+ * `pence` is therefore what the client still OWES for the course (what a BNPL
+ * link must collect). `grossPence` is the same figure BEFORE those redemptions:
+ * it is what callers must compare against booking.pricePence, which is itself
+ * always gross (BLD-1186 review). Mixing the two — netted course vs gross
+ * booking — makes any "is there anything on top of the course?" test read a
+ * discount as an add-on.
+ *
+ * BLD-1286: the primary line item's OWN pricePence is gross of its
+ * discountPence too — the automatic offer/welcome/promo discount recorded at
+ * booking time (app/api/booking/start/route.ts sets booking.pricePence to the
+ * sum of pricePence - discountPence per item, so the booking-level figure is
+ * already net of it, but the raw line-item pricePence read here was not). Net
+ * it off here as well — the same subtraction already used at receipt time
+ * (receiptDetail below) and by the gamification/session-snapshot readers of
+ * this same field — otherwise a BNPL link for a discounted course quotes the
+ * undiscounted price.
  */
-export async function courseTotalPence(bookingId: string): Promise<{ pence: number; sessions: number; label: string } | null> {
-  const booking = await db.booking.findUnique({ where: { id: bookingId }, select: { pricePence: true, treatmentTitle: true } });
+export async function courseTotalPence(bookingId: string): Promise<{ pence: number; grossPence: number; sessions: number; label: string } | null> {
+  const booking = await db.booking.findUnique({ where: { id: bookingId }, select: { pricePence: true, treatmentTitle: true, pointsRedeemedPence: true, giftVoucherPence: true } });
   if (!booking) return null;
   const primary = await db.bookingItem.findFirst({
     where: { bookingId, isAddon: false },
     orderBy: { createdAt: 'asc' },
-    select: { pricePence: true, sessions: true, label: true },
+    select: { pricePence: true, discountPence: true, sessions: true, label: true },
   });
   // Prefer the primary line item (course total + session count). Fall back to
-  // the booking price for legacy bookings created without line items.
+  // the booking price for legacy bookings created without line items — that
+  // fallback, booking.pricePence, is already net of the item's discountPence
+  // (unlike the raw line-item figure), so it's used as-is.
   const sessions = Math.max(1, primary?.sessions ?? 1);
-  const pence = primary?.pricePence ?? booking.pricePence ?? 0;
-  return { pence, sessions, label: primary?.label || booking.treatmentTitle };
+  const grossPence = primary ? Math.max(0, primary.pricePence - (primary.discountPence ?? 0)) : (booking.pricePence ?? 0);
+  const pence = Math.max(0, grossPence - (booking.pointsRedeemedPence ?? 0) - (booking.giftVoucherPence ?? 0));
+  return { pence, grossPence, sessions, label: primary?.label || booking.treatmentTitle };
 }
 
 /**
@@ -95,7 +178,10 @@ async function receiptDetail(bookingId: string, paymentMethodId?: string | null)
 export async function chargeBooking(
   booking: BookingWithClient,
   amountPence: number,
-  opts: { late?: boolean } = {},
+  // BLD-1347: `reason` only labels the charge (Stripe description + receipt
+  // subject) so a missed appointment isn't billed as a "late cancellation".
+  // The idempotency key stays keyed on `late`, so the two can never both charge.
+  opts: { late?: boolean; reason?: 'late-cancel' | 'no-show' } = {},
   // `alreadyPaid` means this call took NO money because the booking was already
   // settled (an earlier charge, or a BNPL course pre-payment). Callers that
   // report a fee to the client must treat it as "nothing charged", not as a
@@ -130,8 +216,8 @@ export async function chargeBooking(
       payment_method: booking.stripePaymentMethodId,
       off_session: true,
       confirm: true,
-      description: `${opts.late ? 'Late cancellation' : 'Treatment'} — ${booking.treatmentTitle}`,
-      metadata: { bookingId: booking.id, late: String(Boolean(opts.late)) },
+      description: `${opts.late ? (opts.reason === 'no-show' ? 'Missed appointment' : 'Late cancellation') : 'Treatment'} — ${booking.treatmentTitle}`,
+      metadata: { bookingId: booking.id, late: String(Boolean(opts.late)), ...(opts.reason ? { reason: opts.reason } : {}) },
     }, {
       // …and a stable idempotency key so concurrent creates collapse to ONE
       // PaymentIntent at Stripe (one charge per booking, treatment vs late-fee).
@@ -141,7 +227,10 @@ export async function chargeBooking(
     if (pi.status === 'succeeded') {
       await db.booking.update({
         where: { id: booking.id },
-        data: { chargePaymentIntentId: pi.id, chargedPence: pi.amount_received ?? amountPence, chargedAt: new Date() },
+        // BLD-1874: this is always the saved-card off-session path (chargeBooking
+        // never runs for a payment link/terminal/external channel — those settle
+        // through finalizeBookingCharge or the 'external' route.ts case instead).
+        data: { chargePaymentIntentId: pi.id, chargedPence: pi.amount_received ?? amountPence, chargedAt: new Date(), paymentMethod: 'card' },
       });
       // VAT breakdown on the receipt once the clinic is VAT-registered (dormant otherwise).
       let vat: { netPence: number; vatPence: number; ratePct: number } | null = null;
@@ -162,7 +251,7 @@ export async function chargeBooking(
       const detail = opts.late ? null : await receiptDetail(booking.id, booking.stripePaymentMethodId).catch(() => null);
       const receipt = await sendEmail({
         to: booking.client.email,
-        subject: opts.late ? 'Late-cancellation fee — KClinics' : `Receipt — ${booking.treatmentTitle}`,
+        subject: opts.late ? (opts.reason === 'no-show' ? 'Missed appointment fee — KClinics' : 'Late-cancellation fee — KClinics') : `Receipt — ${booking.treatmentTitle}`,
         html: tmplChargeReceipt({ firstName: booking.client.firstName, treatment: booking.treatmentTitle, pricePence: amountPence, late: opts.late, vat, ...(detail ?? {}) }),
       });
       if (!receipt.ok) console.error('[charge] receipt email failed:', receipt.error);
@@ -245,13 +334,21 @@ export async function refundBooking(
       return { ok: false, error: `Couldn’t return the balance to voucher ${booking.giftVoucherCode} — try again. (${(e as Error)?.message || 'unknown error'})` };
     }
   }
+  // BLD-1234: Stripe's ground-truth cumulative amount_refunded on the charge —
+  // when present, the CAS loop below reconciles against this (like the
+  // charge.refunded webhook does) instead of blindly re-adding `amount` on
+  // every retry, so a lost CAS (a concurrent identical click, or the webhook
+  // echo of this same refund winning the race) can't double-record the money.
+  let stripeRefundedTotal: number | null = null;
   if (!isExternalPayment) {
     try {
-      await stripe().refunds.create({
+      const refund = await stripe().refunds.create({
         payment_intent: booking.chargePaymentIntentId,
         amount,
         metadata: { bookingId: booking.id, reason: (opts.reason || '').slice(0, 200) },
+        expand: ['charge'],
       }, { idempotencyKey: `refund-${booking.id}-from-${booking.refundedPence ?? 0}-${amount}` });
+      if (refund.charge && typeof refund.charge !== 'string') stripeRefundedTotal = refund.charge.amount_refunded ?? null;
     } catch (e) {
       return { ok: false, error: e instanceof Error ? e.message : 'Refund failed at Stripe.' };
     }
@@ -265,14 +362,40 @@ export async function refundBooking(
   // CAS we re-read the booking and retry (up to 2 times), mirroring the
   // charge.refunded webhook handler's pattern, rather than silently dropping
   // the loyalty/Xero/email side-effects for this refund.
+  //
+  // BLD-1287 (review): the two "nothing left to record" exits below return
+  // straight out instead of breaking. Both mean a concurrent writer has ALREADY
+  // reconciled this money and run the side-effects itself — the in-app refund
+  // route is the only side-effect runner for an in-app refund, because the
+  // charge.refunded webhook skips any refund carrying metadata.bookingId — so
+  // falling through would raise a second Xero credit note, send the client a
+  // second refund email, fire a second GA4 refund event and log a second
+  // PAYMENT_REFUNDED entry for one movement of money. The booking IS refunded
+  // to the returned total, so this is still ok: true; there is simply nothing
+  // further for this call to do.
   let current = booking;
   let totalRefunded = (current.refundedPence ?? 0) + amount;
   let fully = totalRefunded >= (current.chargedPence ?? 0);
-  let claimed = { count: 0 };
   for (let attempt = 0; ; attempt++) {
-    totalRefunded = (current.refundedPence ?? 0) + amount;
+    if (stripeRefundedTotal != null) {
+      const delta = stripeRefundedTotal - (current.refundedPence ?? 0);
+      if (delta <= 0) return { ok: true, refundedPence: current.refundedPence ?? 0 };
+      totalRefunded = (current.refundedPence ?? 0) + delta;
+    } else {
+      // BLD-1287: cash/ext_*/voucher-paid bookings have no Stripe ground truth to
+      // reconcile against (unlike the branch above), so re-validate the cap
+      // against chargedPence on every retry attempt too — not just the entry
+      // check at the top of this function. A lost CAS means a concurrent refund
+      // attempt (double-click, two staff, a retry) already advanced
+      // refundedPence in between; blindly re-adding `amount` to whatever we
+      // re-read could push the recorded total above what was actually charged.
+      // Mirrors the ground-truth branch's own early-exit + cap.
+      const already = current.refundedPence ?? 0;
+      if (already >= (current.chargedPence ?? 0)) return { ok: true, refundedPence: already };
+      totalRefunded = Math.min(already + amount, current.chargedPence ?? 0);
+    }
     fully = totalRefunded >= (current.chargedPence ?? 0);
-    claimed = await db.booking.updateMany({
+    const claimed = await db.booking.updateMany({
       where: { id: current.id, refundedPence: current.refundedPence },
       data: { refundedPence: totalRefunded, refundedAt: new Date(), refundReason: opts.reason?.slice(0, 500) || current.refundReason || null },
     });
@@ -298,7 +421,7 @@ export async function refundBooking(
   // BLD-836: also claw back the SPEND points EARNED on the refunded money —
   // refundBookingPoints only returns redeemed points. Pro-rata on partials,
   // idempotent by ledger arithmetic inside the helper.
-  try { const { reverseSpendPoints } = await import('@/lib/client-loyalty'); await reverseSpendPoints(booking.id, totalRefunded, booking.chargedPence ?? 0); } catch { /* non-fatal */ }
+  try { const { reverseSpendPoints } = await import('@/lib/client-loyalty'); await reverseSpendPoints(booking.id, totalRefunded, booking); } catch { /* non-fatal */ }
 
   // BLD-882: a partial-voucher booking's chargedPence is the card remainder
   // only — when THAT is fully refunded, the voucher-covered portion goes back
@@ -325,8 +448,17 @@ export async function refundBooking(
     await sendEmail({ to: booking.client.email, subject: `Refund processed — ${booking.treatmentTitle}`, html: tmplRefund({ firstName: booking.client.firstName, treatment: booking.treatmentTitle, amountPence: amount, fully }) });
   } catch { /* email best-effort */ }
 
-  // Net the refund out of ad/analytics ROAS (GA4 refund event), best-effort.
-  try { const { sendRefund } = await import('@/lib/conversions'); await sendRefund({ bookingId: booking.id, valuePence: amount, clientId: booking.clientId, analyticsConsent: booking.analyticsConsent }); } catch { /* non-fatal */ }
+  // Net the refund out of ad/analytics ROAS (GA4 refund event) and, when a
+  // GCLID was captured, adjust the original Google Ads offline conversion down
+  // to the booking's remaining net value — 0 on a full refund (PRJ-1200.3).
+  try {
+    const { sendRefund } = await import('@/lib/conversions');
+    await sendRefund({
+      bookingId: booking.id, valuePence: amount, clientId: booking.clientId,
+      analyticsConsent: booking.analyticsConsent, marketingConsent: booking.marketingConsent,
+      gclid: booking.gclid, adjustedValuePence: Math.max(0, (booking.chargedPence ?? 0) - totalRefunded),
+    });
+  } catch { /* non-fatal */ }
 
   // Books: raise the matching Xero credit note (+ cash refund), best-effort.
   try { const { pushBookingRefundToXero } = await import('@/lib/xero'); await pushBookingRefundToXero(booking.id, amount, opts.reason); } catch { /* non-fatal */ }
@@ -349,14 +481,18 @@ export async function finalizeBookingCharge(
   bookingId: string,
   piId: string,
   amountReceivedPence: number,
-  opts: { late?: boolean } = {},
+  // BLD-1874: `method` labels HOW this was paid (defaults to 'card' — the
+  // saved-card/SCA-recovery webhook path); callers on a different rail pass
+  // their own (e.g. 'card_terminal', or 'payment_link' for a staff-sent
+  // Stripe Checkout link). Purely descriptive — never affects the charge.
+  opts: { late?: boolean; method?: import('@/lib/payment-methods').PaymentMethod } = {},
 ): Promise<boolean> {
   // BLD-1119: also refuse to finalise against a booking pre-paid in full via
   // BNPL (prepaidAt) — the authoritative guard for the webhook/SCA-recovery/
   // terminal-capture paths, mirroring chargeBooking()'s own idempotency check.
   const updated = await db.booking.updateMany({
     where: { id: bookingId, chargedAt: null, prepaidAt: null },
-    data: { chargePaymentIntentId: piId, chargedPence: amountReceivedPence, chargedAt: new Date() },
+    data: { chargePaymentIntentId: piId, chargedPence: amountReceivedPence, chargedAt: new Date(), paymentMethod: opts.method ?? 'card' },
   });
   if (updated.count === 0) {
     // Normally this is the ordinary no-op: another caller (webhook redelivery, SCA
@@ -449,26 +585,52 @@ export async function recordChargeFailure(bookingId: string, reason: string): Pr
 }
 
 /**
- * Cancel a booking, applying the 24-hour policy.
- * - >24h before: free.
- * - <24h before: charge 100% (the late fee), unless `waiveFee` is set.
+ * Cancel a booking.
+ * - BLD-1920: a CLIENT self-service cancellation (opts.admin not set) needs
+ *   >=48h notice at all — inside that window it is blocked outright, with the
+ *   client pointed at our Cancellation & Rescheduling Policy, rather than
+ *   silently proceeding. This is a separate, stricter gate from the fee rule
+ *   below; staff/admin cancellations (opts.admin: true) are never subject to
+ *   it and can cancel at any notice, exactly as before.
+ * - The pre-existing 24-hour late-cancellation FEE policy is unchanged by the
+ *   above and still applies whenever cancelBooking actually runs (staff at
+ *   any notice, or a client at >=48h — which by definition is never inside
+ *   the 24h fee window, so a client self-service cancellation can no longer
+ *   incur this fee; it now only ever fires on a staff-assisted cancel):
+ *   - >24h before: free.
+ *   - <24h before: charge 100% (the late fee), unless `waiveFee` is set.
  */
 export async function cancelBooking(
   bookingId: string,
-  opts: { by: string; reason?: string; waiveFee?: boolean },
-): Promise<{ ok: boolean; charged?: number; requiresAction?: boolean; feeFailed?: boolean; error?: string }> {
+  opts: { by: string; reason?: string; waiveFee?: boolean; admin?: boolean },
+): Promise<{ ok: boolean; charged?: number; requiresAction?: boolean; feeFailed?: boolean; error?: string; code?: 'SELF_SERVICE_WINDOW_CLOSED' }> {
   const booking = await db.booking.findUnique({ where: { id: bookingId }, include: { client: true } });
   if (!booking) return { ok: false, error: 'Booking not found' };
   if (['CANCELLED', 'COMPLETED', 'NO_SHOW'].includes(booking.status)) {
     return { ok: false, error: 'This booking can no longer be cancelled.' };
   }
+  // BLD-1920: client self-service must give >=48h notice — checked before any
+  // of the existing 24h fee logic below, and skipped entirely for staff/admin.
+  if (!opts.admin && isWithin48h(booking)) {
+    return { ok: false, code: 'SELF_SERVICE_WINDOW_CLOSED', error: SELF_SERVICE_CLOSED_MESSAGE };
+  }
 
   const late = isWithin24h(booking);
   const shouldCharge = late && !opts.waiveFee && booking.pricePence > 0;
+  // BLD-1347: a session booked against a prepaid course carries no money of its
+  // own (pricePence is 0 — the course was paid on the purchase booking), so the
+  // `pricePence > 0` guard above means a late cancellation cost the client
+  // nothing AND left their balance untouched, letting the course be stretched
+  // indefinitely by cancelling late. Under the same 24-hour policy that charges
+  // a fee on a paid booking, the session itself is what's spent here.
+  const shouldConsumeSession = late && !opts.waiveFee && Boolean(booking.packageBookingId);
   // BLD-733: net off any loyalty points the client already redeemed as money off
   // this booking — otherwise the late fee bills the pre-discount price on top of
   // a discount the client already paid for with points.
-  const chargeablePence = Math.max(0, booking.pricePence - (booking.pointsRedeemedPence ?? 0));
+  // BLD-1236: net an applied gift voucher the same way, matching the staff
+  // charge action. A fee that actually lands then CONSUMES the voucher value
+  // (the BLD-882 return below is skipped when charged > 0), exactly like points.
+  const chargeablePence = lateCancelFeePence(booking);
   let charged = 0;
   let requiresAction = false;
   let feeFailed = false;
@@ -478,13 +640,20 @@ export async function cancelBooking(
   // a late fee was taken when no money moved.
   let alreadyPaid = false;
 
+  let feeApplied = false;
   if (shouldCharge) {
     const res = await chargeBooking(booking, chargeablePence, { late: true });
     if (res.alreadyPaid) alreadyPaid = true;
-    else if (res.ok) charged = chargeablePence;
+    else if (res.ok) { charged = chargeablePence; feeApplied = true; }
     else if (res.requiresAction) requiresAction = true;
     else feeFailed = true; // charge declined — cancel anyway, but flag for follow-up.
   }
+  // BLD-1236: the moment the late fee successfully applies, the netted voucher
+  // value is CONSUMED by that fee — including when the netted remainder was £0
+  // because the voucher covered the whole fee (chargeBooking(0) reports ok
+  // without touching the card). The BLD-882 return below must skip exactly
+  // these cases; a failed/pending/alreadyPaid outcome consumed nothing.
+  const feeConsumedVoucher = feeApplied && (booking.giftVoucherPence ?? 0) > 0;
 
   await db.booking.update({
     where: { id: booking.id },
@@ -505,20 +674,28 @@ export async function cancelBooking(
     where: { bookingId: booking.id, status: { not: 'COMPLETED' } },
     data: { status: 'CANCELLED', completedAt: new Date() },
   }).catch(() => {});
+
+  // BLD-1347: spend the prepaid session (the status stays CANCELLED; only the
+  // package balance moves). Idempotent, and never touches a course purchase.
+  let sessionConsumed = false;
+  if (shouldConsumeSession) {
+    const { consumePackageSession } = await import('@/lib/package-sessions');
+    sessionConsumed = await consumePackageSession(booking.id, opts.by);
+    if (sessionConsumed) {
+      await logAudit({
+        action: 'SESSION_EDITED', actor: opts.by, bookingId: booking.id, clientId: booking.clientId,
+        summary: `Cancelled inside 24h (${booking.treatmentTitle}) — one prepaid session deducted from the client's package balance under the cancellation policy`,
+      }).catch(() => {});
+    }
+  }
+
   await db.interaction.create({
-    data: { clientId: booking.clientId, type: 'APPOINTMENT', summary: `Cancelled ${booking.treatmentTitle}${late ? ' (within 24h)' : ''}${charged ? ` — charged £${(charged / 100).toFixed(2)}` : feeFailed ? ' — LATE FEE FAILED (follow up)' : alreadyPaid ? ' — no fee taken (already paid in full)' : opts.waiveFee && late ? ' — fee waived' : ''}`, author: opts.by },
+    data: { clientId: booking.clientId, type: 'APPOINTMENT', summary: `Cancelled ${booking.treatmentTitle}${late ? ' (within 24h)' : ''}${charged ? ` — charged £${(charged / 100).toFixed(2)}` : sessionConsumed ? ' — one prepaid package session deducted' : feeFailed ? ' — LATE FEE FAILED (follow up)' : alreadyPaid ? ' — no fee taken (already paid in full)' : opts.waiveFee && late ? ' — fee waived' : ''}`, author: opts.by },
   });
 
-  // BLD-133: the slot just freed — offer it to the first matching waitlister.
-  import('@/lib/waitlist').then((m) => m.notifyOnFreedSlot(booking.treatmentSlug, booking.startAt)).catch(() => {});
   if (feeFailed) {
     await logAudit({ action: 'PAYMENT_FAILED', actor: opts.by, bookingId: booking.id, clientId: booking.clientId, summary: `Late-cancellation fee (£${(booking.pricePence / 100).toFixed(2)}) failed — follow up.` }).catch(() => {});
   }
-
-  // Remove from the shared clinic calendar (Hostinger CalDAV; no-op if unconfigured).
-  import('@/lib/hostinger-calendar').then((m) => m.removeBooking(booking.id)).catch(() => {});
-  // Remove from the clinician's Google Calendar too (no-op while parked).
-  import('@/lib/google-calendar').then((m) => m.removeBookingFromClinician(booking.id)).catch(() => {});
 
   // Return any loyalty points the client had applied to this booking -- but
   // only when they weren't already consumed as a discount on a late-cancellation
@@ -533,7 +710,10 @@ export async function cancelBooking(
   // points were consumed against THAT payment, so returning them here would hand
   // the client the discount and the points back — the same trap as BLD-915. This
   // keeps the pre-BLD-1119 behaviour for those bookings unchanged.
-  if (charged === 0 && !alreadyPaid) {
+  // (BLD-1236: keyed on feeApplied rather than charged — a fee fully covered by
+  // netted points/voucher lands with a £0 card charge, and those points were
+  // still consumed by it.)
+  if (!feeApplied && !alreadyPaid) {
     try {
       const { refundBookingPoints } = await import('@/lib/client-loyalty');
       await refundBookingPoints(booking.id);
@@ -551,7 +731,14 @@ export async function cancelBooking(
   // this cancellation is computed from pricePence and never spends the voucher,
   // so the reservation still returns. Guarded clear so a concurrent removal
   // can't double-credit.
-  if ((booking.giftVoucherPence ?? 0) > 0 && booking.giftVoucherCode && !booking.chargedAt) {
+  // BLD-1236: `!feeConsumedVoucher` joined the guard when the late fee started
+  // netting giftVoucherPence (mirroring the BLD-915 points rule above) — a fee
+  // that actually landed consumed the voucher as money off that fee, so
+  // returning it too would hand the client the discount AND the voucher back.
+  // A failed, pending or waived fee still returns the reservation, as does an
+  // alreadyPaid BNPL settlement (nothing was taken here and the voucher wasn't
+  // consumed by this cancellation).
+  if ((booking.giftVoucherPence ?? 0) > 0 && booking.giftVoucherCode && !booking.chargedAt && !feeConsumedVoucher) {
     try {
       const cleared = await db.booking.updateMany({
         where: { id: booking.id, giftVoucherCode: booking.giftVoucherCode, giftVoucherPence: booking.giftVoucherPence },
@@ -582,11 +769,173 @@ export async function cancelBooking(
     const when = booking.startAt.toLocaleString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', timeZone: CLINIC_TZ });
     await notifyStaffByPermission('bookings.view', { kind: 'status', category: 'bookings', priority: 'high', title: `Booking cancelled: ${booking.treatmentTitle}`, body: `${booking.client.firstName || 'A client'} · ${when}`, href: `/admin/bookings/${booking.id}` });
   } catch { /* non-fatal */ }
+
+  // BLD-1166: the outbound best-effort work, awaited (so the runtime can't
+  // freeze it mid-flight) but deliberately LAST and in ONE parallel group —
+  // nothing that moves money, writes the record or emails the client may sit
+  // behind it, and the whole tail costs at most one 10s cap rather than three:
+  // - BLD-133: the slot just freed — offer it to the first matching waitlister.
+  // - remove from the shared clinic calendar (Hostinger CalDAV; no-op if
+  //   unconfigured) and the clinician's Google Calendar (no-op while parked).
+  await Promise.all([
+    bestEffort(import('@/lib/waitlist').then((m) => m.notifyOnFreedSlot(booking.treatmentSlug, booking.startAt))),
+    bestEffort(import('@/lib/hostinger-calendar').then((m) => m.removeBooking(booking.id))),
+    bestEffort(import('@/lib/google-calendar').then((m) => m.removeBookingFromClinician(booking.id))),
+  ]);
   return { ok: true, charged, requiresAction, feeFailed };
 }
 
+/**
+ * BLD-1347 — apply the published no-show fee when staff mark an appointment as
+ * a no-show. The policy (lib/info-pages.ts) is the same one cancelBooking
+ * enforces: inside 24 hours, or not attending, incurs the full treatment fee.
+ * Until now the no-show path took nothing at all — it only left a derived debt
+ * on lib/outstanding.ts that blocked the client's online rebooking.
+ *
+ * How the fee is taken depends on how the client paid:
+ *  - prepaid course session (pricePence 0, money sits on the purchase booking)
+ *    → spend one session off their package balance; there is no card charge to
+ *      make, and the session is the thing of value they consumed;
+ *  - already settled (an earlier charge, or a BNPL course pre-payment)
+ *    → nothing to take; reported as alreadyPaid so no email claims a fee;
+ *  - otherwise → charge the card on file for the price net of any loyalty
+ *    points already redeemed as money off, exactly as the late-cancel path does.
+ *
+ * `waiveFee` is the staff override: it writes feeWaived, which clears the
+ * derived outstanding balance and skips both the charge and the session.
+ *
+ * Never throws — a fee problem must not stop the appointment being marked.
+ * Call AFTER any gift-voucher release so the pre-fee chargedAt semantics that
+ * BLD-882 relies on still hold.
+ */
+export async function applyNoShowFee(
+  bookingId: string,
+  opts: { by: string; waiveFee?: boolean },
+): Promise<{ charged: number; sessionConsumed: boolean; waived: boolean; alreadyPaid: boolean; requiresAction: boolean; feeFailed: boolean }> {
+  const nil = { charged: 0, sessionConsumed: false, waived: false, alreadyPaid: false, requiresAction: false, feeFailed: false };
+  const booking = await db.booking.findUnique({ where: { id: bookingId }, include: { client: true } }).catch(() => null);
+  if (!booking) return nil;
+
+  if (opts.waiveFee) {
+    // Clears the derived outstanding balance (lib/outstanding.ts filters on it),
+    // so waiving reopens the client's online booking with nothing else to reset.
+    await db.booking.update({ where: { id: bookingId }, data: { feeWaived: true } }).catch(() => {});
+    // BLD-1443 parity with cancelBooking: the fee wasn't actually taken, so any
+    // loyalty points the client redeemed as money off this booking are returned
+    // rather than staying spent against a charge that never happened.
+    try {
+      const { refundBookingPoints } = await import('@/lib/client-loyalty');
+      await refundBookingPoints(booking.id);
+    } catch (e) {
+      console.error('[applyNoShowFee] points refund failed (continuing):', (e as Error)?.message);
+    }
+    await logAudit({
+      action: 'BOOKING_NO_SHOW', actor: opts.by, bookingId, clientId: booking.clientId,
+      summary: `No-show fee waived on ${booking.treatmentTitle} (£${(booking.pricePence / 100).toFixed(2)})`,
+    }).catch(() => {});
+    return { ...nil, waived: true };
+  }
+
+  // Guard a mis-click: an appointment still more than 24 hours away cannot have
+  // been missed, and must never charge a card on a fat-finger.
+  if (!isWithin24h(booking)) return nil;
+
+  // A prepaid package session: the balance is the fee.
+  if (booking.packageBookingId) {
+    const { consumePackageSession } = await import('@/lib/package-sessions');
+    const sessionConsumed = await consumePackageSession(bookingId, opts.by);
+    if (sessionConsumed) {
+      await logAudit({
+        action: 'BOOKING_NO_SHOW', actor: opts.by, bookingId, clientId: booking.clientId,
+        summary: `No-show on ${booking.treatmentTitle} — one prepaid session deducted from the client's package balance (no card charge; the course is already paid)`,
+      }).catch(() => {});
+    }
+    return { ...nil, sessionConsumed };
+  }
+
+  if (booking.pricePence <= 0) return nil; // on-consultation / £0 — nothing to take
+
+  // BLD-733 parity: bill the price net of points already redeemed as money off,
+  // so the fee doesn't re-charge a discount the client paid for with points.
+  const chargeablePence = Math.max(0, booking.pricePence - (booking.pointsRedeemedPence ?? 0));
+  if (chargeablePence <= 0) return nil;
+
+  const res = await chargeBooking(booking, chargeablePence, { late: true, reason: 'no-show' }).catch(() => ({ ok: false, error: 'charge failed' }));
+  if (res.ok && 'alreadyPaid' in res && res.alreadyPaid) return { ...nil, alreadyPaid: true };
+  if (res.ok) {
+    await logAudit({
+      action: 'PAYMENT_CHARGED', actor: opts.by, bookingId, clientId: booking.clientId,
+      summary: `No-show fee charged: £${(chargeablePence / 100).toFixed(2)} — ${booking.treatmentTitle}`,
+    }).catch(() => {});
+    return { ...nil, charged: chargeablePence };
+  }
+  // BLD-1443: neither branch below actually took the fee (further action is
+  // pending, or the charge was declined), so any redeemed points are returned —
+  // same parity with cancelBooking as the waiveFee branch above.
+  if ('requiresAction' in res && res.requiresAction) {
+    try {
+      const { refundBookingPoints } = await import('@/lib/client-loyalty');
+      await refundBookingPoints(booking.id);
+    } catch (e) {
+      console.error('[applyNoShowFee] points refund failed (continuing):', (e as Error)?.message);
+    }
+    return { ...nil, requiresAction: true };
+  }
+  try {
+    const { refundBookingPoints } = await import('@/lib/client-loyalty');
+    await refundBookingPoints(booking.id);
+  } catch (e) {
+    console.error('[applyNoShowFee] points refund failed (continuing):', (e as Error)?.message);
+  }
+  await logAudit({
+    action: 'PAYMENT_FAILED', actor: opts.by, bookingId, clientId: booking.clientId,
+    summary: `No-show fee (£${(chargeablePence / 100).toFixed(2)}) failed — follow up. It stays on the client's outstanding balance.`,
+  }).catch(() => {});
+  return { ...nil, feeFailed: true };
+}
+
+// BLD-1920: now a thin wrapper over the shared lib/cancellation-policy helper
+// (same 48h window), used by both cancelBooking and rescheduleBooking below.
 export function isWithin48h(b: Pick<Booking, 'startAt'>): boolean {
-  return b.startAt.getTime() - Date.now() < RESCHEDULE_WINDOW_MS;
+  return isWithinSelfServiceWindow(b.startAt);
+}
+
+// BLD-1873/BLD-1886: shared overlap predicate for a proposed [newStart, newEnd]
+// window against another live booking, honouring that other booking's own
+// buffer. Used by reassignPractitioner and the time-off approve route
+// (app/admin/bookings/actions.ts, app/api/admin/time-off/route.ts) so the
+// "does this window clash with an existing appointment" math is the same
+// clash rule rescheduleBooking already applies below, not a second
+// reimplementation of it.
+export function overlapsBookingWindow(
+  newStart: Date,
+  newEnd: Date,
+  other: { startAt: Date; endAt: Date; bufferMin: number },
+): boolean {
+  return newStart.getTime() < other.endAt.getTime() + other.bufferMin * 60_000 && newEnd.getTime() > other.startAt.getTime();
+}
+
+type RescheduleClashCandidate = { startAt: Date; endAt: Date; bufferMin: number; practitionerId: string | null; resources: { id: string }[] };
+
+// BLD-1873: classify a set of clashing candidates for a staff/admin reschedule.
+// A clash against the SAME practitioner is always a hard block (a clinician
+// cannot be in two places). A clash that is only against a shared room/piece
+// of equipment (no practitioner overlap) is a soft, overridable conflict.
+function classifyRescheduleClash(
+  candidates: RescheduleClashCandidate[],
+  newStart: Date,
+  newBusyEndMs: number,
+  practitionerId: string | null,
+  resourceIds: string[],
+): 'PRACTITIONER' | 'RESOURCE' | null {
+  let resourceClash = false;
+  for (const b of candidates) {
+    const overlaps = newStart.getTime() < b.endAt.getTime() + b.bufferMin * 60_000 && newBusyEndMs > b.startAt.getTime();
+    if (!overlaps) continue;
+    if (practitionerId && b.practitionerId === practitionerId) return 'PRACTITIONER';
+    if (resourceIds.length && b.resources.some((r) => resourceIds.includes(r.id))) resourceClash = true;
+  }
+  return resourceClash ? 'RESOURCE' : null;
 }
 
 /**
@@ -595,20 +944,24 @@ export function isWithin48h(b: Pick<Booking, 'startAt'>): boolean {
  * - Must give >=48h notice from the CURRENT appointment time
  * - First 3 reschedules are free; 4th+ charges the full booking price
  * - New startAt must be at least 48h in the future
+ * - Staff/admin (opts.admin): a clash against the SAME practitioner is always
+ *   a hard block; a clash against only a room/equipment resource is a
+ *   warning the caller can override with opts.force (BLD-1873).
  */
 export async function rescheduleBooking(
   bookingId: string,
   newStartISO: string,
-  opts: { by: string; reason?: string; admin?: boolean },
-): Promise<{ ok: boolean; charged?: number; requiresAction?: boolean; error?: string; code?: 'SLOT_TAKEN' }> {
+  opts: { by: string; reason?: string; admin?: boolean; force?: boolean },
+): Promise<{ ok: boolean; charged?: number; requiresAction?: boolean; error?: string; code?: 'SLOT_TAKEN' | 'RESOURCE_CONFLICT' | 'SELF_SERVICE_WINDOW_CLOSED' }> {
   const booking = await db.booking.findUnique({ where: { id: bookingId }, include: { client: true, resources: { select: { id: true } } } });
   if (!booking) return { ok: false, error: 'Booking not found.' };
   if (['CANCELLED', 'COMPLETED', 'NO_SHOW'].includes(booking.status)) {
     return { ok: false, error: 'This booking can no longer be rescheduled.' };
   }
   // Client self-service must give >=48h notice; staff (admin) can move any time.
+  // BLD-1920: same window, code and wording as cancelBooking's self-service gate.
   if (!opts.admin && isWithin48h(booking)) {
-    return { ok: false, error: "Reschedules require at least 48 hours' notice. Please call us on 020 8050 0750 if you need to make a late change." };
+    return { ok: false, code: 'SELF_SERVICE_WINDOW_CLOSED', error: SELF_SERVICE_CLOSED_MESSAGE };
   }
 
   const newStart = new Date(newStartISO);
@@ -632,6 +985,9 @@ export async function rescheduleBooking(
   // own clinician or room(s); for client self-service we keep the strict gate.
   const resourceIds = booking.resources.map((r) => r.id);
   const newBusyEndMs = newEnd.getTime() + booking.bufferMin * 60_000;
+  // BLD-1873: the resource-conflict override is staff-only; client
+  // self-service never gets it, even if a caller passes force.
+  const allowResourceOverride = Boolean(opts.admin && opts.force);
   if (opts.admin) {
     // Nothing exclusive to clash on (no clinician, no room/equipment) → any future
     // time is fine (this is the consultation case BLD-502 was about).
@@ -647,10 +1003,17 @@ export async function rescheduleBooking(
             ...(resourceIds.length ? [{ resources: { some: { id: { in: resourceIds } } } }] : []),
           ],
         },
-        select: { startAt: true, endAt: true, bufferMin: true },
+        select: { startAt: true, endAt: true, bufferMin: true, practitionerId: true, resources: { select: { id: true } } },
       });
-      const clash = candidates.some((b) => newStart.getTime() < b.endAt.getTime() + b.bufferMin * 60_000 && newBusyEndMs > b.startAt.getTime());
-      if (clash) return { ok: false, code: 'SLOT_TAKEN', error: 'That time clashes with another appointment for the same clinician, room or equipment. Please choose another slot.' };
+      const kind = classifyRescheduleClash(candidates, newStart, newBusyEndMs, booking.practitionerId, resourceIds);
+      if (kind === 'PRACTITIONER') {
+        return { ok: false, code: 'SLOT_TAKEN', error: 'That time clashes with another appointment for the same clinician. Please choose another slot.' };
+      }
+      // BLD-1873: a room/equipment-only clash is a warning, not a hard block —
+      // authorised staff can proceed once they've confirmed (opts.force).
+      if (kind === 'RESOURCE' && !allowResourceOverride) {
+        return { ok: false, code: 'RESOURCE_CONFLICT', error: 'That time clashes with another appointment using the same room or equipment — it may already be in use. Reschedule anyway if you’ve checked it’s free.' };
+      }
     }
   } else {
     // Client self-service: the chosen time must be a genuinely free, in-hours slot
@@ -671,9 +1034,10 @@ export async function rescheduleBooking(
   // app/api/booking/create + app/api/booking/start: a Serializable transaction
   // re-reads overlapping bookings on THIS booking's own clinician/room(s) and
   // aborts the write if another booking has since claimed the slot.
-  let rescheduled: { id: string } | null = null;
+  type TxResult = { outcome: 'ok'; row: { id: string } } | { outcome: 'PRACTITIONER' | 'RESOURCE' };
+  let txResult: TxResult | null = null;
   try {
-    rescheduled = await db.$transaction(async (tx) => {
+    txResult = await db.$transaction(async (tx) => {
       if (booking.practitionerId || resourceIds.length) {
         const windowStart = new Date(newStart.getTime() - 24 * 60 * 60 * 1000);
         const candidates = await tx.booking.findMany({
@@ -686,16 +1050,23 @@ export async function rescheduleBooking(
               ...(resourceIds.length ? [{ resources: { some: { id: { in: resourceIds } } } }] : []),
             ],
           },
-          select: { startAt: true, endAt: true, bufferMin: true },
+          select: { startAt: true, endAt: true, bufferMin: true, practitionerId: true, resources: { select: { id: true } } },
         });
-        const clash = candidates.some((b) => newStart.getTime() < b.endAt.getTime() + b.bufferMin * 60_000 && newBusyEndMs > b.startAt.getTime());
-        if (clash) return null;
+        const kind = classifyRescheduleClash(candidates, newStart, newBusyEndMs, booking.practitionerId, resourceIds);
+        // A practitioner clash always aborts. A resource-only clash aborts too,
+        // UNLESS the caller already confirmed (opts.force) — honoured
+        // atomically, right here, so the confirmed override still can't land
+        // on top of a genuinely new practitioner clash that appeared since the
+        // pre-check (BLD-1873).
+        if (kind === 'PRACTITIONER') return { outcome: 'PRACTITIONER' };
+        if (kind === 'RESOURCE' && !allowResourceOverride) return { outcome: 'RESOURCE' };
       }
-      return tx.booking.update({
+      const row = await tx.booking.update({
         where: { id: booking.id },
         data: { startAt: newStart, endAt: newEnd, rescheduleCount: { increment: 1 } },
         select: { id: true },
       });
+      return { outcome: 'ok', row };
     }, { isolationLevel: 'Serializable' });
   } catch (e) {
     const err = e as { code?: string; message?: string };
@@ -704,8 +1075,14 @@ export async function rescheduleBooking(
     }
     throw e;
   }
-  if (!rescheduled) {
+  // A client self-service move keeps the pre-BLD-1873 behaviour: any clash is
+  // SLOT_TAKEN (the manage page re-fetches slots on that code). Only staff see
+  // the overridable RESOURCE_CONFLICT warning.
+  if (txResult.outcome === 'PRACTITIONER' || (txResult.outcome === 'RESOURCE' && !opts.admin)) {
     return { ok: false, code: 'SLOT_TAKEN', error: 'That time is no longer available. Please choose another slot.' };
+  }
+  if (txResult.outcome === 'RESOURCE') {
+    return { ok: false, code: 'RESOURCE_CONFLICT', error: 'That time clashes with another appointment using the same room or equipment — it may already be in use. Reschedule anyway if you’ve checked it’s free.' };
   }
 
   // 4th+ reschedule incurs the full booking price — client self-service only;
@@ -718,7 +1095,14 @@ export async function rescheduleBooking(
   // that then fails with SLOT_TAKEN. If the charge itself hard-fails we undo the
   // move, so the original "no reschedule without payment" rule still holds.
   if (!opts.admin && booking.rescheduleCount >= MAX_FREE_RESCHEDULES && booking.pricePence > 0) {
-    const rescheduleFeePence = Math.max(0, booking.pricePence - (booking.pointsRedeemedPence ?? 0));
+    // BLD-1236: net the applied gift voucher as well as points. This charge sets
+    // chargedAt — it IS the booking's settlement — and before this fix the fee
+    // billed the full price while the voucher reservation stayed attached to a
+    // now-charged booking, where nothing could ever consume OR return it: the
+    // client paid in full and lost the voucher value entirely. Netting here
+    // consumes the voucher as part of the settled sale, the same arithmetic the
+    // staff till (chargeBookingAction) applies.
+    const rescheduleFeePence = Math.max(0, booking.pricePence - (booking.pointsRedeemedPence ?? 0) - (booking.giftVoucherPence ?? 0));
     // BLD-1119: res.alreadyPaid means the booking was already paid in full (BNPL
     // course pre-payment / an earlier charge) and nothing was taken — the move
     // stands, but `charged` stays 0 so the client's confirmation email and the
@@ -756,14 +1140,6 @@ export async function rescheduleBooking(
     meta: { from: booking.startAt.toISOString(), to: newStart.toISOString(), rescheduleCount: booking.rescheduleCount + 1 },
   }).catch(() => {});
 
-  // Update the shared clinic calendar entry to the new time (best-effort). The
-  // CalDAV event is keyed by booking id, so re-pushing PUTs the moved times over
-  // the existing entry — we must NOT remove it (that would drop the appointment
-  // from the clinic calendar entirely).
-  import('@/lib/hostinger-calendar').then((m) => m.pushBooking(booking.id)).catch(() => {});
-  // Move the clinician's Google Calendar event to the new time (no-op while parked).
-  import('@/lib/google-calendar').then((m) => m.pushBookingToClinician(booking.id)).catch(() => {});
-
   // Confirmation email (best-effort).
   await sendEmail({
     to: booking.client.email,
@@ -783,5 +1159,83 @@ export async function rescheduleBooking(
     const when = newStart.toLocaleString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', timeZone: CLINIC_TZ });
     await notifyStaffByPermission('bookings.view', { kind: 'status', category: 'bookings', priority: 'high', title: `Booking rescheduled: ${booking.treatmentTitle}`, body: `${booking.client.firstName || 'A client'} · now ${when}`, href: `/admin/bookings/${booking.id}` });
   } catch { /* non-fatal */ }
+
+  // BLD-1166: update the shared clinic calendar entry to the new time
+  // (best-effort, awaited so the runtime can't freeze it mid-flight, but LAST so
+  // the client's confirmation email is never held behind it). The CalDAV event
+  // is keyed by booking id, so re-pushing PUTs the moved times over the existing
+  // entry — we must NOT remove it (that would drop the appointment from the
+  // clinic calendar entirely). Google Calendar mirrors the move (no-op while parked).
+  await Promise.all([
+    bestEffort(import('@/lib/hostinger-calendar').then((m) => m.pushBooking(booking.id))),
+    bestEffort(import('@/lib/google-calendar').then((m) => m.pushBookingToClinician(booking.id))),
+  ]);
   return { ok: true, charged, requiresAction };
+}
+
+/**
+ * PRJ-1043.3: release PENDING bookings abandoned before card setup finished —
+ * they are still holding a slot (lib/availability.ts treats PENDING like
+ * CONFIRMED) with no card ever attached and no way for the client to come
+ * back to them. Cancels outright (no charge, no fee logic): the client never
+ * confirmed a card, so this is never a "late cancellation" in the billing
+ * sense, just releasing a hold nobody is coming back to claim. Mirrors the
+ * plain `status: 'CANCELLED'` update already used for the immediate
+ * SetupIntent-failure path in app/api/booking/create.
+ *
+ * PENDING is NOT exclusive to the online-checkout hold, so the sweep is scoped
+ * hard rather than taking every stale PENDING row (review fix, PRJ-1043.3):
+ *
+ *  - `stripeSetupIntentId != null` + `stripePaymentMethodId == null` — the
+ *    booking reached the card step and no card was ever attached. Both public
+ *    checkout routes stamp the SetupIntent id onto the booking as soon as it
+ *    is created (app/api/booking/create, app/api/booking/start), and both the
+ *    card-saved route and the `setup_intent.succeeded` webhook stamp the
+ *    payment method, so a completed card save can never look abandoned.
+ *  - `startAt` still in the future — a past PENDING row holds no slot, and
+ *    retro-cancelling history would rewrite reporting for no benefit. Mirrors
+ *    the same guard in the abandoned-booking recovery email (lib/automations).
+ *  - BOOKING_CREATED audit actor === 'client' — the decisive origin check.
+ *    Staff-created PENDING bookings exist and are legitimately long-lived:
+ *    app/api/admin/bookings/session/route.ts books the next visit as PENDING
+ *    whenever the client has no card on file, and staff then send a card link
+ *    (app/api/admin/bookings/request-card) whose page stamps a
+ *    stripeSetupIntentId on open. Those audit rows carry the staff email as
+ *    actor, so they are never swept; only 'client' (public checkout) rows are.
+ *    No audit row at all (a failed logAudit) also means no sweep — fail-safe.
+ *
+ * Safe to run frequently (idempotent — only ever touches rows still PENDING
+ * past the window) from the 15-min cron dispatcher.
+ */
+export async function releaseAbandonedPendingBookings(): Promise<{ released: number }> {
+  const cutoff = new Date(Date.now() - PENDING_ABANDON_MS);
+  const candidates = await db.booking.findMany({
+    where: {
+      status: 'PENDING',
+      createdAt: { lt: cutoff },
+      startAt: { gt: new Date() },
+      stripeSetupIntentId: { not: null },
+      stripePaymentMethodId: null,
+    },
+    select: { id: true, clientId: true },
+    take: 200,
+  });
+  if (!candidates.length) return { released: 0 };
+
+  const createdBy = await db.auditEvent.findMany({
+    where: { action: 'BOOKING_CREATED', bookingId: { in: candidates.map((b) => b.id) } },
+    select: { bookingId: true, actor: true },
+  });
+  const clientOriginated = new Set(createdBy.filter((a) => a.actor === 'client').map((a) => a.bookingId));
+  const stale = candidates.filter((b) => clientOriginated.has(b.id));
+  if (!stale.length) return { released: 0 };
+
+  await db.booking.updateMany({
+    where: { id: { in: stale.map((b) => b.id) }, status: 'PENDING', stripePaymentMethodId: null },
+    data: { status: 'CANCELLED', cancelledAt: new Date(), cancelReason: 'Abandoned checkout — no card added within the booking window (auto-released)', cancelledBy: 'system' },
+  });
+  for (const b of stale) {
+    await logAudit({ action: 'BOOKING_CANCELLED', actor: 'system', clientId: b.clientId, bookingId: b.id, summary: 'Auto-released: PENDING booking abandoned before card setup completed' }).catch(() => {});
+  }
+  return { released: stale.length };
 }

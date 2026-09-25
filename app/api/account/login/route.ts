@@ -44,7 +44,7 @@ export async function POST(req: Request) {
     }
     return res;
   } catch (err) {
-    console.error('[account/login] failed:', err);
+    console.error('[account/login] failed:', (err as Error)?.message);
     Sentry.captureException(err, { tags: { area: 'account/login' } });
     // Surface a safe diagnostic category (which stage threw) without leaking
     // any detail — helps pin down config/schema issues from the UI.

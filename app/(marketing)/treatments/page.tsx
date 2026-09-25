@@ -54,7 +54,9 @@ export default async function TreatmentsPage() {
                 const i = idx++;
                 return (
                   <StaggerItem key={t.slug}>
-                    <TreatmentCard t={t} index={i} />
+                    {/* BLD-1534: the first cards render right after PageHero — one of
+                        them is the LCP element, so they load eager, not lazy. */}
+                    <TreatmentCard t={t} index={i} priority={i < 2} />
                   </StaggerItem>
                 );
               })}

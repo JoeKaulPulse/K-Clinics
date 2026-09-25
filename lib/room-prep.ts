@@ -98,8 +98,17 @@ export async function clearOccupiedForBooking(bookingId: string, date: Date = cl
 }
 
 /** Rooms for a clinic day with their prep state + live availability (occupied
- *  now, current + next booking). `now` is injectable for testing. */
-export async function getRoomsForDay(opts: { locationId?: string | null; date?: Date; now?: Date } = {}): Promise<RoomDay[]> {
+ *  now, current + next booking). `now` is injectable for testing.
+ *
+ *  BLD-1652: `practitionerId`, when passed, scopes the *client-identifying*
+ *  fields — `current`/`next` (client name + treatment) — to that
+ *  practitioner's own bookings only. Every other room's prep/occupied state
+ *  still comes back (a Specialist still needs to see which rooms are free or
+ *  ready to pick one), but another practitioner's client and treatment are
+ *  never included — this is the query-level source both the dashboard's
+ *  server render and the live-polled /api/admin/rooms/prep route rely on, so
+ *  scoping it here covers both. */
+export async function getRoomsForDay(opts: { locationId?: string | null; date?: Date; now?: Date; practitionerId?: string } = {}): Promise<RoomDay[]> {
   const now = opts.now ?? new Date();
   const date = opts.date ?? clinicDay(now);
   const dayStart = new Date(date); // UTC midnight of the clinic day
@@ -121,11 +130,12 @@ export async function getRoomsForDay(opts: { locationId?: string | null; date?: 
     },
     orderBy: { startAt: 'asc' },
     select: {
-      id: true, startAt: true, endAt: true, bufferMin: true, finishedAt: true, treatmentTitle: true,
+      id: true, startAt: true, endAt: true, bufferMin: true, finishedAt: true, treatmentTitle: true, practitionerId: true,
       client: { select: { firstName: true, lastName: true } },
       resources: { select: { id: true } },
     },
   });
+  const ownBooking = (b: { practitionerId: string | null }) => !opts.practitionerId || b.practitionerId === opts.practitionerId;
 
   return rooms.map((room) => {
     const mine = bookings.filter((b) => b.resources.some((r) => r.id === room.id));
@@ -146,8 +156,8 @@ export async function getRoomsForDay(opts: { locationId?: string | null; date?: 
       occupiedNow: !!currentBk,
       occupiedManual: !!prep?.occupied,
       occupiedBy: prep?.occupiedBy ?? null,
-      current: currentBk ? lite(currentBk) : null,
-      next: nextBk ? lite(nextBk) : null,
+      current: currentBk && ownBooking(currentBk) ? lite(currentBk) : null,
+      next: nextBk && ownBooking(nextBk) ? lite(nextBk) : null,
     };
   });
 }

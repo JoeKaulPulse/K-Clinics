@@ -3,6 +3,7 @@ import { redirect } from 'next/navigation';
 import { crmEnabled } from '@/lib/crm';
 import { getSession, sessionPermissions, sessionCan } from '@/lib/auth';
 import { decClinical } from '@/lib/clinical-crypto';
+import { auditClinicalView } from '@/lib/clinical-view-audit';
 import { AdminShell } from '@/components/admin/AdminShell';
 import { CrmDisabled } from '@/components/admin/CrmDisabled';
 import { TaskBoard } from '@/components/admin/TaskBoard';
@@ -47,14 +48,22 @@ export default async function TasksPage() {
     db.adminUser.findMany({ where: { active: true }, orderBy: { name: 'asc' }, select: { id: true, name: true, email: true } }),
   ]);
 
-  const shape = (t: (typeof open)[number]) => ({
-    id: t.id, ref: t.ref, title: t.title, detail: t.clinical ? decClinical(t.detail) : t.detail, status: t.status as string, priority: t.priority as string,
-    dueAt: t.dueAt ? t.dueAt.toISOString() : null, assigneeId: t.assigneeId,
-    assigneeName: t.assignee?.name || t.assignee?.email || null,
-    createdBy: t.createdBy, completedAt: t.completedAt ? t.completedAt.toISOString() : null, completedBy: t.completedBy,
-    clientId: t.clientId, clientName: t.client ? [t.client.firstName, t.client.lastName].filter(Boolean).join(' ') : null,
-    parentId: t.parentId, parentRef: t.parent?.ref || null,
-  });
+  const shape = (t: (typeof open)[number]) => {
+    const detail = t.clinical ? decClinical(t.detail) : t.detail;
+    // BLD-1419: decrypting a clinical follow-up task's detail for the board is a
+    // medical-record view — audit it (throttled per viewer/client/hour).
+    if (t.clinical && t.clientId && session.email) {
+      auditClinicalView({ actor: session.email, actorRole: session.role, clientId: t.clientId, surface: 'tasks-board' });
+    }
+    return {
+      id: t.id, ref: t.ref, title: t.title, detail, status: t.status as string, priority: t.priority as string,
+      dueAt: t.dueAt ? t.dueAt.toISOString() : null, assigneeId: t.assigneeId,
+      assigneeName: t.assignee?.name || t.assignee?.email || null,
+      createdBy: t.createdBy, completedAt: t.completedAt ? t.completedAt.toISOString() : null, completedBy: t.completedBy,
+      clientId: t.clientId, clientName: t.client ? [t.client.firstName, t.client.lastName].filter(Boolean).join(' ') : null,
+      parentId: t.parentId, parentRef: t.parent?.ref || null,
+    };
+  };
 
   const can = await sessionPermissions();
   const locale = await getLocale();

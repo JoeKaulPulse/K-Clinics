@@ -13,7 +13,7 @@ export default function MarketingError({ error, reset }: { error: Error & { dige
     <section className="relative grid min-h-[70svh] place-items-center overflow-hidden">
       <GenerativeArt from="#2a2420" to="#4a3f37" className="absolute inset-0" />
       <div className="container-narrow relative z-10 text-center text-[var(--color-porcelain)]">
-        <p className="eyebrow mb-5 text-[var(--color-gold-soft)]">Something went wrong</p>
+        <p className="eyebrow eyebrow-on-dark mb-5">Something went wrong</p>
         <h1 className="text-display">A small hiccup.</h1>
         <p className="mx-auto mt-6 max-w-md text-lg text-[color-mix(in_oklab,var(--color-porcelain)_76%,transparent)]">
           We couldn’t load this just now. Please try again — or call us and we’ll happily help.

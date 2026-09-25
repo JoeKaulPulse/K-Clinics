@@ -11,7 +11,7 @@ export type EnrolLite = { id: string; courseId: string; cohortId: string | null;
 export type ReleaseLite = { cohortId: string; moduleId: string; releaseAt: string };
 export type PracticalDayLite = { id: string; cohortId: string; title: string; startAt: string; endAt: string | null; location: string | null; trainer: string | null };
 
-const field = 'rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-2.5 py-1.5 text-sm';
+const field = 'rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-porcelain)] px-2.5 py-1.5 text-sm';
 const fmtDate = (iso: string) => new Date(iso).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
 const day = (iso: string | null) => (iso ? iso.slice(0, 10) : '');
 
@@ -145,7 +145,7 @@ function CohortRow({ courseId, cohort: h, students, modules, releases, practical
     setBusy(false);
   }
   return (
-    <li className="rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white p-3">
+    <li className="rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-3">
       <div className="flex flex-wrap items-end gap-x-3 gap-y-2">
         <label className="text-[0.6rem] text-[var(--color-stone)]">Name<br /><input value={name} onChange={(e) => setName(e.target.value)} className={`${field} w-40`} placeholder={fmtDate(h.startAt)} /></label>
         <span className="pb-1.5 text-sm text-[var(--color-ink-soft)]">Practical {fmtDate(h.startAt)}{h.endAt ? `–${fmtDate(h.endAt)}` : ''} · {h.capacity} places{h.trainer ? ` · ${h.trainer}` : ''}</span>

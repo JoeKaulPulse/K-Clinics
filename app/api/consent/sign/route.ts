@@ -6,6 +6,10 @@ export const runtime = 'nodejs';
 // Public signing endpoint — authenticated by the unguessable request token.
 export async function POST(req: Request) {
   if (!crmEnabled) return NextResponse.json({ ok: false }, { status: 503 });
+  const { enforceRateLimit } = await import('@/lib/security/guard');
+  if (!(await enforceRateLimit(req, 'consent-sign', 10, 600))) {
+    return NextResponse.json({ ok: false, error: 'Too many attempts — please wait 10 minutes.' }, { status: 429 });
+  }
   const body = await req.json().catch(() => ({}));
   const token = String(body.token || '');
   const signerName = String(body.signerName || '').trim().slice(0, 120);

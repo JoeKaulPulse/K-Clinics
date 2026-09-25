@@ -1,10 +1,11 @@
 import 'server-only';
 import { db } from './db';
-import { sendEmail, emailShell, tmplBirthday, tmplFollowUp, tmplWinBack, tmplReviewRequest, tmplAppointmentReminder, tmplFormReminder, tmplAbandonedBooking, tmplAftercare, tmplSatisfaction, tmplRebook } from './email';
+import { sendEmail, emailShell, tmplBirthday, tmplFollowUp, tmplWinBack, tmplReviewRequest, tmplAppointmentReminder, tmplFormReminder, tmplAbandonedBooking, tmplAbandonedOrder, tmplAbandonedGiftVoucher, tmplAftercare, tmplSatisfaction, tmplRebook, tmplCourseContentReady, tmplTcsReminder, tmplLaserHairRemovalPrep } from './email';
 import { ensureReviewRequest, reviewLink, googleReviewLink } from './review-system';
 import { site } from './site';
 import { escapeHtml } from './sanitize';
 import { marketableClientWhere } from './consent';
+import { TEST_CLIENT_TAG } from './test-clients';
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL || site.url;
 const unsub = (token: string) => `${SITE_URL}/api/unsubscribe?t=${token}`;
@@ -24,13 +25,29 @@ const WIN_BACK_MONTHS = 6;
 const TIER_NUDGE_PENCE = 20000;   // nudge clients within £200 of the next tier
 const ANNIVERSARY_POINTS = 1000;  // bonus points on a membership anniversary
 
-type Tally = { birthdays: number; followUps: number; winBacks: number; reviews: number; reminders: number; formReminders: number; treatmentFollowUps: number; giftVouchers: number; tierNudges: number; anniversaries: number; abandonedBookings: number; bookingIntents: number; membershipRenewals: number; staffDigests: number; staffNudges: number; reencrypted: number; aftercare: number; satisfaction: number; rebookNudges: number; npsPromoters: number; npsDetractors: number; liveClassReminders: number; errors: number };
+// BLD-1231: how far back a course's FIRST lesson/quiz can have landed and still
+// be worth telling stranded students about. Wide enough that a few missed cron
+// runs don't lose the notice, narrow enough that shipping the feature can't
+// retro-announce content that has been live for years.
+const CONTENT_READY_WINDOW_DAYS = 30;
+const CONTENT_READY_MAX_PER_RUN = 500; // sends per daily run; the rest drain tomorrow
+
+// BLD-1452: how often a client with no recorded T&Cs acceptance can be
+// re-reminded, and the most sent in one run (the rest drain on later runs).
+const TCS_REMINDER_CADENCE_DAYS = 14;
+const TCS_REMINDER_MAX_PER_RUN = 500;
+// Lifetime bound per client: after this many attempts (sent or failed) we stop
+// asking. Without it an unanswered nudge repeats for ever and a hard-bouncing
+// address is retried on every run.
+const TCS_REMINDER_MAX_PER_CLIENT = 3;
+
+type Tally = { birthdays: number; followUps: number; winBacks: number; reviews: number; reminders: number; formReminders: number; treatmentFollowUps: number; giftVouchers: number; tierNudges: number; anniversaries: number; abandonedBookings: number; abandonedOrders: number; abandonedGiftVouchers: number; bookingIntents: number; membershipRenewals: number; staffDigests: number; staffNudges: number; reencrypted: number; aftercare: number; satisfaction: number; rebookNudges: number; npsPromoters: number; npsDetractors: number; liveClassReminders: number; courseContentReady: number; tcsReminders: number; treatmentPrep: number; referralAsks: number; errors: number };
 
 export async function runDailyAutomations(): Promise<Tally> {
-  const t: Tally = { birthdays: 0, followUps: 0, winBacks: 0, reviews: 0, reminders: 0, formReminders: 0, treatmentFollowUps: 0, giftVouchers: 0, tierNudges: 0, anniversaries: 0, abandonedBookings: 0, bookingIntents: 0, membershipRenewals: 0, staffDigests: 0, staffNudges: 0, reencrypted: 0, aftercare: 0, satisfaction: 0, rebookNudges: 0, npsPromoters: 0, npsDetractors: 0, liveClassReminders: 0, errors: 0 };
+  const t: Tally = { birthdays: 0, followUps: 0, winBacks: 0, reviews: 0, reminders: 0, formReminders: 0, treatmentFollowUps: 0, giftVouchers: 0, tierNudges: 0, anniversaries: 0, abandonedBookings: 0, abandonedOrders: 0, abandonedGiftVouchers: 0, bookingIntents: 0, membershipRenewals: 0, staffDigests: 0, staffNudges: 0, reencrypted: 0, aftercare: 0, satisfaction: 0, rebookNudges: 0, npsPromoters: 0, npsDetractors: 0, liveClassReminders: 0, courseContentReady: 0, tcsReminders: 0, treatmentPrep: 0, referralAsks: 0, errors: 0 };
   const { staffWeeklyDigest, staffReengagement } = await import('@/lib/staff-emails');
   // BLD-120: allSettled so one failing automation can't abort the rest.
-  const results = await Promise.allSettled([birthdays(t), followUps(t), reviews(t), winBacks(t), reminders(t), formReminders(t), treatmentFollowUps(t), scheduledGiftVouchers(t), tierNudges(t), anniversaries(t), abandonedBookings(t), bookingIntentRecovery(t), membershipRenewal(t), staffWeeklyDigest(t), staffReengagement(t), keyReencryption(t), aftercare(t), satisfaction(t), rebookNudge(t), promoterFollowUp(t), detractorFollowUp(t), liveClassReminders(t)]);
+  const results = await Promise.allSettled([birthdays(t), followUps(t), reviews(t), winBacks(t), reminders(t), formReminders(t), treatmentFollowUps(t), scheduledGiftVouchers(t), tierNudges(t), anniversaries(t), abandonedBookings(t), abandonedOrders(t), abandonedGiftVouchers(t), bookingIntentRecovery(t), membershipRenewal(t), staffWeeklyDigest(t), staffReengagement(t), keyReencryption(t), aftercare(t), satisfaction(t), rebookNudge(t), promoterFollowUp(t), detractorFollowUp(t), liveClassReminders(t), courseContentReady(t), tcsReminders(t), laserHairRemovalPrep(t), referralAsk(t)]);
   for (const r of results) {
     if (r.status === 'rejected') { t.errors++; console.error('[automations] unhandled automation failure:', r.reason); }
   }
@@ -54,13 +71,15 @@ async function tierNudges(t: Tally) {
       const dup = await db.emailEvent.findFirst({ where: { clientId: c.id, kind: 'MEMBERSHIP', status: 'SENT', createdAt: { gte: since }, meta: { path: ['type'], equals: 'nudge' } } });
       if (dup) continue;
       const gbp = `£${Math.ceil(gap / 100).toLocaleString('en-GB')}`;
-      const accent = next.color || '#a98a6d';
+      // BLD-1438: name/perks/color are staff-editable (discounts.manage, which
+      // FRONT_DESK holds) — escape them the same way c.firstName already is below.
+      const accent = escapeHtml(next.color || '#a98a6d');
       const body = `
         <p style="font-family:Helvetica,Arial,sans-serif;font-size:13px;letter-spacing:1.5px;text-transform:uppercase;color:${accent};margin:0 0 8px;">K Circle</p>
-        <h1 style="margin:0 0 12px;font-size:25px;">You're ${gbp} from ${next.name}</h1>
-        <p style="margin:0 0 14px;">Hi ${escapeHtml(c.firstName || 'there')}, you're closer than you think to <strong>${next.name}</strong> — and everything it unlocks: ${next.perks.slice(0, 2).join(', ')}.</p>
+        <h1 style="margin:0 0 12px;font-size:25px;">You're ${gbp} from ${escapeHtml(next.name)}</h1>
+        <p style="margin:0 0 14px;">Hi ${escapeHtml(c.firstName || 'there')}, you're closer than you think to <strong>${escapeHtml(next.name)}</strong> — and everything it unlocks: ${escapeHtml(next.perks.slice(0, 2).join(', '))}.</p>
         <p style="margin:6px 0 18px;"><a href="${base}/book" style="display:inline-block;background:${accent};color:#fff;text-decoration:none;padding:13px 26px;border-radius:999px;font-size:14px;">Book your next visit</a></p>`;
-      const res = await sendEmail({ to: c.email, subject: `You're ${gbp} from ${next.name} — K Circle`, html: emailShell({ body, preheader: `Just ${gbp} more to reach ${next.name}.`, unsubUrl: unsub(c.unsubToken) }), headers: unsubHeaders(c.unsubToken) });
+      const res = await sendEmail({ to: c.email, subject: `You're ${gbp} from ${next.name} — K Circle`, html: emailShell({ body, preheader: `Just ${gbp} more to reach ${escapeHtml(next.name)}.`, unsubUrl: unsub(c.unsubToken) }), headers: unsubHeaders(c.unsubToken) });
       await db.emailEvent.create({ data: { clientId: c.id, kind: 'MEMBERSHIP', to: c.email, subject: `K Circle: ${gbp} from ${next.name}`, status: res.ok ? 'SENT' : 'FAILED', providerId: res.id, error: res.error, meta: { type: 'nudge' } } }).catch(() => {});
       res.ok ? t.tierNudges++ : t.errors++;
     }
@@ -94,15 +113,18 @@ async function membershipRenewal(t: Tally) {
       if (!tier || tier.minSpendPence <= 0) continue; // paid/earned tiers only
       const dup = await db.emailEvent.findFirst({ where: { clientId: c.id, kind: 'MEMBERSHIP', status: 'SENT', createdAt: { gte: since }, meta: { path: ['type'], equals: 'renewal' } } });
       if (dup) continue;
-      const accent = tier.color || '#a98a6d';
-      const perks = (tier.perks || []).slice(0, 2).join(', ');
+      // BLD-1438: name/perks/color are staff-editable (discounts.manage, which
+      // FRONT_DESK holds) — escape them the same way c.firstName already is below.
+      const accent = escapeHtml(tier.color || '#a98a6d');
+      const perks = escapeHtml((tier.perks || []).slice(0, 2).join(', '));
+      const tierName = escapeHtml(tier.name);
       const body = `
-        <p style="font-family:Helvetica,Arial,sans-serif;font-size:13px;letter-spacing:1.5px;text-transform:uppercase;color:${accent};margin:0 0 8px;">K Circle · ${tier.name}</p>
-        <h1 style="margin:0 0 12px;font-size:25px;">Keep your ${tier.name} benefits, ${escapeHtml(c.firstName || 'there')}</h1>
-        <p style="margin:0 0 14px;">It's been a little while since your last visit. K Circle tiers are based on your spend over the last 12 months, so a visit soon keeps you in <strong>${tier.name}</strong>${perks ? ` — and everything it unlocks: ${perks}.` : '.'}</p>
+        <p style="font-family:Helvetica,Arial,sans-serif;font-size:13px;letter-spacing:1.5px;text-transform:uppercase;color:${accent};margin:0 0 8px;">K Circle · ${tierName}</p>
+        <h1 style="margin:0 0 12px;font-size:25px;">Keep your ${tierName} benefits, ${escapeHtml(c.firstName || 'there')}</h1>
+        <p style="margin:0 0 14px;">It's been a little while since your last visit. K Circle tiers are based on your spend over the last 12 months, so a visit soon keeps you in <strong>${tierName}</strong>${perks ? ` — and everything it unlocks: ${perks}.` : '.'}</p>
         <p style="margin:6px 0 18px;"><a href="${base}/book" style="display:inline-block;background:${accent};color:#fff;text-decoration:none;padding:13px 26px;border-radius:999px;font-size:14px;">Book your next visit</a></p>
         <p style="font-size:14px;color:#91766e;">We'd love to see you again soon.</p>`;
-      const res = await sendEmail({ to: c.email, subject: `Keep your K Circle ${tier.name} benefits`, html: emailShell({ body, preheader: `A little nudge to keep your ${tier.name} status.`, unsubUrl: unsub(c.unsubToken) }), headers: unsubHeaders(c.unsubToken) });
+      const res = await sendEmail({ to: c.email, subject: `Keep your K Circle ${tier.name} benefits`, html: emailShell({ body, preheader: `A little nudge to keep your ${tierName} status.`, unsubUrl: unsub(c.unsubToken) }), headers: unsubHeaders(c.unsubToken) });
       await db.emailEvent.create({ data: { clientId: c.id, kind: 'MEMBERSHIP', to: c.email, subject: `K Circle renewal nudge (${tier.name})`, status: res.ok ? 'SENT' : 'FAILED', providerId: res.id, error: res.error, meta: { type: 'renewal' } } }).catch(() => {});
       res.ok ? t.membershipRenewals++ : t.errors++;
     }
@@ -167,6 +189,294 @@ async function abandonedBookings(t: Tally) {
       res.ok ? t.abandonedBookings++ : t.errors++;
     }
   } catch (e) { t.errors++; console.error('[automations] abandoned bookings failed:', (e as Error)?.message); }
+}
+
+// ── Abandoned-order recovery (opt-in) ──
+// BLD-1204: a one-time nudge to shoppers who reached checkout (Order created
+// PENDING with their email already captured) but never completed payment.
+// Mirrors abandonedBookings() above: same 2–72h timing window, same
+// EmailEvent dedupe pattern, same email-sending mechanism. Gated behind the
+// abandoned_order_recovery setting.
+async function abandonedOrders(t: Tally) {
+  try {
+    const { getSetting } = await import('@/lib/settings');
+    if (!(await getSetting('abandoned_order_recovery'))) return;
+    const base = (SITE_URL || '').replace(/\/$/, '');
+    const now = Date.now();
+    const rows = await db.order.findMany({
+      where: {
+        status: 'PENDING',
+        // BLD-1204 (review): ONLINE shop checkouts only. app/api/admin/pos
+        // creates Order rows too, and an abandoned over-the-counter sale is
+        // left PENDING with a customer email that is often blank (the till
+        // defaults the name to 'In-store sale' and the email field is
+        // optional) and nothing to "finish" in the web cart — so without these
+        // two filters the automation emails in-clinic till customers a
+        // nonsensical /shop/cart link, and a blank-email row sends to '' and
+        // writes a FAILED EmailEvent that the SENT-only dedupe below never
+        // suppresses, so it retries on every daily run.
+        //
+        // app/api/shop/checkout sets stripePaymentIntentId the moment the
+        // PaymentIntent is created (and deletes the order outright if that
+        // fails), while POS card sales go through a Checkout Session and only
+        // receive a PI id from the webhook — by which point they are already
+        // PAID. So "PENDING with a PI id" is exactly the set of abandoned web
+        // checkouts.
+        stripePaymentIntentId: { not: null },
+        email: { not: '' },
+        createdAt: { gte: new Date(now - 72 * 3600e3), lte: new Date(now - 2 * 3600e3) },
+      },
+      take: 500,
+    });
+    for (const o of rows) {
+      // Honour a hard unsubscribe if this email maps to a known client — this is
+      // a one-time transactional nudge (not marketing), same stance as
+      // bookingIntentRecovery below.
+      const client = o.clientId
+        ? await db.client.findUnique({ where: { id: o.clientId }, select: { unsubscribed: true } }).catch(() => null)
+        : await db.client.findFirst({ where: { email: { equals: o.email, mode: 'insensitive' } }, select: { unsubscribed: true } }).catch(() => null);
+      if (client?.unsubscribed) continue;
+      // Once per order only.
+      const dup = await db.emailEvent.findFirst({ where: { kind: 'ABANDONED_ORDER', status: 'SENT', meta: { path: ['orderId'], equals: o.id } } });
+      if (dup) continue;
+      const resumeUrl = `${base}/shop/cart`;
+      const res = await sendEmail({ to: o.email, subject: 'Finish your order', html: tmplAbandonedOrder({ firstName: o.name.split(/\s+/)[0] || 'there', resumeUrl }) });
+      await db.emailEvent.create({ data: { clientId: o.clientId ?? null, kind: 'ABANDONED_ORDER', to: o.email, subject: 'Finish your order', status: res.ok ? 'SENT' : 'FAILED', providerId: res.id, error: res.error, meta: { orderId: o.id } } }).catch(() => {});
+      res.ok ? t.abandonedOrders++ : t.errors++;
+    }
+  } catch (e) { t.errors++; console.error('[automations] abandoned orders failed:', (e as Error)?.message); }
+}
+
+// ── Abandoned-gift-voucher recovery (opt-in) ──
+// BLD-1540: a one-time nudge to buyers who reached the Stripe payment step for
+// a gift voucher (GiftVoucher created PENDING with stripePaymentIntentId set)
+// but never completed payment. Mirrors abandonedOrders() above: same 2–72h
+// timing window, same EmailEvent dedupe pattern, same email-sending mechanism.
+// Gated behind the abandoned_giftvoucher_recovery setting.
+async function abandonedGiftVouchers(t: Tally) {
+  try {
+    const { getSetting } = await import('@/lib/settings');
+    if (!(await getSetting('abandoned_giftvoucher_recovery'))) return;
+    const base = (SITE_URL || '').replace(/\/$/, '');
+    const now = Date.now();
+    const rows = await db.giftVoucher.findMany({
+      where: {
+        status: 'PENDING',
+        stripePaymentIntentId: { not: null },
+        purchaserEmail: { not: '' },
+        createdAt: { gte: new Date(now - 72 * 3600e3), lte: new Date(now - 2 * 3600e3) },
+      },
+      take: 500,
+    });
+    for (const v of rows) {
+      // Honour a hard unsubscribe if this email maps to a known client — this is
+      // a one-time transactional nudge (not marketing), same stance as
+      // abandonedOrders above.
+      const client = await db.client.findFirst({ where: { email: { equals: v.purchaserEmail, mode: 'insensitive' } }, select: { unsubscribed: true } }).catch(() => null);
+      if (client?.unsubscribed) continue;
+      // Once per voucher only.
+      const dup = await db.emailEvent.findFirst({ where: { kind: 'ABANDONED_GIFTVOUCHER', status: 'SENT', meta: { path: ['giftVoucherId'], equals: v.id } } });
+      if (dup) continue;
+      const resumeUrl = `${base}/gift-vouchers`;
+      const res = await sendEmail({ to: v.purchaserEmail, subject: 'Finish your gift voucher purchase', html: tmplAbandonedGiftVoucher({ firstName: v.purchaserName.split(/\s+/)[0] || 'there', resumeUrl }) });
+      await db.emailEvent.create({ data: { clientId: null, kind: 'ABANDONED_GIFTVOUCHER', to: v.purchaserEmail, subject: 'Finish your gift voucher purchase', status: res.ok ? 'SENT' : 'FAILED', providerId: res.id, error: res.error, meta: { giftVoucherId: v.id } } }).catch(() => {});
+      res.ok ? t.abandonedGiftVouchers++ : t.errors++;
+    }
+  } catch (e) { t.errors++; console.error('[automations] abandoned gift vouchers failed:', (e as Error)?.message); }
+}
+
+// ── T&Cs acceptance reminder (opt-in) ──
+// BLD-1452: a client whose profile still shows "T&Cs not yet accepted"
+// (Client.termsAcceptedAt null — BLD-1067) gets a care-class nudge to finish
+// setting up their account, which is what records the acceptance. This is NOT
+// limited to recently-lapsed acceptances: a staff-created or legacy client
+// shows not-yet-accepted until their first online signup, booking or enquiry,
+// so the audience can include long-standing clients too — gated behind
+// tcs_reminder_email (default off) precisely so the owner reviews that reach
+// before it ever sends. Re-sent at most once every TCS_REMINDER_CADENCE_DAYS
+// per client (Client.tcsReminderSentAt), capped at TCS_REMINDER_MAX_PER_RUN
+// sends per run; the rest drain on later runs.
+//
+// Review fix (BLD-1452), two bounds the first pass was missing:
+//
+//  1. Only clients who can actually act on it. Acceptance is recorded in
+//     exactly one place a client can reach on their own — the signup tick, via
+//     signupClient() (lib/client-auth.ts), which stamps termsAcceptedAt even
+//     when the Client row already exists. There is no "accept the T&Cs" screen
+//     and no "add a card" screen in /account: a card is saved by Stripe during
+//     a booking, and the portal booking route (/api/booking/start) does not
+//     record acceptance at all. So a client who already holds a portal password
+//     has no way to clear this flag, and mailing them a request they cannot
+//     complete would repeat forever. The audience is therefore passwordHash:
+//     null — the legacy/staff-created clients the signup link genuinely serves.
+//  2. A lifetime cap. Without one, a client who never responds is nudged every
+//     cadence window for ever, and an address that hard-bounces is retried on
+//     every run (the release-on-failure below makes it due again immediately),
+//     logging a FAILED EmailEvent and an errored cron each time. Attempts are
+//     counted from the EmailEvent history — sent or failed — and stop at
+//     TCS_REMINDER_MAX_PER_CLIENT. A capped client is still stamped, so it
+//     drops out of the audience for another cadence window rather than sitting
+//     at the head of every query and starving clients behind it.
+async function tcsReminders(t: Tally) {
+  try {
+    const { getSetting } = await import('@/lib/settings');
+    if (!(await getSetting('tcs_reminder_email'))) return;
+    const base = (SITE_URL || '').replace(/\/$/, '');
+    const signupUrl = `${base}/account/signup`;
+    const cutoff = new Date(Date.now() - TCS_REMINDER_CADENCE_DAYS * 864e5);
+    const dueFilter = { OR: [{ tcsReminderSentAt: null }, { tcsReminderSentAt: { lt: cutoff } }] };
+    // BLD-1653 review fix: never mail a record the platform itself has already
+    // judged not to be a real person. scanAndTagTestClients (lib/test-clients.ts)
+    // tags junk/keyboard-mash signups `likely-test` -- the WordPress migration
+    // tagged them too -- and the admin client list hides them by default. Those
+    // rows match this audience exactly (legacy, no portal password, no recorded
+    // acceptance, an address nobody reads), and this is a care-class send with
+    // no marketing-consent gate to filter them out the way the marketing
+    // automations get for free. Left in the audience they would be the first
+    // thing a 500-a-day run mails, bouncing off the clinic's sending domain and
+    // taking real booking confirmations' deliverability down with them.
+    const clients = await db.client.findMany({
+      where: { termsAcceptedAt: null, passwordHash: null, email: { not: '' }, unsubscribed: false, NOT: { tags: { has: TEST_CLIENT_TAG } }, ...dueFilter },
+      select: { id: true, email: true, firstName: true, unsubscribed: true },
+      orderBy: { createdAt: 'asc' },
+      take: TCS_REMINDER_MAX_PER_RUN,
+    });
+    if (!clients.length) return;
+    // One query for the whole batch, not one per client.
+    const priorAttempts = await db.emailEvent.groupBy({
+      by: ['clientId'],
+      where: { kind: 'TCS_REMINDER', clientId: { in: clients.map((c) => c.id) } },
+      _count: { _all: true },
+    }).catch(() => [] as { clientId: string | null; _count: { _all: number } }[]);
+    const attemptsByClient = new Map(priorAttempts.map((a) => [a.clientId, a._count._all]));
+    for (const c of clients) {
+      if (!canEmailCare(c)) continue;
+      const capped = (attemptsByClient.get(c.id) ?? 0) >= TCS_REMINDER_MAX_PER_CLIENT;
+      // Claim first (conditional update matching the same due-filter) so two
+      // overlapping cron runs can't both send to the same client — mirrors
+      // courseContentReady's claim-before-send pattern.
+      const claim = await db.client.updateMany({ where: { id: c.id, ...dueFilter }, data: { tcsReminderSentAt: new Date() } });
+      if (claim.count !== 1) continue;
+      if (capped) continue; // asked enough times; the stamp above keeps them out of the next window
+      const subject = 'One quick thing to finish setting up your account';
+      const res = await sendEmail({ to: c.email, subject, html: tmplTcsReminder({ firstName: c.firstName || 'there', signupUrl }) });
+      await db.emailEvent.create({ data: { clientId: c.id, kind: 'TCS_REMINDER', to: c.email, subject: 'T&Cs acceptance reminder', status: res.ok ? 'SENT' : 'FAILED', providerId: res.id, error: res.error } }).catch(() => {});
+      if (res.ok) {
+        t.tcsReminders++;
+      } else {
+        t.errors++;
+        // Release the claim so a transient send failure retries next run, same
+        // fails-closed stance as courseContentReady. The attempt is already on
+        // the EmailEvent record, so the cap above stops a permanently-failing
+        // address retrying for ever.
+        await db.client.updateMany({ where: { id: c.id }, data: { tcsReminderSentAt: null } }).catch(() => {});
+      }
+    }
+  } catch (e) { t.errors++; console.error('[automations] T&Cs reminder failed:', (e as Error)?.message); }
+}
+
+// ── Course-content-ready notification (always on) ──
+// BLD-1231: a paid/enrolled academy student on a course with zero lessons and
+// no quiz hit a portal dead end (courseProgress() → hasContent:false, so the
+// only action shown was a generic "contact us" link). Once staff add the
+// course's first lesson or quiz, notify every enrolment that was actually
+// stuck, exactly once.
+//
+// "Actually stuck" is the load-bearing part (BLD-1231 review): the audience is
+// NOT "everyone on a course that has content" — that is every paying student
+// the academy has ever had, all of whom would be mass-mailed "your course is
+// ready" on the first run after deploy, including people who are half way
+// through. An enrolment only qualifies when the course's FIRST lesson/quiz was
+// created after that enrolment took its place (acceptedAt, else createdAt) —
+// i.e. there was a window in which the student had paid and had nothing to
+// study. A course that already had content when they enrolled never stranded
+// them, so it never notifies.
+//
+// The same reasoning bounds it in time: only content that first landed inside
+// CONTENT_READY_WINDOW_DAYS counts, so courses filled years ago do not fire a
+// retrospective "it's ready!" today, and the feature cannot reach back over
+// historical data when it ships.
+//
+// The audience also mirrors the portal exactly — the dead end is a portal
+// screen, and the portal lists enrolments by studentId (not by email), while
+// /academy/learn/<slug> resolves access through studentCanAccess(studentId).
+// So an enrolment with no linked AcademyStudent never saw the dead end and
+// could not open the link we would send it; requiring studentId keeps the
+// email and the portal talking about the same set of people.
+//
+// Idempotency: contentReadyNotifiedAt is claimed with a conditional updateMany
+// BEFORE the send, so two overlapping cron runs cannot both take the same row;
+// a failed send releases the claim so it retries on the next run.
+async function courseContentReady(t: Tally) {
+  try {
+    const base = (SITE_URL || '').replace(/\/$/, '');
+    const cutoff = new Date(Date.now() - CONTENT_READY_WINDOW_DAYS * 864e5);
+    // When did each course stop being empty? Earliest lesson/quiz per course.
+    // Matches courseProgress()'s hasContent definition (lib/lms.ts): a course
+    // has content iff it has at least one lesson or one quiz, in any module.
+    const modules = await db.courseModule.findMany({
+      where: { OR: [{ lessons: { some: {} } }, { quiz: { isNot: null } }] },
+      select: {
+        courseId: true,
+        lessons: { select: { createdAt: true }, orderBy: { createdAt: 'asc' }, take: 1 },
+        quiz: { select: { createdAt: true } },
+      },
+    });
+    const firstContentAt = new Map<string, Date>();
+    for (const m of modules) {
+      for (const at of [m.lessons[0]?.createdAt, m.quiz?.createdAt]) {
+        if (!at) continue;
+        const seen = firstContentAt.get(m.courseId);
+        if (!seen || at < seen) firstContentAt.set(m.courseId, at);
+      }
+    }
+    let budget = CONTENT_READY_MAX_PER_RUN;
+    for (const [courseId, contentAt] of firstContentAt) {
+      if (budget <= 0) break;
+      if (contentAt < cutoff) continue; // filled long before this ran — not news
+      const rows = await db.enrolment.findMany({
+        where: {
+          courseId,
+          status: { in: ['PAID', 'ENROLLED'] },
+          contentReadyNotifiedAt: null,
+          studentId: { not: null },
+          applicantEmail: { not: '' },
+          // Their place predates the content → they were stranded.
+          OR: [{ acceptedAt: { lt: contentAt } }, { acceptedAt: null, createdAt: { lt: contentAt } }],
+        },
+        select: { id: true, studentId: true, applicantEmail: true, applicantName: true, course: { select: { title: true, slug: true } } },
+        orderBy: { createdAt: 'asc' },
+        take: budget,
+      });
+      const notified = new Set<string>();
+      for (const e of rows) {
+        budget--;
+        // Claim first: a conditional update is the concurrency gate, so two
+        // overlapping runs can't both send. count 0 = someone else has it.
+        const claim = await db.enrolment.updateMany({ where: { id: e.id, contentReadyNotifiedAt: null }, data: { contentReadyNotifiedAt: new Date() } });
+        if (claim.count !== 1) continue;
+        // A student with two live enrolments on one course (e.g. a re-sit) gets
+        // one email, not two — the duplicate is stamped, not sent, so it stops
+        // being re-queried every run.
+        if (e.studentId && notified.has(e.studentId)) continue;
+        const firstName = (e.applicantName || 'there').trim().split(/\s+/)[0] || 'there';
+        const learnUrl = `${base}/academy/learn/${e.course.slug}`;
+        const subject = `${e.course.title} is ready to start`;
+        const res = await sendEmail({ to: e.applicantEmail, subject, html: tmplCourseContentReady({ firstName, courseTitle: e.course.title, learnUrl }) });
+        await db.emailEvent.create({ data: { kind: 'COURSE_CONTENT_READY', to: e.applicantEmail, subject, status: res.ok ? 'SENT' : 'FAILED', providerId: res.id, error: res.error, meta: { enrolmentId: e.id, courseId } } }).catch(() => {});
+        if (res.ok) {
+          if (e.studentId) notified.add(e.studentId);
+          t.courseContentReady++;
+        } else {
+          t.errors++;
+          // Release the claim so a transient send failure retries next run. If
+          // the release itself fails the row stays stamped — fails closed (a
+          // missed nudge), never into a duplicate send.
+          await db.enrolment.updateMany({ where: { id: e.id }, data: { contentReadyNotifiedAt: null } }).catch(() => {});
+        }
+      }
+    }
+  } catch (e) { t.errors++; console.error('[automations] course content ready failed:', (e as Error)?.message); }
 }
 
 // ── Booking-funnel intent recovery (opt-in) ──
@@ -469,8 +779,12 @@ async function reminders(t: Tally) {
       }
       if (smsApplicable) {
         const when = b.startAt.toLocaleString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', timeZone: 'Europe/London' });
-        const sms = await sendSms(b.client.phone, `KClinics reminder: your ${b.treatmentTitle} is ${label}, ${when}. Manage: ${manageUrl}`).catch(() => null);
-        if (sms?.ok) delivered = true;
+        const sms = await sendSms(b.client.phone, `KClinics reminder: your ${b.treatmentTitle} is ${label}, ${when}. Manage: ${manageUrl}`)
+          .catch((e) => ({ ok: false, error: e instanceof Error ? e.message : 'send failed' }));
+        // BLD-1156: this used to only set a boolean on success — a failing SMS
+        // provider was invisible next to the email branch above, which logs and
+        // counts every failure. Mirror that here so SMS outages show up too.
+        if (sms.ok) { delivered = true; } else { t.errors++; console.error(`[automations] SMS reminder (${label}) failed for booking ${b.id}:`, sms.error); }
       }
       // Latch the per-window flag only when a channel actually delivered, or when
       // the client has no contactable channel at all (nothing to retry). A
@@ -512,6 +826,105 @@ async function formReminders(t: Tally) {
     await logEvent(c.id, 'FORM_REMINDER', c.email, 'Pre-treatment form reminder', res);
     res.ok ? t.formReminders++ : t.errors++;
   }
+}
+
+// BLD-1573: Laser Hair Removal pre-treatment prep reminder, sent 48h before the
+// appointment (shave the area, avoid retinol/sun, etc.) — every booking of
+// either LHR treatment, however far in advance it was made. Dedup is per
+// booking (not per client/day), since a client can book this treatment again.
+const LASER_HAIR_REMOVAL_SLUGS = ['laser-hair-removal', 'laser-hair-removal-for-men'];
+async function laserHairRemovalPrep(t: Tally) {
+  try {
+    const { clinicDateISO, clinicDayBounds } = await import('@/lib/clinic-time');
+    const [yy, mm, dd] = clinicDateISO(new Date()).split('-').map(Number);
+    const targetISO = clinicDateISO(new Date(Date.UTC(yy, mm - 1, dd + 2, 12)));
+    const { dayStart: start, dayEnd: end } = clinicDayBounds(targetISO);
+    const bookings = await db.booking.findMany({
+      where: { status: 'CONFIRMED', treatmentSlug: { in: LASER_HAIR_REMOVAL_SLUGS }, startAt: { gte: start, lte: end } },
+      include: { client: true },
+    });
+    for (const b of bookings) {
+      const c = b.client;
+      if (!canEmailCare(c)) continue;
+      const dup = await db.emailEvent.findFirst({ where: { kind: 'TREATMENT_PREP', status: 'SENT', meta: { path: ['bookingId'], equals: b.id } } });
+      if (dup) continue;
+      const subject = `${b.treatmentTitle} — before your appointment`;
+      const res = await sendEmail({ to: c.email, subject, html: tmplLaserHairRemovalPrep({ firstName: c.firstName, treatment: b.treatmentTitle, start: b.startAt }) });
+      await db.emailEvent.create({ data: { clientId: c.id, kind: 'TREATMENT_PREP', to: c.email, subject, status: res.ok ? 'SENT' : 'FAILED', providerId: res.id, error: res.error, meta: { bookingId: b.id } } }).catch(() => {});
+      res.ok ? t.treatmentPrep++ : t.errors++;
+    }
+  } catch (e) { t.errors++; console.error('[automations] laser hair removal prep reminder failed:', (e as Error)?.message); }
+}
+
+// BLD-1664: referral-ask touch, 5-10 days after a completed visit — invites a
+// client to share their existing referral link (the same code/link the portal
+// Rewards page shows, minted by lib/client-loyalty.ts's getOrCreateReferralCode
+// and pointing at /account/signup?ref=<code>, exactly as ReferralCard renders
+// it). Gated on referral_ask_email (ships off) and marketing consent, same
+// class of send as the satisfaction/rebook nurture above. A 5-10 day window
+// (rather than one exact day) gives several consecutive daily cron runs a
+// chance to catch a booking if a run is late or skipped; the per-booking
+// dedup below (emailEvent kind + bookingId in meta, same pattern as
+// aftercare/satisfaction/rebookNudge/laserHairRemovalPrep) is what actually
+// prevents a double-send — it holds regardless of how many times a booking
+// falls inside that window or how many times the cron runs in a day.
+const REFERRAL_ASK_MIN_DAYS = 5;
+const REFERRAL_ASK_MAX_DAYS = 10;
+// Per-CLIENT cooldown, on top of the per-booking dedup below. The dedup alone
+// only stops the same visit being asked twice; it says nothing about how often
+// a person is asked. A course client is the normal case here, not an edge one --
+// laser hair removal runs 6-8 sessions, often weekly -- and each completed
+// session is a different bookingId, so without this they would get "Know someone
+// who'd love KClinics?" every single week for the length of their course. Ask
+// each client at most once a quarter, in the same spirit as the 30-day tier
+// nudge and 120-day membership renewal dedups above.
+const REFERRAL_ASK_CLIENT_COOLDOWN_DAYS = 90;
+async function referralAsk(t: Tally) {
+  try {
+    const { getSetting } = await import('@/lib/settings');
+    if (!(await getSetting('referral_ask_email'))) return;
+    // LOYALTY carries the actual reward terms, so the copy below states the real
+    // offer and can't drift from the mechanism that pays it out.
+    const { getOrCreateReferralCode, LOYALTY, pointsToPence } = await import('@/lib/client-loyalty');
+    const gbp = (pence: number) => `£${(pence / 100).toLocaleString('en-GB', { maximumFractionDigits: pence % 100 ? 2 : 0 })}`;
+    const rewardLabel = gbp(pointsToPence(LOYALTY.referralReward));
+    const thresholdLabel = gbp(LOYALTY.referralThresholdPence);
+    const now = Date.now();
+    const start = new Date(now - REFERRAL_ASK_MAX_DAYS * 864e5);
+    const end = new Date(now - REFERRAL_ASK_MIN_DAYS * 864e5);
+    const cooldownSince = new Date(now - REFERRAL_ASK_CLIENT_COOLDOWN_DAYS * 864e5);
+    const base = (SITE_URL || '').replace(/\/$/, '');
+    const bookings = await db.booking.findMany({
+      where: { status: 'COMPLETED', startAt: { gte: start, lte: end } },
+      include: { client: true },
+      take: 500,
+    });
+    for (const b of bookings) {
+      const c = b.client;
+      if (!canEmail(c)) continue;
+      // Per-booking dedup — the same visit is never asked about twice.
+      const dup = await db.emailEvent.findFirst({ where: { clientId: c.id, kind: 'REFERRAL_ASK', status: 'SENT', meta: { path: ['bookingId'], equals: b.id } } });
+      if (dup) continue;
+      // Per-client cooldown — and never mind which booking. See the constant
+      // above: a course client completes a session a week, each its own
+      // bookingId, so the per-booking dedup on its own would let the same
+      // person be asked to refer a friend every week for months.
+      const recent = await db.emailEvent.findFirst({ where: { clientId: c.id, kind: 'REFERRAL_ASK', status: 'SENT', createdAt: { gte: cooldownSince } } });
+      if (recent) continue;
+      const code = await getOrCreateReferralCode(c.id);
+      const link = `${base}/account/signup?ref=${encodeURIComponent(code)}`;
+      const body = `
+        <h1 style="margin:0 0 12px;font-size:25px;">Loved your ${escapeHtml(b.treatmentTitle || 'visit')}, ${escapeHtml(c.firstName || 'there')}?</h1>
+        <p style="margin:0 0 14px;">If a friend would love it too, share your personal referral link. Once their first treatment is complete, ${rewardLabel} in reward points lands for each of you, to spend on your next visit.</p>
+        <p style="margin:0 0 14px;font-size:14px;color:#91766e;">Their first treatment needs to be ${thresholdLabel} or more to qualify. Points are worth ${gbp(100 * LOYALTY.pointValuePence)} per 100 and come off your next visit.</p>
+        <p style="margin:6px 0 18px;"><a href="${link}" style="display:inline-block;background:#a98a6d;color:#fff;text-decoration:none;padding:13px 26px;border-radius:999px;font-size:14px;">Share your referral link</a></p>
+        <p style="margin:14px 0 6px;font-size:14px;color:#91766e;">Or copy it: <a href="${link}" style="color:#a98a6d;">${link}</a></p>`;
+      const subject = `Know someone who'd love ${site.name}?`;
+      const res = await sendEmail({ to: c.email, subject, html: emailShell({ body, preheader: `Give ${rewardLabel}, get ${rewardLabel} when a friend completes their first treatment.`, unsubUrl: unsub(c.unsubToken) }), headers: unsubHeaders(c.unsubToken) });
+      await db.emailEvent.create({ data: { clientId: c.id, kind: 'REFERRAL_ASK', to: c.email, subject: 'Referral ask', status: res.ok ? 'SENT' : 'FAILED', providerId: res.id, error: res.error, meta: { bookingId: b.id } } }).catch(() => {});
+      res.ok ? t.referralAsks++ : t.errors++;
+    }
+  } catch (e) { t.errors++; console.error('[automations] referral ask failed:', (e as Error)?.message); }
 }
 
 // BLD-653: NPS promoters (score 9-10) get a thank-you email ~24h after responding,

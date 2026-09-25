@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation';
 export type AbVariantRow = { id: string; key: string; label: string; weight: number; headline: string; subhead: string; ctaLabel: string; ctaHref: string; exposures: number; conversions: number };
 export type AbTestRow = { id: string; name: string; slug: string; status: string; variants: AbVariantRow[] };
 
-const field = 'rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-2 py-1.5 text-sm';
+const field = 'rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-porcelain)] px-2 py-1.5 text-sm';
 const rate = (c: number, e: number) => (e > 0 ? (c / e) * 100 : 0);
 
 async function post(payload: object) {
@@ -64,7 +64,7 @@ function TestCard({ t, canManage }: { t: AbTestRow; canManage: boolean }) {
           const r = rate(v.conversions, v.exposures);
           const isBest = best && v.id === best.id && v.exposures > 0;
           return (
-            <div key={v.id} className={`rounded-[var(--radius-md)] border p-3 ${isBest ? 'border-[var(--color-gold)] bg-[var(--color-gold)]/5' : 'border-[var(--color-line)] bg-white'}`}>
+            <div key={v.id} className={`rounded-[var(--radius-md)] border p-3 ${isBest ? 'border-[var(--color-gold)] bg-[var(--color-gold)]/5' : 'border-[var(--color-line)] bg-[var(--color-porcelain)]'}`}>
               <div className="flex flex-wrap items-center gap-3">
                 <span className="grid h-7 w-7 place-items-center rounded-full bg-[var(--color-ink)] text-xs font-semibold text-[var(--color-porcelain)]">{v.key}</span>
                 <span className="text-sm font-medium">{v.label}{isBest && <span className="ml-2 text-xs text-[var(--color-gold-deep)]">★ leading</span>}</span>
@@ -78,7 +78,7 @@ function TestCard({ t, canManage }: { t: AbTestRow; canManage: boolean }) {
                   <input defaultValue={v.ctaHref} onBlur={(e) => e.target.value !== v.ctaHref && act({ op: 'updateVariant', id: v.id, ctaHref: e.target.value })} placeholder="CTA link (/book)" aria-label="CTA link" className={field} />
                 </div>
               )}
-              {canManage && t.variants.length > 2 && <button onClick={() => act({ op: 'removeVariant', id: v.id })} className="mt-2 text-xs text-[var(--color-blush-deep)] hover:underline">Remove variant</button>}
+              {canManage && t.variants.length > 2 && <button onClick={() => { if (confirm('Remove this variant? Its exposure and conversion data will be lost.')) act({ op: 'removeVariant', id: v.id }); }} className="mt-2 text-xs text-[var(--color-blush-deep)] hover:underline">Remove variant</button>}
             </div>
           );
         })}

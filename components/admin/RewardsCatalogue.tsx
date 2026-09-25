@@ -7,9 +7,9 @@ export type CatalogueReward = { id: string; name: string; description: string | 
 export type MyRedemption = { id: string; name: string; costPoints: number; status: string; createdAt: string };
 
 const STATUS_STYLE: Record<string, string> = {
-  PENDING: 'bg-amber-100 text-amber-800',
-  FULFILLED: 'bg-emerald-100 text-emerald-800',
-  DECLINED: 'bg-rose-100 text-rose-700',
+  PENDING: 'bg-[var(--color-gold)]/20 text-[var(--color-ink)]',
+  FULFILLED: 'bg-[var(--color-jade)]/15 text-[var(--color-ink)]',
+  DECLINED: 'bg-[var(--color-blush)]/20 text-[var(--color-blush-deep)]',
 };
 
 export function RewardsCatalogue({
@@ -49,7 +49,7 @@ export function RewardsCatalogue({
           {L('Your balance', 'Ваш баланс')}: <span className="font-medium text-[var(--color-gold-deep)]">{balance} {L('pts', 'балів')}</span>
         </p>
       </div>
-      {msg && <p className="mt-2 text-sm text-rose-600">{msg}</p>}
+      {msg && <p className="mt-2 text-sm text-[var(--color-blush-deep)]">{msg}</p>}
 
       {rewards.length === 0 ? (
         <p className="mt-4 text-sm text-[var(--color-stone)]">{L('No rewards available yet.', 'Поки що немає доступних винагород.')}</p>
@@ -89,7 +89,7 @@ export function RewardsCatalogue({
           <h3 className="mb-3 text-sm font-medium text-[var(--color-stone)]">{L('My redemptions', 'Мої обміни')}</h3>
           <div className="space-y-2">
             {myRedemptions.map((m) => (
-              <div key={m.id} className="flex items-center justify-between gap-3 rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-4 py-2.5 text-sm">
+              <div key={m.id} className="flex items-center justify-between gap-3 rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-porcelain)] px-4 py-2.5 text-sm">
                 <span>{m.name}</span>
                 <span className="flex items-center gap-3">
                   <span className="text-[var(--color-stone)]">−{m.costPoints} {L('pts', 'балів')}</span>

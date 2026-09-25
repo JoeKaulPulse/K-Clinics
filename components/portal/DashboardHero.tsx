@@ -46,7 +46,7 @@ export function DashboardHero({ firstName, locale, next, visits, memberSince, la
       </span>
 
       <div className="relative z-10 p-8 sm:p-10 lg:p-12">
-        <p className="eyebrow text-[var(--color-gold-soft)]">{t('dash.eyebrow')}</p>
+        <p className="eyebrow eyebrow-on-dark">{t('dash.eyebrow')}</p>
         <h1 className="mt-4 font-[family-name:var(--font-display)] text-[clamp(2.1rem,1.5rem+2.6vw,3.4rem)] leading-[1.02] tracking-[-0.01em]">
           {greetLead}
           <span className="italic text-[var(--color-gold-soft)]">{firstName}</span>

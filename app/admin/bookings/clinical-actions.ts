@@ -14,6 +14,12 @@ export async function saveClinicalNote(bookingId: string, note: string) {
   const { db } = await import('@/lib/db');
   const { encryptJson } = await import('@/lib/crypto');
   const { logAudit } = await import('@/lib/audit');
+  // BLD-1930: a PRACTITIONER may only write a clinical note on their own
+  // booking, same guard as the debt route (app/api/admin/clients/[id]/debt).
+  const existing = await db.booking.findUnique({ where: { id: bookingId }, select: { practitionerId: true } });
+  if (!existing) return { ok: false, error: 'Booking not found.' };
+  const practitionerId = session.role === 'PRACTITIONER' ? session.sub : undefined;
+  if (practitionerId && existing.practitionerId !== practitionerId) return { ok: false, error: 'Booking not found.' };
   const trimmed = note.trim();
   const b = await db.booking.update({
     where: { id: bookingId },
@@ -31,8 +37,11 @@ export async function saveClinicalNote(bookingId: string, note: string) {
 
 // Add a treatment (service variant) to an appointment mid-session. Creates an
 // add-on line item AND raises the booking's price + duration, so the eventual
-// charge and the itemised receipt both reflect it. Blocked once the booking is
-// charged or cancelled (the money's already settled / the slot is void).
+// charge and the itemised receipt both reflect it.
+// BLD-1895: also allowed on an already-charged booking, admin-only — the same
+// record-only pattern overrideBookingPrice uses for a post-payment correction
+// (below): the agreed price goes up, chargedPence/chargedAt never do, and any
+// top-up charge or refund is a deliberate, separate manual step.
 export async function addTreatmentToBooking(bookingId: string, variantId: string) {
   if (!crmEnabled) return { ok: false, error: 'CRM disabled' };
   const session = await getSession();
@@ -41,9 +50,19 @@ export async function addTreatmentToBooking(bookingId: string, variantId: string
   const { db } = await import('@/lib/db');
   const { logAudit } = await import('@/lib/audit');
 
-  const booking = await db.booking.findUnique({ where: { id: bookingId }, select: { status: true, chargedAt: true, prepaidAt: true, clientId: true } });
+  const booking = await db.booking.findUnique({ where: { id: bookingId }, select: { status: true, chargedAt: true, chargedPence: true, prepaidAt: true, clientId: true, pricePence: true, practitionerId: true } });
   if (!booking) return { ok: false, error: 'Booking not found.' };
-  if (booking.chargedAt) return { ok: false, error: 'This appointment is already paid — add the treatment to a new booking instead.' };
+  // BLD-1930: a PRACTITIONER may only add a treatment to their own booking.
+  const practitionerId = session.role === 'PRACTITIONER' ? session.sub : undefined;
+  if (practitionerId && booking.practitionerId !== practitionerId) return { ok: false, error: 'Booking not found.' };
+  const paidCorrection = Boolean(booking.chargedAt);
+  if (paidCorrection) {
+    // Review fix: also bookings.charge, like every other money correction
+    // (overrideBookingPrice, removeOutstandingPayment, PaymentMethodEditor) — an
+    // admin with "Take payments" revoked must not re-price a paid booking.
+    const { sessionIsAdmin } = await import('@/lib/auth');
+    if (!sessionIsAdmin(session) || !sessionCan(session, 'bookings.charge')) return { ok: false, error: 'Only an admin who can take payments can add a treatment to an already-paid appointment.' };
+  }
   // BLD-1119: a BNPL course pre-payment covers the course total only, and every
   // charge surface refuses a pre-paid booking (no card can be billed twice) — so an
   // add-on booked onto it could never be collected. Bill extras on a new booking.
@@ -56,7 +75,7 @@ export async function addTreatmentToBooking(bookingId: string, variantId: string
   const label = `${v.service.name} — ${v.variant.name}`;
 
   // Line item + roll the price/duration into the booking in one transaction.
-  await db.$transaction([
+  const [, updated] = await db.$transaction([
     db.bookingItem.create({
       data: {
         bookingId, variantId, treatmentSlug: v.service.treatmentSlug, label,
@@ -66,43 +85,142 @@ export async function addTreatmentToBooking(bookingId: string, variantId: string
     db.booking.update({
       where: { id: bookingId },
       data: { pricePence: { increment: v.variant.pricePence }, durationMin: { increment: v.variant.durationMin } },
+      select: { pricePence: true },
     }),
   ]);
-  await logAudit({ action: 'SESSION_EDITED', actor: session.email, actorRole: session.role, bookingId, clientId: booking.clientId, summary: `Added ${label} (+£${(v.variant.pricePence / 100).toFixed(2)})` });
+  await logAudit({
+    action: 'SESSION_EDITED', actor: session.email, actorRole: session.role, bookingId, clientId: booking.clientId,
+    summary: paidCorrection
+      ? `Added ${label} (+£${(v.variant.pricePence / 100).toFixed(2)}) AFTER payment (record only): total now £${(updated.pricePence / 100).toFixed(2)} — card actually charged £${((booking.chargedPence ?? 0) / 100).toFixed(2)}, unchanged. Take a top-up payment or adjust manually if the client owes it.`
+      : `Added ${label} (+£${(v.variant.pricePence / 100).toFixed(2)})`,
+  });
   revalidatePath(`/admin/bookings/${bookingId}`);
   revalidatePath(`/admin/bookings/${bookingId}/session`);
   return { ok: true };
 }
 
-// Remove an add-on treatment from an appointment (before charge). Only
-// removes items where isAddon: true — the primary treatment is never touched.
-// Decrements the booking price + duration in the same transaction.
+// Remove an add-on treatment from an appointment. Only removes items where
+// isAddon: true — the primary treatment is never touched. Decrements the
+// booking price + duration in the same transaction.
+// BLD-1895: also allowed on an already-charged booking, admin-only, mirroring
+// addTreatmentToBooking's paid-correction path above — chargedPence/chargedAt
+// are never touched, so any refund for the removed amount is a deliberate,
+// separate step (the existing partial-refund control already supports it).
 export async function removeAddonTreatment(bookingId: string, itemId: string) {
   if (!crmEnabled) return { ok: false, error: 'CRM disabled' };
   const session = await getSession();
-  if (!session || !sessionCan(session, 'bookings.manage')) return { ok: false, error: 'Not permitted' };
+  if (!session || !(sessionCan(session, 'bookings.manage') || sessionCan(session, 'liveAppointments.manage'))) return { ok: false, error: 'Not permitted' };
   if (!bookingId || !itemId) return { ok: false, error: 'Missing booking or item ID.' };
   const { db } = await import('@/lib/db');
   const { logAudit } = await import('@/lib/audit');
 
-  const booking = await db.booking.findUnique({ where: { id: bookingId }, select: { chargedAt: true, clientId: true, status: true } });
+  const booking = await db.booking.findUnique({ where: { id: bookingId }, select: { chargedAt: true, chargedPence: true, prepaidAt: true, prepaidPence: true, clientId: true, status: true, practitionerId: true } });
   if (!booking) return { ok: false, error: 'Booking not found.' };
-  if (booking.chargedAt) return { ok: false, error: 'This appointment is already paid — the add-on cannot be removed.' };
+  // BLD-1930: a PRACTITIONER may only remove an add-on from their own booking.
+  const practitionerId = session.role === 'PRACTITIONER' ? session.sub : undefined;
+  if (practitionerId && booking.practitionerId !== practitionerId) return { ok: false, error: 'Booking not found.' };
+  // Review fix: a BNPL pre-paid course (prepaidAt, no chargedAt) is paid too —
+  // removing an add-on there lowers the agreed price of settled money, so it
+  // takes the same admin + bookings.charge gate as a charged booking.
+  const paidCorrection = Boolean(booking.chargedAt || booking.prepaidAt);
+  if (paidCorrection) {
+    const { sessionIsAdmin } = await import('@/lib/auth');
+    if (!sessionIsAdmin(session) || !sessionCan(session, 'bookings.charge')) return { ok: false, error: 'Only an admin who can take payments can remove an add-on from an already-paid appointment.' };
+  }
   if (booking.status === 'CANCELLED' || booking.status === 'NO_SHOW') return { ok: false, error: 'This appointment is cancelled.' };
 
-  const item = await db.bookingItem.findUnique({ where: { id: itemId }, select: { isAddon: true, label: true, pricePence: true, durationMin: true, bookingId: true } });
+  const item = await db.bookingItem.findUnique({ where: { id: itemId }, select: { isAddon: true, label: true, pricePence: true, discountPence: true, durationMin: true, bookingId: true } });
   if (!item) return { ok: false, error: 'Item not found.' };
   if (item.bookingId !== bookingId) return { ok: false, error: 'Item does not belong to this booking.' };
   if (!item.isAddon) return { ok: false, error: 'Only add-on treatments can be removed.' };
+  // Review fix: booking.pricePence holds each item NET of its discount (online
+  // add-ons carry a 20% upsell discountPence — app/api/booking/start), so take
+  // off the net amount, not the list price, or the total drops too far.
+  const netPence = Math.max(0, item.pricePence - item.discountPence);
 
-  await db.$transaction([
-    db.bookingItem.delete({ where: { id: itemId } }),
-    db.booking.update({
+  // The delete re-asserts booking + add-on in its WHERE, so a concurrent removal
+  // (or anything that changed the row since the read) can't double-decrement.
+  const updated = await db.$transaction(async (tx) => {
+    const del = await tx.bookingItem.deleteMany({ where: { id: itemId, bookingId, isAddon: true } });
+    if (del.count !== 1) return null;
+    return tx.booking.update({
       where: { id: bookingId },
-      data: { pricePence: { decrement: item.pricePence }, durationMin: { decrement: item.durationMin } },
-    }),
+      data: { pricePence: { decrement: netPence }, durationMin: { decrement: item.durationMin } },
+      select: { pricePence: true },
+    });
+  });
+  if (!updated) return { ok: false, error: 'That add-on was already removed.' };
+  const paidPence = booking.chargedAt ? (booking.chargedPence ?? 0) : (booking.prepaidPence ?? 0);
+  await logAudit({
+    action: 'SESSION_EDITED', actor: session.email, actorRole: session.role, bookingId, clientId: booking.clientId,
+    summary: paidCorrection
+      ? `Removed add-on ${item.label} (-£${(netPence / 100).toFixed(2)}) AFTER payment (record only): total now £${(updated.pricePence / 100).toFixed(2)} — client actually paid £${(paidPence / 100).toFixed(2)}, unchanged. Refund the difference manually if the client is owed it.`
+      : `Removed add-on ${item.label} (-£${(netPence / 100).toFixed(2)})`,
+  });
+  revalidatePath(`/admin/bookings/${bookingId}`);
+  revalidatePath(`/admin/bookings/${bookingId}/session`);
+  return { ok: true };
+}
+
+// BLD-1149: adjust the agreed treatment price of THIS appointment before payment
+// — a custom quote, a previously agreed rate, or a discount. Applies only to the
+// booking (the catalogue price is untouched), needs a reason, and audit-logs the
+// original and new amounts. Gated on bookings.charge — the same people who can
+// already adjust the amount at checkout (BLD-207). Charged/pre-paid bookings are
+// refused: post-payment corrections are an owner-gated question (BLD-1094).
+export async function overrideBookingPrice(bookingId: string, newBasePence: number, reason: string) {
+  if (!crmEnabled) return { ok: false, error: 'CRM disabled' };
+  const session = await getSession();
+  if (!session || !sessionCan(session, 'bookings.charge')) return { ok: false, error: 'Not permitted' };
+  const pence = Math.round(Number(newBasePence));
+  if (!Number.isFinite(pence) || pence < 0 || pence > 5_000_000) return { ok: false, error: 'Enter a valid price (up to £50,000).' };
+  const why = (reason || '').trim().slice(0, 200);
+  if (!why) return { ok: false, error: 'A reason for the price change is required.' };
+  const { db } = await import('@/lib/db');
+  const { logAudit } = await import('@/lib/audit');
+
+  const booking = await db.booking.findUnique({ where: { id: bookingId }, select: { status: true, chargedAt: true, chargedPence: true, prepaidAt: true, clientId: true, pricePence: true, practitionerId: true } });
+  if (!booking) return { ok: false, error: 'Booking not found.' };
+  // BLD-1930: a PRACTITIONER may only override the price of their own booking.
+  const practitionerId = session.role === 'PRACTITIONER' ? session.sub : undefined;
+  if (practitionerId && booking.practitionerId !== practitionerId) return { ok: false, error: 'Booking not found.' };
+  // BLD-1094 (owner decision 5 Aug: record-only): admins may correct the price
+  // of an ALREADY-PAID appointment. The correction changes the recorded agreed
+  // price and the audit trail only — chargedPence stays what the card actually
+  // paid, and any refund, Xero correction or loyalty adjustment is manual.
+  const paidCorrection = Boolean(booking.chargedAt);
+  if (paidCorrection) {
+    const { sessionIsAdmin } = await import('@/lib/auth');
+    if (!sessionIsAdmin(session)) return { ok: false, error: 'Only an admin can correct the price of a paid appointment.' };
+  }
+  if (booking.prepaidAt) return { ok: false, error: 'This course was pre-paid in full — its price can no longer be edited.' };
+  if (booking.status === 'CANCELLED' || booking.status === 'NO_SHOW') return { ok: false, error: 'This appointment is cancelled.' };
+
+  // The override sets the treatment (base) price; add-on line items keep their
+  // own prices and stay on top of it.
+  const addOns = await db.bookingItem.aggregate({ where: { bookingId, isAddon: true }, _sum: { pricePence: true } }).catch(() => null);
+  const addOnPence = addOns?._sum.pricePence ?? 0;
+  const newTotal = pence + addOnPence;
+  if (newTotal === booking.pricePence) return { ok: false, error: 'That is already the current price.' };
+  // Keep the primary line item in sync so itemised views and exports match.
+  // BLD-1286: the entered `pence` IS the new agreed net price for the item — an
+  // admin override, not an automatic discount — so the item's own discountPence
+  // (any welcome/offer/promo discount recorded at booking time) is reset to 0
+  // here. Every other reader of this pair (courseTotalPence, receiptDetail,
+  // gamification, appointment-session-server) nets pricePence - discountPence to
+  // get the item's real price; leaving the old discountPence in place would make
+  // all of those silently undercut the price staff just typed in.
+  const primary = await db.bookingItem.findFirst({ where: { bookingId, isAddon: false }, orderBy: { createdAt: 'asc' }, select: { id: true } }).catch(() => null);
+  await db.$transaction([
+    db.booking.update({ where: { id: bookingId }, data: { pricePence: newTotal } }),
+    ...(primary ? [db.bookingItem.update({ where: { id: primary.id }, data: { pricePence: pence, discountPence: 0 } })] : []),
   ]);
-  await logAudit({ action: 'SESSION_EDITED', actor: session.email, actorRole: session.role, bookingId, clientId: booking.clientId, summary: `Removed add-on ${item.label} (-£${(item.pricePence / 100).toFixed(2)})` });
+  await logAudit({
+    action: 'SESSION_EDITED', actor: session.email, actorRole: session.role, bookingId, clientId: booking.clientId,
+    summary: paidCorrection
+      ? `Price corrected AFTER payment (record only): was £${(booking.pricePence / 100).toFixed(2)}, now £${(newTotal / 100).toFixed(2)} — card actually charged £${((booking.chargedPence ?? 0) / 100).toFixed(2)}, unchanged. Any refund/Xero/loyalty adjustment is manual. Reason: ${why}`
+      : `Price adjusted: £${(booking.pricePence / 100).toFixed(2)} → £${(newTotal / 100).toFixed(2)} — ${why}`,
+  });
   revalidatePath(`/admin/bookings/${bookingId}`);
   revalidatePath(`/admin/bookings/${bookingId}/session`);
   return { ok: true };
@@ -131,7 +249,7 @@ export async function saveSopChecklist(
 ) {
   if (!crmEnabled) return { ok: false };
   const session = await getSession();
-  if (!session || !sessionCan(session, 'bookings.manage')) return { ok: false, error: 'Not permitted' };
+  if (!session || !(sessionCan(session, 'bookings.manage') || sessionCan(session, 'liveAppointments.manage'))) return { ok: false, error: 'Not permitted' };
   const { db } = await import('@/lib/db');
   const { encryptJson } = await import('@/lib/crypto');
   const { logAudit } = await import('@/lib/audit');
@@ -155,7 +273,7 @@ export async function saveSopChecklist(
 export async function reviewMedicalFlag(bookingId: string) {
   if (!crmEnabled) return { ok: false };
   const session = await getSession();
-  if (!session || !sessionCan(session, 'bookings.manage')) return { ok: false, error: 'Not permitted' };
+  if (!session || !(sessionCan(session, 'bookings.manage') || sessionCan(session, 'liveAppointments.manage'))) return { ok: false, error: 'Not permitted' };
   const { db } = await import('@/lib/db');
   const { logAudit } = await import('@/lib/audit');
   const b = await db.booking.update({ where: { id: bookingId }, data: { medicalFlagReviewedAt: new Date(), medicalFlagReviewedBy: session.email } });
@@ -168,7 +286,7 @@ export async function reviewMedicalFlag(bookingId: string) {
 export async function startAppointment(bookingId: string) {
   if (!crmEnabled) return { ok: false };
   const session = await getSession();
-  if (!session || !sessionCan(session, 'bookings.manage')) return { ok: false, error: 'Not permitted' };
+  if (!session || !(sessionCan(session, 'bookings.manage') || sessionCan(session, 'liveAppointments.manage'))) return { ok: false, error: 'Not permitted' };
 
   const { db } = await import('@/lib/db');
   const { getSetting } = await import('@/lib/settings');
@@ -247,7 +365,7 @@ export async function removeConsumable(movementId: string, bookingId: string) {
 export async function finishAppointment(bookingId: string) {
   if (!crmEnabled) return { ok: false };
   const session = await getSession();
-  if (!session || !sessionCan(session, 'bookings.manage')) return { ok: false, error: 'Not permitted' };
+  if (!session || !(sessionCan(session, 'bookings.manage') || sessionCan(session, 'liveAppointments.manage'))) return { ok: false, error: 'Not permitted' };
   const { db } = await import('@/lib/db');
   const { logAudit } = await import('@/lib/audit');
   const b = await db.booking.findUnique({ where: { id: bookingId } });
@@ -276,7 +394,12 @@ export async function finishAppointment(bookingId: string) {
     if (await getSetting('review_requests_enabled')) {
       const { ensureReviewRequest, sendReviewRequest } = await import('@/lib/review-system');
       const review = await ensureReviewRequest(bookingId);
-      if (review) {
+      // Send once only: `channel` is null until the first request goes out
+      // (same guard setBookingStatus already applies). Without it, a visit that
+      // was completed, reset to confirmed and then completed again sends the
+      // client a second review invite — reachable since BLD-1249 made "Reset to
+      // confirmed" clear finishedAt, which re-opens this code path.
+      if (review && review.status === 'PENDING' && !review.channel) {
         await sendReviewRequest(review.id, 'EMAIL');
         await logAudit({ action: 'REVIEW_REQUESTED', actor: session.email, actorRole: session.role, bookingId, clientId: b.clientId, summary: 'Review request sent' });
       }

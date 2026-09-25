@@ -7,7 +7,7 @@ type Row = { id: string; name: string; category: string | null; contactName: str
 type Call = { id: string; direction: string; startedAt: string; durationSec: number; fromNumber: string; toNumber: string };
 type Full = Row & { website: string | null; addressLine: string | null; city: string | null; postcode: string | null; country: string | null; notes: string | null; calls: Call[] };
 
-const field = 'w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-3 py-2 text-sm outline-none focus:border-[var(--color-gold)]';
+const field = 'w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-porcelain)] px-3 py-2 text-sm outline-none focus:border-[var(--color-gold-deep)] focus-visible:ring-2 focus-visible:ring-[var(--color-gold-deep)]';
 const label = 'mb-1 block text-xs uppercase tracking-[0.12em] text-[var(--color-stone)]';
 
 async function post(payload: object) {
@@ -79,7 +79,7 @@ export function SupplierManager({ canManage }: { canManage: boolean }) {
             </thead>
             <tbody>
               {filtered.map((s) => (
-                <tr key={s.id} onClick={() => openEdit(s.id)} className={`cursor-pointer border-b border-[var(--color-line)] last:border-0 hover:bg-[var(--color-bone)] ${!s.active ? 'opacity-50' : ''}`}>
+                <tr key={s.id} onClick={() => openEdit(s.id)} tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openEdit(s.id); } }} className={`cursor-pointer border-b border-[var(--color-line)] last:border-0 hover:bg-[var(--color-bone)] ${!s.active ? 'opacity-50' : ''}`}>
                   <td className="px-4 py-2.5 font-medium">{s.name}{!s.active && <span className="ml-2 text-[0.6rem] uppercase text-[var(--color-stone)]">inactive</span>}</td>
                   <td className="px-4 py-2.5 text-[var(--color-stone)]">{s.category || '—'}</td>
                   <td className="px-4 py-2.5 text-[var(--color-stone)]">{s.contactName || s.email || '—'}</td>
@@ -114,7 +114,7 @@ export function SupplierManager({ canManage }: { canManage: boolean }) {
             {editing.calls && editing.calls.length > 0 && (
               <div className="mt-5">
                 <p className={label}>Recent calls</p>
-                <ul className="divide-y divide-[var(--color-line)] rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white text-sm">
+                <ul className="divide-y divide-[var(--color-line)] rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-porcelain)] text-sm">
                   {editing.calls.map((c) => (
                     <li key={c.id} className="flex items-center justify-between px-3 py-2">
                       <span>{c.direction === 'INBOUND' ? '↘ Inbound' : '↗ Outbound'} · {new Date(c.startedAt).toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}</span>
@@ -135,7 +135,7 @@ export function SupplierManager({ canManage }: { canManage: boolean }) {
                 </div>
                 {billsMsg && <p className="mt-1 text-sm text-[var(--color-stone)]">{billsMsg}</p>}
                 {bills && bills.length > 0 && (
-                  <ul className="mt-2 divide-y divide-[var(--color-line)] rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white text-sm">
+                  <ul className="mt-2 divide-y divide-[var(--color-line)] rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-porcelain)] text-sm">
                     {bills.map((bl, i) => (
                       <li key={i} className="flex items-center justify-between px-3 py-2">
                         <span>{bl.invoiceNumber} · {bl.date ? new Date(bl.date).toLocaleDateString('en-GB') : '—'} <span className="text-[var(--color-stone)]">({bl.status})</span></span>

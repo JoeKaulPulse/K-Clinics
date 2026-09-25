@@ -4,7 +4,7 @@ import { addGroupMember, removeGroupMember } from '@/lib/google-workspace';
 
 export async function POST(req: NextRequest, { params }: { params: Promise<{ email: string }> }) {
   const session = await getSession();
-  if (!session || !sessionCan(session, 'settings.manage')) {
+  if (!session || !sessionCan(session, 'workspace.manage')) {
     return NextResponse.json({ ok: false, error: 'Forbidden' }, { status: 403 });
   }
   const { email } = await params;
@@ -20,7 +20,7 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ ema
 
 export async function DELETE(req: NextRequest, { params }: { params: Promise<{ email: string }> }) {
   const session = await getSession();
-  if (!session || !sessionCan(session, 'settings.manage')) {
+  if (!session || !sessionCan(session, 'workspace.manage')) {
     return NextResponse.json({ ok: false, error: 'Forbidden' }, { status: 403 });
   }
   const { email } = await params;

@@ -46,7 +46,7 @@ export function EmailCampaignRows({ rows }: { rows: DraftRow[] }) {
                 {r.status === 'AB_TESTING'
                   ? <span className="rounded-full bg-violet-100 px-2 py-0.5 font-medium text-violet-800">A/B testing{r.scheduledAt ? ` · winner ${fmt(r.scheduledAt)}` : ''}</span>
                   : r.status === 'SCHEDULED'
-                    ? <span className="rounded-full bg-amber-100 px-2 py-0.5 font-medium text-amber-800">Scheduled {r.scheduledAt ? fmt(r.scheduledAt) : ''}</span>
+                    ? <span className="rounded-full bg-[var(--color-gold)]/20 px-2 py-0.5 font-medium text-[var(--color-gold-deep)]">Scheduled {r.scheduledAt ? fmt(r.scheduledAt) : ''}</span>
                     : <span className="rounded-full bg-[var(--color-bone)] px-2 py-0.5 font-medium text-[var(--color-stone)]">Draft</span>}
               </td>
               <td className="p-3 text-right">

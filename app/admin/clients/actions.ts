@@ -134,7 +134,14 @@ export async function setLeaderboard(clientId: string, input: { optIn?: boolean;
 
   const data: Record<string, unknown> = {};
   const changes: string[] = [];
-  if (input.optIn !== undefined && !!input.optIn !== current.leaderboardOptIn) { data.leaderboardOptIn = !!input.optIn; changes.push(`opt-in ${input.optIn ? 'on' : 'off'}`); }
+  if (input.optIn !== undefined && !!input.optIn !== current.leaderboardOptIn) {
+    data.leaderboardOptIn = !!input.optIn;
+    // BLD-1122: stamp who attested the client's written permission and when
+    // (cleared when switched off), so the public disclosure has an evidence trail.
+    data.leaderboardConsentBy = input.optIn ? session.email : null;
+    data.leaderboardConsentAt = input.optIn ? new Date() : null;
+    changes.push(`opt-in ${input.optIn ? 'on' : 'off'}`);
+  }
   if (input.photoUrl !== undefined) { const to = input.photoUrl || null; if (to !== current.leaderboardPhotoUrl) { data.leaderboardPhotoUrl = to; changes.push(to ? 'photo set' : 'photo cleared'); } }
   if (input.displayName !== undefined) { const to = (input.displayName || '').trim() || null; if (to !== current.leaderboardDisplayName) { data.leaderboardDisplayName = to; changes.push('display name'); } }
 

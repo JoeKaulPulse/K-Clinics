@@ -17,7 +17,7 @@ export type QrRow = {
   svg: string;
 };
 
-const field = 'rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-2 py-1.5 text-sm';
+const field = 'rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-porcelain)] px-2 py-1.5 text-sm';
 
 async function post(payload: object) {
   const res = await fetch('/api/admin/qr', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
@@ -161,7 +161,7 @@ function QrCard({ row }: { row: QrRow }) {
           <div className="mt-3 flex items-center gap-3">
             {dirty ? (
               <button onClick={save} disabled={busy} className="rounded-full bg-[var(--color-gold-deep)] px-4 py-1 text-xs text-white disabled:opacity-60">{busy ? 'Saving…' : 'Save'}</button>
-            ) : saved ? <span className="text-xs text-green-700">Saved ✓</span> : null}
+            ) : saved ? <span className="text-xs text-[var(--color-jade)]">Saved ✓</span> : null}
             <button onClick={toggle} className="text-xs text-[var(--color-stone)] hover:underline">{row.active ? 'Disable' : 'Enable'}</button>
             <button onClick={remove} className="text-xs text-[var(--color-blush-deep)] hover:underline">Delete</button>
           </div>

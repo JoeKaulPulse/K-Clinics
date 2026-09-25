@@ -37,11 +37,11 @@ export function HorizontalGallery({ items, eyebrow, title }: { items: Treatment[
   // Mobile (and reduced-motion): a native horizontal swipe rail. Always rendered
   // on small screens; on md+ it's replaced by the pinned scroll version below.
   const SwipeRail = (
-    <section className={`section-t ${reduce ? '' : 'md:hidden'}`}>
+    <section className={`section-t max-w-full overflow-x-hidden ${reduce ? '' : 'md:hidden'}`}>
       <div className="container-lux mb-[var(--space-block)]">
         <Header eyebrow={eyebrow} title={title} />
       </div>
-      <div className="flex snap-x snap-mandatory gap-5 overflow-x-auto px-[var(--gutter)] pb-6 [scrollbar-width:none]">
+      <div className="flex w-full max-w-full snap-x snap-mandatory gap-5 overflow-x-auto px-[var(--gutter)] pb-6 [scrollbar-width:none]">
         {items.map((t, i) => (
           <div key={t.slug} className="w-[78vw] shrink-0 snap-start sm:w-[42vw] lg:w-[28vw]">
             <Card t={t} index={i} />

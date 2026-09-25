@@ -21,17 +21,25 @@ export async function POST(req: Request) {
     const json = await handleUpload({
       body,
       request: req,
-      onBeforeGenerateToken: async () => ({
-        allowedContentTypes: [
-          'image/png', 'image/jpeg', 'image/webp', 'image/gif', 'image/avif', 'image/heic', 'image/heif',
-          'video/mp4', 'video/quicktime', 'video/webm', 'video/x-m4v', 'video/3gpp',
-          'application/pdf', 'text/plain', 'application/zip',
-          'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-          'application/vnd.ms-excel', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-        ],
-        maximumSizeInBytes: 200 * 1024 * 1024, // 200 MB — covers phone videos
-        addRandomSuffix: true,
-      }),
+      onBeforeGenerateToken: async (pathname) => {
+        // BLD-1628: scope the token to team-chat/ paths (matches the academy
+        // homework/portfolio routes' pathname check, BLD-1544; components/admin/
+        // teamchat/util.ts already uploads under this prefix via uploadBlob) —
+        // otherwise any signed-in staff member could request a token for an
+        // arbitrary pathname in the shared Blob store.
+        if (!pathname.startsWith('team-chat/')) throw new Error('Please refresh the page and try again.');
+        return {
+          allowedContentTypes: [
+            'image/png', 'image/jpeg', 'image/webp', 'image/gif', 'image/avif', 'image/heic', 'image/heif',
+            'video/mp4', 'video/quicktime', 'video/webm', 'video/x-m4v', 'video/3gpp',
+            'application/pdf', 'text/plain', 'application/zip',
+            'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+            'application/vnd.ms-excel', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+          ],
+          maximumSizeInBytes: 200 * 1024 * 1024, // 200 MB — covers phone videos
+          addRandomSuffix: true,
+        };
+      },
       onUploadCompleted: async () => {},
     });
     return NextResponse.json(json);

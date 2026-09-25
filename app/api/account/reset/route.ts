@@ -20,7 +20,7 @@ export async function POST(req: Request) {
     const result = await performPasswordReset(parsed.data.id, parsed.data.token, parsed.data.password);
     return NextResponse.json(result, { status: result.ok ? 200 : 400 });
   } catch (err) {
-    console.error('[reset] failed:', err);
+    console.error('[reset] failed:', (err as Error)?.message);
     Sentry.captureException(err, { tags: { area: 'account/reset' } });
     return NextResponse.json({ ok: false, error: 'Something went wrong. Please try again.' }, { status: 500 });
   }

@@ -6,7 +6,8 @@ import type { ReactElement, SVGProps } from 'react';
 type Props = SVGProps<SVGSVGElement> & { name: GlyphName };
 
 export type GlyphName =
-  | 'camera' | 'bag' | 'gift' | 'cake' | 'cap' | 'sparkle' | 'wave';
+  | 'camera' | 'bag' | 'gift' | 'cake' | 'cap' | 'sparkle' | 'wave'
+  | 'lock' | 'card' | 'bank' | 'cash' | 'calendar-check';
 
 const PATHS: Record<GlyphName, ReactElement> = {
   camera: (
@@ -45,6 +46,43 @@ const PATHS: Record<GlyphName, ReactElement> = {
   wave: (
     <>
       <path d="M8 13.5 6.6 12a1.4 1.4 0 0 1 2-2l2.4 2.4V6.4a1.4 1.4 0 0 1 2.8 0v4.2l.2-3.4a1.4 1.4 0 0 1 2.8.2l-.3 6.1A5.6 5.6 0 0 1 13 19a5.4 5.4 0 0 1-5-5.5z" />
+    </>
+  ),
+  // BLD-1829 — Cost & Finance page: payment-method icons in the same
+  // line-art style as the rest of this set (24-grid, 1.3 stroke).
+  lock: (
+    <>
+      <rect x="5" y="10.5" width="14" height="9" rx="1.8" />
+      <path d="M8 10.5V8a4 4 0 0 1 8 0v2.5" />
+      <circle cx="12" cy="14.7" r="1.15" />
+    </>
+  ),
+  card: (
+    <>
+      <rect x="3" y="6" width="18" height="12" rx="2" />
+      <path d="M3 10h18" />
+      <path d="M6.5 14.5h3.5" />
+    </>
+  ),
+  bank: (
+    <>
+      <path d="M12 3 3 8.2h18z" />
+      <path d="M5 10v7.5M9.3 10v7.5M14.7 10v7.5M19 10v7.5" />
+      <path d="M3.5 20.5h17" />
+    </>
+  ),
+  cash: (
+    <>
+      <rect x="3" y="7" width="18" height="10" rx="1.6" />
+      <circle cx="12" cy="12" r="2.2" />
+      <path d="M6 9.2v5.6M18 9.2v5.6" />
+    </>
+  ),
+  'calendar-check': (
+    <>
+      <rect x="4" y="5.5" width="16" height="15" rx="2" />
+      <path d="M4 10h16M8 3.5v3M16 3.5v3" />
+      <path d="m9 14.3 2 2 4-4.2" />
     </>
   ),
 };

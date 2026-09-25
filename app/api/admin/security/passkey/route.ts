@@ -10,6 +10,7 @@ export async function GET() {
   const { getSession } = await import('@/lib/auth');
   const session = await getSession();
   if (!session) return NextResponse.json({ ok: false, error: 'Sign in first.' }, { status: 403 });
+  if (session.role !== 'OWNER') return NextResponse.json({ ok: false, error: 'Owner only.' }, { status: 403 });
   const { db } = await import('@/lib/db');
   const passkeys = await db.webAuthnCredential.findMany({ where: { adminUserId: session.sub }, select: { id: true, deviceName: true, createdAt: true, lastUsedAt: true }, orderBy: { createdAt: 'desc' } });
   return NextResponse.json({ ok: true, passkeys });
@@ -20,6 +21,7 @@ export async function POST(req: Request) {
   const { getSession } = await import('@/lib/auth');
   const session = await getSession();
   if (!session) return NextResponse.json({ ok: false, error: 'Sign in first.' }, { status: 403 });
+  if (session.role !== 'OWNER') return NextResponse.json({ ok: false, error: 'Owner only.' }, { status: 403 });
   const body = await req.json().catch(() => ({}));
   if (body.op !== 'remove' || !body.id) return NextResponse.json({ ok: false, error: 'Bad request.' }, { status: 400 });
   const { db } = await import('@/lib/db');

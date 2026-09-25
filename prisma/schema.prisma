@@ -46,6 +46,8 @@ enum EmailKind {
   MEMBERSHIP
   CHAT
   ABANDONED_BOOKING
+  ABANDONED_ORDER // BLD-1204: abandoned shop-order recovery
+  ABANDONED_GIFTVOUCHER // BLD-1540: abandoned gift-voucher-purchase recovery
   NO_SHOW
   STAFF_DIGEST
   STAFF_NUDGE
@@ -56,6 +58,10 @@ enum EmailKind {
   NPS_DETRACTOR
   BOOKING_INTENT
   LIVE_CLASS // BLD-1034: academy live-class create/reschedule/cancel/reminder notices
+  COURSE_CONTENT_READY // BLD-1231: one-time nudge once a zero-content course's first module publishes
+  TCS_REMINDER // BLD-1452: nudge a client with no recorded T&Cs acceptance to accept + add a card
+  TREATMENT_PREP // BLD-1573: pre-treatment prep instructions (e.g. Laser Hair Removal, 48h before)
+  REFERRAL_ASK // BLD-1664: ask a client to refer a friend, 5-10 days after a completed visit
 }
 
 enum EmailStatus {
@@ -128,6 +134,16 @@ enum Gender {
   PREFER_NOT_TO_SAY
 }
 
+// BLD-1532: traffic-light client status set from "Close Booking" (or the client
+// profile) and shown wherever staff view/create a booking. GREEN = good client
+// (default when unset); YELLOW = caution, still bookable; RED = blocked from
+// booking online.
+enum ClientStatus {
+  GREEN
+  YELLOW
+  RED
+}
+
 enum BookingStatus {
   REQUESTED // same-day request awaiting staff approval (no card, slot not held)
   PENDING // created, awaiting card setup confirmation
@@ -152,6 +168,7 @@ enum AuditAction {
   PAYMENT_CHARGED
   PAYMENT_FAILED
   PAYMENT_REFUNDED
+  PAYMENT_DISPUTED // PRJ-1069.12: a chargeback/dispute event arrived from Stripe
   XERO_INVOICE_PUSHED
   XERO_REFUND_PUSHED
   ASSESSMENT_SUBMITTED
@@ -179,6 +196,7 @@ enum AuditAction {
   CLIENT_ERASED
   STUDENT_ERASED // BLD-1124: distinct from CLIENT_ERASED — an academy trainee's data was erased (GDPR Art.17)
   CLIENT_EDITED
+  STUDENT_EDITED // BLD-1732: admin edited a trainee's first/last name (email stays locked; not learner-editable)
   DATA_EXPORTED
   DATA_IMPORTED // a data-migration step wrote records (e.g. WordPress import, BLD-187)
   SESSION_EDITED // a captured in-session answer was changed after first save (BLD-138)
@@ -187,6 +205,10 @@ enum AuditAction {
   TASK_COMPLETED // an assigned task was marked done (PRJ-63.11)
   ROOM_TURNOVER // a room was handed over for cleaning after a session (PRJ-63.11)
   INCIDENT_LOGGED // a staff-only internal incident (accident) report was logged (BLD-760)
+  CLIENT_STATUS_CHANGED // a client's GREEN/YELLOW/RED status was set or cleared (BLD-1532)
+  CLIENT_DEBT_RECORDED // a staff member manually recorded an outstanding balance ("Mark as Debt") (BLD-1572)
+  CLIENT_DEBT_UPDATED // a staff member corrected the amount/reason on a recorded outstanding balance (BLD-1763)
+  CLIENT_DEBT_RESOLVED // a staff member cleared/waived a recorded outstanding balance (BLD-1763)
 }
 
 enum ReviewStatus {
@@ -311,6 +333,12 @@ model Client {
   unsubToken              String    @unique @default(cuid())
   lastVisitAt             DateTime?
   stripeCustomerId        String?   @unique
+  // BLD-1797: self-service card on file for no-show/cancellation protection —
+  // set from the account "Card on file" section (or by the existing
+  // admin-sent secure-link flow, which now mirrors it here too). Distinct
+  // from Booking.stripePaymentMethodId, which stays the source of truth for
+  // whether a given appointment is protected. Additive, nullable.
+  stripeDefaultPaymentMethodId String?
 
   // ── Membership (K Circle) — cached from rolling 12-month spend ──
   membershipTier      String? // current tier key (e.g. silver/gold/platinum); null = base member
@@ -327,10 +355,32 @@ model Client {
   // Password reset (hashed token + expiry).
   resetTokenHash String?
   resetTokenExp  DateTime?
+  // BLD-1797: passwordless account-activation ("save a card"/migration magic
+  // link) token — kept separate from resetTokenHash above. Both used to share
+  // that one column: a client using "Forgot password" (or staff resending a
+  // card-on-file link via a second channel) silently invalidated whichever
+  // link — reset or invite — was issued first, which is why some clients'
+  // card-on-file links stopped working before they clicked them. Additive,
+  // nullable; swept alongside resetTokenHash in the daily cron.
+  inviteTokenHash String?
+  inviteTokenExp  DateTime?
 
   // ── First-visit discount (one-time, guardrailed) ─────────────────────────
   firstDiscountClaimed Boolean @default(false)
   signupIp             String?
+  // BLD-1067: durable evidence of Terms & Conditions / cancellation-policy
+  // acceptance — WHEN, WHERE (which surface) and WHAT wording version. Every
+  // entry flow already required an active tick (or an explicit "by continuing"
+  // line) but validated-and-discarded it; these record it. Additive, nullable.
+  termsAcceptedAt      DateTime?
+  termsAcceptedSource  String?
+  termsVersion         String?
+  // BLD-1452: when the "please accept T&Cs + add a card" reminder was last
+  // emailed (dedupe/cadence, mirrors EnrolmentPayment.lastRemindedAt). Only
+  // read/written while termsAcceptedAt is still null — once accepted, the
+  // audience query below excludes the client and this value is inert.
+  // Additive, nullable.
+  tcsReminderSentAt   DateTime?
 
   // ── Loyalty / referrals ──────────────────────────────────────────────────
   referralCode String? @unique // this client's own shareable code
@@ -344,18 +394,39 @@ model Client {
   medicalFlagSetBy String?
   medicalFlagAt    DateTime?
 
-  // ── Patch test status (BLD-844) ──────────────────────────────────────────
+  // ── Client status — traffic light (BLD-1532) ─────────────────────────────
+  // Staff-set from "Close Booking" (or the client profile): GREEN (good
+  // client), YELLOW (caution — previous issues, still bookable), RED (blocked
+  // from booking online). Null is treated as GREEN everywhere it's read — no
+  // visual noise for the default, unmarked case. Persists on the client
+  // profile until a staff member changes it.
+  clientStatus       ClientStatus?
+  clientStatusSetBy  String?
+  clientStatusAt     DateTime?
+  clientStatusReason String? // optional free-text note staff can attach (yellow/red context)
+
+  // ── Patch test status (BLD-844, BLD-1846) ────────────────────────────────
   // Staff-recorded PASSED/FAILED result so front desk can see at a glance
   // whether a client is eligible for patch-test-gated treatments (laser etc.)
   // without searching through appointments/notes.
-  patchTestResult String? // 'PASSED' | 'FAILED'
-  patchTestDate   DateTime?
-  patchTestSetBy  String?
+  // patchTestDate is the actual (possibly historical) date the test was
+  // performed, staff-selectable on save (BLD-1846) — many clients were
+  // patch-tested before this feature existed. patchTestRecordedAt is the
+  // separate, always-server-set audit timestamp of when the entry was made,
+  // paired with patchTestSetBy (who made it).
+  patchTestResult     String? // 'PASSED' | 'FAILED'
+  patchTestDate       DateTime?
+  patchTestSetBy      String?
+  patchTestRecordedAt DateTime?
 
   // ── Public loyalty leaderboard (PRJ-1.11) ────────────────────────────────
   // Only clients who explicitly opt in appear on the public leaderboard.
   // leaderboardPhotoUrl is staff-set after the client's written permission.
   leaderboardOptIn       Boolean @default(false)
+  // BLD-1122 (owner decision 5 Aug: tick-with-record): evidence trail for the
+  // leaderboard consent — who switched it on and when. Additive, nullable.
+  leaderboardConsentBy   String?
+  leaderboardConsentAt   DateTime?
   leaderboardPhotoUrl    String?
   leaderboardDisplayName String? // preferred display name (first name by default)
 
@@ -381,6 +452,8 @@ model Client {
   callRecords    CallRecord[]
   academyStudents AcademyStudent[] // BLD-528: linked K Academy trainee account(s) (same person, by email)
   incidents      Incident[] // BLD-760: staff-only internal incident (accident) reports
+  portfolioEntries PortfolioEntry[] @relation("ClientPortfolioEntries") // BLD-1291: academy cases photographing this client
+  debts          ClientDebt[] // BLD-1572: staff-recorded outstanding balance ("Mark as Debt")
 
   @@index([createdAt])
   @@index([dob])
@@ -554,6 +627,43 @@ model Incident {
   @@index([bookingId])
 }
 
+// ── Staff-recorded outstanding balance / "Mark as Debt" — BLD-1572 ──────────
+// A manual record that a client owes the clinic money — the card couldn't be
+// charged, the payment failed, or they left without paying. Distinct from the
+// automated late-cancel/no-show balance derived in lib/outstanding.ts (BLD-1066),
+// which is computed from Booking.chargedAt/lateCancel/status and clears itself
+// once charged or waived: this is a manual, staff-typed record with its own
+// amount and reason, so it needs a row to hold that free text and persists
+// until a staff member later clears it (resolvedAt — no "clear" UI yet, but the
+// field is here so a future one doesn't need a schema change). Same relation
+// shape as Incident above: SetNull on both FKs so the debt record — an
+// HMRC-relevant financial fact — outlives a client erasure or a deleted
+// booking, matching how Booking charge/refund rows are kept (pseudonymised)
+// rather than deleted (BLD-286).
+model ClientDebt {
+  id       String  @id @default(cuid())
+  client   Client? @relation(fields: [clientId], references: [id], onDelete: SetNull)
+  clientId String?
+
+  booking   Booking? @relation(fields: [bookingId], references: [id], onDelete: SetNull)
+  bookingId String?
+
+  amountPence Int
+  reason      String // why the payment is outstanding — free text, staff-entered
+
+  createdBy String // staff email who recorded the debt
+  createdAt DateTime @default(now())
+
+  // Not built as a UI action in this change, but present so a later "mark as
+  // paid/cleared" control needs no schema change.
+  resolvedAt DateTime?
+  resolvedBy String?
+
+  @@index([clientId])
+  @@index([bookingId])
+  @@index([clientId, resolvedAt])
+}
+
 model Appointment {
   id           String            @id @default(cuid())
   client       Client            @relation(fields: [clientId], references: [id], onDelete: Cascade)
@@ -646,6 +756,12 @@ model Booking {
   chargePaymentIntentId String?
   chargedPence          Int?
   chargedAt             DateTime?
+  // BLD-1874: how this treatment charge was actually taken (card on file,
+  // payment link, cash, card terminal, Treatwell, ClassPass, ...) — a
+  // descriptive label only, shown/corrected in the admin. Never read by any
+  // Stripe/Xero logic; correcting it never touches chargePaymentIntentId/
+  // chargedPence/chargedAt. Additive, nullable — historical rows show none.
+  paymentMethod         String?
   // BNPL course pre-payment (BLD-399; BLD-409 course context). BNPL methods
   // (Klarna/Clearpay) can't be saved off-session, so for a course the client
   // pays the full price upfront via a Stripe Checkout link. Set when the
@@ -655,6 +771,40 @@ model Booking {
   prepaidPence          Int? // amount pre-paid (pi.amount_received)
   prepaidAt             DateTime?
   prepaidCheckoutId     String? // Stripe Checkout Session id (traceability / idempotency)
+
+  // BLD-1014/BLD-1098: package/course session tracking. A course purchase is a
+  // booking whose primary item has sessions > 1 (BLD-409); each later session
+  // booked against it links back here, so used/remaining balances are derived
+  // from real bookings rather than a counter that can drift. Linked sessions
+  // are created at £0 (the package purchase already carries the money).
+  // Additive, nullable — existing rows unaffected.
+  packageBooking        Booking?  @relation("PackageSessions", fields: [packageBookingId], references: [id], onDelete: SetNull)
+  packageBookingId      String?
+  packageSessions       Booking[] @relation("PackageSessions")
+
+  // BLD-1096: admin-only override for a CANCELLED appointment that is still
+  // billed as a used session of the client's package — e.g. the client cancelled
+  // with notice (no late fee), but the clinic and client agreed the prepaid
+  // session is spent rather than refunded to the balance. Status stays
+  // CANCELLED; this only affects package-balance accounting (lib/package-sessions.ts
+  // treats a CANCELLED booking with this set as "used", same as COMPLETED) and
+  // display (a "Package session used" badge wherever the booking is shown).
+  // Additive, nullable — existing rows unaffected.
+  packageSessionUsedAt DateTime?
+  packageSessionUsedBy String?
+
+  // BLD-1824: staff-recorded payment status for a package/course purchase paid
+  // outside the online booking flow (bank transfer, in-clinic card terminal,
+  // cash) — chargedAt/prepaidAt only ever get set by Stripe, so a package paid
+  // by any other method stayed "Not yet paid" forever with no way to correct
+  // it. 'PAID' | 'PARTIALLY_PAID' | 'NOT_PAID'; only 'PAID' makes the package
+  // spendable (lib/package-sessions.ts clientPackages()) — mirrors the existing
+  // paid-via-Stripe bar rather than loosening it. Additive, nullable.
+  manualPaymentStatus      String?
+  manualPaymentMethod      String?
+  manualPaymentAmountPence Int?
+  manualPaymentAt          DateTime?
+  manualPaymentBy          String?
 
   // BLD-882: gift-voucher redemption at front-desk checkout. The voucher
   // balance is reserved atomically (lib/gift-vouchers reserveVoucher) when
@@ -673,6 +823,15 @@ model Booking {
   // and the credit note raised for each refund.
   xeroInvoiceId     String?
   xeroCreditNoteIds String[]  @default([])
+  // BLD-1386: the Xero TaxType posted on the original sale invoice's line item,
+  // captured at push time. Refunds are allowed up to REFUND_WINDOW_DAYS later,
+  // during which the clinic's VAT registration or the service's VAT class can
+  // change — recomputing the tax type fresh at refund time could then raise a
+  // credit note with a different rate than the sale, corrupting that
+  // transaction's VAT return. pushBookingRefundToXero reuses this verbatim
+  // instead. Additive, nullable — bookings pushed before this existed have
+  // null here and fall back to the live computation (no regression).
+  xeroTaxType       String?
 
   // Cancellation.
   cancelledAt  DateTime?
@@ -696,6 +855,15 @@ model Booking {
   // Best-effort — calendar sync never blocks the booking lifecycle.
   googleEventId String?
 
+  // PRJ-1191.4: last calendar-sync failure message (any provider) an admin can
+  // see, set by lib/hostinger-calendar.ts after fetchWithRetry exhausts its
+  // attempts and cleared on the next successful push/remove. Best-effort sync
+  // never blocks the booking lifecycle, so this is the only surfaced signal
+  // that a confirmed/cancelled booking may not actually be reflected on the
+  // shared clinic calendar.
+  calendarSyncError   String?
+  calendarSyncErrorAt DateTime?
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -705,6 +873,7 @@ model Booking {
   attribCampaign      String?
   attribLanding       String?
   gclid               String? // Google click id — for offline conversion upload to Google Ads
+  fbclid              String? // Meta click id — for Meta CAPI user_data fbc matching (PRJ-1200.4)
   marketingCampaign   MarketingCampaign? @relation(fields: [marketingCampaignId], references: [id], onDelete: SetNull)
   marketingCampaignId String?
 
@@ -722,6 +891,7 @@ model Booking {
   followUp    FollowUp? // post-treatment follow-up questionnaire
   liveSession AppointmentSession? // BLD-138 interactive in-clinic session
   incidents   Incident[] // BLD-760: internal incident reports linked to this appointment
+  debts       ClientDebt[] // BLD-1572: staff-recorded outstanding balance linked to this appointment
 
   @@index([startAt])
   @@index([status])
@@ -734,6 +904,7 @@ model Booking {
   // one index instead of scanning on the busiest customer-facing query.
   @@index([status, startAt])
   @@index([locationId, startAt])
+  @@index([packageBookingId]) // BLD-1014: sessions-of-a-package lookups
 }
 
 // ── Interactive appointment session (BLD-138) ───────────────────────────────
@@ -852,6 +1023,10 @@ model ServiceVariant {
   serviceId   String
   name        String // e.g. "Full Face", "Signature Express (30 min)"
   durationMin Int            @default(30)
+  // BLD-998: client-facing treatment length (minutes). durationMin is the full
+  // INTERNAL booking time (setup + treatment + cleaning) and drives slots/rooms;
+  // when this is set, clients see it instead of the internal time.
+  displayDurationMin Int?
   pricePence  Int // single-session retail price (0 = on consultation)
   costPence   Int? // cost of goods/service, for margin tracking
   // Course/package options as [{ sessions, totalPence }], cheaper per-session.
@@ -971,6 +1146,19 @@ model Campaign {
   abWinner      String?
   sentAt        DateTime?
   recipients    Int       @default(0)
+  // BLD-1832: distinguishes the simple/legacy plain-text broadcast composer
+  // (app/admin/campaigns/actions.ts, body is raw text with {firstName}/
+  // {discountCode} tokens) from the rich block-based one (audienceType always
+  // set, body is JSON EmailBlock[]) so the cron resume sweep renders each
+  // stuck SENDING campaign with the right template instead of guessing from
+  // content. Null for every existing row and every rich-composer send.
+  format        String?
+  // Per-recipient discount config for the plain composer, captured at send
+  // time so a resumed/continued send (cron sweep, no form data available)
+  // mints codes with the same terms as the original attempt (BLD-1832).
+  discountType    String?
+  discountValue   Int?
+  discountExpiresAt DateTime?
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @default(now()) @updatedAt
 
@@ -1694,8 +1882,31 @@ model HealthAssessment {
   // Snapshot of who/what the assessment was for (e.g. an upcoming booking).
   bookingId   String?
 
+  translation HealthAssessmentTranslation?
+
   @@index([clientId, type])
   @@index([submittedAt])
+}
+
+// BLD-1658: cache for the machine translation shown to staff, so a clinician
+// re-opening the same assessment doesn't re-send special-category free-text
+// answers to Google Translate on every view. Kept in its own table (rather
+// than a column on HealthAssessment) because that record is append-only and
+// never updated once submitted — this cache is a display-layer optimisation,
+// not part of the clinical record, and is safe to overwrite/regenerate.
+// Encrypted the same way as the source answers (BLD-1658 audit note: staff
+// are told answers are "seen only by your care team" — a plaintext cache of
+// the same free text would undermine that as much as the uncached re-send did).
+model HealthAssessmentTranslation {
+  assessmentId  String           @id
+  assessment    HealthAssessment @relation(fields: [assessmentId], references: [id], onDelete: Cascade)
+  // Hash of the exact source free-text values this translation covers; a
+  // mismatch (e.g. the admin-managed question set changed) invalidates the
+  // cache and triggers a fresh translation rather than showing stale text.
+  sourceHash    String
+  cipher        String
+  integrityHash String
+  createdAt     DateTime         @default(now())
 }
 
 // ── First-visit discount ledger (abuse guardrail) ───────────────────────────
@@ -1844,6 +2055,29 @@ model Review {
 // Google Business Profile reviews imported via the My Business API. Stored
 // separately from Review (which requires a Client) because the reviewer is an
 // external Google user. Powers the in-admin Google review list + replies.
+// BLD-481: mirror of the Google Business Profile "From the Business" posts, so
+// the site's Latest News section shows whatever the clinic publishes on Google
+// with no manual re-entry. Synced by the daily cron (lib/google-business.ts
+// syncGooglePosts); rows removed on Google are removed here on the next sync.
+// New table with the resource name as @id — no @unique added to an existing
+// table, per the non-destructive deploy gate.
+model GbpPost {
+  // Full post resource name: accounts/{a}/locations/{l}/localPosts/{p}
+  googleName String    @id
+  summary    String?   @db.Text
+  topicType  String? // STANDARD | EVENT | OFFER | ALERT
+  state      String? // LIVE | REJECTED | PROCESSING
+  mediaUrl   String? // first photo's googleUrl, if any
+  ctaUrl     String?
+  ctaType    String? // LEARN_MORE | BOOK | CALL | ...
+  searchUrl  String? // the post as seen on Google
+  createTime DateTime?
+  updateTime DateTime?
+  syncedAt   DateTime  @updatedAt
+
+  @@index([createTime])
+}
+
 model GoogleReview {
   id              String    @id @default(cuid())
   // Full review resource name: accounts/{a}/locations/{l}/reviews/{r} (unique).
@@ -1939,13 +2173,16 @@ model AcademyStudent {
   exerciseAttempts    ExerciseAttempt[]
   demoAttempts        DemoAttempt[]
   quizAttempts        QuizAttempt[]
+  quizAttemptGrants   QuizAttemptGrant[] // BLD-1139
   practiceAttempts    PracticeAttempt[]
   pointEvents         PointEvent[]
   badges              StudentBadge[]
   dailyActivity       DailyActivity[]
   passkeys            StudentPasskey[]
   homeworkSubmissions HomeworkSubmission[]
+  notifications       AcademyNotification[]
   fundingApplications FundingApplication[]
+  vtctRegistrations   VtctRegistration[] // BLD-1794: one per student, enforced in app code (see VtctRegistration)
 
   @@unique([tenantId, email]) // ClinicOS Ring 1 (BLD-301): per-tenant email — replaces the global @unique
   @@index([createdAt])
@@ -1971,6 +2208,109 @@ model StudentPasskey {
   lastUsedAt   DateTime?
 
   @@index([studentId])
+  @@index([tenantId])
+}
+
+// ── BLD-1794: VTCT registration details ──────────────────────────────────────
+// A trainee's personal details + identity documents required for registration
+// with the Academy's awarding body (VTCT Skills, via Linx2Online). Deliberately
+// a SEPARATE record from AcademyStudent — submitting/editing this never
+// overwrites the student's general account/profile fields.
+//
+// One row per student, enforced in app code (lib/vtct-registration.ts finds
+// the existing row before writing), not a DB @unique — the additive deploy
+// gate (`prisma db push` without --accept-data-loss) refuses new unique
+// constraints; see lib/task-refs.ts / HomeworkSubmission for the same pattern.
+//
+// Status lifecycle: SUBMITTED (awaiting admin review) -> CONFIRMED (admin has
+// checked the details against the documents) -> CHANGES_PENDING (the student
+// edited already-confirmed details; the edit saves immediately so nothing is
+// lost, but it flags for admin re-review rather than silently overwriting what
+// was confirmed) -> back to CONFIRMED once admin re-confirms. Chosen over
+// blocking edits outright, per the ticket's own steer to pick the simpler of
+// the two safe options.
+enum VtctRegistrationStatus {
+  SUBMITTED
+  CONFIRMED
+  CHANGES_PENDING
+}
+
+// Identity documents attached to a VtctRegistration. Stored in PRIVATE Vercel
+// Blob storage (mirrors BLD-798 kiosk selfies / BLD-740 portfolio clinical
+// photos) and only ever read through the authenticated relay
+// (lib/vtct-blob.ts, /api/academy/vtct-registration/document) — the trainee
+// who owns the registration, or signed-in staff (settings.manage). Never a
+// public/unauthenticated URL.
+enum VtctDocumentKind {
+  PHOTO_ID
+  PROOF_OF_ADDRESS
+  PRIOR_QUALIFICATION
+}
+
+model VtctRegistration {
+  id       String @id @default(cuid())
+  tenantId String // ClinicOS multi-tenant (Ring 0)
+
+  student   AcademyStudent @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  studentId String
+
+  title              String // Mr | Mrs | Miss | Ms | Other
+  firstName          String // legal first name
+  middleNames        String?
+  lastName           String // legal last name / surname
+  dob                DateTime
+  gender             Gender // reuses the existing inclusive Gender enum (see Client.gender)
+  genderSelfDescribe String? // free text when gender = OTHER
+  personalEmail      String
+  phone              String
+  addressLine1       String
+  addressLine2       String?
+  addressCity        String
+  addressPostcode    String
+  addressCountry     String @default("United Kingdom")
+
+  // "Have you previously completed or been registered for any VTCT Skills
+  // qualifications?" — priorLearnerCode is mandatory (validated in app code)
+  // only when previouslyRegistered is true.
+  previouslyRegistered Boolean @default(false)
+  priorLearnerCode     String?
+
+  // The Student Declaration, Accuracy of Information and Responsibility is
+  // agreed immediately before every submission/resubmission (see
+  // lib/vtct-registration.ts's DECLARATION_TEXT — the single source of truth
+  // the student-facing form renders verbatim).
+  declarationAgreedAt DateTime
+
+  status            VtctRegistrationStatus @default(SUBMITTED)
+  submittedAt       DateTime                @default(now()) // most recent submit/resubmit
+  confirmedAt       DateTime?
+  confirmedBy       String? // staff email
+  changeRequestedAt DateTime? // set when a CONFIRMED registration is edited again
+  adminNotes        String? // internal note (e.g. why a resubmission needs a closer look)
+
+  documents VtctRegistrationDocument[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([studentId])
+  @@index([tenantId])
+  @@index([status])
+}
+
+model VtctRegistrationDocument {
+  id             String           @id @default(cuid())
+  tenantId       String
+  registration   VtctRegistration @relation(fields: [registrationId], references: [id], onDelete: Cascade)
+  registrationId String
+  kind           VtctDocumentKind
+  filename       String
+  url            String // PRIVATE Vercel Blob URL — never sent to the browser directly
+  contentType    String?
+  sizeBytes      Int?
+  uploadedAt     DateTime @default(now())
+
+  @@index([registrationId])
   @@index([tenantId])
 }
 
@@ -2038,6 +2378,11 @@ model CourseBundle {
   description String?            @db.Text
   heroImage   String?
   pricePence  Int? // optional combined price (display only)
+  // BLD-1376: time-boxed promotional pricing for the bundle, mirroring the
+  // Course promo fields (BLD-490). getActivePromo() decides what is live.
+  promoPrice   Int? // pence — promotional bundle price when set
+  promoStartAt DateTime? // null = promo starts immediately
+  promoEndAt   DateTime? // null = promo never expires
   active      Boolean            @default(true)
   order       Int                @default(0)
   items       CourseBundleItem[]
@@ -2162,9 +2507,48 @@ model HomeworkSubmission {
   createdAt  DateTime       @default(now())
   updatedAt  DateTime       @updatedAt
 
+  history HomeworkSubmissionHistory[]
+
   @@index([lessonId, status])
   @@index([studentId])
   @@index([tenantId])
+}
+
+// BLD-1620: a snapshot of a HomeworkSubmission taken right before the student
+// resubmits over it, so the prior tutor feedback and file set stay visible in
+// the UI instead of being overwritten by the reset-to-SUBMITTED update in
+// app/api/academy/homework/route.ts.
+model HomeworkSubmissionHistory {
+  id           String             @id @default(cuid())
+  submission   HomeworkSubmission @relation(fields: [submissionId], references: [id], onDelete: Cascade)
+  submissionId String
+  files        String[]           @default([])
+  note         String?
+  status       HomeworkStatus
+  feedback     String?
+  reviewedBy   String?
+  reviewedAt   DateTime?
+  createdAt    DateTime           @default(now())
+
+  @@index([submissionId, createdAt])
+}
+
+// BLD-1620: in-app notifications for academy students (homework reviewed /
+// needs revision / approved). Mirrors StaffNotification but scoped to
+// AcademyStudent; shown in the trainee portal bell. See lib/academy-notifications.ts.
+model AcademyNotification {
+  id        String         @id @default(cuid())
+  student   AcademyStudent @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  studentId String
+  kind      String // homework_reviewed | homework_needs_revision | homework_approved
+  title     String
+  body      String?        @db.Text
+  href      String?
+  readAt    DateTime?
+  createdAt DateTime       @default(now())
+
+  @@index([studentId, readAt])
+  @@index([studentId, createdAt])
 }
 
 model Quiz {
@@ -2183,6 +2567,7 @@ model Quiz {
   isSurvey         Boolean @default(false) // ungraded feedback set — no pass/fail, no answer keys
   questions QuizQuestion[]
   attempts  QuizAttempt[]
+  attemptGrants QuizAttemptGrant[] // BLD-1139
   createdAt DateTime       @default(now())
   updatedAt DateTime       @updatedAt
 
@@ -2438,6 +2823,11 @@ model PortfolioEntry {
   treatmentType String // e.g. Anti-wrinkle, Dermal filler, Skin
   treatmentDate DateTime?
   clientRef     String? // anonymised reference, e.g. "Client A"
+  // BLD-1291: staff-assisted link to the ACTUAL photographed client, so the
+  // photos are reachable by Art. 17 erasure and the SAR export. The free-text
+  // clientRef alone left fully identifying clinical photos invisible to both.
+  client   Client? @relation("ClientPortfolioEntries", fields: [clientId], references: [id], onDelete: SetNull)
+  clientId String?
   notes         String          @db.Text
   photos        Json            @default("[]") // [{ url, caption?, kind: 'before'|'after'|'other' }]
   consentAttestedAt DateTime? // BLD-740: trainee attested the photographed subject consented to storage & review
@@ -2451,6 +2841,7 @@ model PortfolioEntry {
   @@index([studentId, status])
   @@index([tenantId, status])
   @@index([courseId])
+  @@index([clientId])
 }
 
 // BLD-535: interactive self-check exercises (hotspots on an image, match pairs,
@@ -2557,6 +2948,26 @@ model QuizAttempt {
   scorePct  Int
   passed    Boolean
   answers   Json?
+  createdAt DateTime       @default(now())
+
+  @@index([studentId, quizId])
+  @@index([tenantId])
+}
+
+// BLD-1139: staff-granted extra quiz attempts. A student who exhausts
+// maxAttempts on a required quiz could otherwise never complete a paid course
+// (certificates need every quiz passed) — attempts history is never deleted;
+// grants raise the allowance instead. Additive table, safe for the deploy gate.
+model QuizAttemptGrant {
+  id        String         @id @default(cuid())
+  tenantId  String
+  student   AcademyStudent @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  studentId String
+  quiz      Quiz           @relation(fields: [quizId], references: [id], onDelete: Cascade)
+  quizId    String
+  extra     Int // additional attempts granted on top of quiz.maxAttempts
+  reason    String?
+  grantedBy String // admin email
   createdAt DateTime       @default(now())
 
   @@index([studentId, quizId])
@@ -2819,11 +3230,31 @@ model Enrolment {
   paymentPlan    Boolean         @default(false) // an in-house instalment plan is in place
   payments       EnrolmentPayment[]
 
+  // BLD-1203: cookie-banner consent (kc_analytics_consent / kc_marketing_consent)
+  // captured when the learner starts an online payment (startEnrolmentPayment),
+  // so the deferred server-side GA4/Meta Purchase conversion
+  // (finalizeEnrolmentPayment, which can run from the Stripe webhook with no
+  // request/cookie context of its own) can honour it — mirrors
+  // Booking.analyticsConsent / Order.analyticsConsent. Nullable (unlike the
+  // Booking/Order NOT NULL DEFAULT false columns) rather than defaulted: an
+  // enrolment that never went through an online payment (manually enrolled,
+  // paid offline/instalment plan) has no consent signal to report, and
+  // lib/conversions.ts already treats missing/undefined consent as
+  // not-consented (fail closed), so null and false are equivalent there.
+  analyticsConsent Boolean?
+  marketingConsent Boolean?
+
   // BLD-528: verifiable certificate reference, issued when the theory is complete.
   // Stored (not derived) so /academy/verify can confirm it. Uniqueness is enforced
   // in app code (self-healing), not a DB @unique, to stay within the deploy gate.
   certificateRef      String?
   certificateIssuedAt DateTime?
+
+  // BLD-1231: a paid/enrolled student on a course with zero published lessons
+  // hit a dead end in the portal (just a "contact us" link). Set once the
+  // one-time "your course content is ready" email has sent, so the daily
+  // automation never re-notifies the same enrolment.
+  contentReadyNotifiedAt DateTime?
   fundingApplications FundingApplication[]
   auditEvents         AuditEvent[]
 
@@ -2836,6 +3267,32 @@ model Enrolment {
   @@index([tenantId])
   @@index([studentId])
   @@index([studentId, status])
+  @@index([cohortId, status]) // BLD-1142: cohortsWithRemaining() groupBy on every course-page ISR
+}
+
+// BLD-1731: the Learner (Training) Agreement's wording, versioned and editable
+// from the K Academy admin area instead of hardcoded in lib/learner-agreement.ts.
+// One row per published (or drafted) wording; the CURRENT agreement is the most
+// recent PUBLISHED row (ordered by publishedAt) — publishing never edits or
+// removes an older row, so an enrolment's stamped agreementVersion always still
+// resolves to the exact wording that learner signed. Global policy content
+// (like Post), not tenant-scoped.
+enum LearnerAgreementStatus {
+  DRAFT
+  PUBLISHED
+}
+
+model LearnerAgreementVersion {
+  id          String                 @id @default(cuid())
+  version     String // human-readable + monotonic, e.g. "2026-09-11" (see nextAgreementVersion)
+  sections    Json // AgreementSection[] — { heading, body }[]
+  status      LearnerAgreementStatus @default(DRAFT)
+  publishedAt DateTime? // set once, when this row is published; never re-published
+  createdBy   String? // admin email, or 'system' for the initial lazy seed
+  createdAt   DateTime               @default(now())
+  updatedAt   DateTime               @updatedAt
+
+  @@index([status, publishedAt])
 }
 
 // BLD-528: itemised academy payments. One row per payment OR scheduled instalment.
@@ -3193,6 +3650,8 @@ model GalleryItem {
   afterType     String   @default("image/jpeg")
   published     Boolean  @default(false) // "show on the website" toggle
   consent       Boolean  @default(false) // client gave written consent to publish
+  consentBy     String? // BLD-1037: who attested the consent (admin email) — evidence trail
+  consentAt     DateTime? // BLD-1037: when the consent attestation was recorded
   clientId      String? // BLD-765: link to the client whose case this is, so consent is traceable and Art. 17 erasure can pull their photos off the site
   order         Int      @default(0)
   createdBy     String?
@@ -3735,6 +4194,7 @@ model Product {
   description       String?
   brand             String?
   category          String?
+  vatClass          String? // STANDARD | REDUCED | ZERO | EXEMPT (null → derived: else STANDARD)
   pricePence        Int           @default(0)
   compareAtPence    Int? // "was" price for sale display
   costPence         Int? // cost of goods (margin)
@@ -3792,6 +4252,22 @@ model Order {
   // restockOrder() so a redelivered webhook or a re-cancelled order can't
   // increment stockQty back more than once.
   restockedAt           DateTime?
+  // BLD-1498: non-null only while the payment_intent.canceled webhook handler
+  // has won this order's PENDING→CANCELLED transition but hasn't yet confirmed
+  // the corresponding gift-card re-credit succeeded. order.status alone can't
+  // tell "this handler owns an unfinished credit, retry it" apart from "a
+  // different cancel path (admin cancel / POS cancel / the abandoned-order
+  // sweep) already won the same transition and credited it itself" — both
+  // leave the order CANCELLED. Only app/api/stripe/webhook/route.ts ever
+  // writes this field (stamped atomically with the transition it wins,
+  // cleared once creditVoucher succeeds), so its presence unambiguously means
+  // that handler — and no other cancel path — still owes the credit. It is
+  // also a LEASE, not just a flag: the timestamp is how a redelivery tells a
+  // dead attempt's claim (older than the route's RECREDIT_LEASE_MS, safe to
+  // take over and retry) from one a concurrently-running delivery of the same
+  // event is still working through (must not be taken over — that would credit
+  // the voucher twice).
+  giftCardRecreditClaimedAt DateTime?
   // PRJ-1032.7: the settlement timestamp — set once when the order flips to PAID.
   // Day-close brackets card takings by the day money was actually taken; matching
   // on updatedAt drifted them across days (a later fulfilment/refund edit moved
@@ -3813,6 +4289,7 @@ model Order {
   @@index([status])
   @@index([createdAt])
   @@index([paidAt])
+  @@index([status, createdAt])
 }
 
 model OrderItem {
@@ -3825,6 +4302,8 @@ model OrderItem {
   unitPence     Int
   qty           Int
   ageRestricted Boolean @default(false)
+
+  @@index([orderId])
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -4127,18 +4606,29 @@ model KioskSession {
   ipHash    String?
   photoUrl  String? // kept for back-compat with the single-photo v1 flow
   consentAt DateTime?
+  // BLD-1354: demonstrable consent (UK GDPR Art. 7 + Art. 9) for AI processing
+  // of the visitor's facial photo — WHAT wording (version) and WHERE (source)
+  // the tick was captured, mirroring aiConsultationConsentFields() on the
+  // booking-page AI flow. A bare timestamp can't prove what was agreed to once
+  // the consent copy changes.
+  consentVersion String?
+  consentSource  String?
   result    KioskResult?
   createdAt DateTime     @default(now())
   expiresAt DateTime
 
   // ── Kiosk v2 live session (phone ↔ storefront display) ──
-  stage         String    @default("idle") // live stage machine (lib/kiosk-live.ts)
-  poseIdx       Int       @default(0) // current pose in the capture sequence
-  photoUrls     String[]  @default([]) // multi-capture (max 4)
-  liveFrame     String?   @db.Text // latest mirror frame as data-URL jpeg ≤120KB
-  liveFrameAt   DateTime?
-  ageDeclaredAt DateTime? // when the explicit 18+ tap happened
-  updatedAt     DateTime  @default(now()) @updatedAt
+  stage          String    @default("idle") // live stage machine (lib/kiosk-live.ts)
+  poseIdx        Int       @default(0) // current pose in the capture sequence
+  photoUrls      String[]  @default([]) // multi-capture (max 4)
+  liveFrame      String?   @db.Text // latest mirror frame as data-URL jpeg ≤120KB
+  liveFrameAt    DateTime?
+  ageDeclaredAt  DateTime? // when the explicit 18+ tap happened
+  // BLD-1418: when the session was claimed into 'analyzing' — lets a re-POST
+  // re-claim a session whose background job was platform-killed before it
+  // could reset stage itself, and lets the cron sweep find abandoned ones.
+  analyzingSince DateTime?
+  updatedAt      DateTime  @default(now()) @updatedAt
 
   // BLD-137 slice 2: per-location attribution (plain scope tag, matches FacilityDoc/ContractorVisit pattern)
   locationId String? // optional Location.id — set from ?location= on /kiosk/display
@@ -4494,7 +4984,8 @@ model TaskAutomationRun {
 model ComplianceItem {
   id               String    @id @default(cuid())
   name             String
-  category         String    @default("Other") // Insurance | Licence | Certification | Equipment servicing | Waste contract | PAT testing | EICR | Other
+  category         String    @default("Other") // Insurance | Licence | Certification | Equipment servicing | Waste contract | PAT testing | EICR | Companies House | Corporation Tax | VAT | PAYE | Pension | Other
+  company          String? // legal entity this deadline belongs to (BLD-1830); null for practice-wide items (insurance, licences, PAT testing…)
   provider         String?
   reference        String? // policy / certificate / contract number
   renewalAt        DateTime // expiry / next renewal date

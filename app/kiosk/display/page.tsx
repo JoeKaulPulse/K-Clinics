@@ -1,8 +1,10 @@
+import * as Sentry from '@sentry/nextjs';
 import { headers } from 'next/headers';
 import { db } from '@/lib/db';
 import { qrSvg } from '@/lib/qr';
 import { randomToken, randomSecret, sessionExpiry } from '@/lib/kiosk';
 import { KioskDisplay } from '@/components/kiosk/KioskDisplay';
+import { KioskUnavailable } from '@/components/kiosk/KioskUnavailable';
 import { getStringSetting } from '@/lib/settings';
 import { KIOSK_THEME_DEFAULT, isKioskThemeKey, type KioskThemeKey } from '@/lib/kiosk-themes';
 
@@ -55,9 +57,34 @@ export default async function KioskDisplayPage({
   // BLD-159: a capability secret travels in the QR (?s=) — not in the brute-
   // forceable token — and gates the live camera feed (/stream, /frame).
   const secret = randomSecret();
-  await db.kioskSession.create({
-    data: { token, secret, status: 'ACTIVE', expiresAt: sessionExpiry(), ...(locationId ? { locationId } : {}) },
-  }).catch(() => {});
+
+  // BLD-1535: the write used to be a bare `.catch(() => {})` — a transient DB
+  // blip (Neon resume, pool exhaustion) left the unattended storefront screen
+  // showing a QR that would 404 for every visitor who scanned it, with
+  // nothing logged and no staff-visible signal. Retry once (a short blip is
+  // often gone a beat later), and if both attempts fail, capture to Sentry and
+  // render the calm unavailable state below instead of a dead QR. The page is
+  // force-dynamic and self-reloads (see KioskDisplay's REGEN_MS / kd countdown
+  // and KioskUnavailable's own shorter retry), so the next request tries this
+  // same create fresh — this isn't a state that can get stuck.
+  const sessionData = { token, secret, status: 'ACTIVE' as const, expiresAt: sessionExpiry(), ...(locationId ? { locationId } : {}) };
+  let sessionCreated = false;
+  let lastError: unknown;
+  for (let attempt = 1; attempt <= 2; attempt++) {
+    try {
+      await db.kioskSession.create({ data: sessionData });
+      sessionCreated = true;
+      break;
+    } catch (e) {
+      lastError = e;
+      console.error(`[kiosk] display session create failed (attempt ${attempt}/2):`, (e as Error)?.message);
+      if (attempt === 1) await new Promise((r) => setTimeout(r, 300));
+    }
+  }
+  if (!sessionCreated) {
+    Sentry.captureException(lastError, { tags: { area: 'kiosk-display-session-create' } });
+    return <KioskUnavailable theme={theme} />;
+  }
 
   const url = `${origin}/kiosk/${token}?s=${secret}`;
   const svg = await qrSvg(url, { dark: '#2a2420', light: '#ffffff' });

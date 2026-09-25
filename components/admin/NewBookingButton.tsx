@@ -5,21 +5,24 @@ import { useRouter } from 'next/navigation';
 import { AnimatePresence, motion } from 'motion/react';
 import { createManualBooking, searchClientsForBooking, logCallNote, resendBookingConfirmation } from '@/app/admin/bookings/create-action';
 import { clinicLocalToUTC, CLINIC_TZ } from '@/lib/clinic-time';
+import { eligiblePackagesFor } from '@/lib/package-match';
 import { useDialogBehaviours } from '@/components/ui/Dialog';
+import { ClientStatusBadge } from '@/components/admin/ClientStatusBadge';
 
-type Variant = { id: string; name: string; durationMin: number; pricePence: number };
+type Course = { sessions: number; totalPence: number };
+type Variant = { id: string; name: string; durationMin: number; pricePence: number; courses: Course[] };
 type Treatment = { slug: string; title: string; group: string; variants?: Variant[] };
-type Found = { id: string; firstName: string; lastName: string | null; email: string; phone: string | null; hasDob: boolean; hasCard: boolean };
+type Found = { id: string; firstName: string; lastName: string | null; email: string; phone: string | null; hasDob: boolean; hasCard: boolean; clientStatus?: 'GREEN' | 'YELLOW' | 'RED' | null; clientStatusReason?: string | null };
 type Result = { bookingId: string; manageToken?: string; hasCard?: boolean; clientFirstName?: string; clientEmail?: string; clientHasEmail?: boolean };
 
-const f = 'w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-3 py-2.5 text-sm outline-none focus:border-[var(--color-gold)]';
+const f = 'w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-porcelain)] px-3 py-2.5 text-sm outline-none focus:border-[var(--color-gold-deep)] focus-visible:ring-2 focus-visible:ring-[var(--color-gold-deep)]';
 const priceLabel = (p: number) => (p > 0 ? `£${(p / 100).toLocaleString('en-GB', { minimumFractionDigits: p % 100 ? 2 : 0 })}` : 'On consultation');
 
 export function NewBookingButton({ treatments, isAdmin = false }: { treatments: Treatment[]; isAdmin?: boolean }) {
   const [open, setOpen] = useState(false);
   return (
     <>
-      <button onClick={() => setOpen(true)} className="inline-flex items-center gap-2 rounded-full bg-[var(--color-ink)] px-5 py-2.5 text-sm font-medium text-[var(--color-porcelain)] transition-colors hover:bg-[var(--color-espresso)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-gold)]">
+      <button onClick={() => setOpen(true)} className="inline-flex items-center gap-2 rounded-full bg-[var(--color-ink)] px-5 py-2.5 text-sm font-medium text-[var(--color-porcelain)] transition-colors hover:bg-[var(--color-espresso)]">
         <svg width="15" height="15" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
           <path d="M5 3.5h3l1.2 3.2-1.7 1.3a10 10 0 0 0 4.2 4.2l1.3-1.7 3.2 1.2v3a1.5 1.5 0 0 1-1.6 1.5A13.5 13.5 0 0 1 3.5 5.1 1.5 1.5 0 0 1 5 3.5Z" />
         </svg>
@@ -52,6 +55,14 @@ function Modal({ treatments, isAdmin, onClose }: { treatments: Treatment[]; isAd
   const [selectedGroup, setSelectedGroup] = useState(firstGroup);
   const [d, setD] = useState({ firstName: '', lastName: '', email: '', phone: '', dob: '', treatmentSlug: firstSlug, variantId: treatments.find((t) => t.slug === firstSlug)?.variants?.[0]?.id ?? '', asConsultation: false, sessions: 1, date: '', time: '10:00', notes: '', overridePrice: false, overridePriceValue: '' });
   const set = <K extends keyof typeof d>(k: K, v: (typeof d)[K]) => setD((p) => ({ ...p, [k]: v }));
+  // BLD-1014: the selected client's package balances — when one matches the
+  // chosen treatment with sessions remaining, staff can book it as a package
+  // session (no charge; the purchase already carries the money).
+  // BLD-1380: `refunded` — a fully refunded course reads as !paid, but staff
+  // must see "refunded", not "NOT yet paid", before booking against it.
+  type Pkg = { purchaseBookingId: string; label: string; treatmentSlug: string; variantId: string | null; sessionsTotal: number; sessionsUsed: number; sessionsBooked: number; sessionsRemaining: number; paid: boolean; refunded: boolean };
+  const [packages, setPackages] = useState<Pkg[]>([]);
+  const [usePackageId, setUsePackageId] = useState<string | null>(null);
   // The standalone "Consultation" category is already a consultation; the toggle
   // is for booking a *real* treatment category as a consultation (BLD-208).
   const isConsultationCat = d.treatmentSlug === 'consultation';
@@ -59,8 +70,14 @@ function Modal({ treatments, isAdmin, onClose }: { treatments: Treatment[]; isAd
   const groupTreatments = treatments.filter((t) => t.group === selectedGroup);
   // The chosen category's specific service variants/areas (each its own price + time).
   const variants = treatments.find((t) => t.slug === d.treatmentSlug)?.variants ?? [];
+  const selectedVariant = variants.find((v) => v.id === d.variantId);
+  // BLD-1268: package/course tiers configured on the chosen variant (e.g. 1 / 3
+  // / 6 sessions, each with its own bundle price) — the same data the public
+  // /book flow reads to offer its "Single or a course?" picker. Empty when the
+  // variant has no configured tiers, so plain single-visit bookings are unaffected.
+  const courses = selectedVariant?.courses ?? [];
   // Changing the treatment (directly or via its group) resets to that treatment's first area.
-  const setTreatment = (slug: string) => setD((p) => ({ ...p, treatmentSlug: slug, variantId: treatments.find((t) => t.slug === slug)?.variants?.[0]?.id ?? '' }));
+  const setTreatment = (slug: string) => setD((p) => ({ ...p, treatmentSlug: slug, variantId: treatments.find((t) => t.slug === slug)?.variants?.[0]?.id ?? '', sessions: 1 }));
 
   function handleGroupChange(group: string) {
     setSelectedGroup(group);
@@ -73,6 +90,36 @@ function Modal({ treatments, isAdmin, onClose }: { treatments: Treatment[]; isAd
     const t = setTimeout(async () => { const r = await searchClientsForBooking(q); if (r.ok) setMatches(r.clients); }, 300);
     return () => clearTimeout(t);
   }, [q, tab, selected]);
+
+  // BLD-1014: load package balances when an existing client is selected.
+  useEffect(() => {
+    setPackages([]); setUsePackageId(null);
+    if (!selected) return;
+    let live = true;
+    fetch(`/api/admin/clients/${selected.id}/packages`)
+      .then((r) => r.json())
+      .then((j) => { if (live && j.ok) setPackages(j.packages ?? []); })
+      .catch(() => {});
+    return () => { live = false; };
+  }, [selected]);
+  // BLD-1890: treatmentSlug is the marketing category only (e.g.
+  // "laser-hair-removal") — a category can have several service variants/
+  // areas (Chin, Lower Leg…) sharing that one slug, so matching on it alone
+  // could offer (and silently pick) another area's package for this booking.
+  // eligiblePackagesFor also matches the chosen variant/area; every eligible
+  // package is listed, never just the first one found.
+  const matchingPackages = eligiblePackagesFor(packages, d.treatmentSlug, d.variantId || null).filter((p) => p.sessionsRemaining > 0);
+  const chosenPackage = matchingPackages.find((p) => p.purchaseBookingId === usePackageId) ?? null;
+  // A changed treatment/area invalidates a ticked package that's no longer eligible.
+  // '' = ticked but not yet chosen. If the eligible list narrows to one or none
+  // while pending, resolve it (the dropdown only renders for >1), otherwise
+  // submit would be blocked with no control left on screen to fix it.
+  const onlyPackageId = matchingPackages.length === 1 ? matchingPackages[0].purchaseBookingId : null;
+  useEffect(() => {
+    if (usePackageId === null) return;
+    if (usePackageId === '') { if (matchingPackages.length <= 1) setUsePackageId(onlyPackageId); return; }
+    if (!chosenPackage) setUsePackageId(null);
+  }, [d.treatmentSlug, d.variantId, usePackageId, chosenPackage, matchingPackages.length, onlyPackageId]);
 
   const baseTitle = treatments.find((t) => t.slug === d.treatmentSlug)?.title || 'your treatment';
   const variantName = variants.find((v) => v.id === d.variantId)?.name;
@@ -89,6 +136,10 @@ function Modal({ treatments, isAdmin, onClose }: { treatments: Treatment[]; isAd
     if (isAdmin && d.overridePrice && (d.overridePriceValue.trim() === '' || Number(d.overridePriceValue) < 0 || !Number.isFinite(Number(d.overridePriceValue)))) {
       return setError('Enter a valid override price.');
     }
+    // BLD-1890: "Use package session" is ticked but staff haven't yet picked
+    // which of several eligible packages — never guess, make them choose.
+    // Only while the package picker is actually on screen (hidden for consultations).
+    if (usePackageId === '' && !isConsultationCat && !d.asConsultation) return setError('Choose which course package to use.');
     const startISO = clinicLocalToUTC(d.date, d.time).toISOString();
     const overridePricePence = isAdmin && d.overridePrice ? Math.round(Number(d.overridePriceValue) * 100) : undefined;
     start(async () => {
@@ -99,7 +150,8 @@ function Modal({ treatments, isAdmin, onClose }: { treatments: Treatment[]; isAd
         email: selected?.email || d.email,
         phone: selected?.phone || d.phone,
         dob: selected ? undefined : (d.dob || undefined),
-        treatmentSlug: d.treatmentSlug, variantId: d.asConsultation ? undefined : (d.variantId || undefined), asConsultation: d.asConsultation, sessions: d.sessions, startISO, notes: d.notes, override, overridePricePence,
+        treatmentSlug: d.treatmentSlug, variantId: d.asConsultation ? undefined : (d.variantId || undefined), asConsultation: d.asConsultation, sessions: usePackageId ? 1 : d.sessions, startISO, notes: d.notes, override, overridePricePence: usePackageId ? undefined : overridePricePence,
+        usePackageBookingId: usePackageId || undefined,
       });
       if (r.ok) setResult(r as Result);
       else { setError(r.error || 'Could not create booking.'); setClash(Boolean(r.clash)); }
@@ -128,9 +180,22 @@ function Modal({ treatments, isAdmin, onClose }: { treatments: Treatment[]; isAd
 
             {tab === 'existing' ? (
               selected ? (
-                <div className="flex items-center justify-between rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-3 py-2.5 text-sm">
-                  <span><strong>{selected.firstName} {selected.lastName ?? ''}</strong> · {selected.email}{selected.phone ? ` · ${selected.phone}` : ''} {selected.hasCard && <span className="ml-1 rounded-full bg-[var(--color-jade)]/15 px-2 py-0.5 text-[0.6rem] text-[var(--color-jade)]">card on file</span>}</span>
-                  <button onClick={() => setSelected(null)} className="text-xs text-[var(--color-stone)] hover:underline">Change</button>
+                <div>
+                  <div className="flex items-center justify-between rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-porcelain)] px-3 py-2.5 text-sm">
+                    <span className="flex flex-wrap items-center gap-1.5">
+                      <strong>{selected.firstName} {selected.lastName ?? ''}</strong> · {selected.email}{selected.phone ? ` · ${selected.phone}` : ''}
+                      {selected.hasCard && <span className="ml-1 rounded-full bg-[var(--color-jade)]/15 px-2 py-0.5 text-[0.6rem] text-[var(--color-jade)]">card on file</span>}
+                      <ClientStatusBadge status={selected.clientStatus} />
+                    </span>
+                    <button onClick={() => setSelected(null)} className="text-xs text-[var(--color-stone)] hover:underline">Change</button>
+                  </div>
+                  {/* BLD-1532: RED is warning-only for a staff-initiated booking —
+                      only the PUBLIC online flow hard-blocks it. */}
+                  {selected.clientStatus === 'RED' && (
+                    <p role="alert" className="mt-1.5 rounded-[var(--radius-sm)] border border-[var(--color-blush-deep)] bg-[var(--color-blush)]/15 px-3 py-2 text-xs font-medium text-[var(--color-blush-deep)]">
+                      ⚠ Blocked client — this client cannot book online. {selected.clientStatusReason || 'Check the client profile before proceeding.'}
+                    </p>
+                  )}
                 </div>
               ) : (
                 <div>
@@ -139,7 +204,7 @@ function Modal({ treatments, isAdmin, onClose }: { treatments: Treatment[]; isAd
                     <div className="mt-1 overflow-hidden rounded-[var(--radius-sm)] border border-[var(--color-line)]">
                       {matches.map((c) => (
                         <button key={c.id} onClick={() => { setSelected(c); setQ(''); }} className="flex w-full items-center justify-between px-3 py-2 text-left text-sm hover:bg-[var(--color-bone)]">
-                          <span>{c.firstName} {c.lastName ?? ''} <span className="text-[var(--color-stone)]">· {c.email}{c.phone ? ` · ${c.phone}` : ''}</span></span>
+                          <span className="flex flex-wrap items-center gap-1.5">{c.firstName} {c.lastName ?? ''} <span className="text-[var(--color-stone)]">· {c.email}{c.phone ? ` · ${c.phone}` : ''}</span> <ClientStatusBadge status={c.clientStatus} /></span>
                           {c.hasCard && <span className="rounded-full bg-[var(--color-jade)]/15 px-2 py-0.5 text-[0.6rem] text-[var(--color-jade)]">card</span>}
                         </button>
                       ))}
@@ -172,7 +237,7 @@ function Modal({ treatments, isAdmin, onClose }: { treatments: Treatment[]; isAd
               </select>
             )}
             {variants.length > 0 && !d.asConsultation && (
-              <select className={f} value={d.variantId} onChange={(e) => set('variantId', e.target.value)} aria-label="Specific service / area">
+              <select className={f} value={d.variantId} onChange={(e) => setD((p) => ({ ...p, variantId: e.target.value, sessions: 1 }))} aria-label="Specific service / area">
                 {variants.map((v) => <option key={v.id} value={v.id}>{v.name} — {priceLabel(v.pricePence)} · {v.durationMin} min</option>)}
               </select>
             )}
@@ -183,8 +248,73 @@ function Modal({ treatments, isAdmin, onClose }: { treatments: Treatment[]; isAd
                 Book as a consultation <span className="text-[var(--color-stone)]">(15 min · on consultation)</span>
               </label>
             )}
-            {/* BLD-409: book a course of N sessions in one go. */}
-            {!isConsultationCat && !d.asConsultation && (
+            {/* BLD-1014: the client already paid for this treatment — book the
+                visit as a package session (£0) instead of charging again.
+                BLD-1890: a client can hold more than one package for the same
+                treatment category (different areas, or repeat purchases) — list
+                every eligible one and make staff pick, rather than silently
+                using whichever came first. */}
+            {!isConsultationCat && !d.asConsultation && matchingPackages.length > 0 && (
+              <div className="rounded-[var(--radius-sm)] border border-[var(--color-gold)]/50 bg-[var(--color-gold)]/8 p-3 text-sm">
+                <label className="flex items-start gap-2">
+                  <input
+                    type="checkbox"
+                    checked={usePackageId !== null}
+                    onChange={(e) => setUsePackageId(e.target.checked ? (matchingPackages.length === 1 ? matchingPackages[0].purchaseBookingId : '') : null)}
+                    className="mt-0.5 h-4 w-4 accent-[var(--color-gold)]"
+                  />
+                  <span className="block font-medium">Use package session — nothing to charge</span>
+                </label>
+                {usePackageId !== null && matchingPackages.length > 1 && (
+                  <select
+                    className={f + ' mt-2'}
+                    aria-label="Which course package"
+                    value={usePackageId}
+                    onChange={(e) => setUsePackageId(e.target.value)}
+                  >
+                    <option value="">Choose which course…</option>
+                    {matchingPackages.map((p) => (
+                      <option key={p.purchaseBookingId} value={p.purchaseBookingId}>
+                        {p.label} — {p.sessionsRemaining} of {p.sessionsTotal} left{p.paid ? '' : p.refunded ? ' (refunded)' : ' (unpaid)'}
+                      </option>
+                    ))}
+                  </select>
+                )}
+                {chosenPackage && (
+                  <span className="mt-1.5 block text-xs text-[var(--color-stone)]">
+                    {chosenPackage.label}: {chosenPackage.sessionsUsed} used · {chosenPackage.sessionsBooked} booked · {chosenPackage.sessionsRemaining} left of {chosenPackage.sessionsTotal}
+                    {chosenPackage.paid ? ' · paid' : chosenPackage.refunded ? ' · REFUNDED' : ' · NOT yet paid'}
+                  </span>
+                )}
+              </div>
+            )}
+            {/* BLD-1268: when the chosen variant has configured package/course
+                tiers, offer the same "Single or a course?" picker the public
+                /book flow uses — staff see exactly what's on offer (session
+                count + bundle price) instead of guessing a number that may or
+                may not match a real tier. BLD-409: a treatment with no
+                configured tiers keeps the plain "number of sessions" field, so
+                staff can still book an ad-hoc multi-visit course at the flat
+                per-session rate — no picker is forced where none applies. */}
+            {!isConsultationCat && !d.asConsultation && !usePackageId && courses.length > 0 && (
+              <div>
+                <p className="mb-1.5 text-sm text-[var(--color-stone)]">Single session or a package?</p>
+                <div className="flex flex-wrap gap-2">
+                  <button type="button" onClick={() => set('sessions', 1)} aria-pressed={d.sessions === 1}
+                    className={`rounded-full border px-3.5 py-1.5 text-sm ${d.sessions === 1 ? 'border-[var(--color-gold)] bg-[var(--color-gold-deep)] text-white' : 'border-[var(--color-line)] hover:border-[var(--color-stone-soft)]'}`}>
+                    Single · {priceLabel(selectedVariant?.pricePence ?? 0)}
+                  </button>
+                  {courses.map((c) => (
+                    <button key={c.sessions} type="button" onClick={() => set('sessions', c.sessions)} aria-pressed={d.sessions === c.sessions}
+                      className={`rounded-full border px-3.5 py-1.5 text-sm ${d.sessions === c.sessions ? 'border-[var(--color-gold)] bg-[var(--color-gold-deep)] text-white' : 'border-[var(--color-line)] hover:border-[var(--color-stone-soft)]'}`}>
+                      Package of {c.sessions} · {priceLabel(c.totalPence)}
+                    </button>
+                  ))}
+                </div>
+                <p className="mt-1.5 text-xs text-[var(--color-stone)]">Booking a package reserves this appointment as the first session.</p>
+              </div>
+            )}
+            {!isConsultationCat && !d.asConsultation && !usePackageId && courses.length === 0 && (
               <label className="flex items-center justify-between gap-3 text-sm text-[var(--color-stone)]">
                 Number of sessions
                 <input type="number" min={1} max={50} value={d.sessions} onChange={(e) => set('sessions', Math.max(1, Math.min(50, Math.round(Number(e.target.value) || 1))))} className={`${f} w-24`} />
@@ -277,7 +407,7 @@ function DoneView({ result, treatmentTitle, whenLabel, onClose, router }: { resu
     setNoteState(r.ok ? 'saved' : 'error');
   }
 
-  const row = 'flex items-center justify-between gap-3 rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-3 py-2.5';
+  const row = 'flex items-center justify-between gap-3 rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-porcelain)] px-3 py-2.5';
   const sub = 'block text-xs text-[var(--color-stone)]';
 
   return (
@@ -350,7 +480,7 @@ function DoneView({ result, treatmentTitle, whenLabel, onClose, router }: { resu
             {noteState === 'saving' ? 'Saving…' : noteState === 'saved' ? 'Saved ✓' : 'Save to client record'}
           </button>
           {noteState === 'saved' && <span className="text-xs text-[var(--color-jade)]">Logged to the client’s timeline.</span>}
-          {noteState === 'error' && <span className="text-xs text-red-600">Couldn’t save — try again.</span>}
+          {noteState === 'error' && <span className="text-xs text-[var(--color-blush-deep)]">Couldn’t save — try again.</span>}
         </div>
       </div>
 

@@ -4,6 +4,11 @@ import { crmEnabled } from '@/lib/crm';
 import { stripeEnabled } from '@/lib/stripe';
 
 export const runtime = 'nodejs';
+// BLD-1692: finalizeBookingCharge can wait up to ~30s on Resend's rate gate
+// (lib/email.ts) before it returns — without this the platform's default
+// timeout can kill the request mid-charge-finalize. Matches
+// app/api/stripe/webhook/route.ts, raised for the same risk.
+export const maxDuration = 60;
 
 // Called by /booking/pay after the client authenticates an off-session charge.
 // Verifies with Stripe that the PaymentIntent really succeeded (and that the
@@ -35,7 +40,7 @@ export async function POST(req: Request) {
   try {
     await finalizeBookingCharge(bookingId, pi.id, receivedPence, { late: pi.metadata?.late === 'true' });
   } catch (err) {
-    console.error('[pay-confirm] finalize failed for booking', bookingId, err);
+    console.error('[pay-confirm] finalize failed for booking', bookingId, (err as Error)?.message);
     Sentry.captureException(err, { tags: { route: 'booking/pay-confirm' }, extra: { bookingId } });
     return NextResponse.json({ ok: false, error: 'Booking could not be confirmed. Payment was taken — please contact us to confirm your appointment.' }, { status: 503 });
   }

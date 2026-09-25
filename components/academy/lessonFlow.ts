@@ -6,7 +6,9 @@
 // Authored flows live on Lesson.steps. When absent we auto-chunk the lesson body
 // so EVERY lesson is bite-size immediately, without waiting on re-seeding.
 
-export type TeachStep = { kind: 'teach'; title?: string; text: string; art?: string };
+// BLD-1157: captionsUrl is only ever set on the synthetic media step ImmersiveCourse
+// builds from a lesson's own captionsUrl (lib/lms.ts) — never authored inline.
+export type TeachStep = { kind: 'teach'; title?: string; text: string; art?: string; captionsUrl?: string };
 export type SayStep = { kind: 'say'; text: string; mood?: 'happy' | 'think' | 'cheer' };
 export type AskStep = { kind: 'ask'; prompt: string; qtype?: 'SINGLE' | 'MULTI' | 'TRUEFALSE' | 'WORD'; options: string[]; correct?: number[]; explanation?: string; tip?: string; art?: string; quizId?: string; questionId?: string };
 export type FlowStep = TeachStep | SayStep | AskStep;

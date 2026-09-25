@@ -7,14 +7,22 @@ export const runtime = 'nodejs';
 // never has a public URL and is decrypted on demand behind this gate.
 export async function GET(req: Request, { params }: { params: Promise<{ id: string }> }) {
   if (!crmEnabled) return new NextResponse('Disabled', { status: 503 });
-  const { requirePermission } = await import('@/lib/auth');
-  const session = await requirePermission('clients.clinical.view');
+  const { requirePermissionAny } = await import('@/lib/auth');
+  const session = await requirePermissionAny(['clients.clinical.view', 'clients.photos']);
   if (!session) return new NextResponse('Forbidden', { status: 403 });
 
   const { id } = await params;
   const { db } = await import('@/lib/db');
-  const row = await db.beforePhoto.findUnique({ where: { id }, select: { dataEnc: true } });
+  const row = await db.beforePhoto.findUnique({ where: { id }, select: { dataEnc: true, clientId: true } });
   if (!row) return new NextResponse('Not found', { status: 404 });
+  // BLD-1882/BLD-1693 pattern (lib/crm-data.ts getClient): a PRACTITIONER
+  // session may only view a before-photo for a client they actually have a
+  // booking with — ownership check runs against the bookings table directly,
+  // same as getClient.
+  if (session.role === 'PRACTITIONER') {
+    const own = await db.booking.findFirst({ where: { clientId: row.clientId, practitionerId: session.sub }, select: { id: true } });
+    if (!own) return new NextResponse('Not found', { status: 404 });
+  }
 
   try {
     const { decryptJson } = await import('@/lib/crypto');
@@ -23,7 +31,8 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
     if (!m) return new NextResponse('Bad image', { status: 422 });
     const buf = Buffer.from(m[2], 'base64');
     return new NextResponse(buf, { headers: { 'content-type': m[1], 'cache-control': 'private, no-store' } });
-  } catch {
+  } catch (e) {
+    console.error('[bookings/before-photo] decrypt failed', e);
     return new NextResponse('Decrypt failed', { status: 500 });
   }
 }

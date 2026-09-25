@@ -26,6 +26,10 @@ export async function POST(req: Request) {
   // ── Send an existing persisted campaign now (from the drafts/scheduled list). ──
   if (body.op === 'sendNow') {
     if (!body.id) return NextResponse.json({ ok: false, error: 'Missing id.' }, { status: 400 });
+    const { enforceRateLimit } = await import('@/lib/security/guard');
+    if (!(await enforceRateLimit(req, 'marketing-email-send', 10, 3600, 'admin'))) {
+      return NextResponse.json({ ok: false, error: 'Too many send attempts. Please wait and try again.' }, { status: 429 });
+    }
     const r = await sendCampaignById(String(body.id));
     if (r.ok) {
       const { logAudit } = await import('@/lib/audit');
@@ -58,6 +62,10 @@ export async function POST(req: Request) {
     if (!subject || blocks.length === 0) return NextResponse.json({ ok: false, error: 'Add a subject and some content.' }, { status: 400 });
     const to = String(body.test).trim();
     if (!to) return NextResponse.json({ ok: false, error: 'Enter a test address.' }, { status: 400 });
+    const { enforceRateLimit } = await import('@/lib/security/guard');
+    if (!(await enforceRateLimit(req, 'marketing-email-test', 20, 3600, 'admin'))) {
+      return NextResponse.json({ ok: false, error: 'Too many test sends. Please wait and try again.' }, { status: 429 });
+    }
     const { emailBlocksToHtml, applyMergeTags } = await import('@/lib/email-builder');
     const { sendEmail, emailShell } = await import('@/lib/email');
     const sample = { first_name: 'Alex', last_name: 'Taylor', email: to };
@@ -68,6 +76,14 @@ export async function POST(req: Request) {
       html: emailShell({ body: applyMergeTags(bodyHtml, sample, { html: true }), preheader: applyMergeTags(preheader || subject, sample, { html: true }) }),
       fromName, replyTo,
     });
+    const { logAudit } = await import('@/lib/audit');
+    // Record the attempt either way (that is the point of the log — who sent
+    // clinic-branded mail to which address), but never claim a send that the
+    // provider rejected; the branch below returns 502 in that case.
+    await logAudit({
+      action: 'SETTINGS_UPDATED', actor: session.email, actorRole: session.role,
+      summary: res.ok ? `Sent test email “${name}” to ${to}` : `Test email “${name}” to ${to} failed to send`,
+    }).catch(() => {});
     return res.ok ? NextResponse.json({ ok: true, test: true }) : NextResponse.json({ ok: false, error: res.error }, { status: 502 });
   }
 
@@ -93,6 +109,10 @@ export async function POST(req: Request) {
   // ── Schedule for a future time. ──
   if (body.op === 'schedule') {
     if (!subject || blocks.length === 0) return NextResponse.json({ ok: false, error: 'Add a subject and some content.' }, { status: 400 });
+    const { enforceRateLimit } = await import('@/lib/security/guard');
+    if (!(await enforceRateLimit(req, 'marketing-email-schedule', 20, 3600, 'admin'))) {
+      return NextResponse.json({ ok: false, error: 'Too many attempts. Please wait and try again.' }, { status: 429 });
+    }
     const when = body.scheduledAt ? new Date(String(body.scheduledAt)) : null;
     if (!when || isNaN(+when)) return NextResponse.json({ ok: false, error: 'Choose a valid date and time.' }, { status: 400 });
     if (when.getTime() < Date.now() + 60_000) return NextResponse.json({ ok: false, error: 'Pick a time at least a minute from now.' }, { status: 400 });
@@ -105,6 +125,10 @@ export async function POST(req: Request) {
   // ── Start an A/B subject test: two subjects to samples, winner to the rest. ──
   if (body.op === 'abTest') {
     if (!subject || blocks.length === 0) return NextResponse.json({ ok: false, error: 'Add a subject and some content.' }, { status: 400 });
+    const { enforceRateLimit } = await import('@/lib/security/guard');
+    if (!(await enforceRateLimit(req, 'marketing-email-abtest', 10, 3600, 'admin'))) {
+      return NextResponse.json({ ok: false, error: 'Too many attempts. Please wait and try again.' }, { status: 429 });
+    }
     const subjectB = String(body.subjectB || '').trim().slice(0, 200);
     if (!subjectB) return NextResponse.json({ ok: false, error: 'Add a second subject line (B) to test.' }, { status: 400 });
     if ((await countAudience(aud)) < 3) return NextResponse.json({ ok: false, error: 'Need at least a few opted-in recipients to run a test.' }, { status: 400 });
@@ -122,6 +146,12 @@ export async function POST(req: Request) {
 
   // ── Send immediately. ──
   if (!subject || blocks.length === 0) return NextResponse.json({ ok: false, error: 'Add a subject and some content.' }, { status: 400 });
+  {
+    const { enforceRateLimit } = await import('@/lib/security/guard');
+    if (!(await enforceRateLimit(req, 'marketing-email-send', 10, 3600, 'admin'))) {
+      return NextResponse.json({ ok: false, error: 'Too many send attempts. Please wait and try again.' }, { status: 429 });
+    }
+  }
   if ((await countAudience(aud)) === 0) return NextResponse.json({ ok: false, error: 'No opted-in recipients match that audience.' }, { status: 400 });
 
   const campaign = await upsert('SENDING');

@@ -1,12 +1,67 @@
 import 'server-only';
 import * as Sentry from '@sentry/nextjs';
 import { getSecret } from '@/lib/secrets';
+import { fetchWithRetry } from '@/lib/fetch-retry';
 
 // Kiosk Skin & Smile AI analysis — lightweight, friendly, non-clinical.
 // Uses the same Claude API as K Vision (lib/ai-consultation.ts) but with a
 // campaign-specific prompt. Returns a fun, shareable rating — NOT a diagnosis.
 
 const HAIKU = 'claude-haiku-4-5-20251001';
+
+// BLD-1461: shared bounded-retry POST to the Anthropic Messages API, mirroring
+// the callClaude()/callHaiku() pattern in lib/ai-consultation.ts and
+// lib/chat-ai.ts (BLD-334) -- one retry on a transient failure (connection
+// error / 5xx), 600ms backoff. A 4xx is not retried (it won't succeed), and a
+// rejected or errored call never produced a completion, so retrying can't
+// double-bill.
+//
+// Review fix (BLD-1461): our own timeout is the one failure that is NOT
+// retried here, unlike the sibling call sites. Both kiosk routes run this
+// inside after() under maxDuration = 60 (app/api/kiosk/sessions/[token]/photo
+// and .../analyze), so a second full-length attempt after a 30s timeout tips
+// the worst case past 60s -- the function is killed mid-attempt and takes the
+// graceful ANALYSIS_FAILED write with it, leaving the session stuck in
+// PHOTO_TAKEN and the kiosk polling for ever (the exact failure BLD-451 fixed).
+// A timed-out request is also the one case that may already have been processed
+// and billed upstream, which is what analyzeKioskPhotosV2's original budget rule
+// was guarding. Connection-level failures fail fast, never reach the model, and
+// still retry.
+//
+// BLD-1641: the actual network call now goes through the shared fetchWithRetry
+// (lib/fetch-retry.ts, already used by the Calendar/Xero integrations) instead
+// of a bare fetch(), so a transient 429 is retried the same as a 5xx -- the
+// kiosk's own AI outage handling previously only looked at `>= 500` and let a
+// rate-limit fail the whole customer-facing flow outright. `attempts: 1` keeps
+// fetchWithRetry as a single-shot timeout+fetch wrapper here: the outer loop
+// above still owns the retry decision so the timeout-exclusion rule (the
+// paragraph above) is preserved exactly -- fetchWithRetry has no way to tell a
+// timeout apart from any other thrown error, so letting it retry internally
+// would silently reintroduce the >60s worst case this file was fixed to avoid.
+async function postAnthropicWithRetry(key: string, body: object, timeoutMs = 30_000): Promise<Response> {
+  for (let attempt = 0; attempt < 2; attempt++) {
+    try {
+      const res = await fetchWithRetry('https://api.anthropic.com/v1/messages', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json', 'x-api-key': key, 'anthropic-version': '2023-06-01' },
+        body: JSON.stringify(body),
+      }, { attempts: 1, timeoutMs, label: 'kiosk-ai' });
+      if ((res.status === 429 || res.status >= 500) && attempt === 0) {
+        // Release the connection: nothing reads this body, and it is discarded.
+        await res.body?.cancel().catch(() => {});
+        await new Promise((r) => setTimeout(r, 600));
+        continue;
+      }
+      return res;
+    } catch (e) {
+      const isTimeout = e instanceof Error && e.name === 'TimeoutError';
+      if (attempt === 0 && !isTimeout) { await new Promise((r) => setTimeout(r, 600)); continue; }
+      throw e;
+    }
+  }
+  // Unreachable: the loop above always either returns or throws on its final iteration.
+  throw new Error('[kiosk-ai] retry loop exhausted without a result');
+}
 
 const SYSTEM = `You are a friendly AI beauty consultant for K Clinics, a premium aesthetic clinic. You're helping the user discover their skin & smile score in a fun, encouraging way. This is NOT a medical assessment.
 
@@ -90,33 +145,25 @@ export async function analyzeKioskPhoto(photoUrl: string): Promise<KioskAiResult
     const b64 = Buffer.from(img.bytes).toString('base64');
     const media = mediaTypeFromUrl(photoUrl);
 
-    // 2) Call Claude with a 30s timeout (same pattern as callClaude in lib/ai-consultation.ts).
-    const ac = new AbortController();
-    const timer = setTimeout(() => ac.abort(), 30_000);
-    let res: Response;
-    try {
-      res = await fetch('https://api.anthropic.com/v1/messages', {
-        method: 'POST',
-        signal: ac.signal,
-        headers: { 'content-type': 'application/json', 'x-api-key': key, 'anthropic-version': '2023-06-01' },
-        body: JSON.stringify({
-          model: HAIKU,
-          max_tokens: 600,
-          system: [{ type: 'text', text: SYSTEM, cache_control: { type: 'ephemeral' } }],
-          messages: [{
-            role: 'user',
-            content: [
-              { type: 'text', text: 'Here is my selfie — give me my fun skin & smile score!' },
-              { type: 'image', source: { type: 'base64', media_type: media, data: b64 } },
-            ],
-          }],
-        }),
-      });
-    } finally {
-      clearTimeout(timer);
-    }
+    // 2) Call Claude with a 30s timeout (same pattern as callClaude in lib/ai-consultation.ts),
+    // with one bounded retry on a 5xx or connection error (BLD-1461, see
+    // postAnthropicWithRetry above; a timed-out call is not retried).
+    const res = await postAnthropicWithRetry(key, {
+      model: HAIKU,
+      max_tokens: 600,
+      system: [{ type: 'text', text: SYSTEM, cache_control: { type: 'ephemeral' } }],
+      messages: [{
+        role: 'user',
+        content: [
+          { type: 'text', text: 'Here is my selfie — give me my fun skin & smile score!' },
+          { type: 'image', source: { type: 'base64', media_type: media, data: b64 } },
+        ],
+      }],
+    });
     if (!res.ok) {
       console.error('[kiosk-ai] anthropic', res.status, await res.text().catch(() => ''));
+      // BLD-999: mirror chat-ai/ai-consultation — kiosk AI outages must reach Sentry.
+      Sentry.captureMessage('[kiosk-ai] anthropic call failed', { level: 'error', tags: { area: 'kiosk-ai', status: String(res.status) } });
       return null;
     }
 
@@ -307,8 +354,11 @@ export async function analyzeKioskPhotosV2(photoUrls: string[]): Promise<KioskAi
       return null;
     }
 
-    // 2) One Sonnet call, all photos attached, 30s timeout, NO retries
-    //    (budget rule: a retry could double-bill the session).
+    // 2) One Sonnet call, all photos attached, 30s timeout, with one bounded
+    //    retry on a 5xx or a connection error (BLD-1461): neither reached the
+    //    model, so retrying can't double-bill the session. A timed-out call is
+    //    still never retried, which keeps the original budget rule intact (see
+    //    postAnthropicWithRetry above).
     const content: unknown[] = [
       { type: 'text', text: `Here are my ${photos.length} kiosk selfies — score my skin & smile!` },
     ];
@@ -317,26 +367,16 @@ export async function analyzeKioskPhotosV2(photoUrls: string[]): Promise<KioskAi
       content.push({ type: 'image', source: { type: 'base64', media_type: p.media, data: p.b64 } });
     }
 
-    const ac = new AbortController();
-    const timer = setTimeout(() => ac.abort(), 30_000);
-    let res: Response;
-    try {
-      res = await fetch('https://api.anthropic.com/v1/messages', {
-        method: 'POST',
-        signal: ac.signal,
-        headers: { 'content-type': 'application/json', 'x-api-key': key, 'anthropic-version': '2023-06-01' },
-        body: JSON.stringify({
-          model: SONNET,
-          max_tokens: 1200,
-          system: [{ type: 'text', text: SYSTEM_V2, cache_control: { type: 'ephemeral' } }],
-          messages: [{ role: 'user', content }],
-        }),
-      });
-    } finally {
-      clearTimeout(timer);
-    }
+    const res = await postAnthropicWithRetry(key, {
+      model: SONNET,
+      max_tokens: 1200,
+      system: [{ type: 'text', text: SYSTEM_V2, cache_control: { type: 'ephemeral' } }],
+      messages: [{ role: 'user', content }],
+    });
     if (!res.ok) {
       console.error('[kiosk-ai] anthropic v2', res.status, await res.text().catch(() => ''));
+      // BLD-999: mirror chat-ai/ai-consultation — kiosk AI outages must reach Sentry.
+      Sentry.captureMessage('[kiosk-ai] anthropic v2 call failed', { level: 'error', tags: { area: 'kiosk-ai', status: String(res.status) } });
       return null;
     }
 

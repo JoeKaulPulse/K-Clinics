@@ -15,7 +15,7 @@ async function post(payload: object) {
   return res.ok;
 }
 
-const field = 'w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-3 py-2 text-sm outline-none focus:border-[var(--color-gold)]';
+const field = 'w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-porcelain)] px-3 py-2 text-sm outline-none focus:border-[var(--color-gold-deep)] focus-visible:ring-2 focus-visible:ring-[var(--color-gold-deep)]';
 const gbp = (p: number | null) => (p == null ? null : `£${(p / 100).toLocaleString('en-GB', { maximumFractionDigits: 2 })}`);
 
 export function InventoryManager({ items, expiring, canManage, uk, hasISClinical }: { items: Item[]; expiring: Expiring[]; canManage: boolean; uk: boolean; hasISClinical: boolean }) {
@@ -55,9 +55,9 @@ export function InventoryManager({ items, expiring, canManage, uk, hasISClinical
             </div>
           )}
           {expiring.length > 0 && (
-            <div className="rounded-[var(--radius-md)] border border-amber-300 bg-amber-50 p-4">
-              <h3 className="mb-2 text-sm font-medium text-amber-900">⏳ {L('Expiring within 90 days', 'Спливає протягом 90 днів')} ({expiring.length})</h3>
-              <ul className="space-y-1 text-sm text-amber-900">
+            <div className="rounded-[var(--radius-md)] border border-[var(--color-gold)]/40 bg-[var(--color-gold)]/8 p-4">
+              <h3 className="mb-2 text-sm font-medium text-[var(--color-gold-deep)]">⏳ {L('Expiring within 90 days', 'Спливає протягом 90 днів')} ({expiring.length})</h3>
+              <ul className="space-y-1 text-sm text-[var(--color-gold-deep)]">
                 {expiring.map((e) => (
                   <li key={e.id}>
                     {e.itemName}{e.batchNo ? ` · ${L('batch', 'партія')} ${e.batchNo}` : ''} — {new Date(e.expiry).toLocaleDateString('en-GB')} <span className="text-xs">({daysTo(e.expiry)}d)</span>

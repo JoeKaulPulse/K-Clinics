@@ -11,14 +11,14 @@ export type PaymentRow = { id: string; kind: string; method: string | null; stat
 // editable list price behind the £ field.
 export type Enrolment = { id: string; courseId: string; courseTitle: string; cohortId: string | null; applicantName: string; applicantEmail: string; applicantPhone: string | null; experience: string | null; financeInterest: boolean; status: string; pricePence: number; feePence: number; paidPence: number; notes: string | null; createdAt: string; studentId: string | null; offeredAt: string | null; offerExpiresAt: string | null; acceptedAt: string | null; paymentPlan: boolean; preCourseAckAt: string | null; payments: PaymentRow[] };
 
-const field = 'rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-2.5 py-1.5 text-sm';
+const field = 'rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-porcelain)] px-2.5 py-1.5 text-sm';
 const money = (p: number) => (p > 0 ? `£${(p / 100).toLocaleString('en-GB')}` : '—');
 const fmtDate = (iso: string) => new Date(iso).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
 const STATUSES = ['APPLIED', 'OFFERED', 'PAID', 'ENROLLED', 'COMPLETED', 'CANCELLED'];
 const PAY_KINDS = ['DEPOSIT', 'BALANCE', 'FULL', 'INSTALMENT'];
 const PAY_METHODS = ['CARD', 'BNPL', 'BANK_TRANSFER', 'CASH', 'OTHER'];
 const METHOD_LABEL: Record<string, string> = { CARD: 'Card', BNPL: 'Klarna/Clearpay', BANK_TRANSFER: 'Bank transfer', CASH: 'Cash', OTHER: 'Other' };
-const STATE_BADGE: Record<string, string> = { PAID: 'bg-emerald-100 text-emerald-800', SCHEDULED: 'bg-[var(--color-line)] text-[var(--color-stone)]', PENDING: 'bg-amber-100 text-amber-800', FAILED: 'bg-red-100 text-red-800', REFUNDED: 'bg-[var(--color-line)] text-[var(--color-stone)]', CANCELLED: 'bg-[var(--color-line)] text-[var(--color-stone)]' };
+const STATE_BADGE: Record<string, string> = { PAID: 'bg-[var(--color-jade)]/15 text-[var(--color-ink)]', SCHEDULED: 'bg-[var(--color-line)] text-[var(--color-stone)]', PENDING: 'bg-[var(--color-gold)]/20 text-[var(--color-ink)]', FAILED: 'bg-[var(--color-blush)]/20 text-[var(--color-blush-deep)]', REFUNDED: 'bg-[var(--color-line)] text-[var(--color-stone)]', CANCELLED: 'bg-[var(--color-line)] text-[var(--color-stone)]' };
 
 async function post(payload: object) {
   return fetch('/api/admin/academy', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
@@ -67,7 +67,7 @@ export function Applications({ enrolments, courses }: { enrolments: Enrolment[];
                       <td className="py-2 pr-2">
                         <span className="font-medium">{e.applicantName}</span>
                         {e.financeInterest && <span className="ml-1 rounded-full bg-[var(--color-gold)]/15 px-1.5 py-0.5 text-[0.6rem] text-[var(--color-gold-deep)]">Finance</span>}
-                        {!e.studentId && <span className="ml-1 rounded-full bg-amber-100 px-1.5 py-0.5 text-[0.6rem] text-amber-800" title="No trainee account linked yet — make an offer to create one">No account</span>}
+                        {!e.studentId && <span className="ml-1 rounded-full bg-[var(--color-gold)]/20 px-1.5 py-0.5 text-[0.6rem] text-[var(--color-gold-deep)]" title="No trainee account linked yet — make an offer to create one">No account</span>}
                         <span className="block text-xs text-[var(--color-stone)]">{e.applicantEmail}{e.applicantPhone ? ` · ${e.applicantPhone}` : ''}</span>
                         <span className="block text-xs text-[var(--color-stone)]">Applied {fmtDate(e.createdAt)}{e.preCourseAckAt ? ' · pre-course read ✓' : ''}</span>
                         {e.experience && <span className="mt-1 block max-w-xs text-xs text-[var(--color-stone)]">{e.experience}</span>}
@@ -116,7 +116,7 @@ export function Applications({ enrolments, courses }: { enrolments: Enrolment[];
                       </td>
                     </tr>
                     {isOpen && (
-                      <tr className="border-t border-[var(--color-line)] bg-white/60">
+                      <tr className="border-t border-[var(--color-line)] bg-[var(--color-porcelain)]/60">
                         <td colSpan={6} className="p-4"><PaymentPanel enrolment={e} onAct={act} /></td>
                       </tr>
                     )}
@@ -230,7 +230,7 @@ function PaymentPanel({ enrolment: e, onAct }: { enrolment: Enrolment; onAct: (p
         ) : (
           <ul className="mt-2 space-y-1.5">
             {e.payments.map((p) => (
-              <li key={p.id} className="flex flex-wrap items-center justify-between gap-2 rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-3 py-2 text-sm">
+              <li key={p.id} className="flex flex-wrap items-center justify-between gap-2 rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-porcelain)] px-3 py-2 text-sm">
                 <div>
                   <span className="font-medium">{money(p.amountPence)}</span>
                   <span className="text-[var(--color-stone)]"> · {p.kind.toLowerCase()}{p.method ? ` · ${METHOD_LABEL[p.method] ?? p.method}` : ''}</span>
@@ -241,7 +241,10 @@ function PaymentPanel({ enrolment: e, onAct }: { enrolment: Enrolment; onAct: (p
                 <div className="flex items-center gap-2">
                   <span className={`rounded-full px-2 py-0.5 text-[0.6rem] font-medium uppercase tracking-wide ${STATE_BADGE[p.state] ?? STATE_BADGE.SCHEDULED}`}>{p.state}</span>
                   {p.state !== 'PAID' && <button onClick={() => onAct({ op: 'markPaymentPaid', paymentId: p.id, method: p.method || 'BANK_TRANSFER' })} className="text-xs text-[var(--color-gold-deep)] hover:underline">Mark paid</button>}
-                  {p.state === 'PAID' && <button onClick={() => { if (confirm('Issue a Stripe refund for this payment?')) onAct({ op: 'refundPayment', paymentId: p.id }); }} className="text-xs text-[var(--color-blush-deep)] hover:underline">Refund</button>}
+                  {/* BLD-1308: warn like the Cancel action does — and if this refund
+                      returns everything the learner has paid, their course access
+                      ends automatically (enrolment auto-cancels at £0 paid). */}
+                  {p.state === 'PAID' && <button onClick={() => { if (confirm(`Issue a Stripe refund for this ${money(p.amountPence)} payment?${e.paidPence - p.amountPence <= 0 && ['PAID', 'ENROLLED'].includes(e.status) ? ' This refunds everything the learner has paid, so the enrolment will be cancelled and their course access removed automatically.' : ''}`)) onAct({ op: 'refundPayment', paymentId: p.id }); }} className="text-xs text-[var(--color-blush-deep)] hover:underline">Refund</button>}
                   <button onClick={() => { if (confirm('Remove this payment row?')) onAct({ op: 'removePayment', paymentId: p.id }); }} aria-label="Remove payment" className="text-xs text-[var(--color-blush-deep)] hover:underline">✕</button>
                 </div>
               </li>
@@ -301,7 +304,7 @@ function CourseCard({ course, enrolments }: { course: Course; enrolments: Enrolm
   const [editing, setEditing] = useState(false);
   async function act(payload: object) { await post(payload); router.refresh(); }
   return (
-    <div className={`rounded-[var(--radius-md)] border border-[var(--color-line)] bg-white p-4 ${course.active ? '' : 'opacity-60'}`}>
+    <div className={`rounded-[var(--radius-md)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-4 ${course.active ? '' : 'opacity-60'}`}>
       <div className="flex items-center justify-between gap-3">
         <div>
           <span className="font-medium">{course.title}</span>

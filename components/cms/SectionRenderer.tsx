@@ -13,6 +13,7 @@ import { BookingButtons } from '@/components/booking/BookingButtons';
 import { EnquiryForm } from '@/components/contact/EnquiryForm';
 import { PersonalizedRail } from '@/components/marketing/PersonalizedRail';
 import { AbBlock } from '@/components/marketing/AbBlock';
+import { PhoneLink } from '@/components/marketing/PhoneLink';
 import { getSiteConfig } from '@/lib/site-config';
 import { ConsentGatedMap } from '@/components/cms/ConsentGatedMap';
 
@@ -25,9 +26,9 @@ export function SectionRenderer({ sections, includeHidden = false }: { sections:
     .flatMap((s) => (Array.isArray((s.data as { blocks?: Block[] }).blocks) ? (s.data as { blocks: Block[] }).blocks : []))
     .filter((b): b is Extract<Block, { type: 'heading' }> => b.type === 'heading' && !!b.text?.trim())
     .map((b) => ({ text: b.text, slug: slugifyHeading(b.text), level: b.level }));
-  return <>{visible.map((s) => (
+  return <>{visible.map((s, index) => (
     <SectionFrame key={s.id} data={s.data}>
-      {s.type === 'tableOfContents' ? <TocSection data={s.data} headings={headings} /> : <SectionView section={s} />}
+      {s.type === 'tableOfContents' ? <TocSection data={s.data} headings={headings} /> : <SectionView section={s} priority={index === 0} />}
     </SectionFrame>
   ))}</>;
 }
@@ -88,7 +89,7 @@ function CmsButton({ label, href, variant = 'ink' }: { label: string; href: stri
   return <Link href={href} className={`inline-flex items-center gap-2 rounded-full px-6 py-3 text-sm font-medium transition-colors ${cls}`}>{label}</Link>;
 }
 
-function SectionView({ section: { type, data } }: { section: Section }) {
+function SectionView({ section: { type, data }, priority = false }: { section: Section; priority?: boolean }) {
   switch (type) {
     case 'abHeadline':
       return (
@@ -138,7 +139,7 @@ function SectionView({ section: { type, data } }: { section: Section }) {
         <section className="container-lux grid items-center gap-12 py-20 md:grid-cols-2 md:py-28">
           <MaskReveal className={`relative aspect-[4/5] overflow-hidden rounded-[var(--radius-2xl)] shadow-[var(--shadow-lift)] ${right ? 'md:order-2' : ''}`}>
             {img
-              ? <Image src={img} alt={str(data.heading)} fill sizes="(max-width: 768px) 100vw, 50vw" className="object-cover" style={{ objectPosition: str(data.focal, '50% 50%') }} />
+              ? <Image src={img} alt={str(data.heading)} fill sizes="(max-width: 768px) 100vw, 50vw" className="object-cover" style={{ objectPosition: str(data.focal, '50% 50%') }} priority={priority} />
               : <MediaArt src="" from="#a98a6d" to="#7b6a5d" alt={str(data.heading)} className="h-full w-full" />}
           </MaskReveal>
           <Reveal delay={0.1}>
@@ -218,7 +219,7 @@ function SectionView({ section: { type, data } }: { section: Section }) {
               <details key={i} className="group px-6">
                 <summary className="flex cursor-pointer list-none items-center justify-between py-5 font-[family-name:var(--font-display)] text-lg">
                   {it.q}
-                  <span className="ml-4 text-[var(--color-gold)] transition-transform group-open:rotate-45">+</span>
+                  <span className="ml-4 text-[var(--color-gold-deep)] transition-transform group-open:rotate-45">+</span>
                 </summary>
                 <p className="pb-5 text-[var(--color-stone)]">{it.a}</p>
               </details>
@@ -257,7 +258,7 @@ function SectionView({ section: { type, data } }: { section: Section }) {
 
     case 'marquee': {
       const items = arr<{ value?: string } | string>(data.items).map((x) => (typeof x === 'string' ? x : str(x?.value))).filter(Boolean);
-      return <div className="border-y border-[var(--color-line)] py-6"><Marquee items={items} /></div>;
+      return <div className="border-y border-[var(--color-line)] py-6"><Marquee items={items} accentClassName="text-[var(--color-gold-deep)]" /></div>;
     }
 
     case 'twoColumn':
@@ -285,7 +286,7 @@ function SectionView({ section: { type, data } }: { section: Section }) {
             {arr<{ title: string; text: string }>(data.items).map((it, i) => (
               <Reveal key={i} delay={i * 0.05}>
                 <div className="h-full rounded-[var(--radius-lg)] border border-[var(--color-line)] p-7">
-                  <span className="font-[family-name:var(--font-display)] text-3xl text-[var(--color-gold)]">{String(i + 1).padStart(2, '0')}</span>
+                  <span className="font-[family-name:var(--font-display)] text-3xl text-[var(--color-gold-deep)]">{String(i + 1).padStart(2, '0')}</span>
                   <h3 className="mt-3 font-[family-name:var(--font-display)] text-xl">{it.title}</h3>
                   <p className="mt-2 text-[var(--color-stone)]">{it.text}</p>
                 </div>
@@ -410,9 +411,14 @@ async function ContactInfoSection({ data }: { data: Record<string, unknown> }) {
           <p className="font-[family-name:var(--font-display)] text-2xl leading-snug">{c.address.street}<br />{c.address.locality}<br />{c.address.region} {c.address.postalCode}</p>
           <a href={c.mapLink} target="_blank" rel="noopener noreferrer" className="link-underline mt-3 inline-block text-sm font-medium text-[var(--color-gold-deep)]">Get directions →</a>
         </div>
-        <div className="grid grid-cols-2 gap-8">
-          <div><p className="eyebrow mb-2">Call</p><a href={c.phoneHref} className="link-underline text-lg">{c.phone}</a></div>
-          <div><p className="eyebrow mb-2">Email</p><a href={c.emailHref} className="link-underline text-lg">{c.email}</a></div>
+        {/* min-w-0 belongs on the grid ITEMS: a grid item's automatic minimum
+            size is its min-content width, and an email address offers no break
+            opportunity, so the track — and with it the whole grid — is forced
+            wider than the container. On the inline <a> min-width does nothing
+            at all, which is what the first pass set it on. */}
+        <div className="grid grid-cols-1 gap-8 sm:grid-cols-2">
+          <div className="min-w-0"><p className="eyebrow mb-2">Call</p><PhoneLink href={c.phoneHref} className="link-underline break-words text-lg">{c.phone}</PhoneLink></div>
+          <div className="min-w-0"><p className="eyebrow mb-2">Email</p><a href={c.emailHref} className="link-underline break-words text-lg">{c.email}</a></div>
         </div>
         {data.showHours !== false && (
           <div>

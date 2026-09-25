@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation';
 type Vacancy = { id: string; title: string; department: string | null; location: string | null; type: string | null; summary: string | null; description: string | null; active: boolean };
 type App = { id: string; roleTitle: string; name: string; email: string; phone: string | null; coverNote: string | null; cvUrl: string | null; status: string; createdAt: string };
 
-const field = 'rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-2.5 py-1.5 text-sm';
+const field = 'rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-porcelain)] px-2.5 py-1.5 text-sm';
 const STATUSES = ['NEW', 'REVIEWING', 'INTERVIEW', 'OFFERED', 'REJECTED', 'HIRED'];
 const fmt = (iso: string) => new Date(iso).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
 
@@ -74,7 +74,7 @@ function VacancyRow({ v }: { v: Vacancy }) {
   const [editing, setEditing] = useState(false);
   async function act(payload: object) { await post(payload); router.refresh(); }
   return (
-    <div className={`rounded-[var(--radius-md)] border border-[var(--color-line)] bg-white p-4 ${v.active ? '' : 'opacity-60'}`}>
+    <div className={`rounded-[var(--radius-md)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-4 ${v.active ? '' : 'opacity-60'}`}>
       <div className="flex items-center justify-between gap-3">
         <div><span className="font-medium">{v.title}</span><span className="text-xs text-[var(--color-stone)]"> · {[v.type, v.location, v.department].filter(Boolean).join(' · ') || 'no details'}</span></div>
         <div className="flex items-center gap-3 text-xs">

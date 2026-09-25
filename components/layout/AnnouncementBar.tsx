@@ -2,6 +2,7 @@
 
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import type { AnnouncementConfig } from '@/lib/site-config';
+import { offerCountdownLabel } from '@/lib/offer-countdown';
 
 // Site-wide banner above the header. Sets the `--ann-h` CSS variable to its own
 // height so the fixed header and page content shift down by exactly that much
@@ -25,6 +26,10 @@ export function AnnouncementBar({ a, active }: { a: AnnouncementConfig; active: 
 
   if (!show) return null;
 
+  // BLD-1422: endAt was already fetched (used to gate `active` above) but never
+  // rendered — surface it as a small urgency chip next to the message.
+  const countdown = offerCountdownLabel(a.endAt);
+
   return (
     <div
       ref={ref}
@@ -33,6 +38,9 @@ export function AnnouncementBar({ a, active }: { a: AnnouncementConfig; active: 
       <div className="container-lux flex min-h-[2.5rem] items-center justify-center gap-3 py-1.5 text-center text-[0.82rem]">
         <p className="leading-snug">
           {a.message}
+          {countdown && (
+            <span className="ml-2 rounded-full bg-[var(--color-porcelain)]/15 px-2 py-0.5 text-[0.72rem] font-medium text-[var(--color-gold-soft)]">{countdown}</span>
+          )}
           {a.linkHref && a.linkLabel && (
             <a href={a.linkHref} className="ml-2 font-medium text-[var(--color-gold-soft)] underline underline-offset-2 hover:text-[var(--color-porcelain)]">
               {a.linkLabel}

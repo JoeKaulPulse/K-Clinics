@@ -1,5 +1,6 @@
 import 'server-only';
 import { cache } from 'react';
+import { unstable_cache } from 'next/cache';
 import { db } from '@/lib/db';
 import { crmEnabled } from '@/lib/crm';
 import { bookableTreatments } from '@/lib/treatments';
@@ -18,6 +19,9 @@ export type VariantView = {
   serviceId: string;
   name: string;
   durationMin: number;
+  // BLD-998: client-facing treatment length; durationMin is the internal booked
+  // time (setup + treatment + cleaning) and must keep driving slot/room maths.
+  displayDurationMin: number | null;
   pricePence: number;
   costPence: number | null;
   courses: Course[];
@@ -56,8 +60,8 @@ function asCourses(json: unknown): Course[] {
     .sort((a, b) => a.sessions - b.sessions);
 }
 
-const toVariant = (v: { id: string; serviceId: string; name: string; durationMin: number; pricePence: number; costPence: number | null; courses: unknown; status?: string | null }): VariantView =>
-  ({ id: v.id, serviceId: v.serviceId, name: v.name, durationMin: v.durationMin, pricePence: v.pricePence, costPence: v.costPence, courses: asCourses(v.courses), status: (v.status as ServiceStatus | null) ?? null });
+const toVariant = (v: { id: string; serviceId: string; name: string; durationMin: number; displayDurationMin?: number | null; pricePence: number; costPence: number | null; courses: unknown; status?: string | null }): VariantView =>
+  ({ id: v.id, serviceId: v.serviceId, name: v.name, durationMin: v.durationMin, displayDurationMin: v.displayDurationMin ?? null, pricePence: v.pricePence, costPence: v.costPence, courses: asCourses(v.courses), status: (v.status as ServiceStatus | null) ?? null });
 
 const toServiceStatus = (s: string | null | undefined): ServiceStatus => (s as ServiceStatus) ?? 'NORMAL';
 
@@ -74,13 +78,17 @@ export async function listServices(includeInactive = false): Promise<ServiceView
   }));
 }
 
-export type BookingTreatment = { slug: string; title: string; group: string; variants: { id: string; name: string; durationMin: number; pricePence: number }[] };
+export type BookingTreatment = { slug: string; title: string; group: string; variants: { id: string; name: string; durationMin: number; pricePence: number; courses: Course[] }[] };
 
 /** The treatment list for the staff "New phone booking" modal: a Consultation
  *  option first (BLD-203), then every bookable treatment category with its
  *  specific service variants/areas (BLD-189), each with its own price + duration.
  *  Shared by every entry point — the Bookings page, the dashboard Quick Actions
- *  and the reception view — so all three stay identical (BLD-447). */
+ *  and the reception view — so all three stay identical (BLD-447).
+ *  BLD-1268: each variant also carries its configured package/course tiers
+ *  (`courses` — e.g. 1/3/6 sessions) so the phone-booking modal can offer the
+ *  same tier picker the public /book flow shows, instead of a blind "number of
+ *  sessions" field staff had to fill in without knowing what packages exist. */
 export async function loadBookingTreatments(): Promise<BookingTreatment[]> {
   const services = await listServices().catch(() => []);
   const namesBySlug = new Map<string, Set<string>>();
@@ -90,7 +98,7 @@ export async function loadBookingTreatments(): Promise<BookingTreatment[]> {
     const multi = (namesBySlug.get(s.treatmentSlug)?.size ?? 0) > 1;
     for (const v of s.variants) {
       const arr = variantsBySlug.get(s.treatmentSlug) ?? [];
-      arr.push({ id: v.id, name: multi ? `${s.name} — ${v.name}` : v.name, durationMin: v.durationMin, pricePence: v.pricePence });
+      arr.push({ id: v.id, name: multi ? `${s.name} — ${v.name}` : v.name, durationMin: v.durationMin, pricePence: v.pricePence, courses: v.courses });
       variantsBySlug.set(s.treatmentSlug, arr);
     }
   }
@@ -199,15 +207,15 @@ export const pricingByTreatment = cache(async (): Promise<Map<string, TreatmentP
     }
     for (const [slug, svcList] of byTreatment) {
       const variants: PricedVariant[] = [];
-      // Headline status: the first non-NORMAL service status, else NORMAL.
-      const serviceStatus = svcList.find((s) => s.status !== 'NORMAL')?.status ?? 'NORMAL';
       for (const s of svcList) {
         for (const v of s.variants) {
           const status = effectiveStatus(s.status, v.status);
           const priced = status === 'NORMAL' && v.pricePence > 0;
           const off = priced ? bestOffer(offers, s.id, v.id, v.pricePence) : null;
           variants.push({
-            id: v.id, serviceId: v.serviceId, name: v.name, durationMin: v.durationMin,
+            // BLD-998: marketing pages are display-only (no slot maths), so the
+            // client-facing duration substitutes directly here.
+            id: v.id, serviceId: v.serviceId, name: v.name, durationMin: v.displayDurationMin ?? v.durationMin,
             pricePence: v.pricePence, courses: v.courses, status,
             offerPence: off ? Math.max(0, v.pricePence - off.discountPence) : null,
             offerName: off?.offer.name ?? null,
@@ -225,6 +233,35 @@ export const pricingByTreatment = cache(async (): Promise<Map<string, TreatmentP
         if (fromOfferPence == null || payable < fromOfferPence) { fromOfferPence = payable; offerName = v.offerName; }
       }
       const discounted = fromOfferPence != null && fromPence != null && fromOfferPence < fromPence;
+      // BLD-1826: headline status is bookable (NORMAL) if ANY variant under this
+      // treatmentSlug is bookable — a treatment split across multiple Service rows
+      // (e.g. "Botox — Forehead" / "Botox — Full Face" both slug 'botox') must not
+      // read as wholesale Coming Soon just because a sibling Service is still
+      // COMING_SOON/UNAVAILABLE. Previously this picked the *first* non-NORMAL
+      // sibling status regardless of order, so fixing one Service's status in the
+      // admin left the public page stuck on the other's. Only when every variant
+      // is non-bookable does the headline fall back to whichever of the two shows.
+      //
+      // CONSULTATION keeps its own rung rather than collapsing into NORMAL:
+      // it is bookable (isBookableStatus), but it drives distinct behaviour that
+      // a bare NORMAL loses — the "On consultation" badge on the treatment card,
+      // the "Free consultation" CTA on the treatment page (BookingButtons
+      // `consult`), and the £0 card-on-file hold in /api/booking/create. A
+      // genuinely NORMAL sibling still outranks it, which is the case this fix
+      // is about.
+      const serviceStatus: ServiceStatus = variants.some((v) => v.status === 'NORMAL')
+        ? 'NORMAL'
+        : variants.some((v) => v.status === 'CONSULTATION')
+          ? 'CONSULTATION'
+          : variants.some((v) => v.status === 'COMING_SOON')
+            ? 'COMING_SOON'
+            : variants.some((v) => v.status === 'UNAVAILABLE')
+              ? 'UNAVAILABLE'
+              // No active variants at all (a Service row created but not yet given
+              // its variants): there is nothing to derive from, so keep the
+              // pre-BLD-1826 Service-level reading. Defaulting to NORMAL here would
+              // publish a half-configured COMING_SOON treatment as bookable.
+              : (svcList.find((s) => s.status !== 'NORMAL')?.status ?? 'NORMAL');
       map.set(slug, {
         status: serviceStatus,
         fromPence,
@@ -261,6 +298,9 @@ export const isBookableStatus = (s: ServiceStatus): boolean => s === 'NORMAL' ||
 
 export type BookingVariant = {
   id: string; name: string; durationMin: number; pricePence: number;
+  // BLD-998: what the client is told the treatment takes. durationMin stays the
+  // internal booked time — the flow must keep sending THAT to availability.
+  displayDurationMin: number | null;
   offerPence: number | null; offerName: string | null;
   courses: Course[]; status: ServiceStatus;
 };
@@ -290,9 +330,21 @@ export async function bookingCatalogue(): Promise<BookingService[]> {
           const off = status === 'NORMAL' ? bestOffer(offers, s.id, v.id, v.pricePence) : null;
           // On-consultation variants book as a £0 hold; price is kept internal.
           const pricePence = status === 'CONSULTATION' ? 0 : v.pricePence;
-          return { id: v.id, name: v.name, durationMin: v.durationMin, pricePence, courses: status === 'CONSULTATION' ? [] : v.courses, offerPence: off ? Math.max(0, v.pricePence - off.discountPence) : null, offerName: off?.offer.name ?? null, status };
+          return { id: v.id, name: v.name, durationMin: v.durationMin, displayDurationMin: v.displayDurationMin, pricePence, courses: status === 'CONSULTATION' ? [] : v.courses, offerPence: off ? Math.max(0, v.pricePence - off.discountPence) : null, offerName: off?.offer.name ?? null, status };
         })
         .filter((v) => isBookableStatus(v.status)),
     }))
     .filter((s) => s.variants.length > 0);
 }
+
+// BLD-1833: the public /book page hit these on every request with no cache, so
+// it couldn't use the same hourly ISR as the homepage's featured pricing. Tag
+// matches SITE_CONFIG_TAG's pattern (lib/site-config.ts) — admin catalogue/offer
+// writes call revalidateTag(BOOK_CATALOGUE_TAG) (app/api/admin/services/route.ts)
+// so a price/offer/status change still shows immediately rather than waiting out
+// the window. Only /book uses these cached wrappers; every other caller
+// (booking/start pricing, admin catalogue editor, OffersStrip) still calls
+// bookingCatalogue()/liveOffers() directly and must stay uncached.
+export const BOOK_CATALOGUE_TAG = 'book-catalogue';
+export const getBookingCatalogue = unstable_cache(bookingCatalogue, ['book-catalogue-v1'], { tags: [BOOK_CATALOGUE_TAG], revalidate: 3600 });
+export const getPromotedOffers = unstable_cache(() => liveOffers(true), ['book-promoted-offers-v1'], { tags: [BOOK_CATALOGUE_TAG], revalidate: 3600 });

@@ -186,8 +186,16 @@ export type StartResult =
  *  outstanding balance ('full') or the course deposit ('deposit'). Creates a
  *  PENDING EnrolmentPayment + a Stripe PaymentIntent (card + Klarna/Clearpay via
  *  automatic_payment_methods) and returns the client secret. Server re-prices —
- *  the client never supplies an amount. */
-export async function startEnrolmentPayment(studentId: string, enrolmentId: string, mode: 'full' | 'deposit'): Promise<StartResult> {
+ *  the client never supplies an amount.
+ *
+ *  BLD-1203: `consent` is the cookie-banner choice (read by the caller, which
+ *  has the request), captured onto the enrolment here — the moment the
+ *  learner actually starts a purchase — so the deferred server-side GA4/Meta
+ *  Purchase conversion in finalizeEnrolmentPayment (fired later from the
+ *  Stripe webhook/confirm endpoint, with no request/cookie context of its
+ *  own) can honour it. Mirrors how Booking/Order capture consent at
+ *  creation/checkout time for the same reason. */
+export async function startEnrolmentPayment(studentId: string, enrolmentId: string, mode: 'full' | 'deposit', consent?: { analyticsConsent?: boolean; marketingConsent?: boolean }): Promise<StartResult> {
   const e = await db.enrolment.findUnique({
     where: { id: enrolmentId },
     select: {
@@ -199,6 +207,13 @@ export async function startEnrolmentPayment(studentId: string, enrolmentId: stri
   if (!e || e.studentId !== studentId) return { ok: false, error: 'Enrolment not found.', status: 404 };
   if (e.status === 'CANCELLED') return { ok: false, error: 'This enrolment has been cancelled.', status: 409 };
   if (e.status === 'APPLIED') return { ok: false, error: 'Your place hasn’t been confirmed yet — we’ll email you when it’s ready to pay.', status: 409 };
+
+  if (consent) {
+    await db.enrolment.update({
+      where: { id: e.id },
+      data: { analyticsConsent: consent.analyticsConsent ?? false, marketingConsent: consent.marketingConsent ?? false },
+    }).catch(() => {});
+  }
 
   const fee = effectiveFeePence(e, e.course);
   // BLD-850: enrolments that never went through the offer email (manual
@@ -327,9 +342,14 @@ export async function finalizeEnrolmentPayment(piId: string, amountReceivedPence
  *  no email, same default-closed stance as the gift-voucher/booking purchase
  *  events. Deduped against the browser pixel by payment id; only reached from
  *  the tx.claimed branch above, so it fires exactly once per payment regardless
- *  of whether the webhook or the synchronous confirm endpoint claims it. */
+ *  of whether the webhook or the synchronous confirm endpoint claims it.
+ *
+ *  BLD-1203: analyticsConsent/marketingConsent are read back off the enrolment
+ *  (captured in startEnrolmentPayment, at the request that began this
+ *  purchase) and threaded into sendPurchase() — previously omitted entirely,
+ *  so sendPurchase's fail-closed default silently skipped every academy sale. */
 async function sendEnrolmentPurchaseConversion(paymentId: string, enrolmentId: string, amountPence: number): Promise<void> {
-  const e = await db.enrolment.findUnique({ where: { id: enrolmentId }, select: { applicantEmail: true, student: { select: { clientId: true } } } });
+  const e = await db.enrolment.findUnique({ where: { id: enrolmentId }, select: { applicantEmail: true, analyticsConsent: true, marketingConsent: true, student: { select: { clientId: true } } } });
   let consentedEmail: string | null = null;
   const clientId = e?.student?.clientId ?? null;
   if (clientId) {
@@ -337,7 +357,10 @@ async function sendEnrolmentPurchaseConversion(paymentId: string, enrolmentId: s
     if (buyer?.marketingOptIn && !buyer.unsubscribed) consentedEmail = e?.applicantEmail ?? null;
   }
   const { sendPurchase } = await import('@/lib/conversions');
-  await sendPurchase({ bookingId: paymentId, valuePence: amountPence, clientId, email: consentedEmail });
+  await sendPurchase({
+    bookingId: paymentId, valuePence: amountPence, clientId, email: consentedEmail,
+    analyticsConsent: e?.analyticsConsent ?? undefined, marketingConsent: e?.marketingConsent ?? undefined,
+  });
 }
 
 /** Email the learner a payment confirmation with any outstanding balance. Best-effort. */
@@ -348,11 +371,26 @@ async function sendPaymentReceipt(enrolmentId: string, amountPence: number): Pro
   });
   if (!e?.applicantEmail) return;
   const fee = effectiveFeePence(e, e.course);
+  // VAT breakdown on the receipt once the clinic is VAT-registered (dormant
+  // otherwise). Academy courses aren't modelled as Products (no per-course
+  // vatClass field), so there's nothing to look up — but commercial training
+  // isn't an "eligible body" supply under UK VAT law, so it defaults to
+  // STANDARD the same way effectiveVatClass() falls back a non-dentistry
+  // Service to STANDARD when its vatClass is unset.
+  let vat: { netPence: number; vatPence: number; ratePct: number } | null = null;
+  try {
+    const { getVatConfig, effectiveVatClass, vatBreakdown } = await import('@/lib/vat');
+    const cfg = await getVatConfig();
+    if (cfg.registered) {
+      const b = vatBreakdown(amountPence, cfg, effectiveVatClass({}));
+      if (b.applied) vat = { netPence: b.netPence, vatPence: b.vatPence, ratePct: b.ratePct };
+    }
+  } catch { /* receipt still sends without the VAT line */ }
   const { sendEmail, tmplAcademyPaymentReceipt } = await import('@/lib/email');
   await sendEmail({
     to: e.applicantEmail,
     subject: `Payment received — ${e.course.title}`,
-    html: tmplAcademyPaymentReceipt({ firstName: (e.applicantName || 'there').split(/\s+/)[0], courseTitle: e.course.title, amountPence, outstandingPence: Math.max(0, fee - e.paidPence), portalUrl: `${siteBase()}/academy/portal` }),
+    html: tmplAcademyPaymentReceipt({ firstName: (e.applicantName || 'there').split(/\s+/)[0], courseTitle: e.course.title, amountPence, outstandingPence: Math.max(0, fee - e.paidPence), portalUrl: `${siteBase()}/academy/portal`, vat }),
   });
 }
 
@@ -517,20 +555,66 @@ export async function academyInstalmentReminders(): Promise<{ sent: number }> {
   return { sent };
 }
 
+/** BLD-1308: a refund that hands back EVERYTHING the student paid must also end
+ *  their course access — refunds previously rolled back paidPence and marked
+ *  the payment row REFUNDED but never touched Enrolment.status, and
+ *  studentCanAccess() grants LMS access purely on status (PAID/ENROLLED/
+ *  COMPLETED), so a fully-refunded student kept indefinite access.
+ *
+ *  Deliberately narrow: only fires when paidPence has reached 0 (a PARTIAL
+ *  refund leaves money on the enrolment, and whether that still buys access is
+ *  a staff judgement — status stays untouched), and only downgrades PAID or
+ *  ENROLLED. A COMPLETED enrolment is left alone — the student finished the
+ *  course and the record of that stands; the refund itself is already
+ *  audit-logged. CAS-guarded on status+paidPence so a concurrent instalment
+ *  payment landing mid-refund keeps access. Called from both refund paths
+ *  (in-app Stripe refund and the dashboard-refund webhook reconciler). */
+async function revokeAccessIfFullyRefunded(enrolmentId: string, actor: string): Promise<void> {
+  const e = await db.enrolment.findUnique({
+    where: { id: enrolmentId },
+    select: { status: true, paidPence: true, studentId: true, course: { select: { title: true } } },
+  }).catch(() => null);
+  if (!e || e.paidPence > 0) return;
+  if (e.status !== 'PAID' && e.status !== 'ENROLLED') return;
+  const claimed = await db.enrolment.updateMany({
+    where: { id: enrolmentId, status: { in: ['PAID', 'ENROLLED'] }, paidPence: { lte: 0 } },
+    data: { status: 'CANCELLED' },
+  }).catch(() => ({ count: 0 }));
+  if (claimed.count === 0) return;
+  await logAudit({
+    action: 'PAYMENT_REFUNDED',
+    actor,
+    enrolmentId,
+    summary: `Enrolment cancelled after full refund — every payment on ${e.course?.title || 'the course'} was refunded, so course access is revoked (BLD-1308)`,
+    meta: { autoRevoked: true },
+  }).catch(() => {});
+}
+
 /** Issue a Stripe refund for a PAID online academy payment and mark it REFUNDED. */
 export async function refundEnrolmentPayment(paymentId: string, staffEmail?: string): Promise<{ ok: boolean; error?: string }> {
   const p = await db.enrolmentPayment.findUnique({
     where: { id: paymentId },
-    select: { id: true, enrolmentId: true, amountPence: true, state: true, stripePaymentIntentId: true },
+    select: { id: true, enrolmentId: true, amountPence: true, refundedPence: true, state: true, stripePaymentIntentId: true },
   });
   if (!p) return { ok: false, error: 'Payment not found.' };
   if (p.state !== 'PAID') return { ok: false, error: 'Only PAID payments can be refunded.' };
   if (!p.stripePaymentIntentId) return { ok: false, error: 'No Stripe charge on this payment — use Remove to correct it instead.' };
   const { stripe, stripeEnabled } = await import('@/lib/stripe');
   if (!stripeEnabled) return { ok: false, error: 'Stripe is not configured.' };
+  // BLD-1271: net against any refundedPence already recorded — e.g. a prior
+  // partial dashboard refund already reconciled by reconcileEnrolmentPaymentRefund,
+  // which will have decremented paidPence by that delta already. Decrementing by
+  // the full original amountPence here would double-count that portion.
+  const delta = Math.max(0, p.amountPence - p.refundedPence);
+  if (!(delta > 0)) return { ok: false, error: 'This payment has already been fully refunded.' };
+  // BLD-1605: pin `amount` to the outstanding delta explicitly — without it
+  // Stripe defaults to refunding the full remaining balance on the charge, so
+  // a concurrent out-of-band (dashboard) partial refund would make this call
+  // over-refund at Stripe while the DB ledger below only ever records `delta`.
+  // Mirrors refundBooking's explicit `amount` in lib/booking-actions.ts.
   try {
     await stripe().refunds.create(
-      { payment_intent: p.stripePaymentIntentId, metadata: { paymentId, enrolmentId: p.enrolmentId } },
+      { payment_intent: p.stripePaymentIntentId, amount: delta, metadata: { paymentId, enrolmentId: p.enrolmentId } },
       { idempotencyKey: `academy-refund-${p.id}` },
     );
   } catch (e) {
@@ -540,9 +624,29 @@ export async function refundEnrolmentPayment(paymentId: string, staffEmail?: str
   // charge.refunded echo of THIS refund computes a zero delta instead of
   // decrementing paidPence a second time (its metadata carries paymentId, not
   // bookingId/orderId, so the originatedInApp skip doesn't catch it).
-  const claimed = await db.enrolmentPayment.updateMany({ where: { id: p.id, state: 'PAID' }, data: { state: 'REFUNDED', refundedPence: p.amountPence } });
-  if (claimed.count === 0) return { ok: true };
-  await db.enrolment.update({ where: { id: p.enrolmentId }, data: { paidPence: { decrement: p.amountPence } } }).catch(() => {});
+  // The claim is CAS'd on refundedPence as well as state, because `delta` was
+  // computed from a read taken BEFORE the Stripe round-trip above. A webhook
+  // reconciliation landing in that window (a partial dashboard refund raises
+  // refundedPence but leaves the row PAID) makes that delta stale, and a
+  // state-only CAS would still succeed and decrement paidPence by the stale,
+  // too-large amount — the very double-count this fix is closing.
+  const claimed = await db.enrolmentPayment.updateMany({
+    where: { id: p.id, state: 'PAID', refundedPence: p.refundedPence },
+    data: { state: 'REFUNDED', refundedPence: p.amountPence },
+  });
+  if (claimed.count === 0) {
+    // Lost the race. Hand the remainder to the reconciler, which re-reads and
+    // retries under its own CAS and is idempotent — correct whether the row was
+    // already flipped to REFUNDED by a concurrent claim (no-op) or merely had
+    // its watermark raised (reconciles only the outstanding delta). The Stripe
+    // refund has already succeeded at this point, so never report failure.
+    await reconcileEnrolmentPaymentRefund(p.stripePaymentIntentId, p.amountPence)
+      .catch((e) => { console.error('[academy] refund reconcile after lost CAS failed (Stripe refund already issued):', (e as Error)?.message); });
+    return { ok: true };
+  }
+  if (delta > 0) {
+    await db.enrolment.update({ where: { id: p.enrolmentId }, data: { paidPence: { decrement: delta } } }).catch(() => {});
+  }
   await logAudit({
     action: 'PAYMENT_REFUNDED',
     actor: staffEmail || 'admin',
@@ -550,6 +654,7 @@ export async function refundEnrolmentPayment(paymentId: string, staffEmail?: str
     summary: `Academy payment £${(p.amountPence / 100).toFixed(2)} refunded via Stripe`,
     meta: { paymentId, amountPence: p.amountPence },
   }).catch(() => {});
+  await revokeAccessIfFullyRefunded(p.enrolmentId, staffEmail || 'admin'); // BLD-1308
   return { ok: true };
 }
 
@@ -596,6 +701,7 @@ export async function reconcileEnrolmentPaymentRefund(piId: string, totalRefunde
       summary: `Academy payment refund £${(delta / 100).toFixed(2)}${fully ? ' (full)' : ' (partial)'} reconciled from Stripe`,
       meta: { paymentId: payment.id, deltaPence: delta, totalRefundedPence: target, piId },
     }).catch(() => {});
+    await revokeAccessIfFullyRefunded(payment.enrolmentId, 'stripe-webhook'); // BLD-1308
     return;
   }
   throw new Error(`enrolment refund CAS conflict persisted for PI ${piId} — deferring to Stripe redelivery`);

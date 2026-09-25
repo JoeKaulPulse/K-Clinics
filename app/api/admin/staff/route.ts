@@ -1,6 +1,6 @@
-import { NextResponse } from 'next/server';
+import { NextResponse, after } from 'next/server';
 import { crmEnabled } from '@/lib/crm';
-import { PERMISSION_KEYS, effectivePermissions } from '@/lib/permissions';
+import { PERMISSION_KEYS, effectivePermissions, roleDefaults } from '@/lib/permissions';
 
 export const runtime = 'nodejs';
 
@@ -28,11 +28,37 @@ export async function POST(req: Request) {
   const validRole = ['OWNER', 'ADMIN', 'PRACTITIONER', 'FRONT_DESK', 'STAFF'];
   const clean = (arr?: string[]) => (arr ?? []).filter((k) => PERMISSION_KEYS.includes(k));
   // Privilege-escalation clamp: a non-OWNER (e.g. a delegate granted
-  // staff.manage) may only grant permissions they themselves hold, and never
-  // the owner-only ones. OWNERs can grant anything.
+  // staff.manage) may only grant OR revoke permissions they themselves hold,
+  // and never the owner-only ones. OWNERs can grant/revoke anything.
+  //
+  // BLD-1539: revoke used to skip this clamp entirely (only clean() ran on
+  // it), so any staff.manage delegate could strip a permission -- including
+  // ones they never held themselves, e.g. clients.clinical.view -- from any
+  // non-owner colleague. clampPerms() (formerly clampGrant, same authority
+  // check) now gates both arrays identically.
   const OWNER_ONLY = ['staff.manage', 'security.manage', 'settings.manage'];
   const actorPerms = effectivePermissions({ role: actor.role, permGrant: actor.grant, permRevoke: actor.revoke });
-  const clampGrant = (arr?: string[]) => clean(arr).filter((k) => actor.role === 'OWNER' || (actorPerms.has(k) && !OWNER_ONLY.includes(k)));
+  const mayTouch = (k: string) => actor.role === 'OWNER' || (actorPerms.has(k) && !OWNER_ONLY.includes(k));
+  const clampPerms = (arr?: string[]) => clean(arr).filter(mayTouch);
+  // Both columns are written as a whole-array REPLACE, so clamping the incoming
+  // array is only half the job on an update: a key the actor may not touch is
+  // dropped from the array rather than left alone, which silently rewrites
+  // state an owner set.
+  //
+  // On permRevoke that drop is itself an escalation — the mirror image of
+  // BLD-1539. Removing a key from permRevoke *restores* the permission, so a
+  // staff.manage delegate who lacks e.g. clients.clinical.view would hand it
+  // back to a colleague an owner had revoked it from, just by opening the
+  // staff editor and pressing Save (the editor posts the target's full current
+  // grant/revoke sets, so this needs no intent at all). On permGrant the drop
+  // runs the other way and silently strips an owner-set grant.
+  //
+  // So merge instead of replace: the actor may add or remove entries within
+  // their own authority, and every entry outside it is carried over untouched.
+  // For an OWNER mayTouch() is always true, so nothing is carried over and the
+  // posted arrays are authoritative exactly as before.
+  const mergePerms = (next: string[] | undefined, existing: string[]) =>
+    [...new Set([...clampPerms(next), ...existing.filter((k) => !mayTouch(k))])];
 
   const { db } = await import('@/lib/db');
 
@@ -79,7 +105,14 @@ export async function POST(req: Request) {
     });
     const { revalidatePath } = await import('next/cache');
     revalidatePath('/team');
-    import('@/lib/indexnow').then((m) => m.indexNow(['/team'])).catch(() => {});
+    // BLD-1885: after(), not a bare floating promise — the response below can
+    // be sent before this ping resolves, and the runtime can freeze the
+    // function mid-flight (same fix as the kiosk analyze/photo routes /
+    // lib/ai-consultation.ts / app/api/admin/posts/route.ts, BLD-1137/1166/1418/491).
+    after(async () => {
+      const { indexNow } = await import('@/lib/indexnow');
+      await indexNow(['/team']).catch(() => {});
+    });
     return NextResponse.json({ ok: true, id });
   }
 
@@ -108,10 +141,17 @@ export async function POST(req: Request) {
     if (role && validRole.includes(role) && actor.role === 'OWNER') {
       data.role = role as 'OWNER' | 'ADMIN' | 'PRACTITIONER' | 'FRONT_DESK' | 'STAFF';
     }
-    if (grant) data.permGrant = clampGrant(grant);
-    if (revoke) data.permRevoke = clean(revoke);
+    if (grant) data.permGrant = mergePerms(grant, target.permGrant ?? []);
+    if (revoke) data.permRevoke = mergePerms(revoke, target.permRevoke ?? []);
     if (typeof active === 'boolean') data.active = active;
-    if (password) data.passwordHash = await hashPassword(password);
+    if (password) {
+      if (password.length < 8) return NextResponse.json({ ok: false, error: 'Password must be at least 8 characters.' }, { status: 422 });
+      const { isBreachedPassword } = await import('@/lib/security/breached-password');
+      if (await isBreachedPassword(password)) {
+        return NextResponse.json({ ok: false, error: 'That password has appeared in a known data breach. Please choose a different one.' }, { status: 422 });
+      }
+      data.passwordHash = await hashPassword(password);
+    }
     // Link (or clear) this account's Google sign-in. Lets an owner merge a
     // Workspace email that differs from the login email into the right record;
     // clearing it also unlinks any previously bound Google identity.
@@ -162,9 +202,43 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: false, error: 'Email, role and a temporary password are required.' }, { status: 422 });
   }
   if (!validRole.includes(role)) return NextResponse.json({ ok: false, error: 'Invalid role.' }, { status: 422 });
-  // Only an OWNER may create another OWNER.
-  if (role === 'OWNER' && actor.role !== 'OWNER') {
-    return NextResponse.json({ ok: false, error: 'Only an owner can create an owner.' }, { status: 403 });
+  if (password.length < 8) return NextResponse.json({ ok: false, error: 'Password must be at least 8 characters.' }, { status: 422 });
+  {
+    const { isBreachedPassword } = await import('@/lib/security/breached-password');
+    if (await isBreachedPassword(password)) {
+      return NextResponse.json({ ok: false, error: 'That password has appeared in a known data breach. Please choose a different one.' }, { status: 422 });
+    }
+  }
+  // BLD-1303: a non-OWNER holding `staff.manage` (a delegate an owner granted
+  // it to — no role has it by default) could previously POST `{role: 'ADMIN'}`
+  // and mint an account with far more privilege than they themselves held. The
+  // clampPerms escalation clamp above only covers permGrant/permRevoke, never
+  // `role`, and the old gate only special-cased `role === 'OWNER'`.
+  //
+  // The rule is the same one clampPerms already applies, just at role level:
+  // you may not create an account that can do something you cannot. So a
+  // non-OWNER may only create a role whose default permission set is a subset
+  // of their own effective permissions — which keeps the legitimate delegation
+  // flow working (an ADMIN delegate can still onboard a PRACTITIONER,
+  // FRONT_DESK or STAFF account, all strict subsets of ADMIN) while blocking
+  // the escalation (FRONT_DESK → ADMIN is not a subset, so it 403s).
+  //
+  // Deliberately NOT a role ranking: the roles are not totally ordered
+  // (PRACTITIONER has clinical access FRONT_DESK lacks, and vice versa), so a
+  // rank would let a FRONT_DESK delegate mint a PRACTITIONER and hand out
+  // clinical access it never had. The subset test is conservative in the safe
+  // direction — it can only ever refuse, never over-grant.
+  //
+  // OWNER stays separately gated: only an OWNER may create an OWNER, even if a
+  // delegate has somehow been granted every individual permission.
+  if (actor.role !== 'OWNER') {
+    if (role === 'OWNER') {
+      return NextResponse.json({ ok: false, error: 'Only an owner can create an owner.' }, { status: 403 });
+    }
+    const targetPerms = roleDefaults(role);
+    if (!targetPerms.every((k) => actorPerms.has(k))) {
+      return NextResponse.json({ ok: false, error: 'You can only create a staff member whose access is within your own.' }, { status: 403 });
+    }
   }
   const exists = await db.adminUser.findUnique({ where: { email: email.toLowerCase() } });
   if (exists) return NextResponse.json({ ok: false, error: 'A staff member with that email already exists.' }, { status: 409 });
@@ -175,8 +249,8 @@ export async function POST(req: Request) {
       name: name || null,
       role: role as 'OWNER' | 'ADMIN' | 'PRACTITIONER' | 'FRONT_DESK' | 'STAFF',
       passwordHash: await hashPassword(password),
-      permGrant: clampGrant(grant),
-      permRevoke: clean(revoke),
+      permGrant: clampPerms(grant),
+      permRevoke: clampPerms(revoke),
       createdBy: actor.email,
     },
   });

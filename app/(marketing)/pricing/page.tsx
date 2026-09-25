@@ -19,9 +19,9 @@ import { NewsletterCapture } from '@/components/layout/NewsletterCapture';
 export const revalidate = 3600;
 
 export const generateMetadata = (): Promise<Metadata> => pageMeta({
-  title: 'Price List — Aesthetics & Laser Treatments in London | KClinics',
+  title: 'Price List — Aesthetics & Laser Treatments | KClinics',
   description:
-    'Full, transparent price list for KClinics, Islington — laser hair removal, HIFU lifting, HydraFacial, carbon peel, tattoo & pigmentation removal, body contouring and more. Course savings available.',
+    'Full, transparent price list for KClinics, Islington — laser hair removal, HIFU lifting, HydraFacial, tattoo removal, body contouring and more.',
   path: '/pricing',
   keywords: ['laser hair removal prices London', 'HIFU cost London', 'hydrafacial price', 'tattoo removal cost London', 'aesthetic treatment prices'],
 });
@@ -118,7 +118,7 @@ export default async function PricingPage() {
                                     formatPence(v.pricePence)
                                   )}
                                   {!unavailable && (
-                                    <svg viewBox="0 0 24 24" aria-hidden className="h-4 w-4 shrink-0 text-[var(--color-gold)] opacity-50 transition-opacity group-hover:opacity-100" fill="none"><path d="M9 6l6 6-6 6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" /></svg>
+                                    <svg viewBox="0 0 24 24" aria-hidden className="h-4 w-4 shrink-0 text-[var(--color-gold-deep)] opacity-50 transition-opacity group-hover:opacity-100" fill="none"><path d="M9 6l6 6-6 6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" /></svg>
                                   )}
                                 </span>
                               </>

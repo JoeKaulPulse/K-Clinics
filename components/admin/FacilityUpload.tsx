@@ -32,7 +32,7 @@ export function FacilityUpload({ locations }: { locations: { id: string; name: s
     finally { setBusy(false); }
   }
 
-  const field = 'w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-porcelain)] px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-gold)]';
+  const field = 'w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-porcelain)] px-3 py-2 text-sm';
 
   return (
     <form ref={formRef} onSubmit={submit} className="rounded-[var(--radius-md)] border border-dashed border-[var(--color-line)] bg-[var(--color-bone)]/40 p-4">
@@ -58,7 +58,7 @@ export function FacilityUpload({ locations }: { locations: { id: string; name: s
         <button type="submit" disabled={busy} className="rounded-full bg-[var(--color-ink)] px-4 py-2 text-sm font-medium text-[var(--color-porcelain)] transition-opacity hover:opacity-90 disabled:opacity-50">
           {busy ? 'Uploading…' : 'Upload'}
         </button>
-        {error && <span className="text-xs text-[#b23b3b]">{error}</span>}
+        {error && <span className="text-xs text-[var(--color-blush-deep)]">{error}</span>}
       </div>
     </form>
   );

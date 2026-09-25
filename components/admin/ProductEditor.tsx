@@ -8,9 +8,10 @@ export type ProductData = {
   id: string; name: string; description: string; brand: string; category: string;
   price: string; compareAt: string; cost: string; sku: string; barcode: string;
   images: string[]; status: string; ageRestricted: boolean; trackInventory: boolean; stockQty: number; lowStockThreshold: number;
+  vatClass: string;
 };
 
-const field = 'mt-1 w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-3 py-2 text-sm';
+const field = 'mt-1 w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-porcelain)] px-3 py-2 text-sm';
 
 export function ProductEditor({ data }: { data: ProductData }) {
   const router = useRouter();
@@ -24,7 +25,7 @@ export function ProductEditor({ data }: { data: ProductData }) {
     setBusy(true); setMsg('');
     const res = await fetch('/api/admin/products', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ op: 'update', id: f.id, name: f.name, description: f.description, brand: f.brand, category: f.category, price: f.price, compareAt: f.compareAt, cost: f.cost, sku: f.sku, barcode: f.barcode, images: f.images, status: f.status, ageRestricted: f.ageRestricted, trackInventory: f.trackInventory, stockQty: f.stockQty, lowStockThreshold: f.lowStockThreshold }),
+      body: JSON.stringify({ op: 'update', id: f.id, name: f.name, description: f.description, brand: f.brand, category: f.category, price: f.price, compareAt: f.compareAt, cost: f.cost, sku: f.sku, barcode: f.barcode, images: f.images, status: f.status, ageRestricted: f.ageRestricted, trackInventory: f.trackInventory, stockQty: f.stockQty, lowStockThreshold: f.lowStockThreshold, vatClass: f.vatClass }),
     });
     setBusy(false); setMsg(res.ok ? 'Saved ✓' : 'Save failed'); router.refresh();
   }
@@ -41,7 +42,7 @@ export function ProductEditor({ data }: { data: ProductData }) {
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div><Link href="/admin/products" className="text-xs text-[var(--color-stone)] hover:underline">← All products</Link><h1 className="font-[family-name:var(--font-display)] text-3xl">{f.name}</h1></div>
-        <select value={f.status} onChange={(e) => set('status', e.target.value)} className="rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-3 py-2 text-sm"><option value="DRAFT">Draft</option><option value="ACTIVE">Active</option><option value="ARCHIVED">Archived</option></select>
+        <select value={f.status} onChange={(e) => set('status', e.target.value)} className="rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-porcelain)] px-3 py-2 text-sm"><option value="DRAFT">Draft</option><option value="ACTIVE">Active</option><option value="ARCHIVED">Archived</option></select>
       </div>
 
       <div className="grid gap-6 lg:grid-cols-[1.3fr_0.7fr]">
@@ -63,6 +64,16 @@ export function ProductEditor({ data }: { data: ProductData }) {
               <label className="text-xs text-[var(--color-stone)]">Compare-at £<input value={f.compareAt} onChange={(e) => set('compareAt', e.target.value)} className={field} /></label>
               <label className="text-xs text-[var(--color-stone)]">Cost £<input value={f.cost} onChange={(e) => set('cost', e.target.value)} className={field} /></label>
             </div>
+            <label className="mt-3 block text-xs text-[var(--color-stone)]" title="VAT class — applies once the clinic is VAT-registered (Finance → Financial controls)">
+              VAT
+              <select value={f.vatClass} onChange={(e) => set('vatClass', e.target.value)} className={field}>
+                <option value="">Default (standard)</option>
+                <option value="STANDARD">Standard 20%</option>
+                <option value="REDUCED">Reduced 5%</option>
+                <option value="ZERO">Zero-rated</option>
+                <option value="EXEMPT">Exempt</option>
+              </select>
+            </label>
           </section>
 
           <section className="rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-5">
@@ -77,7 +88,7 @@ export function ProductEditor({ data }: { data: ProductData }) {
               ))}
             </div>
             <div className="mt-3 flex gap-2">
-              <input value={img} onChange={(e) => setImg(e.target.value)} placeholder="Image URL (upload in Media first)" aria-label="Image URL" className="flex-1 rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-3 py-2 text-sm" />
+              <input value={img} onChange={(e) => setImg(e.target.value)} placeholder="Image URL (upload in Media first)" aria-label="Image URL" className="flex-1 rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-porcelain)] px-3 py-2 text-sm" />
               <button onClick={addImg} className="rounded-full border border-[var(--color-line)] px-4 py-2 text-sm hover:border-[var(--color-gold)]">Add</button>
             </div>
           </section>

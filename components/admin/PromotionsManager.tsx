@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation';
 type Universal = { id: string; code: string; label: string | null; discountType: string; percent: number | null; amountPence: number | null; redeemedCount: number; maxRedemptions: number | null; active: boolean; startsAt: string | null; expiresAt: string | null; treatmentSlugs: string[] };
 type Batch = { campaignId: string; name: string; count: number; redeemed: number };
 
-const field = 'w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-3 py-2 text-sm outline-none focus:border-[var(--color-gold)]';
+const field = 'w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-porcelain)] px-3 py-2 text-sm outline-none focus:border-[var(--color-gold-deep)] focus-visible:ring-2 focus-visible:ring-[var(--color-gold-deep)]';
 const label = 'block text-xs font-medium text-[var(--color-stone)]';
 const fmtDate = (iso: string | null) => (iso ? new Date(iso).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }) : null);
 const value = (p: Universal) => (p.discountType === 'FIXED' ? `£${((p.amountPence ?? 0) / 100).toLocaleString('en-GB')} off` : `${p.percent}% off`);
@@ -77,7 +77,7 @@ export function PromotionsManager({ universal, campaignBatches }: { universal: U
                     <td>{value(p)}{p.treatmentSlugs.length ? <span className="block text-xs text-[var(--color-stone)]">{p.treatmentSlugs.length} treatment(s)</span> : ''}</td>
                     <td className="tabular-nums">{p.redeemedCount}{p.maxRedemptions ? ` / ${p.maxRedemptions}` : ''}</td>
                     <td className="text-xs text-[var(--color-stone)]">{fmtDate(p.startsAt) || '—'} → {fmtDate(p.expiresAt) || 'no end'}</td>
-                    <td><span className={`rounded-full px-2 py-0.5 text-[0.6rem] font-medium uppercase ${p.active ? 'bg-emerald-100 text-emerald-800' : 'bg-[var(--color-bone)] text-[var(--color-stone)]'}`}>{p.active ? 'active' : 'off'}</span></td>
+                    <td><span className={`rounded-full px-2 py-0.5 text-[0.6rem] font-medium uppercase ${p.active ? 'bg-[var(--color-jade)]/15 text-[var(--color-ink)]' : 'bg-[var(--color-bone)] text-[var(--color-stone)]'}`}>{p.active ? 'active' : 'off'}</span></td>
                     <td className="text-right">
                       <button onClick={() => act({ op: 'toggle', id: p.id, active: !p.active })} disabled={busy} className="text-xs text-[var(--color-gold-deep)] hover:underline">{p.active ? 'Disable' : 'Enable'}</button>
                       <button onClick={() => { if (confirm('Delete this code?')) act({ op: 'remove', id: p.id }); }} disabled={busy} className="ml-3 text-xs text-[var(--color-blush-deep)] hover:underline">Delete</button>

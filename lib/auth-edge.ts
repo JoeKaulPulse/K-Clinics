@@ -34,9 +34,15 @@ export type ClientSession = { sub: string; email: string; firstName: string; epo
 export type AcademySession = { sub: string; email: string; firstName: string; epoch?: number };
 
 // HS256 requires a key of at least 256 bits (32 bytes); `jose` rejects shorter
-// secrets at sign time. Normalise any configured secret to >=32 bytes by
+// secrets at sign time. Below, pad any configured secret to >=32 bytes by
 // repeating its bytes — deterministic, sync and edge-safe. A proper-length
 // secret passes through byte-for-byte, so this is fully backward-compatible.
+// NOTE: padding stretches length, not entropy — a configured secret shorter
+// than 32 bytes yields a low-entropy, patterned key, so in production the
+// getters below (BLD-705/BLD-1660) reject a short secret outright instead of
+// silently padding it. Only a genuinely short secret reaches toKey at that
+// point: the dev-only placeholders below, and any short secret a developer
+// sets outside production.
 export const toKey = (s: string): Uint8Array => {
   const bytes = new TextEncoder().encode(s);
   if (bytes.length >= 32) return bytes;
@@ -45,12 +51,24 @@ export const toKey = (s: string): Uint8Array => {
   return out;
 };
 
+// BLD-1660: a configured-but-weak secret still "passed" (toKey padded it to
+// length without adding entropy). Fail loud in production, matching the
+// missing-secret convention above exactly — same condition, same style of
+// message — rather than silently deriving a weak key. Left un-enforced
+// outside production so short local/dev placeholders keep working.
+const assertSecretStrength = (name: string, s: string): void => {
+  if (process.env.NODE_ENV === 'production' && new TextEncoder().encode(s).length < 32) {
+    throw new Error(`${name} must be at least 32 bytes long in production.`);
+  }
+};
+
 export const adminSecret = (): Uint8Array => {
   const s = process.env.ADMIN_JWT_SECRET;
   if (!s) {
     if (process.env.NODE_ENV === 'production') throw new Error('ADMIN_JWT_SECRET is required in production.');
     return toKey('dev-insecure-secret-change-me');
   }
+  assertSecretStrength('ADMIN_JWT_SECRET', s);
   return toKey(s);
 };
 
@@ -60,6 +78,7 @@ export const clientSecret = (): Uint8Array => {
     if (process.env.NODE_ENV === 'production') throw new Error('CLIENT_JWT_SECRET is required in production.');
     return toKey('dev-insecure-client-secret-change-me');
   }
+  assertSecretStrength('CLIENT_JWT_SECRET', s);
   return toKey(s);
 };
 
@@ -90,6 +109,7 @@ export const academySecret = (): Uint8Array => {
     if (process.env.NODE_ENV === 'production') throw new Error('ACADEMY_JWT_SECRET is required in production.');
     return toKey('dev-insecure-academy-secret-change-me');
   }
+  assertSecretStrength('ACADEMY_JWT_SECRET', s);
   return toKey(s);
 };
 

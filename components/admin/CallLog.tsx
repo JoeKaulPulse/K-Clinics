@@ -76,7 +76,7 @@ export function CallLog({ canManage }: { canManage: boolean }) {
               return (
                 <li key={c.id}>
                   <button onClick={() => openCall(c.id)} className={`flex w-full items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-[var(--color-bone)] ${activeId === c.id ? 'bg-[var(--color-bone)]' : ''}`}>
-                    <span aria-hidden className={`grid h-9 w-9 shrink-0 place-items-center rounded-full text-sm ${missed ? 'bg-[var(--color-blush)]/20 text-[var(--color-blush-deep)]' : c.direction === 'INBOUND' ? 'bg-[var(--color-jade)]/15 text-[var(--color-jade)]' : 'bg-[var(--color-gold)]/15 text-[var(--color-gold)]'}`}>
+                    <span aria-hidden className={`grid h-9 w-9 shrink-0 place-items-center rounded-full text-sm ${missed ? 'bg-[var(--color-blush)]/20 text-[var(--color-blush-deep)]' : c.direction === 'INBOUND' ? 'bg-[var(--color-jade)]/15 text-[var(--color-jade)]' : 'bg-[var(--color-gold)]/15 text-[var(--color-gold-deep)]'}`}>
                       {c.direction === 'INBOUND' ? '↘' : '↗'}
                     </span>
                     <span className="min-w-0 flex-1">
@@ -126,7 +126,7 @@ export function CallLog({ canManage }: { canManage: boolean }) {
             <div>
               <p className="mb-1 text-xs uppercase tracking-[0.14em] text-[var(--color-stone)]">Transcript</p>
               {detail.transcript ? (
-                <p className="max-h-56 overflow-y-auto whitespace-pre-wrap rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white p-3 text-sm leading-relaxed">{detail.transcript}</p>
+                <p className="max-h-56 overflow-y-auto whitespace-pre-wrap rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-3 text-sm leading-relaxed">{detail.transcript}</p>
               ) : (
                 <p className="text-sm text-[var(--color-stone)]">{detail.transcriptStatus === 'unavailable' ? 'No transcript available.' : 'Transcript pending — it’ll appear once yay.com finishes processing.'}</p>
               )}
@@ -134,7 +134,7 @@ export function CallLog({ canManage }: { canManage: boolean }) {
 
             <div>
               <p className="mb-1 text-xs uppercase tracking-[0.14em] text-[var(--color-stone)]">Note</p>
-              <textarea value={note} onChange={(e) => { setNote(e.target.value); if (noteMsg) setNoteMsg(''); }} disabled={!canManage} rows={3} placeholder={canManage ? 'Add a note about this call…' : 'No note'} aria-label="Call note" className="w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white p-2.5 text-sm outline-none focus:border-[var(--color-gold)] disabled:opacity-60" />
+              <textarea value={note} onChange={(e) => { setNote(e.target.value); if (noteMsg) setNoteMsg(''); }} disabled={!canManage} rows={3} placeholder={canManage ? 'Add a note about this call…' : 'No note'} aria-label="Call note" className="w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-2.5 text-sm outline-none focus:border-[var(--color-gold-deep)] focus-visible:ring-2 focus-visible:ring-[var(--color-gold-deep)] disabled:opacity-60" />
               {canManage && (
                 <div className="mt-2 flex items-center gap-2">
                   <button onClick={saveNote} disabled={savingNote} className="rounded-full bg-[var(--color-ink)] px-4 py-1.5 text-sm font-medium text-[var(--color-porcelain)] disabled:opacity-50">{savingNote ? 'Saving…' : 'Save note'}</button>

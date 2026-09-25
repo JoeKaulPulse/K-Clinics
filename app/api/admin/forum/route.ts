@@ -8,6 +8,7 @@ export const runtime = 'nodejs';
 //   deleteThread { id }
 //   hidePost { id, value } · deletePost { id }
 //   staffReply { threadId, body } · staffCreateThread { category, title, body }
+//   threadPosts { threadId } — BLD-1724: lazy-load a thread's posts on open
 export async function POST(req: Request) {
   if (!crmEnabled) return NextResponse.json({ ok: false }, { status: 503 });
   const { requirePermission } = await import('@/lib/auth');
@@ -44,6 +45,11 @@ export async function POST(req: Request) {
       const { staffCreateThread } = await import('@/lib/forum');
       const res = await staffCreateThread(staff, { category: str(b.category), title: str(b.title), body: str(b.body) });
       return NextResponse.json(res, { status: res.ok ? 200 : 400 });
+    }
+    case 'threadPosts': {
+      if (!b.threadId) return bad('Missing thread.');
+      const { adminGetThreadPosts } = await import('@/lib/forum');
+      return ok({ posts: await adminGetThreadPosts(String(b.threadId)) });
     }
   }
   return bad('Unknown op');

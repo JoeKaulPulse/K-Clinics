@@ -4,7 +4,8 @@ import Link from 'next/link';
 // of dropping them into the public marketing 404.
 export default function AccountNotFound() {
   return (
-    <main className="grid min-h-svh place-items-center bg-[var(--color-porcelain)] px-6">
+    // div, not <main> — the account layout provides the main landmark (BLD-1297).
+    <div className="grid min-h-svh place-items-center bg-[var(--color-porcelain)] px-6">
       <div className="text-center">
         <p className="text-xs uppercase tracking-[0.2em] text-[var(--color-stone)]">Your account — page not found</p>
         <h1 className="mt-3 font-[family-name:var(--font-display)] text-5xl">404</h1>
@@ -16,6 +17,6 @@ export default function AccountNotFound() {
           <Link href="/account/appointments" className="rounded-full border border-[var(--color-line)] px-5 py-2.5 hover:border-[var(--color-gold)]">My appointments</Link>
         </div>
       </div>
-    </main>
+    </div>
   );
 }

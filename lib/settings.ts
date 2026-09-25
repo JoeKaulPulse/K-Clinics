@@ -19,6 +19,8 @@ export type SettingKey =
   | 'require_consent'            // signed treatment consent required before starting
   | 'require_before_photo'       // laser: before-photo (or signed opt-out) required before starting
   | 'abandoned_booking_recovery' // email a nudge to finish an unpaid/incomplete booking
+  | 'abandoned_order_recovery'   // email a nudge to finish an unpaid shop order (BLD-1204)
+  | 'abandoned_giftvoucher_recovery' // email a nudge to finish an unpaid gift-voucher purchase (BLD-1540)
   | 'booking_intent_recovery'    // email a nudge to a funnel visitor who left their email but never booked
   | 'no_show_notice'             // email a warm rebooking note when an appointment is marked no-show
   | 'membership_renewal_nudge'   // email lapsing K Circle members to keep their tier
@@ -32,7 +34,10 @@ export type SettingKey =
   | 'kiosk_discount_enabled'     // the storefront kiosk issues a share-to-claim discount code
   | 'reminder_72h'               // send a 3-day-ahead appointment reminder (BLD-126)
   | 'reminder_48h'               // send a 2-day-ahead appointment reminder (BLD-126)
-  | 'contractor_checkin_enabled'; // PRJ-63: contractors self-sign-in at reception via QR
+  | 'contractor_checkin_enabled' // PRJ-63: contractors self-sign-in at reception via QR
+  | 'health_retention_purge'     // PRJ-1069.10: purge health assessments past the 8-year clinical window (owner sign-off = this toggle)
+  | 'tcs_reminder_email'         // BLD-1452: email clients with no recorded T&Cs acceptance, asking them to accept + add a card
+  | 'referral_ask_email';        // BLD-1664: email a client 5-10 days after a completed visit, asking them to refer a friend
 
 export const SETTING_DEFAULTS: Record<SettingKey, boolean> = {
   allow_clinician_choice: false,
@@ -48,6 +53,8 @@ export const SETTING_DEFAULTS: Record<SettingKey, boolean> = {
   require_consent: false,
   require_before_photo: true,
   abandoned_booking_recovery: true, // BLD-131: enabled (owner-approved revenue automation)
+  abandoned_order_recovery: false, // BLD-1278: automation is built and reviewed (BLD-1204 already excluded POS/till sales and blank emails; copy matches the live abandoned_booking_recovery flow) — still ships off pending an explicit owner go-ahead, since flipping this sends live customer emails on the next daily cron with no way to recall them
+  abandoned_giftvoucher_recovery: false, // BLD-1540: mirrors abandoned_order_recovery/BLD-1278 — ships off pending an explicit owner go-ahead, since flipping this sends live customer emails on the next daily cron with no way to recall them
   booking_intent_recovery: true, // BLD-838: enabled (owner-approved revenue automation)
   no_show_notice: false,
   membership_renewal_nudge: true, // BLD-131: enabled (owner-approved revenue automation)
@@ -62,6 +69,9 @@ export const SETTING_DEFAULTS: Record<SettingKey, boolean> = {
   reminder_72h: true,
   reminder_48h: true,
   contractor_checkin_enabled: false, // PRJ-63: ships dark; owner enables after review
+  health_retention_purge: false, // PRJ-1069.10: irreversible health-data deletion — the owner turning this on IS the sign-off
+  tcs_reminder_email: true, // BLD-1452: built and reviewed (mirrors abandoned_order_recovery/BLD-1278). Enabled per BLD-1653 — the owner filed this directly, asking every client with no recorded T&Cs acceptance to be emailed, satisfying the "explicit owner go-ahead" this was gated on. termsAcceptedAt is also null for every staff-created/legacy client that has never signed up, booked or enquired online (BLD-1067), so this reaches that older audience too — which is exactly the reach BLD-1653 asked for. Review fix: the audience is limited to clients with no portal password, because completing signup is the only self-serve action that records the acceptance, and each client is asked at most three times.
+  referral_ask_email: false, // BLD-1664: built and reviewed — ships off pending an explicit owner go-ahead, since flipping this sends live customer emails on the next daily cron with no way to recall them (same reasoning as abandoned_order_recovery/tcs_reminder_email).
 };
 
 export const SETTING_META: Record<SettingKey, { label: string; description: string }> = {
@@ -116,6 +126,14 @@ export const SETTING_META: Record<SettingKey, { label: string; description: stri
   abandoned_booking_recovery: {
     label: 'Abandoned-booking recovery emails',
     description: 'Email a gentle, one-time nudge to clients who started a booking but didn’t save a card to finish it (sent 2–72h later). Off by default — turn on to recover incomplete bookings.',
+  },
+  abandoned_order_recovery: {
+    label: 'Abandoned-order recovery emails',
+    description: 'Email a gentle, one-time nudge to shoppers who reached checkout but never completed payment for their shop order (sent 2–72h later, once per order).',
+  },
+  abandoned_giftvoucher_recovery: {
+    label: 'Abandoned-gift-voucher recovery emails',
+    description: 'Email a gentle, one-time nudge to buyers who reached the Stripe payment step but never completed a gift-voucher purchase (sent 2–72h later, once per voucher). Off by default — turn on to recover incomplete voucher purchases.',
   },
   booking_intent_recovery: {
     label: 'Booking-funnel email recovery',
@@ -172,6 +190,18 @@ export const SETTING_META: Record<SettingKey, { label: string; description: stri
   contractor_checkin_enabled: {
     label: 'Contractor reception check-in',
     description: 'When on, contractors can scan a QR at reception to sign in for their visit — finding their existing profile by name/email or registering a new one (which staff then approve). They see only their assigned jobs, facility plans and a visit timer — never client, clinical or financial data. Off by default.',
+  },
+  health_retention_purge: {
+    label: 'Purge old health assessments (8-year clinical window)',
+    description: 'When on, the nightly run permanently deletes health-assessment answers (allergies, medications, conditions) more than 8 years old, and only for clients with no treatment in those 8 years — the same retention window already applied to signed consents and before-photos. Deletion is irreversible; turning this on is the sign-off recorded in the retention schedule. Off by default.',
+  },
+  tcs_reminder_email: {
+    label: 'T&Cs acceptance reminder emails',
+    description: 'Email clients whose profile still shows "T&Cs not yet accepted", asking them to finish setting up their online account — the signup tick is what records the acceptance. Only clients who have never set a portal password are emailed (for anyone else there is nothing on the site they can click to accept), at most once every 14 days and no more than three times each. Off by default — it reaches staff-created/legacy clients who have simply never signed up, booked or enquired online, so review the likely audience before turning it on.',
+  },
+  referral_ask_email: {
+    label: 'Referral-ask emails',
+    description: 'Email a client 5-10 days after a completed visit, inviting them to share their existing referral link (Account → Rewards). Asked once per visit, and no more than once every 90 days per client — so someone on a course of weekly sessions is not asked every week. Off by default.',
   },
 };
 

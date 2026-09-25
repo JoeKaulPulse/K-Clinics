@@ -6,6 +6,16 @@ import { clinicLocalToUTC } from '@/lib/clinic-time';
 
 const money = (p: number) => `£${(p / 100).toFixed(2)}`;
 
+/** BLD-1347: plain-English outcome of the no-show fee, so staff can see what
+ *  actually happened to the money without opening the audit log. */
+function noShowOutcome(r: { charged?: number; sessionConsumed?: boolean; feeFailed?: boolean; requiresAction?: boolean }): string {
+  if (r.sessionConsumed) return 'One session deducted from their package — nothing charged (the course is already paid).';
+  if (r.charged) return `Charged ${money(r.charged)} to the card on file.`;
+  if (r.requiresAction) return 'The card needs the client to confirm the payment — the fee stays on their outstanding balance.';
+  if (r.feeFailed) return 'The fee could not be charged — it stays on the client’s outstanding balance for follow-up.';
+  return 'No fee was due.';
+}
+
 export function BookingActions({
   bookingId,
   status,
@@ -18,6 +28,7 @@ export function BookingActions({
   canCharge = true,
   prepaid = false,
   pointsRedeemedPence = 0,
+  isPackageSession = false,
 }: {
   bookingId: string;
   status: string;
@@ -34,6 +45,9 @@ export function BookingActions({
   // BLD-733: money off already redeemed against this booking via loyalty points.
   // Nets out of the pre-filled charge amount so staff don't bill the pre-discount price.
   pointsRedeemedPence?: number | null;
+  // BLD-1347: this visit is a session booked against a prepaid course, so a
+  // no-show is paid for with the session itself rather than a card charge.
+  isPackageSession?: boolean;
 }) {
   const [pending, start] = useTransition();
   const [msg, setMsg] = useState('');
@@ -51,6 +65,9 @@ export function BookingActions({
   const [refundReason, setRefundReason] = useState('');
   const [confirmRefund, setConfirmRefund] = useState(false);
   const [newWhen, setNewWhen] = useState('');
+  // BLD-1873: a room/equipment-only clash comes back as a warning, not a hard
+  // error — offer "Reschedule anyway" instead of just showing the message.
+  const [resourceWarning, setResourceWarning] = useState('');
 
   const active = status === 'CONFIRMED' || status === 'PENDING';
   const completed = status === 'COMPLETED';
@@ -68,9 +85,34 @@ export function BookingActions({
         <div className="flex flex-wrap gap-2">
           <button disabled={pending} onClick={() => start(async () => { const r = await setBookingStatus(bookingId, 'COMPLETED'); setMsg(r.ok ? 'Marked completed.' : r.error || 'Could not update.'); })}
             className="rounded-full bg-[var(--color-ink)] px-4 py-2 text-sm text-[var(--color-porcelain)] disabled:opacity-60">Mark completed</button>
-          <button disabled={pending} onClick={() => start(async () => { const r = await setBookingStatus(bookingId, 'NO_SHOW'); setMsg(r.ok ? 'Marked no-show.' : r.error || 'Could not update.'); })}
-            className="rounded-full border border-[var(--color-line)] px-4 py-2 text-sm hover:bg-[var(--color-bone)] disabled:opacity-60">No-show</button>
+          {/* BLD-1347: a no-show now applies the published 24-hour policy. The
+              fee is taken as a card charge, or as one session off a prepaid
+              package — whichever matches how the client paid. "Waive fee" is
+              the override, and needs the payment permission. */}
+          <button disabled={pending} onClick={() => start(async () => {
+            const r = await setBookingStatus(bookingId, 'NO_SHOW');
+            setMsg(r.ok ? `Marked no-show. ${noShowOutcome(r)}` : r.error || 'Could not update.');
+          })}
+            className="rounded-full border border-[var(--color-line)] px-4 py-2 text-sm hover:bg-[var(--color-bone)] disabled:opacity-60">
+            {isPackageSession ? 'No-show — use a session' : within24h && netPricePence > 0 ? `No-show — charge ${money(netPricePence)}` : 'No-show'}
+          </button>
+          {canCharge && (
+            <button disabled={pending} onClick={() => start(async () => {
+              const r = await setBookingStatus(bookingId, 'NO_SHOW', { waiveFee: true });
+              setMsg(r.ok ? 'Marked no-show — fee waived, nothing charged and no session deducted.' : r.error || 'Could not update.');
+            })}
+              className="rounded-full border border-dashed border-[var(--color-line)] px-4 py-2 text-sm text-[var(--color-stone)] hover:bg-[var(--color-bone)] disabled:opacity-60">No-show — waive fee</button>
+          )}
         </div>
+      )}
+      {active && canManage && (
+        <p className="-mt-4 text-xs text-[var(--color-stone)]">
+          {isPackageSession
+            ? 'A no-show spends one session from the client’s package — the course is already paid, so no card is charged. Waive it to leave their balance untouched.'
+            : within24h && pricePence > 0
+              ? 'A no-show charges the card on file the full fee, per the 24-hour policy. If the charge fails it stays on the client’s outstanding balance.'
+              : 'Nothing is charged for a no-show on a £0 or on-consultation appointment.'}
+        </p>
       )}
 
       {/* Undo a mis-clicked status — reset a no-show (or a not-yet-charged
@@ -107,7 +149,7 @@ export function BookingActions({
           <div className="flex flex-wrap items-center gap-2">
             <span className="text-sm text-[var(--color-stone)]">£</span>
             <input value={amount} onChange={(e) => { setAmount(e.target.value); setConfirmCharge(false); }} inputMode="decimal"
-              className="w-28 rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-bone)] px-3 py-2 text-sm outline-none focus:border-[var(--color-gold)]" />
+              className="w-28 rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-bone)] px-3 py-2 text-sm outline-none focus:border-[var(--color-gold-deep)] focus-visible:ring-2 focus-visible:ring-[var(--color-gold-deep)]" />
             {!confirmCharge ? (
               <button disabled={pending || !(parseFloat(amount) > 0)} onClick={() => setConfirmCharge(true)}
                 className="rounded-full bg-[var(--color-gold-deep)] px-5 py-2 text-sm text-white disabled:opacity-60">Charge now…</button>
@@ -148,9 +190,9 @@ export function BookingActions({
               <div className="flex flex-wrap items-center gap-2">
                 <span className="text-sm text-[var(--color-stone)]">£</span>
                 <input value={refundAmt} onChange={(e) => { setRefundAmt(e.target.value); setConfirmRefund(false); }} inputMode="decimal" placeholder={(remainingRefund / 100).toFixed(2)} aria-label="Refund amount (£)"
-                  className="w-28 rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-bone)] px-3 py-2 text-sm outline-none focus:border-[var(--color-gold)]" />
+                  className="w-28 rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-bone)] px-3 py-2 text-sm outline-none focus:border-[var(--color-gold-deep)] focus-visible:ring-2 focus-visible:ring-[var(--color-gold-deep)]" />
                 <input value={refundReason} onChange={(e) => setRefundReason(e.target.value)} placeholder="Reason (optional)" aria-label="Refund reason"
-                  className="min-w-[8rem] flex-1 rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-bone)] px-3 py-2 text-sm outline-none focus:border-[var(--color-gold)]" />
+                  className="min-w-[8rem] flex-1 rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-bone)] px-3 py-2 text-sm outline-none focus:border-[var(--color-gold-deep)] focus-visible:ring-2 focus-visible:ring-[var(--color-gold-deep)]" />
               </div>
               {(() => { const pence = Math.round((parseFloat(refundAmt) || remainingRefund / 100) * 100); return (
                 !confirmRefund ? (
@@ -179,18 +221,41 @@ export function BookingActions({
         <div className="rounded-[var(--radius-md)] border border-[var(--color-line)] p-4">
           <p className="mb-2 text-sm font-medium">Reschedule (change date &amp; time)</p>
           <div className="flex flex-wrap items-center gap-2">
-            <input type="datetime-local" value={newWhen} onChange={(e) => setNewWhen(e.target.value)}
-              className="rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-porcelain)] px-3 py-2 text-sm outline-none focus:border-[var(--color-gold)]" />
+            <input type="datetime-local" value={newWhen} onChange={(e) => { setNewWhen(e.target.value); setResourceWarning(''); }}
+              className="rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-porcelain)] px-3 py-2 text-sm outline-none focus:border-[var(--color-gold-deep)] focus-visible:ring-2 focus-visible:ring-[var(--color-gold-deep)]" />
             <button disabled={pending || !newWhen} onClick={() => start(async () => {
               // datetime-local gives "YYYY-MM-DDTHH:MM" — staff mean CLINIC wall-clock
               // time, so convert via Europe/London, not the device's ambient timezone.
               const [dPart, tPart] = newWhen.split('T');
               const r = await rescheduleBookingAction(bookingId, clinicLocalToUTC(dPart, tPart || '00:00').toISOString());
-              setMsg(r.ok ? 'Rescheduled — the client has been emailed the new time.' : r.error || 'Could not reschedule.');
-              if (r.ok) setNewWhen('');
+              if (r.ok) {
+                setMsg('Rescheduled — the client has been emailed the new time.');
+                setNewWhen('');
+                setResourceWarning('');
+              } else if (r.code === 'RESOURCE_CONFLICT') {
+                // Warning only — staff can still confirm and proceed.
+                setResourceWarning(r.error || 'That time clashes with another room/equipment booking.');
+              } else {
+                setMsg(r.error || 'Could not reschedule.');
+                setResourceWarning('');
+              }
             })} className="rounded-full bg-[var(--color-ink)] px-4 py-2 text-sm text-[var(--color-porcelain)] disabled:opacity-60">{pending ? 'Moving…' : 'Reschedule'}</button>
           </div>
-          <p className="mt-2 text-xs text-[var(--color-stone)]">Moves this appointment without cancel-and-rebook. The slot must be free; the client gets a confirmation email. No late-change fee is applied.</p>
+          {resourceWarning && (
+            <div className="mt-2 rounded-[var(--radius-sm)] border border-[var(--color-gold)] bg-[var(--color-gold)]/10 p-3">
+              <p className="text-sm text-[var(--color-ink)]">{resourceWarning}</p>
+              <div className="mt-2 flex items-center gap-2">
+                <button disabled={pending} onClick={() => start(async () => {
+                  const [dPart, tPart] = newWhen.split('T');
+                  const r = await rescheduleBookingAction(bookingId, clinicLocalToUTC(dPart, tPart || '00:00').toISOString(), { force: true });
+                  setMsg(r.ok ? 'Rescheduled — the client has been emailed the new time.' : r.error || 'Could not reschedule.');
+                  if (r.ok) { setNewWhen(''); setResourceWarning(''); }
+                })} className="rounded-full bg-[var(--color-gold-deep)] px-4 py-1.5 text-xs font-medium text-white disabled:opacity-60">{pending ? 'Moving…' : 'Reschedule anyway'}</button>
+                <button onClick={() => setResourceWarning('')} className="text-xs text-[var(--color-stone)]">Cancel</button>
+              </div>
+            </div>
+          )}
+          <p className="mt-2 text-xs text-[var(--color-stone)]">Moves this appointment without cancel-and-rebook. The slot must be free of a clinician clash; the client gets a confirmation email. No late-change fee is applied.</p>
         </div>
       )}
 
@@ -207,8 +272,11 @@ export function BookingActions({
             <p className="mb-2 text-xs text-[var(--color-stone)]">Within 24h — but this course is pre-paid in full, so no late-cancellation fee will be taken.</p>
           )}
           <input value={reason} onChange={(e) => setReason(e.target.value)} placeholder="Reason (optional)" aria-label="Cancellation reason"
-            className="mb-2 w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-porcelain)] px-3 py-2 text-sm outline-none focus:border-[var(--color-gold)]" />
-          {within24h && (
+            className="mb-2 w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-porcelain)] px-3 py-2 text-sm outline-none focus:border-[var(--color-gold-deep)] focus-visible:ring-2 focus-visible:ring-[var(--color-gold-deep)]" />
+          {/* BLD-1437: the waiver now needs the payment permission server-side,
+              the same as the "No-show — waive fee" button above. Hide the tick
+              from staff who can't use it rather than dead-ending them on an error. */}
+          {within24h && canCharge && (
             <label className="mb-3 flex items-center gap-2 text-sm text-[var(--color-stone)]">
               <input type="checkbox" checked={waive} onChange={(e) => setWaive(e.target.checked)} className="h-4 w-4 accent-[var(--color-gold)]" />
               Waive the late-cancellation fee (override)

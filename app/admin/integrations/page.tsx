@@ -133,7 +133,7 @@ async function EncryptionStatus() {
         status.total === 0 ? (
           <p className="mt-3 rounded-[var(--radius-sm)] border border-green-600/30 bg-green-50 px-4 py-2.5 text-sm text-green-800">Rotation complete — every record is on the active key. You can now safely remove the retired key from <code className="text-xs">HEALTH_ENCRYPTION_KEYS_OLD</code>.</p>
         ) : (
-          <p className="mt-3 rounded-[var(--radius-sm)] border border-amber-500/30 bg-amber-50 px-4 py-2.5 text-sm text-amber-800">Re-encryption in progress — <strong>{status.total}</strong> record(s) remaining on a retired key (health {status.pending.healthAssessments}, notes {status.pending.clinicalNotes}, SOPs {status.pending.sopChecklists}, tokens {status.pending.oauthTokens}). The daily job migrates these automatically; keep the old key until this reaches 0.</p>
+          <p className="mt-3 rounded-[var(--radius-sm)] border border-amber-500/30 bg-amber-50 px-4 py-2.5 text-sm text-amber-800">Re-encryption in progress — <strong>{status.total}</strong> record(s) remaining on a retired key ({Object.entries(status.pending).filter(([, n]) => n > 0).map(([k, n]) => `${k} ${n}`).join(', ') || 'none'}). The daily job migrates these automatically; keep the old key until this reaches 0.</p>
         )
       ) : (
         <p className="mt-3 text-sm text-[var(--color-stone)]">No rotation in progress. To rotate: add the new value to <code className="text-xs">HEALTH_ENCRYPTION_KEY</code>, move the old value into <code className="text-xs">HEALTH_ENCRYPTION_KEYS_OLD</code>, and redeploy.</p>

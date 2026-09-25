@@ -4,7 +4,8 @@ import { Reveal } from '@/components/motion/Reveal';
 import { BookingButtons } from '@/components/booking/BookingButtons';
 import { EnquiryForm } from '@/components/contact/EnquiryForm';
 import { site } from '@/lib/site';
-import { pageMeta, JsonLd, breadcrumbLd, organizationLd } from '@/lib/seo';
+import { PhoneLink } from '@/components/marketing/PhoneLink';
+import { pageMeta, JsonLd, breadcrumbLd } from '@/lib/seo';
 
 // BLD-517: hourly ISR so these mostly-static pages are cached, not full SSR per request.
 export const revalidate = 3600;
@@ -22,11 +23,11 @@ export default async function ContactPage() {
   const cms = await getPublishedPage('/contact');
   if (cms) {
     const { SectionRenderer } = await import('@/components/cms/SectionRenderer');
-    return (<><JsonLd data={[organizationLd(), breadcrumbLd([{ name: 'Home', path: '/' }, { name: 'Contact', path: '/contact' }])]} /><SectionRenderer sections={cms} /></>);
+    return (<><JsonLd data={[breadcrumbLd([{ name: 'Home', path: '/' }, { name: 'Contact', path: '/contact' }])]} /><SectionRenderer sections={cms} /></>);
   }
   return (
     <>
-      <JsonLd data={[organizationLd(), breadcrumbLd([{ name: 'Home', path: '/' }, { name: 'Contact', path: '/contact' }])]} />
+      <JsonLd data={[breadcrumbLd([{ name: 'Home', path: '/' }, { name: 'Contact', path: '/contact' }])]} />
       <PageHero
         eyebrow="Visit · Call · Book"
         title="Come and meet us."
@@ -56,7 +57,7 @@ export default async function ContactPage() {
             <div className="grid grid-cols-2 gap-8">
               <div>
                 <p className="eyebrow mb-3">Call</p>
-                <a href={site.phoneHref} className="link-underline text-lg">{site.phone}</a>
+                <PhoneLink className="link-underline text-lg" />
               </div>
               <div>
                 <p className="eyebrow mb-3">Email</p>

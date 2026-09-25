@@ -31,8 +31,11 @@ export async function GET(req: Request) {
   // Lightweight status for the closing-time reminder banner.
   if (url.searchParams.get('status') === '1') {
     try {
+      // Same clinic-day window (not exact equality) as getDayClose — see the
+      // note there: an exact match would stop finding closes recorded before
+      // BLD-1538 and nag staff to re-close a day they already closed.
       const closedToday = await db.dayClose.count({
-        where: { status: 'COMPLETED', businessDate: dc.localDayStart() },
+        where: { status: 'COMPLETED', businessDate: { gte: dc.localDayStart(), lte: dc.localDayEnd() } },
       });
       return NextResponse.json({
         ok: true,

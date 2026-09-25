@@ -86,10 +86,14 @@ export async function pageMeta({
 
 // ── JSON-LD builders ─────────────────────────────────────────────────────────
 
-export function organizationLd() {
+// dentistryLive defaults to the static site.dentistryLive constant, but callers
+// that already have the real admin-toggleable value (getSiteConfig()) should
+// pass it through — otherwise this schema keeps advertising a skin-only clinic
+// after the owner flips dentistry on elsewhere. (BLD-1672)
+export function organizationLd(dentistryLive: boolean = site.dentistryLive) {
   return {
     '@context': 'https://schema.org',
-    '@type': ['MedicalClinic', ...(site.dentistryLive ? ['Dentist'] : []), 'HealthAndBeautyBusiness'],
+    '@type': ['MedicalClinic', ...(dentistryLive ? ['Dentist'] : []), 'HealthAndBeautyBusiness'],
     '@id': `${base}/#clinic`,
     name: site.name,
     legalName: site.legalName,
@@ -127,7 +131,7 @@ export function organizationLd() {
     areaServed: londonAreas(),
     currenciesAccepted: 'GBP',
     paymentAccepted: 'Cash, Credit Card, Debit Card, Apple Pay, Google Pay',
-    medicalSpecialty: ['Dermatology', ...(site.dentistryLive ? ['CosmeticDentistry'] : [])],
+    medicalSpecialty: ['Dermatology', ...(dentistryLive ? ['CosmeticDentistry'] : [])],
     // BLD-1039: generated from the real treatment catalogue (lib/treatments.ts)
     // instead of a hardcoded 4+3 shortlist, so schema.org / AI answer engines see
     // the full live service breadth. Dentistry services are advertised only once
@@ -135,7 +139,7 @@ export function organizationLd() {
     // dentistry pages.
     availableService: [
       ...aesthetics.map((t) => ({ '@type': 'MedicalProcedure', name: t.title })),
-      ...(site.dentistryLive ? dentistry.map((t) => ({ '@type': 'Dentistry', name: t.title })) : []),
+      ...(dentistryLive ? dentistry.map((t) => ({ '@type': 'Dentistry', name: t.title })) : []),
     ],
     knowsAbout: [
       'Aesthetic medicine',
@@ -149,6 +153,30 @@ export function organizationLd() {
   };
 }
 
+// BLD-1588: every treatment page was previously hardcoded to "Noninvasive
+// procedure" here, regardless of the actual treatment — including surgical
+// implant placement and needle-based injectables. procedureTypeFor() derives
+// the correct schema.org MedicalProcedureType member from the treatment's own
+// `invasiveness` field (lib/treatments.ts), falling back to a scan of its own
+// meta description only when that field is genuinely unset — so a treatment
+// whose own copy mentions surgery/implants/injections/needles/fillers is never
+// silently defaulted to noninvasive. Negated phrasing ("non-surgical",
+// "without surgery") is stripped first so copy that explicitly rules out
+// surgery isn't misread as describing it.
+const NEGATED_SURGICAL_PHRASING = /\bnon-surgical\b|\bwithout surgery\b|\bno surgery\b/gi;
+const SURGICAL_HINT = /\bimplants?\b|\bsurger(?:y|ies)\b|\bsurgical\b|\bincisions?\b/i;
+const PERCUTANEOUS_HINT = /\binject(?:ed|ion|ions|able)?\b|\bneedles?\b|\bfillers?\b|\bmicroneedl\w*\b/i;
+
+function procedureTypeFor(invasiveness: string | undefined, description: string): string {
+  if (invasiveness === 'surgical') return 'SurgicalProcedure';
+  if (invasiveness === 'percutaneous') return 'PercutaneousProcedure';
+  if (invasiveness === 'noninvasive') return 'NoninvasiveProcedure';
+  const text = description.replace(NEGATED_SURGICAL_PHRASING, '');
+  if (SURGICAL_HINT.test(text)) return 'SurgicalProcedure';
+  if (PERCUTANEOUS_HINT.test(text)) return 'PercutaneousProcedure';
+  return 'NoninvasiveProcedure';
+}
+
 export function serviceLd({
   name,
   description,
@@ -156,6 +184,7 @@ export function serviceLd({
   category,
   pricePence,
   bodyLocation,
+  invasiveness,
 }: {
   name: string;
   description: string;
@@ -163,6 +192,9 @@ export function serviceLd({
   category: string;
   pricePence?: number | null;
   bodyLocation?: string;
+  /** Treatment's own clinical invasiveness (Treatment['invasiveness']); drives
+   *  procedureType below instead of a one-size-fits-all hardcode. */
+  invasiveness?: string;
 }) {
   const proc: Record<string, unknown> = {
     '@context': 'https://schema.org',
@@ -175,7 +207,7 @@ export function serviceLd({
     description,
     url: `${base}${path}`,
     category,
-    procedureType: { '@type': 'MedicalProcedureType', name: 'Noninvasive procedure' },
+    procedureType: `https://schema.org/${procedureTypeFor(invasiveness, description)}`,
     provider: { '@id': `${base}/#clinic` },
     areaServed: londonAreas(),
   };

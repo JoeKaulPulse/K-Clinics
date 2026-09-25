@@ -59,7 +59,9 @@ export async function loginGate(identifier: string, req: Request): Promise<Login
   const { isIpBlocked } = await import('@/lib/security/ip-activity');
   if (await isIpBlocked(ip)) return { blocked: true, requireCaptcha: true, retryAfterSec: WINDOW_SEC };
   // Per-IP burst limit (fast path via Redis when configured): 30 / minute.
-  const burst = await rateLimit(`login:${ip}`, 30, 60);
+  // failClosed: a limiter-store outage must not silently disable login
+  // throttling exactly when a brute-force attempt is most likely (BLD-1604).
+  const burst = await rateLimit(`login:${ip}`, 30, 60, { failClosed: true });
   const [acct, ipFails] = await Promise.all([
     failsSince({ identifier: identifier.toLowerCase() }),
     ip !== 'unknown' ? failsSince({ ip }) : Promise.resolve(0),
@@ -98,6 +100,16 @@ export async function enforceRateLimit(req: Request, scope: string, limit: numbe
   }
   const r = await rateLimit(`${scope}:${ip}`, limit, windowSec, opts);
   if (!r.allowed) await recordSecurity('RATE_LIMITED', portal, null, req, { scope });
+  return r.allowed;
+}
+
+/** Per-TARGET-ACCOUNT rate limit, alongside the per-IP one above. Keys on the
+ *  identifier itself (e.g. the email a reset link is sent to), not the
+ *  caller's IP, so spreading requests across many IPs still can't flood one
+ *  victim's inbox (BLD-1645). Records the same RATE_LIMITED telemetry. */
+export async function enforceAccountRateLimit(req: Request, identifier: string, scope: string, limit: number, windowSec: number, portal: Portal = 'client'): Promise<boolean> {
+  const r = await rateLimit(`${scope}:${identifier.toLowerCase()}`, limit, windowSec);
+  if (!r.allowed) await recordSecurity('RATE_LIMITED', portal, identifier, req, { scope, byAccount: true });
   return r.allowed;
 }
 

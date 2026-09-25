@@ -4,7 +4,7 @@ import { Reveal } from '@/components/motion/Reveal';
 import { PayNowForm } from '@/components/booking/PayNowForm';
 import { crmEnabled } from '@/lib/crm';
 import { stripeEnabled } from '@/lib/stripe';
-import { site } from '@/lib/site';
+import { PhoneLink } from '@/components/marketing/PhoneLink';
 
 export const dynamic = 'force-dynamic';
 export const metadata: Metadata = { title: 'Complete your payment | KClinics', robots: { index: false } };
@@ -63,7 +63,7 @@ export default async function PayPage({ searchParams }: { searchParams: Promise<
               <p className="mx-auto mt-3 max-w-md text-[var(--color-stone)]">
                 {state === 'paid'
                   ? 'Thank you — this payment is already complete. No further action is needed.'
-                  : (<>This link may have expired or already been used. Please call <a href={site.phoneHref} className="link-underline font-medium text-[var(--color-ink)]">{site.phone}</a> and we’ll take payment securely over the phone.</>)}
+                  : (<>This link may have expired or already been used. Please call <PhoneLink className="link-underline font-medium text-[var(--color-ink)]" /> and we’ll take payment securely over the phone.</>)}
               </p>
             </div>
           )}

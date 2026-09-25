@@ -8,8 +8,8 @@ type Secret = {
 };
 
 const BADGE: Record<string, { text: string; cls: string }> = {
-  app: { text: 'Set in app', cls: 'bg-green-100 text-green-800' },
-  env: { text: 'From hosting', cls: 'bg-amber-100 text-amber-800' },
+  app: { text: 'Set in app', cls: 'bg-[var(--color-jade)]/15 text-[var(--color-ink)]' },
+  env: { text: 'From hosting', cls: 'bg-[var(--color-gold)]/20 text-[var(--color-ink)]' },
   unset: { text: 'Not set', cls: 'bg-[var(--color-bone)] text-[var(--color-stone)]' },
 };
 
@@ -80,7 +80,7 @@ function Row({ s, first, onChange }: { s: Secret; first: boolean; onChange: (s: 
           <input
             type="password" value={value} onChange={(e) => setValue(e.target.value)}
             placeholder={s.source === 'app' ? 'Enter to replace' : 'Paste value'} aria-label={s.label} autoComplete="off"
-            className="w-48 rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-3 py-1.5 text-sm focus:border-[var(--color-gold)] focus:outline-none"
+            className="w-48 rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-porcelain)] px-3 py-1.5 text-sm focus:border-[var(--color-gold-deep)] focus-visible:ring-2 focus-visible:ring-[var(--color-gold-deep)] focus:outline-none"
           />
           <button type="button" onClick={save} disabled={busy || !value.trim()}
             className="rounded-full bg-[var(--color-ink)] px-4 py-1.5 text-sm font-medium text-[var(--color-porcelain)] transition-opacity hover:opacity-90 disabled:opacity-40">

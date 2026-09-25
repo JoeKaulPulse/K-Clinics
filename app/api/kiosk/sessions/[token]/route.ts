@@ -8,7 +8,17 @@ export const dynamic = 'force-dynamic';
 // Public status endpoint the mobile client polls (and the display's fallback
 // when SSE is unavailable). Returns the original { ok, status, resultId } keys
 // for back-compat, plus the kiosk v2 live payload (stage/poseIdx/frame/photos/
-// result — same shape as the SSE stream). Expires sessions past their TTL.
+// result — the same shape as the SSE stream). Expires sessions past their TTL.
+//
+// This route authenticates with the TOKEN ONLY, and lib/kiosk.ts documents the
+// token as brute-forceable, so the visitor's face never leaves here: the
+// payload's `frame` is always null and `photoUrls` always empty, because
+// buildKioskStreamPayload is called without a secret (BLD-1052 for the stored
+// photos, BLD-1496 for the live mirror frame). Both are served only over the
+// secret-gated SSE /stream route, which is what the display actually uses —
+// useKioskChannel's poll fallback ignores those two fields entirely. Do not
+// "fix" the null frame by passing a secret in from here: that would reopen the
+// leak. Anything needing the frame must prove it holds the session secret.
 export async function GET(_req: Request, { params }: { params: Promise<{ token: string }> }) {
   const { token } = await params;
   const session = await db.kioskSession.findUnique({

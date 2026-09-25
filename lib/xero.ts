@@ -1,8 +1,10 @@
 import 'server-only';
+import { randomUUID } from 'node:crypto';
 import { saveConnection, getConnection, validAccessToken, type Tokens } from '@/lib/oauth-connections';
 import { getSecret } from '@/lib/secrets';
 import { db } from '@/lib/db';
 import { logAudit } from '@/lib/audit';
+import { fetchWithRetry } from '@/lib/fetch-retry';
 
 // Xero OAuth 2.0: cash-position/supplier reads + sales push (invoices, credit
 // notes). Activates when credentials are present (owner-managed or env).
@@ -31,12 +33,11 @@ export async function xeroAuthUrl(state: string): Promise<string | null> {
 
 async function tokenRequest(body: Record<string, string>): Promise<Tokens | null> {
   const basic = Buffer.from(`${await getSecret('XERO_CLIENT_ID')}:${await getSecret('XERO_CLIENT_SECRET')}`).toString('base64');
-  const res = await fetch('https://identity.xero.com/connect/token', {
+  const res = await fetchWithRetry('https://identity.xero.com/connect/token', {
     method: 'POST',
     headers: { Authorization: `Basic ${basic}`, 'Content-Type': 'application/x-www-form-urlencoded' },
     body: new URLSearchParams(body),
-    signal: AbortSignal.timeout(10_000),
-  });
+  }, { label: 'xero' });
   if (!res.ok) return null;
   const d = (await res.json()) as { access_token?: string; refresh_token?: string; expires_in?: number };
   if (!d.access_token) return null;
@@ -50,7 +51,7 @@ export async function exchangeXeroCode(code: string): Promise<boolean> {
   // Resolve the tenant (org) this token can access.
   let tenantId: string | null = null, tenantName: string | null = null;
   try {
-    const res = await fetch('https://api.xero.com/connections', { headers: { Authorization: `Bearer ${tokens.access}`, 'Content-Type': 'application/json' }, signal: AbortSignal.timeout(10_000) });
+    const res = await fetchWithRetry('https://api.xero.com/connections', { headers: { Authorization: `Bearer ${tokens.access}`, 'Content-Type': 'application/json' } }, { label: 'xero' });
     if (res.ok) {
       const conns = (await res.json()) as { tenantId: string; tenantName: string }[];
       tenantId = conns[0]?.tenantId ?? null;
@@ -70,10 +71,9 @@ async function xeroGet(path: string): Promise<{ ok: boolean; status?: number; da
   const token = await validAccessToken(PROVIDER, refresh);
   if (!token || !conn.accountRef) return { ok: false, error: 'Xero is not connected.' };
   try {
-    const res = await fetch(`https://api.xero.com/api.xro/2.0/${path}`, {
+    const res = await fetchWithRetry(`https://api.xero.com/api.xro/2.0/${path}`, {
       headers: { Authorization: `Bearer ${token}`, 'Xero-tenant-id': conn.accountRef, Accept: 'application/json' },
-      signal: AbortSignal.timeout(10_000),
-    });
+    }, { label: 'xero' });
     if (res.status === 403) return { ok: false, status: 403, error: 'Reconnect Xero to grant contacts/bills access.' };
     if (!res.ok) return { ok: false, status: res.status, error: `Xero responded ${res.status}.` };
     return { ok: true, data: await res.json() };
@@ -155,13 +155,20 @@ async function xeroWrite(path: string, body: unknown): Promise<{ ok: boolean; st
   if (!conn) return { ok: false, error: 'Xero is not connected.' };
   const token = await validAccessToken(PROVIDER, refresh);
   if (!token || !conn.accountRef) return { ok: false, error: 'Xero is not connected.' };
+  // Every write here is a financial record (invoice, payment, credit note), and
+  // POST /Invoices etc. create a NEW record on each call — so a fetchWithRetry
+  // retry after an ambiguous failure (5xx or timeout on a request Xero had
+  // already committed) would double-invoice. Xero's Idempotency-Key header
+  // makes the retry return the original response instead of writing again; it
+  // is generated once per logical write, so all attempts of THIS call share it
+  // while a genuinely new write gets a new key.
+  const idempotencyKey = randomUUID();
   try {
-    const res = await fetch(`https://api.xero.com/api.xro/2.0/${path}`, {
+    const res = await fetchWithRetry(`https://api.xero.com/api.xro/2.0/${path}`, {
       method: 'POST',
-      headers: { Authorization: `Bearer ${token}`, 'Xero-tenant-id': conn.accountRef, Accept: 'application/json', 'Content-Type': 'application/json' },
+      headers: { Authorization: `Bearer ${token}`, 'Xero-tenant-id': conn.accountRef, Accept: 'application/json', 'Content-Type': 'application/json', 'Idempotency-Key': idempotencyKey },
       body: JSON.stringify(body),
-      signal: AbortSignal.timeout(10_000),
-    });
+    }, { label: 'xero' });
     const data: unknown = await res.json().catch(() => null);
     if (res.status === 403) return { ok: false, status: 403, error: 'Reconnect Xero to grant write (contacts/transactions) access.' };
     if (!res.ok) {
@@ -239,18 +246,23 @@ export async function pushBookingSaleToXero(bookingId: string): Promise<void> {
     const contact = await findOrCreateContact(clientName, booking.client.email);
     if (!contact.ok || !contact.contactId) throw new Error(contact.error || 'no contact');
     const when = booking.chargedAt ?? new Date();
+    // BLD-1386: compute once and both post it and persist it on the booking, so
+    // a refund raised later (up to REFUND_WINDOW_DAYS out, when VAT
+    // registration/class may have drifted) reuses the exact rate the sale
+    // invoice used instead of recomputing it fresh.
+    const taxType = await xeroTaxType(booking.treatmentSlug);
     const inv = await xeroWrite('Invoices', {
       Invoices: [{
         Type: 'ACCREC', Contact: { ContactID: contact.contactId },
         Date: isoDay(when), DueDate: isoDay(when),
         LineAmountTypes: 'Inclusive', Status: 'AUTHORISED',
         Reference: `Booking ${booking.id}`,
-        LineItems: [{ Description: `${booking.treatmentTitle} — ${isoDay(booking.startAt)}`, Quantity: 1, UnitAmount: amountPence / 100, AccountCode: cfg.salesAccount, TaxType: await xeroTaxType(booking.treatmentSlug) }],
+        LineItems: [{ Description: `${booking.treatmentTitle} — ${isoDay(booking.startAt)}`, Quantity: 1, UnitAmount: amountPence / 100, AccountCode: cfg.salesAccount, TaxType: taxType }],
       }],
     });
     const invoiceId = inv.ok ? (inv.data as { Invoices?: { InvoiceID?: string }[] }).Invoices?.[0]?.InvoiceID : undefined;
     if (!invoiceId) throw new Error(inv.error || 'invoice not created');
-    await db.booking.update({ where: { id: bookingId }, data: { xeroInvoiceId: invoiceId } });
+    await db.booking.update({ where: { id: bookingId }, data: { xeroInvoiceId: invoiceId, xeroTaxType: taxType } });
 
     // Record it paid (the card was charged) — only into a confirmed bank account.
     let paid = false;
@@ -280,12 +292,19 @@ export async function pushBookingRefundToXero(bookingId: string, amountPence: nu
     const contact = await findOrCreateContact(clientName, booking.client.email);
     if (!contact.ok || !contact.contactId) throw new Error(contact.error || 'no contact');
     const today = isoDay(new Date());
+    // BLD-1386: reuse the tax type persisted at sale-push time verbatim, so a
+    // refund raised within the (up to 180-day) refund window can't post a
+    // different VAT tax type than the original invoice if VAT
+    // registration/service class drifted since the sale. Bookings pushed
+    // before this column existed have no persisted value — fall back to the
+    // live computation, matching today's behaviour exactly.
+    const taxType = booking.xeroTaxType ?? (await xeroTaxType(booking.treatmentSlug));
     const cn = await xeroWrite('CreditNotes', {
       CreditNotes: [{
         Type: 'ACCRECCREDIT', Contact: { ContactID: contact.contactId },
         Date: today, LineAmountTypes: 'Inclusive', Status: 'AUTHORISED',
         Reference: `Refund — booking ${booking.id}`,
-        LineItems: [{ Description: `Refund — ${booking.treatmentTitle}${reason ? ` (${reason.slice(0, 120)})` : ''}`, Quantity: 1, UnitAmount: amountPence / 100, AccountCode: cfg.salesAccount, TaxType: await xeroTaxType(booking.treatmentSlug) }],
+        LineItems: [{ Description: `Refund — ${booking.treatmentTitle}${reason ? ` (${reason.slice(0, 120)})` : ''}`, Quantity: 1, UnitAmount: amountPence / 100, AccountCode: cfg.salesAccount, TaxType: taxType }],
       }],
     });
     const creditNoteId = cn.ok ? (cn.data as { CreditNotes?: { CreditNoteID?: string }[] }).CreditNotes?.[0]?.CreditNoteID : undefined;
@@ -311,10 +330,9 @@ export async function getXeroCashPence(): Promise<{ ok: boolean; pence: number; 
   const token = await validAccessToken(PROVIDER, refresh);
   if (!token || !conn.accountRef) return { ok: false, pence: 0, label: conn.label };
   try {
-    const res = await fetch('https://api.xero.com/api.xro/2.0/Reports/BankSummary', {
+    const res = await fetchWithRetry('https://api.xero.com/api.xro/2.0/Reports/BankSummary', {
       headers: { Authorization: `Bearer ${token}`, 'Xero-tenant-id': conn.accountRef, Accept: 'application/json' },
-      signal: AbortSignal.timeout(10_000),
-    });
+    }, { label: 'xero' });
     if (!res.ok) return { ok: false, pence: 0, label: conn.label };
     const data = (await res.json()) as { Reports?: { Rows?: { RowType?: string; Rows?: { RowType?: string; Cells?: { Value?: string }[] }[] }[] }[] };
     // Sum the closing-balance cell (last cell) of each data Row, skipping

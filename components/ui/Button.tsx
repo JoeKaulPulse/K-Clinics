@@ -91,16 +91,19 @@ export function Button({
     </>
   );
 
+  // onClick is forwarded to the link branches too, not just the <button> below:
+  // href'd CTAs use it for fire-and-forget analytics (PhoneButton's trackLead,
+  // AbBlock's A/B conversion beacon). Dropping it here silently disabled both.
   if (href) {
     if (external) {
       return (
-        <a href={href} target="_blank" rel="noopener noreferrer" aria-label={ariaLabel} className={cls}>
+        <a href={href} target="_blank" rel="noopener noreferrer" aria-label={ariaLabel} className={cls} onClick={onClick}>
           {content}
         </a>
       );
     }
     return (
-      <Link href={href} aria-label={ariaLabel} className={cls}>
+      <Link href={href} aria-label={ariaLabel} className={cls} onClick={onClick}>
         {content}
       </Link>
     );

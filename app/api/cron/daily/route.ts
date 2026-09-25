@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import type { Prisma } from '@prisma/client';
 import { crmEnabled } from '@/lib/crm';
 
 export const runtime = 'nodejs';
@@ -27,7 +28,7 @@ export async function GET(req: Request) {
     result = await runDailyAutomations();
   } catch (e) {
     console.error('[cron] daily automations failed (continuing):', (e as Error)?.message);
-    result = { birthdays: 0, followUps: 0, winBacks: 0, reviews: 0, reminders: 0, formReminders: 0, treatmentFollowUps: 0, giftVouchers: 0, tierNudges: 0, anniversaries: 0, abandonedBookings: 0, bookingIntents: 0, membershipRenewals: 0, staffDigests: 0, staffNudges: 0, reencrypted: 0, aftercare: 0, satisfaction: 0, rebookNudges: 0, npsPromoters: 0, npsDetractors: 0, liveClassReminders: 0, errors: 1 };
+    result = { birthdays: 0, followUps: 0, winBacks: 0, reviews: 0, reminders: 0, formReminders: 0, treatmentFollowUps: 0, giftVouchers: 0, tierNudges: 0, anniversaries: 0, abandonedBookings: 0, abandonedOrders: 0, abandonedGiftVouchers: 0, bookingIntents: 0, membershipRenewals: 0, staffDigests: 0, staffNudges: 0, reencrypted: 0, aftercare: 0, satisfaction: 0, rebookNudges: 0, npsPromoters: 0, npsDetractors: 0, liveClassReminders: 0, courseContentReady: 0, tcsReminders: 0, treatmentPrep: 0, referralAsks: 0, errors: 1 };
   }
   // BLD-153: count failures so the cron doesn't silently return 200 when work
   // failed. Vercel Cron / the status page key off the HTTP status + ok flag.
@@ -93,18 +94,24 @@ export async function GET(req: Request) {
   }
   // Import the latest Google Business reviews (no-op until connected).
   let gbiz = { ok: false, imported: 0 };
+  let gbizPosts = { ok: false, imported: 0, removed: 0 };
   try {
-    const { googleBusinessConnected, syncGoogleReviews } = await import('@/lib/google-business');
+    const { googleBusinessConnected, syncGoogleReviews, syncGooglePosts } = await import('@/lib/google-business');
     if (await googleBusinessConnected()) {
       gbiz = await syncGoogleReviews();
       if (!gbiz.ok) { failures++; console.error('[cron] google reviews sync reported failure'); }
+      // BLD-481: mirror the "From the Business" posts for the Latest News
+      // section. Best-effort like the review sync; the section renders nothing
+      // until posts exist, so a failed sync degrades to "no news", never an error.
+      gbizPosts = await syncGooglePosts();
+      if (!gbizPosts.ok) console.error('[cron] google posts sync reported failure (non-fatal):', (gbizPosts as { detail?: string }).detail);
     }
   } catch (e) {
-    failures++; console.error('[cron] google reviews sync failed (continuing):', (e as Error)?.message);
+    failures++; console.error('[cron] google reviews/posts sync failed (continuing):', (e as Error)?.message);
   }
   // Behaviour-analytics retention: prune old session replays (90d) and heatmap
   // points (180d) so storage stays bounded and we hold data no longer than needed.
-  let retention = { replays: 0, heatmap: 0, calls: 0 };
+  let retention = { replays: 0, heatmap: 0, calls: 0, enquiries: 0, assessments: 0 };
   try {
     const { db } = await import('@/lib/db');
     const { Prisma } = await import('@prisma/client');
@@ -117,7 +124,13 @@ export async function GET(req: Request) {
     // months — the call facts (who/when/duration) stay, the content is scrubbed.
     const callCutoff = new Date(Date.now() - 395 * 24 * 60 * 60 * 1000);
     const secEventCutoff = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000);
-    const [r, h, , , , calls] = await Promise.all([
+    // PRJ-1032.20: consultation enquiries from people who never went on to book
+    // are purged 2 years after the enquiry (owner-confirmed 2026-08-18; see
+    // docs/data-protection/retention-schedule.md). Scoped to clients with no
+    // bookings at all, so an enquiry that became (or later becomes) a client
+    // relationship keeps its history; ConsultationNote rows cascade.
+    const enquiryCutoff = new Date(Date.now() - 2 * 365 * 24 * 60 * 60 * 1000);
+    const [r, h, , , , calls, enquiries] = await Promise.all([
       db.replaySession.deleteMany({ where: { startedAt: { lt: replayCutoff } } }), // cascades to chunks
       db.heatmapEvent.deleteMany({ where: { at: { lt: heatCutoff } } }),
       db.signedConsent.deleteMany({ where: { signedAt: { lt: consentCutoff } } }),
@@ -131,6 +144,7 @@ export async function GET(req: Request) {
         where: { startedAt: { lt: callCutoff }, OR: [{ transcript: { not: null } }, { recordingUrl: { not: null } }, { fromNumber: { not: 'REDACTED' } }] },
         data: { transcript: null, recordingUrl: null, raw: Prisma.DbNull, transcriptStatus: 'unavailable', fromNumber: 'REDACTED', toNumber: 'REDACTED' },
       }),
+      db.consultation.deleteMany({ where: { createdAt: { lt: enquiryCutoff }, client: { bookings: { none: {} } } } }),
     ]);
     // GDPR: SecurityEvent rows hold IP + email + UA — no need beyond 90 days.
     await db.securityEvent.deleteMany({ where: { createdAt: { lt: secEventCutoff } } }).catch(() => {});
@@ -140,7 +154,25 @@ export async function GET(req: Request) {
     // (messages cascade) — account-linked threads are covered by erasure.
     const anonChatCutoff = new Date(Date.now() - 365 * 24 * 60 * 60 * 1000);
     await db.chatConversation.deleteMany({ where: { clientId: null, updatedAt: { lt: anonChatCutoff } } }).catch((e: Error) => { console.error('[cron] anon chat retention failed (continuing):', e?.message); });
-    retention = { replays: r.count, heatmap: h.count, calls: calls.count };
+    // PRJ-1069.10: health assessments past the 8-year clinical window — the
+    // most sensitive rows in the database were the ONLY clinical records
+    // exempt from the consentCutoff sweep above, kept indefinitely by default.
+    // Gated on the health_retention_purge setting: deletion is irreversible,
+    // so the owner flipping that toggle in Settings IS the documented sign-off
+    // this purge was waiting for. Conservative scope — only clients with no
+    // treatment inside the window (the retention schedule's "8 years from last
+    // treatment" trigger), so an active client's history is never touched.
+    let assessmentsPurged = 0;
+    try {
+      const { getSetting } = await import('@/lib/settings');
+      if (await getSetting('health_retention_purge')) {
+        const purged = await db.healthAssessment.deleteMany({
+          where: { submittedAt: { lt: consentCutoff }, client: { bookings: { none: { startAt: { gte: consentCutoff } } } } },
+        });
+        assessmentsPurged = purged.count;
+      }
+    } catch (e) { failures++; console.error('[cron] health-assessment retention failed (continuing):', (e as Error)?.message); }
+    retention = { replays: r.count, heatmap: h.count, calls: calls.count, enquiries: enquiries.count, assessments: assessmentsPurged };
   } catch (e) {
     failures++; console.error('[cron] analytics retention failed (continuing):', (e as Error)?.message);
   }
@@ -196,19 +228,39 @@ export async function GET(req: Request) {
     const jobRejectedCutoff = new Date(Date.now() - 180 * 24 * 60 * 60 * 1000); // 6 months
     const jobAbandonedCutoff = new Date(Date.now() - 365 * 24 * 60 * 60 * 1000); // 12 months
     const tokenExpiredCutoff = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);   // 7 days
-    const [jobs, , academyTokens] = await Promise.all([
-      db.jobApplication.deleteMany({
-        where: {
-          OR: [
-            { status: 'REJECTED', createdAt: { lt: jobRejectedCutoff } },
-            { status: { in: ['NEW', 'REVIEWING'] }, createdAt: { lt: jobAbandonedCutoff } },
-          ],
-        },
-      }),
+    const jobPurgeWhere: Prisma.JobApplicationWhereInput = {
+      OR: [
+        { status: 'REJECTED', createdAt: { lt: jobRejectedCutoff } },
+        { status: { in: ['NEW', 'REVIEWING'] }, createdAt: { lt: jobAbandonedCutoff } },
+      ],
+    };
+    // BLD-1309: the candidate's CV (name, history, sometimes health disclosures
+    // in the cover note) has to leave Blob storage too — deleting the row alone
+    // left the file itself in third-party storage indefinitely. Shortlist the
+    // URLs now (the row still exists, so cvUrl is still readable); the actual
+    // Blob delete runs AFTER the purge below, never before: a Blob file removed
+    // ahead of a deleteMany that then fails — or ahead of a row an admin moved
+    // out of the purge set in between — would leave a surviving application
+    // pointing at a CV that no longer downloads.
+    let purgeCvUrls: string[] = [];
+    try {
+      const dueForPurge = await db.jobApplication.findMany({ where: jobPurgeWhere, select: { cvUrl: true } });
+      purgeCvUrls = Array.from(new Set(dueForPurge.map((j) => j.cvUrl).filter((u): u is string => !!u)));
+    } catch (e) {
+      console.error('[cron] job-application CV shortlist failed (continuing):', (e as Error)?.message);
+    }
+    const [jobs, , , academyTokens] = await Promise.all([
+      db.jobApplication.deleteMany({ where: jobPurgeWhere }),
       // Client portal: clear expired reset tokens (no personal data beyond email FK).
       db.client.updateMany({
         where: { resetTokenExp: { lt: tokenExpiredCutoff }, resetTokenHash: { not: null } },
         data: { resetTokenHash: null, resetTokenExp: null },
+      }),
+      // BLD-1797: same sweep for the (now separate) passwordless account-invite
+      // token — see lib/client-auth.ts.
+      db.client.updateMany({
+        where: { inviteTokenExp: { lt: tokenExpiredCutoff }, inviteTokenHash: { not: null } },
+        data: { inviteTokenHash: null, inviteTokenExp: null },
       }),
       // Academy portal: clear expired reset tokens.
       db.academyStudent.updateMany({
@@ -217,6 +269,32 @@ export async function GET(req: Request) {
       }),
     ]);
     gdprSweep = { jobs: jobs.count, academyTokens: academyTokens.count };
+    // The rows are gone — now drop their CVs from Blob storage, but only the
+    // ones nothing references any more (a row whose status changed between the
+    // shortlist and the purge survived the deleteMany and keeps its file).
+    // Best-effort and deliberately last. A Blob failure here does leave the file
+    // orphaned for good (its row is gone, so no later run can find the URL
+    // again) — accepted deliberately: the alternative, holding the row back
+    // until storage cooperates, keeps the candidate's personal data in the
+    // database past its retention date, which is the worse of the two.
+    if (purgeCvUrls.length && process.env.BLOB_READ_WRITE_TOKEN) {
+      try {
+        const survivors = new Set(
+          (await db.jobApplication.findMany({ where: { cvUrl: { in: purgeCvUrls } }, select: { cvUrl: true } }))
+            .map((j) => j.cvUrl)
+            .filter((u): u is string => !!u),
+        );
+        const orphaned = purgeCvUrls.filter((u) => !survivors.has(u));
+        if (orphaned.length) {
+          const { del } = await import('@vercel/blob');
+          // Chunked: the delete API takes a bounded number of URLs per call, and
+          // the first run after this ships can have a large backlog of CVs.
+          for (let i = 0; i < orphaned.length; i += 100) await del(orphaned.slice(i, i + 100));
+        }
+      } catch (e) {
+        console.error('[cron] job-application CV blob purge failed (continuing):', (e as Error)?.message);
+      }
+    }
   } catch (e) {
     failures++; console.error('[cron] gdpr-retention sweep failed (continuing):', (e as Error)?.message);
   }
@@ -232,6 +310,88 @@ export async function GET(req: Request) {
     failures++; console.error('[cron] clinical-encryption backfill failed (continuing):', (e as Error)?.message);
   }
 
+  // BLD-1345: one-time retro push for consultation enquiries that never reached
+  // a person (the per-user email copy never fired and the in-app row only started
+  // being written on 2026-08-05). Sends one summary to the staff who work the
+  // enquiries, then latches itself off. Best-effort.
+  let consultBackfill: { ran: boolean; consultations: number; emailed: number; warning?: string } = { ran: false, consultations: 0, emailed: 0 };
+  try {
+    const { backfillConsultNotificationsIfNeeded } = await import('@/lib/consult-notify-backfill');
+    consultBackfill = await backfillConsultNotificationsIfNeeded();
+    if (consultBackfill.warning) { failures++; console.error('[cron] consult notification backfill:', consultBackfill.warning); }
+  } catch (e) {
+    failures++; console.error('[cron] consult notification backfill failed (continuing):', (e as Error)?.message);
+  }
+
+  // BLD-1253: release web-shop orders abandoned before payment. The checkout
+  // uses a plain PaymentIntent (never auto-expires), so a closed tab left the
+  // order PENDING forever with any reserved gift-card balance stranded. Orders
+  // stuck PENDING >7 days (well past the 2–72h recovery emails) are cancelled
+  // and the gift-card reservation re-credited; a late-succeeded payment is
+  // skipped for the webhook to finalise.
+  let staleOrders = { released: 0, recreditedPence: 0 };
+  try {
+    const { releaseAbandonedPendingOrders } = await import('@/lib/shop');
+    staleOrders = await releaseAbandonedPendingOrders();
+  } catch (e) {
+    failures++; console.error('[cron] abandoned-order release failed (continuing):', (e as Error)?.message);
+  }
+
+  // BLD-1277: data-residency guard. The processors register records the
+  // production database as Neon in AWS eu-west-2 (London) — every client,
+  // booking and encrypted health record lives there, and nothing previously
+  // verified it stayed that way. Alert-only: if DATABASE_URL ever points at a
+  // host outside the approved regions (say a well-meaning migration to a US
+  // endpoint), this fails the cron so the existing alerting pages, rather than
+  // silently exporting special-category data. Approved list overridable via
+  // DB_APPROVED_REGIONS (comma-separated substrings) when the owner sanctions
+  // a move.
+  try {
+    const dbHost = process.env.DATABASE_URL ? new URL(process.env.DATABASE_URL).hostname : '';
+    const approved = (process.env.DB_APPROVED_REGIONS || 'eu-west-2').split(',').map((s) => s.trim()).filter(Boolean);
+    if (dbHost && !approved.some((r) => dbHost.includes(r))) {
+      failures++;
+      console.error(`[cron] DATA RESIDENCY: database host ${dbHost} matches none of the approved regions (${approved.join(', ')}) — clinical data may have left the UK/EU. Verify and update the processors register + DB_APPROVED_REGIONS.`);
+    }
+  } catch { /* malformed URL — the app would be down long before this check */ }
+
+  // BLD-1041: self-healing encryption backfill for legacy plaintext gallery
+  // before/after photos (bounded per run; latches off when done). Failures
+  // count so alerting fires.
+  let galleryEncrypt = { ran: false, migrated: 0, complete: false };
+  try {
+    const { backfillGalleryEncryptionIfNeeded } = await import('@/lib/gallery-encrypt-backfill');
+    galleryEncrypt = await backfillGalleryEncryptionIfNeeded();
+  } catch (e) {
+    failures++; console.error('[cron] gallery encryption backfill failed (continuing):', (e as Error)?.message);
+  }
+
+  // BLD-1356: course-catalogue hygiene. A course card's LEVEL badge comes from
+  // Course.level while the title carries its own "Level N" (e.g. "VTCT Level 5
+  // Beauty Therapy Diploma" badged LEVEL 3) — independent admin-entered fields,
+  // so a typo in one publishes a contradiction to every /academy visitor. The
+  // title is the qualification's actual name, so it wins: when both express a
+  // plain level and they disagree, align the badge to the title. Deliberately
+  // narrow — a level field that is anything other than "Level N" is left alone.
+  let courseLevels = 0;
+  try {
+    const { db } = await import('@/lib/db');
+    const courses = await db.course.findMany({ where: { active: true }, select: { id: true, slug: true, title: true, level: true } });
+    for (const c of courses) {
+      const fromTitle = c.title.match(/\blevel\s*(\d+)\b/i)?.[1];
+      const plainLevel = c.level?.match(/^\s*level\s*(\d+)\s*$/i)?.[1];
+      if (fromTitle && plainLevel && fromTitle !== plainLevel) {
+        await db.course.update({ where: { id: c.id }, data: { level: `Level ${fromTitle}` } });
+        courseLevels++;
+        console.warn(`[cron] course level badge corrected to match title: ${c.title} (${c.level} → Level ${fromTitle})`);
+        const { revalidatePath } = await import('next/cache');
+        revalidatePath('/academy'); revalidatePath(`/academy/${c.slug}`);
+      }
+    }
+  } catch (e) {
+    failures++; console.error('[cron] course level hygiene failed (continuing):', (e as Error)?.message);
+  }
+
   // BLD-740: one-time re-home of legacy PUBLIC portfolio photos into the
   // private blob store (bounded per run; self-disables via a Settings key once
   // a pass finds nothing left). Failures count so the alerting fires.
@@ -242,6 +402,19 @@ export async function GET(req: Request) {
     if (portfolioMigration.failed > 0) { failures++; console.error(`[cron] portfolio photo migration: ${portfolioMigration.failed} photo(s) failed`); }
   } catch (e) {
     failures++; console.error('[cron] portfolio photo migration failed (continuing):', (e as Error)?.message);
+  }
+
+  // BLD-1794: same self-heal as above, for VTCT registration documents (Photo
+  // ID / Proof of Address / prior qualification certs) — the client upload
+  // token can't pin the store's access level either, so this is the backstop
+  // that re-homes any that land in the public store.
+  let vtctMigration = { ran: false, migrated: 0, failed: 0, complete: false };
+  try {
+    const { migrateVtctDocumentsIfNeeded } = await import('@/lib/vtct-blob');
+    vtctMigration = await migrateVtctDocumentsIfNeeded();
+    if (vtctMigration.failed > 0) { failures++; console.error(`[cron] VTCT document migration: ${vtctMigration.failed} document(s) failed`); }
+  } catch (e) {
+    failures++; console.error('[cron] VTCT document migration failed (continuing):', (e as Error)?.message);
   }
 
   // (ClinicOS Ring 0 academy-tenant backfill retired in Ring 1c — tenantId is now
@@ -358,22 +531,69 @@ export async function GET(req: Request) {
   // error aggregator — no-op until SENTRY_DSN is set) so failures surface without
   // any extra config, and additionally push a summary to the ops webhook channel
   // when CRON_ALERT_WEBHOOK_URL (Slack/Discord/Make/Zapier) is configured in Vercel.
+  // PRJ-1200.10: no cooldown/dedup here previously. This cron only runs once a
+  // day via Vercel Cron (vercel.json), but a manual re-hit with CRON_SECRET (or
+  // a Vercel retry) during a sustained failure could still re-page repeatedly —
+  // the same alert-fatigue risk BLD-1723/BLD-1187 fixed for the health-check
+  // paths. Mirrors that watermark cooldown/dedup pattern exactly: same
+  // db.setting watermark table, a key of its own so it can't collide with
+  // theirs or with cron/dispatch's, and the same 30-minute cooldown window
+  // (this cron's own once-a-day schedule already keeps re-alerts rare, so
+  // there's no reason to diverge from the established window). Alert
+  // immediately on a fresh failure and at most once per cooldown while it
+  // persists, and clear the watermark the moment it recovers so the next
+  // incident alerts right away.
+  const ALERT_WATERMARK_KEY = 'cron_daily_alert_last_sent_at';
+  const ALERT_COOLDOWN_MS = 30 * 60 * 1000;
   if (failures > 0) {
     const summary = `[kclinics cron] ${failures} failure(s) in ${Math.round(cronDurationMs / 1000)}s — check Vercel logs`;
+    let shouldAlert = true;
     try {
-      const Sentry = await import('@sentry/nextjs');
-      Sentry.captureMessage(summary, 'error');
-    } catch { /* Sentry not available — non-fatal */ }
-    const webhookUrl = process.env.CRON_ALERT_WEBHOOK_URL;
-    if (webhookUrl) {
-      const body = JSON.stringify({ text: summary, failures, durationMs: cronDurationMs });
-      fetch(webhookUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body }).catch(() => {});
+      const { db } = await import('@/lib/db');
+      const row = await db.setting.findUnique({ where: { key: ALERT_WATERMARK_KEY } });
+      const lastAlertAt = row?.value ? Number(row.value) : 0;
+      shouldAlert = !lastAlertAt || Date.now() - lastAlertAt >= ALERT_COOLDOWN_MS;
+      if (shouldAlert) {
+        await db.setting.upsert({
+          where: { key: ALERT_WATERMARK_KEY },
+          create: { key: ALERT_WATERMARK_KEY, value: String(Date.now()) },
+          update: { value: String(Date.now()) },
+        });
+      }
+    } catch {
+      // Can't read/write the watermark — fail open and alert rather than risk
+      // a silent outage; a duplicate page is the safer failure mode.
+      shouldAlert = true;
     }
+
+    if (shouldAlert) {
+      try {
+        const Sentry = await import('@sentry/nextjs');
+        Sentry.captureMessage(summary, 'error');
+      } catch { /* Sentry not available — non-fatal */ }
+      const webhookUrl = process.env.CRON_ALERT_WEBHOOK_URL;
+      if (webhookUrl) {
+        const body = JSON.stringify({ text: summary, failures, durationMs: cronDurationMs });
+        // BLD-1137: await the alert — the serverless runtime can freeze once the
+        // response is sent, so an un-awaited fetch may silently never send.
+        // PRJ-1118.10: bound it — a hung webhook endpoint previously stalled this
+        // request indefinitely; on timeout the alert is simply dropped (non-fatal,
+        // matching every other outcome of this best-effort send).
+        try { await fetch(webhookUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body, signal: AbortSignal.timeout(8_000) }); } catch { /* non-fatal */ }
+      }
+    }
+  } else {
+    // Recovered — clear the watermark so the next incident alerts immediately
+    // instead of possibly landing inside the previous incident's cooldown.
+    try {
+      const { db } = await import('@/lib/db');
+      await db.setting.deleteMany({ where: { key: ALERT_WATERMARK_KEY } });
+    } catch { /* non-fatal */ }
   }
 
   // BLD-153: surface failure to the scheduler — non-200 when anything failed.
   return NextResponse.json(
-    { ok: failures === 0, failures, durationMs: cronDurationMs, ...result, loyalty, membership, gcal, gbiz, retention, idMeta, pii, gdprSweep, scheduledEmail, adSpend, board, clinicalBackfill, portfolioMigration, examBank, gamification, authored, courseContent, communityDigest, instalmentDunning },
+    { ok: failures === 0, failures, durationMs: cronDurationMs, ...result, loyalty, membership, gcal, gbiz, gbizPosts, retention, idMeta, pii, gdprSweep, scheduledEmail, adSpend, board, clinicalBackfill, consultBackfill, galleryEncrypt, courseLevels, staleOrders, portfolioMigration, vtctMigration, examBank, gamification, authored, courseContent, communityDigest, instalmentDunning },
     { status: failures === 0 ? 200 : 500 },
   );
 }

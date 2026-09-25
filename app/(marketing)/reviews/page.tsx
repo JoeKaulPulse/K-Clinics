@@ -3,7 +3,7 @@ import { PageHero } from '@/components/ui/PageHero';
 import { Stagger, StaggerItem, Reveal } from '@/components/motion/Reveal';
 import { BookingButtons } from '@/components/booking/BookingButtons';
 import { Stars } from '@/components/ui/Stars';
-import { site } from '@/lib/site';
+import { PhoneLink } from '@/components/marketing/PhoneLink';
 import { pageMeta, JsonLd, breadcrumbLd, aggregateRatingLd } from '@/lib/seo';
 import { NewsletterCapture } from '@/components/layout/NewsletterCapture';
 
@@ -72,7 +72,7 @@ export default async function ReviewsPage() {
                 We feature only genuine, verified reviews — from our own clients and from Google. As a brand-new clinic these are just beginning to come in: after your visit we’ll invite you to share your experience, and with your permission we’ll feature it here.
               </p>
               <p className="mt-3 text-sm text-[var(--color-stone)]">
-                Prefer to chat first? Call <a href={site.phoneHref} className="link-underline font-medium text-[var(--color-ink)]">{site.phone}</a>.
+                Prefer to chat first? Call <PhoneLink className="link-underline font-medium text-[var(--color-ink)]" />.
               </p>
               <div className="mt-7 flex justify-center"><BookingButtons /></div>
             </div>

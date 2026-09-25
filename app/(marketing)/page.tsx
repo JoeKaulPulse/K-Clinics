@@ -1,7 +1,8 @@
 import Link from 'next/link';
-import { Hero } from '@/components/home/Hero';
+import { HeroSlider } from '@/components/home/HeroSlider';
 import { GetMyPlanBand } from '@/components/home/GetMyPlanBand';
 import { Testimonials } from '@/components/home/Testimonials';
+import { LatestNews } from '@/components/home/LatestNews';
 import { PinnedExperience } from '@/components/home/PinnedExperience';
 import { HorizontalGallery } from '@/components/home/HorizontalGallery';
 import { TrustStrip } from '@/components/home/TrustStrip';
@@ -23,6 +24,7 @@ import { faqLd, JsonLd as JsonLdHome, pageMeta } from '@/lib/seo';
 import { getTreatment, type Treatment } from '@/lib/treatments';
 import { packages } from '@/lib/packages';
 import { site } from '@/lib/site';
+import { PhoneLink } from '@/components/marketing/PhoneLink';
 import { JsonLd, breadcrumbLd, aggregateRatingLd } from '@/lib/seo';
 import { NewsletterCapture } from '@/components/layout/NewsletterCapture';
 import { OffersStrip } from '@/components/marketing/OffersStrip';
@@ -57,9 +59,10 @@ const pillars = [
 
 export default async function HomePage() {
   const { getSiteConfig } = await import('@/lib/site-config');
-  const { dentistryLive } = await getSiteConfig(); // BLD-515: live, admin-toggleable flag
   const { getReviewAggregate } = await import('@/lib/reviews-aggregate');
-  const aggregate = await getReviewAggregate();
+  // BLD-1602: batched (was sequential) so the highest-traffic page doesn't
+  // wait on two independent fetches back-to-back before the hero can render.
+  const [{ dentistryLive, hero }, aggregate] = await Promise.all([getSiteConfig(), getReviewAggregate()]); // BLD-515 dentistry flag; BLD-1348 hero video
   const rating = aggregate ? { average: aggregate.average, count: aggregate.count } : null;
   // PRJ-1069.11: exclude not-yet-live dentistry items (e.g. veneers while
   // dentistryLive is false) from the featured carousel — those pages are
@@ -67,15 +70,22 @@ export default async function HomePage() {
   const featured = featuredSlugs
     .map(getTreatment)
     .filter((t): t is Treatment => !!t && (t.category !== 'dentistry' || dentistryLive));
+  // BLD-1442: sliced once and reused below for both the FAQPage JSON-LD and the
+  // visible accordion, so the structured data can never drift from what's on
+  // the page (Google can disable the rich result if they diverge).
+  const homeFaqs = allGeneralFaqs.slice(0, 6);
   return (
     <>
       <JsonLd data={breadcrumbLd([{ name: 'Home', path: '/' }])} />
       {aggregate && <JsonLd data={aggregateRatingLd({ average: aggregate.average, count: aggregate.count })} />}
-      <Hero rating={rating} />
+      {/* BLD-1348: owner-requested above-the-fold slider — three slides showcasing
+          the clinic, the academy and the clinic film (video supplied later via
+          Admin → Site). Slide 1 is the previous hero, still server-rendered visible. */}
+      <HeroSlider rating={rating} video={hero} />
 
       {/* Marquee ribbon */}
       <section className="border-y border-[var(--color-line)] bg-[var(--color-bone)] py-8">
-        <Marquee items={['Laser & Skin', 'Aesthetic Dentistry', 'Non-Surgical Lifting', 'Body Contouring', 'Injectable Artistry', 'Smile Design']} />
+        <Marquee items={['Laser & Skin', 'Aesthetic Dentistry', 'Non-Surgical Lifting', 'Body Contouring', 'Injectable Artistry', 'Smile Design']} accentClassName="text-[var(--color-gold-deep)]" />
       </section>
 
       {/* AI consultation feature band */}
@@ -147,7 +157,7 @@ export default async function HomePage() {
                 />
                 <span className="pointer-events-none absolute inset-0 -z-0 bg-[linear-gradient(to_top,rgba(42,36,32,0.85),rgba(42,36,32,0.35)_45%,rgba(42,36,32,0.15))]" />
                 <div className="relative">
-                  <p className="eyebrow mb-4 flex items-center gap-2.5 text-[var(--color-gold-soft)]">
+                  <p className="eyebrow eyebrow-on-dark mb-4 flex items-center gap-2.5">
                     {c.tag}
                     {c.tag === 'Dentistry' && !dentistryLive && <span className="rounded-full bg-[var(--color-gold-soft)] px-2.5 py-0.5 text-[0.58rem] font-semibold uppercase tracking-[0.12em] text-[var(--color-ink)]">Opening soon</span>}
                   </p>
@@ -245,6 +255,9 @@ export default async function HomePage() {
         </section>
       )}
 
+      {/* Latest news — GBP posts mirror (BLD-481); renders nothing until posts sync */}
+      <LatestNews />
+
       {/* BLD-771: live discounts visible to first-time visitors — the strip
           renders nothing when no offers are on, so the page is unchanged then. */}
       <section className="container-lux section-sm"><OffersStrip /></section>
@@ -276,7 +289,7 @@ export default async function HomePage() {
 
       {/* FAQ — answers the top search questions (rich-result eligible) */}
       <section className="section container-lux">
-        {allGeneralFaqs.length > 0 && <JsonLdHome data={faqLd(allGeneralFaqs.map((f) => ({ q: f.q, a: f.a })))} />}
+        {homeFaqs.length > 0 && <JsonLdHome data={faqLd(homeFaqs.map((f) => ({ q: f.q, a: f.a })))} />}
         <div className="grid gap-x-16 gap-y-10 lg:grid-cols-[0.8fr_1.2fr]">
           <SectionHeading
             eyebrow="Good to know"
@@ -284,7 +297,7 @@ export default async function HomePage() {
             lede="Everything you might want to know before your first visit. Still curious? Our team is a call away."
           />
           <Reveal delay={0.1}>
-            <FaqAccordion faqs={allGeneralFaqs.slice(0, 6)} />
+            <FaqAccordion faqs={homeFaqs} />
             <Link href="/faq" className="mt-7 inline-flex items-center gap-2 font-medium text-[var(--color-gold-deep)]">
               All questions <ArrowIcon />
             </Link>
@@ -313,7 +326,7 @@ export default async function HomePage() {
               </div>
               <div>
                 <dt className="eyebrow mb-1.5">Call</dt>
-                <dd><a href={site.phoneHref} className="link-underline">{site.phone}</a></dd>
+                <dd><PhoneLink className="link-underline" /></dd>
               </div>
               <div>
                 <dt className="eyebrow mb-1.5">Email</dt>

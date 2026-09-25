@@ -1,9 +1,94 @@
 import 'server-only';
 import * as Sentry from '@sentry/nextjs';
 import { db } from '@/lib/db';
-import { encryptJson, decryptJson, integrityHash, verifyIntegrity } from '@/lib/crypto';
+import { encryptJson, decryptJson, integrityHash, verifyIntegrity, keyedHash } from '@/lib/crypto';
 import { getEffectiveQuestionnaire, getQuestionnaireAtVersion } from '@/lib/questionnaire-versions';
 import { logAudit } from '@/lib/audit';
+
+// BLD-1658: encrypted cache of translated free-text answers, keyed to the exact
+// source values so a later change to the admin-managed question set (which would
+// change which answers are free-text) can't serve a stale/mismatched translation.
+// The key is an HMAC (keyedHash), not a bare digest: HealthAssessmentTranslation
+// .sourceHash sits in clear next to the ciphertext, and an unkeyed hash of a
+// short answer ("Penicillin", "None") is trivially brute-forced by a reader with
+// the database but not the encryption keys — which would give away in the cache
+// exactly what the cipher column is there to protect.
+function sourceHashOf(values: string[]): string {
+  return keyedHash('health-assessment-translation', JSON.stringify(values));
+}
+
+async function getCachedTranslation(assessmentId: string, sourceValues: string[]): Promise<string[] | null> {
+  try {
+    const row = await db.healthAssessmentTranslation.findUnique({ where: { assessmentId } });
+    if (!row) return null;
+    const sourceHash = sourceHashOf(sourceValues);
+    if (row.sourceHash !== sourceHash) return null;
+    if (!verifyIntegrity(row.cipher, { assessmentId, sourceHash }, row.integrityHash)) return null;
+    const cached = decryptJson<unknown>(row.cipher);
+    // Shape guard: anything that isn't exactly one string per source value falls
+    // back to a fresh translation. Without it a malformed row would write
+    // `undefined` into a clinical answer that a clinician reads as the client's.
+    if (!Array.isArray(cached) || cached.length !== sourceValues.length || !cached.every((v) => typeof v === 'string')) return null;
+    return cached as string[];
+  } catch {
+    return null;
+  }
+}
+
+async function cacheTranslation(assessmentId: string, sourceValues: string[], translated: string[]): Promise<void> {
+  // Never cache a result that doesn't line up with its source (translateToEnglish
+  // already guarantees this on ok:true — belt and braces, because a bad row would
+  // otherwise be served to clinicians until the answers change).
+  if (translated.length !== sourceValues.length) return;
+  try {
+    const sourceHash = sourceHashOf(sourceValues);
+    const cipher = encryptJson(translated);
+    const hash = integrityHash(cipher, { assessmentId, sourceHash });
+    await db.healthAssessmentTranslation.upsert({
+      where: { assessmentId },
+      create: { assessmentId, sourceHash, cipher, integrityHash: hash },
+      update: { sourceHash, cipher, integrityHash: hash },
+    });
+  } catch (err) {
+    // Caching is a display-layer optimisation — a write failure must never
+    // break viewing the assessment (translation just isn't cached this time).
+    console.error('[health-assessments] cacheTranslation failed:', (err as Error)?.message, { assessmentId });
+    Sentry.captureException(err, { tags: { area: 'health-assessments' } });
+  }
+}
+
+// BLD-1836: the `agreed_privacy` tick only evidences consent to machine
+// translation if the wording the client actually saw named Google Translate
+// (medical-history v3+, lib/questionnaires.ts). The captured version NUMBER
+// alone cannot establish that: admin-published snapshots
+// (lib/questionnaire-versions.ts `publishQuestionnaireVersion`) share a single
+// numbering line with the code definition, so a submission captured at v3 or
+// above may have been served an admin snapshot whose help text predates the
+// disclosure. Resolve the wording actually served at that version instead, and
+// fail closed on anything ambiguous.
+const TRANSLATION_DISCLOSED_IN_CODE_FROM = 3; // medical-history code version that added the disclosure
+const DISCLOSES_TRANSLATION = /google\s+translate/i;
+
+function disclosesTranslation(questions: unknown): boolean {
+  if (!Array.isArray(questions)) return false;
+  const q = (questions as { id?: unknown; help?: unknown }[]).find((x) => x && x.id === 'agreed_privacy');
+  return typeof q?.help === 'string' && DISCLOSES_TRANSLATION.test(q.help);
+}
+
+async function translationDisclosedAt(key: string, capturedVersion: number): Promise<boolean> {
+  if (!Number.isFinite(capturedVersion)) return false; // legacy row with no "@version" → no evidence
+  const snap = await db.questionnaireVersion
+    .findFirst({ where: { key, version: capturedVersion }, select: { questions: true } })
+    .catch(() => null); // table not migrated → no snapshots exist, fall through to the code lineage
+  // An admin snapshot at this exact version is what the client was served, so
+  // read its real wording rather than trusting the number. (If a snapshot and a
+  // later code bump collide on one version the served wording is genuinely
+  // ambiguous — this deliberately resolves to the snapshot, i.e. no translation.)
+  if (snap) return disclosesTranslation(snap.questions);
+  // No snapshot at this version → the code definition of that era was served,
+  // and the disclosure has been in the code definition since v3.
+  return capturedVersion >= TRANSLATION_DISCLOSED_IN_CODE_FROM;
+}
 
 // BLD-595: one ASSESSMENT_VIEWED entry per (clientId, actor) per 30 min so the
 // audit trail is complete without flooding the log when staff navigate multiple
@@ -133,19 +218,43 @@ export async function formatAssessment(id: string, audit?: { actor: string; acto
 
   // Free-text answers are stored exactly as the client typed them. When that
   // wasn't English, translate to British English for staff; keep the original.
+  // BLD-1658: cached alongside the assessment (see getCachedTranslation) so
+  // repeat views of the same record don't re-send this special-category free
+  // text to Google Translate every time.
   let translatedNote: string | null = null;
   if (sourceLocale !== 'en') {
     const { translateToEnglish, localeName, translationConfigured } = await import('@/lib/translate');
     const freeIdx = items.map((it, i) => (it.freeText ? i : -1)).filter((i) => i >= 0);
     if (freeIdx.length > 0) {
-      const { translated, ok } = await translateToEnglish(freeIdx.map((i) => items[i].value));
-      if (ok) {
-        freeIdx.forEach((i, k) => { items[i].original = items[i].value; items[i].value = translated[k]; });
-        translatedNote = `Translated from ${localeName(sourceLocale)}`;
+      // BLD-1836: medical-history's Privacy Notice tick only discloses Google
+      // Translate from v3 onward (lib/questionnaires.ts `agreed_privacy`). A
+      // submission whose wording never carried that disclosure, or with the
+      // tick left 'no', never told the client their free-text answers might be
+      // sent to a third-party translator — so leave it untranslated rather than
+      // doing this special-category processing without informed consent.
+      const translateConsented =
+        key !== 'medical-history'
+        || (answers['agreed_privacy'] === 'yes' && (await translationDisclosedAt(key, capturedVersion)));
+      if (!translateConsented) {
+        translatedNote = `Filled in ${localeName(sourceLocale)} — translation needs the client's updated Privacy Notice consent (ask them to re-submit medical history)`;
       } else {
-        translatedNote = (await translationConfigured())
-          ? `Filled in ${localeName(sourceLocale)} — translation temporarily unavailable`
-          : `Filled in ${localeName(sourceLocale)} — translation not configured`;
+        const sourceValues = freeIdx.map((i) => items[i].value);
+        let translated = await getCachedTranslation(id, sourceValues);
+        let ok = translated !== null;
+        if (!translated) {
+          const res = await translateToEnglish(sourceValues);
+          ok = res.ok;
+          translated = res.translated;
+          if (ok) await cacheTranslation(id, sourceValues, translated);
+        }
+        if (ok && translated) {
+          freeIdx.forEach((i, k) => { items[i].original = items[i].value; items[i].value = translated![k]; });
+          translatedNote = `Translated from ${localeName(sourceLocale)}`;
+        } else {
+          translatedNote = (await translationConfigured())
+            ? `Filled in ${localeName(sourceLocale)} — translation temporarily unavailable`
+            : `Filled in ${localeName(sourceLocale)} — translation not configured`;
+        }
       }
     }
   }

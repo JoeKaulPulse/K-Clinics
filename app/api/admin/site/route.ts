@@ -40,6 +40,16 @@ export async function POST(req: Request) {
   }
 
   const existing = await db.siteConfig.findUnique({ where: { id: 'singleton' }, select: { data: true } });
+  // BLD-1348: the editor always sends the complete config, so a save from a
+  // stale admin tab (whose JS predates a newly added section) would silently
+  // wipe that section. Carry forward any top-level key the payload doesn't
+  // know about — a tab that DOES know a key always sends it, even empty, so
+  // deliberate clearing is unaffected.
+  if (existing && existing.data && typeof existing.data === 'object') {
+    for (const [k, v] of Object.entries(existing.data as Record<string, unknown>)) {
+      if (!(k in (data as Record<string, unknown>))) (data as Record<string, unknown>)[k] = v;
+    }
+  }
   if (existing) {
     // Snapshot the outgoing version, then keep history trimmed to the last 30.
     await db.siteConfigRevision.create({ data: { configId: 'singleton', data: existing.data as object, label: body.label ? String(body.label).slice(0, 80) : null, createdBy: editor } });

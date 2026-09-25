@@ -3,6 +3,22 @@ import { stripeEnabled, stripe } from '@/lib/stripe';
 import * as Sentry from '@sentry/nextjs';
 
 export const runtime = 'nodejs';
+// BLD-1479: this route awaits finalizeBookingCharge/finalizeOrder/confirmVoucher,
+// which each await sendEmail() -- lib/email.ts's acquireSendSlot() can poll up to
+// 30s under Resend's 5/sec cap, plus retries. Without an explicit maxDuration this
+// could exceed the platform default timeout mid-transaction on the most
+// financially-critical endpoint. Matches the 60s convention already used on the
+// kiosk analyze/photo routes, cron/dispatch and admin/api-health. Work that still
+// runs past Stripe's own ~30s response timeout is safe: the idempotency ledger
+// below plus the CAS-idempotent handlers make a redelivery a no-op.
+export const maxDuration = 60;
+
+// BLD-1498: how long a gift-card re-credit claim (Order.giftCardRecreditClaimedAt)
+// belongs to the attempt that stamped it. Past this, that attempt cannot still be
+// running — maxDuration above is 60s — so a redelivery may take the claim over and
+// retry the credit. Kept well clear of 60s so a slow-but-live attempt is never
+// overtaken (which would credit the same voucher twice).
+const RECREDIT_LEASE_MS = 5 * 60 * 1000;
 
 // Keeps booking/payment state in sync with Stripe. Verifies the signature with
 // STRIPE_WEBHOOK_SECRET. Configure this endpoint in the Stripe dashboard.
@@ -85,7 +101,14 @@ export async function POST(req: Request) {
             console.error('[webhook] payment_intent.succeeded with no amount_received — not finalising:', { bookingId, piId: pi.id });
           } else {
             const { finalizeBookingCharge } = await import('@/lib/booking-actions');
-            await finalizeBookingCharge(bookingId, pi.id, receivedPence, { late: pi.metadata?.late === 'true' });
+            // BLD-1874: a staff-sent payment link (the 'paylink' case in
+            // app/api/admin/bookings/session/route.ts) is the only caller that
+            // stamps kind: 'booking_balance'. A BNPL course checkout link
+            // (kind: 'course_prepaid') also carries bookingId and passes through
+            // here before its own handler below. Everything else on this generic
+            // succeeded handler is the saved-card/SCA-recovery rail ('card').
+            const method = pi.metadata?.kind === 'booking_balance' || pi.metadata?.kind === 'course_prepaid' ? 'payment_link' : 'card';
+            await finalizeBookingCharge(bookingId, pi.id, receivedPence, { late: pi.metadata?.late === 'true', method });
           }
         }
         // Finalise retail orders server-side so they complete even if the customer
@@ -159,7 +182,10 @@ export async function POST(req: Request) {
               // runs the side-effects, guarding webhook redeliveries.
               const claimed = await db.booking.updateMany({
                 where: { id: courseBookingId, prepaidVia: null },
-                data: { prepaidVia: method, prepaidPence: received, prepaidAt: new Date(), prepaidCheckoutId: pi.metadata.checkoutId || undefined, status: 'CONFIRMED' },
+                // BLD-1874: this is a BNPL course pre-payment taken via a Stripe
+                // Checkout link — 'payment_link' in the shared vocabulary
+                // (prepaidVia keeps its own finer klarna/clearpay/bnpl label).
+                data: { prepaidVia: method, prepaidPence: received, prepaidAt: new Date(), prepaidCheckoutId: pi.metadata.checkoutId || undefined, status: 'CONFIRMED', paymentMethod: 'payment_link' },
               });
               if (claimed.count > 0) {
                 try {
@@ -208,18 +234,82 @@ export async function POST(req: Request) {
         // transition credits, so a redelivered event or a prior admin cancel can't
         // double-credit, and an order that already went PAID (a retry succeeded
         // first) is never touched.
+        //
+        // BLD-1498: this event is in the critical list below, so a thrown error
+        // here gets Stripe to redeliver it — but by redelivery time the order is
+        // already CANCELLED (this same handler flipped it on the failed attempt),
+        // so the PENDING→CANCELLED claim alone can no longer tell "I already own
+        // this and still owe the credit" apart from "a different path (admin
+        // cancel / POS cancel / the BLD-1253 abandoned-order sweep) won that same
+        // transition and already credited it itself" — both leave status
+        // CANCELLED. giftCardRecreditClaimedAt (schema.prisma) disambiguates: it
+        // is stamped ONLY by this handler, atomically with the transition it
+        // wins, and cleared only once creditVoucher actually succeeds — so it
+        // reads non-null on redelivery if and only if this handler is the one
+        // still owing the credit.
+        //
+        // BLD-1498 review: the marker is held as a LEASE, not consumed on read.
+        // The idempotency ledger above deliberately falls through while a prior
+        // attempt is still 'PROCESSING', so two deliveries of this same event
+        // CAN run concurrently: one wins the PENDING claim and is mid-
+        // creditVoucher while the other reaches the branch below. Clearing the
+        // marker there would let the loser credit alongside the winner — a
+        // double credit (creditVoucher's LEAST() cap only stops the balance
+        // exceeding face value; on a card with other unrelated spends the
+        // second credit is real money). So the marker is only taken over once
+        // it is older than RECREDIT_LEASE_MS, which is comfortably past this
+        // route's maxDuration — i.e. only when the attempt holding it is
+        // certainly dead. A marker too fresh to take over throws, so Stripe
+        // redelivers after the lease instead of the credit being acked and lost.
         const pi = event.data.object;
         if (pi.metadata?.kind === 'shop_order' && pi.metadata?.orderId) {
+          const orderId = pi.metadata.orderId;
           try {
-            const order = await db.order.findUnique({ where: { id: pi.metadata.orderId }, select: { giftCardCode: true, giftCardPence: true } });
+            const order = await db.order.findUnique({ where: { id: orderId }, select: { giftCardCode: true, giftCardPence: true } });
             if (order?.giftCardCode && order.giftCardPence && order.giftCardPence > 0) {
-              const claimed = await db.order.updateMany({ where: { id: pi.metadata.orderId, status: 'PENDING' }, data: { status: 'CANCELLED' } });
-              if (claimed.count > 0) {
+              const claimed = await db.order.updateMany({ where: { id: orderId, status: 'PENDING' }, data: { status: 'CANCELLED', giftCardRecreditClaimedAt: new Date() } });
+              let mustCredit = claimed.count > 0;
+              if (!mustCredit) {
+                // Lost the PENDING claim. Either another cancel path won it and
+                // credited the voucher itself (no marker — nothing is owed
+                // here), or an EARLIER attempt of THIS handler won it and the
+                // credit never landed (marker set). Take the marker over only
+                // if it has outlived the lease; the `lt` → `now` write is a
+                // single atomic statement, so of two simultaneous retries only
+                // one can win it. Not scoped to status CANCELLED: the marker
+                // alone is the ownership token, and staff marking the order
+                // REFUNDED in between must not strand the owed credit.
+                const leaseCutoff = new Date(Date.now() - RECREDIT_LEASE_MS);
+                const reclaimed = await db.order.updateMany({ where: { id: orderId, giftCardRecreditClaimedAt: { lt: leaseCutoff } }, data: { giftCardRecreditClaimedAt: new Date() } });
+                mustCredit = reclaimed.count > 0;
+                if (!mustCredit && (await db.order.count({ where: { id: orderId, giftCardRecreditClaimedAt: { not: null } } })) > 0) {
+                  // Held by an attempt that may still be running. Ack nothing:
+                  // throw so Stripe redelivers once the lease has expired.
+                  throw new Error(`gift-card re-credit for order ${orderId} is held by an in-flight attempt — retrying later`);
+                }
+              }
+              if (mustCredit) {
                 const { creditVoucher } = await import('@/lib/gift-vouchers');
+                // A throw here leaves the marker in place (already stamped by
+                // the claim/take-over above) and falls to the outer catch → 500
+                // → Stripe redelivers, and by then the marker has aged past the
+                // lease and is retryable.
                 await creditVoucher(order.giftCardCode, order.giftCardPence);
+                // The credit landed. Release the claim — best-effort on purpose:
+                // failing here must not make Stripe retry a credit that already
+                // succeeded, which is the one way this could over-credit.
+                await db.order.updateMany({ where: { id: orderId }, data: { giftCardRecreditClaimedAt: null } })
+                  .catch((clearErr) => { console.error('[webhook] releasing gift-card re-credit claim failed:', (clearErr as Error)?.message); });
               }
             }
-          } catch (e) { console.error('[webhook] gift card re-credit failed:', (e as Error)?.message); Sentry.captureException(e, { tags: { area: 'stripe-webhook', sub: 'giftcard-recredit-failed-payment' } }); } // BLD-868
+          } catch (e) {
+            console.error('[webhook] gift card re-credit failed:', (e as Error)?.message);
+            Sentry.captureException(e, { tags: { area: 'stripe-webhook', sub: 'giftcard-recredit-failed-payment' } }); // BLD-868
+            // BLD-1498: rethrow so this reaches the outer catch/critical check
+            // below and Stripe redelivers — swallowing here silently stranded
+            // the customer's gift-card balance with no way to ever retry.
+            throw e;
+          }
         }
         break;
       }
@@ -259,6 +349,180 @@ export async function POST(req: Request) {
       // BLD-123: refunds issued directly in the Stripe dashboard bypass the app.
       // Reconcile: compute the delta vs what's already recorded and run the same
       // post-refund side-effects (loyalty reversal, Xero credit note, audit log).
+      // PRJ-1069.12: chargebacks previously debited the Stripe balance with zero
+      // trace in the app — no audit row, no staff alert, the booking still
+      // showing fully paid. This handler makes disputes VISIBLE (audit event,
+      // Sentry, ops webhook, staff notification with a link to the record).
+      // Deliberately no booking/order state change and no Xero entry yet — the
+      // owner decision on that workflow is tracked on the board (PRJ-1069.12).
+      case 'charge.dispute.created':
+      case 'charge.dispute.closed': {
+        const dispute = event.data.object;
+        const created = event.type === 'charge.dispute.created';
+        const piId = typeof dispute.payment_intent === 'string' ? dispute.payment_intent : null;
+        const amount = dispute.amount ?? 0;
+        // Resolve what was charged so the alert links straight to the record.
+        const booking = piId ? await db.booking.findFirst({ where: { chargePaymentIntentId: piId }, select: { id: true, clientId: true, treatmentTitle: true } }) : null;
+        const order = !booking && piId ? await db.order.findFirst({ where: { stripePaymentIntentId: piId }, select: { id: true, number: true } }) : null;
+        const what = booking ? `booking ${booking.treatmentTitle}` : order ? `shop order ${order.number}` : `charge ${typeof dispute.charge === 'string' ? dispute.charge : ''}`;
+        const summary = created
+          ? `Chargeback opened on ${what} — £${(amount / 100).toFixed(2)} (reason: ${dispute.reason || 'unknown'}). Respond in the Stripe dashboard before the evidence deadline.`
+          : `Chargeback ${dispute.status === 'won' ? 'WON' : dispute.status === 'lost' ? 'LOST' : `closed (${dispute.status})`} on ${what} — £${(amount / 100).toFixed(2)}.`;
+        // PRJ-1069.12 (owner decision 5 Aug: full auto): a LOST dispute means the
+        // money is factually gone — reconcile state automatically. Booking:
+        // refundedPence CAS + loyalty clawback + Xero credit note (the same
+        // side-effects a dashboard refund runs). Order: status → REFUNDED +
+        // restock (order sales carry no Xero push to reverse). Won/other
+        // outcomes change nothing.
+        if (!created && dispute.status === 'lost' && amount > 0) {
+          if (booking) {
+            const full = await db.booking.findFirst({ where: { id: booking.id }, select: { id: true, clientId: true, refundedPence: true, chargedPence: true, chargePaymentIntentId: true, giftVoucherCode: true, giftVoucherPence: true } });
+            if (full) {
+              // BLD-1190: the old formula — Math.min(X, Math.max(c, X)) — is a
+              // no-op (Math.max(c, X) >= X always, so the min always resolves to
+              // X), so a dispute landing on top of a prior partial refund could
+              // push refundedPence above chargedPence. This booking branch only
+              // runs once Stripe has confirmed an actual dispute, which requires
+              // a captured charge; every write path that sets chargePaymentIntentId
+              // on a successful capture (chargeBooking, finalizeBookingCharge)
+              // sets chargedPence in that same write, so chargedPence is always
+              // populated here in practice. Cap at chargedPence regardless (0 if
+              // somehow unset) — refundedPence can never legitimately exceed it.
+              const newTotal = Math.min((full.refundedPence ?? 0) + amount, full.chargedPence ?? 0);
+              // BLD-1510: this CAS matches on the value it READ, so it also
+              // succeeds (count 1) on a no-op write — when refundedPence is
+              // already at chargedPence, newTotal equals it and the row still
+              // matches. That happens whenever the booking was already fully
+              // refunded before the dispute closed (in-app refundBooking, or a
+              // dashboard refund) and on a redelivery of this event after a
+              // failed attempt left the idempotency ledger at PROCESSING. So
+              // claimed.count alone does NOT prove this call advanced anything;
+              // `advanced` does, and it gates the one side-effect below that
+              // hands back spendable money.
+              const advanced = newTotal > (full.refundedPence ?? 0);
+              const claimed = await db.booking.updateMany({ where: { id: full.id, refundedPence: full.refundedPence }, data: { refundedPence: newTotal, refundedAt: new Date() } });
+              if (claimed.count > 0) {
+                const fully = newTotal >= (full.chargedPence ?? 0);
+                if (fully) { try { const { refundBookingPoints } = await import('@/lib/client-loyalty'); await refundBookingPoints(full.id); } catch (e) { Sentry.captureException(e, { tags: { area: 'stripe-webhook', sub: 'dispute-points' } }); } }
+                // BLD-1510: a lost dispute is a full clawback of the CARD charge only —
+                // a partial-voucher booking's voucher-covered slice was never part of
+                // the disputed charge, so it must go back on the voucher, mirroring
+                // refundBooking() (BLD-882) and the charge.refunded handler (BLD-1138)
+                // below. Gated on `fully` (the card portion is entirely gone) AND on
+                // `advanced` — creditVoucher is capped at face value but is not
+                // per-call idempotent, so it must only run for the call that
+                // actually moved refundedPence. Without `advanced`, a dispute
+                // closing lost on an already-fully-refunded booking (whose voucher
+                // refundBooking had restored), or a redelivery after a failed
+                // attempt, would credit the voucher a second time. Cancellation is
+                // not a route in: cancelBooking clears giftVoucherCode/Pence in the
+                // same guarded write that returns the reservation, so the fields
+                // read here are 0/null once that has happened.
+                if (fully && advanced && full.chargePaymentIntentId !== 'ext_gift-voucher' && (full.giftVoucherPence ?? 0) > 0 && full.giftVoucherCode) {
+                  try {
+                    const { creditVoucher } = await import('@/lib/gift-vouchers');
+                    await creditVoucher(full.giftVoucherCode, full.giftVoucherPence ?? 0);
+                    const { logAudit } = await import('@/lib/audit');
+                    await logAudit({ action: 'REWARD_REDEEMED', actor: 'stripe-webhook', bookingId: full.id, clientId: full.clientId, summary: `Gift voucher ${full.giftVoucherCode} restored on lost chargeback — £${((full.giftVoucherPence ?? 0) / 100).toFixed(2)} back on the voucher` }).catch(() => {});
+                  } catch (e) { Sentry.captureException(e, { tags: { area: 'stripe-webhook', sub: 'dispute-voucher-restore' } }); }
+                }
+                try { const { reverseSpendPoints } = await import('@/lib/client-loyalty'); await reverseSpendPoints(full.id, newTotal, full); } catch (e) { Sentry.captureException(e, { tags: { area: 'stripe-webhook', sub: 'dispute-spend-points' } }); }
+                try { const { pushBookingRefundToXero } = await import('@/lib/xero'); await pushBookingRefundToXero(full.id, amount, 'Chargeback lost'); } catch (e) { Sentry.captureException(e, { tags: { area: 'stripe-webhook', sub: 'dispute-xero' } }); }
+                try { const { logAudit } = await import('@/lib/audit'); await logAudit({ action: 'PAYMENT_REFUNDED', actor: 'stripe-webhook', bookingId: full.id, clientId: full.clientId, summary: `Chargeback lost — £${(amount / 100).toFixed(2)} reconciled as refunded (auto, owner policy)`, meta: { disputeId: dispute.id } }); } catch { /* non-fatal */ }
+              }
+            }
+          } else if (order) {
+            const fullOrder = await db.order.findFirst({ where: { id: order.id }, select: { id: true, number: true, status: true, giftCardCode: true, giftCardPence: true } });
+            if (fullOrder && fullOrder.status !== 'REFUNDED') {
+              const wasStockDecremented = fullOrder.status === 'PAID' || fullOrder.status === 'FULFILLED';
+              const claimed = await db.order.updateMany({ where: { id: fullOrder.id, status: { not: 'REFUNDED' } }, data: { status: 'REFUNDED' } });
+              if (claimed.count > 0) {
+                if (wasStockDecremented) { try { const { restockOrder } = await import('@/lib/shop'); await restockOrder(fullOrder.id); } catch (e) { Sentry.captureException(e, { tags: { area: 'stripe-webhook', sub: 'dispute-restock' } }); } }
+                // BLD-1237: an order that part-paid with a gift card only disputed
+                // the CARD portion — the gift-card value it consumed was never in
+                // the chargeback, so it goes back on the card, mirroring the
+                // charge.refunded reconciliation above. Behind the same status
+                // claim, so a redelivered dispute event can't double-credit.
+                if (fullOrder.giftCardCode && fullOrder.giftCardPence > 0) {
+                  try { const { creditVoucher } = await import('@/lib/gift-vouchers'); await creditVoucher(fullOrder.giftCardCode, fullOrder.giftCardPence); } catch (e) { Sentry.captureException(e, { tags: { area: 'stripe-webhook', sub: 'dispute-giftcard-recredit' } }); }
+                }
+                try { const { logAudit } = await import('@/lib/audit'); await logAudit({ action: 'PAYMENT_REFUNDED', actor: 'stripe-webhook', summary: `Chargeback lost on order ${fullOrder.number} — marked refunded + restocked${fullOrder.giftCardPence > 0 ? ' + gift card re-credited' : ''} (auto, owner policy)`, meta: { orderId: fullOrder.id, disputeId: dispute.id } }); } catch { /* non-fatal */ }
+              }
+            }
+          } else if (piId) {
+            // BLD-1288: neither a booking nor a shop order — this PaymentIntent
+            // may instead be a gift-voucher's own purchase or an academy
+            // enrolment fee/deposit/balance payment. Mirrors the same
+            // booking/order/voucher/enrolment fallback chain the charge.refunded
+            // handler below already uses for a dashboard refund, so a LOST
+            // chargeback reconciles the same way: previously this branch matched
+            // booking/order only, so a lost chargeback on a course payment or a
+            // gift-card purchase logged an audit entry + Sentry alert but left
+            // paidPence / enrolment access, and the card's spendable balance,
+            // completely untouched even though the money was clawed back.
+            const voucher = await db.giftVoucher.findFirst({
+              where: { stripePaymentIntentId: piId },
+              select: { id: true, amountPence: true, purchaseRefundedPence: true },
+            });
+            if (voucher) {
+              // Additive, like the booking branch above (dispute.amount is this
+              // dispute's own amount, not a cumulative Stripe ground truth the
+              // way charge.amount_refunded is) — cap at the voucher's face value.
+              const alreadyRecorded = voucher.purchaseRefundedPence ?? 0;
+              const totalRefunded = Math.min(voucher.amountPence, alreadyRecorded + amount);
+              const delta = totalRefunded - alreadyRecorded;
+              if (delta > 0) {
+                const claimedV = await db.giftVoucher.updateMany({
+                  where: { id: voucher.id, purchaseRefundedPence: alreadyRecorded },
+                  data: { purchaseRefundedPence: totalRefunded },
+                });
+                if (claimedV.count > 0) {
+                  try {
+                    const { debitVoucherForPurchaseRefund } = await import('@/lib/gift-vouchers');
+                    await debitVoucherForPurchaseRefund(voucher.id, delta, totalRefunded);
+                  } catch (e) { Sentry.captureException(e, { tags: { area: 'stripe-webhook', sub: 'dispute-voucher-purchase' } }); }
+                  try { const { logAudit } = await import('@/lib/audit'); await logAudit({ action: 'PAYMENT_REFUNDED', actor: 'stripe-webhook', summary: `Chargeback lost on gift-card purchase — £${(delta / 100).toFixed(2)} debited from its balance (auto, owner policy)`, meta: { voucherId: voucher.id, disputeId: dispute.id } }); } catch { /* non-fatal */ }
+                }
+              }
+            } else {
+              const payment = await db.enrolmentPayment.findFirst({
+                where: { stripePaymentIntentId: piId },
+                select: { id: true, refundedPence: true },
+              });
+              if (payment) {
+                // reconcileEnrolmentPaymentRefund takes a CUMULATIVE total (it
+                // mirrors charge.refunded's use of Stripe's own amount_refunded),
+                // so pass the existing watermark plus this dispute's own amount —
+                // it logs its own audit entry, so none is added here.
+                try {
+                  const { reconcileEnrolmentPaymentRefund } = await import('@/lib/academy-payments');
+                  await reconcileEnrolmentPaymentRefund(piId, (payment.refundedPence ?? 0) + amount);
+                } catch (e) { Sentry.captureException(e, { tags: { area: 'stripe-webhook', sub: 'dispute-enrolment' } }); }
+              }
+            }
+          }
+        }
+        try {
+          const { logAudit } = await import('@/lib/audit');
+          await logAudit({ action: 'PAYMENT_DISPUTED', actor: 'stripe-webhook', bookingId: booking?.id, clientId: booking?.clientId ?? undefined, summary, meta: { disputeId: dispute.id, status: dispute.status, reason: dispute.reason, amountPence: amount, orderId: order?.id } });
+        } catch (e) { console.error('[webhook] dispute audit failed:', (e as Error)?.message); throw e; }
+        Sentry.captureMessage(`[stripe] ${summary}`, { level: created ? 'error' : 'warning', tags: { area: 'stripe-webhook', sub: 'dispute' } });
+        try {
+          const { notifyStaffByPermission } = await import('@/lib/notifications');
+          await notifyStaffByPermission('bookings.charge', {
+            kind: 'status',
+            title: created ? 'Chargeback opened' : 'Chargeback closed',
+            body: summary,
+            href: booking ? `/admin/bookings/${booking.id}` : order ? `/admin/shop/orders` : '/admin',
+          });
+        } catch { /* best-effort */ }
+        const webhookUrl = process.env.CRON_ALERT_WEBHOOK_URL;
+        if (webhookUrl) {
+          const body = JSON.stringify({ text: `[kclinics] ${summary}` });
+          try { await fetch(webhookUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body, signal: AbortSignal.timeout(8_000) }); } catch { /* non-fatal */ }
+        }
+        break;
+      }
       case 'charge.refunded': {
         const charge = event.data.object;
         const piId = typeof charge.payment_intent === 'string' ? charge.payment_intent : null;
@@ -310,7 +574,26 @@ export async function POST(req: Request) {
           if (order) {
             const fullyRefunded = (charge.amount_refunded ?? 0) >= order.totalPence;
             if (!fullyRefunded) {
-              console.error(`[webhook] partial dashboard refund on order ${order.number} (${charge.amount_refunded}/${order.totalPence}p) — not auto-reconciled; complete it via Mark refunded in Orders.`);
+              // BLD-1881: unlike every other reconciliation branch in this file
+              // (disputes, chargebacks), a partial dashboard refund only ever
+              // logged to console — stock isn't restored, any gift-card portion
+              // isn't re-credited, and the order stays PAID/FULFILLED with no
+              // operator-visible trace. Surface it the same way disputes do:
+              // Sentry + a staff notification linking to the order.
+              const partialSummary = `Partial refund issued in the Stripe dashboard on order ${order.number} (£${((charge.amount_refunded ?? 0) / 100).toFixed(2)} of £${(order.totalPence / 100).toFixed(2)}) — not auto-reconciled; complete it via Mark refunded in Orders.`;
+              console.error(`[webhook] ${partialSummary}`);
+              Sentry.captureMessage(`[stripe] ${partialSummary}`, { level: 'warning', tags: { area: 'stripe-webhook', sub: 'order-partial-refund' } });
+              try {
+                const { notifyStaffByPermission } = await import('@/lib/notifications');
+                await notifyStaffByPermission('finance.manage', {
+                  kind: 'status',
+                  category: 'finance',
+                  priority: 'high',
+                  title: 'Partial refund needs reconciling',
+                  body: partialSummary,
+                  href: `/admin/orders?q=${encodeURIComponent(order.number)}`,
+                });
+              } catch (e) { console.error('[webhook] partial-refund staff notification failed:', (e as Error)?.message); }
             } else {
               // creditVoucher caps at the card's face value (BLD-646) but is not
               // per-call idempotent, and charge.refunded redelivers — so claim the
@@ -414,9 +697,21 @@ export async function POST(req: Request) {
           if (fully) {
             try { const { refundBookingPoints } = await import('@/lib/client-loyalty'); await refundBookingPoints(bk.id); } catch (e) { console.error('[webhook] refund points reversal failed:', (e as Error)?.message); Sentry.captureException(e, { tags: { area: 'stripe-webhook', sub: 'refund-points' } }); } // BLD-921
           }
+          // BLD-1138: a partial-voucher booking's card remainder refunded in the
+          // Stripe dashboard must restore the voucher-covered portion too —
+          // parity with refundBooking() (BLD-882). creditVoucher caps at face
+          // value, so a webhook redelivery can never over-credit.
+          if (fully && bk.chargePaymentIntentId !== 'ext_gift-voucher' && (bk.giftVoucherPence ?? 0) > 0 && bk.giftVoucherCode) {
+            try {
+              const { creditVoucher } = await import('@/lib/gift-vouchers');
+              await creditVoucher(bk.giftVoucherCode, bk.giftVoucherPence ?? 0);
+              const { logAudit } = await import('@/lib/audit');
+              await logAudit({ action: 'REWARD_REDEEMED', actor: 'stripe-webhook', bookingId: bk.id, clientId: bk.clientId, summary: `Gift voucher ${bk.giftVoucherCode} restored on full refund — £${((bk.giftVoucherPence ?? 0) / 100).toFixed(2)} back on the voucher` }).catch(() => {});
+            } catch (e) { console.error('[webhook] voucher restore failed:', (e as Error)?.message); Sentry.captureException(e, { tags: { area: 'stripe-webhook', sub: 'voucher-restore' } }); }
+          }
           // BLD-836: claw back the SPEND points earned on the refunded money too
           // (pro-rata, idempotent inside the helper) — parity with refundBooking().
-          try { const { reverseSpendPoints } = await import('@/lib/client-loyalty'); await reverseSpendPoints(bk.id, newTotal, bk.chargedPence ?? 0); } catch (e) { console.error('[webhook] spend-points clawback failed:', (e as Error)?.message); Sentry.captureException(e, { tags: { area: 'stripe-webhook', sub: 'spend-points-clawback' } }); } // BLD-921
+          try { const { reverseSpendPoints } = await import('@/lib/client-loyalty'); await reverseSpendPoints(bk.id, newTotal, bk); } catch (e) { console.error('[webhook] spend-points clawback failed:', (e as Error)?.message); Sentry.captureException(e, { tags: { area: 'stripe-webhook', sub: 'spend-points-clawback' } }); } // BLD-921
           try { const { pushBookingRefundToXero } = await import('@/lib/xero'); await pushBookingRefundToXero(bk.id, delta, 'Stripe refund'); } catch (e) { console.error('[webhook] Xero refund push failed:', (e as Error)?.message); Sentry.captureException(e, { tags: { area: 'stripe-webhook', sub: 'xero-refund-push' } }); } // BLD-921
           try { const { logAudit } = await import('@/lib/audit'); await logAudit({ action: 'PAYMENT_REFUNDED', actor: 'stripe-webhook', bookingId: bk.id, clientId: bk.clientId, summary: `Webhook refund £${(delta / 100).toFixed(2)}${fully ? ' (full)' : ' (partial)'}`, meta: { delta, fully } }); } catch { /* non-fatal */ }
           // BLD-569: email the client when a refund is issued directly in the Stripe
@@ -450,10 +745,19 @@ export async function POST(req: Request) {
       event.type === 'payment_intent.succeeded' ||
       event.type === 'payment_intent.payment_failed' ||
       event.type === 'charge.refunded' ||
+      // PRJ-1069.12: a dropped dispute event means a silent chargeback — retry.
+      event.type === 'charge.dispute.created' ||
+      event.type === 'charge.dispute.closed' ||
       event.type === 'setup_intent.succeeded' ||
       // BLD-882: the expired-session claim releases a stranded voucher
       // reservation — a DB failure before the claim commits must retry.
       event.type === 'checkout.session.expired' ||
+      // BLD-1498: a failed gift-card re-credit on a canceled PaymentIntent
+      // (the payment_intent.canceled case above) is otherwise unrecoverable —
+      // no later Stripe retry or dashboard "resend" ever re-runs it — so a DB
+      // failure here must also retry rather than silently stranding the
+      // customer's balance.
+      event.type === 'payment_intent.canceled' ||
       pmtKind === 'course_prepaid';
     if (critical) return NextResponse.json({ received: false, error: 'Handler failed' }, { status: 500 });
   }

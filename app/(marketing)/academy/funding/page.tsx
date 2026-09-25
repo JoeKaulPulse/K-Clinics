@@ -5,13 +5,13 @@ import { Reveal, Stagger, StaggerItem } from '@/components/motion/Reveal';
 import { Button, ArrowIcon } from '@/components/ui/Button';
 import { FundingWizard } from '@/components/academy/FundingWizard';
 import { FUNDING_ROUTES } from '@/lib/funding';
-import { site } from '@/lib/site';
+import { PhoneLink } from '@/components/marketing/PhoneLink';
 import { pageMeta, JsonLd, breadcrumbLd } from '@/lib/seo';
 
 export const generateMetadata = (): Promise<Metadata> => pageMeta({
   title: 'Funding & Finance — Pay for Your Training | K Academy London',
   description:
-    'Ways to fund your aesthetics training at K Academy, Islington. Monthly course finance, employer sponsorship, and government and council funding routes including Advanced Learner Loans and the Mayor of London Adult Skills Fund. Check what you could use.',
+    'Ways to fund your aesthetics training at K Academy, Islington — course finance, employer sponsorship, Advanced Learner Loans and council funding routes.',
   path: '/academy/funding',
   keywords: ['aesthetics course funding', 'advanced learner loan aesthetics', 'pay monthly aesthetics training', 'adult skills fund London', 'student funding aesthetics academy'],
 });
@@ -81,9 +81,9 @@ export default function AcademyFundingPage() {
             <h2 className="text-title">What could you use?</h2>
             <p className="mt-5 text-lede leading-relaxed text-[var(--color-stone)]">Answer six quick questions and we’ll show the funding routes that fit your situation, then help you apply. It takes under a minute and there’s no obligation.</p>
             <ul className="mt-6 space-y-3 text-[var(--color-ink-soft)]">
-              <li className="flex items-start gap-3"><span className="mt-1 text-[var(--color-gold)]">✦</span> No credit check to see your options.</li>
-              <li className="flex items-start gap-3"><span className="mt-1 text-[var(--color-gold)]">✦</span> A real person follows up — not an automated decision.</li>
-              <li className="flex items-start gap-3"><span className="mt-1 text-[var(--color-gold)]">✦</span> We confirm exactly what you qualify for before anything is agreed.</li>
+              <li className="flex items-start gap-3"><span className="mt-1 text-[var(--color-gold-deep)]">✦</span> No credit check to see your options.</li>
+              <li className="flex items-start gap-3"><span className="mt-1 text-[var(--color-gold-deep)]">✦</span> A real person follows up — not an automated decision.</li>
+              <li className="flex items-start gap-3"><span className="mt-1 text-[var(--color-gold-deep)]">✦</span> We confirm exactly what you qualify for before anything is agreed.</li>
             </ul>
           </Reveal>
           <Reveal delay={0.1}>
@@ -141,7 +141,7 @@ export default function AcademyFundingPage() {
         <Reveal>
           <div className="rounded-[var(--radius-2xl)] border border-[var(--color-line)] p-8 text-center md:p-12">
             <h2 className="text-title">Not sure where to start?</h2>
-            <p className="mx-auto mt-4 max-w-xl text-[var(--color-stone)]">Tell us your goal and we’ll find the most affordable way in. Call <a href={site.phoneHref} className="link-underline font-medium text-[var(--color-ink)]">{site.phone}</a> or <Link href="#check" className="link-underline font-medium text-[var(--color-ink)]">check your options online</Link>.</p>
+            <p className="mx-auto mt-4 max-w-xl text-[var(--color-stone)]">Tell us your goal and we’ll find the most affordable way in. Call <PhoneLink className="link-underline font-medium text-[var(--color-ink)]" /> or <Link href="#check" className="link-underline font-medium text-[var(--color-ink)]">check your options online</Link>.</p>
             <div className="mt-7 flex flex-wrap justify-center gap-3">
               <Button href="#check" variant="gold">Check your funding options <ArrowIcon /></Button>
               <Button href="/academy" variant="outline">Explore K Academy</Button>

@@ -1,9 +1,29 @@
 'use client';
 
 import { useState } from 'react';
+import Link from 'next/link';
+import Image from 'next/image';
 import { Logo } from '@/components/brand/Logo';
 import { ScoreRing } from './ScoreRing';
 import { ShareButtons } from './ShareButtons';
+
+// BLD-1638: lib/kiosk-ai.ts's ALLOWED_TREATMENTS is a fixed, whitelisted list
+// of 11 generic AI-suggestion names -- most map to an exact or clearly
+// corresponding catalogue page (lib/treatments.ts). "LED Light Therapy" has no
+// standalone K Clinics treatment page today, so it is left unlinked rather
+// than pointed at an unrelated one.
+const KIOSK_TREATMENT_SLUG: Record<string, string> = {
+  'HydraFacial': 'hydraglow-facial',
+  'Chemical Peel': 'face-treatments',
+  'Microneedling': 'face-treatments',
+  'Anti-Wrinkle Injections': 'cosmetic-injections',
+  'Dermal Fillers': 'cosmetic-injections',
+  'Lip Fillers': 'cosmetic-injections',
+  'Teeth Whitening': 'teeth-whitening',
+  'Composite Bonding': 'composite-bonding',
+  'Laser Hair Removal': 'laser-hair-removal',
+  'IPL Photorejuvenation': 'ipl-photorejuvenation',
+};
 
 export type KioskAnnotation = {
   area?: 'skin' | 'smile' | string;
@@ -72,7 +92,8 @@ export function ResultCard({
         <AnnotatedPhoto src={result.bestPhotoUrl} annotations={annotations} />
       )}
 
-      <div className="mt-6 flex justify-center gap-8">
+      {/* BLD-1294: tighter gap on mobile so two rings always fit the card. */}
+      <div className="mt-6 flex justify-center gap-4 sm:gap-8">
         <ScoreRing label="Skin" score={result.skinScore} />
         <ScoreRing label="Smile" score={result.smileScore} />
       </div>
@@ -81,7 +102,7 @@ export function ResultCard({
         <ul className="mt-6 space-y-2">
           {result.insights.map((ins, i) => (
             <li key={i} className="flex gap-2 text-sm text-[var(--color-ink)]">
-              <span className="text-[var(--color-gold)]">✦</span>
+              <span className="text-[var(--color-gold-deep)]">✦</span>
               <span>{ins}</span>
             </li>
           ))}
@@ -92,11 +113,17 @@ export function ResultCard({
         <div className="mt-6">
           <p className="text-xs uppercase tracking-wide text-[var(--color-stone)]">Personalised for you</p>
           <div className="mt-2 flex flex-wrap gap-2">
-            {result.treatments.map((t) => (
-              <span key={t} className="rounded-full bg-[var(--color-bone)] px-3 py-1 text-sm text-[var(--color-ink)]">
-                {t}
-              </span>
-            ))}
+            {result.treatments.map((t) => {
+              const slug = KIOSK_TREATMENT_SLUG[t];
+              const className = 'rounded-full bg-[var(--color-bone)] px-3 py-1 text-sm text-[var(--color-ink)]';
+              return slug ? (
+                <Link key={t} href={`/book?treatment=${slug}`} className={`${className} transition hover:bg-[var(--color-gold)]/20`}>
+                  {t}
+                </Link>
+              ) : (
+                <span key={t} className={className}>{t}</span>
+              );
+            })}
           </div>
         </div>
       )}
@@ -123,6 +150,19 @@ export function ResultCard({
           Claim your reward →
         </a>
       )}
+
+      {/* BLD-1638: a persistent path to booking, independent of the share
+          gate -- previously a visitor who saw their result but didn't share
+          + claim a reward had no way to book at all. Kept last, and visually
+          secondary (outlined, not filled), so it sits behind the share block
+          and the "Claim your reward" CTA rather than demoting the share-to-claim
+          funnel this card exists to drive. */}
+      <Link
+        href="/book"
+        className="mt-6 block rounded-[var(--radius-md)] border-2 border-[var(--color-ink)] px-4 py-4 text-center text-base font-medium text-[var(--color-ink)] transition hover:bg-[var(--color-ink)] hover:text-[var(--color-porcelain)]"
+      >
+        Book your treatment →
+      </Link>
     </div>
   );
 }
@@ -130,13 +170,50 @@ export function ResultCard({
 // The annotated best photo: SVG boxes over the image (normalized 0–1 coords →
 // displayed rect) plus numbered, tappable labels beneath — tapping a label
 // highlights its box (and dims the rest) for easy reading on a phone.
+//
+// PRJ-1191.7: the kiosk captures the raw camera feed at whatever aspect ratio
+// the device reports (components/kiosk/capture/CameraCapture.tsx sizes the
+// canvas from the live video track, not a fixed crop), so — unlike a static
+// asset — there's no aspect ratio we can safely hard-code up front. The boxes
+// below are normalized (0–1) against the photo's own dimensions, so the SVG
+// overlay only lines up if the rendered box is EXACTLY the photo's aspect
+// ratio; guessing wrong and cropping (object-cover) would visibly misplace
+// the highlighted areas on a real face. So the container reserves a plausible
+// portrait box up front (most kiosk shots are upright) to avoid a layout
+// jump, and next/image's onLoad corrects it to the photo's true ratio the
+// moment it's known — one small, one-time reflow beats either a permanently
+// wrong overlay or no CLS protection at all.
+//
+// `unoptimized` is REQUIRED here, not an optimisation preference (BLD-798
+// review). `src` is the secret-gated relay /api/kiosk/sessions/[token]/photo-view,
+// which deliberately serves the face photo with `Cache-Control: private,
+// no-store` so it never lands in a shared cache. next/image's optimiser ignores
+// that: it fetches the image server-side and re-serves it from /_next/image
+// under `public, max-age=<minimumCacheTTL>` — 1 year in next.config.mjs — which
+// would put an optimised copy of a client's face in Vercel's shared image cache,
+// outliving the kiosk-cleanup retention purge (app/api/cron/kiosk-cleanup)
+// that nulls bestPhotoUrl and deletes the blob. `unoptimized` renders the URL
+// as-is, so the relay's no-store headers are the ones that reach the browser.
+// The layout/CLS work below is unaffected — that's the whole point of the change.
 function AnnotatedPhoto({ src, annotations }: { src: string; annotations: KioskAnnotation[] }) {
   const [active, setActive] = useState<number | null>(null);
+  const [ratio, setRatio] = useState(3 / 4);
 
   return (
     <div className="mt-5">
-      <div className="relative overflow-hidden rounded-[var(--radius-md)]">
-        <img src={src} alt="Your best shot, annotated" className="block w-full" />
+      <div className="relative overflow-hidden rounded-[var(--radius-md)] bg-[var(--color-bone)]" style={{ aspectRatio: ratio }}>
+        <Image
+          src={src}
+          alt="Your best shot, annotated"
+          fill
+          unoptimized
+          sizes="(max-width: 640px) 90vw, 28rem"
+          className="object-contain"
+          onLoad={(e) => {
+            const { naturalWidth: w, naturalHeight: h } = e.currentTarget;
+            if (w && h) setRatio(w / h);
+          }}
+        />
         <svg viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden className="absolute inset-0 h-full w-full">
           {annotations.map((a, i) => {
             const dim = active !== null && active !== i;

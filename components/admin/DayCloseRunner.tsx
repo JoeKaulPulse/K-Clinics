@@ -3,6 +3,8 @@
 import { useMemo, useState } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
 import type { DayCloseConfig, ChecklistSection, ExpectedTakings, StockTakeItem } from '@/lib/day-close';
+import { fmtClinicDate } from '@/lib/clinic-time';
+import { useDialogBehaviours } from '@/components/ui/Dialog';
 
 // End-of-day clinic shutdown — a whole-screen, stepped flow in the same style as
 // the client questionnaire. Walks one location through cash-up, stock take and
@@ -144,10 +146,17 @@ export function DayCloseRunner({
     }
   }
 
-  const dateLabel = new Date(businessDate).toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' });
+  // BLD-1538: format in Europe/London, not the device timezone. businessDate is
+  // now clinic midnight — 23:00Z on the previous date during BST — so a browser
+  // running on UTC (or anywhere else) would label the run with yesterday's date.
+  const dateLabel = fmtClinicDate(businessDate, { weekday: 'long', day: 'numeric', month: 'long' });
+
+  // BLD-1501: dialog semantics — role, initial focus, Tab trap and
+  // Escape-to-close (previously only the ✕ button could exit this overlay).
+  const { panelRef, onKeyDown } = useDialogBehaviours<HTMLDivElement>(onClose);
 
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto bg-[var(--color-porcelain)]">
+    <div ref={panelRef} className="fixed inset-0 z-50 overflow-y-auto bg-[var(--color-porcelain)]" role="dialog" aria-modal="true" aria-label={`End-of-day close-down — ${locationName}`} tabIndex={-1} onKeyDown={onKeyDown}>
       <div className="flex min-h-screen flex-col">
         {/* Top bar */}
         <div className="sticky top-0 z-10 bg-[var(--color-porcelain)]/90 backdrop-blur-sm">
@@ -173,7 +182,7 @@ export function DayCloseRunner({
                     We&apos;ll reconcile the day&apos;s takings, complete the stock take and walk every closedown check — so you can lock up knowing nothing&apos;s been missed.
                   </p>
                   <div className="mt-8 flex items-center gap-3 rounded-[var(--radius-md)] border border-[var(--color-line)] bg-[var(--color-bone)] px-4 py-3 text-sm text-[var(--color-stone)]">
-                    <svg viewBox="0 0 24 24" className="h-5 w-5 shrink-0 text-[var(--color-gold)]" fill="none"><path d="M12 3l7 3v5c0 4.5-3 7.6-7 9-4-1.4-7-4.5-7-9V6l7-3z" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round" /></svg>
+                    <svg viewBox="0 0 24 24" className="h-5 w-5 shrink-0 text-[var(--color-gold-deep)]" fill="none"><path d="M12 3l7 3v5c0 4.5-3 7.6-7 9-4-1.4-7-4.5-7-9V6l7-3z" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round" /></svg>
                     {total} steps · about 5 minutes. Equipment, fire & security checks included.
                   </div>
                   <button onClick={() => go(1)} className="mt-9 rounded-full bg-[var(--color-gold-deep)] px-7 py-3.5 font-medium text-white shadow-[var(--shadow-gold)] hover:bg-[var(--color-ink)]">
@@ -194,6 +203,7 @@ export function DayCloseRunner({
                       {expected.chargeCount} treatment charge{expected.chargeCount === 1 ? '' : 's'} · {money(expected.chargesPence)}
                       {expected.orderCount > 0 && <> · {expected.orderCount} product order{expected.orderCount === 1 ? '' : 's'} · {money(expected.ordersPence)}</>}
                       {expected.voucherCount > 0 && <> · {expected.voucherCount} voucher sale{expected.voucherCount === 1 ? '' : 's'} · {money(expected.vouchersPence)}</>}
+                      {expected.refundCount > 0 && <> · {expected.refundCount} refund{expected.refundCount === 1 ? '' : 's'} · −{money(expected.refundedPence)}</>}
                     </p>
                   </div>
 
@@ -242,7 +252,7 @@ export function DayCloseRunner({
                       const counted = parseFloat(counts[it.id]);
                       const diff = Number.isFinite(counted) ? counted - it.expectedQty : 0;
                       return (
-                        <div key={it.id} className="flex items-center justify-between gap-3 rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-3 py-2">
+                        <div key={it.id} className="flex items-center justify-between gap-3 rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-porcelain)] px-3 py-2">
                           <div className="min-w-0">
                             <p className="truncate text-sm font-medium">{it.name}</p>
                             <p className="text-xs text-[var(--color-stone)]">{it.category || 'Stock'} · system: {it.expectedQty} {it.unit}</p>
@@ -257,7 +267,7 @@ export function DayCloseRunner({
                               inputMode="decimal"
                               value={counts[it.id]}
                               onChange={(e) => setCounts((p) => ({ ...p, [it.id]: e.target.value }))}
-                              className="w-20 rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-2 py-1.5 text-right text-sm outline-none focus:border-[var(--color-gold)]"
+                              className="w-20 rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-porcelain)] px-2 py-1.5 text-right text-sm outline-none focus:border-[var(--color-gold-deep)] focus-visible:ring-2 focus-visible:ring-[var(--color-gold-deep)]"
                             />
                             <span className="w-10 text-xs text-[var(--color-stone)]">{it.unit}</span>
                           </div>
@@ -291,7 +301,7 @@ export function DayCloseRunner({
                               aria-label="Reading or note"
                               value={st?.note ?? ''}
                               onChange={(e) => setNote(current.section.id, it.id, e.target.value)}
-                              className="mt-2.5 ml-8 w-[calc(100%-2rem)] rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-3 py-1.5 text-sm outline-none focus:border-[var(--color-gold)]"
+                              className="mt-2.5 ml-8 w-[calc(100%-2rem)] rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-porcelain)] px-3 py-1.5 text-sm outline-none focus:border-[var(--color-gold-deep)] focus-visible:ring-2 focus-visible:ring-[var(--color-gold-deep)]"
                             />
                           )}
                         </li>
@@ -321,7 +331,7 @@ export function DayCloseRunner({
                   )}
 
                   <label className="mt-6 block text-sm font-medium">Notes for the manager (optional)</label>
-                  <textarea rows={3} value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Anything to flag — variance reasons, faults, incidents…" aria-label="Notes for the manager" className="mt-2 w-full rounded-[var(--radius-md)] border border-[var(--color-line)] bg-white px-4 py-3 outline-none focus:border-[var(--color-gold)]" />
+                  <textarea rows={3} value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Anything to flag — variance reasons, faults, incidents…" aria-label="Notes for the manager" className="mt-2 w-full rounded-[var(--radius-md)] border border-[var(--color-line)] bg-[var(--color-porcelain)] px-4 py-3 outline-none focus:border-[var(--color-gold-deep)] focus-visible:ring-2 focus-visible:ring-[var(--color-gold-deep)]" />
 
                   {error && <p role="alert" aria-live="assertive" className="mt-5 rounded-[var(--radius-sm)] bg-[var(--color-blush)]/25 px-4 py-2.5 text-sm text-[var(--color-ink)]">{error}</p>}
                   <button onClick={submit} disabled={status === 'saving'} className="mt-8 rounded-full bg-[var(--color-gold-deep)] px-7 py-3.5 font-medium text-white shadow-[var(--shadow-gold)] hover:bg-[var(--color-ink)] disabled:opacity-60">
@@ -353,7 +363,7 @@ function MoneyField({ label, value, onChange, autoFocus, compact }: { label: str
   return (
     <label className={`block ${compact ? '' : 'mt-6'}`}>
       <span className="text-sm font-medium">{label}</span>
-      <div className="mt-1.5 flex items-center rounded-[var(--radius-md)] border border-[var(--color-line)] bg-white px-3 focus-within:border-[var(--color-gold)]">
+      <div className="mt-1.5 flex items-center rounded-[var(--radius-md)] border border-[var(--color-line)] bg-[var(--color-porcelain)] px-3 focus-within:border-[var(--color-gold-deep)]">
         <span className="text-[var(--color-stone)]">£</span>
         <input
           type="number"

@@ -14,7 +14,7 @@ export default async function AppointmentSessionPage({ params }: { params: Promi
   if (!crmEnabled) return <CrmDisabled />;
   const { id } = await params;
   const session = await getSession();
-  if (!sessionCan(session, 'bookings.manage') || !session) redirect('/admin');
+  if (!session || !(sessionCan(session, 'bookings.manage') || sessionCan(session, 'liveAppointments.manage'))) redirect('/admin');
 
   const { db } = await import('@/lib/db');
   const b = await db.booking.findUnique({
@@ -27,6 +27,12 @@ export default async function AppointmentSessionPage({ params }: { params: Promi
     },
   });
   if (!b) notFound();
+  // BLD-1899: a PRACTITIONER may only open the live session for a booking
+  // assigned to them. Same 404 as an unknown id (matches the booking detail
+  // page, BLD-1693). This page decrypts allergy/medical/clinical notes and
+  // renders the client's /live/<manageToken> link, so it must be scoped as
+  // well as the session API and stream.
+  if (session.role === 'PRACTITIONER' && b.practitionerId !== session.sub) notFound();
   if (b.status === 'CANCELLED' || b.status === 'NO_SHOW') redirect(`/admin/bookings/${id}`);
 
   const { getSop, parseSopSteps } = await import('@/lib/sops');
@@ -68,6 +74,13 @@ export default async function AppointmentSessionPage({ params }: { params: Promi
     allergyNote = b.allergyNote ? decClinical(b.allergyNote) : null;
     medicalFlag = b.client.medicalFlag ? decClinical(b.client.medicalFlag) : null;
     if (b.clinicalNoteEnc) { try { const { decryptJson } = await import('@/lib/crypto'); clinicalNote = decryptJson<{ note: string }>(b.clinicalNoteEnc).note; } catch { /* ignore */ } }
+    // BLD-1419: the live treatment-session screen decrypts allergies/medical
+    // flag/clinical note for display — a medical-record view; audit it
+    // (throttled per viewer/client/hour).
+    if (session.email) {
+      const { auditClinicalView } = await import('@/lib/clinical-view-audit');
+      auditClinicalView({ actor: session.email, actorRole: session.role, clientId: b.client.id, surface: 'session-runner', bookingId: b.id });
+    }
   }
 
   // Aftercare guide for this treatment's group (curated, client-facing).
@@ -142,6 +155,7 @@ export default async function AppointmentSessionPage({ params }: { params: Promi
           chargedAt: b.chargedAt?.toISOString() ?? null,
           giftVoucherCode: b.giftVoucherCode,
           giftVoucherPence: b.giftVoucherPence,
+          pointsRedeemedPence: b.pointsRedeemedPence,
           refreshments: b.refreshments.map((r) => refreshmentLabel(r)),
           addOns: b.items.filter((i) => i.isAddon).map((i) => ({ id: i.id, label: i.label, pricePence: i.pricePence })),
         }}
@@ -149,7 +163,7 @@ export default async function AppointmentSessionPage({ params }: { params: Promi
           items: beforePhotos.map((p) => ({ id: p.id, area: p.area, capturedBy: p.capturedBy, createdAt: p.createdAt.toISOString() })),
           optOutSigned,
           baseUrl,
-          canManage: sessionCan(session, 'bookings.manage'),
+          canManage: sessionCan(session, 'bookings.manage') || sessionCan(session, 'clients.photos'),
           isLaser,
         }}
         client={{

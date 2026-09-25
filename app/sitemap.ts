@@ -1,10 +1,9 @@
 import type { MetadataRoute } from 'next';
 import { site } from '@/lib/site';
-import { treatmentSlugs, dentistry } from '@/lib/treatments';
+import { treatmentSlugs } from '@/lib/treatments';
 import { packages } from '@/lib/packages';
 import { infoSlugs } from '@/lib/info-pages';
 import { articles } from '@/lib/articles';
-import { getSiteConfig } from '@/lib/site-config';
 
 // ISR so newly-published academy courses (DB-backed) appear without a redeploy.
 export const revalidate = 3600;
@@ -70,14 +69,12 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   // PRJ-939.14: only list /shop while there is something to sell.
   const shopEntries = await shopProducts();
   const shopLive = shopEntries.length > 0;
+  // BLD-1933: /academy/bundles 404s when no bundle is active, so only list it
+  // (like /shop above) while there is at least one.
+  const bundles = await bundleSlugs();
 
   const reviewed = CONTENT_REVIEWED;
   const base = site.url;
-  // BLD-839: dentistry treatment pages render noindex (app/(marketing)/[slug]/page.tsx,
-  // app/(marketing)/dentistry/page.tsx) while dentistryLive is false -- keep them, and
-  // the /dentistry hub, out of the sitemap too, so we never advertise noindexed URLs.
-  const { dentistryLive } = await getSiteConfig();
-  const dentistrySlugs = new Set(dentistry.map((t) => t.slug));
 
   const staticPaths: { path: string; priority: number; freq: MetadataRoute.Sitemap[number]['changeFrequency'] }[] = [
     { path: '/', priority: 1, freq: 'weekly' },
@@ -89,7 +86,10 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { path: '/journal', priority: 0.7, freq: 'weekly' },
     // PRJ-1060.6: was fully built and data-backed but had zero inbound links.
     { path: '/roadmap', priority: 0.5, freq: 'weekly' },
-    ...(dentistryLive ? [{ path: '/dentistry', priority: 0.9, freq: 'weekly' as const }] : []),
+    // BLD-1250: /dentistry is indexed pre-launch (per BLD-157 -- coming-soon framing
+    // is honest content), so it belongs in the sitemap unconditionally, not gated on
+    // dentistryLive. Previously gated here to match the (wrongly) noindexed page.
+    { path: '/dentistry', priority: 0.9, freq: 'weekly' },
     { path: '/packages', priority: 0.8, freq: 'monthly' },
     { path: '/pricing', priority: 0.8, freq: 'monthly' },
     { path: '/offers', priority: 0.7, freq: 'weekly' },
@@ -97,7 +97,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { path: '/gallery', priority: 0.6, freq: 'monthly' },
     { path: '/finance', priority: 0.6, freq: 'monthly' },
     { path: '/academy', priority: 0.8, freq: 'weekly' },
-    { path: '/academy/bundles', priority: 0.7, freq: 'monthly' },
+    ...(bundles.length > 0 ? [{ path: '/academy/bundles', priority: 0.7, freq: 'monthly' as const }] : []),
     { path: '/academy/funding', priority: 0.65, freq: 'monthly' },
     { path: '/about', priority: 0.6, freq: 'monthly' },
     { path: '/team', priority: 0.7, freq: 'monthly' },
@@ -119,7 +119,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       changeFrequency: p.freq,
       priority: p.priority,
     })),
-    ...treatmentSlugs.filter((slug) => dentistryLive || !dentistrySlugs.has(slug)).map((slug) => ({
+    ...treatmentSlugs.map((slug) => ({
       url: `${base}/${slug}`,
       lastModified: reviewed,
       changeFrequency: 'monthly' as const,
@@ -153,7 +153,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       changeFrequency: 'monthly' as const,
       priority: 0.6,
     })),
-    ...(await bundleSlugs()).map((slug) => ({
+    ...bundles.map((slug) => ({
       url: `${base}/academy/bundles/${slug}`,
       lastModified: reviewed,
       changeFrequency: 'monthly' as const,

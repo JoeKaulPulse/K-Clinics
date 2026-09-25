@@ -6,6 +6,7 @@ import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
 import { SESSION_STEPS, STEP_STATION, STATION_LABEL, stepActiveAtStation, type SessionStepKey, type StationMode, type StepTimings } from '@/lib/appointment-session';
 import type { SessionSnapshot } from '@/lib/appointment-session-server';
 import { reviewMedicalFlag, saveSopChecklist, startAppointment, finishAppointment, saveClinicalNote, removeAddonTreatment } from '@/app/admin/bookings/clinical-actions';
+import { isGiftCardExcludedTreatment } from '@/lib/treatments';
 import { BeforePhotoCapture } from '@/components/admin/BeforePhotoCapture';
 import { useSessionChannel } from '@/components/admin/session/useSessionChannel';
 import { CheckIcon } from '@/components/ui/session-icons';
@@ -35,6 +36,10 @@ type Props = {
     id: string; treatmentSlug: string; treatmentTitle: string; startAt: string; durationMin: number; pricePence: number;
     chargedAt: string | null;
     giftVoucherCode: string | null; giftVoucherPence: number;
+    // BLD-1591: money off already redeemed against this booking via loyalty
+    // points — netted off the amount actually collected at checkout alongside
+    // the gift voucher, mirroring the pattern chargeBookingAction already uses.
+    pointsRedeemedPence: number;
     refreshments: string[]; addOns: { id: string; label: string; pricePence: number }[];
   };
   photos: {
@@ -500,7 +505,7 @@ function SafetyStep({ p, live, pending, presenting, onReviewFlag, onSaveSop, onC
                   onChange={(e) => setItems((arr) => arr.map((x, j) => (j === i ? { ...x, response: e.target.value } : x)))}
                   placeholder="Client’s response…"
                   aria-label={`Response for: ${s.step}`}
-                  className="ml-7 mt-1.5 w-[calc(100%-1.75rem)] rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-3 py-2 text-sm outline-none transition-colors focus:border-[var(--color-gold)]"
+                  className="ml-7 mt-1.5 w-[calc(100%-1.75rem)] rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-porcelain)] px-3 py-2 text-sm outline-none transition-colors focus:border-[var(--color-gold-deep)] focus-visible:ring-2 focus-visible:ring-[var(--color-gold-deep)]"
                 />
               )}
             </li>
@@ -608,6 +613,15 @@ function TreatmentStep({ p, live, sessData, pending, presenting, canStart, gateH
   onStart: () => void; onFinish: () => void; onSaveNote: (note: string) => void; onRemoveAddon: (itemId: string) => void; onContinue: () => void;
 }) {
   const [note, setNote] = useState(p.clinicalNote);
+  const [noteSavedMsg, setNoteSavedMsg] = useState('');
+  // BLD-1589: the last value actually persisted. saveClinicalNote() is NOT
+  // idempotent — every call re-encrypts, rewrites clinicalNoteBy/At and writes
+  // an unconditional NOTE_ADDED audit row — so the autosave below must fire
+  // only on a real change. Without this, blurring the field without editing it
+  // rewrites "who last saved the clinical note" (a medico-legal field), and
+  // clicking "Save note" blurs the textarea first, saving the same text twice.
+  // null = "unknown" (a save failed), so the next blur/click always retries.
+  const savedNoteRef = useRef<string | null>(p.clinicalNote.trim());
   // Live-derived until this device edits — a note saved on another device (or
   // before a reload) shows everywhere instead of looking lost.
   const [localComfort, setLocalComfort] = useState<string | null>(null);
@@ -670,7 +684,7 @@ function TreatmentStep({ p, live, sessData, pending, presenting, canStart, gateH
                 <input id="session-comfort" value={comfort} onChange={(e) => setLocalComfort(e.target.value)}
                   onBlur={() => { if (comfort.trim()) { api({ op: 'save', field: 'comfort_note', value: comfort.trim() }).then(() => { setSavedMsg('Saved'); setTimeout(() => setSavedMsg(''), 1500); }); } }}
                   placeholder="e.g. prefers the room cooler, music low…"
-                  className="w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-4 py-3 text-sm outline-none transition-colors focus:border-[var(--color-gold)]" />
+                  className="w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-porcelain)] px-4 py-3 text-sm outline-none transition-colors focus:border-[var(--color-gold-deep)] focus-visible:ring-2 focus-visible:ring-[var(--color-gold-deep)]" />
                 <p className="mt-1 text-xs text-[var(--color-stone)]" role="status" aria-live="polite">{savedMsg || 'Edits after first save are audit-logged.'}</p>
               </div>
 
@@ -678,10 +692,29 @@ function TreatmentStep({ p, live, sessData, pending, presenting, canStart, gateH
                 <div>
                   <label htmlFor="session-clinical" className="mb-1.5 block text-xs uppercase tracking-[0.16em] text-[var(--color-stone)]">Clinical treatment note (encrypted)</label>
                   <textarea id="session-clinical" rows={4} value={note} onChange={(e) => setNote(e.target.value)}
+                    onBlur={() => {
+                      const next = note.trim();
+                      if (!next || next === savedNoteRef.current) return;
+                      savedNoteRef.current = next; // set synchronously: the "Save note" click that caused this blur checks it next
+                      saveClinicalNote(p.booking.id, next).then((r) => {
+                        if (!r.ok) savedNoteRef.current = null; // failed — let the next blur/click retry
+                        setNoteSavedMsg(r.ok ? 'Saved' : (r.error || 'Autosave failed — click Save note.'));
+                        if (r.ok) setTimeout(() => setNoteSavedMsg(''), 1500);
+                      }).catch(() => { savedNoteRef.current = null; setNoteSavedMsg('Autosave failed — click Save note.'); });
+                    }}
                     placeholder="Settings, areas treated, observations…"
-                    className="w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-4 py-3 text-sm outline-none transition-colors focus:border-[var(--color-gold)]" />
+                    className="w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-porcelain)] px-4 py-3 text-sm outline-none transition-colors focus:border-[var(--color-gold-deep)] focus-visible:ring-2 focus-visible:ring-[var(--color-gold-deep)]" />
+                  <p className="mt-1 text-xs text-[var(--color-stone)]" role="status" aria-live="polite">{noteSavedMsg || 'Autosaves when you click away; edits are audit-logged.'}</p>
                   <div className="mt-2 flex flex-wrap items-center gap-2">
-                    <button type="button" disabled={pending} onClick={() => onSaveNote(note)} className="min-h-11 rounded-full bg-[var(--color-ink)] px-5 py-2.5 text-sm text-[var(--color-porcelain)] disabled:opacity-50">Save note</button>
+                    <button type="button" disabled={pending} onClick={() => {
+                      const next = note.trim();
+                      // Clicking this button blurs the textarea first, so the autosave
+                      // above has already persisted this exact text — writing it again
+                      // would duplicate the encrypted write and its audit row.
+                      if (next && next === savedNoteRef.current) { setNoteSavedMsg('Saved'); setTimeout(() => setNoteSavedMsg(''), 1500); return; }
+                      savedNoteRef.current = next;
+                      onSaveNote(note);
+                    }} className="min-h-11 rounded-full bg-[var(--color-ink)] px-5 py-2.5 text-sm text-[var(--color-porcelain)] disabled:opacity-50">Save note</button>
                     <VoiceRecorder bookingId={p.booking.id} onTranscript={(t) => setNote((prev) => prev ? `${prev}\n${t}` : t)} />
                   </div>
                 </div>
@@ -747,7 +780,7 @@ function AftercareStep({ p, live, sessData, api, onContinue }: {
       <ul className="space-y-3">
         {p.aftercare.items.map((item, i) => (
           <li key={i} className="flex items-start gap-4 rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-bone)] p-4">
-            <span aria-hidden className="mt-0.5 grid h-9 w-9 shrink-0 place-items-center rounded-full bg-[var(--color-porcelain)] text-[var(--color-gold)]"><AftercareIcon name={item.icon} /></span>
+            <span aria-hidden className="mt-0.5 grid h-9 w-9 shrink-0 place-items-center rounded-full bg-[var(--color-porcelain)] text-[var(--color-gold-deep)]"><AftercareIcon name={item.icon} /></span>
             <span className="text-sm leading-relaxed sm:text-base">{item.text}</span>
           </li>
         ))}
@@ -767,7 +800,7 @@ function AftercareStep({ p, live, sessData, api, onContinue }: {
           <div className="flex flex-wrap gap-3">
             <input id="aftercare-name" value={name} onChange={(e) => setName(e.target.value)} autoComplete="off"
               placeholder={p.client.firstName}
-              className="min-w-0 flex-1 rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-4 py-3 outline-none transition-colors focus:border-[var(--color-gold)]" />
+              className="min-w-0 flex-1 rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-porcelain)] px-4 py-3 outline-none transition-colors focus:border-[var(--color-gold-deep)] focus-visible:ring-2 focus-visible:ring-[var(--color-gold-deep)]" />
             <button type="button" disabled={busy} onClick={confirm}
               className="min-h-12 rounded-full bg-[var(--color-gold-deep)] px-7 py-3 font-medium text-white transition-colors hover:bg-[var(--color-ink)] disabled:opacity-50">
               {busy ? 'Saving…' : 'Confirm'}
@@ -792,8 +825,13 @@ function CheckoutStep({ p, live, sessData, pending, presenting, api, run, onCont
   const [amount, setAmount] = useState(() => (p.booking.pricePence / 100).toFixed(2));
   const charged = !!live.chargedAt;
   // Unified payment capture (BLD-196): card on file / payment link / terminal /
-  // Treatwell (recorded as paid externally — BLD-200).
-  const [method, setMethod] = useState<'card' | 'link' | 'terminal' | 'treatwell' | 'cash'>(p.hasCardOnFile ? 'card' : 'link');
+  // Treatwell (recorded as paid externally — BLD-200). BLD-1249: "cardTerminal"
+  // is a separate, always-available manual record for a standalone card
+  // machine that isn't wired into Stripe Terminal — unlike 'terminal' above
+  // (a real Stripe Terminal charge, only offered once a device is registered),
+  // this never touches a payment rail; it just logs the sale as settled, the
+  // same way 'cash' and 'treatwell' do.
+  const [method, setMethod] = useState<'card' | 'link' | 'terminal' | 'cardTerminal' | 'treatwell' | 'classpass' | 'cash'>(p.hasCardOnFile ? 'card' : 'link');
   const [deviceId, setDeviceId] = useState(p.terminals[0]?.id ?? '');
   const [linkQr, setLinkQr] = useState<{ url: string; qr: string } | null>(null);
   const [payErr, setPayErr] = useState('');
@@ -810,6 +848,10 @@ function CheckoutStep({ p, live, sessData, pending, presenting, api, run, onCont
   // charge op. The amount field always means the agreed price — the remainder
   // is derived, never written back, so a reload, a second till or a discount
   // can't double-count the voucher.
+  // BLD-1918: gift cards cannot be applied to injectable or CO2 laser
+  // treatments — this hides/disables the redeem control here, and the server
+  // (app/api/admin/bookings/session/route.ts) refuses it independently.
+  const voucherExcluded = isGiftCardExcludedTreatment(p.booking.treatmentSlug);
   const [vOpen, setVOpen] = useState(false);
   const [vCode, setVCode] = useState('');
   const [vApplied, setVApplied] = useState<{ code: string; pence: number } | null>(
@@ -819,8 +861,14 @@ function CheckoutStep({ p, live, sessData, pending, presenting, api, run, onCont
   );
   const [vBusy, setVBusy] = useState(false);
   const [vErr, setVErr] = useState('');
+  // BLD-1591: loyalty points already redeemed against this booking (before the
+  // visit) net off the collectable amount the same way the voucher does — the
+  // server applies the identical subtraction for paylink/terminal/external ops
+  // (and chargeBookingAction already did for the saved-card path), so this is
+  // purely for staff to see the true amount before they take payment.
+  const pointsOffPence = p.booking.pointsRedeemedPence ?? 0;
   // What the chosen method will actually collect (the server nets the same way).
-  const duePence = Math.max(0, amountPence - (vApplied?.pence ?? 0));
+  const duePence = Math.max(0, amountPence - (vApplied?.pence ?? 0) - pointsOffPence);
   const voucherExceedsAmount = !!vApplied && amountPence <= vApplied.pence;
   async function applyVoucher() {
     if (vBusy || !vCode.trim() || amountPence <= 0) return;
@@ -835,6 +883,7 @@ function CheckoutStep({ p, live, sessData, pending, presenting, api, run, onCont
   }
   async function removeVoucher() {
     if (vBusy || !vApplied) return;
+    if (!confirm('Remove this voucher from the sale? The total will go back up.')) return;
     setVBusy(true); setVErr('');
     const res = await api({ op: 'voucher-remove' });
     setVBusy(false);
@@ -870,9 +919,21 @@ function CheckoutStep({ p, live, sessData, pending, presenting, api, run, onCont
     setPayBusy(false);
     if (!res.ok) setPayErr(res.error || 'Could not record the payment.');
   }
+  async function takeClasspass() {
+    setPayErr(''); setPayBusy(true);
+    const res = await api({ op: 'external', channel: 'classpass', amountPence, ...discParams });
+    setPayBusy(false);
+    if (!res.ok) setPayErr(res.error || 'Could not record the payment.');
+  }
   async function takeCash() {
     setPayErr(''); setPayBusy(true);
     const res = await api({ op: 'external', channel: 'cash', amountPence, ...discParams });
+    setPayBusy(false);
+    if (!res.ok) setPayErr(res.error || 'Could not record the payment.');
+  }
+  async function takeCardTerminal() {
+    setPayErr(''); setPayBusy(true);
+    const res = await api({ op: 'external', channel: 'card-terminal', amountPence, ...discParams });
     setPayBusy(false);
     if (!res.ok) setPayErr(res.error || 'Could not record the payment.');
   }
@@ -895,8 +956,8 @@ function CheckoutStep({ p, live, sessData, pending, presenting, api, run, onCont
           <div className="mt-4">
             <div className="flex flex-wrap items-center gap-3">
               <label htmlFor="charge-amount" className="sr-only">Amount in pounds</label>
-              <span className="flex items-center gap-1 rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-3 py-2.5 text-sm">
-                £<input id="charge-amount" inputMode="decimal" value={amount} onChange={(e) => setAmount(e.target.value)} className="w-24 outline-none tabular-nums" />
+              <span className="flex items-center gap-1 rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-porcelain)] px-3 py-2.5 text-sm">
+                £<input id="charge-amount" inputMode="decimal" value={amount} onChange={(e) => setAmount(e.target.value)} className="w-24 rounded-[var(--radius-sm)] outline-none tabular-nums focus-visible:ring-2 focus-visible:ring-[var(--color-gold-deep)]" />
               </span>
               {/* How to take payment */}
               <div className="flex items-center rounded-full border border-[var(--color-line)] p-0.5 text-sm" role="group" aria-label="Payment method">
@@ -905,9 +966,20 @@ function CheckoutStep({ p, live, sessData, pending, presenting, api, run, onCont
                 {/* BLD-908: no tab at all unless a configured provider + registered device exist — it was a guaranteed dead end otherwise. */}
                 {p.terminals.length > 0 && <button type="button" onClick={() => { setMethod('terminal'); setLinkQr(null); setPayErr(''); }} aria-pressed={method === 'terminal'} className={`rounded-full px-3 py-1.5 transition-colors ${method === 'terminal' ? 'bg-[var(--color-ink)] text-[var(--color-porcelain)]' : 'text-[var(--color-stone)] hover:text-[var(--color-ink)]'}`}>Terminal</button>}
                 <button type="button" onClick={() => { setMethod('cash'); setLinkQr(null); setPayErr(''); }} aria-pressed={method === 'cash'} className={`rounded-full px-3 py-1.5 transition-colors ${method === 'cash' ? 'bg-[var(--color-ink)] text-[var(--color-porcelain)]' : 'text-[var(--color-stone)] hover:text-[var(--color-ink)]'}`}>Cash</button>
+                {/* BLD-1249: manual record for a standalone card machine — no Stripe Terminal integration required */}
+                <button type="button" onClick={() => { setMethod('cardTerminal'); setLinkQr(null); setPayErr(''); }} aria-pressed={method === 'cardTerminal'} className={`rounded-full px-3 py-1.5 transition-colors ${method === 'cardTerminal' ? 'bg-[var(--color-ink)] text-[var(--color-porcelain)]' : 'text-[var(--color-stone)] hover:text-[var(--color-ink)]'}`}>Card Terminal</button>
                 <button type="button" onClick={() => { setMethod('treatwell'); setLinkQr(null); setPayErr(''); }} aria-pressed={method === 'treatwell'} className={`rounded-full px-3 py-1.5 transition-colors ${method === 'treatwell' ? 'bg-[var(--color-ink)] text-[var(--color-porcelain)]' : 'text-[var(--color-stone)] hover:text-[var(--color-ink)]'}`}>Treatwell</button>
+                <button type="button" onClick={() => { setMethod('classpass'); setLinkQr(null); setPayErr(''); }} aria-pressed={method === 'classpass'} className={`rounded-full px-3 py-1.5 transition-colors ${method === 'classpass' ? 'bg-[var(--color-ink)] text-[var(--color-porcelain)]' : 'text-[var(--color-stone)] hover:text-[var(--color-ink)]'}`}>ClassPass</button>
               </div>
             </div>
+
+            {/* BLD-1591: loyalty points redeemed online against this booking, before
+                the visit — netted off automatically by every payment method below
+                (mirrors the gift voucher note), so staff aren't shown a "left to
+                collect" figure that silently ignores money the client already spent. */}
+            {pointsOffPence > 0 && (
+              <p className="mt-2 text-xs text-[var(--color-stone)]">{money(pointsOffPence)} of redeemed loyalty points already applied — {money(duePence)} left to collect.</p>
+            )}
 
             {/* BLD-207: ad-hoc discount / price adjustment (applies to the amount taken by any method) */}
             <div className="mt-3">
@@ -915,12 +987,12 @@ function CheckoutStep({ p, live, sessData, pending, presenting, api, run, onCont
                 <button type="button" onClick={() => setDiscOpen(true)} className="text-xs text-[var(--color-gold-deep)] underline-offset-2 hover:underline">Apply a discount / adjust price</button>
               ) : (
                 <div className="flex flex-wrap items-center gap-2 rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-bone)]/40 p-3 text-sm">
-                  <div className="flex items-center rounded-full border border-[var(--color-line)] bg-white p-0.5 text-xs">
+                  <div className="flex items-center rounded-full border border-[var(--color-line)] bg-[var(--color-porcelain)] p-0.5 text-xs">
                     <button type="button" onClick={() => setDiscType('percent')} aria-pressed={discType === 'percent'} className={`rounded-full px-2.5 py-1 ${discType === 'percent' ? 'bg-[var(--color-ink)] text-[var(--color-porcelain)]' : 'text-[var(--color-stone)]'}`}>% off</button>
                     <button type="button" onClick={() => setDiscType('amount')} aria-pressed={discType === 'amount'} className={`rounded-full px-2.5 py-1 ${discType === 'amount' ? 'bg-[var(--color-ink)] text-[var(--color-porcelain)]' : 'text-[var(--color-stone)]'}`}>£ off</button>
                   </div>
-                  <input inputMode="decimal" value={discVal} onChange={(e) => setDiscVal(e.target.value)} placeholder={discType === 'percent' ? '10' : '5.00'} aria-label="Discount value" className="w-16 rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-2 py-1.5 tabular-nums outline-none focus:border-[var(--color-gold)]" />
-                  <input value={discReason} onChange={(e) => setDiscReason(e.target.value)} placeholder="Reason (required)" aria-label="Discount reason" className="min-w-[10rem] flex-1 rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-2 py-1.5 outline-none focus:border-[var(--color-gold)]" />
+                  <input inputMode="decimal" value={discVal} onChange={(e) => setDiscVal(e.target.value)} placeholder={discType === 'percent' ? '10' : '5.00'} aria-label="Discount value" className="w-16 rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-porcelain)] px-2 py-1.5 tabular-nums outline-none focus:border-[var(--color-gold-deep)] focus-visible:ring-2 focus-visible:ring-[var(--color-gold-deep)]" />
+                  <input value={discReason} onChange={(e) => setDiscReason(e.target.value)} placeholder="Reason (required)" aria-label="Discount reason" className="min-w-[10rem] flex-1 rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-porcelain)] px-2 py-1.5 outline-none focus:border-[var(--color-gold-deep)] focus-visible:ring-2 focus-visible:ring-[var(--color-gold-deep)]" />
                   <button type="button" disabled={!discReason.trim() || !discVal.trim()} onClick={applyDiscount} className="rounded-full bg-[var(--color-ink)] px-3 py-1.5 text-xs font-medium text-[var(--color-porcelain)] disabled:opacity-40">Apply</button>
                   {discReason.trim() && <span className="text-xs text-[var(--color-stone)]">was {money(p.booking.pricePence)} → {money(amountPence)}</span>}
                 </div>
@@ -933,18 +1005,20 @@ function CheckoutStep({ p, live, sessData, pending, presenting, api, run, onCont
                 <div className="flex flex-wrap items-center gap-2 rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-bone)]/40 p-3 text-sm">
                   <span>Gift voucher <span className="font-medium">{vApplied.code}</span> — {money(vApplied.pence)} applied. {money(duePence)} left to collect.</span>
                   <button type="button" onClick={removeVoucher} disabled={vBusy} className="text-xs text-[var(--color-gold-deep)] underline-offset-2 hover:underline disabled:opacity-50">{vBusy ? 'Removing…' : 'Remove'}</button>
-                  {voucherExceedsAmount && <span className="w-full text-xs text-red-700">The voucher covers more than the current amount — remove it and apply again at the new price.</span>}
+                  {voucherExceedsAmount && <span className="w-full text-xs text-[var(--color-blush-deep)]">The voucher covers more than the current amount — remove it and apply again at the new price.</span>}
                 </div>
+              ) : voucherExcluded ? (
+                <p className="text-xs text-[var(--color-stone)]">Gift cards can’t be redeemed against {p.booking.treatmentTitle.toLowerCase()} — it’s an injectable/CO2 laser treatment.</p>
               ) : !vOpen ? (
                 <button type="button" onClick={() => setVOpen(true)} className="text-xs text-[var(--color-gold-deep)] underline-offset-2 hover:underline">Redeem a gift voucher</button>
               ) : (
                 <div className="flex flex-wrap items-center gap-2 rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-bone)]/40 p-3 text-sm">
-                  <input value={vCode} onChange={(e) => { setVCode(e.target.value); setVErr(''); }} onKeyDown={(e) => e.key === 'Enter' && applyVoucher()} placeholder="Voucher code" aria-label="Gift voucher code" className="min-w-[10rem] rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-2 py-1.5 uppercase outline-none focus:border-[var(--color-gold)]" />
+                  <input value={vCode} onChange={(e) => { setVCode(e.target.value); setVErr(''); }} onKeyDown={(e) => e.key === 'Enter' && applyVoucher()} placeholder="Voucher code" aria-label="Gift voucher code" className="min-w-[10rem] rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-porcelain)] px-2 py-1.5 uppercase outline-none focus:border-[var(--color-gold-deep)] focus-visible:ring-2 focus-visible:ring-[var(--color-gold-deep)]" />
                   <button type="button" onClick={applyVoucher} disabled={vBusy || !vCode.trim()} className="rounded-full bg-[var(--color-ink)] px-3 py-1.5 text-xs font-medium text-[var(--color-porcelain)] disabled:opacity-40">{vBusy ? 'Applying…' : 'Apply'}</button>
                   <span className="text-xs text-[var(--color-stone)]">Covers up to the amount above; any leftover stays on the voucher.</span>
                 </div>
               )}
-              {vErr && <p className="mt-1 text-xs text-red-700">{vErr}</p>}
+              {vErr && <p className="mt-1 text-xs text-[var(--color-blush-deep)]">{vErr}</p>}
             </div>
 
             {/* The action for the chosen method */}
@@ -957,7 +1031,7 @@ function CheckoutStep({ p, live, sessData, pending, presenting, api, run, onCont
                 </button>
               )}
               {method === 'link' && (linkQr ? (
-                <div className="flex items-center gap-4 rounded-[var(--radius-md)] border border-[var(--color-line)] bg-white p-4">
+                <div className="flex items-center gap-4 rounded-[var(--radius-md)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-4">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img src={linkQr.qr} alt="Payment QR code" width={120} height={120} className="rounded-[var(--radius-sm)]" />
                   <div className="min-w-0 text-sm">
@@ -975,7 +1049,7 @@ function CheckoutStep({ p, live, sessData, pending, presenting, api, run, onCont
               {method === 'terminal' && (
                 <div className="flex flex-wrap items-center gap-3">
                   {p.terminals.length > 0 ? (
-                    <select value={deviceId} onChange={(e) => setDeviceId(e.target.value)} aria-label="Card terminal" className="rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-3 py-2.5 text-sm">
+                    <select value={deviceId} onChange={(e) => setDeviceId(e.target.value)} aria-label="Card terminal" className="rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-porcelain)] px-3 py-2.5 text-sm">
                       {p.terminals.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
                     </select>
                   ) : <p className="text-sm text-[var(--color-stone)]">No card terminal is registered — add one under Devices.</p>}
@@ -994,6 +1068,15 @@ function CheckoutStep({ p, live, sessData, pending, presenting, api, run, onCont
                   <p className="mt-2 max-w-md text-xs text-[var(--color-stone)]">Records the sale as paid in cash against this booking. Remember to put the cash in the drawer — it’s included in the day-close total.</p>
                 </div>
               )}
+              {method === 'cardTerminal' && (
+                <div>
+                  <button type="button" disabled={payBusy || !live.finishedAt} onClick={takeCardTerminal}
+                    className="min-h-12 rounded-full bg-[var(--color-gold-deep)] px-7 py-3 font-medium text-white transition-colors hover:bg-[var(--color-ink)] disabled:opacity-40">
+                    {payBusy ? 'Recording…' : `Record ${money(duePence)} on card terminal`}
+                  </button>
+                  <p className="mt-2 max-w-md text-xs text-[var(--color-stone)]">Records the sale as paid on your standalone card machine — nothing is charged from here. Use this when the terminal isn’t wired into the till.</p>
+                </div>
+              )}
               {method === 'treatwell' && (
                 <div>
                   <button type="button" disabled={payBusy || !live.finishedAt} onClick={takeTreatwell}
@@ -1001,6 +1084,15 @@ function CheckoutStep({ p, live, sessData, pending, presenting, api, run, onCont
                     {payBusy ? 'Recording…' : 'Record as paid via Treatwell'}
                   </button>
                   <p className="mt-2 max-w-md text-xs text-[var(--color-stone)]">Records the sale as settled on Treatwell — no card is charged here. Tip: invite {p.client.firstName} to book their next visit directly with us to skip the Treatwell commission.</p>
+                </div>
+              )}
+              {method === 'classpass' && (
+                <div>
+                  <button type="button" disabled={payBusy || !live.finishedAt} onClick={takeClasspass}
+                    className="min-h-12 rounded-full bg-[var(--color-gold-deep)] px-7 py-3 font-medium text-white transition-colors hover:bg-[var(--color-ink)] disabled:opacity-40">
+                    {payBusy ? 'Recording…' : 'Record as paid via ClassPass'}
+                  </button>
+                  <p className="mt-2 max-w-md text-xs text-[var(--color-stone)]">Records the sale as settled on ClassPass — no card is charged here. The credits are redeemed and paid out through ClassPass, not on our card rails.</p>
                 </div>
               )}
             </div>
@@ -1234,7 +1326,7 @@ function NextVisitStep({ p, sessData, api, onContinue, onSkip }: {
       <div className="rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-6">
         <label htmlFor="next-date" className="mb-1.5 block text-xs uppercase tracking-[0.16em] text-[var(--color-stone)]">Pick a day</label>
         <input id="next-date" type="date" value={date} min={new Date(Date.now() + 864e5).toISOString().slice(0, 10)} onChange={(e) => setDate(e.target.value)}
-          className="rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-4 py-3 text-sm outline-none transition-colors focus:border-[var(--color-gold)]" />
+          className="rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-porcelain)] px-4 py-3 text-sm outline-none transition-colors focus:border-[var(--color-gold-deep)] focus-visible:ring-2 focus-visible:ring-[var(--color-gold-deep)]" />
         <div className="mt-4 flex flex-wrap gap-2" role="listbox" aria-label="Available times">
           {loading ? <p className="text-sm text-[var(--color-stone)]">Checking the diary…</p>
             : slots.length === 0 ? <p className="text-sm text-[var(--color-stone)]">Nothing free that day — try another.</p>
@@ -1450,7 +1542,7 @@ function VoiceRecorder({ bookingId, onTranscript }: { bookingId: string; onTrans
     return (
       <button type="button" onClick={stop}
         className="inline-flex min-h-11 items-center gap-2 rounded-full border border-[var(--color-blush)] bg-[color-mix(in_oklab,var(--color-blush)_15%,white)] px-4 py-2 text-sm text-[var(--color-ink)] transition-colors hover:bg-[color-mix(in_oklab,var(--color-blush)_30%,white)]">
-        <span className="h-2 w-2 animate-pulse rounded-full bg-red-500" aria-hidden />
+        <span className="h-2 w-2 animate-pulse rounded-full bg-[var(--color-blush-deep)]" aria-hidden />
         Stop recording
       </button>
     );
@@ -1458,11 +1550,11 @@ function VoiceRecorder({ bookingId, onTranscript }: { bookingId: string; onTrans
   return (
     <div className="flex flex-col gap-1">
       <button type="button" onClick={start}
-        className="inline-flex min-h-11 items-center gap-2 rounded-full border border-[var(--color-line)] bg-white px-4 py-2 text-sm text-[var(--color-ink)] transition-colors hover:border-[var(--color-gold)] hover:bg-[var(--color-bone)]">
+        className="inline-flex min-h-11 items-center gap-2 rounded-full border border-[var(--color-line)] bg-[var(--color-porcelain)] px-4 py-2 text-sm text-[var(--color-ink)] transition-colors hover:border-[var(--color-gold)] hover:bg-[var(--color-bone)]">
         <svg aria-hidden width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><rect x="9" y="2" width="6" height="13" rx="3" /><path d="M5 10a7 7 0 0 0 14 0M12 19v3M9 22h6" /></svg>
         Record voice note
       </button>
-      {state === 'error' && <p className="text-xs text-red-500">{errMsg}</p>}
+      {state === 'error' && <p className="text-xs text-[var(--color-blush-deep)]">{errMsg}</p>}
       {hint && <p className="text-xs text-[var(--color-stone)]">{hint}</p>}
     </div>
   );

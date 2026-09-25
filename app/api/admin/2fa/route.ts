@@ -7,7 +7,10 @@ export const runtime = 'nodejs';
 export async function POST(req: Request) {
   if (!crmEnabled) return NextResponse.json({ ok: false }, { status: 503 });
   const { getSession } = await import('@/lib/auth');
-  const session = await getSession();
+  // BLD-1306: this IS the 2FA-setup endpoint, so a needsSetup:true (2FA
+  // required, not yet enrolled) session must be allowed through — every other
+  // /api/admin/* route defaults to rejecting it (see getSession() in lib/auth.ts).
+  const session = await getSession(true);
   if (!session) return NextResponse.json({ ok: false, error: 'Not signed in.' }, { status: 401 });
 
   const body = await req.json().catch(() => ({}));
@@ -28,6 +31,13 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: true, secret, uri, qr });
     }
     case 'confirm': {
+      // PRJ-1118.6: rate-limit the enrolment code check the same way 'disable'
+      // is (BLD-875) — otherwise a stolen pre-2FA session can brute-force the
+      // 6-digit TOTP here just as easily as on the disable op.
+      const { enforceRateLimit } = await import('@/lib/security/guard');
+      if (!(await enforceRateLimit(req, 'twofa-confirm', 8, 300, 'admin'))) {
+        return NextResponse.json({ ok: false, error: 'Too many attempts — wait a few minutes.' }, { status: 429 });
+      }
       const res = await confirmEnrolment(session.sub, String(body.code || ''));
       if (res.ok) {
         await recordSecurity('TWOFA_ENABLED', 'admin', session.email, req);

@@ -30,12 +30,35 @@
   --color-blush: #cdb4a3;      /* warm sand highlight */
   --color-blush-deep: #8b4a4a; /* deep warm red — error / destructive text on light surfaces */
 
+  /* PRJ-1032.35 — "Night" surface tokens: a handful of public-site sections
+     (KVision, GetMyPlanBand, LiveCompanion, the room-display kiosk) render a
+     deliberately dark hero surface regardless of the site's own light/dark
+     theme (data-theme is admin-only, see below — the public site never sets
+     it). These were drifting per-file as near-identical hardcoded hex
+     literals; consolidated here to one canonical set. */
+  --color-night: #0c0b0a;             /* near-black hero background */
+  --color-night-ink: #f4ece1;         /* primary text on --color-night */
+  --color-night-ink-soft: #e7dccd;    /* secondary bright text (list titles, item labels) */
+  --color-night-muted: #cdbfae;       /* muted body text on --color-night */
+  --color-night-faint: #9a8f80;       /* faintest text — captions, timestamps */
+  --color-night-mild: #8fae8f;        /* success/mild status accent on --color-night */
+  --color-night-moderate: #d8b26a;    /* warning/moderate status accent on --color-night */
+  --color-night-notable: #d98c8c;     /* alert/notable status accent on --color-night */
+  --color-night-notable-text: #f4d6d6;/* alert/notable readable text on --color-night */
+
   /* Semantic surface tokens */
   --color-bg: var(--color-porcelain);
   --color-fg: var(--color-ink);
   --color-muted: var(--color-stone);
   --color-accent: var(--color-gold);
-  --color-line: color-mix(in oklab, var(--color-ink) 12%, transparent);
+  /* PRJ-1200.5: was 12% ink (~1.25:1 on porcelain, ~1.26:1 on white) — far
+     under the WCAG 1.4.11 non-text-contrast floor of 3:1 for form-field
+     borders/cards/dividers sitewide. 55% clears it on both (3.42:1 on
+     porcelain #f6ece3, 3.59:1 on white) with margin, computed against the sRGB
+     relative-luminance formula, not eyeballed. Still derives from
+     --color-ink, so it keeps auto-adapting to a light hairline in dark mode
+     (5.0–5.1:1 there — comfortably clear already). */
+  --color-line: color-mix(in oklab, var(--color-ink) 55%, transparent);
   /* Aliases some admin pages reference (previously undefined → always fell back
      to a light literal, which broke in dark mode). Now real tokens so they flip. */
   --color-surface-alt: #f9f5f0;                /* faint raised surface — table headers, chips */
@@ -46,7 +69,14 @@
      Text:    Geist (loaded via next/font) — precise modern grotesque. */
   --font-display: var(--font-fraunces), ui-serif, Georgia, serif;
   --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
-  --font-mono: var(--font-geist-mono), ui-monospace, monospace;
+  /* BLD-1463: --font-geist-mono is only set on /admin and /account (the routes
+     that load GeistMono). Elsewhere it is undefined, and an undefined var() with
+     no fallback poisons the whole custom property — `font-mono` would then be
+     invalid at computed-value time and silently inherit the body sans face. The
+     inner fallback keeps public code displays (kiosk reward code, gift-voucher
+     code, certificate refs, gift-card fields) genuinely monospaced, using the
+     system face, with no webfont download. */
+  --font-mono: var(--font-geist-mono, ui-monospace), ui-monospace, monospace;
 
   /* ── Radii ──────────────────────────────────────────────────────────────── */
   --radius-xs: 0.375rem;
@@ -237,9 +267,11 @@ html[data-theme='dark'] .text-black { color: var(--color-ink); }
   .text-title { font-size: var(--text-title); }
   .text-lede { font-size: var(--text-lede); }
 
-  /* Champagne gold gradient text */
+  /* Champagne gold gradient text. Darkest stop is --color-gold-deep (not
+     --color-gold, ~2.8:1 on porcelain -- below the WCAG AA 3:1 floor even at
+     large sizes) so the gradient clears AA (BLD-1488). */
   .text-gold-gradient {
-    background: linear-gradient(105deg, var(--color-gold) 0%, var(--color-gold-bright) 45%, var(--color-gold) 100%);
+    background: linear-gradient(105deg, var(--color-gold-deep) 0%, var(--color-gold-bright) 45%, var(--color-gold-deep) 100%);
     -webkit-background-clip: text;
     background-clip: text;
     color: transparent;
@@ -272,13 +304,53 @@ html[data-theme='dark'] .text-black { color: var(--color-ink); }
     font-weight: 560;
     letter-spacing: 0.28em;
     text-transform: uppercase;
-    /* Deeper gold so small uppercase eyebrows clear WCAG AA (≈4.7:1) on our
-       light surfaces. Dark-surface eyebrows override to --color-gold-soft. */
-    color: var(--color-gold-deep);
+    /* BLD-1877: driven by a custom property, not hardcoded, so a dark-surface
+       instance can set --eyebrow-color (via .eyebrow-on-dark) and win the cascade —
+       a Tailwind text-color utility class on the same element has identical
+       specificity to this rule and was silently losing (measured 2.89:1).
+       Default is the deeper gold that clears WCAG AA (~4.7:1) on our light
+       surfaces; dark-surface eyebrows add .eyebrow-on-dark, which sets
+       --eyebrow-color: var(--color-gold-soft) (~6.6:1 on --color-ink). */
+    color: var(--eyebrow-color, var(--color-gold-deep));
   }
+  /* BLD-1877: the dark-surface variant. Add alongside .eyebrow on ink/dark
+     heroes instead of a text-[var(--color-gold-soft)] class, which loses to
+     .eyebrow's color rule (same layer and specificity). */
+  .eyebrow-on-dark { --eyebrow-color: var(--color-gold-soft); }
 
   /* Hairline divider */
   .hairline { height: 1px; background: var(--color-line); }
+
+  /* BLD-1537: pdf.js text layer, overlaid on the Academy lesson canvas so
+     screen readers can announce page content (WCAG 1.1.1). It stays
+     invisible and non-interactive to sighted/mouse users — color is
+     inherited transparent and pointer-events/user-select are inherited
+     none — so it never becomes a visible or mouse-selectable/copyable
+     overlay, only an accessibility-tree one. Each item is absolutely
+     positioned by pdf.js so invisible text never adds stray flow height.
+     forced-color-adjust: none is load-bearing, not cosmetic — Windows High
+     Contrast (forced-colors) otherwise overrides `color` with the system text
+     colour, which would paint this whole layer as visible garbled text on top
+     of the rendered page for the exact users this text layer exists to serve
+     (and expose it as a selectable-looking overlay). Opting out keeps it
+     transparent there too. */
+  .kc-pdf-text-layer {
+    position: absolute;
+    inset: 0;
+    overflow: clip;
+    line-height: 1;
+    color: transparent;
+    forced-color-adjust: none;
+    pointer-events: none;
+    user-select: none;
+    -webkit-user-select: none;
+  }
+  .kc-pdf-text-layer span,
+  .kc-pdf-text-layer br {
+    position: absolute;
+    white-space: pre;
+    transform-origin: 0 0;
+  }
 
   /* Shell micro-motion (BLD-226) — fast (150-280ms), transform/opacity only so
      nothing reflows, and fully disabled under prefers-reduced-motion. */
@@ -530,7 +602,11 @@ html[data-theme='dark'] .text-black { color: var(--color-ink); }
 .logo { transition: transform 0.6s var(--ease-lux); }
 .logo__k { transition: color 0.6s var(--ease-lux); }
 .logo:hover { transform: translateY(-1px); }
-.logo:hover .logo__k { color: var(--color-gold); }
+/* BLD-1274: the default (non-mono) logo sits on porcelain/bone — gold-deep
+   clears AA there. The mono variant (dark hero overlays, dark footer) keeps
+   gold-soft, the token already used for eyebrows/accents on dark surfaces. */
+.logo:hover .logo__k { color: var(--color-gold-deep); }
+.logo--mono:hover .logo__k { color: var(--color-gold-soft); }
 
 /* ── Respect reduced motion ───────────────────────────────────────────────── */
 @media (prefers-reduced-motion: reduce) {

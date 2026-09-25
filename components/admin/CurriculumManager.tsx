@@ -20,7 +20,7 @@ type Quiz = { id: string; title: string; passMark: number; timeLimitMin: number 
 type Module = { id: string; title: string; summary: string | null; lessons: Lesson[]; quiz: Quiz | null };
 type Course = { id: string; title: string; objectives: string[]; welcome: string | null; preCourseInfo: string | null; portfolioTarget: number | null; modules: Module[] };
 
-const field = 'w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-3 py-2 text-sm outline-none focus:border-[var(--color-gold)]';
+const field = 'w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-porcelain)] px-3 py-2 text-sm outline-none focus:border-[var(--color-gold-deep)] focus-visible:ring-2 focus-visible:ring-[var(--color-gold-deep)]';
 const label = 'block text-xs font-medium text-[var(--color-stone)]';
 const btnDark = 'rounded-full bg-[var(--color-ink)] px-4 py-1.5 text-xs font-medium text-[var(--color-porcelain)] disabled:opacity-50';
 const btnGhost = 'rounded-full border border-[var(--color-line)] px-3 py-1.5 text-xs hover:border-[var(--color-gold)]';
@@ -207,7 +207,7 @@ function LessonRow({ lesson: l, index, total, busy, act, lessonIds }: { lesson: 
   }
 
   return (
-    <div className="rounded-[var(--radius-md)] border border-[var(--color-line)] bg-white">
+    <div className="rounded-[var(--radius-md)] border border-[var(--color-line)] bg-[var(--color-porcelain)]">
       <div className="flex items-center gap-2 p-2.5">
         <button onClick={() => setOpen((v) => !v)} className="text-[var(--color-stone)]">{open ? '▾' : '▸'}</button>
         <span className="flex-1 text-sm">{l.title}</span>
@@ -345,7 +345,7 @@ function QuizBlock({ module: m, busy, act }: { module: Module; busy: boolean; ac
   return (
     <div>
       <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-[var(--color-stone)]">Assessment</p>
-      <div className="rounded-[var(--radius-md)] border border-[var(--color-line)] bg-white p-3">
+      <div className="rounded-[var(--radius-md)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-3">
         <div className="flex flex-wrap items-end gap-3">
           <label className={`${label} flex-1`}>Quiz title<input className={`${field} mt-1`} value={title} onChange={(e) => setTitle(e.target.value)} /></label>
           <label className={label}>Pass mark %<input type="number" min={1} max={100} disabled={isSurvey} className={`${field} mt-1 w-24 ${isSurvey ? 'opacity-50' : ''}`} value={passMark} onChange={(e) => setPassMark(Number(e.target.value))} /></label>
@@ -466,7 +466,7 @@ function QuestionRow({ q, index, total, busy, act, ids, isSurvey = false }: { q:
               {imageUrl && <button onClick={() => setImageUrl('')} className="text-xs text-[var(--color-blush-deep)] hover:underline">Remove</button>}
             </div>
             {imageUrl && (
-              <label className={`${label} mt-2`}>Image description (read aloud by screen readers — describe what the image shows, e.g. "Cross-section of skin showing the epidermis, dermis and hypodermis layers")
+              <label className={`${label} mt-2`}>Image description (read aloud by screen readers — describe what the image shows, e.g. &ldquo;Cross-section of skin showing the epidermis, dermis and hypodermis layers&rdquo;)
                 <input className={`${field} mt-1`} value={imageAlt} onChange={(e) => setImageAlt(e.target.value)} placeholder="Describe what the image shows" />
               </label>
             )}

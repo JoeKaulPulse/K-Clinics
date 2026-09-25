@@ -7,7 +7,7 @@ import { NavEditor } from '@/components/admin/NavEditor';
 
 type Revision = { id: string; label: string | null; createdAt: string; createdBy: string | null };
 
-const field = 'w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-porcelain)] px-3 py-2 text-sm outline-none focus:border-[var(--color-gold)]';
+const field = 'w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-porcelain)] px-3 py-2 text-sm outline-none focus:border-[var(--color-gold-deep)] focus-visible:ring-2 focus-visible:ring-[var(--color-gold-deep)]';
 const label = 'block text-xs font-medium uppercase tracking-[0.12em] text-[var(--color-stone)] mb-1.5';
 const card = 'rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-5';
 
@@ -80,6 +80,15 @@ export function SiteConfigEditor({ initial, revisions }: { initial: SiteConfig; 
             <div className="mt-4"><label className={label}>Description <span className="normal-case text-[var(--color-stone)]">(SEO / meta default)</span></label><textarea className={`${field} min-h-[80px]`} value={c.description} onChange={(e) => top('description', e.target.value)} /></div>
           </section>
 
+          {/* Homepage hero video (BLD-1348) — the slider's film slide plays this;
+              until a URL is supplied it shows the branded generative fallback. */}
+          <section className={card}>
+            <h2 className="mb-1 font-[family-name:var(--font-display)] text-xl">Homepage hero video</h2>
+            <p className="mb-4 text-sm text-[var(--color-stone)]">The homepage slider’s film slide plays this video (muted, looping). Leave blank until the film is ready — the slide shows the brand artwork instead.</p>
+            <div><label className={label}>Video URL <span className="normal-case text-[var(--color-stone)]">(MP4 or WebM)</span></label><input className={field} value={c.hero?.videoUrl || ''} placeholder="https://…/clinic-film.mp4" aria-label="Hero video URL" onChange={(e) => nest('hero', { videoUrl: e.target.value })} /></div>
+            <div className="mt-4"><label className={label}>Poster image URL <span className="normal-case text-[var(--color-stone)]">(optional — shown while the video loads)</span></label><input className={field} value={c.hero?.videoPoster || ''} placeholder="https://…/clinic-film-poster.jpg" aria-label="Hero video poster URL" onChange={(e) => nest('hero', { videoPoster: e.target.value })} /></div>
+          </section>
+
           {/* Announcement bar */}
           <section className={card}>
             <div className="mb-4 flex items-center justify-between">
@@ -148,7 +157,7 @@ export function SiteConfigEditor({ initial, revisions }: { initial: SiteConfig; 
                 <div key={i} className="grid grid-cols-[8rem_1fr_2rem] items-center gap-3">
                   <input className={field} value={k} placeholder="platform" aria-label="Social platform" onChange={(e) => { const rows = socialRows.map((r) => [...r] as [string, string]); rows[i][0] = e.target.value.toLowerCase(); setSocial(rows); }} />
                   <input className={field} value={v} placeholder="https://…" aria-label="Social profile URL" onChange={(e) => { const rows = socialRows.map((r) => [...r] as [string, string]); rows[i][1] = e.target.value; setSocial(rows); }} />
-                  <button className="text-[var(--color-stone)] hover:text-[#c0392b]" onClick={() => setSocial(socialRows.filter((_, j) => j !== i) as [string, string][])} aria-label="Remove">✕</button>
+                  <button className="text-[var(--color-stone)] hover:text-[var(--color-blush-deep)]" onClick={() => setSocial(socialRows.filter((_, j) => j !== i) as [string, string][])} aria-label="Remove">✕</button>
                 </div>
               ))}
             </div>
@@ -178,7 +187,7 @@ export function SiteConfigEditor({ initial, revisions }: { initial: SiteConfig; 
         <aside className="space-y-4 lg:sticky lg:top-6 lg:self-start">
           <div className={card}>
             <button disabled={busy} onClick={save} className="w-full rounded-full bg-[var(--color-ink)] px-5 py-3 text-sm text-[var(--color-porcelain)] disabled:opacity-50">{busy ? 'Saving…' : 'Save changes'}</button>
-            {msg && <p className={`mt-3 text-sm ${msg.kind === 'ok' ? 'text-[var(--color-jade)]' : 'text-[#c0392b]'}`}>{msg.text}</p>}
+            {msg && <p className={`mt-3 text-sm ${msg.kind === 'ok' ? 'text-[var(--color-jade)]' : 'text-[var(--color-blush-deep)]'}`}>{msg.text}</p>}
             <p className="mt-3 text-xs text-[var(--color-stone)]">Saved changes publish immediately across the live site.</p>
           </div>
 

@@ -58,7 +58,7 @@ export function ScheduleFollowUp({
     );
   }
 
-  const field = 'mt-1 w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-3 py-2 text-sm';
+  const field = 'mt-1 w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-porcelain)] px-3 py-2 text-sm';
   return (
     <div className="mt-4 rounded-[var(--radius-md)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-5">
       <p className="eyebrow mb-1 text-[var(--color-stone)]">Schedule follow-up</p>
@@ -73,7 +73,7 @@ export function ScheduleFollowUp({
           <input type="time" value={time} onChange={(e) => setTime(e.target.value)} className={field} />
         </label>
       </div>
-      {error && <p role="alert" aria-live="assertive" className="mt-2 text-sm text-[#b23b3b]">{error}</p>}
+      {error && <p role="alert" aria-live="assertive" className="mt-2 text-sm text-[var(--color-blush-deep)]">{error}</p>}
       {clash && (
         <label className="mt-2 flex items-center gap-2 text-xs text-[var(--color-stone)]">
           <input type="checkbox" checked={override} onChange={(e) => setOverride(e.target.checked)} className="h-4 w-4 accent-[var(--color-gold)]" />

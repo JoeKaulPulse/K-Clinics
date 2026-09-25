@@ -12,6 +12,39 @@ interface DialogProps {
   className?: string;
 }
 
+// ── Background scroll lock ───────────────────────────────────────────────────
+// Ref-counted at module scope rather than each overlay saving and restoring
+// document.body.style.overflow itself. React fires useEffect cleanups
+// **parent-first** inside a deleted subtree, so when an outer overlay and an
+// overlay nested inside it unmount in the same commit (a client-side
+// navigation away from a lesson with the PDF viewer open, say) the naive
+// save/restore runs backwards: the outer restores '' and then the inner
+// restores the 'hidden' it captured, leaving the page permanently unscrollable.
+// A counter is order-independent: the page unlocks when the last overlay goes,
+// whatever sequence the cleanups run in. (BLD-1194)
+let scrollLocks = 0;
+let scrollRestore = '';
+
+/**
+ * Locks background scroll while `active`. Safe to nest and to stack — every
+ * overlay that wants the lock should use this rather than touching
+ * document.body.style.overflow directly.
+ */
+export function useBodyScrollLock(active = true) {
+  useEffect(() => {
+    if (!active) return;
+    if (scrollLocks === 0) {
+      scrollRestore = document.body.style.overflow;
+      document.body.style.overflow = 'hidden';
+    }
+    scrollLocks += 1;
+    return () => {
+      scrollLocks = Math.max(0, scrollLocks - 1);
+      if (scrollLocks === 0) document.body.style.overflow = scrollRestore;
+    };
+  }, [active]);
+}
+
 const FOCUSABLE = [
   'a[href]',
   'button:not([disabled])',
@@ -46,14 +79,25 @@ export function useDialogBehaviours<T extends HTMLElement = HTMLDivElement>(onCl
     };
   }, [active]);
 
+  // Lock background scroll while active (BLD-1194, extending BLD-1183's fix in
+  // <Dialog> to every bespoke-markup modal that uses this hook directly).
+  useBodyScrollLock(active);
+
   const onKeyDown = useCallback(
     (e: KeyboardEvent<HTMLDivElement>) => {
-      if (e.key === 'Escape') { e.preventDefault(); onClose(); return; }
+      // Stop the key here once this dialog has handled it. These overlays nest:
+      // ExplainerPlayer and SecurePdfViewer render *inside* ImmersiveCourse's
+      // panel, so their keydowns bubble up the React tree to its handler too.
+      // Without this, one Escape closed the inner overlay AND exited the whole
+      // course, and one Tab ran both traps against different focusable lists.
+      if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); onClose(); return; }
       if (e.key !== 'Tab') return;
       const panel = panelRef.current;
       if (!panel) return;
       const nodes = Array.from(panel.querySelectorAll<HTMLElement>(FOCUSABLE));
+      // Nothing focusable in here — let an outer dialog's trap have the key.
       if (!nodes.length) return;
+      e.stopPropagation();
       const first = nodes[0];
       const last = nodes[nodes.length - 1];
       if (e.shiftKey) {
@@ -69,6 +113,8 @@ export function useDialogBehaviours<T extends HTMLElement = HTMLDivElement>(onCl
 }
 
 export function Dialog({ open, onClose, labelledby, label, children, className }: DialogProps) {
+  // Scroll lock (BLD-1183) now lives in useDialogBehaviours itself (BLD-1194),
+  // gated on `active` (= `open` here), so every hook consumer gets it too.
   const { panelRef, onKeyDown: trapTab } = useDialogBehaviours(onClose, open);
 
   if (!open) return null;
@@ -77,7 +123,13 @@ export function Dialog({ open, onClose, labelledby, label, children, className }
     <div className="fixed inset-0 z-50 flex items-end justify-center sm:items-center" onKeyDown={trapTab}>
       {/* Backdrop */}
       <div className="fixed inset-0 bg-black/60" aria-hidden onClick={onClose} />
-      {/* Panel */}
+      {/* Panel — `relative z-10` is load-bearing, not cosmetic: the backdrop
+          above is `fixed inset-0`, and a positioned element paints above a
+          non-positioned sibling regardless of DOM order, so without this the
+          panel rendered underneath the backdrop and every click inside it
+          landed on the backdrop's onClick={onClose} instead (BLD-1362). Lives
+          here so every <Dialog> caller gets it for free rather than each one
+          re-adding it to its own className. */}
       <div
         ref={panelRef}
         role="dialog"
@@ -85,7 +137,7 @@ export function Dialog({ open, onClose, labelledby, label, children, className }
         aria-labelledby={labelledby}
         aria-label={labelledby ? undefined : label}
         tabIndex={-1}
-        className={className}
+        className={`relative z-10${className ? ` ${className}` : ''}`}
       >
         {children}
       </div>

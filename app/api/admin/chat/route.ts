@@ -1,13 +1,20 @@
 import { NextResponse } from 'next/server';
 import { crmEnabled } from '@/lib/crm';
+import { encClinical, decClinical } from '@/lib/clinical-crypto';
 
 export const runtime = 'nodejs';
 
 export async function POST(req: Request) {
   if (!crmEnabled) return NextResponse.json({ ok: false }, { status: 503 });
-  const { requirePermission } = await import('@/lib/auth');
+  const { requirePermission, sessionCan } = await import('@/lib/auth');
   const session = await requirePermission('clients.view');
   if (!session) return NextResponse.json({ ok: false, error: 'Not permitted.' }, { status: 403 });
+  // BLD-1415: ChatMessage.body is Art. 9 clinical data (visitors routinely
+  // disclose symptoms/medical history to the AI concierge) — decrypting it
+  // needs clients.clinical.view, not just clients.view, mirroring the calls
+  // route (calls.view for the log, clients.clinical.view for the recording/
+  // transcript/notes).
+  const canClinical = sessionCan(session, 'clients.clinical.view');
 
   const b = await req.json().catch(() => ({}));
   // Replying as the clinic, taking a chat off the AI, or closing it are write
@@ -29,21 +36,37 @@ export async function POST(req: Request) {
       });
       return NextResponse.json({ ok: true, conversations: rows.map((c) => ({
         id: c.id, visitorName: c.visitorName, visitorEmail: c.visitorEmail, status: c.status, mode: c.mode, staffUnread: c.staffUnread,
-        lastMessageAt: c.lastMessageAt.toISOString(), preview: c.messages[0]?.body.slice(0, 80) ?? '',
+        // BLD-1160/BLD-1415: bodies are encrypted at rest and are Art. 9 clinical
+        // data — decrypt the preview snippet only for staff with clients.clinical.view
+        // (decClinical tolerates legacy plaintext rows).
+        lastMessageAt: c.lastMessageAt.toISOString(), preview: canClinical && c.messages[0] ? decClinical(c.messages[0].body).slice(0, 80) : '',
       })) });
     }
     case 'messages': {
       if (!b.conversationId) return NextResponse.json({ ok: false }, { status: 400 });
+      // BLD-1415: the thread is full clinical chat history — require the same
+      // clinical-data permission as the calls transcript/recording route.
+      if (!canClinical) return NextResponse.json({ ok: false, error: 'Clinical data access not permitted.' }, { status: 403 });
       const id = String(b.conversationId);
       const [convo, messages] = await Promise.all([
-        db.chatConversation.findUnique({ where: { id }, select: { id: true, visitorName: true, visitorEmail: true, status: true, mode: true, page: true } }),
+        db.chatConversation.findUnique({ where: { id }, select: { id: true, clientId: true, visitorName: true, visitorEmail: true, status: true, mode: true, page: true } }),
         db.chatMessage.findMany({ where: { conversationId: id }, orderBy: { createdAt: 'asc' }, take: 300, select: { id: true, sender: true, author: true, body: true, createdAt: true } }),
       ]);
       if (!convo) return NextResponse.json({ ok: false }, { status: 404 });
       await db.chatConversation.update({ where: { id }, data: { staffUnread: 0 } }).catch(() => {});
       const { listChatEmails } = await import('@/lib/chat-email');
       const emails = await listChatEmails(id);
-      return NextResponse.json({ ok: true, conversation: convo, messages: messages.map((m) => ({ ...m, createdAt: m.createdAt.toISOString() })), emails: emails.map((e) => ({ id: e.id, to: e.to, subject: e.subject, status: e.status, openedAt: e.openedAt?.toISOString() || null, createdAt: e.createdAt.toISOString(), chatKind: (e.meta as { chatKind?: string } | null)?.chatKind || 'reply' })) });
+      // BLD-1160: bodies are encrypted at rest; decrypt for display in the CRM
+      // thread (decClinical tolerates legacy plaintext rows).
+      const decMessages = messages.map((m) => ({ ...m, body: decClinical(m.body), createdAt: m.createdAt.toISOString() }));
+      // BLD-1419/BLD-1415: a medical-record view — audit it (throttled per
+      // viewer/client/hour). Only chats linked to a signed-in client carry a
+      // clientId to audit against; anonymous visitor chats have none.
+      if (convo.clientId && session.email) {
+        const { auditClinicalView } = await import('@/lib/clinical-view-audit');
+        auditClinicalView({ actor: session.email, actorRole: session.role, clientId: convo.clientId, surface: 'admin-chat-thread' });
+      }
+      return NextResponse.json({ ok: true, conversation: convo, messages: decMessages, emails: emails.map((e) => ({ id: e.id, to: e.to, subject: e.subject, status: e.status, openedAt: e.openedAt?.toISOString() || null, createdAt: e.createdAt.toISOString(), chatKind: (e.meta as { chatKind?: string } | null)?.chatKind || 'reply' })) });
     }
     case 'emailTranscript': {
       const id = String(b.conversationId || '');
@@ -70,7 +93,8 @@ export async function POST(req: Request) {
         authorPublic = !!u?.publicProfile;
         authorTitle = u?.title || null;
       }
-      const staffMsg = await db.chatMessage.create({ data: { conversationId: id, sender: 'STAFF', author: session.email, authorName: firstName, authorTitle, authorId: isAnon ? null : session.sub, authorPublic, body } });
+      // BLD-1160: encrypt at rest, matching the visitor-side write path.
+      const staffMsg = await db.chatMessage.create({ data: { conversationId: id, sender: 'STAFF', author: session.email, authorName: firstName, authorTitle, authorId: isAnon ? null : session.sub, authorPublic, body: encClinical(body) as string } });
       await db.chatConversation.update({ where: { id }, data: { lastMessageAt: new Date(), status: 'OPEN', mode: 'STAFF', staffUnread: 0 } });
       // Email the visitor: forced when staff hit "Send & email"; otherwise only
       // if they've left their email and stepped away from the chat.

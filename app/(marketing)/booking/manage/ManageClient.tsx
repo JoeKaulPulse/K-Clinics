@@ -1,7 +1,13 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import Link from 'next/link';
 import { Button } from '@/components/ui/Button';
+// BLD-1421: reuse the fresh-booking flow's waitlist CTA instead of a dead end.
+// Imported from its own module, not from BookingFlow, so this page doesn't pull
+// the booking wizard and the Stripe SDK into its client bundle.
+import { WaitlistCTA } from '@/components/booking/WaitlistCTA';
+import { CANCELLATION_POLICY_HREF, CANCELLATION_POLICY_NAME, CANCELLATION_POLICY_PHONE_DISPLAY, CANCELLATION_POLICY_PHONE_HREF } from '@/lib/cancellation-policy';
 
 type B = {
   treatmentTitle: string;
@@ -13,6 +19,8 @@ type B = {
   within48h: boolean;
   cancelled: boolean;
   rescheduleCount: number;
+  clientFirstName: string;
+  clientEmail: string;
 };
 
 type Slot = { startISO: string; label: string };
@@ -149,16 +157,28 @@ export function ManageClient({ token, booking }: { token: string; booking: B }) 
       <p className="mt-2 text-[var(--color-stone)]">{when}</p>
       <p className="mt-1 text-[var(--color-stone)]">{booking.pricePence > 0 ? money(booking.pricePence) : 'Assessed at your visit'}</p>
 
-      {msg && <p className="mt-6 rounded-[var(--radius-sm)] bg-[var(--color-porcelain)] px-4 py-3 text-sm">{msg}</p>}
+      {msg && <p role="status" aria-live="polite" className="mt-6 rounded-[var(--radius-sm)] bg-[var(--color-porcelain)] px-4 py-3 text-sm">{msg}</p>}
 
       {!done && (
         <div className="mt-8 space-y-6 border-t border-[var(--color-line)] pt-6">
+          {/* BLD-1920: inside 48h, self-service cancel AND reschedule are both
+              blocked outright — one shared notice replaces both sections below
+              rather than two separate "call us" messages, since the reason
+              and the required action are identical. */}
+          {booking.within48h ? (
+            <div className="rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-5">
+              <p className="text-sm text-[var(--color-ink)]">
+                This appointment is less than 48 hours away, so it’s now subject to our{' '}
+                <Link href={CANCELLATION_POLICY_HREF} className="font-medium underline">{CANCELLATION_POLICY_NAME}</Link>.
+                Online cancellation and rescheduling are no longer available for this booking — please call us on{' '}
+                <a href={CANCELLATION_POLICY_PHONE_HREF} className="font-medium text-[var(--color-ink)]">{CANCELLATION_POLICY_PHONE_DISPLAY}</a> and our team will help.
+              </p>
+            </div>
+          ) : (
+          <>
           {/* Reschedule section */}
           {!showReschedule ? (
             <div>
-              {booking.within48h ? (
-                <p className="text-sm text-[var(--color-stone)]">Reschedules require at least 48 hours notice. To change this appointment, please call us on <a href="tel:02080500750" className="font-medium text-[var(--color-ink)]">020 8050 0750</a>.</p>
-              ) : (
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   <div>
                     <p className="text-sm font-medium text-[var(--color-ink)]">Reschedule appointment</p>
@@ -168,7 +188,6 @@ export function ManageClient({ token, booking }: { token: string; booking: B }) 
                   </div>
                   <Button onClick={() => setShowReschedule(true)} variant="outline">Pick a new time</Button>
                 </div>
-              )}
             </div>
           ) : (
             <div className="rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-5">
@@ -210,7 +229,15 @@ export function ManageClient({ token, booking }: { token: string; booking: B }) 
                 </div>
               )}
               {!loadingSlots && rescheduleDate && slots.length === 0 && (
-                <p className="mt-3 text-sm text-[var(--color-stone)]">No availability on this date. Please try another day or call us.</p>
+                <div>
+                  <p className="mt-3 text-sm text-[var(--color-stone)]">No availability on this date. Please try another day or call us.</p>
+                  <WaitlistCTA
+                    treatmentSlug={booking.treatmentSlug}
+                    treatmentTitle={booking.treatmentTitle}
+                    date={rescheduleDate}
+                    client={{ firstName: booking.clientFirstName, email: booking.clientEmail }}
+                  />
+                </div>
               )}
               {selectedSlot && (
                 <Button onClick={submitReschedule} variant="gold" className="mt-5">
@@ -220,15 +247,13 @@ export function ManageClient({ token, booking }: { token: string; booking: B }) 
             </div>
           )}
 
-          {/* Cancel section */}
+          {/* Cancel section. BLD-1920: this whole section only ever renders
+              when booking.within48h is false, which guarantees within24h is
+              also false (24h < 48h) — so a self-service cancellation can no
+              longer land inside the 24h fee window; that fee still applies to
+              a staff-assisted cancellation (lib/booking-actions.ts). */}
           <div>
-            {booking.within24h ? (
-              <p className="mb-3 text-sm text-[var(--color-stone)]">
-                Cancelling now (within 24 hours) will incur the full fee of {money(booking.pricePence)}.
-              </p>
-            ) : (
-              <p className="mb-3 text-sm text-[var(--color-stone)]">You can cancel free of charge until 24 hours before your appointment.</p>
-            )}
+            <p className="mb-3 text-sm text-[var(--color-stone)]">You can cancel online free of charge until 48 hours before your appointment.</p>
             {!confirming ? (
               <Button onClick={() => setConfirming(true)} variant="outline">Cancel booking</Button>
             ) : (
@@ -239,6 +264,8 @@ export function ManageClient({ token, booking }: { token: string; booking: B }) 
               </div>
             )}
           </div>
+          </>
+          )}
         </div>
       )}
     </div>

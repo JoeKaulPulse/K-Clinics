@@ -45,6 +45,7 @@ export default async function SeoPage() {
           ) : gsc.topQueries.length === 0 ? (
             <p className="text-sm text-[var(--color-stone)]">No Search Console data for the last 28 days.</p>
           ) : (
+            <div className="overflow-x-auto">{/* BLD-1125: body has overflow-x: clip, so wide tables must scroll in their own container */}
             <table className="w-full text-sm">
               <thead><tr className="text-left text-xs uppercase tracking-wide text-[var(--color-stone)]"><th className="pb-2">Query</th><th className="pb-2 text-right">Clicks</th><th className="pb-2 text-right">Impr.</th><th className="pb-2 text-right">CTR</th><th className="pb-2 text-right">Pos.</th></tr></thead>
               <tbody>
@@ -59,6 +60,7 @@ export default async function SeoPage() {
                 ))}
               </tbody>
             </table>
+            </div>
           )}
         </section>
 

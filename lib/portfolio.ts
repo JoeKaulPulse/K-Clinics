@@ -2,6 +2,7 @@ import 'server-only';
 import { db } from '@/lib/db';
 import { currentTenantId } from '@/lib/tenant';
 import { PORTFOLIO_PHOTO_RELAY } from '@/lib/portfolio-blob';
+import { escapeHtml } from '@/lib/sanitize';
 
 // ── BLD-534: learner portfolio ───────────────────────────────────────────────
 // A trainee's evidence log of practical case studies, reviewed by tutors.
@@ -190,13 +191,13 @@ export async function deleteEntry(studentId: string, id: string): Promise<{ ok: 
 }
 
 // ── Admin / tutor review ─────────────────────────────────────────────────────
-export type AdminPortfolioEntry = PortfolioEntryView & { studentName: string; studentEmail: string; reviewedBy: string | null };
+export type AdminPortfolioEntry = PortfolioEntryView & { studentName: string; studentEmail: string; reviewedBy: string | null; clientLinked: boolean; clientEmail: string | null };
 
 /** All entries for review — submitted first, then needs-work, approved, drafts. */
 export async function adminListEntries(): Promise<AdminPortfolioEntry[]> {
   const rows = await db.portfolioEntry.findMany({
     orderBy: { updatedAt: 'desc' }, take: 400,
-    include: { course: { select: { title: true } }, student: { select: { firstName: true, lastName: true, email: true } } },
+    include: { course: { select: { title: true } }, student: { select: { firstName: true, lastName: true, email: true } }, client: { select: { email: true } } },
   });
   const order: Record<string, number> = { SUBMITTED: 0, NEEDS_WORK: 1, APPROVED: 2, DRAFT: 3 };
   return rows
@@ -204,6 +205,9 @@ export async function adminListEntries(): Promise<AdminPortfolioEntry[]> {
       ...toView(e), reviewedBy: e.reviewedBy,
       studentName: [e.student?.firstName, e.student?.lastName].filter(Boolean).join(' ') || e.student?.email || 'Trainee',
       studentEmail: e.student?.email ?? '',
+      // BLD-1291: whether the case is linked to the photographed client's record.
+      clientLinked: Boolean(e.clientId),
+      clientEmail: e.client?.email ?? null,
     }))
     .sort((a, b) => (order[a.status] ?? 9) - (order[b.status] ?? 9) || (a.updatedAt < b.updatedAt ? 1 : -1));
 }
@@ -211,8 +215,95 @@ export async function adminListEntries(): Promise<AdminPortfolioEntry[]> {
 /** Tutor sets a review outcome + feedback. */
 export async function reviewEntry(staffEmail: string, id: string, status: string, feedback: string): Promise<{ ok: boolean; error?: string }> {
   if (status !== 'APPROVED' && status !== 'NEEDS_WORK') return { ok: false, error: 'Invalid status.' };
-  const e = await db.portfolioEntry.findUnique({ where: { id }, select: { id: true } });
+  const e = await db.portfolioEntry.findUnique({ where: { id }, select: { id: true, studentId: true } });
   if (!e) return { ok: false, error: 'Not found.' };
   await db.portfolioEntry.update({ where: { id }, data: { status, feedback: feedback.trim().slice(0, 4000) || null, reviewedBy: staffEmail, reviewedAt: new Date() } });
+  notifyPortfolioReviewed(e.studentId, id).catch(() => {});
   return { ok: true };
+}
+
+/** Best-effort email to a trainee that their portfolio case was reviewed
+ *  (BLD-1809). Mirrors notifyHomeworkGraded (lib/lms.ts): same lookup shape,
+ *  same emailShell template, same fire-and-forget call convention. */
+export async function notifyPortfolioReviewed(studentId: string, entryId: string): Promise<void> {
+  const entry = await db.portfolioEntry.findUnique({
+    where: { id: entryId },
+    select: {
+      title: true, status: true, feedback: true,
+      student: { select: { email: true, firstName: true } },
+    },
+  });
+  if (!entry || !entry.student?.email) return;
+  if (entry.status !== 'APPROVED' && entry.status !== 'NEEDS_WORK') return;
+
+  const outcome = entry.status === 'APPROVED'
+    ? { verb: 'approved', line: 'Your case has been <strong>approved</strong> — nice work.' }
+    : { verb: 'sent back for changes', line: 'Your tutor has asked for <strong>changes</strong> to this case — please revise and resubmit it.' };
+
+  const base = process.env.NEXT_PUBLIC_SITE_URL || process.env.NEXT_PUBLIC_BASE_URL || 'https://kclinics.co.uk';
+  const url = `${base}/academy/portfolio`;
+  try {
+    const { sendEmail, emailShell } = await import('@/lib/email');
+    await sendEmail({
+      to: entry.student.email,
+      subject: `Portfolio case ${outcome.verb} — ${entry.title}`,
+      html: emailShell({
+        preheader: `Your portfolio case "${entry.title}" was ${outcome.verb}.`,
+        body: `<h1 style="font-size:24px;margin:0 0 14px;">Your portfolio case was ${outcome.verb}</h1>
+          <p style="margin:0 0 12px;">Hi ${escapeHtml(entry.student.firstName || 'there')},</p>
+          <p style="margin:0 0 12px;">${outcome.line} This was for <strong>${escapeHtml(entry.title)}</strong>.</p>
+          ${entry.feedback ? `<p style="margin:0 0 12px;"><strong>Tutor feedback:</strong><br>${escapeHtml(entry.feedback)}</p>` : ''}
+          <p style="margin:0 0 22px;"><a class="kc-btn" href="${url}" style="display:inline-block;background:#2a2420;color:#f7f1e8;text-decoration:none;padding:13px 26px;border-radius:999px;font-weight:600;">View your portfolio &rarr;</a></p>`,
+      }),
+    });
+  } catch { /* best-effort */ }
+}
+
+// ── BLD-1291: data-subject reachability ──────────────────────────────────────
+// Portfolio cases hold fully identifying clinical photos of REAL clients, but
+// only a free-text clientRef ("Client A") — invisible to erasure and SAR. Staff
+// link each case to the actual client record here (by the email the clinic
+// holds for them); erasure and the SAR export then reach the photos.
+
+/** Staff: link a portfolio case to the photographed client (by client email),
+ *  or unlink with an empty email. Audit-logged both ways. */
+export async function linkPortfolioClient(staffEmail: string, entryId: string, clientEmail: string): Promise<{ ok: boolean; error?: string; clientName?: string }> {
+  const e = await db.portfolioEntry.findUnique({ where: { id: entryId }, select: { id: true, title: true, clientId: true } });
+  if (!e) return { ok: false, error: 'Case not found.' };
+  const email = clientEmail.trim().toLowerCase();
+  const { logAudit } = await import('@/lib/audit');
+  if (!email) {
+    await db.portfolioEntry.update({ where: { id: entryId }, data: { clientId: null } });
+    await logAudit({ action: 'NOTE_ADDED', actor: staffEmail, clientId: e.clientId, summary: `Academy portfolio case "${e.title}" unlinked from its client record (BLD-1291)` }).catch(() => {});
+    return { ok: true };
+  }
+  const client = await db.client.findFirst({ where: { email: { equals: email, mode: 'insensitive' } }, select: { id: true, firstName: true, lastName: true } });
+  if (!client) return { ok: false, error: 'No client with that email address. Check the spelling, or create the client record first.' };
+  await db.portfolioEntry.update({ where: { id: entryId }, data: { clientId: client.id } });
+  await logAudit({ action: 'NOTE_ADDED', actor: staffEmail, clientId: client.id, summary: `Academy portfolio case "${e.title}" linked to the photographed client's record — its photos are now covered by erasure and subject-access export (BLD-1291)` }).catch(() => {});
+  return { ok: true, clientName: [client.firstName, client.lastName].filter(Boolean).join(' ') };
+}
+
+/** Erasure (Art. 17): delete every portfolio case linked to this client,
+ *  including the photo blobs themselves (best-effort — a blob-store failure is
+ *  reported so staff can follow up, never silently swallowed). Called from
+ *  eraseClientData. Returns counts for the audit summary. */
+export async function erasePortfolioForClient(clientId: string): Promise<{ entries: number; blobsFailed: number }> {
+  const entries = await db.portfolioEntry.findMany({ where: { clientId }, select: { id: true, photos: true } });
+  if (!entries.length) return { entries: 0, blobsFailed: 0 };
+  const urls = entries.flatMap((e) => cleanPhotos(e.photos).map((p) => p.url)).filter((u) => /^https?:\/\//.test(u));
+  await db.portfolioEntry.deleteMany({ where: { clientId } });
+  let blobsFailed = 0;
+  if (urls.length && process.env.BLOB_READ_WRITE_TOKEN) {
+    try {
+      const { del } = await import('@vercel/blob');
+      await del(urls);
+    } catch (err) {
+      blobsFailed = urls.length;
+      console.error('[portfolio] blob deletion during erasure failed (rows already deleted):', (err as Error)?.message);
+    }
+  } else if (urls.length) {
+    blobsFailed = urls.length; // no blob token in this environment — rows gone, files need manual cleanup
+  }
+  return { entries: entries.length, blobsFailed };
 }

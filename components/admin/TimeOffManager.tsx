@@ -11,8 +11,8 @@ type TeamItem = { id: string; staffName: string; kind: string; startAt: string; 
 const KIND_VALUES = ['HOLIDAY', 'SICK', 'TRAINING', 'PERSONAL'];
 
 const STATUS_STYLE: Record<string, string> = {
-  PENDING: 'bg-amber-100 text-amber-800',
-  APPROVED: 'bg-green-100 text-green-800',
+  PENDING: 'bg-[var(--color-gold)]/20 text-[var(--color-ink)]',
+  APPROVED: 'bg-[var(--color-jade)]/15 text-[var(--color-ink)]',
   DECLINED: 'bg-[var(--color-blush)]/20 text-[var(--color-ink)]',
   CANCELLED: 'bg-[var(--color-bone)] text-[var(--color-stone)]',
 };
@@ -77,7 +77,7 @@ function RequestForm({ requiresApproval, canApprove }: { requiresApproval: boole
     }
   }
 
-  const field = 'w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-3 py-2 text-sm outline-none focus:border-[var(--color-gold)]';
+  const field = 'w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-porcelain)] px-3 py-2 text-sm outline-none focus:border-[var(--color-gold-deep)] focus-visible:ring-2 focus-visible:ring-[var(--color-gold-deep)]';
   return (
     <section className="rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-6">
       <h2 className="mb-4 font-[family-name:var(--font-display)] text-xl">{t('timeoff.request')}</h2>
@@ -170,24 +170,29 @@ function Approvals({ pending }: { pending: Pending[] }) {
   const router = useRouter();
   const t = useT();
   const [busyId, setBusyId] = useState('');
+  // BLD-1886: approving over an existing booking comes back as a warning
+  // (code: 'BOOKING_CONFLICT'), not a hard error — offer "Approve anyway"
+  // for that one request instead of just alerting the message away.
+  const [conflict, setConflict] = useState<{ id: string; message: string } | null>(null);
 
-  async function decide(id: string, op: 'approve' | 'decline') {
+  async function decide(id: string, op: 'approve' | 'decline', force = false) {
     let note: string | undefined;
     if (op === 'decline') {
       note = window.prompt('Reason for declining (optional, shown to the staff member):') || undefined;
     }
     setBusyId(id);
-    const { ok, json } = await postTimeOff({ op, id, note });
+    const { ok, json } = await postTimeOff({ op, id, note, force });
     setBusyId('');
-    if (ok) router.refresh();
-    else alert(json?.error || 'Could not update this request.');
+    if (ok) { setConflict(null); router.refresh(); }
+    else if (json?.code === 'BOOKING_CONFLICT') setConflict({ id, message: json.error || 'That staff member already has appointments in this window.' });
+    else { setConflict(null); alert(json?.error || 'Could not update this request.'); }
   }
 
   return (
     <section className="rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-6">
       <div className="mb-4 flex items-center gap-2">
         <h2 className="font-[family-name:var(--font-display)] text-xl">{t('timeoff.pending')}</h2>
-        {pending.length > 0 && <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-800">{pending.length}</span>}
+        {pending.length > 0 && <span className="rounded-full bg-[var(--color-gold)]/20 px-2 py-0.5 text-xs font-medium text-[var(--color-gold-deep)]">{pending.length}</span>}
       </div>
       {pending.length === 0 && <p className="text-sm text-[var(--color-stone)]">{t('timeoff.noPending')}</p>}
       <ul className="space-y-3">
@@ -203,6 +208,15 @@ function Approvals({ pending }: { pending: Pending[] }) {
               <button onClick={() => decide(item.id, 'approve')} disabled={busyId === item.id} className="rounded-full bg-[var(--color-ink)] px-4 py-1.5 text-xs text-[var(--color-porcelain)] disabled:opacity-50">{t('timeoff.approve')}</button>
               <button onClick={() => decide(item.id, 'decline')} disabled={busyId === item.id} className="rounded-full border border-[var(--color-line)] px-4 py-1.5 text-xs hover:border-[var(--color-blush)] hover:text-[var(--color-blush-deep)] disabled:opacity-50">{t('timeoff.decline')}</button>
             </div>
+            {conflict?.id === item.id && (
+              <div className="mt-2 rounded-[var(--radius-sm)] border border-[var(--color-gold)] bg-[var(--color-gold)]/10 p-2">
+                <p className="text-xs text-[var(--color-ink)]">{conflict.message}</p>
+                <div className="mt-1.5 flex items-center gap-2">
+                  <button onClick={() => decide(item.id, 'approve', true)} disabled={busyId === item.id} className="rounded-full bg-[var(--color-gold-deep)] px-3 py-1 text-xs font-medium text-white disabled:opacity-60">{busyId === item.id ? '…' : 'Approve anyway'}</button>
+                  <button onClick={() => setConflict(null)} className="text-xs text-[var(--color-stone)]">Cancel</button>
+                </div>
+              </div>
+            )}
           </li>
         ))}
       </ul>

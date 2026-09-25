@@ -11,6 +11,24 @@ export const VOUCHER_MAX = 50000;  // £500
 // One shared rejection message so previews and reservations never disagree in copy.
 export const VOUCHER_INVALID_ERROR = 'That voucher code isn’t valid, has expired, or has no balance left.';
 
+// BLD-1918: one shared rejection message for every place a voucher is applied
+// against a specific treatment, so the checkout UI, the API error and the
+// public/portal notices all say exactly the same thing.
+export const GIFT_CARD_TREATMENT_EXCLUDED_ERROR = 'Gift cards cannot be used for injectable treatments or CO2 laser treatments.';
+
+/** BLD-1918 server-side gate: can a gift card be applied against this
+ *  treatment? Only false for the clinic's injectable and CO2 laser treatments
+ *  (lib/treatments.ts `giftCardExcluded`) — every other treatment is
+ *  unaffected. Call this before reserveVoucher() whenever the reservation is
+ *  against a specific treatment/booking (a shop/product checkout has no
+ *  treatment and never calls this). Defaults to allowed (true) for an
+ *  unrecognised slug — that booking's own validation already refused it
+ *  elsewhere; this gate exists only to enforce the exclusion list. */
+export async function giftCardAllowedForTreatment(treatmentSlug: string): Promise<boolean> {
+  const { isGiftCardExcludedTreatment } = await import('@/lib/treatments');
+  return !isGiftCardExcludedTreatment(treatmentSlug);
+}
+
 /** Read-only spendability check (BLD-882): the single predicate both the POS
  *  preview and error paths use, kept in step with reserveVoucher's guard so a
  *  preview can never promise a balance a reservation would refuse. Returns 0
@@ -39,9 +57,17 @@ export async function undoVoucherReservation(code: string | null, pence: number)
 const baseUrl = () => process.env.NEXT_PUBLIC_SITE_URL || site.url;
 const money = (p: number) => `£${(p / 100).toLocaleString('en-GB', { minimumFractionDigits: p % 100 ? 2 : 0 })}`;
 
+// BLD-1657: 4 segments of 2 random bytes each = 8 bytes (64 bits) of entropy,
+// up from the previous 2-segment/4-byte (32-bit) code — a distributed brute
+// force across the claim endpoint's per-IP rate limit (5/600s) is no longer
+// remotely feasible against a live active code. Same hex alphabet and 4-char
+// segment width as before, just more segments, so every existing
+// display/validation path (unconstrained String columns, no length regex —
+// checked across the codebase) keeps working unchanged. Already-issued
+// shorter codes in the DB stay valid; only newly generated codes are longer.
 function genCode(): string {
   const part = () => crypto.randomBytes(2).toString('hex').toUpperCase();
-  return `KC-GV-${part()}-${part()}`;
+  return `KC-GV-${part()}-${part()}-${part()}-${part()}`;
 }
 
 export type VoucherInput = {
@@ -56,11 +82,24 @@ export type VoucherInput = {
   physical?: boolean;        // paid printed-card upgrade
   ship?: { name?: string; line1?: string; line2?: string; city?: string; postcode?: string };
   packageSlug?: string;      // buy a specific giftable package as a gift (fixes the amount)
+  marketingOptIn?: boolean;  // BLD-1188: purchaser's marketing opt-in (consent evidence recorded below)
 };
 
 /** Create a PENDING voucher + a Stripe PaymentIntent (charged now). The card
  *  value is `amountPence`; an optional physical-card fee is added to the charge
- *  only — the recipient's balance is always the gift value. */
+ *  only — the recipient's balance is always the gift value.
+ *
+ *  BLD-1919: a gift card is always sold at its full selected value. This
+ *  function deliberately takes no promo/discount-code, offer or coupon
+ *  parameter, and `amount` below is priced from `VoucherInput`/the published
+ *  package price ONLY — never through priceWithPromo (lib/promo.ts) or
+ *  ServiceOffer (lib/services.ts), which apply to treatment bookings, not
+ *  vouchers. The Stripe PaymentIntent is created for exactly `amount +
+ *  feePence`, and confirmVoucher() below re-checks the amount actually
+ *  received against that same figure before activating the card, so a
+ *  manipulated client request can't pay less and still receive full value.
+ *  If a discount mechanism is ever added to the site, it must not be wired in
+ *  here — do not add a discount/promo/offer field to VoucherInput. */
 export async function createVoucherIntent(input: VoucherInput): Promise<{ ok: boolean; error?: string; voucherId?: string; clientSecret?: string }> {
   if (!input.purchaserName?.trim() || !/\S+@\S+\.\S+/.test(input.purchaserEmail || '')) return { ok: false, error: 'Please enter your name and a valid email.' };
 
@@ -94,6 +133,29 @@ export async function createVoucherIntent(input: VoucherInput): Promise<{ ok: bo
     feePence = await getConfigNumber('gift_card_physical_fee_pence');
   }
   const charge = amount + feePence;
+
+  // BLD-1188: record the purchaser's marketing opt-in against their Client
+  // record (creating it if new), with recorded consent evidence — not just the
+  // bare boolean — matching the no-clobber pattern used by /api/consult and
+  // /api/booking/create. Best-effort: a CRM hiccup must never block a purchase.
+  try {
+    const { marketingConsentFields } = await import('@/lib/consent');
+    const emailNorm = input.purchaserEmail.trim().toLowerCase();
+    const existing = await db.client.findUnique({ where: { email: emailNorm }, select: { firstName: true, marketingOptIn: true } });
+    const noClobber: Record<string, unknown> = {};
+    if (existing) {
+      if (input.marketingOptIn && !existing.marketingOptIn) { noClobber.marketingOptIn = true; Object.assign(noClobber, marketingConsentFields('gift-voucher-checkout')); }
+    }
+    await db.client.upsert({
+      where: { email: emailNorm },
+      update: noClobber,
+      create: {
+        firstName: input.purchaserName.trim(), email: emailNorm, source: 'gift-voucher-checkout',
+        marketingOptIn: !!input.marketingOptIn,
+        ...(input.marketingOptIn ? marketingConsentFields('gift-voucher-checkout') : {}),
+      },
+    });
+  } catch (e) { console.error('[gift-vouchers] purchaser client upsert failed (continuing):', (e as Error)?.message); }
 
   const deliverAt = input.deliverAt ? new Date(input.deliverAt) : null;
   const voucher = await db.giftVoucher.create({
@@ -172,6 +234,15 @@ async function sendVoucherEmails(voucherId: string, sendToRecipient: boolean, op
   const { sendEmail, tmplCustomGiftCard, tmplGiftVoucherReceipt } = await import('@/lib/email');
   const what = v.packageName || `gift card — ${money(v.amountPence)}`;
   const tasks: Promise<SendResult>[] = [];
+  // BLD-1680: deliberately NOT threading a vatBreakdown()/effectiveVatClass()
+  // call into tmplGiftVoucherReceipt, unlike the charge/order/academy receipts.
+  // A KClinics gift voucher/card is redeemable against any treatment (mixed
+  // EXEMPT dentistry + STANDARD aesthetics) — a "multi-purpose voucher" under UK
+  // VAT law (VATA 1994 Sch 10B). No supply happens at the point of sale, so no
+  // VAT is due and no net/VAT breakdown belongs on THIS receipt, regardless of
+  // vat_registered. VAT is correctly accounted for later, at redemption, by
+  // chargeBooking's existing vatBreakdown() call on the treatment actually
+  // booked (lib/booking-actions.ts) — that is the true tax point.
   if (opts.purchaserReceipt !== false) {
     tasks.push(sendEmail({ to: v.purchaserEmail, subject: `Your KClinics ${v.packageName ? 'gift' : 'gift card'} — ${v.packageName || money(v.amountPence)}`, html: tmplGiftVoucherReceipt({ purchaserName: v.purchaserName, amount: money(v.amountPence), code: v.code, recipientName: v.recipientName, scheduled: !sendToRecipient && !!v.deliverAt, deliverAt: v.deliverAt, designId: v.design, packageName: v.packageName }) }));
   }
@@ -209,8 +280,12 @@ export async function deliverDueVouchers(): Promise<number> {
   return sent;
 }
 
-/** Staff: deduct from a voucher's balance (manual redemption). */
-export async function redeemVoucher(id: string, amountPence: number): Promise<{ ok: boolean; error?: string; balancePence?: number }> {
+/** Staff: deduct from a voucher's balance (manual redemption). `redeemedPence`
+ *  is the amount actually taken, which is capped at the live balance — it can be
+ *  less than the requested `amountPence`, so callers that record or display the
+ *  redemption (the audit trail in app/api/admin/gift-vouchers/route.ts) must use
+ *  this and not the requested figure. */
+export async function redeemVoucher(id: string, amountPence: number): Promise<{ ok: boolean; error?: string; balancePence?: number; redeemedPence?: number }> {
   const v = await db.giftVoucher.findUnique({ where: { id } });
   if (!v) return { ok: false, error: 'Voucher not found.' };
   if (v.status !== 'ACTIVE') return { ok: false, error: v.status === 'PENDING' ? 'This voucher isn’t active yet (payment pending).' : 'This voucher is no longer valid.' };
@@ -227,7 +302,7 @@ export async function redeemVoucher(id: string, amountPence: number): Promise<{ 
   if (res.count === 0) return { ok: false, error: 'This voucher no longer has enough balance.' };
   const after = await db.giftVoucher.findUnique({ where: { id }, select: { balancePence: true } });
   if (after?.balancePence === 0) await db.giftVoucher.updateMany({ where: { id, balancePence: 0 }, data: { status: 'REDEEMED' } });
-  return { ok: true, balancePence: after?.balancePence ?? 0 };
+  return { ok: true, balancePence: after?.balancePence ?? 0, redeemedPence: take };
 }
 
 /** Reserve up to `maxPence` from a live voucher by code, ATOMICALLY — the live

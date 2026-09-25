@@ -11,9 +11,12 @@ export const dynamic = 'force-dynamic';
 
 // BLD-707: server-side permission gate — the middleware only proves a valid
 // admin session; every other /admin page also checks the specific permission.
-// Only settings.manage may open the workspace/integrations settings.
+// BLD-1413: Google Workspace account creation/suspension and group membership
+// are comparably sensitive to a financial export or key rotation, so this page
+// (and every API route it drives) now needs the dedicated, OWNER-only-by-default
+// workspace.manage permission rather than the generic settings.manage.
 export default async function WorkspacePage() {
   const session = await getSession();
-  if (!sessionCan(session, 'settings.manage')) redirect('/admin');
+  if (!sessionCan(session, 'workspace.manage')) redirect('/admin');
   return <WorkspaceClient />;
 }

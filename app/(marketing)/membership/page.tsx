@@ -7,7 +7,7 @@ import { BookingButtons } from '@/components/booking/BookingButtons';
 import { Button, ArrowIcon } from '@/components/ui/Button';
 import { Glyph } from '@/components/ui/Glyph';
 import { LOYALTY } from '@/lib/client-loyalty';
-import { site } from '@/lib/site';
+import { PhoneLink } from '@/components/marketing/PhoneLink';
 import { pageMeta, JsonLd, breadcrumbLd } from '@/lib/seo';
 
 // BLD-517: hourly ISR so these mostly-static pages are cached, not full SSR per request.
@@ -16,7 +16,7 @@ export const revalidate = 3600;
 export const generateMetadata = (): Promise<Metadata> => pageMeta({
   title: 'Membership & Beauty Points Rewards | KClinics London',
   description:
-    'Join KClinics’ free Beauty Points programme — earn 1 point per £1, plus bonuses for reviews, birthdays and referrals. Redeem points as money off future treatments in Islington, London.',
+    'Join KClinics’ free Beauty Points programme — earn 1 point per £1, plus bonuses for reviews, birthdays and referrals, redeemable on treatments.',
   path: '/membership',
   keywords: ['clinic membership London', 'beauty rewards programme', 'loyalty points aesthetics'],
 });
@@ -83,7 +83,7 @@ export default async function MembershipPage() {
           {EARN.map((e) => (
             <StaggerItem key={e.t}>
               <div className="group flex h-full flex-col rounded-[var(--radius-xl)] border border-[var(--color-line)] bg-[var(--color-bone)] p-7 transition-all duration-700 [transition-timing-function:var(--ease-lux)] hover:-translate-y-1.5 hover:border-[color-mix(in_oklab,var(--color-gold)_45%,var(--color-line))] hover:bg-[var(--color-porcelain)] hover:shadow-[var(--shadow-lift)]">
-                <span className="text-2xl text-[var(--color-gold)]" aria-hidden>{e.icon}</span>
+                <span className="text-2xl text-[var(--color-gold-deep)]" aria-hidden>{e.icon}</span>
                 <p className="mt-4 font-[family-name:var(--font-display)] text-2xl text-gold-gradient">{e.v}</p>
                 <h3 className="mt-1 font-[family-name:var(--font-display)] text-lg">{e.t}</h3>
                 <p className="mt-2 text-sm leading-relaxed text-[var(--color-stone)]">{e.d}</p>
@@ -111,7 +111,7 @@ export default async function MembershipPage() {
           </Stagger>
           <Reveal>
             <p className="mx-auto mt-8 max-w-2xl text-center text-sm text-[var(--color-stone)]">
-              Manage your balance, see what’s expiring and grab your referral link any time from your <Link href="/account/rewards" className="link-underline font-medium text-[var(--color-ink)]">rewards page</Link>. Questions? Call <a href={site.phoneHref} className="link-underline font-medium text-[var(--color-ink)]">{site.phone}</a>.
+              Manage your balance, see what’s expiring and grab your referral link any time from your <Link href="/account/rewards" className="link-underline font-medium text-[var(--color-ink)]">rewards page</Link>. Questions? Call <PhoneLink className="link-underline font-medium text-[var(--color-ink)]" />.
             </p>
           </Reveal>
         </div>

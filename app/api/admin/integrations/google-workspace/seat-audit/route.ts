@@ -7,7 +7,7 @@ import { listWorkspaceUsersResult } from '@/lib/google-workspace';
 // directory against active staff so mailboxes that still need creating surface.
 export async function GET() {
   const session = await getSession();
-  if (!session || !sessionCan(session, 'settings.manage')) {
+  if (!session || !sessionCan(session, 'workspace.manage')) {
     return NextResponse.json({ ok: false, error: 'Forbidden' }, { status: 403 });
   }
 

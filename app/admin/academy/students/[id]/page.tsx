@@ -5,8 +5,11 @@ import { getSession, sessionCan, sessionPermissions } from '@/lib/auth';
 import { AdminShell } from '@/components/admin/AdminShell';
 import { CrmDisabled } from '@/components/admin/CrmDisabled';
 import { StudentActions } from '@/components/admin/StudentActions';
+import { EditStudentDetails } from '@/components/admin/EditStudentDetails';
+import { GrantQuizAttempts } from '@/components/admin/GrantQuizAttempts';
 import { EnrolInCourse } from '@/components/admin/EnrolInCourse';
 import { BadgeIcon } from '@/components/academy/BadgeIcon';
+import { VtctRegistrationPanel } from '@/components/admin/VtctRegistrationPanel';
 import { getLocale } from '@/lib/locale';
 
 export const dynamic = 'force-dynamic';
@@ -38,7 +41,8 @@ export default async function AdminAcademyStudentPage({ params }: { params: Prom
   // BLD-528: linked clinic CRM client (same person), if any.
   const client = student.clientId ? await db.client.findUnique({ where: { id: student.clientId }, select: { id: true, firstName: true, lastName: true } }) : null;
 
-  const [enrolments, payments, lessonRows, quizRows, practiceRows, homeworkRows, badgeRows, passkeys, timeAgg, standing, allCourses] = await Promise.all([
+  const { adminGetRegistrationForStudent } = await import('@/lib/vtct-registration');
+  const [enrolments, payments, lessonRows, quizRows, practiceRows, homeworkRows, badgeRows, passkeys, timeAgg, standing, allCourses, vtctRegistration] = await Promise.all([
     db.enrolment.findMany({ where: { studentId: id }, orderBy: { createdAt: 'desc' }, include: { course: { select: { id: true, title: true, slug: true } }, cohort: { select: { startAt: true, name: true } } } }),
     db.enrolmentPayment.findMany({ where: { enrolment: { studentId: id } }, orderBy: [{ dueAt: 'asc' }, { createdAt: 'asc' }] }),
     db.lessonProgress.findMany({ where: { studentId: id }, orderBy: { completedAt: 'desc' }, take: 60, include: { lesson: { select: { title: true, module: { select: { course: { select: { title: true } } } } } } } }),
@@ -50,6 +54,7 @@ export default async function AdminAcademyStudentPage({ params }: { params: Prom
     db.lessonProgress.aggregate({ where: { studentId: id }, _sum: { secondsSpent: true } }),
     (await import('@/lib/academy-gamification')).studentStanding(id).catch(() => null),
     db.course.findMany({ where: { active: true }, orderBy: { order: 'asc' }, select: { id: true, title: true, level: true } }),
+    adminGetRegistrationForStudent(id),
   ]);
 
   // Courses this student can still be enrolled on (active, not already enrolled
@@ -68,6 +73,24 @@ export default async function AdminAcademyStudentPage({ params }: { params: Prom
   const quizzesPassed = new Set(quizRows.filter((q) => q.passed).map((q) => q.quizId)).size;
   const age = student.dob ? Math.floor((Date.now() - +student.dob) / 31557600000) : null;
 
+  // BLD-1139: quizzes where this student has exhausted every attempt without a
+  // pass — the admin can grant extra attempts (attempt history is never deleted).
+  const attemptCounts = await db.quizAttempt.groupBy({ by: ['quizId'], where: { studentId: id }, _count: true });
+  const attemptedIds = attemptCounts.map((a) => a.quizId);
+  const [quizMeta, grantRows, passedRows] = attemptedIds.length
+    ? await Promise.all([
+        db.quiz.findMany({ where: { id: { in: attemptedIds } }, select: { id: true, title: true, maxAttempts: true } }),
+        db.quizAttemptGrant.groupBy({ by: ['quizId'], where: { studentId: id, quizId: { in: attemptedIds } }, _sum: { extra: true } }),
+        db.quizAttempt.findMany({ where: { studentId: id, passed: true }, select: { quizId: true }, distinct: ['quizId'] }),
+      ])
+    : [[], [], []];
+  const grantedByQuiz = new Map(grantRows.map((g) => [g.quizId, g._sum.extra ?? 0]));
+  const passedIds = new Set(passedRows.map((p) => p.quizId));
+  const usedByQuiz = new Map(attemptCounts.map((a) => [a.quizId, a._count]));
+  const blockedQuizzes = quizMeta
+    .filter((q) => q.maxAttempts && q.maxAttempts > 0 && !passedIds.has(q.id) && (usedByQuiz.get(q.id) ?? 0) >= q.maxAttempts + (grantedByQuiz.get(q.id) ?? 0))
+    .map((q) => ({ id: q.id, title: q.title, used: usedByQuiz.get(q.id) ?? 0, allowed: (q.maxAttempts ?? 0) + (grantedByQuiz.get(q.id) ?? 0) }));
+
   const can = await sessionPermissions();
   const locale = await getLocale();
 
@@ -80,7 +103,10 @@ export default async function AdminAcademyStudentPage({ params }: { params: Prom
           <p className="mt-1 text-sm text-[var(--color-stone)]">{student.email}{student.phone ? ` · ${student.phone}` : ''}</p>
           <p className="mt-1 text-xs text-[var(--color-stone)]">Clinic client: {client ? <Link href={`/admin/clients/${client.id}`} className="text-[var(--color-gold-deep)] hover:underline">{client.firstName} {client.lastName ?? ''} →</Link> : <span>not linked</span>}</p>
         </div>
-        <StudentActions studentId={student.id} email={student.email} portalActive={student.portalActive} hasClient={!!client} />
+        <div className="flex flex-wrap items-center gap-2">
+          <EditStudentDetails studentId={student.id} firstName={student.firstName} lastName={student.lastName} />
+          <StudentActions studentId={student.id} email={student.email} portalActive={student.portalActive} hasClient={!!client} />
+        </div>
       </div>
 
       <div className="mt-8 grid gap-5 lg:grid-cols-2">
@@ -107,7 +133,7 @@ export default async function AdminAcademyStudentPage({ params }: { params: Prom
           </div>
           {badgeRows.length > 0 && (
             <div className="mt-4 flex flex-wrap gap-2">
-              {badgeRows.map((b) => { const d = badgeByKey.get(b.badgeKey); return <span key={b.id} title={d?.description} className="inline-flex items-center gap-1.5 rounded-full border border-[var(--color-line)] bg-white px-2.5 py-1 text-xs"><BadgeIcon name={d?.icon} className="h-3.5 w-3.5 text-[var(--color-gold-deep)]" /> {d?.name ?? b.badgeKey}</span>; })}
+              {badgeRows.map((b) => { const d = badgeByKey.get(b.badgeKey); return <span key={b.id} title={d?.description} className="inline-flex items-center gap-1.5 rounded-full border border-[var(--color-line)] bg-[var(--color-porcelain)] px-2.5 py-1 text-xs"><BadgeIcon name={d?.icon} className="h-3.5 w-3.5 text-[var(--color-gold-deep)]" /> {d?.name ?? b.badgeKey}</span>; })}
             </div>
           )}
         </Card>
@@ -122,12 +148,12 @@ export default async function AdminAcademyStudentPage({ params }: { params: Prom
                 const fee = e.agreedFeePence ?? e.pricePence; // BLD-850: settle against the locked agreed fee when stamped
                 const outstanding = Math.max(0, fee - e.paidPence);
                 return (
-                  <div key={e.id} className="rounded-[var(--radius-md)] border border-[var(--color-line)] bg-white p-4">
+                  <div key={e.id} className="rounded-[var(--radius-md)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-4">
                     <div className="flex flex-wrap items-center justify-between gap-2">
                       <div>
                         <Link href={`/admin/academy/${e.course.id}`} className="font-medium hover:text-[var(--color-gold-deep)] hover:underline">{e.course.title}</Link>
                         <span className="ml-2 rounded-full bg-[var(--color-bone)] px-2 py-0.5 text-[0.65rem] uppercase tracking-wide text-[var(--color-stone)]">{e.status}</span>
-                        <span className="block text-xs text-[var(--color-stone)]">{money(e.paidPence)} of {money(fee)} paid{outstanding > 0 ? ` · ${money(outstanding)} due` : ' · paid in full'}{e.cohort ? ` · cohort ${e.cohort.name || fmt(e.cohort.startAt)}` : ''}{e.preCourseAckAt ? ' · pre-course read ✓' : ''}</span>
+                        <span className="block text-xs text-[var(--color-stone)]">{money(e.paidPence)} of {money(fee)} paid{outstanding > 0 ? ` · ${money(outstanding)} due` : ' · paid in full'}{e.cohort ? ` · cohort ${e.cohort.name || fmt(e.cohort.startAt)}` : ''}{e.preCourseAckAt ? ' · pre-course read ✓' : ''}{/* BLD-1730: signing date+time (and the exact wording version signed) was tracked but never shown here */}{e.agreementSignedAt ? ` · agreement signed ${fmtDT(e.agreementSignedAt)}${e.agreementVersion ? ` (version ${e.agreementVersion})` : ''}` : ' · agreement not signed'}</span>
                       </div>
                       <Link href={`/academy/learn/${e.course.slug}`} className="text-xs text-[var(--color-gold-deep)] hover:underline">View course →</Link>
                     </div>
@@ -180,6 +206,7 @@ export default async function AdminAcademyStudentPage({ params }: { params: Prom
               ))}
             </ul>
           )}
+          <GrantQuizAttempts studentId={id} blocked={blockedQuizzes} />
         </Card>
 
         <Card title="Recent lessons completed">
@@ -193,6 +220,10 @@ export default async function AdminAcademyStudentPage({ params }: { params: Prom
               ))}
             </ul>
           )}
+        </Card>
+
+        <Card title="VTCT Registration Details">
+          <VtctRegistrationPanel registration={vtctRegistration} />
         </Card>
 
         <Card title="Security &amp; sign-in">

@@ -78,7 +78,7 @@ export function ThemeToggle() {
               role="radio"
               aria-checked={active}
               onClick={() => choose(o.value)}
-              className={`flex flex-1 items-center justify-center gap-1.5 rounded-full px-2 py-1.5 text-xs transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-gold)] ${
+              className={`flex flex-1 items-center justify-center gap-1.5 rounded-full px-2 py-1.5 text-xs transition-colors ${
                 active
                   ? 'bg-[var(--color-ink)] font-medium text-[var(--color-porcelain)]'
                   : 'text-[var(--color-stone)] hover:text-[var(--color-ink)]'

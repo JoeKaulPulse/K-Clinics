@@ -39,6 +39,12 @@ export const PERMISSIONS: Permission[] = [
   { key: 'bookings.view', group: 'Bookings', label: 'View bookings', description: 'See the appointment calendar and booking list.' },
   { key: 'bookings.manage', group: 'Bookings', label: 'Manage bookings', description: 'Reschedule, cancel and edit appointments.' },
   { key: 'bookings.charge', group: 'Bookings', label: 'Take payments', description: 'Charge cards for treatments and fees.', sensitive: true },
+  // BLD-1587: split out of bookings.manage so a practitioner can be granted
+  // these three during-treatment actions without also getting reschedule/
+  // cancel/edit rights over the whole appointment.
+  { key: 'consultations.consent', group: 'Bookings', label: 'Consent forms', description: 'Open, complete and send client consent forms for an appointment.' },
+  { key: 'clients.photos', group: 'Bookings', label: 'Before/after photos', description: 'Capture, view and delete client before/after treatment photos.', sensitive: true },
+  { key: 'liveAppointments.manage', group: 'Bookings', label: 'Live appointments', description: 'Open and run the live treatment-session screen during a visit.' },
 
   // Consultations
   { key: 'consultations.view', group: 'Consultations', label: 'View consultations', description: 'See incoming consultation enquiries.' },
@@ -65,7 +71,6 @@ export const PERMISSIONS: Permission[] = [
   { key: 'campaigns.view', group: 'Marketing', label: 'View campaigns', description: 'See email campaigns and history.' },
   { key: 'campaigns.send', group: 'Marketing', label: 'Send campaigns', description: 'Create and send marketing emails.' },
   { key: 'automations.view', group: 'Marketing', label: 'View automations', description: 'See automated email flows.' },
-  { key: 'automations.manage', group: 'Marketing', label: 'Manage automations', description: 'Configure birthday/follow-up automations.' },
 
   // Administration
   { key: 'staff.view', group: 'Administration', label: 'View staff', description: 'See the staff & access-control area.' },
@@ -73,6 +78,7 @@ export const PERMISSIONS: Permission[] = [
   { key: 'settings.manage', group: 'Administration', label: 'Manage settings', description: 'Edit clinic settings and configuration.', sensitive: true },
   { key: 'content.publish', group: 'Administration', label: 'Publish website content', description: 'Make page-builder changes live. Without this, an editor can draft but not publish.', sensitive: true },
   { key: 'security.manage', group: 'Administration', label: 'Security centre', description: 'View threats, manage lockouts, 2FA policy and key rotation.', sensitive: true },
+  { key: 'workspace.manage', group: 'Administration', label: 'Manage Google Workspace', description: 'Create/suspend Google Workspace accounts and manage Google Group membership.', sensitive: true },
 
   // Scheduling
   { key: 'calendar.view', group: 'Scheduling', label: 'View calendar', description: 'See the clinic calendar and appointments.' },
@@ -121,7 +127,6 @@ export const PERMISSIONS: Permission[] = [
 
   // Time tracking (BLD-285 / PRJ-63.6)
   { key: 'timetracking.use', group: 'Facility', label: 'Clock in / out', description: 'Clock in and out of shifts and log breaks.' },
-  { key: 'timetracking.manage', group: 'Facility', label: 'Manage timesheets', description: 'View and edit all staff shift records and timesheets.' },
 
   // Compliance & renewals (BLD-587)
   { key: 'compliance.view', group: 'Facility', label: 'View compliance & renewals', description: 'See business renewal dates (insurance, licences, PAT/EICR, servicing) and what is due.' },
@@ -134,7 +139,7 @@ export const PERMISSION_KEYS = PERMISSIONS.map((p) => p.key);
 const ALL = PERMISSION_KEYS;
 const ROLE_DEFAULTS: Record<Role, string[]> = {
   OWNER: ALL,
-  ADMIN: ALL.filter((k) => k !== 'staff.manage' && k !== 'settings.manage' && k !== 'security.manage').concat(['staff.view']),
+  ADMIN: ALL.filter((k) => k !== 'staff.manage' && k !== 'settings.manage' && k !== 'security.manage' && k !== 'workspace.manage').concat(['staff.view']),
   PRACTITIONER: [
     'dashboard.view',
     'bookings.view',

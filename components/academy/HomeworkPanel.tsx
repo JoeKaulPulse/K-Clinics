@@ -17,9 +17,17 @@ const fileName = (url: string) => { try { return decodeURIComponent(url.split('/
 
 // The panel renders in two places: the dark immersive player and the light course
 // outline. `tone` swaps the colour set so it sits correctly on either surface.
+// BLD-1695: light.notice sits on bg-[var(--color-bone)] (the `box` below), where
+// gold-deep only reaches 4.00:1 — an ink-family colour is required there (see
+// docs/projects/accessibility-aa.md S1).
+// BLD-1768 review: the gold focus-ring sweep is a LIGHT-surface fix — gold-deep
+// (#816748) clears 3:1 on porcelain/white but only reaches ~2.5:1 on this dark
+// tone's bg-white/5 fill, below the WCAG 1.4.11 floor and worse than the plain
+// gold (~4.1:1) it replaced. `dark` therefore keeps --color-gold throughout,
+// consistent with every other gold in that same tone object; only `light` moves.
 const TONES = {
-  dark: { notice: 'text-[var(--color-gold)]', box: 'border-white/10 bg-white/5', head: 'text-white/40', sub: 'border-white/10 bg-white/5', strong: 'text-white/90', soft: 'text-white/70', faint: 'text-white/40', fileLink: 'text-white/70 hover:text-[var(--color-gold)]', attach: 'border-white/15 text-white/80 hover:border-[var(--color-gold)]', fileRow: 'text-white/80', remove: 'text-white/40 hover:text-white/70', textarea: 'border-white/10 bg-white/5 text-white/90 placeholder:text-white/30 focus:border-[var(--color-gold)]' },
-  light: { notice: 'text-[var(--color-gold-deep)]', box: 'border-[var(--color-line)] bg-[var(--color-bone)]', head: 'text-[var(--color-stone)]', sub: 'border-[var(--color-line)] bg-[var(--color-porcelain)]', strong: 'text-[var(--color-ink)]', soft: 'text-[var(--color-ink-soft)]', faint: 'text-[var(--color-stone)]', fileLink: 'text-[var(--color-ink-soft)] hover:text-[var(--color-gold-deep)]', attach: 'border-[var(--color-line)] text-[var(--color-ink-soft)] hover:border-[var(--color-gold)]', fileRow: 'text-[var(--color-ink-soft)]', remove: 'text-[var(--color-stone)] hover:text-[var(--color-ink)]', textarea: 'border-[var(--color-line)] bg-white text-[var(--color-ink)] placeholder:text-[var(--color-stone)] focus:border-[var(--color-gold)]' },
+  dark: { notice: 'text-[var(--color-gold)]', box: 'border-white/10 bg-white/5', head: 'text-white/60', sub: 'border-white/10 bg-white/5', strong: 'text-white/90', soft: 'text-white/70', faint: 'text-white/60', fileLink: 'text-white/70 hover:text-[var(--color-gold)]', attach: 'border-white/15 text-white/80 hover:border-[var(--color-gold)]', fileRow: 'text-white/80', remove: 'text-white/60 hover:text-white/70', textarea: 'border-white/10 bg-white/5 text-white/90 placeholder:text-white/60 focus:border-[var(--color-gold)] focus-visible:ring-2 focus-visible:ring-[var(--color-gold)]' },
+  light: { notice: 'text-[var(--color-ink)]', box: 'border-[var(--color-line)] bg-[var(--color-bone)]', head: 'text-[var(--color-stone)]', sub: 'border-[var(--color-line)] bg-[var(--color-porcelain)]', strong: 'text-[var(--color-ink)]', soft: 'text-[var(--color-ink-soft)]', faint: 'text-[var(--color-stone)]', fileLink: 'text-[var(--color-ink-soft)] hover:text-[var(--color-gold-deep)]', attach: 'border-[var(--color-line)] text-[var(--color-ink-soft)] hover:border-[var(--color-gold)]', fileRow: 'text-[var(--color-ink-soft)]', remove: 'text-[var(--color-stone)] hover:text-[var(--color-ink)]', textarea: 'border-[var(--color-line)] bg-white text-[var(--color-ink)] placeholder:text-[var(--color-stone)] focus:border-[var(--color-gold-deep)] focus-visible:ring-2 focus-visible:ring-[var(--color-gold-deep)]' },
 } as const;
 
 export function HomeworkPanel({ lessonId, submission, tone = 'dark' }: { lessonId: string; submission: HomeworkSubmissionView | null; tone?: 'dark' | 'light' }) {
@@ -67,6 +75,22 @@ export function HomeworkPanel({ lessonId, submission, tone = 'dark' }: { lessonI
           )}
           {submission.feedback && <p className={`mt-2 ${c.soft}`}><span className={c.faint}>Tutor feedback:</span> {submission.feedback}</p>}
         </div>
+      )}
+      {submission && submission.history.length > 0 && (
+        <details className="mb-3">
+          <summary className={`cursor-pointer text-sm ${c.faint}`}>Previous submissions ({submission.history.length})</summary>
+          <ul className="mt-2 space-y-2">
+            {submission.history.map((h, i) => (
+              <li key={i} className={`rounded-[var(--radius-md)] border p-3 text-sm ${c.sub}`}>
+                <p className={`font-medium ${c.strong}`}>{STATUS_LABEL[h.status] ?? h.status}</p>
+                {h.files.length > 0 && (
+                  <ul className="mt-2 space-y-1">{h.files.map((u) => <li key={u}><a href={u} target="_blank" rel="noreferrer" className={`underline ${c.fileLink}`}>{fileName(u)}</a></li>)}</ul>
+                )}
+                {h.feedback && <p className={`mt-2 ${c.soft}`}><span className={c.faint}>Tutor feedback:</span> {h.feedback}</p>}
+              </li>
+            ))}
+          </ul>
+        </details>
       )}
       {!locked && (
         <div className="space-y-2">

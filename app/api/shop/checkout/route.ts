@@ -3,6 +3,11 @@ import * as Sentry from '@sentry/nextjs';
 import { crmEnabled } from '@/lib/crm';
 
 export const runtime = 'nodejs';
+// BLD-1692: the zero-total path awaits finalizeOrder, which can wait up to
+// ~30s on Resend's rate gate (lib/email.ts) — without this the platform's
+// default timeout can kill the request mid-finalize. Matches
+// app/api/stripe/webhook/route.ts, raised for the same risk.
+export const maxDuration = 60;
 
 // Server-authoritative checkout: re-prices the cart, enforces age on restricted
 // items, applies any gift card, then either creates a Stripe PaymentIntent or
@@ -61,6 +66,31 @@ export async function POST(req: Request) {
   // another client's account). No session → guest order (null clientId).
   const { getClientSession } = await import('@/lib/auth');
   const clientId = (await getClientSession())?.sub ?? null;
+
+  // BLD-1188: record the checkout's marketing opt-in against the Client record
+  // (creating it if the shopper is a guest), with recorded consent evidence —
+  // not just the bare boolean — matching the no-clobber pattern used by
+  // /api/consult and /api/booking/create. Best-effort: never blocks a purchase.
+  try {
+    const marketingOptIn = body.marketingOptIn === true;
+    const { marketingConsentFields } = await import('@/lib/consent');
+    if (clientId) {
+      if (marketingOptIn) {
+        await db.client.updateMany({ where: { id: clientId, marketingOptIn: false }, data: { marketingOptIn: true, ...marketingConsentFields('shop-checkout') } });
+      }
+    } else {
+      const existing = await db.client.findUnique({ where: { email }, select: { marketingOptIn: true } });
+      const noClobber: Record<string, unknown> = {};
+      if (existing) {
+        if (marketingOptIn && !existing.marketingOptIn) { noClobber.marketingOptIn = true; Object.assign(noClobber, marketingConsentFields('shop-checkout')); }
+      }
+      await db.client.upsert({
+        where: { email },
+        update: noClobber,
+        create: { firstName: name, email, source: 'shop-checkout', marketingOptIn, ...(marketingOptIn ? marketingConsentFields('shop-checkout') : {}) },
+      });
+    }
+  } catch (e) { console.error('[shop checkout] marketing consent upsert failed (continuing):', (e as Error)?.message); }
 
   // Cookie-banner consent, captured now so the deferred Purchase conversion in
   // finalizeOrder() (which can run from the Stripe webhook backstop, with no

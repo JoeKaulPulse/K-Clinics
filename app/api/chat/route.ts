@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { crmEnabled } from '@/lib/crm';
+import { encClinical, decClinical } from '@/lib/clinical-crypto';
 
 export const runtime = 'nodejs';
 
@@ -32,7 +33,9 @@ export async function POST(req: Request) {
         // over to staff only when it needs a human, so staffUnread starts at 0.
         staffUnread: 0,
         lastVisitorSeenAt: new Date(),
-        messages: { create: { sender: 'VISITOR', body } },
+        // BLD-1160: visitor free-text can describe symptoms/treatment concerns —
+        // encrypt at rest like Consultation.message/medicalNotes (lib/clinical-crypto).
+        messages: { create: { sender: 'VISITOR', body: encClinical(body) as string } },
       },
       select: { id: true, token: true },
     });
@@ -49,7 +52,8 @@ export async function POST(req: Request) {
     const convo = await db.chatConversation.findUnique({ where: { token }, select: { id: true, mode: true, visitorName: true } });
     if (!convo) return NextResponse.json({ ok: false, error: 'Conversation not found.' }, { status: 404 });
     await db.$transaction([
-      db.chatMessage.create({ data: { conversationId: convo.id, sender: 'VISITOR', body } }),
+      // BLD-1160: encrypt at rest, matching the 'start' path above.
+      db.chatMessage.create({ data: { conversationId: convo.id, sender: 'VISITOR', body: encClinical(body) as string } }),
       // Only flag staff as unread when a human is the one answering; in AI mode
       // the assistant replies and escalates (bumping unread) only if needed.
       db.chatConversation.update({ where: { id: convo.id }, data: { status: 'OPEN', lastMessageAt: new Date(), lastVisitorSeenAt: new Date(), ...(convo.mode === 'STAFF' ? { staffUnread: { increment: 1 } } : {}) } }),
@@ -140,7 +144,9 @@ export async function GET(req: Request) {
     messages: messages.map((m) => ({
       id: m.id,
       sender: m.sender,
-      body: m.body,
+      // BLD-1160: bodies are encrypted at rest; decClinical tolerates legacy
+      // plaintext rows written before this change.
+      body: decClinical(m.body),
       createdAt: m.createdAt.toISOString(),
       // Who the visitor is speaking with — sourced from the responder's own
       // account. Staff show their first name (+ title); OWNER/ADMIN show as

@@ -8,6 +8,7 @@ import { getProductBySlug, formatPence } from '@/lib/shop';
 import { crmEnabled } from '@/lib/crm';
 import { pageMeta, JsonLd, productLd, breadcrumbLd } from '@/lib/seo';
 import { getVatNote } from '@/lib/vat';
+import { ViewItemTracker } from '@/components/marketing/ViewItemTracker';
 
 export const revalidate = 3600;
 
@@ -34,6 +35,7 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
           breadcrumbLd([{ name: 'Home', path: '/' }, { name: 'Shop', path: '/shop' }, { name: p.name, path: `/shop/${p.slug}` }]),
         ]}
       />
+      <ViewItemTracker id={p.slug} name={p.name} category="shop" valuePence={p.pricePence} />
       <section className="container-lux section pt-[calc(var(--header-h,5.25rem)+2rem)]">
       <div className="mb-6 flex items-center justify-between">
         <Link href="/shop" className="text-sm text-[var(--color-stone)] hover:underline">← Shop</Link>

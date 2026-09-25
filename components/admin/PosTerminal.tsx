@@ -16,6 +16,10 @@ export function PosTerminal({ products }: { products: P[] }) {
   // (nothing reserved until checkout); the atomic reservation happens server-side.
   const [vcode, setVcode] = useState('');
   const [vBalance, setVBalance] = useState<number | null>(null);
+  // BLD-1625: needAge only says the cart contains an 18+ item — it is not a
+  // staff confirmation. Require an explicit tick before ageVerified can go
+  // true, matching the server's actual gate at app/api/admin/pos/route.ts.
+  const [ageConfirmed, setAgeConfirmed] = useState(false);
 
   const filtered = useMemo(() => {
     const s = q.trim().toLowerCase();
@@ -43,7 +47,7 @@ export function PosTerminal({ products }: { products: P[] }) {
     else setStatus('No product matched that scan.');
   }
   const sub = (id: string) => setCart((c) => { const n = (c[id] || 0) - 1; const next = { ...c }; if (n <= 0) delete next[id]; else next[id] = n; return next; });
-  const clear = () => { setCart({}); setStage('shop'); setPay(null); setStatus(''); setVcode(''); setVBalance(null); };
+  const clear = () => { setCart({}); setStage('shop'); setPay(null); setStatus(''); setVcode(''); setVBalance(null); setAgeConfirmed(false); };
 
   async function checkVoucher() {
     const code = vcode.trim();
@@ -111,7 +115,7 @@ export function PosTerminal({ products }: { products: P[] }) {
     <div className="grid gap-6 lg:grid-cols-[1fr_360px]">
       {/* Products */}
       <div>
-        <input value={q} onChange={(e) => setQ(e.target.value)} onKeyDown={onScan} autoFocus placeholder="Scan a barcode, or search products…" aria-label="Scan barcode or search products" className="mb-4 w-full rounded-full border border-[var(--color-line)] bg-[var(--color-porcelain)] px-5 py-3 outline-none focus:border-[var(--color-gold)]" />
+        <input value={q} onChange={(e) => setQ(e.target.value)} onKeyDown={onScan} autoFocus placeholder="Scan a barcode, or search products…" aria-label="Scan barcode or search products" className="mb-4 w-full rounded-full border border-[var(--color-line)] bg-[var(--color-porcelain)] px-5 py-3 outline-none focus:border-[var(--color-gold-deep)] focus-visible:ring-2 focus-visible:ring-[var(--color-gold-deep)]" />
         {products.length === 0 ? (
           <p className="text-sm text-[var(--color-stone)]">No active products yet. Add them in Catalogue → Products.</p>
         ) : (
@@ -141,9 +145,10 @@ export function PosTerminal({ products }: { products: P[] }) {
               <li key={l.p.id} className="flex items-center justify-between gap-2 py-2 text-sm">
                 <span className="min-w-0 flex-1 truncate">{l.p.name}</span>
                 <div className="flex items-center gap-2">
-                  <button onClick={() => sub(l.p.id)} className="h-7 w-7 rounded-full border border-[var(--color-line)]">−</button>
+                  {/* BLD-1129: 44px touch targets — this runs on a tablet till */}
+                  <button onClick={() => sub(l.p.id)} aria-label={`Reduce ${l.p.name} quantity`} className="h-11 w-11 rounded-full border border-[var(--color-line)]">−</button>
                   <span className="w-5 text-center">{l.qty}</span>
-                  <button onClick={() => add(l.p.id)} className="h-7 w-7 rounded-full border border-[var(--color-line)]">+</button>
+                  <button onClick={() => add(l.p.id)} aria-label={`Increase ${l.p.name} quantity`} className="h-11 w-11 rounded-full border border-[var(--color-line)]">+</button>
                   <span className="w-16 text-right font-medium tabular-nums">{money(l.p.pricePence * l.qty)}</span>
                 </div>
               </li>
@@ -157,7 +162,7 @@ export function PosTerminal({ products }: { products: P[] }) {
         {/* Gift voucher (BLD-882) — checked here for a balance preview; the
             balance is only actually reserved when the sale completes. */}
         <div className="mt-3 flex items-center gap-2">
-          <input value={vcode} onChange={(e) => { setVcode(e.target.value); setVBalance(null); }} onKeyDown={(e) => e.key === 'Enter' && checkVoucher()} placeholder="Gift voucher code" aria-label="Gift voucher code" className="min-w-0 flex-1 rounded-full border border-[var(--color-line)] bg-[var(--color-porcelain)] px-4 py-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-gold)]" />
+          <input value={vcode} onChange={(e) => { setVcode(e.target.value); setVBalance(null); }} onKeyDown={(e) => e.key === 'Enter' && checkVoucher()} placeholder="Gift voucher code" aria-label="Gift voucher code" className="min-w-0 flex-1 rounded-full border border-[var(--color-line)] bg-[var(--color-porcelain)] px-4 py-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-gold-deep)]" />
           <button onClick={checkVoucher} disabled={busy || !vcode.trim()} className="rounded-full border border-[var(--color-line)] px-4 py-2 text-sm disabled:opacity-50">Check</button>
         </div>
         {vBalance != null && vcode.trim() && (() => {
@@ -172,12 +177,17 @@ export function PosTerminal({ products }: { products: P[] }) {
             </p>
           );
         })()}
-        {needAge && <p className="mt-2 rounded-[var(--radius-sm)] bg-[var(--color-blush)]/20 px-3 py-2 text-xs text-[var(--color-ink)]">Includes an 18+ product — confirm the customer’s age before completing.</p>}
+        {needAge && (
+          <label className="mt-2 flex items-start gap-2 rounded-[var(--radius-sm)] bg-[var(--color-blush)]/20 px-3 py-2 text-xs text-[var(--color-ink)]">
+            <input type="checkbox" checked={ageConfirmed} onChange={(e) => setAgeConfirmed(e.target.checked)} className="mt-0.5 h-4 w-4 accent-[var(--color-gold)]" />
+            <span>Includes an 18+ product — I have confirmed the customer’s age.</span>
+          </label>
+        )}
         <div className="mt-4 grid gap-2">
-          <button onClick={() => checkout('card', needAge)} disabled={busy || lines.length === 0} className="rounded-full bg-[var(--color-gold-deep)] px-5 py-3 text-sm font-medium text-white disabled:opacity-50">Card — scan to pay</button>
+          <button onClick={() => checkout('card', ageConfirmed)} disabled={busy || lines.length === 0 || (needAge && !ageConfirmed)} className="rounded-full bg-[var(--color-gold-deep)] px-5 py-3 text-sm font-medium text-white disabled:opacity-50">Card — scan to pay</button>
           <div className="grid grid-cols-2 gap-2">
-            <button onClick={() => checkout('terminal', needAge)} disabled={busy || lines.length === 0} className="rounded-full border border-[var(--color-line)] px-4 py-2.5 text-sm disabled:opacity-50">Card machine</button>
-            <button onClick={() => checkout('cash', needAge)} disabled={busy || lines.length === 0} className="rounded-full border border-[var(--color-line)] px-4 py-2.5 text-sm disabled:opacity-50">Cash</button>
+            <button onClick={() => checkout('terminal', ageConfirmed)} disabled={busy || lines.length === 0 || (needAge && !ageConfirmed)} className="rounded-full border border-[var(--color-line)] px-4 py-2.5 text-sm disabled:opacity-50">Card machine</button>
+            <button onClick={() => checkout('cash', ageConfirmed)} disabled={busy || lines.length === 0 || (needAge && !ageConfirmed)} className="rounded-full border border-[var(--color-line)] px-4 py-2.5 text-sm disabled:opacity-50">Cash</button>
           </div>
         </div>
         {status && <p className="mt-3 text-sm text-[var(--color-stone)]">{status}</p>}

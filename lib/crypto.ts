@@ -86,6 +86,13 @@ export function activeKeyId(): string {
   return aesRing()[0].id;
 }
 
+/** Ids of RETIRED ring keys (everything after the active key). Empty when no
+ *  rotation is in progress. Used by the key-rotation sweep (BLD-1180) so it can
+ *  target ciphertext on old keys precisely, never plaintext. */
+export function retiredKeyIds(): string[] {
+  return aesRing().slice(1).map((k) => k.id);
+}
+
 /** True if a blob was written with the current active key (used by the sweep). */
 export function isOnActiveKey(blob: string): boolean {
   const parts = blob.split('.');
@@ -125,6 +132,60 @@ export function decryptJson<T = unknown>(blob: string): T {
   throw new Error('Unable to decrypt: no matching key in the ring.');
 }
 
+// ── Binary sibling of encryptJson, for Bytes columns (BLD-1041: gallery
+// before/after photos). Format: "KCB1" magic + keyId (8 ascii) + iv (12) +
+// GCM tag (16) + ciphertext, binary-concatenated — self-describing, so a
+// reader can tell ciphertext from legacy plaintext image bytes (no image
+// format starts with the magic). Same ring, same rotation story.
+const BYTES_MAGIC = Buffer.from('KCB1');
+const BYTES_HEADER = BYTES_MAGIC.length + 8 + 12 + 16;
+
+export function encryptBytes(data: Buffer | Uint8Array): Uint8Array<ArrayBuffer> {
+  const active = aesRing()[0];
+  const iv = crypto.randomBytes(12);
+  const cipher = crypto.createCipheriv('aes-256-gcm', active.key, iv);
+  const ct = Buffer.concat([cipher.update(Buffer.from(data)), cipher.final()]);
+  // Copy into a fresh ArrayBuffer-backed Uint8Array — Prisma 7 Bytes columns
+  // type as Uint8Array<ArrayBuffer>, which a pooled Buffer slice is not.
+  return new Uint8Array(Buffer.concat([BYTES_MAGIC, Buffer.from(active.id, 'ascii'), iv, cipher.getAuthTag(), ct]));
+}
+
+/** Is this stored value an encryptBytes() blob (vs legacy plaintext bytes)? */
+export function isEncryptedBytes(data: Buffer | Uint8Array): boolean {
+  const buf = Buffer.from(data);
+  return buf.length > BYTES_HEADER && buf.subarray(0, BYTES_MAGIC.length).equals(BYTES_MAGIC);
+}
+
+/** The keyId an encryptBytes blob was written with; null for plaintext. Used by
+ *  the key-rotation sweep (Prisma can't prefix-filter Bytes, so it tests
+ *  client-side, like CallRecord.raw). */
+export function bytesKeyId(data: Buffer | Uint8Array): string | null {
+  if (!isEncryptedBytes(data)) return null;
+  return Buffer.from(data).subarray(BYTES_MAGIC.length, BYTES_MAGIC.length + 8).toString('ascii');
+}
+
+/** Decrypt an encryptBytes blob. Legacy plaintext comes back UNCHANGED (the
+ *  decClinical-style tolerance, so unmigrated rows keep rendering); a blob no
+ *  ring key can open throws. */
+export function decryptBytes(data: Buffer | Uint8Array): Buffer {
+  const buf = Buffer.from(data);
+  if (!isEncryptedBytes(buf)) return buf;
+  const prefer = buf.subarray(BYTES_MAGIC.length, BYTES_MAGIC.length + 8).toString('ascii');
+  const iv = buf.subarray(BYTES_MAGIC.length + 8, BYTES_MAGIC.length + 20);
+  const tag = buf.subarray(BYTES_MAGIC.length + 20, BYTES_HEADER);
+  const ct = buf.subarray(BYTES_HEADER);
+  const ring = aesRing();
+  const ordered = [...ring.filter((k) => k.id === prefer), ...ring.filter((k) => k.id !== prefer)];
+  for (const k of ordered) {
+    try {
+      const d = crypto.createDecipheriv('aes-256-gcm', k.key, iv);
+      d.setAuthTag(tag);
+      return Buffer.concat([d.update(ct), d.final()]);
+    } catch { /* try the next key */ }
+  }
+  throw new Error('Unable to decrypt bytes: no matching key in the ring.');
+}
+
 function hmacWith(key: Buffer, cipher: string, parts: Record<string, string | number>): string {
   const canonical = Object.keys(parts).sort().map((k) => `${k}=${parts[k]}`).join('&');
   return crypto.createHmac('sha256', key).update(`${cipher}|${canonical}`).digest('hex');
@@ -133,6 +194,19 @@ function hmacWith(key: Buffer, cipher: string, parts: Record<string, string | nu
 /** Tamper-evidence hash binding the ciphertext to its record metadata (active key). */
 export function integrityHash(cipher: string, parts: Record<string, string | number>): string {
   return hmacWith(hmacRing()[0].key, cipher, parts);
+}
+
+/** Keyed (HMAC) digest of a PLAINTEXT value, for use as a lookup/cache key.
+ *  A bare SHA-256 of low-entropy special-category text (e.g. a health-form
+ *  free-text answer) stored next to the ciphertext is a brute-force oracle for
+ *  anyone holding the database but not the keys — the exact reader this
+ *  app-level encryption exists to stop, and one we deliberately create when a
+ *  read-only DB role is handed out for a data audit. Keying the digest closes
+ *  that. Uses the ACTIVE HMAC key only: rotating HEALTH_HMAC_KEY changes the
+ *  digest, which invalidates derived caches (they regenerate on next use)
+ *  rather than corrupting anything. */
+export function keyedHash(scope: string, value: string): string {
+  return crypto.createHmac('sha256', hmacRing()[0].key).update(`${scope}|${value}`).digest('hex');
 }
 
 /** Verify against any key in the HMAC ring (so old hashes survive rotation). */

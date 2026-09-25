@@ -15,6 +15,7 @@ const schema = z.object({
     .refine((v) => meetsMinAge(v, MIN_STUDENT_AGE), 'You must be 16 or over to join the academy.'),
   ageDeclare: z.literal(true, 'Please confirm you are 16 or over.'),
   password: z.string().min(8).max(200),
+  marketingOptIn: z.boolean().optional().default(false),
   company: z.string().max(0).optional().or(z.literal('')),
 });
 

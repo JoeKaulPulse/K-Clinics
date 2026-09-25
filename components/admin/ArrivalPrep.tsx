@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useState } from 'react';
 import { Countdown } from '@/components/admin/DashboardLive';
+import { revealArrivalClinical } from '@/app/admin/arrival-actions';
 import type { RoomPrepState } from '@/lib/room-prep';
 
 export type NextArrival = {
@@ -20,8 +21,10 @@ export type NextArrival = {
   /** Whether this user may set room readiness (rooms.prep.manage). */
   canManageRoom?: boolean;
   drinks: string[];
-  allergies?: string | null;
-  medicalFlag?: string | null;
+  /** BLD-1872: only whether an allergy / medical flag is on file. The text is
+   *  fetched on an explicit "Show" tap (revealArrivalClinical), which audits the
+   *  view — an ambient dashboard render must not decrypt or log clinical data. */
+  clinicalOnFile?: boolean;
 };
 
 // "Up next — prepare for arrival": the single most useful thing for front-of-house
@@ -47,6 +50,24 @@ export function ArrivalPrep({ a }: { a: NextArrival }) {
   ];
   const [done, setDone] = useState<Set<string>>(new Set());
   const toggle = (k: string) => setDone((p) => { const n = new Set(p); n.has(k) ? n.delete(k) : n.add(k); return n; });
+
+  // Revealed text is tied to the booking it was fetched for, so a refresh that
+  // swaps in a different next arrival can never show one client's flags under
+  // another client's name.
+  const [revealed, setRevealed] = useState<{ bookingId: string; allergies: string | null; medicalFlag: string | null } | null>(null);
+  const [reveal, setReveal] = useState<{ bookingId: string; state: 'loading' | 'error' } | null>(null);
+  const clinical = revealed && revealed.bookingId === a.id ? revealed : null;
+  const clinicalState = reveal && reveal.bookingId === a.id ? reveal.state : 'idle';
+  async function showClinical() {
+    if (clinicalState === 'loading') return;
+    const bookingId = a.id;
+    setReveal({ bookingId, state: 'loading' });
+    try {
+      const res = await revealArrivalClinical(bookingId);
+      if (res) { setRevealed({ bookingId, ...res }); setReveal(null); } else setReveal({ bookingId, state: 'error' });
+    } catch { setReveal({ bookingId, state: 'error' }); }
+  }
+  const clinicalText = clinical ? [clinical.medicalFlag, clinical.allergies && `Allergies: ${clinical.allergies}`].filter(Boolean).join(' · ') : '';
 
   async function setRoom(next: RoomPrepState) {
     if (!a.roomId || roomBusy) return;
@@ -83,11 +104,27 @@ export function ArrivalPrep({ a }: { a: NextArrival }) {
           <Link href={`/admin/bookings/${a.id}`} className="shrink-0 rounded-full border border-[var(--color-line)] px-3.5 py-1.5 text-sm transition-colors hover:bg-[var(--color-bone)]">Open booking →</Link>
         </div>
 
-        {(a.medicalFlag || a.allergies) && (
-          <p className="mt-3 flex items-start gap-2 rounded-[var(--radius-sm)] bg-[color-mix(in_oklab,#c0392b_12%,transparent)] px-3 py-2 text-sm text-[var(--color-ink)]">
+        {a.clinicalOnFile && (
+          <div className="mt-3 flex items-start gap-2 rounded-[var(--radius-sm)] bg-[color-mix(in_oklab,var(--color-blush-deep)_12%,transparent)] px-3 py-2 text-sm text-[var(--color-ink)]">
             <span aria-hidden>⚠</span>
-            <span className="min-w-0 break-words">{[a.medicalFlag, a.allergies && `Allergies: ${a.allergies}`].filter(Boolean).join(' · ')}</span>
-          </p>
+            {clinical ? (
+              <span className="min-w-0 break-words" aria-live="polite">{clinicalText || 'No allergy or medical flag on file'}</span>
+            ) : (
+              <>
+                <span className="min-w-0 break-words">
+                  {clinicalState === 'error' ? 'Could not load. Open the booking to see it.' : 'Allergy or medical flag on file'}
+                </span>
+                <button
+                  type="button"
+                  onClick={showClinical}
+                  disabled={clinicalState === 'loading'}
+                  className="ml-auto shrink-0 rounded-full border border-[var(--color-line)] bg-[var(--color-porcelain)] px-2.5 py-0.5 text-xs font-medium transition-colors hover:bg-[var(--color-bone)] disabled:opacity-60"
+                >
+                  {clinicalState === 'loading' ? 'Loading…' : 'Show'}
+                </button>
+              </>
+            )}
+          </div>
         )}
 
         <div className="mt-4">

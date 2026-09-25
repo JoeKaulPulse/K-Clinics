@@ -24,7 +24,17 @@ export async function ClinicianView({ session }: { session: Session }) {
   const start = new Date(now); start.setHours(0, 0, 0, 0);
   const end = new Date(now); end.setHours(23, 59, 59, 999);
   const canClinical = sessionCan(session, 'clients.clinical.view');
-  const canAllBookings = sessionCan(session, 'bookings.view');
+  // BLD-1652: true only for a real Specialist session (not an OWNER/ADMIN
+  // previewing this view, which reflects their own real access) — used below to
+  // strip every clinic-wide/cross-practitioner field this view could otherwise
+  // surface, at the query level rather than by hiding rendered elements.
+  const isSpecialist = session.role === 'PRACTITIONER';
+  // PRACTITIONER holds bookings.view (needed for the full /admin/bookings list,
+  // out of scope here) but a real Specialist must never see this dashboard's
+  // "whole clinic" roll-up of every other practitioner's appointments/clients —
+  // only their own. Checked before the query below runs, so clinic-wide rows
+  // are never fetched for a Specialist, not merely hidden after the fact.
+  const canAllBookings = !isSpecialist && sessionCan(session, 'bookings.view');
   const canRooms = sessionCan(session, 'rooms.prep.manage');
 
   const select = {
@@ -37,7 +47,10 @@ export async function ClinicianView({ session }: { session: Session }) {
   const [mine, clinic, rooms] = await Promise.all([
     db.booking.findMany({ where: { practitionerId: session.sub, startAt: { gte: start, lte: end }, status: { notIn: ['CANCELLED'] } }, orderBy: { startAt: 'asc' }, select }).catch(() => []),
     canAllBookings ? db.booking.findMany({ where: { startAt: { gte: start, lte: end }, status: { notIn: ['CANCELLED'] } }, orderBy: { startAt: 'asc' }, select }).catch(() => []) : Promise.resolve([]),
-    canRooms ? getRoomsForDay({ now }).catch(() => []) : Promise.resolve([]),
+    // BLD-1652: a real Specialist session only gets their own client/treatment
+    // in current/next per room (an admin previewing this view is unaffected —
+    // isSpecialist reflects the actual session role, matching canAllBookings above).
+    canRooms ? getRoomsForDay({ now, practitionerId: isSpecialist ? session.sub : undefined }).catch(() => []) : Promise.resolve([]),
   ]);
 
   type Bk = (typeof mine)[number];
@@ -53,7 +66,7 @@ export async function ClinicianView({ session }: { session: Session }) {
     trailing: inProgress(b)
       ? <span className="rounded-full bg-[color-mix(in_oklab,var(--color-jade)_14%,transparent)] px-2.5 py-1 text-xs font-medium text-[var(--color-jade)]">In progress</span>
       : lateFlag(b)
-        ? <span className="rounded-full bg-[color-mix(in_oklab,#c0392b_12%,transparent)] px-2.5 py-1 text-xs font-medium text-[#b23b3b]">Running late</span>
+        ? <span className="rounded-full bg-[color-mix(in_oklab,var(--color-blush-deep)_12%,transparent)] px-2.5 py-1 text-xs font-medium text-[var(--color-blush-deep)]">Running late</span>
         : b.status === 'COMPLETED'
           ? <span className="rounded-full bg-[var(--color-ink)] px-2.5 py-1 text-xs font-medium text-[var(--color-porcelain)]">Done</span>
           : b.arrivedAt
@@ -71,6 +84,12 @@ export async function ClinicianView({ session }: { session: Session }) {
   }
   const focusAllergies = focus && canClinical ? decClinical(focus.client.allergies) : null;
   const focusMedical = focus && canClinical ? decClinical(focus.client.medicalFlag) : null;
+  // BLD-1240/1392: showing decrypted allergies/medical flag on the dashboard is
+  // a medical-record view — audit it (throttled per viewer/client/hour).
+  if (focus && canClinical && (focusAllergies || focusMedical) && session?.email) {
+    const { auditClinicalView } = await import('@/lib/clinical-view-audit');
+    auditClinicalView({ actor: session.email, actorRole: session.role, clientId: focus.client.id, surface: 'clinician-dashboard', bookingId: focus.id });
+  }
 
   const doneCount = mine.filter((b) => b.status === 'COMPLETED').length;
 
@@ -95,14 +114,14 @@ export async function ClinicianView({ session }: { session: Session }) {
             </div>
             {/* Clinical-gated quick facts */}
             {canClinical && (focusMedical || focusAllergies) && (
-              <p className="mt-3 flex items-start gap-2 rounded-[var(--radius-sm)] bg-[color-mix(in_oklab,#c0392b_12%,transparent)] px-3 py-2 text-sm text-[var(--color-ink)]">
+              <p className="mt-3 flex items-start gap-2 rounded-[var(--radius-sm)] bg-[color-mix(in_oklab,var(--color-blush-deep)_12%,transparent)] px-3 py-2 text-sm text-[var(--color-ink)]">
                 <span aria-hidden>⚠</span>
                 <span className="min-w-0 break-words">{[focusMedical, focusAllergies && `Allergies: ${focusAllergies}`].filter(Boolean).join(' · ')}</span>
               </p>
             )}
             <div className="mt-3 flex flex-wrap gap-2 text-xs">
               {focus.arrivedAt && <span className="rounded-full bg-[color-mix(in_oklab,var(--color-jade)_14%,transparent)] px-2.5 py-1 font-medium text-[var(--color-jade)]">✓ Arrived</span>}
-              <span className={`rounded-full px-2.5 py-1 font-medium ${focusConsent ? 'bg-[color-mix(in_oklab,var(--color-jade)_14%,transparent)] text-[var(--color-jade)]' : 'bg-amber-100 text-amber-800'}`}>
+              <span className={`rounded-full px-2.5 py-1 font-medium ${focusConsent ? 'bg-[color-mix(in_oklab,var(--color-jade)_14%,transparent)] text-[var(--color-jade)]' : 'bg-[var(--color-gold)]/20 text-[var(--color-ink)]'}`}>
                 {focusConsent ? 'Consent signed' : 'Consent outstanding'}
               </span>
               {canClinical && !focusMedical && <span className="rounded-full bg-[var(--color-bone)] px-2.5 py-1 text-[var(--color-stone)]">No medical flag</span>}

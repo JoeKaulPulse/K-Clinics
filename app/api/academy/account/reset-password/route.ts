@@ -20,7 +20,7 @@ export async function POST(req: Request) {
     const result = await performAcademyPasswordReset(parsed.data.id, parsed.data.token, parsed.data.password);
     return NextResponse.json(result, { status: result.ok ? 200 : 400 });
   } catch (err) {
-    console.error('[academy/reset-password] failed:', err);
+    console.error('[academy/reset-password] failed:', (err as Error)?.message);
     Sentry.captureException(err, { tags: { area: 'academy/reset-password' } });
     return NextResponse.json({ ok: false, error: 'Something went wrong. Please try again.' }, { status: 500 });
   }

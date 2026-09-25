@@ -50,20 +50,42 @@ const securityHeaders = [
   { key: 'X-DNS-Prefetch-Control', value: 'on' },
 ];
 
-const headers = async () => [{ source: '/(.*)', headers: securityHeaders }];
+// BLD-1444: image files served straight out of public/ (treatment photos, brand
+// marks, icons, the hero before/after pair) get no explicit Cache-Control today,
+// unlike hashed _next/static output which Next already caches aggressively.
+// A new photo effectively always arrives under a new filename, so a year is safe;
+// replacing one IN PLACE under the same name would be served stale to returning
+// visitors, so re-upload under a new name rather than overwriting.
+const publicAssetHeaders = [{ key: 'Cache-Control', value: 'public, max-age=31536000, immutable' }];
+// `headers()` matches the request PATH, not the filesystem — it cannot tell a
+// file in public/ from a page route. /treatments is a real marketing page
+// (app/(marketing)/treatments/page.tsx) and `/treatments/:path*` matches it, so
+// an unscoped prefix rule would pin the HTML for that page in every returning
+// visitor's browser for a year. Every rule below therefore requires an image
+// extension, which no page route can have.
+const IMG_EXT = '(png|jpg|jpeg|webp|avif|svg|gif|ico)';
+
+const headers = async () => [
+  { source: '/(.*)', headers: securityHeaders },
+  { source: `/treatments/:path*.:ext${IMG_EXT}`, headers: publicAssetHeaders },
+  { source: `/brand/:path*.:ext${IMG_EXT}`, headers: publicAssetHeaders },
+  { source: `/hero/:path*.:ext${IMG_EXT}`, headers: publicAssetHeaders },
+  { source: '/icon-192.png', headers: publicAssetHeaders },
+  { source: '/icon-512.png', headers: publicAssetHeaders },
+  { source: '/icon-maskable-512.png', headers: publicAssetHeaders },
+  { source: '/icon.svg', headers: publicAssetHeaders },
+];
 
 const redirects = async () => [
   // Preserve SEO equity from the legacy site's URL structure.
   { source: '/about-kclinics', destination: '/about', permanent: true },
   { source: '/our-clinics', destination: '/contact', permanent: true },
   { source: '/cosmetology-all-treatments', destination: '/treatments', permanent: true },
-  // BLD-1008: was pointed at /dentistry, but that page (and next.config.mjs
-  // redirects can't read the DB-backed site.dentistryLive flag at build time
-  // to check this) currently serves noindex/nofollow while dentistryLive is
-  // off, which would send this redirect's link equity to a non-indexable
-  // page. Point it at /treatments (aesthetics catalogue, always indexable)
-  // instead until dentistryLive flips true, then retarget back to /dentistry.
-  { source: '/dentistry-all-treatments', destination: '/treatments', permanent: true },
+  // BLD-1008/BLD-1250: was pointed at /treatments because /dentistry used to serve
+  // noindex/nofollow while dentistryLive was off. BLD-1250 fixed that -- /dentistry
+  // is now indexed pre-launch regardless of dentistryLive (its coming-soon framing
+  // is honest content), so this can point at the topically-correct /dentistry page.
+  { source: '/dentistry-all-treatments', destination: '/dentistry', permanent: true },
   { source: '/kclinics-beauty-points', destination: '/membership', permanent: true },
   { source: '/personalized-high-end-treatments', destination: '/about', permanent: true },
   { source: '/individualised-treatment-plans', destination: '/about', permanent: true },
@@ -111,14 +133,14 @@ const nextConfig = {
   // externalising it. Turbopack loads externalised server packages through
   // hash-aliased ids (require("@prisma/client-<hash>")) backed by symlinks in
   // .next/node_modules — and that machinery proved unreliable inside Vercel's
-  // lambda filesystem: the ESM external import of @prisma/extension-accelerate
-  // failed with "Failed to load external module …: Cannot find module" on every
-  // DB-touching route, across cached AND clean builds. Listing the packages in
-  // transpilePackages opts @prisma/client out of Next's DEFAULT external list
-  // and forces all four to compile into the chunks: no external requires, no
-  // symlinks, nothing left to resolve at runtime. The generated client's WASM
-  // query compiler is embedded as base64 JS, so it bundles cleanly.
-  transpilePackages: ['@prisma/client', '@prisma/adapter-pg', '@prisma/extension-accelerate', 'pg'],
+  // lambda filesystem: an ESM external import failed with "Failed to load
+  // external module …: Cannot find module" on every DB-touching route, across
+  // cached AND clean builds. Listing the packages in transpilePackages opts
+  // @prisma/client out of Next's DEFAULT external list and forces all three to
+  // compile into the chunks: no external requires, no symlinks, nothing left
+  // to resolve at runtime. The generated client's WASM query compiler is
+  // embedded as base64 JS, so it bundles cleanly.
+  transpilePackages: ['@prisma/client', '@prisma/adapter-pg', 'pg'],
   // Keep non-runtime files OUT of serverless function bundles. lib/og.tsx reads
   // images/fonts with a dynamic fs.readFileSync(path.join(process.cwd(), …)) that
   // Next/Turbopack can't statically analyse, so it traces the WHOLE project into
@@ -159,7 +181,14 @@ const nextConfig = {
   // created" without creating one — clients then couldn't log in).
   env: { NEXT_PUBLIC_BASE_PATH: repoBase, NEXT_PUBLIC_STATIC_DEMO: isPages ? 'true' : '' },
   images: {
-    formats: ['image/avif', 'image/webp'],
+    // webp first: near-identical quality to avif at a much cheaper encode,
+    // so a cold optimiser cache serves faster (avif still negotiated when a
+    // browser prefers it).
+    formats: ['image/webp', 'image/avif'],
+    // Match the long-lived, immutable cache policy already set for /public
+    // assets below — the default TTL is short, so every next/image instance
+    // sitewide was re-hitting the costly optimiser path far more than needed.
+    minimumCacheTTL: 31536000,
     // GitHub Pages has no image optimiser; serve images as-is.
     unoptimized: isPages,
     // Allow SVG to be served through next/image (brand logo, icons).

@@ -31,7 +31,14 @@ export async function GET(req: Request) {
     select: { email: true, source: true, active: true, consentedAt: true, createdAt: true },
   });
 
-  const esc = (v: string) => (/[",\n]/.test(v) ? `"${v.replace(/"/g, '""')}"` : v);
+  // BLD-1596: guard against CSV/formula injection — a value starting with
+  // =, +, -, @, tab or CR is evaluated as a formula by Excel/Sheets when the
+  // exported file is opened. Prefix with a single quote (the standard CSV
+  // injection mitigation) before applying the existing quote/comma escaping.
+  const esc = (v: string) => {
+    const guarded = /^[=+\-@\t\r]/.test(v) ? `'${v}` : v;
+    return /[",\n]/.test(guarded) ? `"${guarded.replace(/"/g, '""')}"` : guarded;
+  };
   const iso = (d: Date) => new Date(d).toISOString();
   const header = ['email', 'source', 'status', 'consented_at', 'created_at'];
   const lines = [header.join(',')];

@@ -8,6 +8,10 @@ export const maxDuration = 60;
 // lastMessageAt + unread (see lib/team-chat streamSnapshot). The client treats a
 // change as "fetch deltas" — keeps the hot path cheap and the payload private
 // (no message bodies cross the wire here). Closes ~55s; the browser reconnects.
+// BLD-1207: streamSnapshot() runs a teamMessage.count() per channel membership
+// (Promise.all) — a per-tick N+1 burst. streamProbe() is a single cheap
+// membership+channel join with no counts; the full snapshot (and its count
+// burst) only runs when the probe's value has changed since the last tick.
 export async function GET(req: Request) {
   if (!crmEnabled) return new Response('disabled', { status: 503 });
   const { getSession } = await import('@/lib/auth');
@@ -15,10 +19,11 @@ export async function GET(req: Request) {
   if (!session) return new Response('forbidden', { status: 403 });
 
   const { sseSnapshotStream, SSE_HEADERS } = await import('@/lib/sse-snapshot');
-  const { streamSnapshot } = await import('@/lib/team-chat');
+  const { streamSnapshot, streamProbe } = await import('@/lib/team-chat');
 
   return new Response(
     sseSnapshotStream({
+      probe: () => streamProbe(session.sub),
       load: () => streamSnapshot(session.sub),
       pollMs: 1500,
       signal: req.signal,

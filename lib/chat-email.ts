@@ -2,6 +2,7 @@ import 'server-only';
 import { db } from '@/lib/db';
 import { site } from '@/lib/site';
 import { sendEmail, tmplChatReply, tmplChatTranscript } from '@/lib/email';
+import { encClinical, decClinical } from '@/lib/clinical-crypto';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Live-chat ↔ email bridge.
@@ -87,7 +88,9 @@ export async function emailChatMessage(messageId: string, opts: { force?: boolea
       ? `${msg.authorName}${msg.authorTitle ? `, ${msg.authorTitle},` : ''} at KClinics`
       : 'the KClinics team';
   const tid = threadId(c.id);
-  const html = tmplChatReply({ visitorName: c.visitorName, who, body: msg.body });
+  // BLD-1160: bodies are encrypted at rest; decrypt before emailing (decClinical
+  // tolerates legacy plaintext rows).
+  const html = tmplChatReply({ visitorName: c.visitorName, who, body: decClinical(msg.body) });
 
   const subject = 'Re: your conversation with KClinics';
   const res = await sendEmail({
@@ -123,7 +126,9 @@ export async function emailChatTranscript(conversationId: string, opts: { actor:
   const res = await sendEmail({
     to,
     subject,
-    html: tmplChatTranscript({ visitorName: c.visitorName, messages: c.messages.map((m) => ({ sender: m.sender, authorName: m.authorName, body: m.body, createdAt: m.createdAt })) }),
+    // BLD-1160: bodies are encrypted at rest; decrypt before emailing the
+    // transcript (decClinical tolerates legacy plaintext rows).
+    html: tmplChatTranscript({ visitorName: c.visitorName, messages: c.messages.map((m) => ({ sender: m.sender, authorName: m.authorName, body: decClinical(m.body), createdAt: m.createdAt })) }),
     from: chatFrom(),
     replyTo: chatReplyAddress(c.token),
     headers: { 'In-Reply-To': tid, References: tid },
@@ -131,7 +136,8 @@ export async function emailChatTranscript(conversationId: string, opts: { actor:
   if (!res.ok) return { ok: false, error: res.error || 'Could not send.' };
   // If the visitor gave a new email here, remember it for future replies.
   if (!c.visitorEmail && opts.toOverride) await db.chatConversation.update({ where: { id: c.id }, data: { visitorEmail: to.toLowerCase() } }).catch(() => {});
-  await db.chatMessage.create({ data: { conversationId: c.id, sender: 'AI', author: 'system', body: `📧 Transcript emailed to ${to}.`, via: 'email' } }).catch(() => {});
+  // BLD-1160: encrypt at rest, matching every write of ChatMessage.body.
+  await db.chatMessage.create({ data: { conversationId: c.id, sender: 'AI', author: 'system', body: encClinical(`📧 Transcript emailed to ${to}.`) as string, via: 'email' } }).catch(() => {});
   await db.chatConversation.update({ where: { id: c.id }, data: { lastMessageAt: new Date() } }).catch(() => {});
   await logChatEmail({ conversationId: c.id, clientId: c.clientId, to, subject, chatKind: 'transcript', res });
   return { ok: true };

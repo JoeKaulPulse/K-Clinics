@@ -32,12 +32,15 @@ export default async function BookingsPage({ searchParams }: { searchParams: Pro
   const { listBookings } = await import('@/lib/crm-data');
   const session = await getSession();
   if (!sessionCan(session, 'bookings.view')) redirect('/admin');
+  // BLD-1693: a Specialist/Practitioner sees only their own bookings in this
+  // clinic-wide list — never every practitioner's.
+  const practitionerId = session && session.role === 'PRACTITIONER' ? session.sub : undefined;
 
   // listBookings and loadBookingTreatments are independent reads — neither
   // depends on the other's result (PRJ-1069.8), so run them concurrently
   // instead of serially.
   const [rows, can, locale, treatmentsForBooking] = await Promise.all([
-    listBookings({ filter, q, from, to }),
+    listBookings({ filter, q, from, to, practitionerId }),
     sessionPermissions(),
     getLocale(),
     // Specific service variants/areas per treatment category (Underarms, Full
@@ -89,20 +92,20 @@ export default async function BookingsPage({ searchParams }: { searchParams: Pro
               </svg>
             </span>
             <input name="q" defaultValue={q} placeholder="Client or treatment…"
-              className="block h-11 w-56 rounded-full border border-[var(--color-line)] bg-[var(--color-porcelain)] pl-9 pr-4 text-sm outline-none transition-shadow placeholder:text-[var(--color-stone)] focus:border-[var(--color-gold)] focus:shadow-[0_0_0_3px_color-mix(in_oklab,var(--color-gold)_22%,transparent)]" />
+              className="block h-11 w-56 rounded-full border border-[var(--color-line)] bg-[var(--color-porcelain)] pl-9 pr-4 text-sm outline-none transition-shadow placeholder:text-[var(--color-stone)] focus:border-[var(--color-gold-deep)] focus-visible:ring-2 focus-visible:ring-[var(--color-gold-deep)] focus:shadow-[0_0_0_3px_color-mix(in_oklab,var(--color-gold)_22%,transparent)]" />
           </span>
         </label>
         <label className="text-xs text-[var(--color-stone)]">
           From
           <input type="date" name="from" defaultValue={from}
-            className="mt-1 block h-11 rounded-full border border-[var(--color-line)] bg-[var(--color-porcelain)] px-4 text-sm outline-none transition-shadow focus:border-[var(--color-gold)] focus:shadow-[0_0_0_3px_color-mix(in_oklab,var(--color-gold)_22%,transparent)]" />
+            className="mt-1 block h-11 rounded-full border border-[var(--color-line)] bg-[var(--color-porcelain)] px-4 text-sm outline-none transition-shadow focus:border-[var(--color-gold-deep)] focus-visible:ring-2 focus-visible:ring-[var(--color-gold-deep)] focus:shadow-[0_0_0_3px_color-mix(in_oklab,var(--color-gold)_22%,transparent)]" />
         </label>
         <label className="text-xs text-[var(--color-stone)]">
           To
           <input type="date" name="to" defaultValue={to}
-            className="mt-1 block h-11 rounded-full border border-[var(--color-line)] bg-[var(--color-porcelain)] px-4 text-sm outline-none transition-shadow focus:border-[var(--color-gold)] focus:shadow-[0_0_0_3px_color-mix(in_oklab,var(--color-gold)_22%,transparent)]" />
+            className="mt-1 block h-11 rounded-full border border-[var(--color-line)] bg-[var(--color-porcelain)] px-4 text-sm outline-none transition-shadow focus:border-[var(--color-gold-deep)] focus-visible:ring-2 focus-visible:ring-[var(--color-gold-deep)] focus:shadow-[0_0_0_3px_color-mix(in_oklab,var(--color-gold)_22%,transparent)]" />
         </label>
-        <button className="h-11 rounded-full bg-[var(--color-ink)] px-4 text-sm font-medium text-[var(--color-porcelain)] transition-colors hover:bg-[var(--color-ink-soft)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-gold)]">Apply</button>
+        <button className="h-11 rounded-full bg-[var(--color-ink)] px-4 text-sm font-medium text-[var(--color-porcelain)] transition-colors hover:bg-[var(--color-ink-soft)]">Apply</button>
         {(q || from || to) && (
           <Link href={`/admin/bookings?filter=${filter}`} className="px-2 py-2 text-sm text-[var(--color-stone)] underline">Clear</Link>
         )}
@@ -138,8 +141,17 @@ export default async function BookingsPage({ searchParams }: { searchParams: Pro
             <p className="hidden text-sm text-[var(--color-stone)] sm:block">
               {new Date(b.startAt).toLocaleString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit', timeZone: 'Europe/London' })}
             </p>
-            <p className="hidden text-sm sm:block">{b.chargedAt ? `${money(b.chargedPence || 0)} paid` : b.pricePence > 0 ? money(b.pricePence) : '—'}</p>
-            <span className="justify-self-end rounded-full bg-[var(--color-bone)] px-3 py-1 text-xs">{b.status}</span>
+            {/* BLD-1891: a session linked to a package shows its place in the
+                course here, never its own price — the full price and payment
+                status live on the package purchase booking. */}
+            <p className="hidden text-sm sm:block">{b.packageBookingId ? 'Package session' : b.chargedAt ? `${money(b.chargedPence || 0)} paid` : b.pricePence > 0 ? money(b.pricePence) : '—'}</p>
+            <span className="flex justify-self-end gap-1.5">
+              {/* BLD-1096: cancelled, but the client's prepaid package still absorbed the session. */}
+              {b.status === 'CANCELLED' && b.packageSessionUsedAt && (
+                <span className="rounded-full bg-[color-mix(in_oklab,var(--color-gold)_18%,transparent)] px-3 py-1 text-xs font-medium text-[var(--color-gold-deep)]">Package used</span>
+              )}
+              <span className="rounded-full bg-[var(--color-bone)] px-3 py-1 text-xs">{b.status}</span>
+            </span>
           </Link>
         ))}
       </div>

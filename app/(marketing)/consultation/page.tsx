@@ -3,7 +3,8 @@ import Link from 'next/link';
 import { PageHero } from '@/components/ui/PageHero';
 import { Reveal } from '@/components/motion/Reveal';
 import { ConsultForm } from '@/components/consult/ConsultForm';
-import { site } from '@/lib/site';
+import { PhoneLink } from '@/components/marketing/PhoneLink';
+import { TrustStrip } from '@/components/home/TrustStrip';
 import { getSiteConfig } from '@/lib/site-config';
 import { pageMeta, JsonLd, breadcrumbLd } from '@/lib/seo';
 
@@ -12,7 +13,7 @@ export const revalidate = 3600;
 export const generateMetadata = (): Promise<Metadata> => pageMeta({
   title: 'Book a Free Consultation — Islington, London | KClinics',
   description:
-    'Request your complimentary consultation at KClinics, Islington. Tell us your goals and our expert team will design a bespoke treatment plan. New clients enjoy 15% off.',
+    'Request your complimentary consultation at KClinics, Islington. Tell us your goals and our expert team will design your bespoke treatment plan.',
   path: '/consultation',
   keywords: ['free consultation London', 'aesthetics consultation Islington', 'book consultation clinic'],
 });
@@ -52,7 +53,7 @@ export default async function ConsultationPage() {
               ))}
             </ul>
             <p className="mt-8 text-sm text-[var(--color-stone)]">
-              Prefer to talk? Call <a href={site.phoneHref} className="link-underline font-medium text-[var(--color-ink)]">{site.phone}</a>
+              Prefer to talk? Call <PhoneLink className="link-underline font-medium text-[var(--color-ink)]" />
             </p>
           </div>
         </Reveal>
@@ -60,6 +61,11 @@ export default async function ConsultationPage() {
           <ConsultForm />
         </Reveal>
       </section>
+
+      {/* BLD-1606: social proof beside the site's primary lead-gen form — same
+          real aggregate (Google + verified internal reviews) TrustStrip already
+          surfaces on the homepage and treatment pages. */}
+      <TrustStrip />
 
       {/* Dental consultations anchor */}
       <section id="dental" className="container-lux section scroll-mt-28">

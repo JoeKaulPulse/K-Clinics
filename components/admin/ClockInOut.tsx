@@ -45,7 +45,7 @@ export function ClockInOut({ onShift, onBreak, shiftStartIso, workedTodayMin, br
     });
   }
 
-  const dot = onBreak ? 'bg-amber-400' : onShift ? 'bg-[var(--color-jade)]' : 'bg-[var(--color-stone-soft)]';
+  const dot = onBreak ? 'bg-[var(--color-gold)]' : onShift ? 'bg-[var(--color-jade)]' : 'bg-[var(--color-stone-soft)]';
   const label = onBreak ? 'On break' : onShift ? 'On shift' : 'Off the clock';
 
   // Compact pill: a single-line control for the dashboard header cluster.
@@ -57,7 +57,7 @@ export function ClockInOut({ onShift, onBreak, shiftStartIso, workedTodayMin, br
         {onShift && <span className="hidden text-xs tabular-nums text-[var(--color-stone)] sm:inline">· {fmt(liveWorked)}</span>}
         {!onShift ? (
           <button type="button" onClick={() => run(() => clockInOutAction('in'))} disabled={pending}
-            className="rounded-full bg-[var(--color-ink)] px-3 py-1 text-xs font-medium text-[var(--color-porcelain)] transition-opacity hover:opacity-90 disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-gold)]">
+            className="rounded-full bg-[var(--color-ink)] px-3 py-1 text-xs font-medium text-[var(--color-porcelain)] transition-opacity hover:opacity-90 disabled:opacity-50">
             {pending ? '…' : 'Clock in'}
           </button>
         ) : (
@@ -67,7 +67,7 @@ export function ClockInOut({ onShift, onBreak, shiftStartIso, workedTodayMin, br
                 className="rounded-full border border-[var(--color-line)] bg-[var(--color-porcelain)] px-2.5 py-1 text-xs hover:bg-[var(--color-bone)] disabled:opacity-50">Break</button>
             ) : (
               <button type="button" onClick={() => run(() => breakAction('end'))} disabled={pending}
-                className="rounded-full bg-amber-400/90 px-2.5 py-1 text-xs font-medium text-[var(--color-ink)] hover:bg-amber-400 disabled:opacity-50">End break</button>
+                className="rounded-full bg-[var(--color-gold)]/90 px-2.5 py-1 text-xs font-medium text-[var(--color-ink)] hover:bg-[var(--color-gold)] disabled:opacity-50">End break</button>
             )}
             <button type="button" onClick={() => run(() => clockInOutAction('out'))} disabled={pending}
               className="rounded-full border border-[var(--color-line)] bg-[var(--color-porcelain)] px-2.5 py-1 text-xs font-medium hover:bg-[var(--color-bone)] disabled:opacity-50">
@@ -109,7 +109,7 @@ export function ClockInOut({ onShift, onBreak, shiftStartIso, workedTodayMin, br
               </button>
             ) : (
               <button type="button" onClick={() => run(() => breakAction('end'))} disabled={pending}
-                className="rounded-full bg-amber-400/90 px-4 py-1.5 text-sm font-medium text-[var(--color-ink)] hover:bg-amber-400 disabled:opacity-50">
+                className="rounded-full bg-[var(--color-gold)]/90 px-4 py-1.5 text-sm font-medium text-[var(--color-ink)] hover:bg-[var(--color-gold)] disabled:opacity-50">
                 End break
               </button>
             )}
@@ -119,7 +119,7 @@ export function ClockInOut({ onShift, onBreak, shiftStartIso, workedTodayMin, br
       {shiftStartIso && onShift && (
         <p className="mt-2 text-xs text-[var(--color-stone)]">Since {new Date(shiftStartIso).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/London' })}</p>
       )}
-      {error && <p role="alert" aria-live="assertive" className="mt-2 text-xs text-[#b23b3b]">{error}</p>}
+      {error && <p role="alert" aria-live="assertive" className="mt-2 text-xs text-[var(--color-blush-deep)]">{error}</p>}
     </div>
   );
 }

@@ -1,10 +1,12 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, type KeyboardEvent } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { KSpeech } from '@/components/academy/KMascot';
 import { Illustration, matchIllustration } from '@/components/academy/Illustrations';
 import { AmbientBackdrop } from '@/components/academy/AmbientBackdrop';
+import { useDialogBehaviours } from '@/components/ui/Dialog';
+import { useReducedMotionSafe } from '@/components/motion/use-reduced-motion-safe';
 
 // A short animated "video" explainer generated on the fly from a lesson's own
 // points — the K narrates each beat (typed speech) over a matched illustration,
@@ -19,26 +21,74 @@ export function ExplainerPlayer({ title, level, points, onClose, onStart }: { ti
   const cur = scenes[i];
   const last = i >= scenes.length - 1;
 
+  // BLD-1679: an explicit pause/play toggle for the auto-advancing reel, plus a
+  // prefers-reduced-motion check — WCAG 2.2.2 (Pause, Stop, Hide) asks for a
+  // mechanism to pause, and the button below is it.
+  //
+  // Deliberately NOT Testimonials.tsx's hover/focus auto-pause. That pattern
+  // suits a small inline carousel, but this player is a full-screen dialog:
+  // useDialogBehaviours focuses the panel's first focusable child on open
+  // (which is the pause button itself), so a focus-pause would leave the reel
+  // paused from the moment it opens, and a hover-pause would pause it for any
+  // desktop pointer resting anywhere on the screen. Either one silently turns
+  // the 60-second explainer into a single static slide.
+  const [paused, setPaused] = useState(false);
+  const reduce = useReducedMotionSafe();
+
   useEffect(() => {
-    if (last) return;
+    if (last || reduce || paused) return;
     const t = setTimeout(() => setI((x) => x + 1), cur.kind === 'title' ? 4200 : 5400);
     return () => clearTimeout(t);
-  }, [i, last, cur.kind]);
-  useEffect(() => { const prev = document.body.style.overflow; document.body.style.overflow = 'hidden'; return () => { document.body.style.overflow = prev; }; }, []);
+  }, [i, last, cur.kind, reduce, paused]);
+  // BLD-1501: dialog semantics (role, focus trap, Escape-to-close) — also
+  // covers the body-scroll lock this player needs while it's open on top of
+  // ImmersiveCourse, which locks too; the shared ref-count (BLD-1194) means
+  // unmounting both at once still leaves the page scrollable.
+  const { panelRef, onKeyDown: dialogKeys } = useDialogBehaviours<HTMLDivElement>(onClose);
+
+  // Dropping role="button" also dropped the Enter/Space handler that let a
+  // keyboard user step the reel on, leaving click-to-advance mouse-only (WCAG
+  // 2.1.1). Enter/Space can't come back — the trap puts initial focus on the
+  // Close button, where they'd activate it instead — so the arrow keys carry
+  // that function. Buttons ignore arrows, so this never fights the close /
+  // "Start the lesson" controls or the Tab trap.
+  const onKeyDown = (e: KeyboardEvent<HTMLDivElement>) => {
+    if (!last && (e.key === 'ArrowRight' || e.key === 'ArrowDown')) {
+      e.preventDefault(); e.stopPropagation(); setI((x) => x + 1); return;
+    }
+    if (i > 0 && (e.key === 'ArrowLeft' || e.key === 'ArrowUp')) {
+      e.preventDefault(); e.stopPropagation(); setI((x) => x - 1); return;
+    }
+    dialogKeys(e);
+  };
 
   const art = cur.kind === 'point' ? matchIllustration(cur.text) : null;
 
   return (
-    <div className="fixed inset-0 z-[320] flex flex-col bg-[var(--color-ink)] text-[var(--color-porcelain)]" style={{ paddingTop: 'env(safe-area-inset-top)', paddingBottom: 'env(safe-area-inset-bottom)' }} role="button" tabIndex={0} aria-label={last ? 'Explainer complete' : 'Tap to advance'} onClick={() => !last && setI((x) => x + 1)} onKeyDown={(e) => { if (e.target === e.currentTarget && (e.key === 'Enter' || e.key === ' ') && !last) { e.preventDefault(); setI((x) => x + 1); } }}>
+    <div ref={panelRef} className="fixed inset-0 z-[320] flex flex-col bg-[var(--color-ink)] text-[var(--color-porcelain)]" style={{ paddingTop: 'env(safe-area-inset-top)', paddingBottom: 'env(safe-area-inset-bottom)' }} role="dialog" aria-modal="true" aria-label={`${title} — 60-second explainer`} aria-keyshortcuts="ArrowRight ArrowLeft Escape" tabIndex={-1} onClick={() => !last && setI((x) => x + 1)} onKeyDown={onKeyDown}>
       <AmbientBackdrop tone="dark" />
       <header className="relative z-10 flex items-center justify-between px-5 py-3">
         <span className="text-xs uppercase tracking-[0.18em] text-white/45">60-second explainer</span>
-        <button onClick={(e) => { e.stopPropagation(); onClose(); }} aria-label="Close explainer" className="grid h-9 w-9 place-items-center rounded-full text-white/70 transition-colors hover:bg-white/10 hover:text-white">
-          <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" aria-hidden><path d="m3 3 10 10M13 3 3 13" /></svg>
-        </button>
+        <div className="flex items-center gap-2">
+          {!last && !reduce && (
+            <button
+              type="button"
+              onClick={(e) => { e.stopPropagation(); setPaused((p) => !p); }}
+              aria-label={paused ? 'Play explainer' : 'Pause explainer'}
+              className="grid h-9 w-9 place-items-center rounded-full text-white/70 transition-colors hover:bg-white/10 hover:text-white"
+            >
+              {paused ? '▶' : '❚❚'}
+            </button>
+          )}
+          <button onClick={(e) => { e.stopPropagation(); onClose(); }} aria-label="Close explainer" className="grid h-9 w-9 place-items-center rounded-full text-white/70 transition-colors hover:bg-white/10 hover:text-white">
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" aria-hidden><path d="m3 3 10 10M13 3 3 13" /></svg>
+          </button>
+        </div>
       </header>
 
-      <div className="relative z-10 mx-auto flex w-full max-w-xl flex-1 flex-col items-center justify-center px-6 text-center">
+      {/* The reel advances on a timer, so a screen reader has to be told each
+          new beat — otherwise the whole explainer is silent after the title. */}
+      <div aria-live="polite" className="relative z-10 mx-auto flex w-full max-w-xl flex-1 flex-col items-center justify-center px-6 text-center">
         <AnimatePresence mode="wait">
           <motion.div key={i} initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -14 }} transition={{ duration: 0.4, ease: 'easeOut' }} className="w-full">
             {cur.kind === 'title' && (

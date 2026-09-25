@@ -7,13 +7,13 @@ import { useRouter } from 'next/navigation';
 export type ModPost = { id: string; authorName: string; isStaff: boolean; body: string; hidden: boolean; createdAt: string };
 export type ModThread = {
   id: string; category: string; title: string; body: string; authorName: string; isStaff: boolean;
-  pinned: boolean; locked: boolean; hidden: boolean; replyCount: number; lastPostAt: string; createdAt: string; posts: ModPost[];
+  pinned: boolean; locked: boolean; hidden: boolean; replyCount: number; lastPostAt: string; createdAt: string;
 };
 export type CategoryDef = { key: string; label: string };
 
 const btn = 'rounded-full border border-[var(--color-line)] px-3 py-1 text-xs hover:border-[var(--color-gold)] disabled:opacity-40';
 const btnDark = 'rounded-full bg-[var(--color-ink)] px-4 py-1.5 text-xs font-medium text-[var(--color-porcelain)] disabled:opacity-50';
-const field = 'w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-2.5 py-1.5 text-sm';
+const field = 'w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-porcelain)] px-2.5 py-1.5 text-sm';
 const when = (iso: string) => new Date(iso).toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
 
 async function post(payload: object) { return fetch('/api/admin/forum', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) }); }
@@ -67,16 +67,48 @@ function ThreadRow({ thread: t, label, busy, act }: { thread: ModThread; label: 
   const [open, setOpen] = useState(false);
   const [reply, setReply] = useState('');
   const [replying, setReplying] = useState(false);
-  async function sendReply() { if (!reply.trim()) return; setReplying(true); await post({ op: 'staffReply', threadId: t.id, body: reply.trim() }); setReply(''); setReplying(false); router.refresh(); }
+  // BLD-1724: posts load only when the thread is expanded, instead of every
+  // thread's full post history shipping on every page load.
+  const [posts, setPosts] = useState<ModPost[] | null>(null);
+  const [loadingPosts, setLoadingPosts] = useState(false);
+  const [postsError, setPostsError] = useState('');
+  // A failed load must say so: the replies are no longer server-rendered, so
+  // swallowing the error would show a thread that reads "3 replies" with
+  // nothing under it — a moderator would take that as nothing to moderate.
+  async function loadPosts() {
+    setLoadingPosts(true);
+    setPostsError('');
+    try {
+      const res = await post({ op: 'threadPosts', threadId: t.id });
+      const j = await res.json().catch(() => ({}));
+      if (!res.ok || !Array.isArray(j.posts)) { setPostsError(j.error || 'Could not load the replies. Try again.'); return; }
+      setPosts(j.posts as ModPost[]);
+    } catch {
+      setPostsError('Could not load the replies. Check your connection and try again.');
+    } finally {
+      setLoadingPosts(false);
+    }
+  }
+  async function toggleOpen() {
+    const next = !open;
+    setOpen(next);
+    if (next && posts === null) await loadPosts();
+  }
+  // Thread-level actions (pin/lock/hide/delete) go through the parent's `act`
+  // as before; post-level actions also need the freshly-loaded posts to
+  // reflect the change, since they're no longer part of the server-rendered
+  // `threads` prop that router.refresh() updates.
+  async function actAndReloadPosts(payload: object) { await act(payload); await loadPosts(); }
+  async function sendReply() { if (!reply.trim()) return; setReplying(true); await post({ op: 'staffReply', threadId: t.id, body: reply.trim() }); setReply(''); setReplying(false); await loadPosts(); router.refresh(); }
 
   return (
-    <div className={`rounded-[var(--radius-md)] border bg-white ${t.hidden ? 'border-dashed border-[var(--color-line)] opacity-70' : 'border-[var(--color-line)]'}`}>
+    <div className={`rounded-[var(--radius-md)] border bg-[var(--color-porcelain)] ${t.hidden ? 'border-dashed border-[var(--color-line)] opacity-70' : 'border-[var(--color-line)]'}`}>
       <div className="flex flex-wrap items-center gap-2 p-3">
-        <button onClick={() => setOpen((v) => !v)} className="text-[var(--color-stone)]">{open ? '▾' : '▸'}</button>
+        <button onClick={toggleOpen} className="text-[var(--color-stone)]">{open ? '▾' : '▸'}</button>
         <span className="flex-1 text-sm">
           <span className="font-medium text-[var(--color-ink)]">{t.title}</span>
           <span className="text-[var(--color-stone)]"> · {label(t.category)} · {t.authorName}{t.isStaff ? ' (tutor)' : ''} · {t.replyCount} repl{t.replyCount === 1 ? 'y' : 'ies'}</span>
-          {t.pinned && <span className="ml-1 text-[var(--color-gold)]">📌</span>}
+          {t.pinned && <span className="ml-1 text-[var(--color-gold-deep)]">📌</span>}
           {t.locked && <span className="ml-1">🔒</span>}
           {t.hidden && <span className="ml-1 rounded bg-[var(--color-line)] px-1.5 py-0.5 text-[0.6rem] uppercase text-[var(--color-stone)]">Hidden</span>}
         </span>
@@ -92,15 +124,21 @@ function ThreadRow({ thread: t, label, busy, act }: { thread: ModThread; label: 
             <button onClick={() => { if (confirm('Delete this thread and all its replies permanently?')) act({ op: 'deleteThread', id: t.id }); }} disabled={busy} className="rounded-full px-3 py-1 text-xs text-[var(--color-blush-deep)] hover:underline disabled:opacity-40">Delete thread</button>
           </div>
 
-          {t.posts.length > 0 && (
+          {loadingPosts && <p className="text-sm text-[var(--color-stone)]">Loading replies…</p>}
+          {postsError && (
+            <p role="alert" className="text-sm text-[var(--color-blush-deep)]">
+              {postsError} <button onClick={loadPosts} className="underline">Retry</button>
+            </p>
+          )}
+          {posts && posts.length > 0 && (
             <ul className="space-y-1.5">
-              {t.posts.map((p) => (
+              {posts.map((p) => (
                 <li key={p.id} className={`rounded-[var(--radius-sm)] border border-[var(--color-line)] p-2.5 text-sm ${p.hidden ? 'opacity-60' : ''}`}>
                   <div className="flex items-center justify-between gap-2">
                     <span className="text-xs font-medium text-[var(--color-ink)]">{p.authorName}{p.isStaff ? ' (tutor)' : ''} <span className="text-[var(--color-stone)]">· {when(p.createdAt)}</span></span>
                     <span className="flex gap-2">
-                      <button onClick={() => act({ op: 'hidePost', id: p.id, value: !p.hidden })} disabled={busy} className={btn}>{p.hidden ? 'Unhide' : 'Hide'}</button>
-                      <button onClick={() => { if (confirm('Delete this reply permanently?')) act({ op: 'deletePost', id: p.id }); }} disabled={busy} className="text-xs text-[var(--color-blush-deep)] hover:underline disabled:opacity-40">Delete</button>
+                      <button onClick={() => actAndReloadPosts({ op: 'hidePost', id: p.id, value: !p.hidden })} disabled={busy} className={btn}>{p.hidden ? 'Unhide' : 'Hide'}</button>
+                      <button onClick={() => { if (confirm('Delete this reply permanently?')) actAndReloadPosts({ op: 'deletePost', id: p.id }); }} disabled={busy} className="text-xs text-[var(--color-blush-deep)] hover:underline disabled:opacity-40">Delete</button>
                     </span>
                   </div>
                   <p className="mt-1 whitespace-pre-line text-[var(--color-ink-soft)]">{p.body}</p>
@@ -110,7 +148,7 @@ function ThreadRow({ thread: t, label, busy, act }: { thread: ModThread; label: 
           )}
 
           <div className="flex gap-2">
-            <textarea value={reply} onChange={(e) => setReply(e.target.value)} rows={2} placeholder="Reply as K Academy…" aria-label="Reply to question" className="flex-1 rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-3 py-2 text-sm" />
+            <textarea value={reply} onChange={(e) => setReply(e.target.value)} rows={2} placeholder="Reply as K Academy…" aria-label="Reply to question" className="flex-1 rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-porcelain)] px-3 py-2 text-sm" />
             <button onClick={sendReply} disabled={replying || !reply.trim()} className="shrink-0 self-end rounded-full bg-[var(--color-gold-deep)] px-4 py-2 text-sm font-medium text-white hover:bg-[var(--color-ink)] disabled:opacity-50">{replying ? 'Sending…' : 'Reply'}</button>
           </div>
         </div>

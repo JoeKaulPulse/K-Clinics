@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { AnimatePresence, motion } from 'motion/react';
+import { bufferAttributionFromLocation, promoteBufferedAttribution } from '@/lib/attribution';
 
 // UK GDPR / PECR-compliant cookie consent. Non-essential cookies (analytics,
 // marketing) are OFF until the visitor actively opts in — no pre-ticked boxes,
@@ -41,6 +42,15 @@ function mirrorConsentCookies(v: ConsentValue) {
 function save(v: ConsentValue) {
   localStorage.setItem(KEY, JSON.stringify(v));
   mirrorConsentCookies(v);
+  // BLD-1804: the moment marketing consent is granted, promote any pre-consent
+  // ad-click attribution that was buffered (in bufferAttributionFromLocation
+  // below) — otherwise a brand-new visitor's first-touch gclid/UTM data is
+  // silently lost the instant they land, because middleware itself never
+  // writes kc_attrib ahead of consent. mirrorConsentCookies() above has
+  // already set kc_marketing_consent=1, so the replayed request middleware
+  // sees carries the affirmative opt-in; middleware, not this file, writes
+  // the cookie.
+  if (v.marketing) promoteBufferedAttribution();
   window.dispatchEvent(new CustomEvent('kc-consent', { detail: v }));
 }
 
@@ -51,10 +61,22 @@ export function CookieConsent() {
   const [customise, setCustomise] = useState(false);
   const [analytics, setAnalytics] = useState(false);
   const [marketing, setMarketing] = useState(false);
+  // BLD-1355: the full explanation collapses behind "Learn more" so the banner
+  // stays short enough on a 375x812 mobile viewport for both action buttons to
+  // sit fully inside the visible viewport on first paint — no scrolling inside
+  // the banner needed to find "Reject non-essential".
+  const [expanded, setExpanded] = useState(false);
   const dialogRef = useRef<HTMLDivElement>(null);
   const prevFocusRef = useRef<HTMLElement | null>(null);
 
   useEffect(() => {
+    // BLD-1804: stash any gclid/fbclid/UTM params on this landing URL before
+    // the consent decision is known — first paint, regardless of whether the
+    // banner shows — so they survive client-side navigation for the
+    // pre-consent window and can reach kc_attrib the moment (if ever)
+    // marketing consent is granted, instead of being dropped on arrival.
+    // Held in memory only: nothing is written to the device pre-consent.
+    bufferAttributionFromLocation();
     const stored = getConsent();
     if (!stored) setShow(true);
     // Re-mirror a stored choice on every load. The banner only writes the
@@ -102,36 +124,77 @@ export function CookieConsent() {
           transition={{ duration: 0.45, ease: [0.16, 1, 0.3, 1] }}
           role="region"
           aria-label="Cookie consent"
-          className="fixed inset-x-3 bottom-3 z-[80] mx-auto max-h-[38vh] max-w-2xl overflow-y-auto rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-5 shadow-[var(--shadow-lift)] md:inset-x-auto md:left-6 md:bottom-6 md:max-h-none md:overflow-visible md:p-6"
+          // BLD-1152: right-20 on mobile keeps the banner clear of the fixed
+          // WhatsApp lead button (bottom-5 right-5), which it used to cover on
+          // every first visit — the button stays tappable beside the banner.
+          // BLD-1355: max-h-[85vh] (was 38vh) so the collapsed banner never
+          // needs its own internal scroll just to reveal the action buttons on
+          // a short mobile viewport; the short default copy below keeps actual
+          // content well under that anyway.
+          // BLD-1543: below sm (< 640px) the whole banner runs at a tighter
+          // scale — smaller max-h, padding, type and button size — so on a
+          // 390x844 phone it no longer eats ~48% of the viewport and covers
+          // the hero CTAs beneath it; sm: and up keep the original spacious
+          // sizing untouched.
+          // The 45vh cap applies to the first-load banner only. Once the
+          // visitor opens "Customise" the three toggle rows are added, and
+          // capping at 45vh would push "Save choices" behind the banner's own
+          // scrollbar — the failure BLD-1355 fixed. The taller cap then is
+          // harmless: the visitor has already engaged, so covering the hero
+          // CTAs is no longer the problem BLD-1543 was about.
+          className={`fixed bottom-3 left-3 right-20 z-[80] mx-auto flex ${customise ? 'max-h-[80vh]' : 'max-h-[45vh]'} max-w-2xl flex-col overflow-y-auto rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-3 shadow-[var(--shadow-lift)] sm:max-h-[85vh] sm:p-5 md:bottom-6 md:left-6 md:right-auto md:max-h-none md:overflow-visible md:p-6`}
         >
-          <p className="font-[family-name:var(--font-display)] text-lg">Your privacy, your choice</p>
-          <p className="mt-2 text-sm leading-relaxed text-[var(--color-stone)]">
-            We use essential cookies to make our site work. With your consent, we&apos;d also like to use analytics and
-            marketing cookies to improve your experience. You can change your mind anytime. See our{' '}
-            <Link href="/info/privacy-policy" className="underline">Privacy Policy</Link>.
-          </p>
+          <p className="font-[family-name:var(--font-display)] text-base sm:text-lg">Your privacy, your choice</p>
+          {expanded ? (
+            <p className="mt-1.5 text-xs leading-relaxed text-[var(--color-stone)] sm:mt-2 sm:text-sm">
+              We use essential cookies to make our site work. With your consent, we&apos;d also like to use analytics and
+              marketing cookies to improve your experience. You can change your mind anytime. See our{' '}
+              <Link href="/info/privacy-policy" className="underline">Privacy Policy</Link>.
+            </p>
+          ) : (
+            <p className="mt-1.5 text-xs leading-relaxed text-[var(--color-stone)] sm:mt-2 sm:text-sm">
+              We use essential cookies, plus analytics and marketing cookies if you consent.{' '}
+              {/* The Privacy Policy link stays visible in the collapsed state:
+                  the banner must offer direct access to the full cookie
+                  information before a consent choice is made, not only after
+                  the visitor expands "Learn more". */}
+              <Link href="/info/privacy-policy" className="underline underline-offset-2 hover:text-[var(--color-ink)]">Privacy Policy</Link>.{' '}
+              <button type="button" onClick={() => setExpanded(true)} aria-expanded={false} className="underline underline-offset-2 hover:text-[var(--color-ink)]">
+                Learn more
+              </button>
+            </p>
+          )}
 
           {customise && (
-            <div className="mt-4 space-y-2 rounded-[var(--radius-md)] border border-[var(--color-line)] bg-[var(--color-bone)] p-4 text-sm">
+            <div className="mt-3 space-y-1.5 rounded-[var(--radius-md)] border border-[var(--color-line)] bg-[var(--color-bone)] p-3 text-xs sm:mt-4 sm:space-y-2 sm:p-4 sm:text-sm">
               <Row label="Strictly necessary" desc="Required for the site to function. Always on." checked disabled />
               <Row label="Analytics" desc="Helps us understand how the site is used." checked={analytics} onChange={setAnalytics} />
               <Row label="Marketing" desc="Used to personalise offers and measure campaigns." checked={marketing} onChange={setMarketing} />
             </div>
           )}
 
-          <div className="mt-4 flex flex-wrap gap-2.5">
-            <button onClick={() => decide(true, true)} className="rounded-full bg-[var(--color-gold-deep)] px-5 py-2.5 text-sm font-medium text-white hover:bg-[var(--color-ink)]">
+          {/* BLD-1355: stacked, equal-width, equally-styled buttons on mobile so
+              "Reject non-essential" is never squeezed onto a wrapped row below
+              the fold and never looks like the lesser option — both are full
+              tap targets at the same visual weight; side-by-side once there's
+              room from sm: up.
+              BLD-1543: py-2/text-xs below sm keeps each tap target compact
+              (still >=32px tall) so three stacked buttons plus the copy above
+              fit well inside the shrunk mobile banner; sm: and up restore the
+              original py-2.5/text-sm sizing. */}
+          <div className="mt-3 flex flex-col gap-1.5 sm:mt-4 sm:flex-row sm:flex-wrap sm:gap-2.5">
+            <button onClick={() => decide(true, true)} className="rounded-full bg-[var(--color-gold-deep)] px-4 py-2 text-center text-xs font-medium text-white hover:bg-[var(--color-ink)] sm:px-5 sm:py-2.5 sm:text-sm sm:flex-none">
               Accept all
             </button>
-            <button onClick={() => decide(false, false)} className="rounded-full border border-[var(--color-line)] px-5 py-2.5 text-sm font-medium hover:bg-[var(--color-bone)]">
+            <button onClick={() => decide(false, false)} className="rounded-full border border-[var(--color-ink)] px-4 py-2 text-center text-xs font-medium hover:bg-[var(--color-bone)] sm:px-5 sm:py-2.5 sm:text-sm sm:flex-none">
               Reject non-essential
             </button>
             {customise ? (
-              <button onClick={() => decide(analytics, marketing)} className="rounded-full border border-[var(--color-line)] px-5 py-2.5 text-sm font-medium hover:bg-[var(--color-bone)]">
+              <button onClick={() => decide(analytics, marketing)} className="rounded-full border border-[var(--color-line)] px-4 py-2 text-center text-xs font-medium hover:bg-[var(--color-bone)] sm:px-5 sm:py-2.5 sm:text-sm sm:flex-none">
                 Save choices
               </button>
             ) : (
-              <button onClick={() => setCustomise(true)} className="rounded-full px-5 py-2.5 text-sm font-medium text-[var(--color-stone)] hover:text-[var(--color-ink)]">
+              <button onClick={() => setCustomise(true)} className="rounded-full px-4 py-2 text-center text-xs font-medium text-[var(--color-stone)] hover:text-[var(--color-ink)] sm:px-5 sm:py-2.5 sm:text-sm sm:flex-none">
                 Customise
               </button>
             )}

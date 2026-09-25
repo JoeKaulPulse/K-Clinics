@@ -11,6 +11,7 @@ import { HomeworkPanel } from '@/components/academy/HomeworkPanel';
 import { SecurePdfViewer } from '@/components/academy/SecurePdfViewer';
 import { kindLabel } from '@/components/academy/attachment-kinds';
 import { academyLevel } from '@/lib/academy-levels';
+import { useDialogBehaviours } from '@/components/ui/Dialog';
 import { isMascotMuted, setMascotMuted } from '@/components/academy/mascotVoice';
 import type { CourseLearning, LessonView, QuizView } from '@/lib/lms';
 
@@ -101,12 +102,13 @@ export function ImmersiveCourse({ learning, slug, mode = 'learn', xp = 0, regist
   const [maxReached, setMaxReached] = useState(mode === 'preview' ? steps.length - 1 : firstIncomplete);
   const step = steps[idx];
 
-  // Lock background scroll while the full-screen overlay is open.
-  useEffect(() => {
-    const prev = document.body.style.overflow;
-    document.body.style.overflow = 'hidden';
-    return () => { document.body.style.overflow = prev; };
-  }, []);
+  // BLD-1501: dialog semantics (role, focus trap, Escape-to-exit). Also covers
+  // the body-scroll lock the full-screen overlay needs — the shared ref-count
+  // (BLD-1194) means the overlays that open *inside* the course (ExplainerPlayer,
+  // SecurePdfViewer) cooperate with it rather than fighting over
+  // document.body.style.overflow, so unmounting together doesn't leave the page
+  // permanently unscrollable.
+  const { panelRef, onKeyDown } = useDialogBehaviours<HTMLDivElement>(onExit ?? (() => {}));
 
   const ceiling = mode === 'preview' ? steps.length - 1 : maxReached;
   const go = (to: number) => { if (to >= 0 && to < steps.length && to <= ceiling) setIdx(to); };
@@ -151,7 +153,7 @@ export function ImmersiveCourse({ learning, slug, mode = 'learn', xp = 0, regist
 
   return (
     <ArtCtx.Provider value={{ levelFor, seeArt }}>
-    <div className="fixed inset-0 z-[200] flex flex-col bg-[var(--color-ink)] text-[var(--color-porcelain)]" style={{ paddingTop: 'env(safe-area-inset-top)', paddingBottom: 'env(safe-area-inset-bottom)' }}>
+    <div ref={panelRef} className="fixed inset-0 z-[200] flex flex-col bg-[var(--color-ink)] text-[var(--color-porcelain)]" style={{ paddingTop: 'env(safe-area-inset-top)', paddingBottom: 'env(safe-area-inset-bottom)' }} role="dialog" aria-modal="true" aria-label={learning.course.title} tabIndex={-1} onKeyDown={onKeyDown}>
       <AmbientBackdrop tone="dark" />
       {/* Top bar: exit · progress · counter */}
       <header className="relative z-10 flex items-center gap-4 border-b border-white/10 px-4 py-3 sm:px-6">
@@ -207,7 +209,7 @@ export function ImmersiveCourse({ learning, slug, mode = 'learn', xp = 0, regist
 
       {/* Back link (review only) */}
       {idx > 0 && step.kind !== 'done' && (
-        <button onClick={() => go(idx - 1)} className="absolute bottom-4 left-4 min-h-11 rounded-full px-4 py-2 text-xs text-white/40 transition-colors hover:text-white/80 sm:bottom-6 sm:left-6">← Back</button>
+        <button onClick={() => go(idx - 1)} className="absolute bottom-4 left-4 min-h-11 rounded-full px-4 py-2 text-xs text-white/60 transition-colors hover:text-white/80 sm:bottom-6 sm:left-6">← Back</button>
       )}
 
       {/* Mascot celebrations */}
@@ -268,7 +270,10 @@ function LessonStep({ lesson, reviewing, preview, formative, register, onContinu
     if (lesson.videoUrl) { const yt = ytId(lesson.videoUrl); mediaArt = yt ? `video:yt:${yt}` : `video:url:${encodeURIComponent(lesson.videoUrl)}`; }
     else if (lesson.audioUrl) { mediaArt = `audio:url:${encodeURIComponent(lesson.audioUrl)}`; mediaTitle = 'Listen'; }
     else if (lesson.embedUrl) { mediaArt = `embed:url:${encodeURIComponent(lesson.embedUrl)}`; mediaTitle = ''; }
-    return mediaArt ? [{ kind: 'teach', title: mediaTitle, text: '', art: mediaArt }, ...withAsk] : withAsk;
+    // BLD-1157: thread the lesson's own captionsUrl (lib/lms.ts) onto the
+    // synthetic media step so TeachMicro can render a <track> for the native
+    // video case, same as LessonMedia/DemoPlayer.
+    return mediaArt ? [{ kind: 'teach', title: mediaTitle, text: '', art: mediaArt, captionsUrl: lesson.captionsUrl ?? undefined }, ...withAsk] : withAsk;
   }, [lesson, formative, register]);
 
   const [mi, setMi] = useState(0);
@@ -298,9 +303,9 @@ function LessonStep({ lesson, reviewing, preview, formative, register, onContinu
   return (
     <div>
       <div className="mb-4 flex items-center gap-3">
-        <span className="truncate text-xs uppercase tracking-[0.16em] text-white/40">{lesson.title}</span>
+        <span className="truncate text-xs uppercase tracking-[0.16em] text-white/60">{lesson.title}</span>
         {explainerPoints.length >= 2 && <button onClick={() => setShowExplainer(true)} className="ml-auto shrink-0 rounded-full border border-white/20 px-2.5 py-1 text-[0.65rem] font-medium text-white/70 transition-colors hover:border-[var(--color-gold)] hover:text-[var(--color-gold)]">▶ Explainer</button>}
-        <span className={`shrink-0 text-xs tabular-nums text-white/30 ${explainerPoints.length >= 2 ? '' : 'ml-auto'}`}>{Math.min(mi + 1, flow.length)} / {flow.length}</span>
+        <span className={`shrink-0 text-xs tabular-nums text-white/60 ${explainerPoints.length >= 2 ? '' : 'ml-auto'}`}>{Math.min(mi + 1, flow.length)} / {flow.length}</span>
       </div>
       {hasResources && (
         <div className="mb-6 flex flex-wrap items-center gap-2">
@@ -323,7 +328,7 @@ function LessonStep({ lesson, reviewing, preview, formative, register, onContinu
       <div ref={resourcesRef} className="scroll-mt-4">
       {lesson.pdfUrls.length > 0 && (
         <div className="mt-6 rounded-[var(--radius-lg)] border border-white/10 bg-white/5 p-4">
-          <p className="mb-3 text-[0.65rem] font-semibold uppercase tracking-[0.16em] text-white/40">Lesson resources</p>
+          <p className="mb-3 text-[0.65rem] font-semibold uppercase tracking-[0.16em] text-white/60">Lesson resources</p>
           <ul className="space-y-2">
             {lesson.pdfUrls.map((url, idx) => {
               const raw = url.split('/').pop() ?? 'Document';
@@ -337,13 +342,13 @@ function LessonStep({ lesson, reviewing, preview, formative, register, onContinu
                     <button onClick={() => setPdfView({ index: idx, name })} className="flex w-full items-center gap-2.5 text-left text-sm text-white/80 transition-colors hover:text-[var(--color-gold)]">
                       {icon}
                       <span className="truncate">{name}</span>
-                      <span className="ml-auto shrink-0 text-[0.65rem] text-white/30">View only</span>
+                      <span className="ml-auto shrink-0 text-[0.65rem] text-white/60">View only</span>
                     </button>
                   ) : (
                     <a href={url} target="_blank" rel="noreferrer" download={name} className="flex items-center gap-2.5 text-sm text-white/80 transition-colors hover:text-[var(--color-gold)]">
                       {icon}
                       <span className="truncate">{name}</span>
-                      <span className="ml-auto shrink-0 text-[0.65rem] text-white/30">Download</span>
+                      <span className="ml-auto shrink-0 text-[0.65rem] text-white/60">Download</span>
                     </a>
                   )}
                 </li>
@@ -356,7 +361,7 @@ function LessonStep({ lesson, reviewing, preview, formative, register, onContinu
 
       {lesson.attachments.length > 0 && (
         <div className="mt-6 rounded-[var(--radius-lg)] border border-white/10 bg-white/5 p-4">
-          <p className="mb-3 text-[0.65rem] font-semibold uppercase tracking-[0.16em] text-white/40">Downloads</p>
+          <p className="mb-3 text-[0.65rem] font-semibold uppercase tracking-[0.16em] text-white/60">Downloads</p>
           <ul className="space-y-2">
             {lesson.attachments.map((a, i) => (
               <li key={`${a.url}-${i}`}>
@@ -381,7 +386,10 @@ function SayMicro({ step, onContinue, instant }: { step: SayStep; onContinue: ()
   const [ready, setReady] = useState(instant);
   return (
     <div className="flex flex-col items-center py-4 text-center">
-      <KSpeech text={step.text} mood={step.mood} onTyped={() => setReady(true)} />
+      {/* Screen readers otherwise get no announcement of the lesson narration. */}
+      <div aria-live="polite">
+        <KSpeech text={step.text} mood={step.mood} onTyped={() => setReady(true)} />
+      </div>
       <button onClick={onContinue} disabled={!ready} className="mt-9 rounded-full bg-[var(--color-gold)] px-8 py-3 text-sm font-semibold text-[var(--color-ink)] transition-all enabled:hover:scale-[1.02] disabled:opacity-0">Continue →</button>
     </div>
   );
@@ -412,8 +420,10 @@ function TeachMicro({ step, onContinue, gated }: { step: TeachStep; onContinue: 
       {ytv ? (
         <div className="aspect-video w-full max-w-md overflow-hidden rounded-[var(--radius-lg)] border border-white/12"><iframe className="h-full w-full" src={`https://www.youtube-nocookie.com/embed/${ytv}`} title="Lesson video" loading="lazy" allow="accelerometer; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowFullScreen /></div>
       ) : filev ? (
-        // eslint-disable-next-line jsx-a11y/media-has-caption
-        <video controls playsInline className="aspect-video w-full max-w-md rounded-[var(--radius-lg)] border border-white/12" src={filev} />
+        <video controls playsInline crossOrigin={step.captionsUrl ? 'anonymous' : undefined} className="aspect-video w-full max-w-md rounded-[var(--radius-lg)] border border-white/12" src={filev}>
+          {/* BLD-1157: WebVTT captions when the lesson has them, same as LessonMedia/DemoPlayer. */}
+          {step.captionsUrl && <track kind="captions" src={step.captionsUrl} srcLang="en" label="English" default />}
+        </video>
       ) : audioSrc ? (
         // eslint-disable-next-line jsx-a11y/media-has-caption
         <audio controls preload="metadata" className="w-full max-w-md" src={audioSrc} />
@@ -467,11 +477,11 @@ function AskMicro({ step, onContinue }: { step: AskStep; onContinue: () => void 
 
   return (
     <div className="py-2">
-      <p className="text-xs uppercase tracking-[0.16em] text-white/40">{word ? 'Select the right word' : 'Quick check'}</p>
+      <p className="text-xs uppercase tracking-[0.16em] text-white/60">{word ? 'Select the right word' : 'Quick check'}</p>
       {word ? (
         <p className="mt-3 font-[family-name:var(--font-display)] text-2xl leading-relaxed">
           {step.prompt.split('___')[0]}
-          <span className={`mx-1 inline-block min-w-[5ch] rounded-md border-b-2 px-2 text-center ${selected[0] != null ? 'border-[var(--color-gold)] text-[var(--color-gold)]' : 'border-white/40 text-white/30'}`}>{selected[0] != null ? step.options[selected[0]] : '  '}</span>
+          <span className={`mx-1 inline-block min-w-[5ch] rounded-md border-b-2 px-2 text-center ${selected[0] != null ? 'border-[var(--color-gold)] text-[var(--color-gold)]' : 'border-white/40 text-white/60'}`}>{selected[0] != null ? step.options[selected[0]] : '  '}</span>
           {step.prompt.split('___')[1] ?? ''}
         </p>
       ) : (

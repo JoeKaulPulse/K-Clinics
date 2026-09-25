@@ -18,8 +18,8 @@ type Report = {
 
 const DOT: Record<Light, string> = {
   green: 'bg-[var(--color-jade)]',
-  amber: 'bg-amber-400',
-  red: 'bg-red-500',
+  amber: 'bg-[var(--color-gold)]',
+  red: 'bg-[var(--color-blush-deep)]',
   grey: 'bg-[var(--color-stone-soft)]',
 };
 const LABEL: Record<Light, string> = { green: 'Healthy', amber: 'Attention', red: 'Failing', grey: 'Not set up' };
@@ -112,7 +112,7 @@ export function ApiHealthPanel({ initial }: { initial: Report | null }) {
       </div>
 
       {error && (
-        <p className="mt-4 rounded-[var(--radius-md)] border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</p>
+        <p className="mt-4 rounded-[var(--radius-md)] border border-[var(--color-blush)]/40 bg-[var(--color-blush)]/10 px-4 py-3 text-sm text-[var(--color-blush-deep)]">{error}</p>
       )}
 
       {/* Category cards */}

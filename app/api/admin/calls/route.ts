@@ -13,7 +13,8 @@ export async function POST(req: Request) {
 
   const b = await req.json().catch(() => ({}));
   const { db } = await import('@/lib/db');
-  const { decClinical } = await import('@/lib/clinical-crypto'); // BLD-127: recordings/transcripts encrypted at rest
+  // BLD-127/BLD-1360: recordings/transcripts/notes encrypted at rest
+  const { decClinical, encClinical } = await import('@/lib/clinical-crypto');
 
   const { sessionCan } = await import('@/lib/auth');
   const canViewClinical = sessionCan(session, 'clients.clinical.view');
@@ -36,7 +37,7 @@ export async function POST(req: Request) {
         matchType: c.matchType, matchedLabel: c.matchedLabel,
         client: c.matchedClient ? { id: c.matchedClient.id, name: [c.matchedClient.firstName, c.matchedClient.lastName].filter(Boolean).join(' ') } : null,
         supplier: c.matchedSupplier ? { id: c.matchedSupplier.id, name: c.matchedSupplier.name } : null,
-        agentEmail: c.agentEmail, notes: c.notes,
+        agentEmail: c.agentEmail, notes: decClinical(c.notes),
       })) });
     }
     case 'get': {
@@ -54,7 +55,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: true, call: {
         ...c, startedAt: c.startedAt.toISOString(), answeredAt: c.answeredAt?.toISOString() ?? null,
         endedAt: c.endedAt?.toISOString() ?? null, createdAt: c.createdAt.toISOString(), raw: undefined,
-        recordingUrl: decClinical(c.recordingUrl), transcript: decClinical(c.transcript),
+        recordingUrl: decClinical(c.recordingUrl), transcript: decClinical(c.transcript), notes: decClinical(c.notes),
         client: c.matchedClient ? { id: c.matchedClient.id, name: [c.matchedClient.firstName, c.matchedClient.lastName].filter(Boolean).join(' ') } : null,
         supplier: c.matchedSupplier ? { id: c.matchedSupplier.id, name: c.matchedSupplier.name } : null,
       } });
@@ -63,7 +64,7 @@ export async function POST(req: Request) {
       const manage = await requirePermission('calls.manage');
       if (!manage) return NextResponse.json({ ok: false, error: 'Not permitted.' }, { status: 403 });
       if (!b.id) return NextResponse.json({ ok: false }, { status: 400 });
-      await db.callRecord.update({ where: { id: String(b.id) }, data: { notes: String(b.notes || '').slice(0, 2000) || null } });
+      await db.callRecord.update({ where: { id: String(b.id) }, data: { notes: encClinical(String(b.notes || '').slice(0, 2000) || null) } });
       return NextResponse.json({ ok: true });
     }
     case 'dial': {

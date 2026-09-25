@@ -10,15 +10,15 @@ export type OrderRow = {
 };
 
 const money = (p: number) => `£${(p / 100).toLocaleString('en-GB', { minimumFractionDigits: p % 100 ? 2 : 0 })}`;
-const STATUS: Record<string, string> = { PENDING: 'bg-amber-100 text-amber-800', PAID: 'bg-blue-100 text-blue-800', FULFILLED: 'bg-green-100 text-green-800', REFUNDED: 'bg-[var(--color-bone)] text-[var(--color-stone)]', CANCELLED: 'bg-[var(--color-blush)]/30 text-[var(--color-ink)]' };
+const STATUS: Record<string, string> = { PENDING: 'bg-[var(--color-gold)]/20 text-[var(--color-ink)]', PAID: 'bg-blue-100 text-blue-800', FULFILLED: 'bg-[var(--color-jade)]/15 text-[var(--color-ink)]', REFUNDED: 'bg-[var(--color-bone)] text-[var(--color-stone)]', CANCELLED: 'bg-[var(--color-blush)]/30 text-[var(--color-ink)]' };
 
-export function OrdersManager({ rows, canManage }: { rows: OrderRow[]; canManage: boolean }) {
+export function OrdersManager({ rows, canManage, emptyHint }: { rows: OrderRow[]; canManage: boolean; emptyHint?: string }) {
   const [open, setOpen] = useState<string | null>(null);
   if (rows.length === 0) return (
     <div className="rounded-[var(--radius-lg)] border border-dashed border-[var(--color-line)] bg-[var(--color-porcelain)]">
       <EmptyState
-        title="No orders yet"
-        hint="Retail orders placed in the online shop appear here to fulfil, add tracking and manage."
+        title={emptyHint ? 'No orders match' : 'No orders yet'}
+        hint={emptyHint ?? 'Retail orders placed in the online shop appear here to fulfil, add tracking and manage.'}
         icon={<><path d="M5 8h14l-1 11a2 2 0 0 1-2 1.8H8a2 2 0 0 1-2-1.8Z" /><path d="M9 8V6a3 3 0 0 1 6 0v2" /></>}
       />
     </div>
@@ -72,16 +72,16 @@ function Row({ r, open, onToggle, canManage }: { r: OrderRow; open: boolean; onT
             {canManage && (
               <div className="space-y-2">
                 <label className="block text-xs text-[var(--color-stone)]">Fulfilment
-                  <select disabled={busy} defaultValue={r.fulfillment} onChange={(e) => update({ fulfillment: e.target.value, status: e.target.value !== 'unfulfilled' && r.status === 'PAID' ? 'FULFILLED' : undefined })} className="mt-1 w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-2 py-1.5 text-sm disabled:opacity-50">
+                  <select disabled={busy} defaultValue={r.fulfillment} onChange={(e) => update({ fulfillment: e.target.value, status: e.target.value !== 'unfulfilled' && r.status === 'PAID' ? 'FULFILLED' : undefined })} className="mt-1 w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-porcelain)] px-2 py-1.5 text-sm disabled:opacity-50">
                     <option value="unfulfilled">Unfulfilled</option><option value="shipped">Shipped</option><option value="collected">Collected</option>
                   </select>
                 </label>
                 <label className="block text-xs text-[var(--color-stone)]">Tracking / note
-                  <input disabled={busy} value={tracking} onChange={(e) => setTracking(e.target.value)} onBlur={() => tracking !== r.trackingNote && update({ trackingNote: tracking })} className="mt-1 w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-2 py-1.5 text-sm disabled:opacity-50" />
+                  <input disabled={busy} value={tracking} onChange={(e) => setTracking(e.target.value)} onBlur={() => tracking !== r.trackingNote && update({ trackingNote: tracking })} className="mt-1 w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-porcelain)] px-2 py-1.5 text-sm disabled:opacity-50" />
                 </label>
                 {!closed && (
                   <div className="flex gap-3 text-xs">
-                    <button disabled={busy} onClick={() => { if (confirm(`Mark order ${r.number} as refunded? Refund the payment in Stripe separately.`)) update({ status: 'REFUNDED' }); }} className="text-[var(--color-stone)] hover:underline disabled:opacity-50">Mark refunded</button>
+                    <button disabled={busy} onClick={() => { if (confirm(`Mark order ${r.number} as refunded? This will refund the customer via Stripe automatically and can’t be undone here.`)) update({ status: 'REFUNDED' }); }} className="text-[var(--color-stone)] hover:underline disabled:opacity-50">Mark refunded</button>
                     <button disabled={busy} onClick={() => { const willRefund = r.status === 'PAID' || r.status === 'FULFILLED'; if (confirm(`Cancel order ${r.number}?${willRefund ? ' This will refund the customer via Stripe and can’t be undone here.' : ' This can’t be undone here.'}`)) update({ status: 'CANCELLED' }); }} className="text-[var(--color-blush-deep)] hover:underline disabled:opacity-50">Cancel</button>
                   </div>
                 )}

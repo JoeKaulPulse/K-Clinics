@@ -1,4 +1,5 @@
 import { crmEnabled } from '@/lib/crm';
+import { NO_RECORD_PATH } from '@/lib/no-record-paths';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -34,7 +35,11 @@ export async function POST(req: Request) {
     const path = String(body.path || '/').slice(0, 200);
     // Defence-in-depth: never store replay for sensitive areas, even if a client
     // forges the path (the recorder already excludes these client-side).
-    if (/^\/(admin|account|book|booking|sign)(\/|$)/.test(path)) return Response.json({ ok: true });
+    // PRJ-1191.1: shared with the client-side exclusion (lib/no-record-paths.ts)
+    // — this used to be a separately-maintained, narrower regex that omitted
+    // shop/academy entirely, so a forged or stale-bundle path under those areas
+    // was stored regardless of the client-side check.
+    if (NO_RECORD_PATH.test(path)) return Response.json({ ok: true });
 
     const { db } = await import('@/lib/db');
     const device = body.device ? String(body.device).slice(0, 16) : null;

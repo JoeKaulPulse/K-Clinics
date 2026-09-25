@@ -21,12 +21,48 @@ export async function POST(req: Request) {
       const amountPence = Math.round(Number(body.amountPence));
       if (!id || !(amountPence > 0)) return bad();
       const { redeemVoucher } = await import('@/lib/gift-vouchers');
+      const voucher = await db.giftVoucher.findUnique({ where: { id }, select: { code: true, claimedByClientId: true } });
       const res = await redeemVoucher(id, amountPence);
+      if (res.ok) {
+        // BLD-1416: money-mutating action needs an audit trail, matching the
+        // REWARD_REDEEMED convention used everywhere else a gift voucher's
+        // balance moves (app/api/admin/bookings/session/route.ts, lib/shop.ts).
+        const { logAudit } = await import('@/lib/audit');
+        const reason = body.reason ? String(body.reason).slice(0, 200) : undefined;
+        // redeemVoucher caps the deduction at the live balance, so the requested
+        // amount is not necessarily what was taken (staff typing £100 against a
+        // £30 card redeems £30). The audit trail records the amount actually
+        // deducted, and keeps the requested figure only when the two differ.
+        const redeemedPence = res.redeemedPence ?? amountPence;
+        await logAudit({
+          action: 'REWARD_REDEEMED',
+          actor: session.email,
+          actorRole: session.role,
+          clientId: voucher?.claimedByClientId ?? null,
+          summary: `Gift voucher ${voucher?.code || id} redeemed £${(redeemedPence / 100).toFixed(2)} by staff${reason ? ` — ${reason}` : ''}`,
+          meta: { voucherCode: voucher?.code, amountPence: redeemedPence, ...(redeemedPence !== amountPence ? { requestedPence: amountPence } : {}), reason },
+        }).catch(() => {});
+      }
       return NextResponse.json(res, { status: res.ok ? 200 : 400 });
     }
     case 'cancel': {
       if (!body.id) return bad();
-      await db.giftVoucher.update({ where: { id: String(body.id) }, data: { status: 'CANCELLED' } });
+      const id = String(body.id);
+      const voucher = await db.giftVoucher.findUnique({ where: { id }, select: { code: true, balancePence: true, claimedByClientId: true } });
+      if (!voucher) return NextResponse.json({ ok: false, error: 'Not found.' }, { status: 404 });
+      await db.giftVoucher.update({ where: { id }, data: { status: 'CANCELLED' } });
+      // BLD-1416: cancelling voids the remaining balance — audit it the same
+      // way as every other gift-voucher balance change (REWARD_REDEEMED).
+      const { logAudit } = await import('@/lib/audit');
+      const reason = body.reason ? String(body.reason).slice(0, 200) : undefined;
+      await logAudit({
+        action: 'REWARD_REDEEMED',
+        actor: session.email,
+        actorRole: session.role,
+        clientId: voucher.claimedByClientId ?? null,
+        summary: `Gift voucher ${voucher.code} cancelled — £${(voucher.balancePence / 100).toFixed(2)} balance voided${reason ? ` — ${reason}` : ''}`,
+        meta: { voucherCode: voucher.code, amountPence: voucher.balancePence, reason },
+      }).catch(() => {});
       return NextResponse.json({ ok: true });
     }
     case 'markPosted': {

@@ -4,7 +4,7 @@ import { suspendWorkspaceUser, restoreWorkspaceUser } from '@/lib/google-workspa
 
 export async function PATCH(req: NextRequest, { params }: { params: Promise<{ email: string }> }) {
   const session = await getSession();
-  if (!session || !sessionCan(session, 'settings.manage')) {
+  if (!session || !sessionCan(session, 'workspace.manage')) {
     return NextResponse.json({ ok: false, error: 'Forbidden' }, { status: 403 });
   }
   const { email } = await params;

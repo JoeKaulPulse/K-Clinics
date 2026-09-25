@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { site } from '@/lib/site';
 import { Button, ArrowIcon } from '@/components/ui/Button';
+import { PhoneLink, PhoneButton } from '@/components/marketing/PhoneLink';
 
 /** First-party booking actions. Primary = book online; secondary = consultation. */
 export function BookingButtons({
@@ -17,7 +18,10 @@ export function BookingButtons({
 }) {
   const bookHref = treatmentSlug ? `${site.booking.path}?treatment=${encodeURIComponent(treatmentSlug)}` : site.booking.path;
   return (
-    <div className={`flex flex-wrap items-center gap-3 ${align === 'center' ? 'justify-center' : ''}`}>
+    // data-booking-cta: a marker MobileStickyBookBar (BLD-1609) watches with an
+    // IntersectionObserver so the sticky mobile bar hides whenever a "real"
+    // booking CTA is already on screen — no duplicate/overlapping CTAs.
+    <div data-booking-cta className={`flex flex-wrap items-center gap-3 ${align === 'center' ? 'justify-center' : ''}`}>
       <Button href={bookHref} variant={variant} size="lg">
         Book online <ArrowIcon />
       </Button>
@@ -26,9 +30,9 @@ export function BookingButtons({
           Free consultation <ArrowIcon />
         </Button>
       ) : (
-        <Button href={site.phoneHref} variant="outline" size="lg">
+        <PhoneButton variant="outline" size="lg">
           Call {site.phone}
-        </Button>
+        </PhoneButton>
       )}
     </div>
   );
@@ -41,7 +45,7 @@ export function BookingProviders({ className = '' }: { className?: string }) {
       <span className="text-xs uppercase tracking-[0.2em] text-[var(--color-stone)]">Reserve your visit</span>
       <a href={site.booking.path} className="link-underline text-sm font-medium">Book online</a>
       <Link href="/consultation" className="link-underline text-sm font-medium">Free consultation</Link>
-      <a href={site.phoneHref} className="link-underline text-sm font-medium">{site.phone}</a>
+      <PhoneLink className="link-underline text-sm font-medium" />
     </div>
   );
 }

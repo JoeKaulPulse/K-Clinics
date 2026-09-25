@@ -16,7 +16,7 @@ export default async function AdminAcademyPage() {
 
   const { db } = await import('@/lib/db');
   const now = new Date();
-  const [courses, newApplications, totalEnrolments, students, upcomingLive, openVacancies, newFunding, pendingReviews, openQuestions, totalBundles, forumThreads, portfolioPending] = await Promise.all([
+  const [courses, newApplications, totalEnrolments, students, upcomingLive, openVacancies, newFunding, pendingReviews, openQuestions, totalBundles, forumThreads, portfolioPending, vtctPending] = await Promise.all([
     db.course.findMany({ orderBy: [{ order: 'asc' }], include: { cohorts: { orderBy: { startAt: 'asc' } } } }),
     db.enrolment.count({ where: { status: 'APPLIED' } }),
     db.enrolment.count(),
@@ -29,6 +29,7 @@ export default async function AdminAcademyPage() {
     db.courseBundle.count(),
     db.forumThread.count({ where: { hidden: false } }),
     db.portfolioEntry.count({ where: { status: 'SUBMITTED' } }),
+    db.vtctRegistration.count({ where: { status: { in: ['SUBMITTED', 'CHANGES_PENDING'] } } }),
   ]);
 
   const coursesView = courses.map((c) => ({
@@ -53,7 +54,9 @@ export default async function AdminAcademyPage() {
     { href: '/admin/academy/bundles', label: 'Bundles', value: String(totalBundles), sub: 'course pathways' },
     { href: '/admin/academy/community', label: 'Community', value: String(forumThreads), sub: 'forum threads' },
     { href: '/admin/academy/portfolio', label: 'Portfolios', value: String(portfolioPending), sub: 'awaiting review' },
+    { href: '/admin/academy/vtct-registrations', label: 'VTCT Registrations', value: String(vtctPending), sub: 'awaiting review' },
     { href: '/admin/careers', label: 'Careers', value: String(openVacancies), sub: 'open roles' },
+    { href: '/admin/academy/agreement', label: 'Agreements & Policies', value: 'Manage', sub: 'Learner Agreement' },
   ];
 
   const can = await sessionPermissions();

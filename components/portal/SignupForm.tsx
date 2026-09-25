@@ -87,9 +87,13 @@ export function SignupForm() {
       </label>
       <label className="flex items-start gap-3 text-sm text-[var(--color-stone)]">
         <input type="checkbox" checked={d.consent} onChange={(e) => set('consent', e.target.checked)} className="mt-0.5 h-4 w-4 accent-[var(--color-gold)]" />
-        I agree to the{' '}
-        <Link href="/info/terms-conditions" className="underline">Terms</Link> &{' '}
-        <Link href="/info/privacy-policy" className="underline">Privacy Policy</Link>.
+        <span>
+          {/* BLD-1067: name the cancellation terms at the point of acceptance,
+              not just behind the link. */}
+          I agree to the{' '}
+          <Link href="/info/terms-conditions" className="underline">Terms</Link> &{' '}
+          <Link href="/info/privacy-policy" className="underline">Privacy Policy</Link>, including the cancellation policy: cancellations within 24 hours and missed appointments are charged in full, and any unpaid fee must be settled before I can book again.
+        </span>
       </label>
       {error && <p role="alert" aria-live="assertive" className="rounded-[var(--radius-sm)] bg-[var(--color-blush)]/25 px-4 py-2.5 text-sm text-[var(--color-ink)]">{error}</p>}
       <button type="submit" disabled={loading} className="w-full rounded-full bg-[var(--color-gold-deep)] px-6 py-3.5 font-medium text-white shadow-[var(--shadow-gold)] transition-colors hover:bg-[var(--color-ink)] disabled:opacity-60">

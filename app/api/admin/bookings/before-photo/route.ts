@@ -5,12 +5,12 @@ import { crmEnabled } from '@/lib/crm';
 export const runtime = 'nodejs';
 
 // Capture a pre-treatment "before" photo (laser). Encrypted at rest; never
-// stored on the device. Requires bookings.manage + a clinician attestation that
-// the image is of a non-intimate treatment area.
+// stored on the device. Requires bookings.manage OR clients.photos (BLD-1587)
+// + a clinician attestation that the image is of a non-intimate treatment area.
 export async function POST(req: Request) {
   if (!crmEnabled) return NextResponse.json({ ok: false }, { status: 503 });
-  const { requirePermission } = await import('@/lib/auth');
-  const session = await requirePermission('bookings.manage');
+  const { requirePermissionAny } = await import('@/lib/auth');
+  const session = await requirePermissionAny(['bookings.manage', 'clients.photos']);
   if (!session) return NextResponse.json({ ok: false, error: 'Not permitted.' }, { status: 403 });
 
   const body = await req.json().catch(() => ({}));
@@ -20,8 +20,13 @@ export async function POST(req: Request) {
   if (!dataUrl.startsWith('data:image/') || dataUrl.length > 4_000_000) return NextResponse.json({ ok: false, error: 'Invalid image.' }, { status: 400 });
 
   const { db } = await import('@/lib/db');
-  const booking = await db.booking.findUnique({ where: { id: body.bookingId }, select: { id: true, clientId: true } });
+  const booking = await db.booking.findUnique({ where: { id: body.bookingId }, select: { id: true, clientId: true, practitionerId: true } });
   if (!booking) return NextResponse.json({ ok: false, error: 'Booking not found.' }, { status: 404 });
+  // BLD-1882: a PRACTITIONER may only attach a photo to their own booking,
+  // same rule as getBooking() (lib/crm-data.ts); 404 so the id isn't confirmed.
+  if (session.role === 'PRACTITIONER' && booking.practitionerId !== session.sub) {
+    return NextResponse.json({ ok: false, error: 'Booking not found.' }, { status: 404 });
+  }
 
   const { encryptJson } = await import('@/lib/crypto');
   const photo = await db.beforePhoto.create({
@@ -36,16 +41,22 @@ export async function POST(req: Request) {
   return NextResponse.json({ ok: true, id: photo.id });
 }
 
-// DELETE ?id= — remove a photo (mistake/wrong area). Requires bookings.manage.
+// DELETE ?id= — remove a photo (mistake/wrong area). Requires bookings.manage OR clients.photos.
 export async function DELETE(req: Request) {
   if (!crmEnabled) return NextResponse.json({ ok: false }, { status: 503 });
-  const { requirePermission } = await import('@/lib/auth');
-  const session = await requirePermission('bookings.manage');
+  const { requirePermissionAny } = await import('@/lib/auth');
+  const session = await requirePermissionAny(['bookings.manage', 'clients.photos']);
   if (!session) return NextResponse.json({ ok: false, error: 'Not permitted.' }, { status: 403 });
   const id = new URL(req.url).searchParams.get('id');
   if (!id) return NextResponse.json({ ok: false }, { status: 400 });
   const { db } = await import('@/lib/db');
   const p = await db.beforePhoto.findUnique({ where: { id }, select: { bookingId: true, clientId: true } });
+  // BLD-1882: same ownership rule as GET before-photo/[id] — a PRACTITIONER
+  // may only delete a photo of a client they have a booking with.
+  if (p && session.role === 'PRACTITIONER') {
+    const own = await db.booking.findFirst({ where: { clientId: p.clientId, practitionerId: session.sub }, select: { id: true } });
+    if (!own) return NextResponse.json({ ok: false, error: 'Not found.' }, { status: 404 });
+  }
   await db.beforePhoto.delete({ where: { id } }).catch(() => {});
   if (p) {
     const { logAudit } = await import('@/lib/audit');

@@ -1,5 +1,6 @@
 import 'server-only';
 import { db } from '@/lib/db';
+import { clinicDayBounds, clinicDateISO } from '@/lib/clinic-time';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Day-close — end-of-day clinic shutdown.
@@ -131,27 +132,27 @@ export async function saveDayCloseConfig(config: DayCloseConfig, updatedBy?: str
 }
 
 // ── Dates ───────────────────────────────────────────────────────────────────
-// Day boundaries use the server timezone, matching the rest of the CRM
-// (lib/crm-data.ts). The clinic runs in Europe/London.
+// Day boundaries in clinic-local (Europe/London) wall-clock time, via
+// lib/clinic-time.ts's clinicDayBounds() — NOT the server's timezone (UTC on
+// Vercel), which during BST placed the computed "day" at 01:00-00:59 London
+// instead of clinic midnight-to-midnight (BLD-1538).
 export function localDayStart(d = new Date()): Date {
-  const x = new Date(d);
-  x.setHours(0, 0, 0, 0);
-  return x;
+  return clinicDayBounds(clinicDateISO(d)).dayStart;
 }
 export function localDayEnd(d = new Date()): Date {
-  const x = new Date(d);
-  x.setHours(23, 59, 59, 999);
-  return x;
+  return clinicDayBounds(clinicDateISO(d)).dayEnd;
 }
 
 export type ExpectedTakings = {
-  cardPence: number; // total card takings (treatment charges + paid product orders + voucher sales)
+  cardPence: number; // total card takings (treatment charges + paid product orders + voucher sales − same-day refunds)
   chargesPence: number;
   chargeCount: number;
   ordersPence: number;
   orderCount: number;
   vouchersPence: number; // BLD-927: gift vouchers SOLD (by card) this day
   voucherCount: number;
+  refundedPence: number; // BLD-1665: same-day card refunds (bookings + orders), netted out of cardPence
+  refundCount: number;
 };
 
 /**
@@ -166,6 +167,14 @@ export type ExpectedTakings = {
  *  - Gift vouchers SOLD by card that day are INCLUDED (face value + any
  *    physical-card fee): that card money previously appeared on the Z-report
  *    but never in the expected figure.
+ *
+ * BLD-1665: a card refund issued THIS day is money that left the terminal
+ * batch today regardless of which day the original charge/order settled, so
+ * it's bracketed by the refund's own date, not the original charge date —
+ * chargedPence/totalPence above are gross and are never decremented by a
+ * refund (Booking.refundedPence and Order.status are tracked separately; see
+ * lib/booking-actions.ts refundBooking and app/api/stripe/webhook/route.ts),
+ * so subtracting here cannot double-count against those gross sums.
  *
  * Product orders and voucher sales carry no location, so they're only included
  * when this is the primary/only site (`includeOrders`).
@@ -194,6 +203,53 @@ export async function computeExpected(
   });
   const chargesPence = charges._sum.chargedPence ?? 0;
   const chargeCount = charges._count;
+
+  // BLD-1665: same-day booking refunds — mirrors the gross query above
+  // (chargedAt → refundedAt, chargedPence → refundedPence) so a refund
+  // processed today is netted off today's expected card takings even if the
+  // original charge settled on an earlier day. Excludes the same non-card
+  // channels the gross query excludes: a fully voucher/cash-settled booking's
+  // refund never touched the card terminal either.
+  //
+  // Two known inaccuracies, both accepted deliberately — read this before
+  // "fixing" either by moving to a different source (BLD-1665 review):
+  //
+  //  1. refundedPence is a CUMULATIVE watermark and refundedAt is only the
+  //     LAST refund's timestamp (lib/booking-actions.ts refundBooking, and the
+  //     charge.refunded CAS in app/api/stripe/webhook/route.ts, both advance
+  //     the total rather than recording each event). So a booking refunded in
+  //     two parts on two different days has its whole total subtracted again
+  //     on the second day: £50 on Monday then £30 on Wednesday nets £50 on
+  //     Monday and £80 on Wednesday, overstating Wednesday's refunds by £50
+  //     and showing staff a phantom surplus on the terminal. Single refunds —
+  //     full or partial, the ordinary case — are exact.
+  //  2. A lost chargeback also advances refundedPence/refundedAt (the
+  //     charge.dispute.closed handler), so it is netted off the day it
+  //     reconciles even though a chargeback is a Stripe balance adjustment
+  //     that never appears on a terminal Z-report at all.
+  //
+  // The per-event amounts do exist in the AuditLog PAYMENT_REFUNDED rows, but
+  // those writes are best-effort (.catch(() => {}) at every call site) and the
+  // dispute path logs no amount in its meta, so a money-reconciliation figure
+  // must not be sourced from them: a dropped audit write would silently lose a
+  // real refund, which is worse than the bounded error above. Fixing this
+  // properly needs a per-refund ledger row written in the same transaction as
+  // the refundedPence advance.
+  const bookingRefunds = await db.booking.aggregate({
+    _sum: { refundedPence: true },
+    _count: true,
+    where: {
+      refundedAt: { gte, lte },
+      refundedPence: { not: null },
+      OR: [
+        { chargePaymentIntentId: null },
+        { NOT: { chargePaymentIntentId: { startsWith: 'ext_' } } },
+      ],
+      ...(locationId ? { locationId } : {}),
+    },
+  });
+  let refundedPence = bookingRefunds._sum.refundedPence ?? 0;
+  let refundCount = bookingRefunds._count;
 
   let ordersPence = 0;
   let orderCount = 0;
@@ -224,6 +280,40 @@ export async function computeExpected(
     ordersPence = orders._sum.totalPence ?? 0;
     orderCount = orders._count;
 
+    // BLD-1665: same-day order refunds. Order has no partial-refund amount or
+    // dedicated refund timestamp — a refund (dashboard-issued or via "Mark
+    // refunded" in admin) is always the whole totalPence and flips status
+    // straight to REFUNDED: see the charge.refunded/charge.dispute.closed
+    // handlers in app/api/stripe/webhook/route.ts and app/api/admin/orders/route.ts.
+    // updatedAt is the only timestamp available for "when did this refund
+    // happen" — note this is a different use from the paidAt-vs-updatedAt
+    // choice PRJ-1032.7 made just above (that one deliberately avoids
+    // updatedAt because a later refund edit would drag the ORIGINAL SALE into
+    // the wrong day; here the refund itself is the event we want to bracket,
+    // so its updatedAt stamp is the right signal). The remaining edge case is
+    // an unrelated edit to an already-REFUNDED order nudging updatedAt again
+    // on a later day: nothing in admin/orders mutates a REFUNDED row today, so
+    // it is not a live path, but be clear about what it would cost if one is
+    // ever added — each day's expected figure is computed independently at
+    // close time, so the refund would be netted off on the original day AND
+    // again on the day of the later edit. That is a double-subtraction across
+    // two closes, not a one-day misdating. Any future write to a REFUNDED
+    // order needs a real refundedAt column rather than this proxy. Scoped to
+    // stripePaymentIntentId
+    // (like the gross query) so a cash/POS order manually marked REFUNDED,
+    // which never took card money, isn't subtracted from the card figure.
+    const orderRefunds = await db.order.aggregate({
+      _sum: { totalPence: true },
+      _count: true,
+      where: {
+        status: 'REFUNDED',
+        stripePaymentIntentId: { not: null },
+        updatedAt: { gte, lte },
+      },
+    });
+    refundedPence += orderRefunds._sum.totalPence ?? 0;
+    refundCount += orderRefunds._count;
+
     // Stripe-paid voucher sales (front-desk comp vouchers carry no PI id).
     const vouchers = await db.giftVoucher.aggregate({
       _sum: { amountPence: true, physicalFeePence: true },
@@ -234,7 +324,17 @@ export async function computeExpected(
     voucherCount = vouchers._count;
   }
 
-  return { cardPence: chargesPence + ordersPence + vouchersPence, chargesPence, chargeCount, ordersPence, orderCount, vouchersPence, voucherCount };
+  return {
+    cardPence: chargesPence + ordersPence + vouchersPence - refundedPence,
+    chargesPence,
+    chargeCount,
+    ordersPence,
+    orderCount,
+    vouchersPence,
+    voucherCount,
+    refundedPence,
+    refundCount,
+  };
 }
 
 export type StockTakeItem = { id: string; name: string; unit: string; category: string | null; expectedQty: number };
@@ -249,10 +349,24 @@ export async function stockTakeItems(): Promise<StockTakeItem[]> {
   return rows.map((r) => ({ id: r.id, name: r.name, unit: r.unit, category: r.category, expectedQty: r.currentQty }));
 }
 
-/** The existing day-close record for a location/day, if one was started/finished. */
+/** The existing day-close record for a location/day, if one was started/finished.
+ *
+ *  Matched over the whole clinic-day WINDOW rather than by exact businessDate
+ *  equality. Rows written before BLD-1538 stored server-UTC midnight (00:00Z);
+ *  localDayStart() now returns clinic midnight, which during BST is 23:00Z on
+ *  the previous date. Both instants fall inside the same clinic day, so the
+ *  range keeps legacy records findable — on an exact match the deploy would
+ *  orphan every close recorded during BST, tell staff the day was never closed
+ *  and write a second row for a day that already has one. A POST rewrites
+ *  businessDate to the new instant, so records self-heal as they are touched.
+ *  The window cannot straddle two clinic days: consecutive windows are
+ *  contiguous and 24h wide, so each stored instant lands in exactly one. */
 export async function getDayClose(locationId: string | null, day: Date) {
   return db.dayClose.findFirst({
-    where: { businessDate: localDayStart(day), ...(locationId ? { locationId } : { locationId: null }) },
+    where: {
+      businessDate: { gte: localDayStart(day), lte: localDayEnd(day) },
+      ...(locationId ? { locationId } : { locationId: null }),
+    },
     orderBy: { startedAt: 'desc' },
   });
 }

@@ -23,7 +23,7 @@ export default function AcademyForgotPasswordPage() {
         <div className="mx-auto w-full max-w-md">
           <div className="mb-6">
             <h1 className="font-[family-name:var(--font-display)] text-3xl text-[var(--color-ink)]">Reset your password</h1>
-            <p className="mt-2 text-[var(--color-stone)]">Enter your email and we'll send you a secure link to set a new password.</p>
+            <p className="mt-2 text-[var(--color-stone)]">Enter your email and we&rsquo;ll send you a secure link to set a new password.</p>
           </div>
           <AcademyForgotPasswordForm />
           <p className="mt-4 text-center text-sm text-[var(--color-stone)]">

@@ -1,10 +1,9 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type Ref } from 'react';
 import Link from 'next/link';
+import dynamic from 'next/dynamic';
 import { AnimatePresence, motion } from 'motion/react';
-import { Elements, PaymentElement, useElements, useStripe } from '@stripe/react-stripe-js';
-import { getStripe } from '@/lib/stripe-client';
 import { isDemo } from '@/lib/booking-mode';
 import { Glyph } from '@/components/ui/Glyph';
 import { demoSlots } from '@/lib/availability-client';
@@ -12,15 +11,27 @@ import { DemoCard } from '@/components/booking/DemoCard';
 import { Button, ArrowIcon } from '@/components/ui/Button';
 import { REFRESHMENTS } from '@/lib/hospitality';
 import { trackPurchase } from '@/lib/analytics-events';
+import { WaitlistCTA } from '@/components/booking/WaitlistCTA';
+import { eligiblePackagesFor } from '@/lib/package-match';
 
 type Course = { sessions: number; totalPence: number };
-type Variant = { id: string; name: string; durationMin: number; pricePence: number; offerPence: number | null; offerName: string | null; courses: Course[] };
+type Variant = { id: string; name: string; durationMin: number; displayDurationMin?: number | null; pricePence: number; offerPence: number | null; offerName: string | null; courses: Course[] };
 type Service = { id: string; slug: string; treatmentSlug: string; name: string; category: string; audience: string; variants: Variant[] };
 type ClientInfo = { signedIn: boolean; firstName: string; email: string; gender: string | null; smsReminders: boolean; hasPhone: boolean; welcomeEligible: boolean };
+// BLD-1346: a course the client has bought, with its derived session balance
+// (lib/package-sessions.ts). Only paid packages with sessions left are served.
+type Pkg = { purchaseBookingId: string; label: string; treatmentSlug: string; variantId: string | null; sessionsTotal: number; sessionsUsed: number; sessionsBooked: number; sessionsRemaining: number; paid: boolean };
 
-const field = 'w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-porcelain)] px-4 py-3 text-[var(--color-ink)] outline-none transition-colors placeholder:text-[var(--color-stone)] focus:border-[var(--color-gold)]';
+const field = 'w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-porcelain)] px-4 py-3 text-[var(--color-ink)] transition-colors placeholder:text-[var(--color-stone)] focus:border-[var(--color-gold-deep)] focus-visible:ring-2 focus-visible:ring-[var(--color-gold-deep)]';
 const label = 'mb-1.5 block text-xs uppercase tracking-[0.16em] text-[var(--color-stone)]';
 const money = (p: number) => (p <= 0 ? 'On consultation' : `£${(p / 100).toLocaleString('en-GB', { minimumFractionDigits: p % 100 ? 2 : 0 })}`);
+
+// PRJ-1200.12: the Stripe Elements JS (@stripe/react-stripe-js + @stripe/stripe-js)
+// is only needed once a visitor reaches the card step, which most of the funnel
+// never does — statically importing it here shipped it on every /book page load.
+// next/dynamic + ssr:false splits it into its own chunk, fetched only when this
+// component is actually rendered (stage === 'card'), not on BookingFlow mount.
+const StripeCardStep = dynamic(() => import('@/components/booking/StripeCardStep'), { ssr: false, loading: () => <CardStepLoading /> });
 
 const UPSELL_PCT = 20;
 
@@ -42,9 +53,33 @@ type Stage = 'account' | 'service' | 'variant' | 'time' | 'upsell' | 'card' | 'd
 export function BookingFlow({ catalogue, client, preselect = null, preselectDate = '', waitlistToken = '' }: { catalogue: Service[]; client: ClientInfo; preselect?: string | null; preselectDate?: string; waitlistToken?: string }) {
   const [authed, setAuthed] = useState(client.signedIn);
   const [firstName, setFirstName] = useState(client.firstName);
+  const [email, setEmail] = useState(client.email);
   const [gender, setGender] = useState<string | null>(client.gender);
   const [welcome, setWelcome] = useState(client.welcomeEligible);
   const [smsPref, setSmsPref] = useState(client.smsReminders);
+
+  // BLD-1833: /book no longer reads the session cookie when it renders, so
+  // `client` above is always the signed-out default — the real signed-in state
+  // (name, welcome-discount eligibility, SMS pref) is fetched here once
+  // mounted, same split as the packages effect below. Everything that depends
+  // on it must therefore read the state below, never the `client` prop.
+  useEffect(() => {
+    if (isDemo) return;
+    let live = true;
+    fetch('/api/booking/client-info')
+      .then((r) => r.json())
+      .then((j) => {
+        if (!live) return;
+        setAuthed(j.signedIn);
+        setFirstName(j.firstName);
+        setEmail(j.email);
+        setGender(j.gender);
+        setWelcome(j.welcomeEligible);
+        setSmsPref(j.smsReminders);
+      })
+      .catch(() => { /* stay on the signed-out default — client can still book as a guest */ });
+    return () => { live = false; };
+  }, []);
 
   // Deep-link preselect (e.g. from K Vision "Book →"): jump straight to the
   // variant step for that service when the client is already signed in.
@@ -56,6 +91,11 @@ export function BookingFlow({ catalogue, client, preselect = null, preselectDate
   const [serviceId, setServiceId] = useState(validPreselect);
   const [variantId, setVariantId] = useState('');
   const [sessions, setSessions] = useState(1);
+  // BLD-1346: courses this client has already paid for and has sessions left on.
+  // When one matches the treatment they're booking, they can spend a session
+  // instead of paying again. The server re-validates before pricing anything.
+  const [packages, setPackages] = useState<Pkg[]>([]);
+  const [usePackageId, setUsePackageId] = useState<string | null>(null);
   // From a waitlist claim link the offered day is pre-filled so the client lands
   // straight on the freed slot (BLD-133 phase 2).
   const [date, setDate] = useState(preselectDate || '');
@@ -115,6 +155,46 @@ export function BookingFlow({ catalogue, client, preselect = null, preselectDate
     addOns.forEach((id) => { const av = catalogue.flatMap((s) => s.variants).find((v) => v.id === id); if (av) d += av.durationMin; });
     return d;
   }, [variant, addOns, catalogue]);
+
+  // BLD-1346: load the client's paid course balances once, when signed in. The
+  // endpoint is scoped to their own record and already filters to packages that
+  // are paid and still have sessions left.
+  useEffect(() => {
+    if (!authed || isDemo) { setPackages([]); return; }
+    let live = true;
+    fetch('/api/account/packages')
+      .then((r) => r.json())
+      .then((j) => { if (live && j.ok) setPackages(j.packages ?? []); })
+      .catch(() => { /* a balance we can't load just means the option isn't offered */ });
+    return () => { live = false; };
+  }, [authed]);
+
+  // BLD-1890: the treatment/area being booked may have more than one eligible
+  // package (a repeat purchase, or a category with several areas sharing one
+  // treatmentSlug) — list every one and let the client choose, rather than
+  // silently spending whichever package happened to match first.
+  const matchingPackages = useMemo(
+    () => (service ? eligiblePackagesFor(packages, service.treatmentSlug, variant?.id ?? null).filter((p) => p.sessionsRemaining > 0) : []),
+    [packages, service, variant],
+  );
+  const chosenPackage = matchingPackages.find((p) => p.purchaseBookingId === usePackageId) ?? null;
+  // Changing treatment/area (or switching to a course purchase) invalidates a
+  // selected package that's no longer eligible — clear it rather than letting
+  // a stale id reach the server and get rejected at the last step.
+  // '' = ticked but not yet chosen. If the eligible list narrows to one or none
+  // (or the picker is hidden) while pending, resolve it — the dropdown only
+  // renders for >1, so otherwise submit is blocked with nothing on screen to fix.
+  const onlyPackageId = matchingPackages.length === 1 ? matchingPackages[0].purchaseBookingId : null;
+  useEffect(() => {
+    if (usePackageId === null) return;
+    if (sessions > 1) { setUsePackageId(null); return; }
+    if (usePackageId === '') {
+      if (!variant) setUsePackageId(null);
+      else if (matchingPackages.length <= 1) setUsePackageId(onlyPackageId);
+      return;
+    }
+    if (!chosenPackage) setUsePackageId(null);
+  }, [chosenPackage, usePackageId, sessions, variant, matchingPackages.length, onlyPackageId]);
 
   // Live availability from the admin engine (works without Stripe).
   useEffect(() => {
@@ -177,6 +257,64 @@ export function BookingFlow({ catalogue, client, preselect = null, preselectDate
     } catch { /* private mode / quota — ignore */ }
   }, [serviceId, variantId, sessions, addOns, date, slot, stage]);
 
+  // BLD-1255 — before this, only begin_checkout (upsell -> card) and the final
+  // purchase fired, so the earliest, highest-drop-off steps (treatment/variant
+  // selection, time picking) had zero event coverage. Fires on every stage
+  // change (including the stage the visitor lands on), one raw gtag call per
+  // transition — mirrors the existing begin_checkout/add_payment_info calls
+  // below rather than routing through lib/analytics-events.ts's ga4() helper,
+  // which this file doesn't use. window.gtag only exists once the visitor has
+  // granted analytics consent (components/marketing/TrackingScripts.tsx loads
+  // the script only then), so this is consent-gated the same implicit way as
+  // every other gtag call in this file.
+  useEffect(() => {
+    try { (window as Window & { gtag?: (...a: unknown[]) => void }).gtag?.('event', 'booking_stage', { stage }); } catch { /* analytics best-effort */ }
+  }, [stage]);
+
+  // BLD-1833: the signed-in state now arrives AFTER mount (the client-info
+  // fetch above), so `authed` can flip to true while the visitor is already
+  // sitting on the account step — they pressed Continue at `upsell` before the
+  // fetch came back and were routed to sign up. The account step's signed-in
+  // branch renders only the "Securing your booking…" panel, and the Back /
+  // Continue bar is hidden for it, so without this the funnel dead-ends there
+  // with no way forward or back. Submitting is exactly what AccountStep's
+  // onAuthed does once it has an identity, so do that instead. Ref-guarded, so
+  // it can fire at most once and can never double-book.
+  const recoveredAccountStage = useRef(false);
+  useEffect(() => {
+    if (stage !== 'account' || !authed || submitting || error) return;
+    if (recoveredAccountStage.current) return;
+    recoveredAccountStage.current = true;
+    submitBooking();
+  }, [stage, authed, submitting, error]);
+
+  // BLD-1515: each stage swaps the whole panel via AnimatePresence, but nothing
+  // ever moved keyboard/screen-reader focus — it stayed parked on "Continue"
+  // while the content silently replaced itself (WCAG 2.4.3 / 4.1.3). Every
+  // stage's panel opens with an <h3> (or, for the sign-up/login stage,
+  // AccountStep's own <h3>); focusing it announces the new heading the same
+  // way a page-title focus does on route change, so no separate aria-live
+  // announcement is added on top. Skipped on the very first render — the
+  // visitor just landed on the page, so nothing should steal focus from
+  // wherever the browser already put it.
+  // The panels run through <AnimatePresence mode="wait">, so on a stage change
+  // the OUTGOING panel is the only one mounted until its 0.35s exit finishes —
+  // the new step's heading does not exist yet. An effect keyed on `stage` would
+  // therefore focus the heading that is on its way out, and focus would drop to
+  // <body> when that node is removed. So the effect only arms a flag, and the
+  // heading's callback ref moves focus at the moment the new heading mounts.
+  const pendingHeadingFocus = useRef(false);
+  const isFirstStage = useRef(true);
+  useEffect(() => {
+    if (isFirstStage.current) { isFirstStage.current = false; return; }
+    pendingHeadingFocus.current = true;
+  }, [stage]);
+  const stepHeadingRef = useCallback((node: HTMLHeadingElement | null) => {
+    if (!node || !pendingHeadingFocus.current) return;
+    pendingHeadingFocus.current = false;
+    node.focus();
+  }, []);
+
   // Today is selectable: same-day appointments go through as a request that staff
   // confirm. Future dates book as normal. Clinic-local (UK) date.
   const minDate = useMemo(() => new Date().toLocaleDateString('en-CA'), []);
@@ -184,18 +322,28 @@ export function BookingFlow({ catalogue, client, preselect = null, preselectDate
 
   const orderTotal = useMemo(() => {
     if (!variant) return 0;
-    let t = primaryPrice(sessions > 1 ? courseAsVariant(variant, sessions) : variant).price;
+    // BLD-1346: a prepaid session covers the primary treatment only — add-ons
+    // taken in the same visit are still charged, so they stay in the total.
+    let t = usePackageId ? 0 : primaryPrice(sessions > 1 ? courseAsVariant(variant, sessions) : variant).price;
     addOns.forEach((id) => { const av = catalogue.flatMap((s) => s.variants).find((v) => v.id === id); if (av) t += addOnPrice(av).price; });
     return t;
-  }, [variant, sessions, addOns, catalogue, welcome]);
+  }, [variant, sessions, addOns, catalogue, welcome, usePackageId]);
+
+  // money() renders £0 as "On consultation", which is right for a treatment
+  // priced at assessment but wrong for a session the client has already paid
+  // for. Name the £0 honestly in that case (BLD-1346).
+  const totalLabel = usePackageId && orderTotal <= 0 ? 'Nothing to pay — prepaid session' : money(orderTotal);
 
   async function submitBooking() {
+    // BLD-1890: "Use package session" is ticked but the client hasn't yet
+    // picked which of several eligible packages — never guess, make them choose.
+    if (usePackageId === '') { setError('Choose which course package to use.'); return; }
     setSubmitting(true); setError('');
     if (isDemo) { setSubmitting(false); setStage('card'); return; }
     try {
       const res = await fetch('/api/booking/start', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ variantId, sessions, startISO: slot, addOnVariantIds: [...addOns], smsReminders: smsPref, refreshments: [...refreshments], allergyNote, aftercareAck, ageDeclare, promoCode: promo?.ok ? promo.code : undefined, waitlistToken: waitlistToken || undefined }),
+        body: JSON.stringify({ variantId, sessions, startISO: slot, addOnVariantIds: [...addOns], smsReminders: smsPref, refreshments: [...refreshments], allergyNote, aftercareAck, ageDeclare, promoCode: promo?.ok ? promo.code : undefined, waitlistToken: waitlistToken || undefined, usePackageBookingId: usePackageId || undefined }),
       });
       const j = await res.json();
       if (!j.ok) { setError(j.error || 'Could not book.'); setSubmitting(false); return; }
@@ -256,7 +404,7 @@ export function BookingFlow({ catalogue, client, preselect = null, preselectDate
             // Identity captured — the booking is being created (submitBooking moves
             // us to the card step). Stays here on a transient error so they can retry.
             <div className="py-8 text-center">
-              <h3 className="font-[family-name:var(--font-display)] text-2xl">{error ? 'That didn’t go through' : 'Securing your booking…'}</h3>
+              <h3 ref={stepHeadingRef} tabIndex={-1} className="font-[family-name:var(--font-display)] text-2xl outline-none">{error ? 'That didn’t go through' : 'Securing your booking…'}</h3>
               {error && (
                 <div className="mt-5 flex items-center justify-center gap-4">
                   <button type="button" onClick={() => { setError(''); setStage('upsell'); }} className="text-sm font-medium text-[var(--color-stone)] hover:text-[var(--color-ink)]">← Change time or details</button>
@@ -268,12 +416,13 @@ export function BookingFlow({ catalogue, client, preselect = null, preselectDate
             <AccountStep
               onAuthed={(info) => { setAuthed(true); setFirstName(info.firstName); setGender(info.gender); setWelcome(info.welcome); setSmsPref(info.sms); setError(''); submitBooking(); }}
               setError={setError}
+              headingRef={stepHeadingRef}
             />
           ))}
 
           {stage === 'service' && (
             <div>
-              <h3 className="font-[family-name:var(--font-display)] text-2xl">Choose your treatment</h3>
+              <h3 ref={stepHeadingRef} tabIndex={-1} className="font-[family-name:var(--font-display)] text-2xl outline-none">Choose your treatment</h3>
               {welcome && <p className="mt-2 text-sm text-[var(--color-gold-deep)]">✦ Your 15% welcome offer will be applied automatically.</p>}
               <div className="mt-6 grid max-h-[26rem] gap-2 overflow-y-auto pr-1 sm:grid-cols-2">
                 {catalogue.map((s) => (
@@ -292,7 +441,7 @@ export function BookingFlow({ catalogue, client, preselect = null, preselectDate
 
           {stage === 'variant' && service && (
             <div>
-              <h3 className="font-[family-name:var(--font-display)] text-2xl">{service.name}</h3>
+              <h3 ref={stepHeadingRef} tabIndex={-1} className="font-[family-name:var(--font-display)] text-2xl outline-none">{service.name}</h3>
               <p className="mt-1 text-sm text-[var(--color-stone)]">Choose your option.</p>
               {/laser|tattoo|ipl/i.test(service.treatmentSlug) && (
                 <p className="mt-3 flex gap-2 rounded-[var(--radius-sm)] bg-[var(--color-gold)]/10 px-3 py-2 text-xs text-[var(--color-ink)]">
@@ -308,7 +457,8 @@ export function BookingFlow({ catalogue, client, preselect = null, preselectDate
                       className={`flex items-center justify-between gap-3 rounded-[var(--radius-md)] border p-4 text-left transition-all ${variantId === v.id ? 'border-[var(--color-gold)] bg-[var(--color-porcelain)]' : 'border-[var(--color-line)] hover:border-[var(--color-stone-soft)]'}`}>
                       <span>
                         <span className="block text-sm font-medium">{v.name}</span>
-                        <span className="text-xs text-[var(--color-stone)]">{v.durationMin} min{pp.tag ? ` · ${pp.tag}` : ''}</span>
+                        {/* BLD-998: clients see the treatment length, not the internal booked time */}
+                        <span className="text-xs text-[var(--color-stone)]">{v.displayDurationMin ?? v.durationMin} min{pp.tag ? ` · ${pp.tag}` : ''}</span>
                       </span>
                       <span className="shrink-0 text-right text-sm font-medium text-[var(--color-gold-deep)]">
                         {pp.was && <span className="mr-1 text-xs text-[var(--color-stone)] line-through">{money(pp.was)}</span>}
@@ -318,7 +468,52 @@ export function BookingFlow({ catalogue, client, preselect = null, preselectDate
                   );
                 })}
               </div>
-              {variant && variant.courses.length > 0 && (
+              {/* BLD-1346: this client already paid for a course of this
+                  treatment and has sessions left — let them spend one instead
+                  of being quoted the full price again. BLD-1890: they may hold
+                  more than one eligible package (a repeat purchase) — list every
+                  one and make them pick, never guess which to spend. */}
+              {variant && matchingPackages.length > 0 && (
+                <div className="mt-5 rounded-[var(--radius-md)] border border-[var(--color-gold)] bg-[color-mix(in_oklab,var(--color-gold)_8%,transparent)] p-4">
+                  <label className="flex cursor-pointer items-start gap-3">
+                    <input
+                      type="checkbox"
+                      className="mt-1 size-4 accent-[var(--color-gold-deep)]"
+                      checked={usePackageId !== null}
+                      onChange={(e) => {
+                        setUsePackageId(e.target.checked ? (matchingPackages.length === 1 ? matchingPackages[0].purchaseBookingId : '') : null);
+                        if (e.target.checked) setSessions(1); // a package books one visit at a time
+                      }}
+                    />
+                    <span className="block text-sm font-medium">Use one of your prepaid sessions — nothing to pay</span>
+                  </label>
+                  {usePackageId !== null && matchingPackages.length > 1 && (
+                    <select
+                      className={field + ' mt-3'}
+                      aria-label="Which course"
+                      value={usePackageId}
+                      onChange={(e) => setUsePackageId(e.target.value)}
+                    >
+                      <option value="">Choose which course…</option>
+                      {matchingPackages.map((p) => (
+                        <option key={p.purchaseBookingId} value={p.purchaseBookingId}>
+                          {p.label} — {p.sessionsRemaining} of {p.sessionsTotal} left
+                        </option>
+                      ))}
+                    </select>
+                  )}
+                  {chosenPackage && (
+                    <span className="mt-2 block text-sm text-[var(--color-stone)]">
+                      {chosenPackage.label}: {chosenPackage.sessionsRemaining} of {chosenPackage.sessionsTotal} left
+                      {chosenPackage.sessionsBooked > 0 ? ` · ${chosenPackage.sessionsBooked} already booked` : ''}
+                    </span>
+                  )}
+                </div>
+              )}
+
+              {/* A course purchase and spending an existing one are mutually
+                  exclusive — hide the tiers while a prepaid session is selected. */}
+              {variant && variant.courses.length > 0 && !usePackageId && (
                 <div className="mt-5">
                   <p className={label}>Single session or a course?</p>
                   <div className="flex flex-wrap gap-2">
@@ -337,13 +532,13 @@ export function BookingFlow({ catalogue, client, preselect = null, preselectDate
 
           {stage === 'time' && service && variant && (
             <div>
-              <h3 className="font-[family-name:var(--font-display)] text-2xl">{service.name} — {variant.name}</h3>
-              <p className="mt-1 text-sm text-[var(--color-stone)]">{totalDuration} min · {money(orderTotal)}{sessions > 1 ? ` · course of ${sessions}` : ''}</p>
+              <h3 ref={stepHeadingRef} tabIndex={-1} className="font-[family-name:var(--font-display)] text-2xl outline-none">{service.name} — {variant.name}</h3>
+              <p className="mt-1 text-sm text-[var(--color-stone)]">{totalDuration} min · {totalLabel}{sessions > 1 ? ` · course of ${sessions}` : ''}</p>
               <div className="mt-6">
                 <label className={label} htmlFor="bdate">Select a date</label>
                 {popularDays.length > 0 && (
                   <div className="mb-3">
-                    <p className="mb-1.5 text-xs text-[var(--color-stone)]"><span className="text-[var(--color-gold)]">★</span> Popular days — you’ll likely be seen sooner</p>
+                    <p className="mb-1.5 text-xs text-[var(--color-stone)]"><span className="text-[var(--color-gold-deep)]">★</span> Popular days — you’ll likely be seen sooner</p>
                     <div className="flex flex-wrap gap-2">
                       {popularDays.map((d) => (
                         <button key={d} type="button" aria-pressed={date === d} onClick={() => setDate(d)} className={`rounded-full border px-3 py-2.5 text-sm transition-all ${date === d ? 'border-[var(--color-gold)] bg-[var(--color-gold-deep)] text-white' : 'border-[var(--color-gold)] bg-[var(--color-gold)]/10 hover:bg-[var(--color-gold)]/20'}`}>
@@ -387,13 +582,13 @@ export function BookingFlow({ catalogue, client, preselect = null, preselectDate
                             const selected = slot === s;
                             return (
                               <button key={s} type="button" aria-pressed={selected} onClick={() => setSlot(s)} title={isPref ? 'Sooner-seen slot — fits neatly with the day’s other appointments' : undefined} className={`relative rounded-full border px-4 py-2.5 text-sm transition-all ${selected ? 'border-[var(--color-gold)] bg-[var(--color-gold-deep)] text-white' : isPref ? 'border-[var(--color-gold)] bg-[var(--color-gold)]/10 hover:bg-[var(--color-gold)]/20' : 'border-[var(--color-line)] hover:border-[var(--color-stone-soft)]'}`}>
-                                {!selected && isPref && <span aria-hidden className="mr-1 text-[var(--color-gold)]">★</span>}
+                                {!selected && isPref && <span aria-hidden className="mr-1 text-[var(--color-gold-deep)]">★</span>}
                                 {new Date(s).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/London' })}
                               </button>
                             );
                           })}
                         </div>
-                        {preferred.length > 0 && <p className="mt-2 text-xs text-[var(--color-stone)]"><span className="text-[var(--color-gold)]">★</span> Recommended — these times fit neatly around the day’s other appointments, so you’re often seen more promptly.</p>}
+                        {preferred.length > 0 && <p className="mt-2 text-xs text-[var(--color-stone)]"><span className="text-[var(--color-gold-deep)]">★</span> Recommended — these times fit neatly around the day’s other appointments, so you’re often seen more promptly.</p>}
                       </>
                     )}
                   </div>
@@ -401,13 +596,13 @@ export function BookingFlow({ catalogue, client, preselect = null, preselectDate
               )}
               {/* BLD-838: optional email capture — anonymous visitors only (signed-in
                   clients are already recoverable). Never blocks progress. */}
-              {!client.email && <SaveProgress treatmentSlug={service.treatmentSlug} variantLabel={variant.name} />}
+              {!email && <SaveProgress treatmentSlug={service.treatmentSlug} variantLabel={variant.name} />}
             </div>
           )}
 
           {stage === 'upsell' && service && variant && (
             <div>
-              <h3 className="font-[family-name:var(--font-display)] text-2xl">Enhance your visit</h3>
+              <h3 ref={stepHeadingRef} tabIndex={-1} className="font-[family-name:var(--font-display)] text-2xl outline-none">Enhance your visit</h3>
               <p className="mt-1 text-sm text-[var(--color-stone)]">Add a treatment to the same appointment and save {UPSELL_PCT}%{gender ? ' — picked for you' : ''}.</p>
               {recommendations.length === 0 ? (
                 <p className="mt-6 text-sm text-[var(--color-stone)]">No add-ons available — continue to confirm.</p>
@@ -420,7 +615,7 @@ export function BookingFlow({ catalogue, client, preselect = null, preselectDate
                         className={`flex items-center justify-between gap-3 rounded-[var(--radius-md)] border p-4 text-left transition-all ${on ? 'border-[var(--color-gold)] bg-[var(--color-porcelain)]' : 'border-[var(--color-line)] hover:border-[var(--color-stone-soft)]'}`}>
                         <span>
                           <span className="block text-sm font-medium">{s.name} — {v.name}</span>
-                          <span className="text-xs text-[var(--color-stone)]">+{v.durationMin} min · save {money(ap.saved)}</span>
+                          <span className="text-xs text-[var(--color-stone)]">+{v.displayDurationMin ?? v.durationMin} min · save {money(ap.saved)}</span>
                         </span>
                         <span className="shrink-0 text-right text-sm font-medium text-[var(--color-gold-deep)]">
                           <span className="mr-1 text-xs text-[var(--color-stone)] line-through">{money(v.pricePence)}</span>{money(ap.price)}
@@ -457,8 +652,10 @@ export function BookingFlow({ catalogue, client, preselect = null, preselectDate
                 </div>
               </div>
 
-              {/* Promo code */}
-              <div className="mt-6">
+              {/* Promo code. Hidden on a prepaid session: a promo only ever
+                  discounts the primary treatment, which is already £0 here, so
+                  offering the field would just look broken (BLD-1346). */}
+              <div className={`mt-6 ${usePackageId ? 'hidden' : ''}`}>
                 <label htmlFor="bpromo" className={label}>Promo code (optional)</label>
                 <div className="mt-1 flex gap-2">
                   <input id="bpromo" value={promoInput} onChange={(e) => { setPromoInput(e.target.value.toUpperCase()); setPromo(null); }} placeholder="e.g. K10SUMMERREADY" className={`${field} uppercase`} />
@@ -471,8 +668,14 @@ export function BookingFlow({ catalogue, client, preselect = null, preselectDate
 
               <div className="mt-4 rounded-[var(--radius-sm)] bg-[var(--color-porcelain)] p-4 text-sm">
                 <div className="flex justify-between"><span className="text-[var(--color-stone)]">Due today</span><span className="font-medium text-[var(--color-stone)]">Nothing charged until after your visit</span></div>
-                <div className="flex justify-between"><span className="text-[var(--color-stone)]">Total at your visit</span><span className="font-medium text-[var(--color-ink)]">{money(orderTotal)}</span></div>
-                {promo?.ok && <div className="mt-1 flex justify-between text-[var(--color-jade,#3f7a5a)]"><span>Promo {promo.code}</span><span>−{money(promo.discountPence || 0)} applied</span></div>}
+                <div className="flex justify-between"><span className="text-[var(--color-stone)]">Total at your visit</span><span className="font-medium text-[var(--color-ink)]">{totalLabel}</span></div>
+                {promo?.ok && !usePackageId && <div className="mt-1 flex justify-between text-[var(--color-jade,#3f7a5a)]"><span>Promo {promo.code}</span><span>−{money(promo.discountPence || 0)} applied</span></div>}
+                {usePackageId && chosenPackage && (
+                  <div className="mt-1 flex justify-between text-[var(--color-gold-deep)]">
+                    <span>{chosenPackage.label}</span>
+                    <span>1 prepaid session used</span>
+                  </div>
+                )}
                 <p className="mt-2 text-xs text-[var(--color-stone)]">{totalDuration} min · {[service.name, ...[...addOns].map((id) => catalogue.flatMap((s) => s.variants).find((v) => v.id === id)?.name).filter(Boolean)].join(' + ')}</p>
               </div>
 
@@ -491,7 +694,7 @@ export function BookingFlow({ catalogue, client, preselect = null, preselectDate
 
           {stage === 'card' && !isDemo && !clientSecret && (
             <div>
-              <h3 className="font-[family-name:var(--font-display)] text-2xl">Something went wrong</h3>
+              <h3 ref={stepHeadingRef} tabIndex={-1} className="font-[family-name:var(--font-display)] text-2xl outline-none">Something went wrong</h3>
               <p className="mt-3 text-sm text-[var(--color-stone)]">We couldn&apos;t load the payment form. Please go back and try again.</p>
               <button
                 onClick={() => { setStage('upsell'); setError(''); }}
@@ -504,14 +707,14 @@ export function BookingFlow({ catalogue, client, preselect = null, preselectDate
 
           {stage === 'card' && (isDemo || clientSecret) && (
             <div>
-              <h3 className="font-[family-name:var(--font-display)] text-2xl">Secure your booking</h3>
+              <h3 ref={stepHeadingRef} tabIndex={-1} className="font-[family-name:var(--font-display)] text-2xl outline-none">Secure your booking</h3>
               <div className="mt-2 rounded-[var(--radius-sm)] bg-[var(--color-porcelain)] p-4 text-sm text-[var(--color-stone)]">
                 <p><strong className="text-[var(--color-ink)]">{service?.name}</strong> · {slot && new Date(slot).toLocaleString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', timeZone: 'Europe/London' })}</p>
                 <p className="mt-1">We securely save your card now — <strong>no payment is taken</strong> until your treatment is delivered. Free cancellation up to 24 hours before; within 24 hours the full fee applies.</p>
               </div>
               <div className="mt-5">
                 {isDemo ? <DemoCard onDone={() => setStage('done')} onError={setError} />
-                  : <ElementsWrapper clientSecret={clientSecret}><CardStep bookingId={bookingId} clientSecret={clientSecret} onDone={() => setStage('done')} onError={setError} /></ElementsWrapper>}
+                  : <StripeCardStep bookingId={bookingId} clientSecret={clientSecret} onDone={() => setStage('done')} onError={setError} />}
               </div>
             </div>
           )}
@@ -553,17 +756,66 @@ function courseAsVariant(v: Variant, sessions: number): Variant {
   return c ? { ...v, pricePence: c.totalPence, offerPence: null, offerName: null } : v;
 }
 
+// BLD-1144: treatments are 18+ — flag under-18 and implausible (>120y) dates
+// of birth with a clear, specific message. Returns null when the date is fine.
+function dobError(dob: string): string | null {
+  if (!dob) return 'Date of birth is required.';
+  const d = new Date(dob);
+  if (isNaN(+d)) return 'Enter a valid date of birth.';
+  const now = new Date();
+  if (d >= now) return 'Date of birth can’t be in the future.';
+  let age = now.getFullYear() - d.getFullYear();
+  const monthDiff = now.getMonth() - d.getMonth();
+  if (monthDiff < 0 || (monthDiff === 0 && now.getDate() < d.getDate())) age--;
+  if (age > 120) return 'Please check the date of birth — that doesn’t look right.';
+  if (age < 18) return 'You must be 18 or older to book a treatment.';
+  return null;
+}
+
 // ── Account step (signup / login) ───────────────────────────────────────────
-function AccountStep({ onAuthed, setError }: { onAuthed: (i: { firstName: string; gender: string | null; welcome: boolean; sms: boolean }) => void; setError: (e: string) => void }) {
+function AccountStep({ onAuthed, setError, headingRef }: { onAuthed: (i: { firstName: string; gender: string | null; welcome: boolean; sms: boolean }) => void; setError: (e: string) => void; headingRef?: Ref<HTMLHeadingElement> }) {
   const [mode, setMode] = useState<'signup' | 'login'>('signup');
   const [f, setF] = useState({ firstName: '', lastName: '', email: '', phone: '', dob: '', password: '', gender: '', marketingOptIn: false, sms: false, consent: false, company: '' });
   const [busy, setBusy] = useState(false);
+  // BLD-1436: per-field signup validation errors, shown inline next to the
+  // field that failed rather than as one generic banner. Keyed by field name;
+  // dob keeps its own live-computed pattern below (dobMsg) and falls back to
+  // the submitted error only while the field is still empty, which is the one
+  // case dobError() can't be evaluated against live input.
+  const [errors, setErrors] = useState<Record<string, string>>({});
+  // Editing a field drops its submit-time message, so no error outlives the
+  // problem it describes (fixing an empty surname clears "Last name is
+  // required." immediately, rather than at the next submit).
+  const clearErr = (k: string) => setErrors((prev) => (prev[k] ? { ...prev, [k]: '' } : prev));
+  // Today's date (browser-local), used as the DOB field's max and to keep the
+  // inline age check in sync with it.
+  const maxDob = useMemo(() => new Date().toLocaleDateString('en-CA'), []);
+  const dobMsg = f.dob ? dobError(f.dob) : (errors.dob || null);
+  // BLD-1674: refs for the focus-move-to-first-invalid-field behaviour below —
+  // a screen-reader user who submits an incomplete form otherwise gets no
+  // feedback at all (the inline messages are visually adjacent but never focused).
+  const fieldRefs = useRef<Record<string, HTMLElement | null>>({});
+  const FIELD_ORDER = ['firstName', 'lastName', 'email', 'phone', 'dob', 'password', 'consent'];
+  function focusFirstInvalid(fieldErrors: Record<string, string>) {
+    const first = FIELD_ORDER.find((k) => fieldErrors[k]);
+    if (first) fieldRefs.current[first]?.focus();
+  }
 
   async function signup() {
     const digits = (f.phone.match(/\d/g) || []).length;
-    if (!f.firstName || !f.lastName.trim() || !/\S+@\S+\.\S+/.test(f.email) || digits < 7 || !f.dob || f.password.length < 8 || !f.consent) {
-      setError('Please complete all required fields (surname, a valid mobile, date of birth, password 8+) and accept the terms.'); return;
-    }
+    const dobErr = dobError(f.dob);
+    const fieldErrors: Record<string, string> = {};
+    if (!f.firstName) fieldErrors.firstName = 'First name is required.';
+    if (!f.lastName.trim()) fieldErrors.lastName = 'Last name is required.';
+    if (!/\S+@\S+\.\S+/.test(f.email)) fieldErrors.email = 'Enter a valid email address.';
+    if (digits < 7) fieldErrors.phone = 'Enter a valid mobile number.';
+    if (dobErr) fieldErrors.dob = dobErr;
+    if (f.password.length < 8) fieldErrors.password = 'Password must be at least 8 characters.';
+    if (!f.consent) fieldErrors.consent = 'Please accept the booking terms to continue.';
+    // Clear any stale banner from a previous submit — the inline messages are
+    // now the whole story for client-side validation.
+    if (Object.keys(fieldErrors).length > 0) { setErrors(fieldErrors); setError(''); focusFirstInvalid(fieldErrors); return; }
+    setErrors({});
     setBusy(true); setError('');
     try {
       const res = await fetch('/api/account/signup', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ firstName: f.firstName, lastName: f.lastName, email: f.email, phone: f.phone, dob: f.dob, password: f.password, gender: f.gender || undefined, marketingOptIn: f.marketingOptIn, consent: f.consent, locale: 'en', company: f.company }) });
@@ -593,11 +845,24 @@ function AccountStep({ onAuthed, setError }: { onAuthed: (i: { firstName: string
   // Guest booking (BLD-550): same identity + consent, no password. Creates a
   // passwordless account + session so the rest of the flow works; they get an
   // email to set a password later.
+  // BLD-1682: per-field errors + focus-move-to-first-invalid, matching signup()
+  // (BLD-1674) — same required fields as guest checkout itself (no password,
+  // since guest has none), same fieldErrors/focusFirstInvalid pattern, reusing
+  // both directly since guest() shares AccountStep's closure with signup().
   async function guest() {
     const digits = (f.phone.match(/\d/g) || []).length;
-    if (!f.firstName || !f.lastName.trim() || !/\S+@\S+\.\S+/.test(f.email) || digits < 7 || !f.dob || !f.consent) {
-      setError('Please complete all required fields (surname, a valid mobile, date of birth) and accept the terms.'); return;
-    }
+    const dobErr = dobError(f.dob);
+    const fieldErrors: Record<string, string> = {};
+    if (!f.firstName) fieldErrors.firstName = 'First name is required.';
+    if (!f.lastName.trim()) fieldErrors.lastName = 'Last name is required.';
+    if (!/\S+@\S+\.\S+/.test(f.email)) fieldErrors.email = 'Enter a valid email address.';
+    if (digits < 7) fieldErrors.phone = 'Enter a valid mobile number.';
+    if (dobErr) fieldErrors.dob = dobErr;
+    if (!f.consent) fieldErrors.consent = 'Please accept the booking terms to continue.';
+    // Clear any stale banner from a previous submit — the inline messages are
+    // now the whole story for client-side validation, same as signup().
+    if (Object.keys(fieldErrors).length > 0) { setErrors(fieldErrors); setError(''); focusFirstInvalid(fieldErrors); return; }
+    setErrors({});
     setBusy(true); setError('');
     try {
       const res = await fetch('/api/booking/guest', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ firstName: f.firstName, lastName: f.lastName, email: f.email, phone: f.phone, dob: f.dob, gender: f.gender || undefined, marketingOptIn: f.marketingOptIn, consent: f.consent, locale: 'en', company: f.company }) });
@@ -614,7 +879,7 @@ function AccountStep({ onAuthed, setError }: { onAuthed: (i: { firstName: string
 
   return (
     <div>
-      <h3 className="font-[family-name:var(--font-display)] text-2xl">{mode === 'signup' ? 'Create your account to book' : 'Welcome back'}</h3>
+      <h3 ref={headingRef} tabIndex={-1} className="font-[family-name:var(--font-display)] text-2xl outline-none">{mode === 'signup' ? 'Create your account to book' : 'Welcome back'}</h3>
       {mode === 'signup' && (
         <div className="mt-3 rounded-[var(--radius-md)] border border-[var(--color-gold)]/30 bg-[var(--color-gold)]/8 p-4 text-sm text-[var(--color-ink-soft)]">
           ✦ <strong>Enjoy 15% off your first visit</strong> when you create your free account — and keep all your appointments, forms and rewards in one place.
@@ -623,12 +888,12 @@ function AccountStep({ onAuthed, setError }: { onAuthed: (i: { firstName: string
 
       {mode === 'signup' ? (
         <div className="mt-6 grid gap-4 sm:grid-cols-2">
-          <div><label htmlFor="bf-firstName" className={label}>First name *</label><input id="bf-firstName" autoComplete="given-name" className={field} value={f.firstName} onChange={(e) => setF({ ...f, firstName: e.target.value })} /></div>
-          <div><label htmlFor="bf-lastName" className={label}>Last name *</label><input id="bf-lastName" autoComplete="family-name" className={field} value={f.lastName} onChange={(e) => setF({ ...f, lastName: e.target.value })} /></div>
-          <div className="sm:col-span-2"><label htmlFor="bf-email" className={label}>Email *</label><input id="bf-email" type="email" autoComplete="email" className={field} value={f.email} onChange={(e) => setF({ ...f, email: e.target.value })} /></div>
-          <div><label htmlFor="bf-phone" className={label}>Mobile *</label><input id="bf-phone" type="tel" autoComplete="tel" className={field} value={f.phone} onChange={(e) => setF({ ...f, phone: e.target.value })} /></div>
-          <div><label htmlFor="bf-dob" className={label}>Date of birth *</label><input id="bf-dob" type="date" autoComplete="bday" className={field} value={f.dob} onChange={(e) => setF({ ...f, dob: e.target.value })} /></div>
-          <div className="sm:col-span-2"><label htmlFor="bf-password" className={label}>Password (8+) <span className="font-normal text-[var(--color-stone)]">— optional; or continue as a guest below</span></label><input id="bf-password" type="password" autoComplete="new-password" className={field} value={f.password} onChange={(e) => setF({ ...f, password: e.target.value })} /></div>
+          <div><label htmlFor="bf-firstName" className={label}>First name *</label><input id="bf-firstName" ref={(el) => { fieldRefs.current.firstName = el; }} autoComplete="given-name" aria-invalid={!!errors.firstName} aria-describedby={errors.firstName ? 'bf-firstName-err' : undefined} className={field} value={f.firstName} onChange={(e) => { setF({ ...f, firstName: e.target.value }); clearErr('firstName'); }} />{errors.firstName && <p id="bf-firstName-err" role="alert" className="mt-1.5 text-xs text-[var(--color-blush-deep)]">{errors.firstName}</p>}</div>
+          <div><label htmlFor="bf-lastName" className={label}>Last name *</label><input id="bf-lastName" ref={(el) => { fieldRefs.current.lastName = el; }} autoComplete="family-name" aria-invalid={!!errors.lastName} aria-describedby={errors.lastName ? 'bf-lastName-err' : undefined} className={field} value={f.lastName} onChange={(e) => { setF({ ...f, lastName: e.target.value }); clearErr('lastName'); }} />{errors.lastName && <p id="bf-lastName-err" role="alert" className="mt-1.5 text-xs text-[var(--color-blush-deep)]">{errors.lastName}</p>}</div>
+          <div className="sm:col-span-2"><label htmlFor="bf-email" className={label}>Email *</label><input id="bf-email" ref={(el) => { fieldRefs.current.email = el; }} type="email" autoComplete="email" aria-invalid={!!errors.email} aria-describedby={errors.email ? 'bf-email-err' : undefined} className={field} value={f.email} onChange={(e) => { setF({ ...f, email: e.target.value }); clearErr('email'); }} />{errors.email && <p id="bf-email-err" role="alert" className="mt-1.5 text-xs text-[var(--color-blush-deep)]">{errors.email}</p>}</div>
+          <div><label htmlFor="bf-phone" className={label}>Mobile *</label><input id="bf-phone" ref={(el) => { fieldRefs.current.phone = el; }} type="tel" autoComplete="tel" aria-invalid={!!errors.phone} aria-describedby={errors.phone ? 'bf-phone-err' : undefined} className={field} value={f.phone} onChange={(e) => { setF({ ...f, phone: e.target.value }); clearErr('phone'); }} />{errors.phone && <p id="bf-phone-err" role="alert" className="mt-1.5 text-xs text-[var(--color-blush-deep)]">{errors.phone}</p>}</div>
+          <div><label htmlFor="bf-dob" className={label}>Date of birth *</label><input id="bf-dob" ref={(el) => { fieldRefs.current.dob = el; }} type="date" autoComplete="bday" max={maxDob} aria-invalid={!!dobMsg} aria-describedby={dobMsg ? 'bf-dob-err' : undefined} className={field} value={f.dob} onChange={(e) => { setF({ ...f, dob: e.target.value }); clearErr('dob'); }} />{dobMsg && <p id="bf-dob-err" role="alert" className="mt-1.5 text-xs text-[var(--color-blush-deep)]">{dobMsg}</p>}</div>
+          <div className="sm:col-span-2"><label htmlFor="bf-password" className={label}>Password (8+) <span className="font-normal text-[var(--color-stone)]">— optional; or continue as a guest below</span></label><input id="bf-password" ref={(el) => { fieldRefs.current.password = el; }} type="password" autoComplete="new-password" aria-invalid={!!errors.password} aria-describedby={errors.password ? 'bf-password-err' : undefined} className={field} value={f.password} onChange={(e) => { setF({ ...f, password: e.target.value }); clearErr('password'); }} />{errors.password && <p id="bf-password-err" role="alert" className="mt-1.5 text-xs text-[var(--color-blush-deep)]">{errors.password}</p>}</div>
           <div className="sm:col-span-2"><label htmlFor="bf-gender" className={label}>Gender (optional — tailors recommendations)</label>
             <select id="bf-gender" className={field} value={f.gender} onChange={(e) => setF({ ...f, gender: e.target.value })}>
               <option value="">Prefer not to say</option>
@@ -639,7 +904,12 @@ function AccountStep({ onAuthed, setError }: { onAuthed: (i: { firstName: string
           <input type="text" tabIndex={-1} autoComplete="off" value={f.company} onChange={(e) => setF({ ...f, company: e.target.value })} className="absolute -left-[9999px] h-0 w-0" aria-hidden />
           <label className="flex items-start gap-3 text-sm text-[var(--color-stone)] sm:col-span-2"><input type="checkbox" checked={f.sms} onChange={(e) => setF({ ...f, sms: e.target.checked })} className="mt-1 h-4 w-4 accent-[var(--color-gold)]" />Text me appointment confirmations &amp; reminders.</label>
           <label className="flex items-start gap-3 text-sm text-[var(--color-stone)] sm:col-span-2"><input type="checkbox" checked={f.marketingOptIn} onChange={(e) => setF({ ...f, marketingOptIn: e.target.checked })} className="mt-1 h-4 w-4 accent-[var(--color-gold)]" />Keep me updated with offers and skincare tips. We may also use your contact details, in hashed form, to show you our offers on social media — see our Privacy Policy.</label>
-          <label className="flex items-start gap-3 text-sm text-[var(--color-stone)] sm:col-span-2"><input type="checkbox" checked={f.consent} onChange={(e) => setF({ ...f, consent: e.target.checked })} className="mt-1 h-4 w-4 accent-[var(--color-gold)]" />I agree to the booking terms: my card is saved but not charged now; I’ll be charged when the service is delivered; cancellations within 24 hours are charged in full. *</label>
+          {/* BLD-1067: the full consequence chain is named at the tick, and the
+              acceptance is now recorded server-side (when/where/version). */}
+          <div className="sm:col-span-2">
+            <label className="flex items-start gap-3 text-sm text-[var(--color-stone)]"><input type="checkbox" ref={(el) => { fieldRefs.current.consent = el; }} checked={f.consent} onChange={(e) => { setF({ ...f, consent: e.target.checked }); clearErr('consent'); }} aria-invalid={!!errors.consent} aria-describedby={errors.consent ? 'bf-consent-err' : undefined} className="mt-1 h-4 w-4 accent-[var(--color-gold)]" />I agree to the booking terms: my card is saved but not charged now; I’ll be charged when the service is delivered; cancellations within 24 hours and missed appointments are charged in full; an unpaid fee must be settled before I can book again. *</label>
+            {errors.consent && <p id="bf-consent-err" role="alert" className="mt-1.5 text-xs text-[var(--color-blush-deep)]">{errors.consent}</p>}
+          </div>
         </div>
       ) : (
         <div className="mt-6 grid gap-4">
@@ -670,10 +940,14 @@ function RequestReceived({ firstName, treatment, slot, orderTotal, variantId, ca
     // BLD-873: a same-day request is a placed booking pending approval — fire
     // the same browser conversion Done does, deduped with the server CAPI
     // Schedule via the booking id (previously this outcome tracked nothing).
+    // PRJ-1191.5: ga4Purchase: false — the request is pre-charge; the sole GA4
+    // `purchase` fires server-side (lib/conversions.ts) when the card is
+    // actually charged, or this double-counted every booking in GA4.
     trackPurchase({
       valuePence: orderTotal,
       eventId: bookingId || undefined,
       detail: { items: [{ item_id: variantId, item_name: treatment, item_category: category }] },
+      ga4Purchase: false,
     });
   }, []);
   return (
@@ -691,12 +965,17 @@ function RequestReceived({ firstName, treatment, slot, orderTotal, variantId, ca
 
 function Done({ firstName, treatment, slot, orderTotal, variantId, category, bookingId }: { firstName: string; treatment?: string; slot: string; orderTotal: number; variantId: string; category?: string; bookingId?: string }) {
   useEffect(() => {
-    // GA4 `purchase` + Meta `Schedule` (pre-charge); eventId = booking id so the
-    // browser Pixel de-duplicates against the server-side CAPI Schedule.
+    // Meta `Schedule` (pre-charge); eventId = booking id so the browser Pixel
+    // de-duplicates against the server-side CAPI Schedule.
+    // PRJ-1191.5: no GA4 `purchase` here — the card is only saved, not charged,
+    // at this step. Firing it anyway (with no transaction_id) double-counted
+    // every booking against the real GA4 `purchase` lib/conversions.ts sends
+    // server-side at actual card-charge time.
     trackPurchase({
       valuePence: orderTotal,
       eventId: bookingId || undefined,
       detail: { items: [{ item_id: variantId, item_name: treatment, item_category: category }] },
+      ga4Purchase: false,
     });
   }, []);
   return (
@@ -714,7 +993,7 @@ function Done({ firstName, treatment, slot, orderTotal, variantId, category, boo
       </p>
       <p className="mt-6"><Link href="/account/appointments" className="link-underline text-sm font-medium text-[var(--color-ink)]">View my appointments →</Link></p>
       <div className="mx-auto mt-8 max-w-sm rounded-[var(--radius-lg)] border border-[var(--color-gold)]/40 bg-[var(--color-porcelain)] p-6 text-left">
-        <p className="text-sm font-medium text-[var(--color-ink)]">Know someone who'd love KClinics?</p>
+        <p className="text-sm font-medium text-[var(--color-ink)]">Know someone who&rsquo;d love KClinics?</p>
         <p className="mt-1 text-sm text-[var(--color-stone)]">Refer a friend — you both receive <strong className="font-semibold text-[var(--color-ink)]">£25 credit</strong> towards any treatment, and your Beauty Points for today&apos;s booking have been credited to <Link href="/account" className="link-underline font-medium text-[var(--color-ink)]">your account</Link>.</p>
         <Link href="/refer-a-friend" className="mt-4 inline-block rounded-full bg-[var(--color-gold-deep)] px-5 py-2 text-sm font-medium text-white">Share your referral link →</Link>
       </div>
@@ -722,44 +1001,12 @@ function Done({ firstName, treatment, slot, orderTotal, variantId, category, boo
   );
 }
 
-function ElementsWrapper({ clientSecret, children }: { clientSecret: string; children: React.ReactNode }) {
-  return (
-    <Elements stripe={getStripe()} options={{ clientSecret, appearance: { theme: 'flat', variables: { colorPrimary: '#a98a6d', fontFamily: 'system-ui, sans-serif', borderRadius: '10px', colorBackground: '#f6ece3' } } }}>
-      {children}
-    </Elements>
-  );
-}
-
-function CardStep({ bookingId, clientSecret, onDone, onError }: { bookingId: string; clientSecret: string; onDone: () => void; onError: (e: string) => void }) {
-  const stripe = useStripe();
-  const elements = useElements();
-  const [submitting, setSubmitting] = useState(false);
-  async function submit() {
-    if (!stripe || !elements) return;
-    setSubmitting(true); onError('');
-    const { error } = await stripe.confirmSetup({ elements, redirect: 'if_required' });
-    if (error) { onError(error.message || 'Card could not be saved.'); setSubmitting(false); return; }
-    // The card is saved now. Confirming is idempotent server-side (a repeat call
-    // returns the same success), so a transient failure here is safe to surface
-    // for retry without double-booking — and must not leave the button hung.
-    try {
-      // BLD-700: the client secret proves this browser ran the Elements flow.
-      const res = await fetch('/api/booking/confirm', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ bookingId, clientSecret }) });
-      const j = await res.json().catch(() => null);
-      if (j?.ok) { onDone(); return; }
-      onError(j?.error || 'Your card was saved, but we couldn’t finish confirming. Please tap Confirm again — you won’t be booked or charged twice.');
-      setSubmitting(false);
-    } catch {
-      onError('Your card was saved. If you don’t receive a confirmation email shortly, check “My appointments”, then tap Confirm again.');
-      setSubmitting(false);
-    }
-  }
-  return (
-    <div>
-      <PaymentElement />
-      <div className="mt-6 flex justify-end"><Button onClick={submit} disabled={submitting} variant="gold" size="lg">{submitting ? 'Confirming…' : 'Confirm booking'} <ArrowIcon /></Button></div>
-    </div>
-  );
+// PRJ-1200.12: brief placeholder shown while the dynamically-imported
+// StripeCardStep chunk loads (typically sub-second on a warm cache) — the
+// visitor already sees the "Secure your booking" heading and summary above
+// this, so a plain skeleton is enough, not a full spinner treatment.
+function CardStepLoading() {
+  return <div className="h-32 animate-pulse rounded-[var(--radius-md)] bg-[var(--color-porcelain)]" aria-hidden />;
 }
 
 // BLD-838 — optional "email me my selection" capture on the time step. Gives a
@@ -790,49 +1037,13 @@ function SaveProgress({ treatmentSlug, variantLabel }: { treatmentSlug: string; 
     <div className="mt-8 rounded-[var(--radius-md)] border border-[var(--color-line)] bg-[var(--color-bone)]/50 p-4">
       <label htmlFor="bintent" className={label}>Email me my selection so I can finish later (optional)</label>
       <div className="mt-1 flex flex-wrap items-center gap-2">
-        <input id="bintent" type="email" autoComplete="email" value={email} onChange={(e) => { setEmail(e.target.value); if (status === 'saved') setStatus(''); }} onBlur={save} placeholder="you@email.com" aria-label="Email me my selection" className="min-w-0 flex-1 rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-3 py-2 text-sm outline-none focus:border-[var(--color-gold)]" />
+        <input id="bintent" type="email" autoComplete="email" value={email} onChange={(e) => { setEmail(e.target.value); if (status === 'saved') setStatus(''); }} onBlur={save} placeholder="you@email.com" aria-label="Email me my selection" className="min-w-0 flex-1 rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-3 py-2 text-sm focus:border-[var(--color-gold-deep)] focus-visible:ring-2 focus-visible:ring-[var(--color-gold-deep)]" />
         <input type="text" tabIndex={-1} autoComplete="off" value={company} onChange={(e) => setCompany(e.target.value)} className="absolute -left-[9999px] h-0 w-0" aria-hidden />
         <button type="button" onClick={save} disabled={status === 'saving' || !valid} className="shrink-0 rounded-full border border-[var(--color-line)] px-4 py-2 text-sm font-medium hover:border-[var(--color-gold)] disabled:opacity-50">{status === 'saving' ? '…' : 'Save'}</button>
       </div>
       {status === 'saved'
         ? <p className="mt-1.5 text-sm text-[var(--color-jade,#3f7a5a)]">Saved ✓ We’ll email you a link to pick up where you left off — for this treatment only, no marketing.</p>
         : <p className="mt-1.5 text-xs text-[var(--color-stone)]">We’ll only use this to send you back to this selection — you’re not signed up to anything.</p>}
-    </div>
-  );
-}
-
-// BLD-133 — "notify me if a slot frees" shown when a chosen day is fully booked.
-function WaitlistCTA({ treatmentSlug, treatmentTitle, date, client }: { treatmentSlug: string; treatmentTitle: string; date: string; client: ClientInfo }) {
-  const [open, setOpen] = useState(false);
-  const [name, setName] = useState(client.firstName || '');
-  const [email, setEmail] = useState(client.email || '');
-  const [busy, setBusy] = useState(false);
-  const [done, setDone] = useState(false);
-  const [err, setErr] = useState('');
-  const inp = 'min-w-0 flex-1 rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-3 py-2 text-sm outline-none focus:border-[var(--color-gold)]';
-  const dayLabel = new Date(date).toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' });
-
-  async function join() {
-    setErr('');
-    if (!name.trim() || !/\S+@\S+\.\S+/.test(email)) { setErr('Enter your name and a valid email.'); return; }
-    setBusy(true);
-    try {
-      const r = await fetch('/api/waitlist', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ treatmentSlug, name, email, fromDate: date, toDate: date }) }).then((x) => x.json());
-      if (r.ok) setDone(true); else setErr(r.error || 'Could not join the waitlist.');
-    } catch { setErr('Network error — please try again.'); } finally { setBusy(false); }
-  }
-
-  if (done) return <p className="mt-3 rounded-[var(--radius-sm)] bg-[var(--color-gold)]/10 px-3 py-2 text-sm text-[var(--color-ink)]">You’re on the waitlist for {dayLabel} — we’ll email you if a slot opens.</p>;
-  if (!open) return <button type="button" onClick={() => setOpen(true)} className="mt-3 rounded-full border border-[var(--color-gold)] px-4 py-2 text-sm text-[var(--color-gold-deep)] transition-colors hover:bg-[var(--color-gold)]/10">🔔 Notify me if a slot opens that day</button>;
-  return (
-    <div className="mt-3 rounded-[var(--radius-md)] border border-[var(--color-line)] bg-[var(--color-bone)]/50 p-3">
-      <p className="text-sm text-[var(--color-stone)]">We’ll email you if a {treatmentTitle} slot frees up on {dayLabel}.</p>
-      <div className="mt-2 flex flex-wrap items-center gap-2">
-        <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Your name" aria-label="Your name" className={inp} />
-        <input value={email} onChange={(e) => setEmail(e.target.value)} type="email" placeholder="Email" aria-label="Email" className={inp} />
-        <button type="button" onClick={join} disabled={busy} className="rounded-full bg-[var(--color-gold-deep)] px-4 py-2 text-sm font-medium text-white disabled:opacity-50">{busy ? 'Joining…' : 'Join waitlist'}</button>
-      </div>
-      {err && <p role="alert" aria-live="assertive" className="mt-1 text-xs text-[var(--color-blush-deep)]">{err}</p>}
     </div>
   );
 }

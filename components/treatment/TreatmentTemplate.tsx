@@ -10,6 +10,8 @@ import { TreatmentCard } from '@/components/ui/TreatmentCard';
 import { FaqAccordion } from '@/components/ui/FaqAccordion';
 import { Button, ArrowIcon } from '@/components/ui/Button';
 import { BookingButtons } from '@/components/booking/BookingButtons';
+import { MobileStickyBookBar } from '@/components/treatment/MobileStickyBookBar';
+import { PhoneButton } from '@/components/marketing/PhoneLink';
 import { site } from '@/lib/site';
 import { pricingForTreatment, formatPence, statusLabel, type ServiceStatus } from '@/lib/services';
 import { getVatNote } from '@/lib/vat';
@@ -58,10 +60,16 @@ function groupAreas<T extends { name: string }>(items: T[]): { heading: string; 
   return order.filter((h) => byHeading.has(h)).map((h) => ({ heading: h, items: byHeading.get(h)! }));
 }
 
-export async function TreatmentTemplate({ t }: { t: Treatment }) {
+// BLD-1683: dentistryLive defaults to the static site.dentistryLive constant,
+// but the caller (app/(marketing)/[slug]/page.tsx) already reads the real
+// admin-toggleable value via getSiteConfig() for its own JSON-LD (BLD-1483)
+// and passes it through here too, matching the organizationLd() pattern
+// (lib/seo.tsx, BLD-1672) — otherwise this page kept showing "Coming soon"
+// after the owner flipped dentistry on elsewhere.
+export async function TreatmentTemplate({ t, dentistryLive = site.dentistryLive }: { t: Treatment; dentistryLive?: boolean }) {
   const categoryHref = t.category === 'aesthetics' ? '/treatments' : '/dentistry';
   const categoryLabel = t.category === 'aesthetics' ? 'Aesthetics' : 'Dentistry';
-  const comingSoon = t.category === 'dentistry' && !site.dentistryLive;
+  const comingSoon = t.category === 'dentistry' && !dentistryLive;
   const related = t.related.map(getTreatment).filter(Boolean) as Treatment[];
 
   // Pricing + presentation status derived live from the admin catalogue (SSOT).
@@ -70,9 +78,9 @@ export async function TreatmentTemplate({ t }: { t: Treatment }) {
   // where the actual buying decision happens.
   const [pricing, vatNote, aggregate] = await Promise.all([pricingForTreatment(t.slug), getVatNote(), getReviewAggregate()]);
   const rating = aggregate ? { average: aggregate.average, count: aggregate.count } : null;
-  // Prefer testimonials naming this exact treatment; fall back to the general pool.
-  const treatmentCards = aggregate?.cards.filter((c) => c.treatment === t.title) ?? [];
-  const testimonialCards = (treatmentCards.length ? treatmentCards : aggregate?.cards ?? []).slice(0, 2);
+  // BLD-1447: quotes naming this exact treatment only — no fallback to the general
+  // pool. Most treatments have none yet; the star rating alone still renders.
+  const testimonialCards = (aggregate?.cards.filter((c) => c.treatment === t.title) ?? []).slice(0, 2);
   const fromPence = pricing?.fromPence ?? null;
   const fromOfferPence = pricing?.fromOfferPence ?? null;
   const offerName = pricing?.offerName ?? null;
@@ -114,6 +122,19 @@ export async function TreatmentTemplate({ t }: { t: Treatment }) {
 
   return (
     <article>
+      {/* BLD-1609: slim sticky Book Now bar for mobile, visible mid-scroll once
+          the hero's own booking CTA has scrolled out of view (hidden again near
+          the pricing table's CTA — no duplicate/overlapping CTAs). Only for
+          treatments that are actually bookable online. */}
+      {!comingSoon && !enquiryOnly && (
+        <MobileStickyBookBar
+          treatmentSlug={t.slug}
+          // Keep the "From" qualifier the hero and pricing table both carry: the
+          // figure is the lowest variant price, so a bare "£120" on the sticky
+          // bar would read as the price of the treatment.
+          priceLabel={(fromOfferPence ?? fromPence) ? `From ${formatPence(fromOfferPence ?? fromPence)}` : formatPence(null)}
+        />
+      )}
       {/* Hero */}
       <section className="surface-ink grain relative overflow-hidden pt-[calc(var(--header-h,5.25rem)+1rem)]">
         <span
@@ -133,7 +154,7 @@ export async function TreatmentTemplate({ t }: { t: Treatment }) {
               </nav>
             </Reveal>
             <Reveal delay={0.05}>
-              <p className="eyebrow mb-4 flex flex-wrap items-center gap-3 text-[var(--color-gold-soft)]">
+              <p className="eyebrow eyebrow-on-dark mb-4 flex flex-wrap items-center gap-3">
                 {t.eyebrow}
                 {comingSoon && <span className="rounded-full bg-[var(--color-gold-soft)] px-3 py-1 text-[0.6rem] font-semibold uppercase tracking-[0.14em] text-[var(--color-ink)]">Opening soon</span>}
               </p>
@@ -166,7 +187,7 @@ export async function TreatmentTemplate({ t }: { t: Treatment }) {
                     </p>
                     <div className="flex flex-wrap gap-3">
                       <Button href="/contact" variant="gold" size="lg">Enquire / request <ArrowIcon /></Button>
-                      <Button href={site.phoneHref} variant="outline" size="lg">{site.phone}</Button>
+                      <PhoneButton variant="outline" size="lg">{site.phone}</PhoneButton>
                     </div>
                   </div>
                 ) : (
@@ -314,10 +335,9 @@ export async function TreatmentTemplate({ t }: { t: Treatment }) {
                 <div className="mt-5 space-y-4">
                   {testimonialCards.map((c, i) => (
                     <blockquote key={i} className="rounded-[var(--radius-md)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-5">
-                      <p className="text-sm leading-relaxed text-[var(--color-ink-soft)]">“{c.body}”</p>
-                      <footer className="mt-3 text-xs font-medium text-[var(--color-gold-deep)]">
-                        {c.author}{c.treatment ? ` · ${c.treatment}` : ''}
-                      </footer>
+                      <Stars rating={c.rating} size="h-3.5 w-3.5" />
+                      <p className="mt-2 text-sm leading-relaxed text-[var(--color-ink-soft)]">“{c.body}”</p>
+                      <footer className="mt-3 text-xs font-medium text-[var(--color-gold-deep)]">{c.author}</footer>
                     </blockquote>
                   ))}
                 </div>

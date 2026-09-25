@@ -4,7 +4,7 @@ import { Reveal } from '@/components/motion/Reveal';
 import { GiftVoucherFlow } from '@/components/gift/GiftVoucherFlow';
 import { GiftPackages } from '@/components/gift/GiftPackages';
 import { listPublishedGiftPackages } from '@/lib/gift-packages';
-import { site } from '@/lib/site';
+import { PhoneLink } from '@/components/marketing/PhoneLink';
 import { pageMeta, JsonLd, breadcrumbLd } from '@/lib/seo';
 
 export const generateMetadata = (): Promise<Metadata> => pageMeta({
@@ -30,7 +30,10 @@ const STEPS = [
   { n: '03', t: 'Delivered by email', d: 'Pay securely and the voucher arrives by email with a unique code, ready to redeem in clinic.' },
 ];
 
-const USES = ['Skin & facial aesthetics', 'Injectable treatments', 'Aesthetic dentistry', 'Laser & body', 'A complimentary consultation', 'Anything across the menu'];
+// BLD-1918: keep this list truthful — no item implying the card is usable on
+// literally everything (the exclusions live at the purchase/redemption stage,
+// not on this page). 'Injectable treatments' was removed for that reason.
+const USES = ['Skin & facial aesthetics', 'Aesthetic dentistry', 'Laser & body', 'A complimentary consultation'];
 
 export default async function GiftVouchersPage() {
   const [physical, giftPackages] = await Promise.all([physicalConfig(), listPublishedGiftPackages()]);
@@ -40,7 +43,7 @@ export default async function GiftVouchersPage() {
       <PageHero
         eyebrow="Gift vouchers"
         title="Give the gift of confidence."
-        lede="A KClinics voucher is the thoughtful way to treat someone — fully flexible, beautifully presented, and valid across our entire menu of treatments. Buy online in minutes."
+        lede="A KClinics voucher is the thoughtful way to treat someone — fully flexible and beautifully presented. Buy online in minutes."
         gradient={['#2a2420', '#a98a6d']}
       >
         <a href="#buy" className="inline-flex items-center gap-2 rounded-full bg-[var(--color-gold-deep)] px-7 py-3.5 text-sm font-medium text-white transition-colors hover:bg-[var(--color-ink)]">Buy a voucher →</a>
@@ -51,7 +54,7 @@ export default async function GiftVouchersPage() {
           {STEPS.map((s, i) => (
             <Reveal key={s.n} delay={i * 0.08}>
               <div>
-                <p className="font-[family-name:var(--font-display)] text-4xl text-[var(--color-gold)]">{s.n}</p>
+                <p className="font-[family-name:var(--font-display)] text-4xl text-[var(--color-gold-deep)]">{s.n}</p>
                 <h3 className="mt-3 font-[family-name:var(--font-display)] text-xl">{s.t}</h3>
                 <p className="mt-2 text-[var(--color-ink-soft)]">{s.d}</p>
               </div>
@@ -63,12 +66,12 @@ export default async function GiftVouchersPage() {
       <section id="buy" className="container-lux section">
         <Reveal>
           <div className="mx-auto mb-9 max-w-2xl text-center">
-            <p className="eyebrow mb-3">Redeemable on everything</p>
-            <h2 className="text-title">One voucher, the whole menu.</h2>
-            <p className="mt-4 text-[var(--color-ink-soft)]">Vouchers can be put towards any treatment, product or consultation at KClinics. They’re valid for 12 months, can be used across several visits, and the balance is tracked automatically.</p>
+            <p className="eyebrow mb-3">Give the gift of choice</p>
+            <h2 className="text-title">One voucher, so many ways to treat.</h2>
+            <p className="mt-4 text-[var(--color-ink-soft)]">Vouchers can be put towards treatments, products and consultations at KClinics. They’re valid for 12 months, can be used across several visits, and the balance is tracked automatically.</p>
             <ul className="mx-auto mt-6 flex max-w-xl flex-wrap justify-center gap-x-5 gap-y-2">
               {USES.map((u) => (
-                <li key={u} className="flex items-center gap-2 text-sm text-[var(--color-ink-soft)]"><span className="text-[var(--color-gold)]">✦</span> {u}</li>
+                <li key={u} className="flex items-center gap-2 text-sm text-[var(--color-ink-soft)]"><span className="text-[var(--color-gold-deep)]">✦</span> {u}</li>
               ))}
             </ul>
           </div>
@@ -76,7 +79,7 @@ export default async function GiftVouchersPage() {
         <Reveal delay={0.1}>
           <GiftVoucherFlow physicalEnabled={physical.enabled} physicalFeePence={physical.feePence} />
         </Reveal>
-        <p className="mt-6 text-center text-sm text-[var(--color-stone)]">Buying for a corporate gift? Call us on <a href={site.phoneHref} className="link-underline font-medium text-[var(--color-ink)]">{site.phone}</a> and we’ll arrange it.</p>
+        <p className="mt-6 text-center text-sm text-[var(--color-stone)]">Buying for a corporate gift? Call us on <PhoneLink className="link-underline font-medium text-[var(--color-ink)]" /> and we’ll arrange it.</p>
       </section>
 
       {giftPackages.length > 0 && (

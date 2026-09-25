@@ -1,8 +1,10 @@
 import { NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { logKioskEvent } from '@/lib/kiosk';
+import { putKioskBlob, KioskBlobStorePublicOnlyError } from '@/lib/kiosk-blob';
 import { MAX_KIOSK_PHOTOS } from '@/lib/kiosk-live';
 import { rateLimit } from '@/lib/security/rate-limit';
+import { effectiveFileMime } from '@/lib/security/file-type';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -49,7 +51,9 @@ export async function POST(req: Request, { params }: { params: Promise<{ token: 
   }
   if (!(file instanceof File)) return NextResponse.json({ ok: false, error: 'No photo.' }, { status: 400 });
   if (file.size > MAX) return NextResponse.json({ ok: false, error: 'Photo is over 10 MB.' }, { status: 413 });
-  if (file.type && !OK.test(file.type)) return NextResponse.json({ ok: false, error: 'Images only (PNG/JPG/WebP/HEIC).' }, { status: 415 });
+  // Blank Content-Type falls back to the magic bytes — see the v1 photo route.
+  const mime = await effectiveFileMime(file);
+  if (!OK.test(mime)) return NextResponse.json({ ok: false, error: 'Images only (PNG/JPG/WebP/HEIC).' }, { status: 415 });
 
   const rawPose = Number(form?.get('poseIdx'));
   const poseIdx = Number.isFinite(rawPose)
@@ -62,18 +66,27 @@ export async function POST(req: Request, { params }: { params: Promise<{ token: 
 
   let blobUrl: string;
   try {
-    const { put } = await import('@vercel/blob');
     // Correct extension so the AI step derives the right media type.
-    const ext = file.type === 'image/png' ? 'png'
-      : file.type === 'image/webp' ? 'webp'
-      : (file.type === 'image/heic' || file.type === 'image/heif') ? 'heic' : 'jpg';
-    const blob = await put(`kiosk/${token}-p${poseIdx}-${Date.now()}.${ext}`, file, {
-      access: 'private',
+    const ext = mime === 'image/png' ? 'png'
+      : mime === 'image/webp' ? 'webp'
+      : (mime === 'image/heic' || mime === 'image/heif') ? 'heic' : 'jpg';
+    const blob = await putKioskBlob(`kiosk/${token}-p${poseIdx}-${Date.now()}.${ext}`, file, {
       addRandomSuffix: false,
-      contentType: file.type || 'image/jpeg',
+      contentType: mime,
     });
     blobUrl = blob.url;
   } catch (e) {
+    // BLD-1304: same decision as the v1 photo route — a public-only Blob store
+    // is a config fault that retrying cannot fix, and we will not downgrade a
+    // biometric photo to public storage to work around it. See lib/kiosk-blob.ts.
+    if (e instanceof KioskBlobStorePublicOnlyError) {
+      console.error('[kiosk] photo upload disabled (photos):', e.message);
+      try {
+        const Sentry = await import('@sentry/nextjs');
+        Sentry.captureException(e, { level: 'fatal', tags: { area: 'kiosk-photos-upload', cause: 'blob-store-public-only', ref: 'BLD-1304' } });
+      } catch { /* Sentry optional */ }
+      return NextResponse.json({ ok: false, error: 'Photo analysis is temporarily unavailable. Please ask a member of staff.' }, { status: 503 });
+    }
     // PRJ-1032.5: never surface the raw storage error to an anonymous visitor
     // (it can leak bucket names / infra detail). Log the detail, return generic.
     console.error('[kiosk] blob upload failed (photos):', (e as Error)?.message);
@@ -87,7 +100,8 @@ export async function POST(req: Request, { params }: { params: Promise<{ token: 
       photoUrls: { push: blobUrl },
       // Back-compat: photoUrl mirrors the FIRST captured photo.
       ...(session.photoUrl ? {} : { photoUrl: blobUrl }),
-      ...(session.consentAt ? {} : { consentAt: new Date() }),
+      // BLD-1354: version + source evidence, not just a bare timestamp.
+      ...(session.consentAt ? {} : (await import('@/lib/consent')).kioskConsentFields('kiosk-v2-photo-upload')),
       status: 'PHOTO_TAKEN',
     },
   });

@@ -10,12 +10,12 @@ import { GIFT_CARD_THEMES, DEFAULT_THEME_ID } from '@/lib/gift-card-themes';
 import { trackPurchase } from '@/lib/analytics-events';
 
 const PRESETS = [2500, 5000, 7500, 10000, 15000, 25000];
-const field = 'w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-porcelain)] px-4 py-3 text-[var(--color-ink)] outline-none focus:border-[var(--color-gold)]';
+const field = 'w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-porcelain)] px-4 py-3 text-[var(--color-ink)] outline-none focus:border-[var(--color-gold-deep)] focus-visible:ring-2 focus-visible:ring-[var(--color-gold-deep)]';
 const label = 'mb-1.5 block text-xs uppercase tracking-[0.16em] text-[var(--color-stone)]';
 const money = (p: number) => `£${(p / 100).toLocaleString('en-GB')}`;
 
 export function GiftVoucherFlow({ physicalEnabled = false, physicalFeePence = 0, pkg }: { physicalEnabled?: boolean; physicalFeePence?: number; pkg?: { slug: string; name: string; pricePence: number } } = {}) {
-  const [f, setF] = useState({ amount: 5000, custom: '', recipientName: '', recipientEmail: '', message: '', deliverAt: '', purchaserName: '', purchaserEmail: '', design: DEFAULT_THEME_ID, physical: false, shipName: '', shipLine1: '', shipLine2: '', shipCity: '', shipPostcode: '', company: '' });
+  const [f, setF] = useState({ amount: 5000, custom: '', recipientName: '', recipientEmail: '', message: '', deliverAt: '', purchaserName: '', purchaserEmail: '', design: DEFAULT_THEME_ID, physical: false, shipName: '', shipLine1: '', shipLine2: '', shipCity: '', shipPostcode: '', company: '', marketingOptIn: false });
   const [stage, setStage] = useState<'form' | 'pay' | 'done'>('form');
   const [clientSecret, setClientSecret] = useState('');
   const [voucherId, setVoucherId] = useState('');
@@ -39,10 +39,19 @@ export function GiftVoucherFlow({ physicalEnabled = false, physicalFeePence = 0,
         recipientName: f.recipientName, recipientEmail: f.recipientEmail, message: f.message,
         deliverAt: f.deliverAt || undefined, design: f.design, company: f.company,
         physical, ship: physical ? { name: f.shipName, line1: f.shipLine1, line2: f.shipLine2, city: f.shipCity, postcode: f.shipPostcode } : undefined,
+        marketingOptIn: f.marketingOptIn,
       };
       const res = await fetch('/api/gift-vouchers/create', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
       const j = await res.json();
-      if (j.ok && j.clientSecret) { setClientSecret(j.clientSecret); setVoucherId(j.voucherId); setStage('pay'); }
+      if (j.ok && j.clientSecret) {
+        setClientSecret(j.clientSecret); setVoucherId(j.voucherId); setStage('pay');
+        // BLD-1310: fire the checkout-start pixels the moment the buyer reaches the
+        // Stripe payment step (mirrors BookingFlow.tsx's begin_checkout/InitiateCheckout).
+        const itemId = pkg?.slug || 'gift-voucher';
+        const itemName = pkg?.name || 'Gift voucher';
+        try { (window as Window & { gtag?: (...a: unknown[]) => void }).gtag?.('event', 'begin_checkout', { currency: 'GBP', value: amountPence / 100, items: [{ item_id: itemId, item_name: itemName, item_category: 'gift-voucher' }] }); } catch { /* analytics best-effort */ }
+        try { (window as Window & { fbq?: (...a: unknown[]) => void }).fbq?.('track', 'InitiateCheckout', { currency: 'GBP', value: amountPence / 100, content_ids: [itemId], content_type: 'product' }); } catch { /* analytics best-effort */ }
+      }
       else setError(j.error || 'Could not start the purchase.');
     } catch { setError('Network error. Please try again.'); }
     finally { setBusy(false); }
@@ -94,6 +103,7 @@ export function GiftVoucherFlow({ physicalEnabled = false, physicalFeePence = 0,
                 <div><label htmlFor="gv-purchaserName" className={label}>Your name *</label><input id="gv-purchaserName" autoComplete="name" className={field} value={f.purchaserName} onChange={(e) => set('purchaserName', e.target.value)} /></div>
                 <div><label htmlFor="gv-purchaserEmail" className={label}>Your email *</label><input id="gv-purchaserEmail" type="email" autoComplete="email" className={field} value={f.purchaserEmail} onChange={(e) => set('purchaserEmail', e.target.value)} placeholder="For your receipt" /></div>
                 <input type="text" tabIndex={-1} value={f.company} onChange={(e) => set('company', e.target.value)} className="absolute -left-[9999px]" aria-hidden />
+                <label className="flex items-start gap-3 text-sm text-[var(--color-stone)] sm:col-span-2"><input type="checkbox" checked={f.marketingOptIn} onChange={(e) => set('marketingOptIn', e.target.checked)} className="mt-1 h-4 w-4 accent-[var(--color-gold)]" />Keep me updated with offers and skincare tips. We may also use your contact details, in hashed form, to show you our offers on social media — see our Privacy Policy.</label>
               </div>
 
               {/* Optional paid physical-card upgrade (only when the clinic offers it). */}
@@ -119,7 +129,11 @@ export function GiftVoucherFlow({ physicalEnabled = false, physicalFeePence = 0,
               )}
 
               {error && <p role="alert" aria-live="assertive" className="mt-4 rounded-[var(--radius-sm)] bg-[var(--color-blush)]/25 px-4 py-3 text-sm text-[var(--color-ink)]">{error}</p>}
-              <div className="mt-6 flex flex-wrap items-center justify-between gap-4">
+              {/* BLD-1918/BLD-1919: shown before the buyer pays — the two exclusions
+                  and the no-discount rule, read from the same policy every other
+                  gift-card touchpoint (redemption UI, T&Cs) uses. */}
+              <p className="mt-4 text-xs text-[var(--color-stone)]">Not valid for injectable treatments or CO2 laser treatments. Gift cards are always sold at full value — no discount codes apply. <a href="/info/cancellations-refunds" className="link-underline">Full terms</a>.</p>
+              <div className="mt-4 flex flex-wrap items-center justify-between gap-4">
                 <span className="text-sm text-[var(--color-stone)]">Total <strong className="text-[var(--color-ink)]">{money(amountPence || 0)}</strong></span>
                 <Button onClick={() => !busy && start()} variant="gold" size="lg">{busy ? 'Please wait…' : 'Continue to payment'} <ArrowIcon /></Button>
               </div>
@@ -127,7 +141,7 @@ export function GiftVoucherFlow({ physicalEnabled = false, physicalFeePence = 0,
             </div>
 
             {/* Right — live preview + design picker (sticky on desktop) */}
-            <div className="self-start lg:sticky lg:top-6">
+            <div className="self-start lg:sticky lg:top-28">
               <GiftCardPreview designId={f.design} amountPence={amountPence || 0} recipientName={f.recipientName} message={f.message} purchaserName={f.purchaserName} />
               <p className={`${label} mt-4`}>Card design</p>
               <div className="flex flex-wrap gap-2">
@@ -145,8 +159,8 @@ export function GiftVoucherFlow({ physicalEnabled = false, physicalFeePence = 0,
           <h3 className="font-[family-name:var(--font-display)] text-2xl">Pay {money(amountPence)}</h3>
           <p className="mt-1 text-sm text-[var(--color-stone)]">Your card is charged now for the voucher value.</p>
           <div className="mt-5">
-            <Elements stripe={getStripe()} options={{ clientSecret, appearance: { theme: 'flat', variables: { colorPrimary: '#a98a6d', fontFamily: 'system-ui, sans-serif', borderRadius: '10px', colorBackground: '#f6ece3' } } }}>
-              <PayStep voucherId={voucherId} clientSecret={clientSecret} onDone={(c) => { trackPurchase({ valuePence: amountPence, eventId: voucherId, metaPurchase: true }); setCode(c); setStage('done'); }} onError={setError} />
+            <Elements stripe={getStripe()} options={{ clientSecret, appearance: { theme: 'flat', variables: { colorPrimary: '#816748', fontFamily: 'system-ui, sans-serif', borderRadius: '10px', colorBackground: '#f6ece3' } } }}>
+              <PayStep voucherId={voucherId} clientSecret={clientSecret} onDone={(c) => { trackPurchase({ valuePence: amountPence, eventId: voucherId, metaPurchase: true, detail: { transaction_id: voucherId, items: [{ item_id: pkg?.slug || 'gift-voucher', item_name: pkg?.name || 'Gift voucher', item_category: 'gift-voucher' }] } }); setCode(c); setStage('done'); }} onError={setError} />
             </Elements>
           </div>
           {error && <p role="alert" aria-live="assertive" className="mt-4 rounded-[var(--radius-sm)] bg-[var(--color-blush)]/25 px-4 py-3 text-sm text-[var(--color-ink)]">{error}</p>}

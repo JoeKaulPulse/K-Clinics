@@ -163,7 +163,7 @@ function Hotspot({ exercise, result, busy, onGrade }: SubProps) {
         {exercise.imageUrl ? <img src={exercise.imageUrl} alt={exercise.title} className="block w-full select-none" draggable={false} /> : <div className="grid h-48 place-items-center text-sm text-[var(--color-stone)]">No image</div>}
         {/* learner pins */}
         {Object.entries(pins).map(([i, p]) => (
-          <span key={i} style={{ left: `${p.x}%`, top: `${p.y}%` }} className={`absolute -translate-x-1/2 -translate-y-1/2 grid h-6 w-6 place-items-center rounded-full text-[0.6rem] font-bold text-white ${result ? (result.results?.[Number(i)] ? 'bg-[var(--color-gold-deep)]' : 'bg-[var(--color-blush)]') : 'bg-[var(--color-ink)]'}`}>{Number(i) + 1}</span>
+          <span key={i} style={{ left: `${p.x}%`, top: `${p.y}%` }} className={`absolute -translate-x-1/2 -translate-y-1/2 grid h-6 w-6 place-items-center rounded-full text-[0.6rem] font-bold text-white ${result ? (result.results?.[Number(i)] ? 'bg-[var(--color-gold-deep)]' : 'bg-[var(--color-blush-deep)]') : 'bg-[var(--color-ink)]'}`}>{Number(i) + 1}</span>
         ))}
         {/* reveal correct targets after grading */}
         {reveal?.map((s, i) => (
@@ -240,8 +240,8 @@ function Order({ exercise, result, busy, onGrade }: SubProps) {
             <span className="flex-1">{it}{result && !result.results?.[i] && <span className="ml-2 text-xs text-[var(--color-gold-deep)]">should be: {(result.reveal as string[])?.[i]}</span>}</span>
             {!result && (
               <span className="flex shrink-0 gap-1">
-                <button onClick={() => move(i, -1)} disabled={i === 0} className="rounded border border-[var(--color-line)] px-2 text-xs disabled:opacity-30">↑</button>
-                <button onClick={() => move(i, 1)} disabled={i === items.length - 1} className="rounded border border-[var(--color-line)] px-2 text-xs disabled:opacity-30">↓</button>
+                <button onClick={() => move(i, -1)} disabled={i === 0} aria-label="Move step up" className="rounded border border-[var(--color-line)] px-2 text-xs disabled:opacity-30">↑</button>
+                <button onClick={() => move(i, 1)} disabled={i === items.length - 1} aria-label="Move step down" className="rounded border border-[var(--color-line)] px-2 text-xs disabled:opacity-30">↓</button>
               </span>
             )}
           </li>
@@ -268,14 +268,27 @@ function LabelDiagram({ exercise, result, busy, onGrade }: SubProps) {
     setSel(null);
   }
 
+  // BLD-1390: a plain -translate-x-1/2 centers the label on the point, so a
+  // point near x=0% or x=100% pushes half the (whitespace-nowrap) label
+  // outside the overflow-hidden image. Ease the horizontal translate toward
+  // 0% (label grows rightward from the point) near the left edge and toward
+  // -100% (label grows leftward) near the right edge, so it always renders
+  // inside the image instead of being clipped.
+  const edgePad = 12;
+  const labelTranslateX = (x: number) => {
+    if (x <= edgePad) return -(x / edgePad) * 50;
+    if (x >= 100 - edgePad) return -50 - ((x - (100 - edgePad)) / edgePad) * 50;
+    return -50;
+  };
+
   return (
     <div>
       <div className="relative w-full overflow-hidden rounded-[var(--radius-md)] border border-[var(--color-line)]">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         {exercise.imageUrl ? <img src={exercise.imageUrl} alt={exercise.title} className="block w-full select-none" draggable={false} /> : <div className="grid h-48 place-items-center text-sm text-[var(--color-stone)]">No image</div>}
         {points.map((p, i) => (
-          <button key={i} onClick={() => !result && setSel(i)} disabled={!!result} style={{ left: `${p.x}%`, top: `${p.y}%` }}
-            className={`absolute -translate-x-1/2 -translate-y-1/2 whitespace-nowrap rounded-full border px-2 py-0.5 text-[0.7rem] font-medium ${result ? (result.results?.[i] ? 'border-[var(--color-gold-deep)] bg-[var(--color-gold)]/90 text-[var(--color-ink)]' : 'border-[var(--color-blush)] bg-[var(--color-blush)] text-white') : sel === i ? 'border-[var(--color-ink)] bg-[var(--color-ink)] text-[var(--color-porcelain)] ring-2 ring-[var(--color-ink)]' : 'border-[var(--color-ink)] bg-white text-[var(--color-ink)]'}`}>
+          <button key={i} onClick={() => !result && setSel(i)} disabled={!!result} style={{ left: `${p.x}%`, top: `${p.y}%`, transform: `translate(${labelTranslateX(p.x)}%, -50%)` }}
+            className={`absolute whitespace-nowrap rounded-full border px-2 py-0.5 text-[0.7rem] font-medium ${result ? (result.results?.[i] ? 'border-[var(--color-gold-deep)] bg-[var(--color-gold)]/90 text-[var(--color-ink)]' : 'border-[var(--color-blush-deep)] bg-[var(--color-blush-deep)] text-white') : sel === i ? 'border-[var(--color-ink)] bg-[var(--color-ink)] text-[var(--color-porcelain)] ring-2 ring-[var(--color-ink)]' : 'border-[var(--color-ink)] bg-white text-[var(--color-ink)]'}`}>
             {i in assign ? bank[assign[i]] : result ? (reveal?.[i]?.label ?? i + 1) : i + 1}
           </button>
         ))}
@@ -304,7 +317,7 @@ function TypeIn({ exercise, result, busy, onGrade }: SubProps) {
         {/* eslint-disable-next-line @next/next/no-img-element */}
         {exercise.imageUrl ? <img src={exercise.imageUrl} alt={exercise.title} className="block w-full select-none" draggable={false} /> : <div className="grid h-48 place-items-center text-sm text-[var(--color-stone)]">No image</div>}
         {points.map((p, i) => (
-          <span key={i} style={{ left: `${p.x}%`, top: `${p.y}%` }} className={`absolute -translate-x-1/2 -translate-y-1/2 grid h-6 w-6 place-items-center rounded-full text-[0.65rem] font-bold text-white ${result ? (result.results?.[i] ? 'bg-[var(--color-gold-deep)]' : 'bg-[var(--color-blush)]') : 'bg-[var(--color-ink)]'}`}>{i + 1}</span>
+          <span key={i} style={{ left: `${p.x}%`, top: `${p.y}%` }} className={`absolute -translate-x-1/2 -translate-y-1/2 grid h-6 w-6 place-items-center rounded-full text-[0.65rem] font-bold text-white ${result ? (result.results?.[i] ? 'bg-[var(--color-gold-deep)]' : 'bg-[var(--color-blush-deep)]') : 'bg-[var(--color-ink)]'}`}>{i + 1}</span>
         ))}
       </div>
       <ul className="mt-3 space-y-2">
@@ -312,6 +325,7 @@ function TypeIn({ exercise, result, busy, onGrade }: SubProps) {
           <li key={i} className="flex items-center gap-2">
             <span className="grid h-6 w-6 shrink-0 place-items-center rounded-full bg-[var(--color-ink)] text-xs text-[var(--color-porcelain)]">{i + 1}</span>
             <input value={vals[i] ?? ''} disabled={!!result} onChange={(e) => setVals((v) => ({ ...v, [i]: e.target.value }))} placeholder="Type your answer…"
+              aria-label={`Label for point ${i + 1}`}
               className={`flex-1 rounded-[var(--radius-sm)] border bg-white px-3 py-1.5 text-sm ${result ? (result.results?.[i] ? 'border-[var(--color-gold)]' : 'border-[var(--color-blush)]') : 'border-[var(--color-line)]'}`} />
             {result && !result.results?.[i] && <span className="text-xs text-[var(--color-gold-deep)]">{reveal?.[i]?.label}</span>}
           </li>

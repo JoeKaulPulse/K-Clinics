@@ -18,6 +18,7 @@ import { portalAssessments } from '@/lib/questionnaires';
 import { localizeQuestionnaire } from '@/lib/questionnaires-uk';
 import { pt } from '@/lib/i18n-portal';
 import { site } from '@/lib/site';
+import { PhoneLink } from '@/components/marketing/PhoneLink';
 import type { Locale } from '@/lib/i18n';
 
 // Recommendation pool — includes gender-specific treatments which are filtered
@@ -36,6 +37,12 @@ export default async function DashboardPage() {
   const { clientLoyaltySummary } = await import('@/lib/client-loyalty');
   const { formatPrice } = await import('@/lib/treatments');
   const loyalty = await clientLoyaltySummary(client.id);
+  // BLD-1098: package balances for the signed-in client.
+  const { clientPackages } = await import('@/lib/package-sessions');
+  const packages = await clientPackages(client.id).catch(() => []);
+  // BLD-1066: unpaid late-cancel/no-show balance — booking is paused until settled.
+  const { outstandingBalance } = await import('@/lib/outstanding');
+  const owed = await outstandingBalance(client.id).catch(() => ({ totalPence: 0, items: [] }));
 
   // Onboarding state (welcome flow for new — and existing — clients).
   const { db: _db, withDbRetry } = await import('@/lib/db');
@@ -59,7 +66,7 @@ export default async function DashboardPage() {
   const openToday = !!todayHours && todayHours.open !== 'Closed';
 
   return (
-    <PortalShell firstName={client.firstName} locale={locale}>
+    <PortalShell firstName={client.firstName} locale={locale} termsAccepted={!!client.termsAcceptedAt}>
       <DashboardHero
         firstName={client.firstName}
         locale={locale}
@@ -69,6 +76,15 @@ export default async function DashboardPage() {
         lastVisitISO={client.lastVisitAt ? client.lastVisitAt.toISOString() : null}
       />
 
+      {/* BLD-1066: outstanding payment — shown before anything promotional. */}
+      {owed.totalPence > 0 && (
+        <div role="alert" className="mt-8 rounded-[var(--radius-lg)] border border-[var(--color-blush-deep)] bg-[var(--color-blush)]/15 p-6">
+          <p className="font-medium text-[var(--color-blush-deep)]">{t('dash.owedTitle', { amount: formatPrice(owed.totalPence) })}</p>
+          <p className="mt-1 text-sm text-[var(--color-ink)]">{t('dash.owedBody')}</p>
+          <PhoneLink className="mt-3 inline-block rounded-full bg-[var(--color-ink)] px-5 py-2.5 text-sm font-medium text-[var(--color-porcelain)]" />
+        </div>
+      )}
+
       <PersonalisedOffers clientId={client.id} />
       {!client.marketingOptIn && !client.unsubscribed && <MarketingOptInPrompt />}
       <div className="mt-8"><OffersStrip heading="Offers for you" /></div>
@@ -77,7 +93,7 @@ export default async function DashboardPage() {
         <Reveal>
           <div className="mb-10 flex flex-wrap items-center justify-between gap-4 overflow-hidden rounded-[var(--radius-lg)] border border-[var(--color-gold)]/40 bg-gradient-to-br from-[var(--color-bone)] to-[var(--color-sand)]/50 p-6">
             <div className="flex items-center gap-4">
-              <span className="grid h-12 w-12 shrink-0 place-items-center rounded-full bg-[var(--color-gold)]/15 text-[var(--color-gold)]">
+              <span className="grid h-12 w-12 shrink-0 place-items-center rounded-full bg-[var(--color-gold)]/15 text-[var(--color-gold-deep)]">
                 <svg viewBox="0 0 24 24" className="h-6 w-6" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M20 12v9H4v-9M2 7h20v5H2zM12 22V7M12 7C12 7 12 2 8.5 2S5 7 12 7zM12 7s0-5 3.5-5S19 7 12 7z" strokeLinejoin="round" /></svg>
               </span>
               <div>
@@ -94,11 +110,38 @@ export default async function DashboardPage() {
         </Reveal>
       )}
 
+      {/* BLD-1098: package balances — "Session X of N" at a glance. */}
+      {packages.length > 0 && (
+        <Reveal>
+          <div className="mb-10 space-y-3">
+            <h2 className="eyebrow">{t('dash.pkgTitle')}</h2>
+            {packages.map((p) => (
+              <div key={p.purchaseBookingId} className="flex flex-wrap items-center justify-between gap-4 rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-6">
+                <div>
+                  <p className="font-medium">{p.label}</p>
+                  <p className="mt-0.5 text-sm text-[var(--color-stone)]">
+                    {t('dash.pkgSession', { used: Math.min(p.sessionsUsed + p.sessionsBooked, p.sessionsTotal), total: p.sessionsTotal })}
+                    {' · '}{t('dash.pkgRemaining', { n: p.sessionsRemaining })}
+                  </p>
+                </div>
+                {/* BLD-1380: three states, not two. A fully refunded course is
+                    neither "Paid" nor "Payment pending" — telling a client who
+                    has had their money back that payment is pending reads as a
+                    demand for money they don't owe. */}
+                <span className={`rounded-full px-3 py-1 text-xs font-medium ${p.paid ? 'bg-[var(--color-jade)]/15 text-[var(--color-jade)]' : p.refunded ? 'bg-[var(--color-line)] text-[var(--color-stone)]' : 'bg-[var(--color-blush)]/20 text-[var(--color-blush-deep)]'}`}>
+                  {p.paid ? t('dash.pkgPaid') : p.refunded ? t('dash.pkgRefunded') : t('dash.pkgUnpaid')}
+                </span>
+              </div>
+            ))}
+          </div>
+        </Reveal>
+      )}
+
       {loyalty.balance > 0 && (
         <Reveal>
           <Link href="/account/rewards" className="mb-10 flex flex-wrap items-center justify-between gap-4 rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-6 transition-colors hover:border-[var(--color-gold)]">
             <div className="flex items-center gap-4">
-              <span className="grid h-12 w-12 shrink-0 place-items-center rounded-full bg-[var(--color-gold)]/15 text-lg text-[var(--color-gold)]">★</span>
+              <span className="grid h-12 w-12 shrink-0 place-items-center rounded-full bg-[var(--color-gold)]/15 text-lg text-[var(--color-gold-deep)]">★</span>
               <div>
                 <p className="font-[family-name:var(--font-display)] text-2xl">{loyalty.balance.toLocaleString(locale === 'uk' ? 'uk-UA' : 'en-GB')} <span className="text-sm font-normal text-[var(--color-stone)]">{t('rw.points')}</span></p>
                 <p className="mt-0.5 text-sm text-[var(--color-stone)]">{t('rw.worth', { value: formatPrice(loyalty.valuePence) })}</p>
@@ -218,12 +261,12 @@ export default async function DashboardPage() {
               </div>
               <div className="bg-[var(--color-bone)] p-6">
                 <RailHeading>{t('dash.needHelp')}</RailHeading>
-                <a href={site.phoneHref} className="mt-3 flex items-center gap-2.5 text-sm font-medium hover:text-[var(--color-gold-deep)]">
-                  <svg viewBox="0 0 24 24" className="h-4 w-4 text-[var(--color-gold)]" fill="none" stroke="currentColor" strokeWidth="1.6"><path d="M5 4h4l2 5-3 2a12 12 0 0 0 5 5l2-3 5 2v4a2 2 0 0 1-2 2A16 16 0 0 1 3 6a2 2 0 0 1 2-2z" strokeLinejoin="round" /></svg>
+                <PhoneLink className="mt-3 flex items-center gap-2.5 text-sm font-medium hover:text-[var(--color-gold-deep)]">
+                  <svg viewBox="0 0 24 24" className="h-4 w-4 text-[var(--color-gold-deep)]" fill="none" stroke="currentColor" strokeWidth="1.6"><path d="M5 4h4l2 5-3 2a12 12 0 0 0 5 5l2-3 5 2v4a2 2 0 0 1-2 2A16 16 0 0 1 3 6a2 2 0 0 1 2-2z" strokeLinejoin="round" /></svg>
                   {site.phone}
-                </a>
+                </PhoneLink>
                 <a href={site.emailHref} className="mt-2.5 flex items-center gap-2.5 text-sm font-medium hover:text-[var(--color-gold-deep)]">
-                  <svg viewBox="0 0 24 24" className="h-4 w-4 text-[var(--color-gold)]" fill="none" stroke="currentColor" strokeWidth="1.6"><rect x="3" y="5" width="18" height="14" rx="2" /><path d="m3 7 9 6 9-6" /></svg>
+                  <svg viewBox="0 0 24 24" className="h-4 w-4 text-[var(--color-gold-deep)]" fill="none" stroke="currentColor" strokeWidth="1.6"><rect x="3" y="5" width="18" height="14" rx="2" /><path d="m3 7 9 6 9-6" /></svg>
                   {site.email}
                 </a>
               </div>

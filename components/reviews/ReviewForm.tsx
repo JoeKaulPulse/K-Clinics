@@ -55,7 +55,7 @@ export function ReviewForm({ token, googleUrl }: { token: string; googleUrl: str
       <div className="flex items-center gap-2" role="radiogroup" aria-label="Star rating">
         {[1, 2, 3, 4, 5].map((n) => (
           <button key={n} type="button" role="radio" aria-checked={rating === n} onClick={() => setRating(n)} onMouseEnter={() => setHover(n)} onMouseLeave={() => setHover(0)} aria-label={`${n} star${n > 1 ? 's' : ''}`}>
-            <svg viewBox="0 0 20 20" className={`h-10 w-10 transition-colors ${(hover || rating) >= n ? 'text-[var(--color-gold)]' : 'text-[var(--color-sand)]'}`} fill="currentColor">
+            <svg viewBox="0 0 20 20" className={`h-10 w-10 transition-colors ${(hover || rating) >= n ? 'text-[var(--color-gold-deep)]' : 'text-[var(--color-sand)]'}`} fill="currentColor">
               <path d="M10 1l2.47 5.18 5.68.74-4.18 3.9 1.06 5.62L10 19.4 4.97 16.44l1.06-5.62-4.18-3.9 5.68-.74z" />
             </svg>
           </button>
@@ -63,10 +63,10 @@ export function ReviewForm({ token, googleUrl }: { token: string; googleUrl: str
       </div>
 
       <div>
-        <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="A headline for your review (optional)" className="w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-4 py-3 outline-none focus:border-[var(--color-gold)]" />
+        <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="A headline for your review (optional)" className="w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-4 py-3 outline-none focus:border-[var(--color-gold-deep)] focus-visible:ring-2 focus-visible:ring-[var(--color-gold-deep)]" />
       </div>
       <div>
-        <textarea value={body} onChange={(e) => setBody(e.target.value)} rows={5} placeholder="Tell us about your visit…" className="w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-4 py-3 outline-none focus:border-[var(--color-gold)]" />
+        <textarea value={body} onChange={(e) => setBody(e.target.value)} rows={5} placeholder="Tell us about your visit…" className="w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-4 py-3 outline-none focus:border-[var(--color-gold-deep)] focus-visible:ring-2 focus-visible:ring-[var(--color-gold-deep)]" />
       </div>
       <label className="flex cursor-pointer items-start gap-3 text-sm text-[var(--color-stone)]">
         <input type="checkbox" checked={consent} onChange={(e) => setConsent(e.target.checked)} className="mt-0.5 h-4 w-4 shrink-0 accent-[var(--color-gold)]" />

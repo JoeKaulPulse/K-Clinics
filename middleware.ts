@@ -106,11 +106,11 @@ async function loadRedirects(): Promise<RedirectMap> {
   } catch { /* keep stale cache on failure */ }
   return _redirects?.map ?? {};
 }
-async function matchRedirect(req: NextRequest): Promise<NextResponse | null> {
+// Only the public marketing surface needs a redirect lookup — never the app
+// areas or our own handlers.
+const isRedirectCandidate = (pathname: string) => !/^\/(admin|account|api|qr)(\/|$)/.test(pathname);
+function matchRedirect(req: NextRequest, map: RedirectMap): NextResponse | null {
   const { pathname, search, origin } = req.nextUrl;
-  // Only the public marketing surface — never the app areas or our own handlers.
-  if (/^\/(admin|account|api|qr)(\/|$)/.test(pathname)) return null;
-  const map = await loadRedirects();
   const key = pathname.length > 1 ? pathname.replace(/\/$/, '') : pathname;
   const hit = map[key] ?? map[pathname];
   if (!hit) return null;
@@ -177,16 +177,25 @@ export async function middleware(req: NextRequest) {
     return NextResponse.next();
   }
 
-  // ── IP deny-list — blocked IPs get nothing (checked before any work) ─────
+  // ── IP deny-list + URL redirects ──────────────────────────────────────────
+  // Both are self-fetches to internal API routes (Prisma needs the Node
+  // runtime; this middleware runs on the edge). On a cold edge instance
+  // (fresh deploy, low-traffic region, scale-out) neither module-memory cache
+  // is warm yet, so run them concurrently rather than sequentially — a cold
+  // instance then pays for one round-trip's worth of latency, not two
+  // (BLD-1694). The redirect map is only ever needed on the public marketing
+  // surface, so skip fetching it entirely for app/API routes.
   const ip = edgeClientIp(req);
-  if (ip !== 'unknown') {
-    const set = await blockedIps();
-    if (set.has(ip)) return new NextResponse('Access denied.', { status: 403 });
+  const wantsRedirectCheck = isRedirectCandidate(pathname);
+  const [blocked, redirectMap] = await Promise.all([
+    ip !== 'unknown' ? blockedIps() : Promise.resolve<Set<string>>(new Set()),
+    wantsRedirectCheck ? loadRedirects() : Promise.resolve<RedirectMap>({}),
+  ]);
+  if (blocked.has(ip)) return new NextResponse('Access denied.', { status: 403 });
+  if (wantsRedirectCheck) {
+    const redirected = matchRedirect(req, redirectMap);
+    if (redirected) return redirected;
   }
-
-  // ── URL redirects (old WordPress URLs / printed QR destinations) ─────────
-  const redirected = await matchRedirect(req);
-  if (redirected) return redirected;
 
   // ── Client portal ──────────────────────────────────────────────────────
   if (pathname.startsWith('/account')) {
@@ -218,9 +227,15 @@ export async function middleware(req: NextRequest) {
 
   // ── Staff CRM ──────────────────────────────────────────────────────────
   if (pathname.startsWith('/admin')) {
-    if (pathname === '/admin/login') return NextResponse.next();
-    const session = await verifyToken(req.cookies.get(SESSION_COOKIE)?.value);
-    if (!session) {
+    // BLD-1280: /admin/login is exempt from the session/2FA redirect checks
+    // below (it's the page those redirects send an unauthenticated visitor
+    // TO — gating it the same way would be a redirect loop), but it is still
+    // the single highest-value page for the strict CSP (credential/2FA entry)
+    // and its own source has no inline scripts that need unsafe-inline, so it
+    // must still get the same per-request-nonce policy as the rest of /admin.
+    const isLogin = pathname === '/admin/login';
+    const session = isLogin ? null : await verifyToken(req.cookies.get(SESSION_COOKIE)?.value);
+    if (!isLogin && !session) {
       const url = req.nextUrl.clone();
       url.pathname = '/admin/login';
       url.searchParams.set('from', pathname);
@@ -228,7 +243,7 @@ export async function middleware(req: NextRequest) {
     }
     // 2FA enforcement: a setup-only session may reach the profile page only,
     // until the user enrols (which re-issues a full session).
-    if (session.needsSetup && !pathname.startsWith('/admin/profile')) {
+    if (session?.needsSetup && !pathname.startsWith('/admin/profile')) {
       const url = req.nextUrl.clone();
       url.pathname = '/admin/profile';
       url.searchParams.set('setup2fa', '1');

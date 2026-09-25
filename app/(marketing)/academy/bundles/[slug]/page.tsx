@@ -6,6 +6,7 @@ import { Reveal } from '@/components/motion/Reveal';
 import { Button, ArrowIcon } from '@/components/ui/Button';
 import { pageMeta, JsonLd, breadcrumbLd } from '@/lib/seo';
 import { formatFee } from '@/lib/academy';
+import { ViewItemTracker } from '@/components/marketing/ViewItemTracker';
 
 export const revalidate = 3600;
 
@@ -29,11 +30,17 @@ export default async function BundlePage({ params }: { params: Promise<{ slug: s
   if (!bundle || bundle.courses.length === 0) notFound();
 
   const individualTotal = bundle.courses.reduce((sum, c) => sum + (c.pricePence || 0), 0);
-  const saving = bundle.pricePence != null && individualTotal > bundle.pricePence ? individualTotal - bundle.pricePence : null;
+  // BLD-1376: a live time-boxed promo overrides the standard bundle price for
+  // display; savings compare the EFFECTIVE price against booking separately.
+  const { getActivePromo } = await import('@/lib/academy-utils');
+  const promo = getActivePromo(bundle);
+  const effectivePence = promo ?? bundle.pricePence;
+  const saving = effectivePence != null && individualTotal > effectivePence ? individualTotal - effectivePence : null;
 
   return (
     <>
       <JsonLd data={breadcrumbLd([{ name: 'Home', path: '/' }, { name: 'Academy', path: '/academy' }, { name: bundle.title, path: `/academy/bundles/${slug}` }])} />
+      <ViewItemTracker id={`academy-bundle-${slug}`} name={bundle.title} category="academy-bundle" valuePence={effectivePence ?? undefined} />
       <PageHero
         eyebrow="K Academy · Learning pathway"
         title={bundle.title}
@@ -75,19 +82,32 @@ export default async function BundlePage({ params }: { params: Promise<{ slug: s
           <div className="space-y-6 lg:sticky lg:top-28">
             <div className="rounded-[var(--radius-xl)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-6">
               <p className="text-xs uppercase tracking-[0.16em] text-[var(--color-stone)]">Pathway</p>
-              {bundle.pricePence != null ? (
+              {effectivePence != null ? (
                 <>
                   <div className="mt-1 flex flex-wrap items-baseline gap-3">
-                    <span className="font-[family-name:var(--font-display)] text-3xl text-[var(--color-ink)]">{formatFee(bundle.pricePence)}</span>
-                    {saving != null && <span className="text-lg text-[var(--color-stone)] line-through">{formatFee(individualTotal)}</span>}
+                    <span className={`font-[family-name:var(--font-display)] text-3xl ${promo != null ? 'text-[var(--color-gold-deep)]' : 'text-[var(--color-ink)]'}`}>{formatFee(effectivePence)}</span>
+                    {/* Promo: strike the standard bundle price; otherwise strike the per-course total. */}
+                    {promo != null && bundle.pricePence != null && bundle.pricePence > promo ? (
+                      <span className="text-lg text-[var(--color-stone)] line-through">{formatFee(bundle.pricePence)}</span>
+                    ) : saving != null ? (
+                      <span className="text-lg text-[var(--color-stone)] line-through">{formatFee(individualTotal)}</span>
+                    ) : null}
+                    {promo != null && <span className="rounded-full bg-[var(--color-gold)]/15 px-2.5 py-0.5 text-xs font-medium text-[var(--color-gold-deep)]">Special offer</span>}
                   </div>
                   {saving != null && <p className="mt-2 text-sm font-medium text-[var(--color-gold-deep)]">Save {formatFee(saving)} versus booking separately.</p>}
                 </>
               ) : (
                 <p className="mt-1 font-[family-name:var(--font-display)] text-3xl text-[var(--color-ink)]">On enquiry</p>
               )}
-              <p className="mt-2 text-sm text-[var(--color-stone)]">Apply to any course in the pathway to get started — our team will help you plan the full route and any funding.</p>
-              <div className="mt-4"><Button href={`/academy/${bundle.courses[0].slug}`} variant="gold">Start with course 1 <ArrowIcon /></Button></div>
+              {/* BLD-1393: be explicit about HOW the bundle price is honoured —
+                  applications are per-course, and without this (plus the
+                  ?bundle= tag below) a visitor shown "Save £X" would apply to
+                  course 1 with nothing connecting their enrolment to the
+                  bundle price. */}
+              <p className="mt-2 text-sm text-[var(--color-stone)]">
+                Apply to the first course to get started — your application is tagged with this pathway, and our team applies the {bundle.pricePence != null ? 'bundle price' : 'pathway pricing'} when they confirm your place.
+              </p>
+              <div className="mt-4"><Button href={`/academy/${bundle.courses[0].slug}?bundle=${encodeURIComponent(bundle.slug)}#apply`} variant="gold">Start with course 1 <ArrowIcon /></Button></div>
             </div>
             <p className="text-center text-sm text-[var(--color-stone)]">Questions about this pathway? <Link href="/academy/portal" className="link-underline font-medium text-[var(--color-ink)]">Talk to our team</Link></p>
           </div>

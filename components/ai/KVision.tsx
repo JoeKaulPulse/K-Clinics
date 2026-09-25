@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
+import Image from 'next/image';
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
 import { KMark } from '@/components/brand/marks';
 import { trackLead } from '@/lib/analytics-events';
@@ -29,15 +30,18 @@ const BUDGETS: Budget[] = [
   { label: 'Flexible', pence: null },
 ];
 
-const gold = 'var(--color-gold,#c8a96a)';
+const gold = 'var(--color-gold,#a98a6d)';
 const money = (p: number) => (p > 0 ? `£${(p / 100).toLocaleString('en-GB')}` : 'On consultation');
-const sevColor = (s: string) => (s === 'notable' ? '#d98c8c' : s === 'moderate' ? '#d8b26a' : '#8fae8f');
+const sevColor = (s: string) => (s === 'notable' ? 'var(--color-night-notable)' : s === 'moderate' ? 'var(--color-night-moderate)' : 'var(--color-night-mild)');
 const fmtDate = (iso: string) => new Date(iso).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
 
 async function downscale(file: File): Promise<string> {
   const url = URL.createObjectURL(file);
   try {
-    const img = await new Promise<HTMLImageElement>((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = rej; i.src = url; });
+    // window.Image (not the `Image` identifier, which is next/image's component
+    // in this file) — the plain HTMLImageElement constructor, used only to read
+    // the uploaded file's natural size before downscaling it onto a canvas.
+    const img = await new Promise<HTMLImageElement>((res, rej) => { const i = new window.Image(); i.onload = () => res(i); i.onerror = rej; i.src = url; });
     const max = 768; const scale = Math.min(1, max / Math.max(img.width, img.height));
     const w = Math.round(img.width * scale), h = Math.round(img.height * scale);
     const canvas = document.createElement('canvas'); canvas.width = w; canvas.height = h;
@@ -56,6 +60,13 @@ export function KVision({ signedIn, firstName, enabled }: { signedIn: boolean; f
   const [photos, setPhotos] = useState<Photo[]>([]);
   const [consent, setConsent] = useState(false);
   const [storeImages, setStoreImages] = useState(true);
+  // BLD-1169: the uploaded photo is analysed by AI for biometric/cosmetic detail,
+  // so this is age-restricted like booking a treatment. We don't know if the
+  // account has a verified adult DOB until the server tells us (needAge:true),
+  // so these stay empty/hidden unless that happens.
+  const [dob, setDob] = useState('');
+  const [ageDeclare, setAgeDeclare] = useState(false);
+  const [showAgeGate, setShowAgeGate] = useState(false);
   const [error, setError] = useState('');
   const [result, setResult] = useState<Result | null>(null);
   const [camOpen, setCamOpen] = useState(false);
@@ -66,6 +77,7 @@ export function KVision({ signedIn, firstName, enabled }: { signedIn: boolean; f
   function requestAnalyse() {
     if (!consent) { setError('Please give your consent to continue.'); return; }
     if (photos.length === 0) { setError('Add at least one photo.'); return; }
+    if (showAgeGate && (!dob || !ageDeclare)) { setError('Please confirm your date of birth to continue.'); return; }
     setError('');
     if (!authed) { setStage('auth'); return; }
     analyse();
@@ -87,19 +99,19 @@ export function KVision({ signedIn, firstName, enabled }: { signedIn: boolean; f
     try {
       const res = await fetch('/api/ai-consultation/analyze', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ areas: [...areas], images: photos.map((p) => ({ area: p.area, dataUrl: p.dataUrl })), budgetPence: budget?.pence ?? null, budgetLabel: budget?.label ?? 'Flexible', storeImages, consent: true }),
+        body: JSON.stringify({ areas: [...areas], images: photos.map((p) => ({ area: p.area, dataUrl: p.dataUrl })), budgetPence: budget?.pence ?? null, budgetLabel: budget?.label ?? 'Flexible', storeImages, consent: true, dob: dob || undefined, ageDeclare }),
       });
       const j = await res.json();
       if (j.ok) { setResult(j); await new Promise((r) => setTimeout(r, 900)); setStage('results'); }
-      else { setError(j.message || 'Something went wrong.'); setStage('capture'); }
+      else { if (j.needAge) setShowAgeGate(true); setError(j.message || 'Something went wrong.'); setStage('capture'); }
     } catch { setError('Network error. Please try again.'); setStage('capture'); }
   }
 
   return (
-    <section className="relative min-h-screen overflow-hidden bg-[#0c0b0a] text-[#f4ece1]">
-      <div className="pointer-events-none absolute inset-0 opacity-70" style={{ background: 'radial-gradient(60% 50% at 50% 0%, rgba(200,169,106,0.16), transparent 70%), radial-gradient(40% 40% at 80% 95%, rgba(200,169,106,0.10), transparent 70%)' }} />
+    <section className="relative min-h-screen overflow-hidden bg-[var(--color-night)] text-[var(--color-night-ink)]">
+      <div className="pointer-events-none absolute inset-0 opacity-70" style={{ background: 'radial-gradient(60% 50% at 50% 0%, rgba(169,138,109,0.16), transparent 70%), radial-gradient(40% 40% at 80% 95%, rgba(169,138,109,0.10), transparent 70%)' }} />
       {/* Large, low-opacity animated K monogram watermark (brand) */}
-      <motion.div aria-hidden className="pointer-events-none absolute -right-[8%] top-1/2 -translate-y-1/2 text-[var(--color-gold,#c8a96a)]"
+      <motion.div aria-hidden className="pointer-events-none absolute -right-[8%] top-1/2 -translate-y-1/2 text-[var(--color-gold,#a98a6d)]"
         initial={{ opacity: 0 }} animate={{ opacity: 0.07 }} transition={{ duration: 1.6 }}>
         <div className="h-[80vh] w-[60vw] max-w-[760px]"><KMark animated /></div>
       </motion.div>
@@ -108,24 +120,24 @@ export function KVision({ signedIn, firstName, enabled }: { signedIn: boolean; f
         <AnimatePresence mode="wait">
           {stage === 'intro' && (
             <motion.div key="intro" {...fade} className="mx-auto max-w-3xl text-center">
-              <p className="text-xs uppercase tracking-[0.4em] text-[var(--color-gold,#c8a96a)]">AI Consultation</p>
+              <p className="text-xs uppercase tracking-[0.4em] text-[var(--color-gold,#a98a6d)]">AI Consultation</p>
               <h1 className="mt-5 font-[family-name:var(--font-display)] text-[clamp(2.4rem,1.5rem+4vw,4.5rem)] leading-[1.05]">Get your personalised treatment plan.</h1>
-              <p className="mx-auto mt-6 max-w-xl text-lg text-[#cdbfae]">Upload a photo and our AI analyses your skin, smile and hair — then builds a phased, dated plan to your budget that you can book in a tap.</p>
+              <p className="mx-auto mt-6 max-w-xl text-lg text-[var(--color-night-muted)]">Upload a photo and our AI analyses your skin, smile and hair — then builds a phased, dated plan to your budget that you can book in a tap.</p>
               {enabled
-                ? <button onClick={begin} className="group mt-10 inline-flex items-center gap-3 rounded-full bg-[var(--color-gold,#c8a96a)] px-8 py-4 text-base font-medium text-[#0c0b0a] transition-transform hover:scale-[1.03]">Get my plan <span className="transition-transform group-hover:translate-x-1">→</span></button>
-                : <p className="mt-10 text-sm text-[#cdbfae]">Coming soon.</p>}
-              <p className="mt-6 text-xs text-[#9a8f80]">Personalised cosmetic guidance — not a medical diagnosis. Free with a KClinics account.</p>
+                ? <button onClick={begin} className="group mt-10 inline-flex items-center gap-3 rounded-full bg-[var(--color-gold,#a98a6d)] px-8 py-4 text-base font-medium text-[var(--color-night)] transition-transform hover:scale-[1.03]">Get my plan <span className="transition-transform group-hover:translate-x-1">→</span></button>
+                : <p className="mt-10 text-sm text-[var(--color-night-muted)]">Coming soon.</p>}
+              <p className="mt-6 text-xs text-[var(--color-night-faint)]">Personalised cosmetic guidance — not a medical diagnosis. Free with a KClinics account.</p>
             </motion.div>
           )}
 
           {stage === 'budget' && (
             <motion.div key="budget" {...fade} className="mx-auto max-w-2xl">
               <Heading kicker="Step 1" title="What’s your budget?" />
-              <p className="mt-3 text-sm text-[#cdbfae]">So we only recommend a plan that works for you. You can always add more later.</p>
+              <p className="mt-3 text-sm text-[var(--color-night-muted)]">So we only recommend a plan that works for you. You can always add more later.</p>
               <div className="mt-6 grid gap-2 sm:grid-cols-2">
                 {BUDGETS.map((b) => {
                   const on = budget?.label === b.label;
-                  return <button key={b.label} onClick={() => setBudget(b)} className={`rounded-2xl border p-4 text-left transition-all ${on ? 'border-[var(--color-gold,#c8a96a)] bg-[var(--color-gold,#c8a96a)]/10' : 'border-white/15 hover:border-white/40'}`}>
+                  return <button key={b.label} aria-pressed={on} onClick={() => setBudget(b)} className={`rounded-2xl border p-4 text-left transition-all ${on ? 'border-[var(--color-gold,#a98a6d)] bg-[var(--color-gold,#a98a6d)]/10' : 'border-white/15 hover:border-white/40'}`}>
                     <span className="text-base font-medium">{b.label}</span>
                   </button>;
                 })}
@@ -137,12 +149,12 @@ export function KVision({ signedIn, firstName, enabled }: { signedIn: boolean; f
           {stage === 'consent' && (
             <motion.div key="consent" {...fade} className="mx-auto max-w-2xl">
               <Heading kicker="Before we begin" title={`A quick word${name ? `, ${name}` : ''}.`} />
-              <div className="mt-6 space-y-4 rounded-3xl border border-white/10 bg-white/[0.03] p-6 text-sm text-[#cdbfae] backdrop-blur">
-                <p>This gives <strong className="text-[#f4ece1]">personalised cosmetic guidance</strong> from your photos — not a medical diagnosis. Anything we suggest is confirmed by a clinician at your in-clinic consultation and patch test.</p>
-                <p>Please upload clear photos of your <strong className="text-[#f4ece1]">face, skin, teeth, hair or body</strong> — never intimate areas. Your photos are sensitive data and are <strong className="text-[#f4ece1]">encrypted</strong>.</p>
+              <div className="mt-6 space-y-4 rounded-3xl border border-white/10 bg-white/[0.03] p-6 text-sm text-[var(--color-night-muted)] backdrop-blur">
+                <p>This gives <strong className="text-[var(--color-night-ink)]">personalised cosmetic guidance</strong> from your photos — not a medical diagnosis. Anything we suggest is confirmed by a clinician at your in-clinic consultation and patch test.</p>
+                <p>Please upload clear photos of your <strong className="text-[var(--color-night-ink)]">face, skin, teeth, hair or body</strong> — never intimate areas. Your photos are sensitive data and are <strong className="text-[var(--color-night-ink)]">encrypted</strong>.</p>
                 <p>To build your plan, your photos are sent to our AI provider (Anthropic, processed in the US under standard contractual clauses) for this analysis only — never for advertising.</p>
-                <label className="flex items-start gap-3 pt-1"><input type="checkbox" checked={storeImages} onChange={(e) => setStoreImages(e.target.checked)} className="mt-1 h-4 w-4 accent-[var(--color-gold,#c8a96a)]" /> Save my photos to my record so my clinician can see them (recommended).</label>
-                <label className="flex items-start gap-3"><input type="checkbox" checked={consent} onChange={(e) => setConsent(e.target.checked)} className="mt-1 h-4 w-4 accent-[var(--color-gold,#c8a96a)]" /> I consent to KClinics processing my photos with AI, including sending them to our AI provider for this analysis, and I understand this is cosmetic guidance, not a diagnosis. *</label>
+                <label className="flex items-start gap-3 pt-1"><input type="checkbox" checked={storeImages} onChange={(e) => setStoreImages(e.target.checked)} className="mt-1 h-4 w-4 accent-[var(--color-gold,#a98a6d)]" /> Save my photos to my record so my clinician can see them (recommended).</label>
+                <label className="flex items-start gap-3"><input type="checkbox" checked={consent} onChange={(e) => setConsent(e.target.checked)} className="mt-1 h-4 w-4 accent-[var(--color-gold,#a98a6d)]" /> I consent to KClinics processing my photos with AI, including sending them to our AI provider for this analysis, and I understand this is cosmetic guidance, not a diagnosis. *</label>
               </div>
               <NavRow onBack={() => setStage('budget')} next={{ label: 'Continue', onClick: () => consent ? setStage('capture') : setError('Please tick the consent box.') }} />
             </motion.div>
@@ -152,25 +164,47 @@ export function KVision({ signedIn, firstName, enabled }: { signedIn: boolean; f
             <motion.div key="capture" {...fade} className="mx-auto max-w-2xl">
               <Heading kicker="Step 2" title="What would you like us to look at?" />
               <div className="mt-5 flex flex-wrap gap-2">
-                {AREAS.map((a) => { const on = areas.has(a.id); return <button key={a.id} onClick={() => setAreas((p) => { const n = new Set(p); n.has(a.id) ? n.delete(a.id) : n.add(a.id); return n.size ? n : p; })} className={`rounded-full border px-4 py-2 text-sm transition-all ${on ? 'border-[var(--color-gold,#c8a96a)] bg-[var(--color-gold,#c8a96a)] text-[#0c0b0a]' : 'border-white/15 text-[#cdbfae] hover:border-white/40'}`}>{a.label}</button>; })}
+                {AREAS.map((a) => { const on = areas.has(a.id); return <button key={a.id} aria-pressed={on} onClick={() => setAreas((p) => { const n = new Set(p); n.has(a.id) ? n.delete(a.id) : n.add(a.id); return n.size ? n : p; })} className={`rounded-full border px-4 py-2 text-sm transition-all ${on ? 'border-[var(--color-gold,#a98a6d)] bg-[var(--color-gold,#a98a6d)] text-[var(--color-night)]' : 'border-white/15 text-[var(--color-night-muted)] hover:border-white/40'}`}>{a.label}</button>; })}
               </div>
-              <p className="mt-3 text-sm text-[#9a8f80]">{AREAS.find((a) => areas.has(a.id))?.hint} For the most accurate read, use <span className="text-[#cdbfae]">Take photo</span> and follow the on-screen face guide.</p>
+              <p className="mt-3 text-sm text-[var(--color-night-faint)]">{AREAS.find((a) => areas.has(a.id))?.hint} For the most accurate read, use <span className="text-[var(--color-night-muted)]">Take photo</span> and follow the on-screen face guide.</p>
               <div className="mt-7 grid grid-cols-2 gap-3 sm:grid-cols-4">
                 {photos.map((p, idx) => (
                   <div key={p.id} className="group relative aspect-square overflow-hidden rounded-2xl border border-white/10">
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={p.dataUrl} alt={`Uploaded photo ${idx + 1}`} className="h-full w-full object-cover" />
-                    <button onClick={() => setPhotos((arr) => arr.filter((x) => x.id !== p.id))} aria-label="Remove photo" className="absolute right-1.5 top-1.5 grid h-6 w-6 place-items-center rounded-full bg-black/60 text-xs opacity-0 transition-opacity group-hover:opacity-100">✕</button>
+                    {/* PRJ-1191.7: p.dataUrl is a client-generated base64 data URI
+                        (downscale() above draws to a canvas) — next/image detects
+                        the data: prefix and skips its optimizer automatically, so
+                        `unoptimized` isn't required, but it's set explicitly here
+                        since there's nothing for the optimizer to fetch/resize. */}
+                    <Image src={p.dataUrl} alt={`Uploaded photo ${idx + 1}`} fill unoptimized sizes="(max-width: 640px) 45vw, 180px" className="object-cover" />
+                    {/* BLD-1292: visible by default — this flow is touch-first
+                        (kiosk / phones have no hover), so hover-only visibility
+                        hid the control entirely. Desktop still gets the tidy
+                        hover reveal via the pointer:fine override. */}
+                    <button onClick={() => setPhotos((arr) => arr.filter((x) => x.id !== p.id))} aria-label="Remove photo" className="absolute right-1.5 top-1.5 grid h-7 w-7 place-items-center rounded-full bg-black/60 text-xs transition-opacity [@media(pointer:fine)]:opacity-0 [@media(pointer:fine)]:group-hover:opacity-100 [@media(pointer:fine)]:group-focus-within:opacity-100">✕</button>
                   </div>
                 ))}
                 {photos.length < 4 && (
                   <>
-                    <button onClick={() => { setError(''); setCamOpen(true); }} className="grid aspect-square place-items-center rounded-2xl border border-dashed border-white/20 text-[#cdbfae] transition-colors hover:border-[var(--color-gold,#c8a96a)] hover:text-[var(--color-gold,#c8a96a)]"><span className="text-center text-sm"><span className="mb-1 block text-2xl">◎</span>Take photo</span></button>
-                    <button onClick={() => fileRef.current?.click()} className="grid aspect-square place-items-center rounded-2xl border border-dashed border-white/20 text-[#cdbfae] transition-colors hover:border-[var(--color-gold,#c8a96a)] hover:text-[var(--color-gold,#c8a96a)]"><span className="text-center text-sm"><span className="mb-1 block text-2xl">＋</span>Upload</span></button>
+                    <button onClick={() => { setError(''); setCamOpen(true); }} className="grid aspect-square place-items-center rounded-2xl border border-dashed border-white/20 text-[var(--color-night-muted)] transition-colors hover:border-[var(--color-gold,#a98a6d)] hover:text-[var(--color-gold,#a98a6d)]"><span className="text-center text-sm"><span className="mb-1 block text-2xl">◎</span>Take photo</span></button>
+                    <button onClick={() => fileRef.current?.click()} className="grid aspect-square place-items-center rounded-2xl border border-dashed border-white/20 text-[var(--color-night-muted)] transition-colors hover:border-[var(--color-gold,#a98a6d)] hover:text-[var(--color-gold,#a98a6d)]"><span className="text-center text-sm"><span className="mb-1 block text-2xl">＋</span>Upload</span></button>
                   </>
                 )}
               </div>
               <input ref={fileRef} type="file" accept="image/*" multiple className="hidden" onChange={(e) => onFiles(e.target.files)} />
+
+              {showAgeGate && (
+                <div className="mt-6 rounded-2xl border border-white/10 bg-white/[0.03] p-5 backdrop-blur">
+                  <p className="text-sm text-[var(--color-night-muted)]">This experience is for adults only. Please confirm your date of birth to continue.</p>
+                  <label className="mt-3 block text-xs text-[var(--color-night-faint)]">Date of birth
+                    <input type="date" value={dob} onChange={(e) => setDob(e.target.value)} className="mt-1 w-full rounded-xl border border-white/15 bg-white/[0.04] px-4 py-2.5 text-sm text-[var(--color-night-ink)] outline-none focus:border-[var(--color-gold,#a98a6d)]" />
+                  </label>
+                  <label className="mt-3 flex items-start gap-2 text-sm text-[var(--color-night-muted)]">
+                    <input type="checkbox" checked={ageDeclare} onChange={(e) => setAgeDeclare(e.target.checked)} className="mt-0.5 h-4 w-4 accent-[var(--color-gold,#a98a6d)]" />
+                    I confirm I am 18 years of age or over.
+                  </label>
+                </div>
+              )}
+
               <NavRow onBack={() => setStage('consent')} next={{ label: 'Build my plan', onClick: requestAnalyse, disabled: photos.length === 0 }} />
             </motion.div>
           )}
@@ -180,8 +214,7 @@ export function KVision({ signedIn, firstName, enabled }: { signedIn: boolean; f
           {stage === 'analysing' && (
             <motion.div key="analysing" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="mx-auto max-w-md text-center">
               <div className="relative mx-auto aspect-square w-72 overflow-hidden rounded-3xl border border-white/10">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                {photos[0] && <img src={photos[0].dataUrl} alt="Analysing your uploaded photo" className="h-full w-full object-cover opacity-90" />}
+                {photos[0] && <Image src={photos[0].dataUrl} alt="Analysing your uploaded photo" fill unoptimized sizes="288px" className="object-cover opacity-90" />}
                 <div className="absolute inset-0" style={{ background: 'linear-gradient(transparent, rgba(12,11,10,0.5))' }} />
                 <motion.div className="absolute inset-x-0 h-[2px]" style={{ background: `linear-gradient(90deg, transparent, ${gold}, transparent)`, boxShadow: `0 0 18px ${gold}` }} initial={{ top: '0%' }} animate={reduce ? { top: '50%' } : { top: ['0%', '100%', '0%'] }} transition={reduce ? { duration: 0 } : { duration: 2.4, repeat: Infinity, ease: 'easeInOut' }} />
                 {[[30, 35], [62, 44], [46, 62]].map(([x, y], i) => (
@@ -189,14 +222,14 @@ export function KVision({ signedIn, firstName, enabled }: { signedIn: boolean; f
                 ))}
               </div>
               <p className="mt-7 font-[family-name:var(--font-display)] text-2xl">Building your plan…</p>
-              <p className="mt-2 text-sm text-[#9a8f80]">Reading tone, texture and structure — scheduling your treatments.</p>
+              <p className="mt-2 text-sm text-[var(--color-night-faint)]">Reading tone, texture and structure — scheduling your treatments.</p>
             </motion.div>
           )}
 
-          {stage === 'results' && result && <Results key="results" result={result} budget={budget} onRestart={() => { setResult(null); setPhotos([]); setConsent(false); setBudget(null); setStage('intro'); }} />}
+          {stage === 'results' && result && <Results key="results" result={result} budget={budget} onRestart={() => { setResult(null); setPhotos([]); setConsent(false); setBudget(null); setShowAgeGate(false); setDob(''); setAgeDeclare(false); setStage('intro'); }} />}
         </AnimatePresence>
 
-        {error && <p role="alert" aria-live="assertive" className="mx-auto mt-6 max-w-2xl rounded-xl border border-[#d98c8c]/30 bg-[#d98c8c]/10 px-4 py-3 text-center text-sm text-[#f4d6d6]">{error}</p>}
+        {error && <p role="alert" aria-live="assertive" className="mx-auto mt-6 max-w-2xl rounded-xl border border-[var(--color-night-notable)]/30 bg-[var(--color-night-notable)]/10 px-4 py-3 text-center text-sm text-[var(--color-night-notable-text)]">{error}</p>}
       </div>
 
       {/* Homepage-style scroll cue (intro only) */}
@@ -227,8 +260,8 @@ function Results({ result, budget, onRestart }: { result: Result; budget: Budget
         <div className="mt-8 grid gap-3 sm:grid-cols-2">
           {result.findings.map((f, i) => (
             <motion.div key={i} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }} className="rounded-2xl border border-white/10 bg-white/[0.03] p-4 backdrop-blur">
-              <div className="flex items-center gap-2"><span className="h-2.5 w-2.5 rounded-full" style={{ background: sevColor(f.severity) }} /><span className="text-sm font-medium">{f.label}</span><span className="ml-auto text-[0.65rem] uppercase tracking-wide text-[#9a8f80]">{f.area}</span></div>
-              <p className="mt-2 text-sm text-[#cdbfae]">{f.note}</p>
+              <div className="flex items-center gap-2"><span className="h-2.5 w-2.5 rounded-full" style={{ background: sevColor(f.severity) }} /><span className="text-sm font-medium">{f.label}</span><span className="ml-auto text-[0.65rem] uppercase tracking-wide text-[var(--color-night-faint)]">{f.area}</span></div>
+              <p className="mt-2 text-sm text-[var(--color-night-muted)]">{f.note}</p>
             </motion.div>
           ))}
         </div>
@@ -240,29 +273,29 @@ function Results({ result, budget, onRestart }: { result: Result; budget: Budget
         {result.phases.map((ph, pi) => (
           <motion.div key={pi} initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.08 * pi }} className="relative pl-8">
             {/* timeline rail */}
-            <span className="absolute left-[7px] top-2 h-3 w-3 rounded-full border-2" style={{ borderColor: gold, background: '#0c0b0a' }} />
+            <span className="absolute left-[7px] top-2 h-3 w-3 rounded-full border-2" style={{ borderColor: gold, background: 'var(--color-night)' }} />
             {pi < result.phases.length - 1 && <span className="absolute left-[12px] top-5 bottom-0 w-px bg-white/12" />}
             <div className="pb-7">
               <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
-                <span className="text-xs uppercase tracking-[0.2em] text-[var(--color-gold,#c8a96a)]">{ph.title}</span>
-                <span className="text-sm text-[#cdbfae]">{ph.timing}</span>
-                <span className="text-xs text-[#9a8f80]">· from {fmtDate(ph.startISO)}</span>
+                <span className="text-xs uppercase tracking-[0.2em] text-[var(--color-gold,#a98a6d)]">{ph.title}</span>
+                <span className="text-sm text-[var(--color-night-muted)]">{ph.timing}</span>
+                <span className="text-xs text-[var(--color-night-faint)]">· from {fmtDate(ph.startISO)}</span>
               </div>
               <div className="mt-3 space-y-2">
                 {ph.treatments.map((t, ti) => (
                   <div key={ti} className="flex items-center justify-between gap-4 rounded-2xl border border-white/10 bg-white/[0.03] p-4 backdrop-blur">
                     <div>
-                      <p className="font-medium">{t.title} <span className="text-[#9a8f80]">· {t.sessions} session{t.sessions > 1 ? 's' : ''}{t.intervalWeeks ? ` · every ${t.intervalWeeks} wk${t.intervalWeeks > 1 ? 's' : ''}` : ''}</span></p>
-                      <p className="mt-1 text-sm text-[#cdbfae]">{t.reason}</p>
+                      <p className="font-medium">{t.title} <span className="text-[var(--color-night-faint)]">· {t.sessions} session{t.sessions > 1 ? 's' : ''}{t.intervalWeeks ? ` · every ${t.intervalWeeks} wk${t.intervalWeeks > 1 ? 's' : ''}` : ''}</span></p>
+                      <p className="mt-1 text-sm text-[var(--color-night-muted)]">{t.reason}</p>
                     </div>
                     <div className="shrink-0 text-right">
-                      <p className="text-sm text-[#9a8f80]">{t.estimated && t.totalPence > 0 ? `from ${money(t.totalPence)}` : money(t.totalPence)}</p>
-                      <a href={t.href} className="mt-1 inline-block rounded-full bg-[var(--color-gold,#c8a96a)] px-4 py-1.5 text-sm font-medium text-[#0c0b0a]">Book →</a>
+                      <p className="text-sm text-[var(--color-night-faint)]">{t.estimated && t.totalPence > 0 ? `from ${money(t.totalPence)}` : money(t.totalPence)}</p>
+                      <a href={t.href} className="mt-1 inline-block rounded-full bg-[var(--color-gold,#a98a6d)] px-4 py-1.5 text-sm font-medium text-[var(--color-night)]">Book →</a>
                     </div>
                   </div>
                 ))}
               </div>
-              {ph.expect && <p className="mt-3 text-sm text-[#cdbfae]"><span className="text-[var(--color-gold,#c8a96a)]">✦ What to expect:</span> {ph.expect}</p>}
+              {ph.expect && <p className="mt-3 text-sm text-[var(--color-night-muted)]"><span className="text-[var(--color-gold,#a98a6d)]">✦ What to expect:</span> {ph.expect}</p>}
             </div>
           </motion.div>
         ))}
@@ -271,44 +304,44 @@ function Results({ result, budget, onRestart }: { result: Result; budget: Budget
       {/* Total */}
       <div className="mt-2 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-white/10 bg-white/[0.04] p-5">
         <div>
-          <p className="text-sm text-[#9a8f80]">Plan total{budget?.pence ? (result.aboveBudget ? ` · above your ${budget.label} budget` : ` · within your ${budget.label} budget`) : ''}</p>
+          <p className="text-sm text-[var(--color-night-faint)]">Plan total{budget?.pence ? (result.aboveBudget ? ` · above your ${budget.label} budget` : ` · within your ${budget.label} budget`) : ''}</p>
           <p className="font-[family-name:var(--font-display)] text-2xl">{result.phases.some((p) => p.treatments.some((t) => t.estimated)) && result.planTotalPence > 0 ? `from ${money(result.planTotalPence)}` : money(result.planTotalPence)}</p>
-          {result.aboveBudget && <p className="mt-1 text-xs text-[#cdbfae]">This is the smallest effective plan for what we saw — it sits a little above your chosen budget. You can start with one step and add the rest later.</p>}
+          {result.aboveBudget && <p className="mt-1 text-xs text-[var(--color-night-muted)]">This is the smallest effective plan for what we saw — it sits a little above your chosen budget. You can start with one step and add the rest later.</p>}
         </div>
-        {result.phases[0]?.treatments[0] && <a href={result.phases[0].treatments[0].href} className="rounded-full bg-[var(--color-gold,#c8a96a)] px-7 py-3 text-sm font-medium text-[#0c0b0a] transition-transform hover:scale-[1.03]">Book your first step →</a>}
+        {result.phases[0]?.treatments[0] && <a href={result.phases[0].treatments[0].href} className="rounded-full bg-[var(--color-gold,#a98a6d)] px-7 py-3 text-sm font-medium text-[var(--color-night)] transition-transform hover:scale-[1.03]">Book your first step →</a>}
       </div>
-      <p className="mt-3 text-center text-xs text-[#9a8f80]">Personalised cosmetic guidance, not a medical diagnosis — confirmed at your consultation and patch test.</p>
+      <p className="mt-3 text-center text-xs text-[var(--color-night-faint)]">Personalised cosmetic guidance, not a medical diagnosis — confirmed at your consultation and patch test.</p>
 
       {/* Worth considering (above budget) */}
       {result.extras.length > 0 && (
         <div className="mt-12">
           <h3 className="font-[family-name:var(--font-display)] text-xl">Worth considering</h3>
-          <p className="mt-1 text-sm text-[#9a8f80]">Beyond your budget, but our AI felt these could meaningfully help — add them whenever you’re ready.</p>
+          <p className="mt-1 text-sm text-[var(--color-night-faint)]">Beyond your budget, but our AI felt these could meaningfully help — add them whenever you’re ready.</p>
           <div className="mt-4 grid gap-3 sm:grid-cols-2">
             {result.extras.map((e) => (
-              <a key={e.slug} href={e.href} className="group flex items-center justify-between gap-3 rounded-2xl border border-dashed border-white/15 bg-white/[0.02] p-4 transition-colors hover:border-[var(--color-gold,#c8a96a)]">
-                <div><p className="font-medium">{e.title}</p><p className="mt-1 text-sm text-[#cdbfae]">{e.reason}</p></div>
-                <div className="shrink-0 text-right"><p className="text-sm text-[#9a8f80]">from {money(e.fromPence)}</p><span className="mt-1 inline-block text-sm text-[var(--color-gold,#c8a96a)] group-hover:underline">Add →</span></div>
+              <a key={e.slug} href={e.href} className="group flex items-center justify-between gap-3 rounded-2xl border border-dashed border-white/15 bg-white/[0.02] p-4 transition-colors hover:border-[var(--color-gold,#a98a6d)]">
+                <div><p className="font-medium">{e.title}</p><p className="mt-1 text-sm text-[var(--color-night-muted)]">{e.reason}</p></div>
+                <div className="shrink-0 text-right"><p className="text-sm text-[var(--color-night-faint)]">from {money(e.fromPence)}</p><span className="mt-1 inline-block text-sm text-[var(--color-gold,#a98a6d)] group-hover:underline">Add →</span></div>
               </a>
             ))}
           </div>
         </div>
       )}
 
-      <button onClick={onRestart} className="mx-auto mt-10 block text-sm text-[#cdbfae] underline-offset-4 hover:underline">Start a new plan</button>
+      <button onClick={onRestart} className="mx-auto mt-10 block text-sm text-[var(--color-night-muted)] underline-offset-4 hover:underline">Start a new plan</button>
     </motion.div>
   );
 }
 
 function Heading({ kicker, title }: { kicker: string; title: string }) {
-  return <div><p className="text-xs uppercase tracking-[0.3em] text-[var(--color-gold,#c8a96a)]">{kicker}</p><h2 className="mt-3 font-[family-name:var(--font-display)] text-[clamp(1.6rem,1.2rem+1.6vw,2.4rem)] leading-tight">{title}</h2></div>;
+  return <div><p className="text-xs uppercase tracking-[0.3em] text-[var(--color-gold,#a98a6d)]">{kicker}</p><h2 className="mt-3 font-[family-name:var(--font-display)] text-[clamp(1.6rem,1.2rem+1.6vw,2.4rem)] leading-tight">{title}</h2></div>;
 }
 
 function NavRow({ onBack, next }: { onBack: () => void; next: { label: string; onClick: () => void; disabled?: boolean } }) {
   return (
     <div className="mt-8 flex items-center justify-between gap-4">
-      <button onClick={onBack} className="min-h-11 rounded-full px-4 py-2 text-sm text-[#cdbfae] hover:text-[#f4ece1]">← Back</button>
-      <button onClick={next.onClick} disabled={next.disabled} className="rounded-full bg-[var(--color-gold,#c8a96a)] px-6 py-3 text-sm font-medium text-[#0c0b0a] transition-transform hover:scale-[1.03] disabled:opacity-40">{next.label}</button>
+      <button onClick={onBack} className="min-h-11 rounded-full px-4 py-2 text-sm text-[var(--color-night-muted)] hover:text-[var(--color-night-ink)]">← Back</button>
+      <button onClick={next.onClick} disabled={next.disabled} className="rounded-full bg-[var(--color-gold,#a98a6d)] px-6 py-3 text-sm font-medium text-[var(--color-night)] transition-transform hover:scale-[1.03] disabled:opacity-40">{next.label}</button>
     </div>
   );
 }
@@ -320,9 +353,9 @@ function Ring({ value }: { value: number }) {
     <div className="relative grid h-20 w-20 shrink-0 place-items-center">
       <svg viewBox="0 0 64 64" className="h-20 w-20 -rotate-90">
         <circle cx="32" cy="32" r={r} fill="none" stroke="rgba(255,255,255,0.12)" strokeWidth="4" />
-        <motion.circle cx="32" cy="32" r={r} fill="none" stroke="var(--color-gold,#c8a96a)" strokeWidth="4" strokeLinecap="round" strokeDasharray={c} initial={{ strokeDashoffset: c }} animate={{ strokeDashoffset: c - (c * pct) / 100 }} transition={{ duration: 1, ease: 'easeOut' }} />
+        <motion.circle cx="32" cy="32" r={r} fill="none" stroke="var(--color-gold,#a98a6d)" strokeWidth="4" strokeLinecap="round" strokeDasharray={c} initial={{ strokeDashoffset: c }} animate={{ strokeDashoffset: c - (c * pct) / 100 }} transition={{ duration: 1, ease: 'easeOut' }} />
       </svg>
-      <div className="absolute text-center"><span className="block text-lg font-medium">{pct}</span><span className="block text-[0.55rem] uppercase tracking-wide text-[#9a8f80]">match</span></div>
+      <div className="absolute text-center"><span className="block text-lg font-medium">{pct}</span><span className="block text-[0.55rem] uppercase tracking-wide text-[var(--color-night-faint)]">match</span></div>
     </div>
   );
 }
@@ -386,7 +419,7 @@ function AuthStep({ onDone, onError, onBack }: { onDone: (firstName?: string) =>
   // the server CAPI copy share it so Meta de-duplicates.
   const eventIdRef = useRef<string>('');
   if (!eventIdRef.current && typeof crypto !== 'undefined' && crypto.randomUUID) eventIdRef.current = crypto.randomUUID();
-  const input = 'w-full rounded-xl border border-white/15 bg-white/[0.04] px-4 py-3 text-[#f4ece1] outline-none placeholder:text-[#9a8f80] focus:border-[var(--color-gold,#c8a96a)]';
+  const input = 'w-full rounded-xl border border-white/15 bg-white/[0.04] px-4 py-3 text-[var(--color-night-ink)] outline-none placeholder:text-[var(--color-night-faint)] focus:border-[var(--color-gold,#a98a6d)]';
   async function go() {
     if (busyRef.current) return;
     busyRef.current = true;
@@ -409,9 +442,9 @@ function AuthStep({ onDone, onError, onBack }: { onDone: (firstName?: string) =>
   }
   return (
     <motion.div {...fade} className="mx-auto max-w-md">
-      <button onClick={onBack} className="mb-5 min-h-11 rounded-full px-4 py-2 text-sm text-[#cdbfae] hover:text-[#f4ece1]">← Back to photos</button>
+      <button onClick={onBack} className="mb-5 min-h-11 rounded-full px-4 py-2 text-sm text-[var(--color-night-muted)] hover:text-[var(--color-night-ink)]">← Back to photos</button>
       <Heading kicker="Your plan is ready" title={mode === 'signup' ? 'Enter your email to reveal it' : 'Welcome back — sign in to reveal it'} />
-      <p className="mt-3 text-sm text-[#cdbfae]">{mode === 'signup' ? 'No password to set up — we’ll show your personalised plan now and email you a one-tap link to get back in, plus 15% off your first visit.' : 'Sign in to reveal your personalised plan.'}</p>
+      <p className="mt-3 text-sm text-[var(--color-night-muted)]">{mode === 'signup' ? 'No password to set up — we’ll show your personalised plan now and email you a one-tap link to get back in, plus 15% off your first visit.' : 'Sign in to reveal your personalised plan.'}</p>
       <div className="mt-6 space-y-3">
         {mode === 'signup' && <input className={input} aria-label="First name" autoComplete="given-name" placeholder="First name" value={f.firstName} onChange={(e) => setF({ ...f, firstName: e.target.value })} />}
         <input className={input} type="email" aria-label="Email" autoComplete="email" placeholder="Email" value={f.email} onChange={(e) => setF({ ...f, email: e.target.value })} />
@@ -420,12 +453,12 @@ function AuthStep({ onDone, onError, onBack }: { onDone: (firstName?: string) =>
         <input type="text" tabIndex={-1} className="absolute -left-[9999px]" value={f.company} onChange={(e) => setF({ ...f, company: e.target.value })} aria-hidden />
       </div>
       <div className="mt-6 flex items-center justify-between gap-4">
-        <button onClick={() => setMode(mode === 'signup' ? 'login' : 'signup')} className="text-sm text-[#cdbfae] hover:text-[#f4ece1]">{mode === 'signup' ? 'Have a password? Sign in' : 'New here? Continue with email'}</button>
-        <button onClick={() => go()} disabled={busy} className="rounded-full bg-[var(--color-gold,#c8a96a)] px-6 py-3 text-sm font-medium text-[#0c0b0a] disabled:opacity-50">{busy ? 'Please wait…' : mode === 'signup' ? 'Reveal my plan' : 'Sign in'}</button>
+        <button onClick={() => setMode(mode === 'signup' ? 'login' : 'signup')} className="text-sm text-[var(--color-night-muted)] hover:text-[var(--color-night-ink)]">{mode === 'signup' ? 'Have a password? Sign in' : 'New here? Continue with email'}</button>
+        <button onClick={() => go()} disabled={busy} className="rounded-full bg-[var(--color-gold,#a98a6d)] px-6 py-3 text-sm font-medium text-[var(--color-night)] disabled:opacity-50">{busy ? 'Please wait…' : mode === 'signup' ? 'Reveal my plan' : 'Sign in'}</button>
       </div>
       {mode === 'signup' && (
-        <p className="mt-4 text-xs text-[#9a8f80]">
-          By continuing you agree to our <a href="/info/terms-conditions" target="_blank" rel="noreferrer" className="underline underline-offset-2 hover:text-[#cdbfae]">terms</a> and <a href="/info/privacy-policy" target="_blank" rel="noreferrer" className="underline underline-offset-2 hover:text-[#cdbfae]">privacy policy</a>.
+        <p className="mt-4 text-xs text-[var(--color-night-faint)]">
+          By continuing you agree to our <a href="/info/terms-conditions" target="_blank" rel="noreferrer" className="underline underline-offset-2 hover:text-[var(--color-night-muted)]">terms</a> and <a href="/info/privacy-policy" target="_blank" rel="noreferrer" className="underline underline-offset-2 hover:text-[var(--color-night-muted)]">privacy policy</a>.
         </p>
       )}
     </motion.div>

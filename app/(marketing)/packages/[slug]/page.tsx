@@ -55,7 +55,7 @@ export default async function PackagePage({ params }: { params: Promise<{ slug: 
       />
       <ViewItemTracker id={`package-${p.slug}`} name={p.name} category="package" />
       <PageHero eyebrow={p.subtitle} title={p.name} lede={p.description} gradient={p.gradient}>
-        <BookingButtons />
+        <BookingButtons treatmentSlug={p.related[0]} />
       </PageHero>
 
       <section className="container-lux section grid gap-12 md:grid-cols-[1.2fr_0.8fr]">
@@ -95,7 +95,7 @@ export default async function PackagePage({ params }: { params: Promise<{ slug: 
               </p>
             </div>
             <div className="mt-6">
-              <BookingButtons />
+              <BookingButtons treatmentSlug={p.related[0]} />
             </div>
           </div>
         </Reveal>

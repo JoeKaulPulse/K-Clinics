@@ -52,6 +52,11 @@ function inAppEnabled(prefs: NotifPrefs, c: Category): boolean {
 export function emailEnabled(prefs: NotifPrefs, c: Category): boolean {
   return prefs.email?.[c] ?? CATEGORY_DEFAULTS[c]?.email ?? false;
 }
+/** As above, but a caller that set `email: true` flips the *default* on for this
+ *  one notification. A user who has explicitly chosen either way still wins. */
+function emailWanted(prefs: NotifPrefs, c: Category, force?: boolean): boolean {
+  return force ? (prefs.email?.[c] ?? true) : emailEnabled(prefs, c);
+}
 
 /** Categorise a notification from its destination (and kind) when not given. */
 export function deriveCategory(kind: string, href?: string): Category {
@@ -76,6 +81,12 @@ function derivePriority(kind: string): Priority {
 export type NotifInput = {
   kind: NotifyKind; title: string; body?: string; href?: string;
   category?: Category; priority?: Priority; groupKey?: string;
+  /** BLD-1345: turn the email copy ON for this notification even though the
+   *  category ships with email off by default. For work that must reach a person
+   *  who isn't sitting in the admin (a new consultation enquiry), the in-app row
+   *  alone is not delivery. An explicit per-user preference still wins in both
+   *  directions, so anyone who has switched the category's email off keeps it off. */
+  email?: boolean;
 };
 
 /** Is it the recipient's quiet hours now? (clinic-local time; overnight ranges wrap). */
@@ -103,7 +114,7 @@ function safeHref(url: string): string {
  *  item is high/urgent. Urgent ignores quiet hours; high is held during them (the
  *  digest catches it). Best-effort; never blocks the in-app row. */
 async function maybeEmail(email: string | undefined, prefs: NotifPrefs, category: Category, priority: Priority, n: NotifInput): Promise<void> {
-  if (!email || !emailEnabled(prefs, category)) return;
+  if (!email || !emailWanted(prefs, category, n.email)) return;
   if (priority !== 'urgent' && priority !== 'high') return;
   if (priority !== 'urgent' && inQuietHours(prefs)) return;
   try {
@@ -183,17 +194,21 @@ export async function notifyStaffById(userId: string | null | undefined, n: Noti
 }
 
 /** Notify every active staff member whose role (plus per-user overrides) grants
- *  `permission`. Skips the actor. Honours each recipient's preferences. Best-effort;
+ *  `permission` — or ANY of them when given a list, so a notification reaches
+ *  everyone who can act on it rather than only the holders of one key (BLD-1345).
+ *  Skips the actor. Honours each recipient's preferences. Best-effort;
  *  returns the count actually targeted. */
-export async function notifyStaffByPermission(permission: string, n: NotifInput, actorEmail?: string): Promise<number> {
+export async function notifyStaffByPermission(permission: string | string[], n: NotifInput, actorEmail?: string): Promise<number> {
   try {
     const { effectivePermissions } = await import('@/lib/permissions');
+    const wanted = Array.isArray(permission) ? permission : [permission];
     const actor = (actorEmail || '').trim().toLowerCase();
     const users = await db.adminUser.findMany({ where: { active: true }, select: { id: true, email: true, role: true, permGrant: true, permRevoke: true, notifPrefs: true } });
     const recipients = users.filter((u) => {
       if (u.email.trim().toLowerCase() === actor) return false;
       if (u.role === 'OWNER') return true;
-      return effectivePermissions({ role: u.role, permGrant: u.permGrant, permRevoke: u.permRevoke }).has(permission);
+      const perms = effectivePermissions({ role: u.role, permGrant: u.permGrant, permRevoke: u.permRevoke });
+      return wanted.some((p) => perms.has(p));
     });
     await Promise.all(recipients.map((u) => createFor({ id: u.id, email: u.email, notifPrefs: u.notifPrefs }, n).catch(() => {})));
     return recipients.length;

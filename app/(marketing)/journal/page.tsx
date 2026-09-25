@@ -7,9 +7,9 @@ import { pageMeta, JsonLd, breadcrumbLd, itemListLd } from '@/lib/seo';
 export const revalidate = 3600;
 
 export const generateMetadata = (): Promise<Metadata> => pageMeta({
-  title: 'The Journal — Expert Skin, Laser & Dentistry Guides | KClinics London',
+  title: 'The Journal — Skin, Laser & Dentistry Guides | KClinics',
   description:
-    'Expert guidance from KClinics, Islington — honest, practical articles on laser, skin, injectables and aesthetic dentistry to help you make confident, informed choices.',
+    'Expert guidance from KClinics, Islington — honest, practical articles on laser, skin, injectables and aesthetic dentistry to help you choose confidently.',
   path: '/journal',
   keywords: ['aesthetics blog London', 'skincare advice', 'laser hair removal guide', 'aesthetic dentistry tips'],
 });

@@ -137,6 +137,20 @@ export function AdminShell({
   // Dialog primitive's hook (PRJ-939.10).
   const [mobileOpen, setMobileOpen] = useState(false);
   useEffect(() => { setMobileOpen(false); }, [pathname]); // close on navigation
+  // The drawer markup is `lg:hidden`, so growing past the desktop breakpoint
+  // (window resize, tablet rotated to landscape) would leave it mounted but
+  // display:none — invisible, with no way to close it (its own close button and
+  // the hamburger are both lg:hidden too) while it still holds the body scroll
+  // lock, so the admin page could not be scrolled. Close it as soon as the
+  // desktop layout takes over. (BLD-1194)
+  useEffect(() => {
+    if (!mobileOpen) return;
+    const mq = window.matchMedia('(min-width: 64rem)'); // Tailwind `lg`
+    if (mq.matches) { setMobileOpen(false); return; }
+    const onChange = (e: MediaQueryListEvent) => { if (e.matches) setMobileOpen(false); };
+    mq.addEventListener('change', onChange);
+    return () => mq.removeEventListener('change', onChange);
+  }, [mobileOpen]);
   const closeMobile = useCallback(() => setMobileOpen(false), []);
   const { panelRef: drawerRef, onKeyDown: drawerKeyDown } = useDialogBehaviours<HTMLElement>(closeMobile, mobileOpen);
 
@@ -173,7 +187,7 @@ export function AdminShell({
       href={n.href}
       data-tour={n.key}
       aria-current={isActive(n) ? 'page' : undefined}
-      className={`flex min-h-[2.75rem] items-center justify-between gap-2 whitespace-nowrap rounded-[var(--radius-sm)] px-4 py-2.5 text-sm transition-[background-color,color,transform] duration-150 active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-gold)] motion-reduce:transition-none motion-reduce:active:scale-100 lg:min-h-0 ${
+      className={`flex min-h-[2.75rem] items-center justify-between gap-2 whitespace-nowrap rounded-[var(--radius-sm)] px-4 py-2.5 text-sm transition-[background-color,color,transform] duration-150 active:scale-[0.99] motion-reduce:transition-none motion-reduce:active:scale-100 lg:min-h-0 ${
         isActive(n)
           ? 'bg-[var(--color-ink)] font-medium text-[var(--color-porcelain)]'
           : 'text-[var(--color-ink-soft)] hover:bg-[var(--color-bone)] hover:text-[var(--color-ink)]'
@@ -181,7 +195,7 @@ export function AdminShell({
     >
       <span className="truncate">{t(n.key)}</span>
       {badgeCount(n.badge) > 0 && (
-        <span className="rounded-full bg-amber-400 px-1.5 py-0.5 text-[0.65rem] font-semibold text-amber-950">{badgeCount(n.badge)}</span>
+        <span className="rounded-full bg-[var(--color-gold-deep)] px-1.5 py-0.5 text-[0.65rem] font-semibold text-[var(--color-porcelain)]">{badgeCount(n.badge)}</span>
       )}
     </Link>
   );
@@ -195,6 +209,9 @@ export function AdminShell({
 
   async function signOut() {
     await fetch('/api/admin/logout', { method: 'POST' });
+    // BLD-1541: don't leave the recent-search list (patient names/refs staff
+    // navigated to) behind in a shared workstation's browser profile.
+    try { localStorage.removeItem('kc-admin-recent-search'); } catch { /* ignore */ }
     router.push('/admin/login');
     router.refresh();
   }
@@ -229,7 +246,7 @@ export function AdminShell({
             <button
               onClick={() => toggleGroup(key)}
               aria-expanded={open}
-              className="flex w-full cursor-pointer items-center gap-2 rounded-[var(--radius-sm)] px-4 pb-1 pt-4 text-[0.6rem] font-semibold uppercase tracking-[0.14em] text-[var(--color-stone)] transition-colors hover:text-[var(--color-stone)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-gold)]"
+              className="flex w-full cursor-pointer items-center gap-2 rounded-[var(--radius-sm)] px-4 pb-1 pt-4 text-[0.6rem] font-semibold uppercase tracking-[0.14em] text-[var(--color-stone)] transition-colors hover:text-[var(--color-stone)]"
             >
               <svg
                 viewBox="0 0 16 16" width="10" height="10" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden
@@ -240,7 +257,7 @@ export function AdminShell({
               <GroupIcon name={g.icon} />
               <span className="flex-1 text-left">{g.heading ? t(g.heading) : ''}</span>
               {!open && pending > 0 && (
-                <span className="rounded-full bg-amber-400 px-1.5 py-0.5 text-[0.6rem] font-semibold text-amber-950">{pending}</span>
+                <span className="rounded-full bg-[var(--color-gold-deep)] px-1.5 py-0.5 text-[0.6rem] font-semibold text-[var(--color-porcelain)]">{pending}</span>
               )}
             </button>
             {/* Animated accordion: grid-rows 0fr→1fr is transform-safe (no JS
@@ -301,7 +318,7 @@ export function AdminShell({
                   onClick={() => setProfileOpen((o) => !o)}
                   aria-haspopup="menu"
                   aria-expanded={profileOpen}
-                  className="flex items-center gap-2 rounded-full p-1 transition-colors hover:bg-[var(--color-bone)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--color-gold)] md:pr-2.5"
+                  className="flex items-center gap-2 rounded-full p-1 transition-colors hover:bg-[var(--color-bone)] md:pr-2.5"
                 >
                   <span className="flex h-8 w-8 items-center justify-center rounded-full bg-[var(--color-ink)] text-xs font-semibold text-[var(--color-porcelain)]">{initials}</span>
                   <span className="hidden max-w-[10rem] truncate text-sm text-[var(--color-ink-soft)] md:block">{user}</span>
@@ -319,14 +336,14 @@ export function AdminShell({
                     </Link>
                     <label className="block px-4 py-2.5">
                       <span className="mb-1 block text-[0.6rem] uppercase tracking-[0.14em] text-[var(--color-stone)]">{t('shell.language')}</span>
-                      <select value={locale} onChange={(e) => changeLanguage(e.target.value as Locale)} className="w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-porcelain)] px-2 py-1.5 text-sm outline-none focus:border-[var(--color-gold)]">
+                      <select value={locale} onChange={(e) => changeLanguage(e.target.value as Locale)} className="w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-porcelain)] px-2 py-1.5 text-sm outline-none focus:border-[var(--color-gold-deep)] focus-visible:ring-2 focus-visible:ring-[var(--color-gold-deep)]">
                         {LOCALES.map((l) => <option key={l} value={l}>{LOCALE_LABELS[l]}</option>)}
                       </select>
                     </label>
                     <div className="border-t border-[var(--color-line)]">
                       <ThemeToggle />
                     </div>
-                    <button onClick={signOut} role="menuitem" className="flex w-full items-center gap-2.5 border-t border-[var(--color-line)] px-4 py-2.5 text-left text-sm text-[#b23b3b] transition-colors hover:bg-[color-mix(in_oklab,#b23b3b_10%,transparent)]">
+                    <button onClick={signOut} role="menuitem" className="flex w-full items-center gap-2.5 border-t border-[var(--color-line)] px-4 py-2.5 text-left text-sm text-[var(--color-blush-deep)] transition-colors hover:bg-[color-mix(in_oklab,var(--color-blush-deep)_10%,transparent)]">
                       <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden><path d="M6 2.5H3.5v11H6M10.5 11l3-3-3-3M13 8H6.5" /></svg>
                       {t('shell.signOut')}
                     </button>
@@ -337,7 +354,7 @@ export function AdminShell({
           </header>
           {/* key={pathname} restarts the entrance on every navigation — a short
               fade-up that makes page changes feel composed rather than abrupt. */}
-          <main id="admin-main" key={pathname} className="kc-page-enter flex-1 p-5 md:p-8 lg:p-10">
+          <main id="admin-main" key={pathname} tabIndex={-1} className="kc-page-enter flex-1 p-5 md:p-8 lg:p-10">
             {allowed.has('dayclose.run') && <CloseDownReminder />}
             {children}
           </main>

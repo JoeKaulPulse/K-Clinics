@@ -54,7 +54,7 @@ export function DailyGoal({ status }: { status: Status }) {
           <p className="mt-0.5 flex flex-wrap items-center gap-x-1.5 text-sm text-[var(--color-stone)]">
             <span>{Math.min(status.tasks, status.goal)} of {status.goal} done today</span>
             {status.streak > 0 && (
-              <span className="inline-flex items-center gap-1 text-[var(--color-gold-deep)]"><span aria-hidden className="text-[var(--color-stone)]">·</span><Flame className="h-3.5 w-3.5 text-[var(--color-gold)]" /> {status.streak}-day streak</span>
+              <span className="inline-flex items-center gap-1 text-[var(--color-gold-deep)]"><span aria-hidden className="text-[var(--color-stone)]">·</span><Flame className="h-3.5 w-3.5 text-[var(--color-gold-deep)]" /> {status.streak}-day streak</span>
             )}
           </p>
         </div>

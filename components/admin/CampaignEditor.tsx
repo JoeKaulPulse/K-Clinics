@@ -13,7 +13,7 @@ export type CampaignData = {
 type Stats = { bookings: number; revenuePence: number; roi: number | null };
 
 const money = (p: number) => `£${(p / 100).toLocaleString('en-GB', { maximumFractionDigits: 0 })}`;
-const field = 'mt-1 w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-3 py-2 text-sm';
+const field = 'mt-1 w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-porcelain)] px-3 py-2 text-sm';
 const STATUSES = ['DRAFT', 'SCHEDULED', 'ACTIVE', 'PAUSED', 'ENDED'];
 const CHANNELS: { key: string; label: string }[] = [
   { key: 'email', label: 'Email' }, { key: 'google_ads', label: 'Google Ads' }, { key: 'meta', label: 'Meta (FB/IG)' },
@@ -64,7 +64,7 @@ export function CampaignEditor({ data, stats, baseUrl, canManage, spendSyncedAt 
         </div>
         {canManage && (
           <div className="flex items-center gap-2">
-            <select value={f.status} onChange={(e) => setStatus(e.target.value)} className="rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-3 py-2 text-sm">
+            <select value={f.status} onChange={(e) => setStatus(e.target.value)} className="rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-porcelain)] px-3 py-2 text-sm">
               {STATUSES.map((s) => <option key={s} value={s}>{s}</option>)}
             </select>
           </div>
@@ -123,10 +123,10 @@ export function CampaignEditor({ data, stats, baseUrl, canManage, spendSyncedAt 
           <section className="rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-5">
             <h2 className="mb-2 font-[family-name:var(--font-display)] text-lg">Channel tools</h2>
             <div className="grid gap-2 text-sm">
-              <Link href={`/admin/campaigns?campaign=${f.slug}`} className="rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-3 py-2 hover:border-[var(--color-gold)]">✉️ Compose campaign email →</Link>
-              <Link href="/admin/pages" className="rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-3 py-2 hover:border-[var(--color-gold)]">📄 Build a landing page →</Link>
-              <Link href="/admin/seo" className="rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-3 py-2 hover:border-[var(--color-gold)]">🔎 SEO & pixels →</Link>
-              <Link href="/admin/qr" className="rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-3 py-2 hover:border-[var(--color-gold)]">▦ QR code for print →</Link>
+              <Link href={`/admin/campaigns?campaign=${f.slug}`} className="rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-porcelain)] px-3 py-2 hover:border-[var(--color-gold)]">✉️ Compose campaign email →</Link>
+              <Link href="/admin/pages" className="rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-porcelain)] px-3 py-2 hover:border-[var(--color-gold)]">📄 Build a landing page →</Link>
+              <Link href="/admin/seo" className="rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-porcelain)] px-3 py-2 hover:border-[var(--color-gold)]">🔎 SEO & pixels →</Link>
+              <Link href="/admin/qr" className="rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-porcelain)] px-3 py-2 hover:border-[var(--color-gold)]">▦ QR code for print →</Link>
             </div>
           </section>
 

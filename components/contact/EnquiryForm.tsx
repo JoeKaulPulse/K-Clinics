@@ -7,6 +7,7 @@ import { treatments } from '@/lib/treatments';
 import { site } from '@/lib/site';
 import { Button, ArrowIcon } from '@/components/ui/Button';
 import { trackLead } from '@/lib/analytics-events';
+import { PhoneLink } from '@/components/marketing/PhoneLink';
 
 /** Premium enquiry form. With no backend in a static export, it composes a
  *  pre-filled email to the clinic via mailto: — reliable, zero-infra, and easy
@@ -14,6 +15,10 @@ import { trackLead } from '@/lib/analytics-events';
 export function EnquiryForm() {
   const [status, setStatus] = useState<'idle' | 'sent' | 'mailto'>('idle');
   const [busy, setBusy] = useState(false);
+  const [marketingOptIn, setMarketingOptIn] = useState(false);
+  // BLD-1612: per-field validation errors, same pattern as BookingFlow.
+  const [errors, setErrors] = useState<Record<string, string>>({});
+  const clearErr = (k: string) => setErrors((prev) => (prev[k] ? { ...prev, [k]: '' } : prev));
   // BLD-125: stable IDs for aria-describedby on the success/fallback message.
   const statusId = useId();
 
@@ -24,11 +29,21 @@ export function EnquiryForm() {
     const email = String(f.get('email') || '');
     const phone = String(f.get('phone') || '');
     const interest = String(f.get('interest') || '');
-    const message = String(f.get('message') || '');
+    const message = String(f.get('message') || '').trim();
+
+    // BLD-1612: inline, per-field validation ahead of the API call.
+    const fieldErrors: Record<string, string> = {};
+    if (!name) fieldErrors.name = 'Please enter your name.';
+    if (!/\S+@\S+\.\S+/.test(email)) fieldErrors.email = 'Enter a valid email address.';
+    if (!message || message.length < 2) fieldErrors.message = 'Please tell us a little about what you’re looking for.';
+    if (Object.keys(fieldErrors).length > 0) { setErrors(fieldErrors); return; }
+    setErrors({});
 
     const mailtoFallback = () => {
       const subject = `Enquiry from ${name || 'website'} — ${interest || 'General'}`;
-      const body = [`Name: ${name}`, `Email: ${email}`, `Phone: ${phone}`, `Interest: ${interest}`, '', message].join('\n');
+      // Carry the marketing tick into the fallback too, so a ticked box isn't
+      // silently lost when the API is unavailable and staff can record it.
+      const body = [`Name: ${name}`, `Email: ${email}`, `Phone: ${phone}`, `Interest: ${interest}`, `Marketing opt-in: ${marketingOptIn ? 'Yes' : 'No'}`, '', message].join('\n');
       window.location.href = `${site.emailHref}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
       setStatus('mailto');
     };
@@ -43,6 +58,8 @@ export function EnquiryForm() {
         body: JSON.stringify({
           firstName: firstName || 'Website', lastName: rest.join(' ') || undefined, email, phone: phone || undefined,
           category: 'general', message: interest ? `Interested in: ${interest}\n\n${message}` : message, consent: true,
+          // marketingConsentSource evidence: this is /contact, not the consult form.
+          marketingOptIn, formSource: 'contact-form',
         }),
       });
       const j = await res.json().catch(() => ({ ok: false }));
@@ -55,7 +72,7 @@ export function EnquiryForm() {
   }
 
   const field =
-    'w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-porcelain)] px-4 py-3 text-[var(--color-ink)] outline-none transition-colors placeholder:text-[var(--color-stone)] focus:border-[var(--color-gold)]';
+    'w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-porcelain)] px-4 py-3 text-[var(--color-ink)] outline-none transition-colors placeholder:text-[var(--color-stone)] focus:border-[var(--color-gold-deep)] focus-visible:ring-2 focus-visible:ring-[var(--color-gold-deep)]';
   const label = 'mb-1.5 block text-xs uppercase tracking-[0.16em] text-[var(--color-stone)]';
 
   return (
@@ -64,7 +81,8 @@ export function EnquiryForm() {
       <div className="grid gap-5 md:grid-cols-2">
         <div>
           <label htmlFor="name" className={label}>Name</label>
-          <input id="name" name="name" required autoComplete="name" className={field} placeholder="Your name" />
+          <input id="name" name="name" autoComplete="name" aria-invalid={!!errors.name} aria-describedby={errors.name ? 'name-err' : undefined} className={field} placeholder="Your name" onChange={() => clearErr('name')} />
+          {errors.name && <p id="name-err" role="alert" className="mt-1.5 text-xs text-[var(--color-blush-deep)]">{errors.name}</p>}
         </div>
         <div>
           <label htmlFor="phone" className={label}>Phone</label>
@@ -72,10 +90,11 @@ export function EnquiryForm() {
         </div>
         <div className="md:col-span-2">
           <label htmlFor="email" className={label}>Email</label>
-          <input id="email" name="email" type="email" required autoComplete="email" className={field} placeholder="you@email.com" />
+          <input id="email" name="email" type="email" autoComplete="email" aria-invalid={!!errors.email} aria-describedby={errors.email ? 'email-err' : undefined} className={field} placeholder="you@email.com" onChange={() => clearErr('email')} />
+          {errors.email && <p id="email-err" role="alert" className="mt-1.5 text-xs text-[var(--color-blush-deep)]">{errors.email}</p>}
         </div>
         <div className="md:col-span-2">
-          <label htmlFor="interest" className={label}>I'm interested in</label>
+          <label htmlFor="interest" className={label}>I&rsquo;m interested in</label>
           <select id="interest" name="interest" className={field} defaultValue="">
             <option value="" disabled>Select a treatment…</option>
             <option value="General enquiry">General enquiry</option>
@@ -94,14 +113,24 @@ export function EnquiryForm() {
         </div>
         <div className="md:col-span-2">
           <label htmlFor="message" className={label}>Message *</label>
-          <textarea id="message" name="message" rows={4} required minLength={2} className={field} placeholder="Tell us a little about what you're looking for…" />
+          <textarea id="message" name="message" rows={4} aria-invalid={!!errors.message} aria-describedby={errors.message ? 'message-err' : undefined} className={field} placeholder="Tell us a little about what you're looking for…" onChange={() => clearErr('message')} />
+          {errors.message && <p id="message-err" role="alert" className="mt-1.5 text-xs text-[var(--color-blush-deep)]">{errors.message}</p>}
         </div>
       </div>
+
+      {/* BLD-1168: word-for-word the ConsultForm opt-in. Both post to /api/consult,
+          which stamps the same MARKETING_CONSENT_VERSION as evidence of WHAT wording
+          was shown — and the same tick is what allows the hashed email to go to Meta
+          CAPI — so the two surfaces must not say different things. */}
+      <label className="mt-5 flex items-start gap-3 text-sm text-[var(--color-stone)]">
+        <input type="checkbox" checked={marketingOptIn} onChange={(e) => setMarketingOptIn(e.target.checked)} className="mt-1 h-4 w-4 accent-[var(--color-gold)]" />
+        Keep me updated with offers, events and skincare tips. We may also use your contact details, in hashed form, to show you our offers on social media — see our Privacy Policy.
+      </label>
 
       <div className="mt-6 flex flex-wrap items-center gap-4">
         <Button size="lg" type="submit" disabled={busy}>{busy ? 'Sending…' : <>Send enquiry <ArrowIcon /></>}</Button>
         <p className="text-sm text-[var(--color-stone)]">
-          Or call <a href={site.phoneHref} className="link-underline font-medium text-[var(--color-ink)]">{site.phone}</a>
+          Or call <PhoneLink className="link-underline font-medium text-[var(--color-ink)]" />
         </p>
       </div>
 
@@ -126,7 +155,7 @@ export function EnquiryForm() {
 
       <p className="mt-4 text-xs leading-relaxed text-[var(--color-stone)]">
         By submitting, you agree to be contacted about your enquiry. We never share your details. Read our{' '}
-        <Link href="/info/website-privacy-terms" className="underline hover:text-[var(--color-gold-deep)]">Privacy Policy</Link>.
+        <Link href="/info/privacy-policy" className="underline hover:text-[var(--color-gold-deep)]">Privacy Policy</Link>.
       </p>
     </form>
   );

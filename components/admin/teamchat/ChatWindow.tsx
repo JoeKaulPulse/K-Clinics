@@ -22,16 +22,28 @@ export function ChatWindow({ channelId, variant = 'docked', onRequestClose }: { 
   const [hasMore, setHasMore] = useState(true);
   const scrollRef = useRef<HTMLDivElement>(null);
   const cursor = useRef<string | null>(null);
+  // BLD-1439: the message list is a live region so incoming messages are spoken.
+  // It has to stay switched OFF for the two bulk inserts that aren't new traffic
+  // — the initial history load and "Load earlier" — or opening a conversation
+  // would read out its last 40 messages end to end. Announcements are enabled
+  // only once the opening batch has painted, and suppressed again around a
+  // pagination fetch (both state updates land in the same commit as the
+  // prepended messages, so the region is already off when they hit the DOM).
+  const [announce, setAnnounce] = useState(false);
 
   // Initial load.
   useEffect(() => {
     let on = true;
+    setAnnounce(false);
     fetch(`/api/admin/team-chat?op=messages&channelId=${channelId}`).then((r) => r.json()).then((j) => {
       if (!on || !j?.ok) return;
       setMessages(j.messages);
       cursor.current = j.messages.length ? j.messages[j.messages.length - 1].createdAt : null;
       setHasMore(j.messages.length >= 40);
-      requestAnimationFrame(() => scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight }));
+      requestAnimationFrame(() => {
+        scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight });
+        if (on) setAnnounce(true);
+      });
     });
     return () => { on = false; };
   }, [channelId]);
@@ -64,9 +76,11 @@ export function ChatWindow({ channelId, variant = 'docked', onRequestClose }: { 
     const j = await fetch(`/api/admin/team-chat?op=messages&channelId=${channelId}&before=${encodeURIComponent(first.createdAt)}`).then((r) => r.json());
     if (j?.ok) {
       const el = scrollRef.current; const prevH = el?.scrollHeight || 0;
+      // Older history is not new traffic — mute the live region for this insert.
+      setAnnounce(false);
       setMessages((prev) => [...j.messages.filter((m: ChatMessage) => !prev.some((p) => p.id === m.id)), ...prev]);
       setHasMore(j.messages.length >= 40);
-      requestAnimationFrame(() => { if (el) el.scrollTop = el.scrollHeight - prevH; });
+      requestAnimationFrame(() => { if (el) el.scrollTop = el.scrollHeight - prevH; setAnnounce(true); });
     }
   }
 
@@ -113,15 +127,15 @@ export function ChatWindow({ channelId, variant = 'docked', onRequestClose }: { 
           <p className="truncate text-sm font-medium">{channel.title}</p>
           <p className="truncate text-[0.65rem] text-[var(--color-gold-bright)]">{channel.kind === 'GROUP' ? `${channel.memberCount} members${channel.muted ? ' · muted' : ''}` : (channel.members.find((m) => m.id !== meId)?.title || 'Direct message')}</p>
         </div>
-        <button onClick={() => setMenu((v) => !v)} className="grid h-7 w-7 place-items-center rounded-full hover:bg-white/10" aria-label="Conversation options">⋯</button>
-        {docked && <button onClick={() => toggleMinimize(channelId)} className="grid h-7 w-7 place-items-center rounded-full hover:bg-white/10" aria-label="Minimize">—</button>}
-        <button onClick={() => (onRequestClose ? onRequestClose() : closeWindow(channelId))} className="grid h-7 w-7 place-items-center rounded-full hover:bg-white/10" aria-label="Close">✕</button>
+        <button onClick={() => setMenu((v) => !v)} className="grid h-7 w-7 place-items-center rounded-full hover:bg-[var(--color-porcelain)]/10" aria-label="Conversation options">⋯</button>
+        {docked && <button onClick={() => toggleMinimize(channelId)} className="grid h-7 w-7 place-items-center rounded-full hover:bg-[var(--color-porcelain)]/10" aria-label="Minimize">—</button>}
+        <button onClick={() => (onRequestClose ? onRequestClose() : closeWindow(channelId))} className="grid h-7 w-7 place-items-center rounded-full hover:bg-[var(--color-porcelain)]/10" aria-label="Close">✕</button>
         {menu && (
-          <div className="absolute right-2 top-11 z-[60] w-44 overflow-hidden rounded-[var(--radius-md)] border border-[var(--color-line)] bg-white text-[var(--color-ink)] shadow-[var(--shadow-lift)]">
+          <div className="absolute right-2 top-11 z-[60] w-44 overflow-hidden rounded-[var(--radius-md)] border border-[var(--color-line)] bg-[var(--color-porcelain)] text-[var(--color-ink)] shadow-[var(--shadow-lift)]">
             <button onClick={() => { void api({ op: 'mute', channelId, muted: !channel.muted }).then(refreshChannels); setMenu(false); }} className="block w-full px-3 py-2 text-left text-sm hover:bg-[var(--color-bone)]">{channel.muted ? 'Unmute' : 'Mute'} notifications</button>
             {channel.kind === 'GROUP' && <button onClick={() => { setManage('members'); setMenu(false); }} className="block w-full px-3 py-2 text-left text-sm hover:bg-[var(--color-bone)]">Members & add people</button>}
             {channel.kind === 'GROUP' && channel.myRole === 'OWNER' && <button onClick={() => { setManage('rename'); setMenu(false); }} className="block w-full px-3 py-2 text-left text-sm hover:bg-[var(--color-bone)]">Rename group</button>}
-            {channel.kind === 'GROUP' && <button onClick={() => { if (confirm('Leave this group?')) void api({ op: 'leave', channelId }).then(() => { closeWindow(channelId); refreshChannels(); }); setMenu(false); }} className="block w-full px-3 py-2 text-left text-sm text-[#b23b3b] hover:bg-[var(--color-bone)]">Leave group</button>}
+            {channel.kind === 'GROUP' && <button onClick={() => { if (confirm('Leave this group?')) void api({ op: 'leave', channelId }).then(() => { closeWindow(channelId); refreshChannels(); }); setMenu(false); }} className="block w-full px-3 py-2 text-left text-sm text-[var(--color-blush-deep)] hover:bg-[var(--color-bone)]">Leave group</button>}
           </div>
         )}
       </div>
@@ -129,7 +143,7 @@ export function ChatWindow({ channelId, variant = 'docked', onRequestClose }: { 
       {manage && <ManagePanel mode={manage} channelId={channelId} onDone={() => { setManage(null); void refreshChannels(); }} roster={roster} memberIds={channel.members.map((m) => m.id)} currentName={channel.title} />}
 
       {/* Messages */}
-      <div ref={scrollRef} className="flex-1 space-y-1 overflow-y-auto overflow-x-hidden px-3 py-3">
+      <div ref={scrollRef} role="log" aria-live={announce ? 'polite' : 'off'} aria-relevant="additions" className="flex-1 space-y-1 overflow-y-auto overflow-x-hidden px-3 py-3">
         {messages.length === 0 && (
           <div className="grid h-full place-items-center px-6 text-center">
             <div>
@@ -181,8 +195,8 @@ function MessageRow({ m, grouped, members, onReact, onReply, onDelete, onCreateT
         ) : (
           <>
             {m.body && (
-              <div className={`max-w-full whitespace-pre-wrap break-words rounded-[var(--radius-md)] px-3 py-1.5 text-left text-sm leading-snug ${mine ? 'bg-[var(--color-gold-deep)] text-white' : 'bg-white text-[var(--color-ink)]'}`}>
-                {parts.map((p, i) => p.mention ? <span key={i} className={`rounded px-0.5 font-medium ${mine ? 'bg-white/25' : 'bg-[var(--color-gold)]/20 text-[var(--color-gold-deep)]'}`}>{p.text}</span> : <span key={i}>{p.text}</span>)}
+              <div className={`max-w-full whitespace-pre-wrap break-words rounded-[var(--radius-md)] px-3 py-1.5 text-left text-sm leading-snug ${mine ? 'bg-[var(--color-gold-deep)] text-white' : 'bg-[var(--color-porcelain)] text-[var(--color-ink)]'}`}>
+                {parts.map((p, i) => p.mention ? <span key={i} className={`rounded px-0.5 font-medium ${mine ? 'bg-[var(--color-porcelain)]/25' : 'bg-[var(--color-gold)]/20 text-[var(--color-gold-deep)]'}`}>{p.text}</span> : <span key={i}>{p.text}</span>)}
               </div>
             )}
             {m.attachments.length > 0 && (
@@ -191,7 +205,7 @@ function MessageRow({ m, grouped, members, onReact, onReply, onDelete, onCreateT
                   a.kind === 'VIDEO'
                     ? <video key={a.id} src={a.url} controls className="max-h-48 max-w-[12rem] rounded-[var(--radius-md)] border border-[var(--color-line)]" />
                     : a.kind === 'FILE'
-                      ? <a key={a.id} href={a.url} target="_blank" rel="noreferrer" className="flex items-center gap-2 rounded-[var(--radius-md)] border border-[var(--color-line)] bg-white px-3 py-2 text-xs text-[var(--color-ink)] hover:border-[var(--color-gold)]">📄 <span className="max-w-[9rem] truncate">{a.name || 'File'}</span></a>
+                      ? <a key={a.id} href={a.url} target="_blank" rel="noreferrer" className="flex items-center gap-2 rounded-[var(--radius-md)] border border-[var(--color-line)] bg-[var(--color-porcelain)] px-3 py-2 text-xs text-[var(--color-ink)] hover:border-[var(--color-gold)]">📄 <span className="max-w-[9rem] truncate">{a.name || 'File'}</span></a>
                       : <a key={a.id} href={a.url} target="_blank" rel="noreferrer"><img src={a.url} alt={a.name || ''} className="max-h-48 max-w-[12rem] rounded-[var(--radius-md)] border border-[var(--color-line)] object-cover" /></a>
                 ))}
               </div>
@@ -201,7 +215,7 @@ function MessageRow({ m, grouped, members, onReact, onReply, onDelete, onCreateT
         {m.reactions.length > 0 && (
           <div className={`mt-1 flex flex-wrap gap-1 ${mine ? 'justify-end' : ''}`}>
             {m.reactions.map((r) => (
-              <button key={r.emoji} onClick={() => onReact(m.id, r.emoji)} className={`flex items-center gap-0.5 rounded-full border px-1.5 py-0.5 text-[0.7rem] ${r.mine ? 'border-[var(--color-gold)] bg-[var(--color-gold)]/15' : 'border-[var(--color-line)] bg-white'}`}>{r.emoji}<span className="text-[var(--color-stone)]">{r.count}</span></button>
+              <button key={r.emoji} onClick={() => onReact(m.id, r.emoji)} className={`flex items-center gap-0.5 rounded-full border px-1.5 py-0.5 text-[0.7rem] ${r.mine ? 'border-[var(--color-gold)] bg-[var(--color-gold)]/15' : 'border-[var(--color-line)] bg-[var(--color-porcelain)]'}`}>{r.emoji}<span className="text-[var(--color-stone)]">{r.count}</span></button>
             ))}
           </div>
         )}
@@ -215,7 +229,7 @@ function MessageRow({ m, grouped, members, onReact, onReply, onDelete, onCreateT
             the empty margin (mine→right, theirs→left) so it never spills past the
             window edge and triggers a horizontal scrollbar. */}
         {!m.deletedAt && (
-          <div className={`absolute -top-3 z-20 flex items-center gap-0.5 rounded-full border border-[var(--color-line)] bg-white px-1 py-0.5 opacity-0 shadow-[var(--shadow-lift)] transition-opacity group-hover:opacity-100 ${mine ? 'right-0' : 'left-0'}`}>
+          <div className={`absolute -top-3 z-20 flex items-center gap-0.5 rounded-full border border-[var(--color-line)] bg-[var(--color-porcelain)] px-1 py-0.5 opacity-0 shadow-[var(--shadow-lift)] transition-opacity group-hover:opacity-100 ${mine ? 'right-0' : 'left-0'}`}>
             {QUICK_REACTIONS.slice(0, 3).map((e) => <button key={e} onClick={() => onReact(m.id, e)} className="grid h-7 w-7 place-items-center rounded-full text-sm hover:bg-[var(--color-bone)]">{e}</button>)}
             <div className="relative">
               <button onClick={() => setPicker((v) => !v)} className={`${ACT} text-xs`} aria-label="More reactions">＋</button>
@@ -239,10 +253,10 @@ function ManagePanel({ mode, channelId, onDone, roster, memberIds, currentName }
   const [picked, setPicked] = useState<string[]>([]);
   const candidates = roster.filter((r) => !memberIds.includes(r.id));
   return (
-    <div className="border-b border-[var(--color-line)] bg-white px-3 py-2.5">
+    <div className="border-b border-[var(--color-line)] bg-[var(--color-porcelain)] px-3 py-2.5">
       {mode === 'rename' ? (
         <div className="flex items-center gap-2">
-          <input value={name} onChange={(e) => setName(e.target.value)} className="flex-1 rounded-[var(--radius-sm)] border border-[var(--color-line)] px-2 py-1.5 text-sm outline-none focus:border-[var(--color-gold)]" />
+          <input value={name} onChange={(e) => setName(e.target.value)} className="flex-1 rounded-[var(--radius-sm)] border border-[var(--color-line)] px-2 py-1.5 text-sm outline-none focus:border-[var(--color-gold-deep)] focus-visible:ring-2 focus-visible:ring-[var(--color-gold-deep)]" />
           <button onClick={() => void api({ op: 'rename', channelId, name }).then(onDone)} className="rounded-full bg-[var(--color-gold-deep)] px-3 py-1.5 text-xs font-medium text-white">Save</button>
           <button onClick={onDone} className="text-xs text-[var(--color-stone)]">Cancel</button>
         </div>

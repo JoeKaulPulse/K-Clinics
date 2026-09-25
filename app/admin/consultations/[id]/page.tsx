@@ -27,7 +27,9 @@ export default async function ConsultationDetail({ params }: { params: Promise<{
   const session = await getSession();
   if (!sessionCan(session, 'consultations.view')) redirect('/admin');
 
-  const consult = await getConsultation(id);
+  // BLD-1711: same practitioner scoping as the client/booking detail pages (BLD-1693).
+  const practitionerId = session && session.role === 'PRACTITIONER' ? session.sub : undefined;
+  const consult = await getConsultation(id, { practitionerId });
   if (!consult) notFound();
 
   const clinical = sessionCan(session, 'clients.clinical.view');
@@ -36,12 +38,21 @@ export default async function ConsultationDetail({ params }: { params: Promise<{
 
   // BLD-913: bodies are encrypted at rest; decClinical tolerates legacy
   // plaintext rows until the daily backfill has swept them.
-  const notes = consult.notes.map((n) => ({
-    id: n.id,
-    body: decClinical(n.body) ?? '',
-    author: n.author,
-    createdAt: n.createdAt.toISOString(),
-  }));
+  // BLD-1199: only decrypt/expose bodies to staff with clients.clinical.view.
+  const notes = clinical
+    ? consult.notes.map((n) => ({
+        id: n.id,
+        body: decClinical(n.body) ?? '',
+        author: n.author,
+        createdAt: n.createdAt.toISOString(),
+      }))
+    : [];
+  // BLD-1240/1392: opening a consultation with clinical access decrypts
+  // concerns/notes for display — audit the view (throttled per viewer/client/hour).
+  if (clinical && session?.email) {
+    const { auditClinicalView } = await import('@/lib/clinical-view-audit');
+    auditClinicalView({ actor: session.email, actorRole: session.role, clientId: consult.clientId, surface: 'consultation-detail' });
+  }
 
   return (
     <AdminShell user={session?.email} can={can}>
@@ -63,7 +74,9 @@ export default async function ConsultationDetail({ params }: { params: Promise<{
 
       <div className="mt-8 grid gap-8 lg:grid-cols-[1.5fr_1fr]">
         <div className="space-y-8">
-          {/* Team notes with @-mentions — staff only */}
+          {/* Team notes with @-mentions — staff only; bodies can hold clinical
+              detail (BLD-913), so reading/writing requires clients.clinical.view
+              on top of consultations.view (BLD-1199). */}
           <section>
             <div className="mb-3 flex items-center gap-2">
               <h2 className="font-[family-name:var(--font-display)] text-xl">Team notes</h2>
@@ -71,7 +84,13 @@ export default async function ConsultationDetail({ params }: { params: Promise<{
                 Staff only
               </span>
             </div>
-            <ConsultationNotes consultationId={consult.id} initial={notes} />
+            {clinical ? (
+              <ConsultationNotes consultationId={consult.id} initial={notes} />
+            ) : (
+              <p className="text-sm text-[var(--color-stone)]">
+                You don&apos;t have permission to view clinical notes for this consultation.
+              </p>
+            )}
           </section>
 
           {/* Client's original message */}

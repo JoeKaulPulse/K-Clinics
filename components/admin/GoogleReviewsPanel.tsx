@@ -28,7 +28,7 @@ function CopyField({ label, value }: { label: string; value: string }) {
     <div>
       <p className="text-[0.65rem] font-semibold uppercase tracking-wide text-[var(--color-stone)]">{label}</p>
       <div className="mt-1 flex items-center gap-2">
-        <code className="min-w-0 flex-1 truncate rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-2.5 py-1.5 text-xs text-[var(--color-ink)]">{value}</code>
+        <code className="min-w-0 flex-1 truncate rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-porcelain)] px-2.5 py-1.5 text-xs text-[var(--color-ink)]">{value}</code>
         <button
           onClick={() => { navigator.clipboard?.writeText(value).then(() => { setCopied(true); setTimeout(() => setCopied(false), 1500); }).catch(() => {}); }}
           className="shrink-0 rounded-full border border-[var(--color-line)] px-3 py-1.5 text-xs font-medium hover:bg-[var(--color-bone)]"
@@ -49,7 +49,7 @@ function GoogleSetupGuide({ configured, redirectUri }: { configured: boolean; re
         <li>Click <strong>Connect Google Business</strong> — we auto-detect your location and import reviews. No numeric IDs needed.</li>
       </ol>
       <div className="mt-3"><CopyField label="Authorised redirect URI (paste into the OAuth client)" value={redirectUri} /></div>
-      {!configured && <p className="mt-3 rounded-[var(--radius-sm)] bg-amber-50 px-3 py-2 text-xs text-amber-800">Waiting on <code>GOOGLE_CLIENT_ID</code> + <code>GOOGLE_CLIENT_SECRET</code> in the environment (then redeploy) — the Connect button appears once they’re set.</p>}
+      {!configured && <p className="mt-3 rounded-[var(--radius-sm)] bg-[var(--color-gold)]/10 px-3 py-2 text-xs text-[var(--color-gold-deep)]">Waiting on <code>GOOGLE_CLIENT_ID</code> + <code>GOOGLE_CLIENT_SECRET</code> in the environment (then redeploy) — the Connect button appears once they’re set.</p>}
     </div>
   );
 }
@@ -108,10 +108,10 @@ function LocationSetup({ onReady }: { onReady: () => void }) {
 
   if (state === 'error') {
     return (
-      <div className="mt-4 rounded-[var(--radius-md)] border border-[var(--color-line)] bg-amber-50 p-4">
-        <p className="text-sm font-medium text-amber-900">We couldn’t reach Google just now</p>
-        {err && <p role="alert" aria-live="assertive" className="mt-1 text-sm text-amber-800">{err}</p>}
-        <button onClick={load} disabled={busy} className="mt-3 rounded-full border border-amber-300 px-4 py-1.5 text-xs font-medium text-amber-900 hover:bg-amber-100 disabled:opacity-50">Try again</button>
+      <div className="mt-4 rounded-[var(--radius-md)] border border-[var(--color-line)] bg-[var(--color-gold)]/8 p-4">
+        <p className="text-sm font-medium text-[var(--color-gold-deep)]">We couldn’t reach Google just now</p>
+        {err && <p role="alert" aria-live="assertive" className="mt-1 text-sm text-[var(--color-gold-deep)]">{err}</p>}
+        <button onClick={load} disabled={busy} className="mt-3 rounded-full border border-[var(--color-gold)]/50 px-4 py-1.5 text-xs font-medium text-[var(--color-gold-deep)] hover:bg-[var(--color-gold)]/15 disabled:opacity-50">Try again</button>
       </div>
     );
   }
@@ -122,7 +122,7 @@ function LocationSetup({ onReady }: { onReady: () => void }) {
     return (
       <div className="mt-4 rounded-[var(--radius-md)] border border-[var(--color-line)] bg-[var(--color-bone)]/50 p-4">
         <p className="text-sm font-medium text-[var(--color-ink)]">We found your business</p>
-        <div className="mt-2 rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-3 py-2">
+        <div className="mt-2 rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-porcelain)] px-3 py-2">
           <p className="text-sm font-medium">{l.title}</p>
           {l.address && <p className="text-xs text-[var(--color-stone)]">{l.address}</p>}
         </div>
@@ -137,7 +137,7 @@ function LocationSetup({ onReady }: { onReady: () => void }) {
       <p className="text-sm font-medium text-[var(--color-ink)]">Which location are these reviews for?</p>
       <div className="mt-2 space-y-2">
         {locations.map((l) => (
-          <label key={l.ref} className={`flex cursor-pointer items-start gap-3 rounded-[var(--radius-sm)] border px-3 py-2 ${chosen === l.ref ? 'border-[var(--color-gold)] bg-white' : 'border-[var(--color-line)] bg-white/60'}`}>
+          <label key={l.ref} className={`flex cursor-pointer items-start gap-3 rounded-[var(--radius-sm)] border px-3 py-2 ${chosen === l.ref ? 'border-[var(--color-gold)] bg-[var(--color-porcelain)]' : 'border-[var(--color-line)] bg-[var(--color-porcelain)]/60'}`}>
             <input type="radio" name="gloc" checked={chosen === l.ref} onChange={() => setChosen(l.ref)} className="mt-1 accent-[var(--color-gold-deep)]" />
             <span className="min-w-0">
               <span className="block text-sm font-medium">{l.title}</span>
@@ -187,6 +187,7 @@ export function GoogleReviewsPanel({ connected, configured, locationSet, reviews
           ) : connected ? (
             <button onClick={disconnect} disabled={!!busy} className="rounded-full border border-[var(--color-line)] px-4 py-2 text-sm text-[var(--color-stone)] hover:border-[var(--color-blush)]">Disconnect</button>
           ) : configured ? (
+            // eslint-disable-next-line @next/next/no-html-link-for-pages -- OAuth redirect endpoint, must be a full navigation
             <a href="/api/admin/integrations/google-business/connect" className="rounded-full bg-[var(--color-gold-deep)] px-4 py-2 text-sm font-medium text-white">Connect Google Business</a>
           ) : null}
         </div>
@@ -219,7 +220,7 @@ function ManualAdd({ onAdded }: { onAdded: () => void }) {
   const [date, setDate] = useState('');
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState('');
-  const input = 'w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-porcelain)] px-3 py-1.5 text-sm outline-none focus:border-[var(--color-gold)]';
+  const input = 'w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-porcelain)] px-3 py-1.5 text-sm outline-none focus:border-[var(--color-gold-deep)] focus-visible:ring-2 focus-visible:ring-[var(--color-gold-deep)]';
 
   async function add() {
     setBusy(true); setErr('');
@@ -235,7 +236,7 @@ function ManualAdd({ onAdded }: { onAdded: () => void }) {
     );
   }
   return (
-    <div className="mt-4 space-y-2 rounded-[var(--radius-md)] border border-[var(--color-line)] bg-white p-4">
+    <div className="mt-4 space-y-2 rounded-[var(--radius-md)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-4">
       <p className="text-sm font-medium text-[var(--color-ink)]">Add a Google review</p>
       <p className="text-xs text-[var(--color-stone)]">Copy each one from your Google Business dashboard. It publishes on the website immediately — handy while Google approves the automatic import.</p>
       <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Reviewer name (e.g. Jane D.)" aria-label="Reviewer name" className={input} />
@@ -245,7 +246,7 @@ function ManualAdd({ onAdded }: { onAdded: () => void }) {
         </select>
         <input type="date" value={date} onChange={(e) => setDate(e.target.value)} className={input + ' w-auto'} />
       </div>
-      <textarea value={comment} onChange={(e) => setComment(e.target.value)} rows={3} placeholder="Review text" aria-label="Review text" className="w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-porcelain)] px-3 py-2 text-sm outline-none focus:border-[var(--color-gold)]" />
+      <textarea value={comment} onChange={(e) => setComment(e.target.value)} rows={3} placeholder="Review text" aria-label="Review text" className="w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-porcelain)] px-3 py-2 text-sm outline-none focus:border-[var(--color-gold-deep)] focus-visible:ring-2 focus-visible:ring-[var(--color-gold-deep)]" />
       {err && <p role="alert" aria-live="assertive" className="text-xs text-[var(--color-blush-deep)]">{err}</p>}
       <div className="flex gap-2">
         <button onClick={add} disabled={busy || !comment.trim()} className="rounded-full bg-[var(--color-ink)] px-4 py-1.5 text-xs text-[var(--color-porcelain)] disabled:opacity-50">{busy ? 'Adding…' : 'Add review'}</button>
@@ -285,10 +286,10 @@ function BulkAdd({ onAdded }: { onAdded: () => void }) {
     return <button onClick={() => setOpen(true)} className="mt-2 rounded-full border border-[var(--color-line)] px-4 py-2 text-sm font-medium text-[var(--color-stone)] hover:bg-[var(--color-bone)]">Paste many at once</button>;
   }
   return (
-    <div className="mt-3 space-y-2 rounded-[var(--radius-md)] border border-[var(--color-line)] bg-white p-4">
+    <div className="mt-3 space-y-2 rounded-[var(--radius-md)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-4">
       <p className="text-sm font-medium text-[var(--color-ink)]">Paste your existing Google reviews</p>
       <p className="text-xs text-[var(--color-stone)]">One per line: <code className="text-[0.7rem]">rating | name | date | review text</code>. Date is optional. They publish on the site immediately.</p>
-      <textarea value={text} onChange={(e) => setText(e.target.value)} rows={8} aria-label="Reviews to import" placeholder={'5 | Jane D. | 2025-01-10 | Brilliant, the whole team were so kind.\n5 | Tom R. | 2025-02-02 | Highly recommend — natural results.'} className="w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-porcelain)] px-3 py-2 font-[family-name:var(--font-mono)] text-xs outline-none focus:border-[var(--color-gold)]" />
+      <textarea value={text} onChange={(e) => setText(e.target.value)} rows={8} aria-label="Reviews to import" placeholder={'5 | Jane D. | 2025-01-10 | Brilliant, the whole team were so kind.\n5 | Tom R. | 2025-02-02 | Highly recommend — natural results.'} className="w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-porcelain)] px-3 py-2 font-[family-name:var(--font-mono)] text-xs outline-none focus:border-[var(--color-gold-deep)] focus-visible:ring-2 focus-visible:ring-[var(--color-gold-deep)]" />
       {msg && <p className="text-xs text-[var(--color-blush-deep)]">{msg}</p>}
       <div className="flex gap-2">
         <button onClick={submit} disabled={busy} className="rounded-full bg-[var(--color-ink)] px-4 py-1.5 text-xs text-[var(--color-porcelain)] disabled:opacity-50">{busy ? 'Importing…' : 'Import all'}</button>
@@ -322,7 +323,7 @@ function GoogleReviewCard({ review, onChange }: { review: GReview; onChange: () 
   }
 
   return (
-    <div className="rounded-[var(--radius-md)] border border-[var(--color-line)] bg-white p-4">
+    <div className="rounded-[var(--radius-md)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-4">
       <div className="flex flex-wrap items-center gap-2">
         <Stars n={review.starRating} />
         <span className="text-sm font-medium">{review.reviewerName || 'Google reviewer'}</span>
@@ -339,7 +340,7 @@ function GoogleReviewCard({ review, onChange }: { review: GReview; onChange: () 
 
       {open ? (
         <div className="mt-3">
-          <textarea value={text} onChange={(e) => setText(e.target.value)} rows={3} placeholder="Write a public reply…" aria-label="Public reply" className="w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-porcelain)] px-3 py-2 text-sm outline-none focus:border-[var(--color-gold)]" />
+          <textarea value={text} onChange={(e) => setText(e.target.value)} rows={3} placeholder="Write a public reply…" aria-label="Public reply" className="w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-porcelain)] px-3 py-2 text-sm outline-none focus:border-[var(--color-gold-deep)] focus-visible:ring-2 focus-visible:ring-[var(--color-gold-deep)]" />
           {err && <p role="alert" aria-live="assertive" className="mt-1 text-xs text-[var(--color-blush-deep)]">{err}</p>}
           <div className="mt-2 flex gap-2">
             <button onClick={send} disabled={busy || !text.trim()} className="rounded-full bg-[var(--color-ink)] px-4 py-1.5 text-xs text-[var(--color-porcelain)] disabled:opacity-50">{busy ? 'Posting…' : 'Post reply to Google'}</button>

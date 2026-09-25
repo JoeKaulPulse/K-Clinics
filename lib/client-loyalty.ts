@@ -135,9 +135,30 @@ export async function clientLedger(clientId: string, limit = 50) {
 
 // ── Earning ──────────────────────────────────────────────────────────────────
 
-/** True spend (pence) for a booking: the amount charged, else the listed price. */
-function bookingSpendPence(b: { chargedPence: number | null; pricePence: number }): number {
-  return b.chargedPence && b.chargedPence > 0 ? b.chargedPence : b.pricePence;
+/** True spend (pence) for a booking: the amount charged (plus any gift-voucher
+ *  portion not already folded into that charge), else the listed price.
+ *
+ *  BLD-1202: for a PARTIAL voucher application, chargedPence is deliberately
+ *  just the card/terminal/pay-link REMAINDER (BLD-882) — the voucher-covered
+ *  portion lives separately in giftVoucherPence and must be added back in, or
+ *  it earns zero loyalty points despite being real client spend. A booking
+ *  settled ENTIRELY by voucher already carries the whole amount in
+ *  chargedPence (chargePaymentIntentId 'ext_gift-voucher' — see the 'voucher'
+ *  case in app/api/admin/bookings/session/route.ts), so that case is excluded
+ *  here to avoid double-counting the same money twice. */
+export function bookingSpendPence(b: { chargedPence: number | null; pricePence: number; giftVoucherPence?: number | null; chargePaymentIntentId?: string | null }): number {
+  const charged = b.chargedPence ?? 0;
+  // BLD-1202 (review): nothing charged yet — fall back to the list price, as
+  // before. awardClientSpend fires on COMPLETION as well as on charge
+  // ("whichever happens first", and it is idempotent per booking, so the later
+  // charge never tops it up), and pricePence is the full undiscounted figure
+  // that already covers whatever the voucher will pay. Adding the voucher to a
+  // zero charge instead would make a partially-vouchered booking earn points on
+  // the voucher slice alone — an UNDER-award, the very bug BLD-1202 set out to
+  // fix, on the path that runs first in practice.
+  if (charged <= 0) return b.pricePence;
+  const voucher = b.chargePaymentIntentId === 'ext_gift-voucher' ? 0 : (b.giftVoucherPence ?? 0);
+  return charged + voucher;
 }
 
 /** Award loyalty points for a completed/charged booking (1 pt per £1). Idempotent
@@ -146,7 +167,7 @@ function bookingSpendPence(b: { chargedPence: number | null; pricePence: number 
 export async function awardClientSpend(bookingId: string): Promise<void> {
   const b = await db.booking.findUnique({
     where: { id: bookingId },
-    select: { id: true, clientId: true, treatmentTitle: true, pricePence: true, chargedPence: true },
+    select: { id: true, clientId: true, treatmentTitle: true, pricePence: true, chargedPence: true, giftVoucherPence: true, chargePaymentIntentId: true },
   });
   if (!b) return;
 
@@ -306,13 +327,14 @@ async function maybeQualifyReferral(clientId: string, bookingId: string, spendPe
  *  pence discounted. Replaces any prior redemption on the same booking. */
 export async function redeemPointsOnBooking(clientId: string, bookingId: string, points: number): Promise<{ ok: boolean; error?: string; discountPence?: number }> {
   try {
-    const b = await db.booking.findUnique({ where: { id: bookingId }, select: { id: true, clientId: true, status: true, pricePence: true, treatmentTitle: true } });
+    const b = await db.booking.findUnique({ where: { id: bookingId }, select: { id: true, clientId: true, status: true, pricePence: true, giftVoucherPence: true, treatmentTitle: true } });
     if (!b || b.clientId !== clientId) return { ok: false, error: 'Booking not found.' };
     if (b.status === 'COMPLETED' || b.status === 'CANCELLED' || b.status === 'NO_SHOW') return { ok: false, error: 'This booking can no longer be changed.' };
     if (b.pricePence <= 0) return { ok: false, error: 'Points can’t be applied to this booking.' };
 
     const want = Math.max(0, Math.floor(points / 100) * 100); // whole pounds only
-    const capPoints = Math.floor(Math.floor(b.pricePence * LOYALTY.maxRedeemFraction) / LOYALTY.pointValuePence);
+    const netPricePence = Math.max(0, b.pricePence - (b.giftVoucherPence ?? 0));
+    const capPoints = Math.floor(Math.floor(netPricePence * LOYALTY.maxRedeemFraction) / LOYALTY.pointValuePence);
 
     // Read balance and write the ledger + booking atomically (Serializable) so
     // concurrent redemptions can't both pass the balance check and overspend.
@@ -348,14 +370,36 @@ export async function redeemPointsOnBooking(clientId: string, bookingId: string,
  *  refunded client kept the points they earned on money that went back.
  *  Pro-rata for partial refunds; idempotent by ledger arithmetic (negative
  *  SPEND rows on the booking record what has already been reversed, so a
- *  webhook redelivery or a second partial refund only reverses the delta). */
-export async function reverseSpendPoints(bookingId: string, totalRefundedPence: number, chargedPence: number): Promise<void> {
+ *  webhook redelivery or a second partial refund only reverses the delta).
+ *
+ *  BLD-1521: points are earned on bookingSpendPence() — chargedPence PLUS the
+ *  voucher-covered portion for a partial-voucher booking (BLD-1202) — but the
+ *  reversal ratio used to divide by chargedPence alone, over-clawing points on
+ *  any partial refund of a voucher-part-paid booking (e.g. a £100 booking, £30
+ *  by voucher / £70 by card, earns 100 pts; a £35 card-only partial refund
+ *  should return 35 pts, not the 50 the old chargedPence-only ratio gave).
+ *  The voucher-covered portion only itself comes back to the client when the
+ *  card portion is refunded IN FULL (booking-actions.ts / the webhook restore
+ *  the voucher only when `fully` is true) — so the voucher slice only counts
+ *  toward "money returned" once totalRefundedPence has reached chargedPence,
+ *  matching bookingSpendPence()'s earn-side accounting exactly. */
+export async function reverseSpendPoints(
+  bookingId: string,
+  totalRefundedPence: number,
+  b: { chargedPence: number | null; giftVoucherPence?: number | null; chargePaymentIntentId?: string | null },
+): Promise<void> {
+  const chargedPence = b.chargedPence ?? 0;
   if (chargedPence <= 0 || totalRefundedPence <= 0) return;
+  const spend = bookingSpendPence({ ...b, chargedPence, pricePence: 0 });
+  if (spend <= 0) return;
   const rows = await db.clientPoints.findMany({ where: { bookingId, category: 'SPEND' }, select: { points: true, clientId: true } });
   if (!rows.length) return;
   const earned = rows.filter((r) => r.points > 0).reduce((s, r) => s + r.points, 0);
   const reversed = -rows.filter((r) => r.points < 0).reduce((s, r) => s + r.points, 0);
-  const shouldReverse = Math.floor(earned * Math.min(1, totalRefundedPence / chargedPence));
+  const voucherPortion = b.chargePaymentIntentId === 'ext_gift-voucher' ? 0 : (b.giftVoucherPence ?? 0);
+  const fullyRefunded = totalRefundedPence >= chargedPence;
+  const effectiveReturnedPence = totalRefundedPence + (fullyRefunded ? voucherPortion : 0);
+  const shouldReverse = Math.floor(earned * Math.min(1, effectiveReturnedPence / spend));
   const delta = shouldReverse - reversed;
   if (delta <= 0 || !rows[0]) return;
   await awardClientPoints({ clientId: rows[0].clientId, points: -delta, category: 'SPEND', reason: 'Points reversed — payment refunded', bookingId, awardedBy: 'system' });

@@ -4,6 +4,9 @@ import { crmEnabled } from '@/lib/crm';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
+// BLD-1503: matches the Stripe webhook's explicit 60s (email sending can take
+// up to 30s under Resend's rate cap) — this route can hit the same slowdown.
+export const maxDuration = 60;
 
 // Resend delivery webhook → records open / click / bounce / complaint against the
 // EmailEvent (matched by provider id) so the email dashboard can show real rates.
@@ -13,8 +16,13 @@ function verify(secret: string, headers: Headers, body: string): boolean {
     const id = headers.get('svix-id'); const ts = headers.get('svix-timestamp'); const sig = headers.get('svix-signature');
     if (!id || !ts || !sig) return false;
     const key = Buffer.from(secret.replace(/^whsec_/, ''), 'base64');
-    const expected = crypto.createHmac('sha256', key).update(`${id}.${ts}.${body}`).digest('base64');
-    return sig.split(' ').some((s) => s.split(',')[1] === expected);
+    const expected = Buffer.from(crypto.createHmac('sha256', key).update(`${id}.${ts}.${body}`).digest('base64'));
+    // Constant-time compare against every candidate signature (Svix sends one per
+    // active secret) — a plain `===` would leak a timing oracle on the signature.
+    return sig.split(' ').some((s) => {
+      const provided = Buffer.from(s.split(',')[1] || '');
+      return provided.length === expected.length && crypto.timingSafeEqual(provided, expected);
+    });
   } catch { return false; }
 }
 
@@ -47,7 +55,18 @@ export async function POST(req: Request) {
     'email.complained': { complainedAt: now },
   };
   const data = map[evt.type];
-  if (data) await db.emailEvent.updateMany({ where: { providerId }, data }).catch(() => {});
+  if (data) {
+    try {
+      await db.emailEvent.updateMany({ where: { providerId }, data });
+    } catch (e) {
+      // Same reasoning as the unsubscribe write below (PRJ-918.7): a silent failure
+      // here leaves delivery/open/click/bounce status stale with no operator
+      // visibility. Surface it and return 500 so Resend retries.
+      console.error('[resend webhook] emailEvent update failed', e);
+      Sentry.captureException(e, { tags: { eventType: evt.type } });
+      return new Response('emailEvent update failed', { status: 500 });
+    }
+  }
 
   // Record which link was clicked (per-campaign), for the link breakdown.
   if (evt.type === 'email.clicked' && evt.data?.click?.link) {

@@ -19,7 +19,8 @@ export async function POST(req: Request) {
   try {
     const { db } = await import('@/lib/db');
     await db.adminUser.update({ where: { id: session.sub }, data: { preferredDashboardView: view } });
-  } catch {
+  } catch (e) {
+    console.error('[preferences] save failed', e);
     return NextResponse.json({ ok: false, error: 'Could not save your preference.' }, { status: 500 });
   }
   return NextResponse.json({ ok: true, view });

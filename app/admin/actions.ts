@@ -56,6 +56,14 @@ export async function eraseClientData(clientId: string) {
         phone: null, dob: null, notes: null, allergies: null, medicalFlag: null, medicalFlagSetBy: null, medicalFlagAt: null,
         marketingOptIn: false, unsubscribed: true, portalActive: false, passwordHash: null,
         resetTokenHash: null, resetTokenExp: null,
+        // BLD-1797: the passwordless account-invite token now lives in its own
+        // columns (see lib/client-auth.ts) — clear it here too.
+        inviteTokenHash: null, inviteTokenExp: null,
+        // BLD-1518: signupIp (personal data) and the patch-test outcome
+        // (special-category health data) were left untouched by erasure.
+        // BLD-1846 added patchTestRecordedAt (the audit-entry timestamp,
+        // separate from the test date) — cleared here too.
+        signupIp: null, patchTestResult: null, patchTestDate: null, patchTestSetBy: null, patchTestRecordedAt: null,
         // BLD-912: leaderboardOptIn:true clients are queried onto the public
         // /membership leaderboard by photo+name, and concerns/genderSelfDescribe
         // are free-text special-category-adjacent fields — none had a retention
@@ -124,11 +132,17 @@ export async function eraseClientData(clientId: string) {
     // no financial retention basis, safe to hard-delete.
     db.appointment.deleteMany({ where: { clientId } }),
     // Null fingerprint fields in DiscountClaim — re-identifiable without retention basis.
-    db.discountClaim.updateMany({ where: { clientId }, data: { emailNorm: 'erased', phoneNorm: null, nameDobKey: null } }),
+    // BLD-1518: ip (the claimant's IP address) was left in place alongside these.
+    db.discountClaim.updateMany({ where: { clientId }, data: { emailNorm: 'erased', phoneNorm: null, nameDobKey: null, ip: null } }),
     // Strip PII from retail Orders (email/name/phone/address) — keep order number
     // and amounts for Xero/HMRC basis. Order.clientId is a nullable String set at
-    // checkout (no formal FK relation), so we match on it directly.
-    db.order.updateMany({ where: { clientId }, data: { name: 'Erased', email: erasedEmail, phone: null, shipName: null, shipLine1: null, shipLine2: null, shipCity: null, shipPostcode: null } }),
+    // checkout (no formal FK relation), so we match on it directly. BLD-1879:
+    // guest orders (POS sales, which never create a Client row) leave clientId
+    // null with only the order's own email set, so also match those by this
+    // client's stored address. Guest rows only (clientId: null), so an order
+    // linked to a different account is never touched; case-insensitive because
+    // POS saves the email as typed (same as the chat/bookingIntent matches here).
+    db.order.updateMany({ where: { OR: [{ clientId }, { clientId: null, email: { equals: client.email, mode: 'insensitive' } }] }, data: { name: 'Erased', email: erasedEmail, phone: null, shipName: null, shipLine1: null, shipLine2: null, shipCity: null, shipPostcode: null } }),
     // GiftVouchers claimed by this client — strip purchaser + recipient PII.
     db.giftVoucher.updateMany({ where: { claimedByClientId: clientId }, data: { purchaserName: 'Erased', purchaserEmail: erasedEmail, recipientName: null, recipientEmail: null, message: null, shipName: null, shipLine1: null, shipLine2: null, shipCity: null, shipPostcode: null } }),
     // GiftVouchers purchased by this client (email-matched; no purchaserClientId FK).
@@ -150,6 +164,13 @@ export async function eraseClientData(clientId: string) {
     // location nulled, leaving only the anonymised safety fact (category, severity,
     // RIDDOR flag, date). Documented in docs/data-protection/retention-schedule.md.
     db.incident.updateMany({ where: { clientId }, data: { descriptionEnc: encClinical(JSON.stringify({ redacted: 'client-erased' })), location: null } }),
+    // BLD-1572: staff-recorded debts (ClientDebt) are RETAINED — an amount owed
+    // is a financial fact with the same HMRC basis as the bookings above, and
+    // the relation is SetNull so the row outlives the client either way. But
+    // `reason` is staff-typed free text that routinely names the person or what
+    // they were treated for, so it gets the Incident treatment: keep the
+    // amount/date, strip the narrative.
+    db.clientDebt.updateMany({ where: { clientId }, data: { reason: 'Redacted — client erased' } }),
     // PRJ-1032.17: BookingIntent (abandoned-checkout funnel) captures the person's
     // email for the finish-your-booking nudge. Guest rows aren't reached by any FK
     // and have no retention basis once erased — delete by email (mirrors the
@@ -192,9 +213,20 @@ export async function eraseClientData(clientId: string) {
       stripeFailure = true;
     }
   }
+  // BLD-1291: academy portfolio cases photographing this client — real clinical
+  // photos, reachable only via the staff-linked clientId. Runs after the main
+  // transaction (blob deletion is an external call); a blob-store failure is
+  // surfaced in the audit note for manual follow-up, the DB rows are gone
+  // regardless.
+  let portfolioResult = { entries: 0, blobsFailed: 0 };
+  try {
+    const { erasePortfolioForClient } = await import('@/lib/portfolio');
+    portfolioResult = await erasePortfolioForClient(clientId);
+  } catch (e) { console.error('[erase] portfolio erasure failed (recorded in audit):', (e as Error)?.message); portfolioResult.blobsFailed = -1; }
   const failureNote = [
     calendarFailures ? `${calendarFailures} synced calendar event(s) could not be removed` : null,
     stripeFailure ? 'Stripe customer record could not be scrubbed' : null,
+    portfolioResult.blobsFailed ? `${portfolioResult.blobsFailed === -1 ? 'portfolio erasure errored' : `${portfolioResult.blobsFailed} portfolio photo file(s) could not be deleted from storage`}` : null,
   ].filter(Boolean).join('; ');
   await logAudit({ action: 'CLIENT_ERASED', actor: session.email, actorRole: session.role, clientId, summary: `Client personal + special-category data erased across all records (GDPR right-to-erasure)${failureNote ? ` — ${failureNote}, follow up manually` : ''}`, meta: (calendarFailures || stripeFailure) ? { calendarFailures, stripeFailure } : undefined });
   try {
@@ -241,6 +273,10 @@ export async function deleteClient(clientId: string, confirm: string) {
   // wipes them outright. Redact the encrypted narrative first, the same way
   // eraseClientData() already does, so the anonymised safety fact survives.
   await db.incident.updateMany({ where: { clientId }, data: { descriptionEnc: encClinical(JSON.stringify({ redacted: 'client-deleted' })), location: null } });
+  // BLD-1572: same for staff-recorded debts — ClientDebt.clientId is SetNull, so
+  // the row (and its staff-typed free-text reason) would otherwise survive the
+  // hard delete as an orphan no clientId lookup can ever reach again.
+  await db.clientDebt.updateMany({ where: { clientId }, data: { reason: 'Redacted — client deleted' } });
 
   try {
     // Cascades to the client's bookings, assessments, points, reviews, etc.
@@ -276,6 +312,21 @@ export async function eraseStudentData(studentId: string) {
   const student = await db.academyStudent.findUnique({ where: { id: studentId }, select: { email: true } });
   if (!student) return { ok: false, error: 'Student not found.' };
   const erasedEmail = `erased-${studentId}@redacted.invalid`;
+  // BLD-1499 review: the email-matched redactions below must hit THIS subject's
+  // rows and nobody else's. Prisma compiles `equals` + mode:'insensitive' to a
+  // bare Postgres `ILIKE $1` with the address used verbatim as the PATTERN
+  // (verified against the generated SQL), so `_` and `%` inside an address act
+  // as wildcards: erasing jane_smith@x.com would also redact janeXsmith@x.com,
+  // and an address containing `%` would match half a domain. Both characters
+  // are legal in a local part, and `_` is common. Escaping them (backslash is
+  // Postgres's default LIKE escape) makes it the exact, case-insensitive match
+  // this is meant to be; an address with neither character is unaffected.
+  const emailPattern = student.email.replace(/[\\%_]/g, (c) => `\\${c}`);
+  // BLD-1309: capture the Blob URLs before files is cleared below, so they can
+  // be deleted from storage too (mirroring lib/kiosk.ts's deleteKioskBlobs) —
+  // clearing the column alone left the uploaded homework files themselves
+  // sitting in Blob storage indefinitely after erasure.
+  const homeworkFileUrls = (await db.homeworkSubmission.findMany({ where: { studentId }, select: { files: true } })).flatMap((h) => h.files);
   await db.$transaction([
     db.academyStudent.update({
       where: { id: studentId },
@@ -297,21 +348,58 @@ export async function eraseStudentData(studentId: string) {
     db.forumThread.updateMany({ where: { authorStudentId: studentId }, data: { authorName: 'Erased' } }),
     db.forumPost.updateMany({ where: { authorStudentId: studentId }, data: { authorName: 'Erased' } }),
     db.lessonComment.updateMany({ where: { authorStudentId: studentId }, data: { authorName: 'Erased' } }),
-    // BLD-1124: the applicant snapshot captured at enquiry (before the account
-    // existed) — the enrolment row is retained pseudonymously (certification
-    // verification basis) but the identifying applicant fields are not.
-    db.enrolment.updateMany({ where: { studentId }, data: { applicantName: 'Erased', applicantEmail: erasedEmail, applicantPhone: null } }),
+    // BLD-1124/BLD-1499: the applicant snapshot captured at enquiry (before the
+    // account existed) — the enrolment row is retained pseudonymously
+    // (certification verification basis) but the identifying applicant fields
+    // and free-text detail are not. Matched by the FK (post-account enquiries)
+    // and, mirroring eraseClientData's email-matched guest records, by the
+    // original email (pre-account enquiries with no studentId set yet — an
+    // Enrolment can be keyed only by applicantEmail/applicantName until the
+    // trainee creates an account).
+    db.enrolment.updateMany({
+      where: { studentId },
+      data: {
+        applicantName: 'Erased', applicantEmail: erasedEmail, applicantPhone: null,
+        // BLD-1499: free-text fields that can carry personal/health detail
+        // (background/qualifications, staff notes, the typed signature name
+        // on the Learner Agreement) — no retention basis once erased.
+        experience: null, notes: null, agreementSignedName: null,
+      },
+    }),
+    db.enrolment.updateMany({
+      where: { studentId: null, applicantEmail: { equals: emailPattern, mode: 'insensitive' } },
+      data: {
+        applicantName: 'Erased', applicantEmail: erasedEmail, applicantPhone: null,
+        experience: null, notes: null, agreementSignedName: null,
+      },
+    }),
     // BLD-1124: funding enquiries linked to this trainee — strip the applicant
     // identity. Matched by the FK (post-account enquiries) and, mirroring
     // eraseClientData's email-matched guest records, by the original email
     // (pre-account enquiries with no studentId set yet).
     db.fundingApplication.updateMany({ where: { studentId }, data: { name: 'Erased', email: erasedEmail, phone: null } }),
-    db.fundingApplication.updateMany({ where: { studentId: null, email: { equals: student.email, mode: 'insensitive' } }, data: { name: 'Erased', email: erasedEmail, phone: null } }),
+    db.fundingApplication.updateMany({ where: { studentId: null, email: { equals: emailPattern, mode: 'insensitive' } }, data: { name: 'Erased', email: erasedEmail, phone: null } }),
     // BLD-1124: homework submissions carry the learner's own free-text note,
     // tutor feedback naming them, and uploaded files (photos/documents) — strip
     // the content but keep the row (status/dates) for course records.
     db.homeworkSubmission.updateMany({ where: { studentId }, data: { note: null, feedback: null, files: [] } }),
   ]);
+  if (homeworkFileUrls.length && process.env.BLOB_READ_WRITE_TOKEN) {
+    try {
+      const { del } = await import('@vercel/blob');
+      await del(homeworkFileUrls);
+    } catch (e) {
+      console.error('[eraseStudentData] homework blob delete failed (continuing):', (e as Error)?.message);
+    }
+  }
+  // BLD-1794: VTCT registration details carry government identity documents
+  // (Photo ID, Proof of Address) — erase the row and its Blob files too, not
+  // just leave them behind once the student account itself is anonymised.
+  const { eraseVtctRegistrationForStudent } = await import('@/lib/vtct-registration');
+  const vtctErasure = await eraseVtctRegistrationForStudent(studentId);
+  if (vtctErasure.blobsFailed > 0) {
+    console.error(`[eraseStudentData] ${vtctErasure.blobsFailed} VTCT document blob(s) could not be deleted — the row is gone, files need manual cleanup`);
+  }
   await logAudit({ action: 'STUDENT_ERASED', actor: session.email, actorRole: session.role, summary: `Academy student ${student.email} data erased (GDPR Art.17)` });
   revalidatePath('/admin/academy');
   return { ok: true };

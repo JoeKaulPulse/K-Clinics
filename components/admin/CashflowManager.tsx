@@ -12,7 +12,7 @@ type Summary = { endOperating: number; endReserves: number; lowestOperating: num
 type Balance = { source: string; label: string; connected: boolean; availablePence: number; pendingPence: number; currency: string; detail?: string };
 
 const gbp = (p: number) => `£${(p / 100).toLocaleString('en-GB', { maximumFractionDigits: 0 })}`;
-const field = 'rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-3 py-2 text-sm outline-none focus:border-[var(--color-gold)]';
+const field = 'rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-porcelain)] px-3 py-2 text-sm outline-none focus:border-[var(--color-gold-deep)] focus-visible:ring-2 focus-visible:ring-[var(--color-gold-deep)]';
 
 async function post(payload: object) {
   const res = await fetch('/api/admin/cashflow', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
@@ -105,10 +105,10 @@ function LiveBalances({ balances, canManage, uk }: { balances: Balance[]; canMan
       </div>
       <div className="mt-4 grid gap-3 sm:grid-cols-3">
         {balances.map((b) => (
-          <div key={b.source} className={`rounded-[var(--radius-md)] border p-4 ${b.connected ? 'border-[var(--color-line)] bg-white' : 'border-dashed border-[var(--color-line)]'}`}>
+          <div key={b.source} className={`rounded-[var(--radius-md)] border p-4 ${b.connected ? 'border-[var(--color-line)] bg-[var(--color-porcelain)]' : 'border-dashed border-[var(--color-line)]'}`}>
             <div className="flex items-center justify-between">
               <span className="text-sm font-medium">{b.label}</span>
-              <span className={`h-2 w-2 rounded-full ${b.connected ? 'bg-green-500' : 'bg-[var(--color-stone-soft)]'}`} />
+              <span className={`h-2 w-2 rounded-full ${b.connected ? 'bg-[var(--color-jade)]' : 'bg-[var(--color-stone-soft)]'}`} />
             </div>
             {b.connected ? (
               <>

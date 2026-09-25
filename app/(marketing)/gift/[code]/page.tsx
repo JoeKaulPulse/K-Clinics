@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { GiftCardPreview } from '@/components/gift/GiftCardPreview';
 import { crmEnabled } from '@/lib/crm';
-import { site } from '@/lib/site';
+import { PhoneLink } from '@/components/marketing/PhoneLink';
 
 export const dynamic = 'force-dynamic';
 export const metadata: Metadata = { title: 'Your gift card | KClinics', robots: { index: false, follow: false } };
@@ -37,7 +37,7 @@ export default async function GiftCardViewPage({ params }: { params: Promise<{ c
             <p className="mx-auto mt-3 max-w-sm text-[var(--color-stone)]">
               {v && v.status === 'PENDING' ? 'This gift card isn’t active yet — payment is still completing.' : 'We couldn’t find a gift card for this link. Please check the code, or call us and we’ll help.'}
             </p>
-            <p className="mt-4"><a href={site.phoneHref} className="link-underline font-medium text-[var(--color-ink)]">{site.phone}</a></p>
+            <p className="mt-4"><PhoneLink className="link-underline font-medium text-[var(--color-ink)]" /></p>
           </div>
         ) : (
           <>
@@ -60,7 +60,7 @@ export default async function GiftCardViewPage({ params }: { params: Promise<{ c
                 <>
                   <p className="mt-3 text-sm text-[var(--color-stone)]">
                     Balance <strong className="text-[var(--color-ink)]">{money(v!.balancePence)}</strong>
-                    {v!.balancePence !== v!.amountPence ? ` of ${money(v!.amountPence)}` : ''} · valid for 12 months · redeemable on any treatment.
+                    {v!.balancePence !== v!.amountPence ? ` of ${money(v!.amountPence)}` : ''} · valid for 12 months.
                   </p>
                   <div className="mt-4 flex flex-wrap justify-center gap-3">
                     <Link href={`/account/gift-cards?code=${clean}`} className="rounded-full bg-[var(--color-ink)] px-5 py-2.5 text-sm font-medium text-[var(--color-porcelain)] transition-colors hover:bg-[var(--color-gold-deep)]">Add to your account</Link>
@@ -69,7 +69,8 @@ export default async function GiftCardViewPage({ params }: { params: Promise<{ c
                 </>
               )}
             </div>
-            <p className="mt-5 text-center text-xs text-[var(--color-stone)]">Treatments are for ages 18+. Show this code in clinic or add it to your account to use online.</p>
+            {/* BLD-1918: shown wherever a client is about to redeem a gift card. */}
+            <p className="mt-5 text-center text-xs text-[var(--color-stone)]">Treatments are for ages 18+. Not valid for injectable treatments or CO2 laser treatments. Show this code in clinic or add it to your account to use online.</p>
           </>
         )}
       </div>

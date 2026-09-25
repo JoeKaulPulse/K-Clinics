@@ -4,6 +4,7 @@ import { PageHero } from '@/components/ui/PageHero';
 import { Reveal } from '@/components/motion/Reveal';
 import { BookingFlow } from '@/components/booking/BookingFlow';
 import { site } from '@/lib/site';
+import { PhoneLink } from '@/components/marketing/PhoneLink';
 import { getSiteConfig } from '@/lib/site-config';
 import { pageMeta, JsonLd, breadcrumbLd } from '@/lib/seo';
 import { getReviewAggregate } from '@/lib/reviews-aggregate';
@@ -12,12 +13,24 @@ import { Stars } from '@/components/ui/Stars';
 export const generateMetadata = (): Promise<Metadata> => pageMeta({
   title: 'Book an Appointment — Islington, London | KClinics',
   description:
-    'Book your appointment at KClinics, Islington. Create your free account for 15% off your first visit, choose your treatment and time; your card is saved securely and only charged when your service is delivered. Free cancellation up to 24 hours before.',
+    "Book your appointment at KClinics, Islington — create a free account for 15% off your first visit, choose your treatment, and pay only when you're treated.",
   path: '/book',
   keywords: ['book appointment London', 'aesthetics booking Islington', 'clinic online booking'],
 });
 
-export const dynamic = 'force-dynamic';
+// BLD-1833: was force-dynamic, so every hit re-fetched the treatment
+// catalogue and review aggregate that the homepage already caches. Only the
+// signed-in personalisation genuinely needs live cookies, and that's now
+// fetched client-side (see /api/booking/client-info and BookingFlow's mount
+// effect).
+// NB this does NOT make the page itself cacheable: awaiting searchParams below
+// (treatment/date/wl) keeps it dynamically rendered, and it still responds
+// `private, no-store` — verified on the built output, where /book is ƒ while
+// the homepage is ○. The actual saving is that the catalogue and offers are now
+// read through the hourly, tag-revalidated wrappers in lib/services.ts instead
+// of querying the DB on every request. This value only sets the default
+// revalidation window for cache reads made while rendering.
+export const revalidate = 3600;
 
 export default async function BookPage({ searchParams }: { searchParams: Promise<{ treatment?: string; date?: string; wl?: string }> }) {
   const { treatment, date, wl } = await searchParams;
@@ -47,7 +60,10 @@ export default async function BookPage({ searchParams }: { searchParams: Promise
     let promoted: Awaited<ReturnType<(typeof import('@/lib/services'))['liveOffers']>> = [];
     let degraded = false;
     try {
-      const { bookingCatalogue, liveOffers } = await import('@/lib/services');
+      // BLD-1833: cached (hourly, tag-revalidated on admin catalogue/offer
+      // changes — see lib/services.ts) instead of hitting the DB on every
+      // request, same treatment as the homepage's featured pricing.
+      const { getBookingCatalogue, getPromotedOffers } = await import('@/lib/services');
       const { withDbRetry } = await import('@/lib/db');
 
       // The catalogue is the one thing the page can't render without — load it with
@@ -55,8 +71,8 @@ export default async function BookPage({ searchParams }: { searchParams: Promise
       // spike) doesn't drop the whole widget to the "call us" fallback. Offers are
       // best-effort: if they fail we simply don't show the promo strip.
       const [catalogueAll, promotedLive] = await Promise.all([
-        withDbRetry(() => bookingCatalogue()),
-        withDbRetry(() => liveOffers(true)).catch(() => [] as typeof promoted),
+        withDbRetry(() => getBookingCatalogue()),
+        withDbRetry(() => getPromotedOffers()).catch(() => [] as typeof promoted),
       ]);
       promoted = promotedLive;
 
@@ -76,31 +92,17 @@ export default async function BookPage({ searchParams }: { searchParams: Promise
     return { catalogue, promoted, degraded };
   };
 
-  // Signed-in personalisation is best-effort and must never break the page or
-  // trigger the fallback — if the client lookup blips, we just render the
-  // signed-out flow (they can still book). It no longer waits on the
-  // catalogue's outcome: if the catalogue ends up degraded, this result is
-  // simply unused by the render below (see the `degraded` branch).
-  const loadClientInfo = async (): Promise<ClientInfo> => {
-    let clientInfo: ClientInfo = { signedIn: false, firstName: '', email: '', gender: null, smsReminders: false, hasPhone: false, welcomeEligible: true };
-    try {
-      const { getCurrentClient } = await import('@/lib/client-auth');
-      const { db } = await import('@/lib/db');
-      const client = await getCurrentClient();
-      if (client) {
-        const active = await db.discountClaim.findFirst({ where: { clientId: client.id, status: 'ACTIVE' } });
-        clientInfo = { signedIn: true, firstName: client.firstName, email: client.email, gender: client.gender ?? null, smsReminders: client.smsReminders, hasPhone: !!client.phone, welcomeEligible: !!active };
-      }
-    } catch (e) {
-      console.error('[book] client personalisation skipped (non-fatal):', (e as Error)?.message);
-    }
-    return clientInfo;
-  };
+  // BLD-1833: signed-in personalisation used to be read here from cookies at
+  // render time, which forced this whole page dynamic. It's now fetched
+  // client-side by BookingFlow (see /api/booking/client-info) once mounted,
+  // so the page shell can be cached (revalidate above) like the homepage.
+  // This default (signed-out, welcome-eligible) is only what a visitor sees
+  // for the instant before that fetch resolves.
+  const clientInfo: ClientInfo = { signedIn: false, firstName: '', email: '', gender: null, smsReminders: false, hasPhone: false, welcomeEligible: true };
 
-  const [aggregate, { catalogue, promoted, degraded }, clientInfo] = await Promise.all([
+  const [aggregate, { catalogue, promoted, degraded }] = await Promise.all([
     loadAggregate(),
     loadCatalogue(),
-    loadClientInfo(),
   ]);
   const rating = aggregate ? { average: aggregate.average, count: aggregate.count } : null;
   const testimonialCards = aggregate?.cards.slice(0, 2) ?? [];
@@ -169,7 +171,7 @@ export default async function BookPage({ searchParams }: { searchParams: Promise
               </div>
             )}
             <p className="mt-8 text-sm text-[var(--color-stone)]">
-              Prefer to talk? Call <a href={site.phoneHref} className="link-underline font-medium text-[var(--color-ink)]">{site.phone}</a>
+              Prefer to talk? Call <PhoneLink className="link-underline font-medium text-[var(--color-ink)]" />
             </p>
           </div>
         </Reveal>
@@ -178,7 +180,7 @@ export default async function BookPage({ searchParams }: { searchParams: Promise
             <div className="rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-bone)] p-8 text-center">
               <h2 className="text-title">Booking is briefly unavailable</h2>
               <p className="mt-3 text-[var(--color-ink-soft)]">We’re sorry — online booking is temporarily down. Please call us and we’ll book you straight in.</p>
-              <a href={site.phoneHref} className="mt-5 inline-block rounded-full bg-[var(--color-ink)] px-6 py-3 text-sm font-medium text-[var(--color-porcelain)]">Call {site.phone}</a>
+              <PhoneLink className="mt-5 inline-block rounded-full bg-[var(--color-ink)] px-6 py-3 text-sm font-medium text-[var(--color-porcelain)]">Call {site.phone}</PhoneLink>
             </div>
           ) : (
             <BookingFlow catalogue={catalogue} client={clientInfo} preselect={treatment ? (catalogue.find((s) => s.treatmentSlug === treatment)?.id ?? null) : null} preselectDate={preselectDate} waitlistToken={waitlistToken} />

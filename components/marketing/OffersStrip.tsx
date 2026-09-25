@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { crmEnabled } from '@/lib/crm';
+import { offerCountdownLabel } from '@/lib/offer-countdown';
 
 // Promoted special offers, surfaced on the marketing site and in client portals.
 // Fully defensive: renders nothing when the CRM/DB isn't available (e.g. the
@@ -25,14 +26,23 @@ export async function OffersStrip({ heading = 'Offers on now' }: { heading?: str
     <div className="rounded-[var(--radius-xl)] border border-[var(--color-gold)]/30 bg-[var(--color-gold)]/8 p-6 md:p-8">
       <p className="eyebrow mb-3 text-[var(--color-gold-deep)]">{heading}</p>
       <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-        {offers.slice(0, 6).map((o) => (
-          <li key={o.id} className="flex items-baseline justify-between gap-3 rounded-[var(--radius-md)] bg-[var(--color-porcelain)]/70 px-4 py-3">
-            <span className="text-sm font-medium text-[var(--color-ink)]">{cleanName(o.name)}</span>
-            <span className="shrink-0 text-sm font-semibold text-[var(--color-gold-deep)]">
-              {o.percentOff ? `${o.percentOff}% off` : o.amountOffPence ? `£${(o.amountOffPence / 100).toLocaleString('en-GB')} off` : ''}
-            </span>
-          </li>
-        ))}
+        {offers.slice(0, 6).map((o) => {
+          const countdown = offerCountdownLabel(o.endAt);
+          return (
+            <li key={o.id} className="flex items-baseline justify-between gap-3 rounded-[var(--radius-md)] bg-[var(--color-porcelain)]/70 px-4 py-3">
+              <span className="text-sm font-medium text-[var(--color-ink)]">{cleanName(o.name)}</span>
+              <span className="flex shrink-0 items-baseline gap-2">
+                <span className="text-sm font-semibold text-[var(--color-gold-deep)]">
+                  {o.percentOff ? `${o.percentOff}% off` : o.amountOffPence ? `£${(o.amountOffPence / 100).toLocaleString('en-GB')} off` : ''}
+                </span>
+                {/* BLD-1422: endAt was already fetched but never surfaced. */}
+                {countdown && (
+                  <span className="rounded-full bg-[var(--color-gold)]/15 px-2 py-0.5 text-[0.68rem] font-medium text-[var(--color-gold-deep)]">{countdown}</span>
+                )}
+              </span>
+            </li>
+          );
+        })}
       </ul>
       <p className="mt-4 text-xs text-[var(--color-stone)]">Discounts apply automatically at booking. <Link href="/book" className="link-underline font-medium text-[var(--color-ink)]">Book now →</Link></p>
     </div>

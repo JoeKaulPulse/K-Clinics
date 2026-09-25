@@ -13,7 +13,7 @@ type Initial = {
 } | null;
 
 const CATEGORIES = ['Skin', 'Laser', 'Injectables', 'Dentistry', 'Wellbeing'];
-const field = 'w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-porcelain)] px-3 py-2 text-sm outline-none focus:border-[var(--color-gold)]';
+const field = 'w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-[var(--color-porcelain)] px-3 py-2 text-sm outline-none focus:border-[var(--color-gold-deep)] focus-visible:ring-2 focus-visible:ring-[var(--color-gold-deep)]';
 const label = 'block text-xs font-medium uppercase tracking-[0.12em] text-[var(--color-stone)] mb-1.5';
 
 export function PostEditor({ initial }: { initial: Initial }) {
@@ -81,11 +81,11 @@ export function PostEditor({ initial }: { initial: Initial }) {
               <option value="DRAFT">Draft (hidden)</option>
               <option value="PUBLISHED">Published (live)</option>
             </select>
-            {err && <p role="alert" aria-live="assertive" className="mt-3 text-sm text-[#c0392b]">{err}</p>}
+            {err && <p role="alert" aria-live="assertive" className="mt-3 text-sm text-[var(--color-blush-deep)]">{err}</p>}
             <div className="mt-4 flex flex-wrap gap-2">
               <button disabled={busy} onClick={() => save(f.status)} className="rounded-full bg-[var(--color-ink)] px-5 py-2.5 text-sm text-[var(--color-porcelain)] disabled:opacity-50">{busy ? 'Saving…' : 'Save'}</button>
               {f.status !== 'PUBLISHED' && <button disabled={busy} onClick={() => save('PUBLISHED')} className="rounded-full border border-[var(--color-gold)] px-5 py-2.5 text-sm text-[var(--color-ink)] disabled:opacity-50">Save &amp; publish</button>}
-              {initial && <button disabled={busy} onClick={remove} className="ml-auto rounded-full px-3 py-2.5 text-sm text-[#c0392b] hover:underline">Delete</button>}
+              {initial && <button disabled={busy} onClick={remove} className="ml-auto rounded-full px-3 py-2.5 text-sm text-[var(--color-blush-deep)] hover:underline">Delete</button>}
             </div>
           </div>
 

@@ -3,6 +3,9 @@ import { crmEnabled } from '@/lib/crm';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
+// BLD-1503: a Serializable DB transaction plus a staff notification per inbound
+// reply can run long under load — matches the Stripe webhook's explicit 60s.
+export const maxDuration = 60;
 
 // Resend Inbound webhook → threads a visitor's email reply back into the SAME
 // live-chat conversation. Replies are sent to chat-<token>@<inbound domain>
@@ -17,8 +20,13 @@ function verify(secret: string, headers: Headers, body: string): boolean {
     const id = headers.get('svix-id'); const ts = headers.get('svix-timestamp'); const sig = headers.get('svix-signature');
     if (!id || !ts || !sig) return false;
     const key = Buffer.from(secret.replace(/^whsec_/, ''), 'base64');
-    const expected = crypto.createHmac('sha256', key).update(`${id}.${ts}.${body}`).digest('base64');
-    return sig.split(' ').some((s) => s.split(',')[1] === expected);
+    const expected = Buffer.from(crypto.createHmac('sha256', key).update(`${id}.${ts}.${body}`).digest('base64'));
+    // Constant-time compare against every candidate signature (Svix sends one per
+    // active secret) — a plain `===` would leak a timing oracle on the signature.
+    return sig.split(' ').some((s) => {
+      const provided = Buffer.from(s.split(',')[1] || '');
+      return provided.length === expected.length && crypto.timingSafeEqual(provided, expected);
+    });
   } catch { return false; }
 }
 
@@ -55,6 +63,7 @@ export async function POST(req: Request) {
 
   const { db } = await import('@/lib/db');
   const { stripQuotedReply, tokenFromAddresses } = await import('@/lib/chat-email');
+  const { encClinical } = await import('@/lib/clinical-crypto');
 
   // 1) Find the conversation. Prefer the chat-<token>@ recipient address.
   const recipients = collect(data.to, data.cc, headers.to, headers.To, headers.Cc);
@@ -99,7 +108,8 @@ export async function POST(req: Request) {
         const seen = await tx.chatMessage.findFirst({ where: { externalId }, select: { id: true } });
         if (seen) return false;
       }
-      await tx.chatMessage.create({ data: { conversationId: convoId, sender: 'VISITOR', body: message, via: 'email', externalId } });
+      // BLD-1160: encrypt at rest, matching every write of ChatMessage.body.
+      await tx.chatMessage.create({ data: { conversationId: convoId, sender: 'VISITOR', body: encClinical(message) as string, via: 'email', externalId } });
       await tx.chatConversation.update({
         where: { id: convoId },
         data: { status: 'OPEN', mode: 'STAFF', lastMessageAt: new Date(), lastVisitorSeenAt: new Date(), staffUnread: { increment: 1 } },

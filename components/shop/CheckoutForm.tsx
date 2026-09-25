@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import { Elements, PaymentElement, useElements, useStripe } from '@stripe/react-stripe-js';
 import { getStripe } from '@/lib/stripe-client';
@@ -9,12 +9,15 @@ import { Button, ArrowIcon } from '@/components/ui/Button';
 import { trackPurchase } from '@/lib/analytics-events';
 
 const money = (p: number) => `£${(p / 100).toLocaleString('en-GB', { minimumFractionDigits: p % 100 ? 2 : 0 })}`;
-const field = 'mt-1 w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-3 py-2.5 text-sm';
+// BLD-1840: was text-sm (14px) -- iOS Safari auto-zooms on focusing any input
+// under 16px. Every comparable public form (BookingFlow, ConsultForm, etc.)
+// already uses the 16px default; dropping the size utility here matches them.
+const field = 'mt-1 w-full rounded-[var(--radius-sm)] border border-[var(--color-line)] bg-white px-3 py-2.5';
 
 export function CheckoutForm() {
   const { items, subtotalPence, clear } = useCart();
   const hasAge = items.some((i) => i.ageRestricted);
-  const [f, setF] = useState({ name: '', email: '', phone: '', method: 'ship', shipLine1: '', shipLine2: '', shipCity: '', shipPostcode: '', giftCardCode: '', dob: '', ageDeclare: false });
+  const [f, setF] = useState({ name: '', email: '', phone: '', method: 'ship', shipLine1: '', shipLine2: '', shipCity: '', shipPostcode: '', giftCardCode: '', dob: '', ageDeclare: false, marketingOptIn: false });
   const set = <K extends keyof typeof f>(k: K, v: (typeof f)[K]) => setF((p) => ({ ...p, [k]: v }));
   const [stage, setStage] = useState<'details' | 'pay' | 'done'>('details');
   const [clientSecret, setClientSecret] = useState('');
@@ -22,22 +25,55 @@ export function CheckoutForm() {
   const [orderNo, setOrderNo] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
+  // PRJ-1191.10: shipLine1/shipPostcode are required server-side (see
+  // app/api/shop/checkout/route.ts) once method is 'ship', but were previously
+  // unvalidated and unmarked on the client — mirrors BookingFlow.tsx's
+  // fieldErrors/focus-move pattern instead of a post-submit round trip.
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+  const clearErr = (k: string) => setFieldErrors((prev) => (prev[k] ? { ...prev, [k]: '' } : prev));
+  const fieldRefs = useRef<Record<string, HTMLElement | null>>({});
 
   const shipping = f.method === 'collect' || subtotalPence >= 5000 ? 0 : 495;
   const estTotal = subtotalPence + shipping;
 
   async function startCheckout() {
-    if (!f.name.trim() || !f.email.trim()) { setError('Please enter your name and email.'); return; }
+    const errs: Record<string, string> = {};
+    if (!f.name.trim()) errs.name = 'Enter your name.';
+    if (!/\S+@\S+\.\S+/.test(f.email)) errs.email = 'Enter a valid email address.';
+    if (f.method === 'ship') {
+      if (!f.shipLine1.trim()) errs.shipLine1 = 'Enter your address.';
+      if (!f.shipPostcode.trim()) errs.shipPostcode = 'Enter your postcode.';
+    }
+    if (Object.keys(errs).length > 0) {
+      setFieldErrors(errs);
+      setError('');
+      const order = ['name', 'email', 'shipLine1', 'shipPostcode'];
+      const first = order.find((k) => errs[k]);
+      if (first) fieldRefs.current[first]?.focus();
+      return;
+    }
+    setFieldErrors({});
     setError(''); setBusy(true);
     const res = await fetch('/api/shop/checkout', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ items: items.map((i) => ({ productId: i.productId, qty: i.qty })), name: f.name, email: f.email, phone: f.phone, method: f.method, shipName: f.name, shipLine1: f.shipLine1, shipLine2: f.shipLine2, shipCity: f.shipCity, shipPostcode: f.shipPostcode, giftCardCode: f.giftCardCode || undefined, dob: f.dob || undefined, ageDeclare: f.ageDeclare }),
+      body: JSON.stringify({ items: items.map((i) => ({ productId: i.productId, qty: i.qty })), name: f.name, email: f.email, phone: f.phone, method: f.method, shipName: f.name, shipLine1: f.shipLine1, shipLine2: f.shipLine2, shipCity: f.shipCity, shipPostcode: f.shipPostcode, giftCardCode: f.giftCardCode || undefined, dob: f.dob || undefined, ageDeclare: f.ageDeclare, marketingOptIn: f.marketingOptIn }),
     });
     const j = await res.json().catch(() => ({}));
     setBusy(false);
     if (!j.ok) { setError(j.error || 'Could not start checkout.'); return; }
     if (j.paid) { clear(); setOrderNo(j.number); setStage('done'); return; }
     setClientSecret(j.clientSecret); setOrderId(j.orderId); setStage('pay');
+    // BLD-1310: fire the checkout-start pixels the moment the buyer reaches the
+    // Stripe payment step (mirrors BookingFlow.tsx's begin_checkout/InitiateCheckout).
+    // Value is the server's totalPence (the amount actually being charged: cart
+    // re-priced server-side, shipping added, any gift card deducted) — the local
+    // estTotal would over-report a gift-card order and would not match the
+    // purchase event fired below from /api/shop/confirm's totalPence. Item ids
+    // are product slugs, the same ids ViewItemTracker sends from the product
+    // page, so view_item → begin_checkout → purchase join up in GA4/Meta.
+    const pixelValue = (typeof j.totalPence === 'number' ? j.totalPence : estTotal) / 100;
+    try { (window as Window & { gtag?: (...a: unknown[]) => void }).gtag?.('event', 'begin_checkout', { currency: 'GBP', value: pixelValue, items: items.map((i) => ({ item_id: i.slug, item_name: i.name, item_category: 'shop', quantity: i.qty })) }); } catch { /* analytics best-effort */ }
+    try { (window as Window & { fbq?: (...a: unknown[]) => void }).fbq?.('track', 'InitiateCheckout', { currency: 'GBP', value: pixelValue, content_ids: items.map((i) => i.slug), content_type: 'product' }); } catch { /* analytics best-effort */ }
   }
 
   if (items.length === 0 && stage !== 'done') {
@@ -62,10 +98,11 @@ export function CheckoutForm() {
             <section className="rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-5">
               <h2 className="mb-3 font-[family-name:var(--font-display)] text-lg">Your details</h2>
               <div className="grid gap-3 sm:grid-cols-2">
-                <label className="text-xs text-[var(--color-stone)]">Full name<input value={f.name} onChange={(e) => set('name', e.target.value)} className={field} /></label>
-                <label className="text-xs text-[var(--color-stone)]">Email<input type="email" value={f.email} onChange={(e) => set('email', e.target.value)} className={field} /></label>
+                <label className="text-xs text-[var(--color-stone)]">Full name *<input ref={(el) => { fieldRefs.current.name = el; }} value={f.name} onChange={(e) => { set('name', e.target.value); clearErr('name'); }} aria-invalid={!!fieldErrors.name} aria-describedby={fieldErrors.name ? 'co-name-err' : undefined} className={field} />{fieldErrors.name && <p id="co-name-err" role="alert" className="mt-1 text-xs text-[var(--color-blush-deep)]">{fieldErrors.name}</p>}</label>
+                <label className="text-xs text-[var(--color-stone)]">Email *<input ref={(el) => { fieldRefs.current.email = el; }} type="email" value={f.email} onChange={(e) => { set('email', e.target.value); clearErr('email'); }} aria-invalid={!!fieldErrors.email} aria-describedby={fieldErrors.email ? 'co-email-err' : undefined} className={field} />{fieldErrors.email && <p id="co-email-err" role="alert" className="mt-1 text-xs text-[var(--color-blush-deep)]">{fieldErrors.email}</p>}</label>
                 <label className="text-xs text-[var(--color-stone)]">Phone<input value={f.phone} onChange={(e) => set('phone', e.target.value)} className={field} /></label>
               </div>
+              <label className="mt-3 flex items-start gap-3 text-sm text-[var(--color-stone)]"><input type="checkbox" checked={f.marketingOptIn} onChange={(e) => set('marketingOptIn', e.target.checked)} className="mt-1 h-4 w-4 accent-[var(--color-gold)]" />Keep me updated with offers and skincare tips. We may also use your contact details, in hashed form, to show you our offers on social media — see our Privacy Policy.</label>
             </section>
 
             <section className="rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-5">
@@ -77,10 +114,10 @@ export function CheckoutForm() {
               </div>
               {f.method === 'ship' && (
                 <div className="mt-3 grid gap-3 sm:grid-cols-2">
-                  <label className="text-xs text-[var(--color-stone)] sm:col-span-2">Address line 1<input value={f.shipLine1} onChange={(e) => set('shipLine1', e.target.value)} className={field} /></label>
+                  <label className="text-xs text-[var(--color-stone)] sm:col-span-2">Address line 1 *<input ref={(el) => { fieldRefs.current.shipLine1 = el; }} value={f.shipLine1} onChange={(e) => { set('shipLine1', e.target.value); clearErr('shipLine1'); }} aria-invalid={!!fieldErrors.shipLine1} aria-describedby={fieldErrors.shipLine1 ? 'co-shipLine1-err' : undefined} className={field} />{fieldErrors.shipLine1 && <p id="co-shipLine1-err" role="alert" className="mt-1 text-xs text-[var(--color-blush-deep)]">{fieldErrors.shipLine1}</p>}</label>
                   <label className="text-xs text-[var(--color-stone)] sm:col-span-2">Address line 2<input value={f.shipLine2} onChange={(e) => set('shipLine2', e.target.value)} className={field} /></label>
                   <label className="text-xs text-[var(--color-stone)]">Town/City<input value={f.shipCity} onChange={(e) => set('shipCity', e.target.value)} className={field} /></label>
-                  <label className="text-xs text-[var(--color-stone)]">Postcode<input value={f.shipPostcode} onChange={(e) => set('shipPostcode', e.target.value)} className={field} /></label>
+                  <label className="text-xs text-[var(--color-stone)]">Postcode *<input ref={(el) => { fieldRefs.current.shipPostcode = el; }} value={f.shipPostcode} onChange={(e) => { set('shipPostcode', e.target.value); clearErr('shipPostcode'); }} aria-invalid={!!fieldErrors.shipPostcode} aria-describedby={fieldErrors.shipPostcode ? 'co-shipPostcode-err' : undefined} className={field} />{fieldErrors.shipPostcode && <p id="co-shipPostcode-err" role="alert" className="mt-1 text-xs text-[var(--color-blush-deep)]">{fieldErrors.shipPostcode}</p>}</label>
                 </div>
               )}
             </section>
@@ -99,13 +136,19 @@ export function CheckoutForm() {
             </section>
 
             {error && <p role="alert" aria-live="assertive" className="text-sm text-[var(--color-blush-deep)]">{error}</p>}
-            <Button onClick={() => !busy && startCheckout()} disabled={busy || !f.name || !f.email} variant="gold" size="lg">{busy ? 'Please wait…' : 'Continue to payment'} <ArrowIcon /></Button>
+            {/* PRJ-1191.10: the button stays clickable while the shipping
+                fields are empty, as BookingFlow.tsx's submit does. Disabling it
+                on those fields would make the inline shipLine1/shipPostcode
+                errors below unreachable (startCheckout never runs) and leave a
+                shopper with a dead greyed-out button and no message at all —
+                worse than the server-side error it replaced. */}
+            <Button onClick={() => !busy && startCheckout()} disabled={busy || !f.name.trim() || !f.email.trim()} variant="gold" size="lg">{busy ? 'Please wait…' : 'Continue to payment'} <ArrowIcon /></Button>
           </>
         ) : (
           <section className="rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-5">
             <h2 className="mb-3 font-[family-name:var(--font-display)] text-lg">Payment</h2>
-            <Elements stripe={getStripe()} options={{ clientSecret, appearance: { theme: 'flat', variables: { colorPrimary: '#a98a6d', fontFamily: 'system-ui, sans-serif', borderRadius: '10px', colorBackground: '#f6ece3' } } }}>
-              <PayStep orderId={orderId} onDone={(no, valuePence) => { trackPurchase({ valuePence, eventId: orderId, metaPurchase: true }); clear(); setOrderNo(no); setStage('done'); }} />
+            <Elements stripe={getStripe()} options={{ clientSecret, appearance: { theme: 'flat', variables: { colorPrimary: '#816748', fontFamily: 'system-ui, sans-serif', borderRadius: '10px', colorBackground: '#f6ece3' } } }}>
+              <PayStep orderId={orderId} onDone={(no, valuePence) => { trackPurchase({ valuePence, eventId: orderId, metaPurchase: true, detail: { transaction_id: orderId, items: items.map((i) => ({ item_id: i.slug, item_name: i.name, item_category: 'shop', quantity: i.qty })) } }); clear(); setOrderNo(no); setStage('done'); }} />
             </Elements>
           </section>
         )}
@@ -151,7 +194,7 @@ function PayStep({ orderId, onDone }: { orderId: string; onDone: (no: string, va
 function Summary({ items, subtotalPence, shipping, estTotal }: { items: { productId: string; name: string; qty: number; pricePence: number }[]; subtotalPence: number; shipping: number; estTotal: number }) {
   const list = useMemo(() => items, [items]);
   return (
-    <div className="lg:sticky lg:top-4 lg:self-start rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-6">
+    <div className="lg:sticky lg:top-28 lg:self-start rounded-[var(--radius-lg)] border border-[var(--color-line)] bg-[var(--color-porcelain)] p-6">
       <h2 className="mb-3 font-[family-name:var(--font-display)] text-lg">Summary</h2>
       <ul className="space-y-2 text-sm">
         {list.map((i) => <li key={i.productId} className="flex justify-between"><span className="text-[var(--color-stone)]">{i.name} × {i.qty}</span><span>{money(i.pricePence * i.qty)}</span></li>)}

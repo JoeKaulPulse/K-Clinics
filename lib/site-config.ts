@@ -13,6 +13,13 @@ import { primaryNav, footerNav, type NavGroup } from './nav';
 // ─────────────────────────────────────────────────────────────────────────────
 
 export type FooterColumn = { heading: string; links: { label: string; href: string }[] };
+// BLD-1348: the homepage hero slider's owner-supplied media. The slider ships
+// with a branded generative fallback on the video slide; when the owner's film
+// arrives they paste its URL here (Admin → Site) and it plays with no deploy.
+export type HeroConfig = {
+  videoUrl: string;    // MP4/WebM URL ('' = not supplied yet → branded fallback)
+  videoPoster: string; // optional poster image shown before playback ('' = none)
+};
 export type AnnouncementConfig = {
   enabled: boolean;
   message: string;
@@ -43,16 +50,18 @@ export type SiteConfig = {
   dentistryLive: boolean;
   shopLive: boolean; // PRJ-939.14: computed from the active product count — the Shop nav link and sitemap entry render only when there is something to sell
   announcement: AnnouncementConfig;
+  hero: HeroConfig; // BLD-1348
   nav: { primary: NavGroup[]; footer: FooterColumn[] };
 };
 
 const clone = <T,>(v: T): T => JSON.parse(JSON.stringify(v));
 
 export const DEFAULT_CONFIG: SiteConfig = {
-  ...(clone(site) as unknown as Omit<SiteConfig, 'social' | 'announcement' | 'nav' | 'shopLive'>),
+  ...(clone(site) as unknown as Omit<SiteConfig, 'social' | 'announcement' | 'hero' | 'nav' | 'shopLive'>),
   shopLive: false,
   social: clone(site.social) as Record<string, string>,
   announcement: { enabled: false, message: '', linkLabel: '', linkHref: '', startAt: null, endAt: null },
+  hero: { videoUrl: '', videoPoster: '' },
   nav: { primary: clone(primaryNav), footer: clone(footerNav) as FooterColumn[] },
 };
 
@@ -67,6 +76,7 @@ export function mergeConfig(base: SiteConfig, over: Partial<SiteConfig> | null |
     booking: { ...base.booking, ...(over.booking || {}) },
     social: { ...base.social, ...(over.social || {}) },
     announcement: { ...base.announcement, ...(over.announcement || {}) },
+    hero: { ...base.hero, ...(over.hero || {}) },
     hours: Array.isArray(over.hours) && over.hours.length ? over.hours : base.hours,
     nav: {
       primary: Array.isArray(over.nav?.primary) ? over.nav!.primary : base.nav.primary,
