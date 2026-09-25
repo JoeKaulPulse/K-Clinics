@@ -250,7 +250,7 @@ export default async function DashboardPage() {
               <div className="border-b border-[var(--color-line)] p-6">
                 <RailHeading>{t('dash.visitUs')}</RailHeading>
                 <p className="mt-3 font-[family-name:var(--font-display)] text-lg leading-tight">{site.address.street}</p>
-                <p className="text-sm text-[var(--color-stone)]">{[site.address.locality, site.address.postalCode].filter(Boolean).join(', ')}</p>
+                <p className="text-sm text-[var(--color-stone)]">{[site.address.district, site.address.postalCode].filter(Boolean).join(', ')}</p>
                 <div className="mt-3 flex items-center gap-2 text-sm">
                   <span className={`h-2 w-2 rounded-full ${openToday ? 'bg-green-600' : 'bg-[var(--color-stone-soft)]'}`} />
                   <span className={openToday ? 'text-[var(--color-ink)]' : 'text-[var(--color-stone)]'}>

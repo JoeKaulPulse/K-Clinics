@@ -25,9 +25,9 @@ export async function GET() {
 
   const body = `# ${site.name}
 
-> ${site.name} is an aesthetics and dentistry clinic in ${site.address.locality}, London, offering laser, skin, injectable and smile treatments — plus K Academy, an Ofqual-regulated, VTCT and CPD-accredited training centre for clinicians.
+> ${site.name} is an aesthetics and dentistry clinic in ${site.address.district}, London, offering laser, skin, injectable and smile treatments — plus K Academy, an Ofqual-regulated, VTCT and CPD-accredited training centre for clinicians.
 
-Location: ${site.address.street}, ${site.address.locality}, London. Phone: ${site.phone}. Booking: ${base}/book
+Location: ${site.address.street}, ${site.address.district}, London. Phone: ${site.phone}. Booking: ${base}/book
 
 ## Key pages
 - [Home](${base}/): clinic overview and booking
@@ -57,7 +57,7 @@ ${site.hours.map((h) => `- ${h.day}: ${h.open === 'Closed' ? 'Closed' : `${h.ope
 - Booking is online: pick a treatment & time, save a card securely — charged only once the treatment is delivered.
 - Free cancellation up to 24 hours before an appointment; within 24 hours the full fee applies.
 - Finance: pay-as-you-go courses and 0% interest-free options on eligible treatments.
-- Location & transport: ${site.address.street}, ${site.address.locality}, ${site.address.postalCode} — minutes from Farringdon, Barbican and Old Street; step-free access.
+- Location & transport: ${site.address.street}, ${site.address.district}, ${site.address.postalCode} — minutes from Farringdon, Barbican and Old Street; step-free access.
 - Dentistry is ${dentistryLive ? 'open and bookable' : 'opening soon (register interest on the dentistry page)'}.
 
 ## FAQs
